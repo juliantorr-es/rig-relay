@@ -65,21 +65,7 @@ class DuckDBProjection:
         summary.sessions_seen = len(log_files)
 
         # 1. Malformed line count (manual pass for robustness)
-        # We do this first so it's available even if DuckDB fails
-        malformed = 0
-        for path in log_files:
-            try:
-                with path.open("r", encoding="utf-8") as f:
-                    for line in f:
-                        if not line.strip():
-                            continue
-                        try:
-                            json.loads(line)
-                        except json.JSONDecodeError:
-                            malformed += 1
-            except Exception as e:
-                summary.errors.append(f"Failed to read {path.name}: {e}")
-        summary.malformed_line_count = malformed
+        summary.malformed_line_count = self._count_malformed_lines(log_files, summary)
 
         # 2. DuckDB Projections
         file_paths = [str(p) for p in log_files]
@@ -179,6 +165,25 @@ class DuckDBProjection:
             con.close()
 
         return summary
+
+    def _count_malformed_lines(
+        self, log_files: list[Path], summary: ObservabilitySummary
+    ) -> int:
+        """Count malformed JSON lines manually for robustness."""
+        malformed = 0
+        for path in log_files:
+            try:
+                with path.open("r", encoding="utf-8") as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+                        try:
+                            json.loads(line)
+                        except json.JSONDecodeError:
+                            malformed += 1
+            except Exception as e:
+                summary.errors.append(f"Failed to read {path.name}: {e}")
+        return malformed
 
 
 # Forced refresh

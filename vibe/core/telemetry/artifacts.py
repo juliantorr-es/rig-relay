@@ -69,12 +69,14 @@ def make_prompt_excerpt(content: str, max_bytes: int = 4096) -> str:
     return f"{prefix}\n\n... [TRUNCATED] ...\n\n{suffix}"
 
 
-class ToolOutputArtifactWriter:
-    """Handles atomic writing of tool output artifacts and metadata.
+import os
 
-    Artifacts are the authoritative source of truth for raw tool results.
-    They are stored locally in the session directory and are not subject
-    to the lossy truncation used for model-visible excerpts.
+class ToolOutputArtifactWriter:
+    """Handles durable atomic writing of tool output artifacts and metadata.
+    
+    Artifacts are written using an atomic replace pattern backed by fsync
+    on both the data file and the parent directory to ensure durability.
+    They are the authoritative source of truth for raw tool results.
     """
 
     def __init__(self, session_id: str) -> None:
@@ -117,11 +119,22 @@ class ToolOutputArtifactWriter:
             payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
 
-        # Atomic write
+        # Durable Atomic write
         temp_path = artifact_path.with_suffix(".tmp")
         try:
-            temp_path.write_bytes(artifact_bytes)
+            with temp_path.open("wb") as f:
+                f.write(artifact_bytes)
+                f.flush()
+                os.fsync(f.fileno())
+            
             temp_path.replace(artifact_path)
+            
+            # Sync parent directory to ensure the rename is durable
+            dir_fd = os.open(str(self.artifact_dir), os.O_RDONLY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
         finally:
             if temp_path.exists():
                 temp_path.unlink()

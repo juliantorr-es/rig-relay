@@ -231,7 +231,6 @@ class TelemetryClient:
             tool_call, status, result
         )
 
-        result_size = 0
         result_keys = []
         if result:
             try:
