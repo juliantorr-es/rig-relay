@@ -35,16 +35,40 @@ def test_bash_allowlist_no_longer_silently_allows_git_status_diff_log(bash):
 
 def test_bash_blocks_dangerous_commands(bash):
     dangerous = [
+        "git reset",
         "git reset --hard HEAD",
+        "git clean",
         "git clean -fd",
+        "git restore",
+        "git checkout",
+        "git checkout main",
+        "git stash",
+        "git rebase",
+        "git merge",
         "git push --force",
+        "git push --force-with-lease",
         "rm -rf /",
         "rm -fr .",
+        "rm -rf subdir",
     ]
     for cmd in dangerous:
         perm = bash.resolve_permission(BashArgs(command=cmd))
         assert isinstance(perm, PermissionContext)
         assert perm.permission == ToolPermission.NEVER, f"Failed to block {cmd}"
+
+
+def test_bash_malformed_command_does_not_crash(bash):
+    # Test with characters that might confuse parsers
+    malformed = [
+        "git status; ) ( ; rm -rf",
+        "echo \"unclosed quote",
+        "$(cat /etc/passwd)",
+        "`rm -rf /`",
+        "| | |",
+    ]
+    for cmd in malformed:
+        # Should not raise exception
+        bash.resolve_permission(BashArgs(command=cmd))
 
 
 @pytest.mark.asyncio

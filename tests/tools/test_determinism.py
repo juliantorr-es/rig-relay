@@ -63,6 +63,17 @@ def test_require_path_within_workdir_allows_scratchpad(monkeypatch):
     assert require_path_within_workdir(scratch_path, workdir=Path("/home/user/project")) == scratch_path
 
 
+def test_require_path_within_workdir_rejects_non_scratchpad_sibling(monkeypatch):
+    import vibe.core.scratchpad as scratchpad
+    
+    # Mock _active_scratchpads
+    monkeypatch.setattr(scratchpad, "_active_scratchpads", {"test": Path("/tmp/vibe/scratch")})
+    
+    sibling_path = Path("/tmp/vibe/not-scratch/temp.txt")
+    with pytest.raises(ToolError, match="outside the project directory"):
+        require_path_within_workdir(sibling_path, workdir=Path("/home/user/project"))
+
+
 def test_truncate_text_respects_max_bytes_and_utf8():
     text = "Hello World"
     truncated, was_truncated = truncate_text(text, 5)

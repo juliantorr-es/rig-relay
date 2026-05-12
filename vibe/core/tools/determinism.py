@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from functools import lru_cache
 
@@ -65,26 +64,36 @@ def truncate_text(text: str, max_bytes: int) -> tuple[str, bool]:
 
 def parse_shell_commands(command: str) -> list[str]:
     """Extract individual commands from a shell string using tree-sitter-bash."""
-    parser = _get_bash_parser()
-    tree = parser.parse(command.encode("utf-8"))
+    try:
+        parser = _get_bash_parser()
+        tree = parser.parse(command.encode("utf-8"))
 
-    commands: list[str] = []
+        commands: list[str] = []
 
-    def find_commands(node: Node) -> None:
-        if node.type == "command":
-            parts = []
+        def find_commands(node: Node) -> None:
+            if node.type == "command":
+                parts = []
+                for child in node.children:
+                    if (
+                        child.type
+                        in {
+                            "command_name",
+                            "word",
+                            "string",
+                            "raw_string",
+                            "concatenation",
+                        }
+                        and child.text is not None
+                    ):
+                        parts.append(child.text.decode("utf-8"))
+                if parts:
+                    commands.append(" ".join(parts))
+
             for child in node.children:
-                if (
-                    child.type
-                    in {"command_name", "word", "string", "raw_string", "concatenation"}
-                    and child.text is not None
-                ):
-                    parts.append(child.text.decode("utf-8"))
-            if parts:
-                commands.append(" ".join(parts))
+                find_commands(child)
 
-        for child in node.children:
-            find_commands(child)
-
-    find_commands(tree.root_node)
-    return commands
+        find_commands(tree.root_node)
+        return commands
+    except Exception:
+        # If parsing fails, we return an empty list or fall back to conservative behavior
+        return []
