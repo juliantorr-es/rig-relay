@@ -20,6 +20,7 @@ from vibe.core.telemetry.types import (
     TeleportFailedPayload,
     TeleportFailureStage,
 )
+from vibe.core.telemetry.constants import EventName
 from vibe.core.utils import get_server_url_from_api_base, get_user_agent
 from vibe.core.utils.http import build_ssl_context
 
@@ -134,6 +135,7 @@ class TelemetryClient:
         properties: dict[str, Any],
         *,
         correlation_id: str | None = None,
+        receipt_candidate: bool = False,
     ) -> None:
         # Local Observability Sink
         if self._is_local_observability_enabled():
@@ -145,6 +147,7 @@ class TelemetryClient:
                     event_name,
                     properties,
                     parent_session_id=self.parent_session_id,
+                    receipt_candidate=receipt_candidate,
                 )
 
         # Remote Telemetry Sink
@@ -244,12 +247,12 @@ class TelemetryClient:
             "model": model,
             "nb_files_created": nb_files_created,
             "nb_files_modified": nb_files_modified,
-            "message_id": message_id,
-            "result_char_count": result_size,
             "result_keys": result_keys,
             "receipt_candidate": True,
         }
-        self.send_telemetry_event("vibe.tool.call_completed", payload)
+        self.send_telemetry_event(
+            EventName.TOOL_CALL_COMPLETED, payload, receipt_candidate=True
+        )
 
     def send_user_copied_text(self, text: str) -> None:
         payload = {"text_length": len(text)}
@@ -278,7 +281,11 @@ class TelemetryClient:
         if session_id is not None:
             payload["session_id"] = session_id
             payload["parent_session_id"] = parent_session_id
-        self.send_telemetry_event("vibe.auto_compact_triggered", payload)
+        payload = {
+            **payload,
+            "compact_type": compact_type,
+        }
+        self.send_telemetry_event(EventName.AUTO_COMPACT_TRIGGERED, payload)
 
     def send_slash_command_used(
         self, command: str, command_type: Literal["builtin", "skill"]
@@ -308,10 +315,10 @@ class TelemetryClient:
             "client_version": client_version,
             "terminal_emulator": terminal_emulator,
         }
-        self.send_telemetry_event("vibe.new_session", payload)
+        self.send_telemetry_event(EventName.SESSION_STARTED, payload)
 
     def send_session_closed(self) -> None:
-        self.send_telemetry_event("vibe.session_closed", {})
+        self.send_telemetry_event(EventName.SESSION_CLOSED, {})
 
     def send_onboarding_api_key_added(self) -> None:
         self.send_telemetry_event(
@@ -395,11 +402,11 @@ class TelemetryClient:
                 "dynamic_suffix_fingerprint": compute_fingerprint(dynamic_suffix),
             }
 
-        self.send_telemetry_event("vibe.context.request_accounted", payload)
+        self.send_telemetry_event(EventName.REQUEST_ACCOUNTED, payload)
 
     def send_ready(self, *, init_duration_ms: int) -> None:
         payload = {"init_duration_ms": init_duration_ms}
-        self.send_telemetry_event("vibe.ready", payload)
+        self.send_telemetry_event(EventName.READY, payload)
 
     def send_at_mention_inserted(
         self,
@@ -415,11 +422,11 @@ class TelemetryClient:
             "file_extensions": file_extensions,
             "message_id": message_id,
         }
-        self.send_telemetry_event("vibe.at_mention_inserted", payload)
+        self.send_telemetry_event(EventName.AT_MENTION_INSERTED, payload)
 
     def send_user_rating_feedback(self, rating: int, model: str) -> None:
         self.send_telemetry_event(
-            "vibe.user_rating_feedback",
+            EventName.USER_RATING_FEEDBACK,
             {"rating": rating, "version": __version__, "model": model},
             correlation_id=self.last_correlation_id,
         )
@@ -436,7 +443,7 @@ class TelemetryClient:
             "github_auth_required": github_auth_required,
             "nb_session_messages": nb_session_messages,
         }
-        self.send_telemetry_event("vibe.teleport_completed", dict(payload))
+        self.send_telemetry_event(EventName.TELEPORT_COMPLETED, dict(payload))
 
     def send_teleport_failed(
         self,
@@ -454,4 +461,4 @@ class TelemetryClient:
             "github_auth_required": github_auth_required,
             "nb_session_messages": nb_session_messages,
         }
-        self.send_telemetry_event("vibe.teleport_failed", dict(payload))
+        self.send_telemetry_event(EventName.TELEPORT_FAILED, dict(payload))

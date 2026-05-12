@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Relay Invocation v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workspace_id",
+    "lane_id",
+    "operation_id",
+    "repo_root",
+    "worktree_path",
+    "branch",
+    "task",
+    "mode",
+    "artifact_root"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.invocation.v1"
+    },
+    "workspace_id": {
+      "type": "string"
+    },
+    "lane_id": {
+      "type": "string"
+    },
+    "operation_id": {
+      "type": "string"
+    },
+    "repo_root": {
+      "type": "string"
+    },
+    "worktree_path": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "task": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["inspect", "patch", "verify"]
+    },
+    "artifact_root": {
+      "type": "string"
+    },
+    "tool_policy": {
+      "type": "object",
+      "properties": {
+        "allowed_classes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbidden_classes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "context_budget": {
+      "type": "object",
+      "properties": {
+        "max_prompt_chars": { "type": "integer" },
+        "artifact_large_tool_results": { "type": "boolean" }
+      }
+    }
+  }
+}

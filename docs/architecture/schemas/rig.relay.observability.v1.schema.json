@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Relay Observability Event Envelope v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "session_id",
+    "sequence",
+    "created_at",
+    "event_name",
+    "payload",
+    "producer",
+    "receipt_candidate",
+    "event_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.observability.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "parent_session_id": {
+      "type": ["string", "null"]
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "event_name": {
+      "type": "string",
+      "pattern": "^rig\\.relay\\..+"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "producer": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "const": "rig-relay"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "receipt_candidate": {
+      "type": "boolean",
+      "default": false
+    },
+    "event_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the event contents"
+    }
+  }
+}

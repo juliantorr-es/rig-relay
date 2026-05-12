@@ -39,7 +39,12 @@ Rig Relay is currently in active development as a standalone derivative of Mistr
    uv sync
    ```
 
-3. (Optional) Install as a global tool:
+3. Run from source:
+   ```bash
+   uv run rig-relay
+   ```
+
+4. (Optional) Install as a global tool:
    ```bash
    uv tool install .
    ```
