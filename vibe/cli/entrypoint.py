@@ -24,11 +24,13 @@ def parse_arguments() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Environment variables:\n"
-            "  VIBE_HOME       Override the Rig Relay home directory (default: ~/.vibe)\n"
+            "  RIG_RELAY_HOME  Override the Rig Relay home directory (default: ~/.rig-relay)\n"
+            "  VIBE_HOME       Legacy override for the Rig Relay home directory\n"
             "  LOG_LEVEL       Logging level: DEBUG, INFO, WARNING (default), ERROR, CRITICAL.\n"
-            "                  Logs are written to $VIBE_HOME/logs/vibe.log.\n"
+            "                  Logs are written to $RIG_RELAY_HOME/logs/vibe.log.\n"
             "  LOG_MAX_BYTES   Max size of vibe.log before rotation (default: 10485760).\n"
-            "  VIBE_*          Override any config field (e.g. VIBE_ACTIVE_MODEL=local)."
+            "  RIG_RELAY_*     Override any config field (e.g. RIG_RELAY_ACTIVE_MODEL=local).\n"
+            "  VIBE_*          Legacy override for config fields."
         ),
     )
     parser.add_argument(
@@ -86,7 +88,7 @@ def parse_arguments() -> argparse.Namespace:
         metavar="NAME",
         default=None,
         help="Agent to use (builtin: default, plan, accept-edits, auto-approve, "
-        "or custom from ~/.vibe/agents/NAME.toml). In interactive mode, "
+        "or custom from ~/.rig-relay/agents/NAME.toml). In interactive mode, "
         "defaults to the 'default_agent' config setting. In programmatic "
         "mode (-p/--prompt), defaults to auto-approve and 'default_agent' "
         "is ignored.",
@@ -157,6 +159,11 @@ def check_and_resolve_trusted_folder(cwd: Path) -> None:
 
 
 def main() -> None:
+    # Legacy alias warning
+    cmd_name = Path(sys.argv[0]).name
+    if cmd_name == "vibe" or cmd_name.endswith("-vibe"):
+        rprint("[dim]`vibe` is a legacy compatibility alias for Rig Relay. Prefer `rig-relay`.[/]")
+
     args = parse_arguments()
 
     if args.workdir:

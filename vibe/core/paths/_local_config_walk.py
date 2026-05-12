@@ -11,10 +11,19 @@ from vibe.core.autocompletion.file_indexer.ignore_rules import WALK_SKIP_DIR_NAM
 
 logger = logging.getLogger("vibe")
 
+_RIG_RELAY_DIR = ".rig-relay"
 _VIBE_DIR = ".vibe"
-_TOOLS_SUBDIR = Path(_VIBE_DIR) / "tools"
+
+# Primary paths
+_TOOLS_SUBDIR = Path(_RIG_RELAY_DIR) / "tools"
+_SKILLS_SUBDIR = Path(_RIG_RELAY_DIR) / "skills"
+_AGENTS_SUBDIR = Path(_RIG_RELAY_DIR) / "agents"
+
+# Legacy paths
+_VIBE_TOOLS_SUBDIR = Path(_VIBE_DIR) / "tools"
 _VIBE_SKILLS_SUBDIR = Path(_VIBE_DIR) / "skills"
-_AGENTS_SUBDIR = Path(_VIBE_DIR) / "agents"
+_VIBE_AGENTS_SUBDIR = Path(_VIBE_DIR) / "agents"
+
 _AGENTS_DIR = ".agents"
 _AGENTS_SKILLS_SUBDIR = Path(_AGENTS_DIR) / "skills"
 
@@ -53,16 +62,36 @@ class _ConfigWalkCollector:
 def _collect_at(
     path: Path, entry_names: set[str], collector: _ConfigWalkCollector
 ) -> None:
-    """Check a single directory for .vibe/ and .agents/ config subdirs."""
-    if _VIBE_DIR in entry_names and (vibe_dir := path / _VIBE_DIR).is_dir():
+    """Check a single directory for .rig-relay/, .vibe/ and .agents/ config subdirs."""
+    # 1. Primary Rig Relay Check
+    if _RIG_RELAY_DIR in entry_names and (rr_dir := path / _RIG_RELAY_DIR).is_dir():
         has_content = False
         if (candidate := path / _TOOLS_SUBDIR).is_dir():
+            collector.tools.append(candidate)
+            has_content = True
+        if (candidate := path / _SKILLS_SUBDIR).is_dir():
+            collector.skills.append(candidate)
+            has_content = True
+        if (candidate := path / _AGENTS_SUBDIR).is_dir():
+            collector.agents.append(candidate)
+            has_content = True
+        if (
+            has_content
+            or (rr_dir / "prompts").is_dir()
+            or (rr_dir / "config.toml").is_file()
+        ):
+            collector.config_dirs.append(rr_dir)
+
+    # 2. Legacy Vibe Check
+    if _VIBE_DIR in entry_names and (vibe_dir := path / _VIBE_DIR).is_dir():
+        has_content = False
+        if (candidate := path / _VIBE_TOOLS_SUBDIR).is_dir():
             collector.tools.append(candidate)
             has_content = True
         if (candidate := path / _VIBE_SKILLS_SUBDIR).is_dir():
             collector.skills.append(candidate)
             has_content = True
-        if (candidate := path / _AGENTS_SUBDIR).is_dir():
+        if (candidate := path / _VIBE_AGENTS_SUBDIR).is_dir():
             collector.agents.append(candidate)
             has_content = True
         if (
@@ -71,6 +100,8 @@ def _collect_at(
             or (vibe_dir / "config.toml").is_file()
         ):
             collector.config_dirs.append(vibe_dir)
+
+    # 3. Agent Skills Standard
     if _AGENTS_DIR in entry_names and (agents_dir := path / _AGENTS_DIR).is_dir():
         if (candidate := path / _AGENTS_SKILLS_SUBDIR).is_dir():
             collector.skills.append(candidate)

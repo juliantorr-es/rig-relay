@@ -76,6 +76,14 @@ def handle_debug_mode() -> None:
 
 
 def main() -> None:
+    # Legacy alias warning
+    cmd_name = Path(sys.argv[0]).name
+    if cmd_name == "vibe-acp" or cmd_name.endswith("-vibe-acp"):
+        print(
+            "`vibe-acp` is a legacy compatibility alias for Rig Relay. Prefer `rig-relay-acp`.",
+            file=sys.stderr,
+        )
+
     handle_debug_mode()
     init_harness_files_manager("user", "project")
 
@@ -92,7 +100,7 @@ def main() -> None:
             entrypoint_metadata=build_entrypoint_metadata(
                 agent_entrypoint="acp",
                 agent_version=__version__,
-                client_name="vibe_acp",
+                client_name="rig_relay_acp",
                 client_version=__version__,
             )
         )

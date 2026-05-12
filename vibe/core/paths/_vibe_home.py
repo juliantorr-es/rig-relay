@@ -16,13 +16,29 @@ class GlobalPath:
         return self._resolver()
 
 
+_DEFAULT_RIG_RELAY_HOME = Path.home() / ".rig-relay"
 _DEFAULT_VIBE_HOME = Path.home() / ".vibe"
 
 
 def _get_vibe_home() -> Path:
+    # 1. Check RIG_RELAY_HOME environment variable
+    if rig_relay_home := os.getenv("RIG_RELAY_HOME"):
+        return Path(rig_relay_home).expanduser().resolve()
+
+    # 2. Check VIBE_HOME environment variable (Legacy)
     if vibe_home := os.getenv("VIBE_HOME"):
         return Path(vibe_home).expanduser().resolve()
-    return _DEFAULT_VIBE_HOME
+
+    # 3. Use ~/.rig-relay if it exists
+    if _DEFAULT_RIG_RELAY_HOME.exists():
+        return _DEFAULT_RIG_RELAY_HOME
+
+    # 4. Use ~/.vibe if it exists (Legacy fallback)
+    if _DEFAULT_VIBE_HOME.exists():
+        return _DEFAULT_VIBE_HOME
+
+    # 5. Default to ~/.rig-relay for new installs
+    return _DEFAULT_RIG_RELAY_HOME
 
 
 VIBE_HOME = GlobalPath(_get_vibe_home)

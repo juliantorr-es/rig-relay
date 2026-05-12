@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Onedir build for vibe-acp — no per-launch extraction overhead.
-# Build: uv run --group build pyinstaller vibe-acp.spec
-# Output: dist/vibe-acp-dir/vibe-acp  (+  dist/vibe-acp-dir/_internal/)
+# Onedir build for rig-relay-acp — no per-launch extraction overhead.
+# Build: uv run --group build pyinstaller rig-relay-acp.spec
+# Output: dist/rig-relay-acp-dir/rig-relay-acp  (+  dist/rig-relay-acp-dir/_internal/)
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
@@ -48,7 +48,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='vibe-acp',
+    name='rig-relay-acp',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -70,5 +70,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='vibe-acp-dir',
+    name='rig-relay-acp-dir',
 )

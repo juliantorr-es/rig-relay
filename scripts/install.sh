@@ -99,8 +99,8 @@ function install_uv() {
 }
 
 function check_vibe_installed() {
-    if [[ -n "$(find_command_in_path vibe "$ORIGINAL_PATH")" ]]; then
-        info "vibe is already installed"
+    if [[ -n "$(find_command_in_path rig-relay "$ORIGINAL_PATH")" ]]; then
+        info "rig-relay is already installed"
         VIBE_INSTALLED=true
         return
     fi
@@ -120,7 +120,7 @@ function install_vibe() {
     info "Installing rig-relay from GitHub repository using uv..."
     uv tool install rig-relay
 
-    success "Rig Relay installed successfully! (commands: vibe, vibe-acp)"
+    success "Rig Relay installed successfully! (commands: rig-relay, rig-relay-acp)"
 }
 
 function update_vibe() {
@@ -161,20 +161,20 @@ function main() {
         update_vibe
     fi
 
-    if [[ -n "$(find_command_in_path vibe "$ORIGINAL_PATH")" ]]; then
+    if [[ -n "$(find_command_in_path rig-relay "$ORIGINAL_PATH")" ]]; then
         success "Installation completed successfully!"
         echo
-        echo "You can now run vibe with:"
-        echo "  vibe"
+        echo "You can now run Rig Relay with:"
+        echo "  rig-relay"
         echo
         echo "Or for ACP mode:"
-        echo "  vibe-acp"
+        echo "  rig-relay-acp"
     else
         local UV_BIN_DIR
         local VIBE_BIN_PATH=""
         UV_BIN_DIR=$(uv tool dir --bin 2>/dev/null || true)
-        if [[ -n "$UV_BIN_DIR" && -x "$UV_BIN_DIR/vibe" ]]; then
-            VIBE_BIN_PATH="$UV_BIN_DIR/vibe"
+        if [[ -n "$UV_BIN_DIR" && -x "$UV_BIN_DIR/rig-relay" ]]; then
+            VIBE_BIN_PATH="$UV_BIN_DIR/rig-relay"
         fi
 
         if [[ -n "$VIBE_BIN_PATH" ]]; then

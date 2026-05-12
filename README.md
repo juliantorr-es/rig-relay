@@ -22,638 +22,114 @@ Rig Relay is a command-line coding assistant harness. It provides a conversation
 > [!WARNING]
 > Rig Relay works on Windows, but we officially support and target UNIX environments.
 
-### Quick Install
+## Current Status
 
+Rig Relay is currently in active development as a standalone derivative of Mistral Vibe. It is being transitioned into a neutral, provider-agnostic harness suitable for governed agentic workflows.
+
+## Install from Source
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/juliantorr-es/rig-relay
+   cd rig-relay
+   ```
+
+2. Sync dependencies using [uv](https://github.com/astral-sh/uv):
+   ```bash
+   uv sync
+   ```
+
+3. (Optional) Install as a global tool:
+   ```bash
+   uv tool install .
+   ```
+
+## Configure DeepSeek
+
+Rig Relay prefers DeepSeek for its high-performance reasoning capabilities.
+
+1. Obtain an API key from [platform.deepseek.com](https://platform.deepseek.com).
+2. Set the environment variable:
+   ```bash
+   export DEEPSEEK_API_KEY="your_api_key_here"
+   ```
+   Or run `rig-relay --setup` to configure it interactively.
+
+## Run Rig Relay
+
+### Interactive Mode
+
+Simply run the command to start a session in your current directory:
 ```bash
-git clone https://github.com/juliantorr-es/rig-relay
-cd rig-relay
-uv sync
+rig-relay
 ```
 
-**Windows**
+### Programmatic Mode
 
-First, install uv
-
+Use the `--prompt` (or `-p`) flag for non-interactive tasks:
 ```bash
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+rig-relay --prompt "Analyze the project structure and summarize the core modules."
 ```
-
-Then, use uv command below.
-
-### Using uv
-
-```bash
-uv tool install rig-relay
-```
-
-### Using pip
-
-```bash
-pip install rig-relay
-```
-
-## Table of Contents
-
-- [Features](#features)
-  - [Built-in Agents](#built-in-agents)
-  - [Subagents and Task Delegation](#subagents-and-task-delegation)
-  - [Interactive User Questions](#interactive-user-questions)
-- [Terminal Requirements](#terminal-requirements)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-  - [Interactive Mode](#interactive-mode)
-  - [Trust Folder System](#trust-folder-system)
-  - [Programmatic Mode](#programmatic-mode)
-- [Voice Mode](#voice-mode)
-- [Slash Commands](#slash-commands)
-  - [Built-in Slash Commands](#built-in-slash-commands)
-  - [Custom Slash Commands via Skills](#custom-slash-commands-via-skills)
-- [Skills System](#skills-system)
-  - [Creating Skills](#creating-skills)
-  - [Skill Discovery](#skill-discovery)
-  - [Managing Skills](#managing-skills)
-- [Configuration](#configuration)
-  - [Configuration File Location](#configuration-file-location)
-  - [API Key Configuration](#api-key-configuration)
-  - [Custom System Prompts](#custom-system-prompts)
-  - [Custom Agent Configurations](#custom-agent-configurations)
-  - [Tool Management](#tool-management)
-  - [MCP Server Configuration](#mcp-server-configuration)
-  - [Session Management](#session-management)
-  - [Update Settings](#update-settings)
-  - [Custom Rig Relay Home Directory](#custom-rig-relay-home-directory)
-- [Editors/IDEs](#editorsides)
-- [Resources](#resources)
-- [Data collection & usage](#data-collection--usage)
-- [License](#license)
 
 ## Features
 
 - **Interactive Chat**: A conversational AI agent that understands your requests and breaks down complex tasks.
-- **Powerful Toolset**: A suite of tools for file manipulation, code searching, version control, and command execution, right from the chat prompt.
+- **Powerful Toolset**: A suite of tools for file manipulation, code searching, version control, and command execution.
   - Read, write, and patch files (`read_file`, `write_file`, `search_replace`).
   - Execute shell commands in a stateful terminal (`bash`).
-  - Recursively search code with `grep` (with `ripgrep` support).
-  - Manage a `todo` list to track the agent's work.
-  - Ask interactive questions to gather user input (`ask_user_question`).
-  - Delegate tasks to subagents for parallel work (`task`).
-- **Project-Aware Context**: Rig Relay automatically scans your project's file structure and Git status to provide relevant context to the agent, improving its understanding of your codebase.
-- **Advanced CLI Experience**: Built with modern libraries for a smooth and efficient workflow.
-  - Autocompletion for slash commands (`/`) and file paths (`@`).
-  - Persistent command history.
-  - Beautiful Themes.
-- **Highly Configurable**: Customize models, providers, tool permissions, and UI preferences through a simple `config.toml` file.
-- **Safety First**: Features tool execution approval.
-- **Multiple Built-in Agents**: Choose from different agent profiles tailored for specific workflows.
+  - Recursively search code with `grep`.
+  - Manage a `todo` list to track progress.
+- **Project-Aware Context**: Automatically scans your project's file structure and Git status to provide relevant context.
+- **Highly Configurable**: Customize models, providers, and tool permissions through a simple `config.toml` file.
+- **Safety First**: Features tool execution approval and a trust-based folder system.
 
 ### Built-in Agents
 
-Rig Relay comes with several built-in agent profiles, each designed for different use cases:
+Rig Relay includes several built-in agent profiles:
 
-- **`default`**: Standard agent that requires approval for tool executions. Best for general use.
-- **`plan`**: Read-only agent for exploration and planning. Auto-approves safe tools like `grep` and `read_file`.
-- **`accept-edits`**: Auto-approves file edits only (`write_file`, `search_replace`). Useful for code refactoring.
+- **`default`**: Standard agent requiring approval for tool executions.
+- **`plan`**: Read-only agent for exploration and planning.
+- **`accept-edits`**: Auto-approves file edits only.
 - **`auto-approve`**: Auto-approves all tool executions. Use with caution.
 
-Use the `--agent` flag to select a different agent:
-
+Select an agent with the `--agent` flag:
 ```bash
 rig-relay --agent plan
 ```
-
-To change the default agent used when `--agent` is not passed, set
-`default_agent` in your `config.toml`:
-
-```toml
-default_agent = "plan"
-```
-
-Valid values are `default`, `plan`, `accept-edits`, `auto-approve`,
-`lean` (only when listed in `installed_agents`), or the name of any
-custom agent file in `~/.vibe/agents/` or the project's `.vibe/agents/`
-directory. Subagents such as `explore` are not accepted.
-
-> Note: `default_agent` only applies to interactive sessions. In
-> programmatic mode (`-p` / `--prompt`), Rig Relay falls back to `auto-approve`
-> when `--agent` is not provided, so `default_agent` is ignored.
-
-### Subagents and Task Delegation
-
-Rig Relay supports subagents for delegating tasks. Subagents run independently and can perform specialized work without user interaction, preventing the context from being overloaded.
-
-The `task` tool allows the agent to delegate work to subagents:
-
-```
-> Can you explore the codebase structure while I work on something else?
-
-🤖 I'll use the task tool to delegate this to the explore subagent.
-
-> task(task="Analyze the project structure and architecture", agent="explore")
-```
-
-Create custom subagents by adding `agent_type = "subagent"` to your agent configuration. Rig Relay comes with a built-in subagent called `explore`, a read-only subagent for codebase exploration used internally for delegation.
-
-### Interactive User Questions
-
-The `ask_user_question` tool allows the agent to ask you clarifying questions during its work. This enables more interactive and collaborative workflows.
-
-```
-> Can you help me refactor this function?
-
-🤖 I need to understand your requirements better before proceeding.
-
-> ask_user_question(questions=[{
-    "question": "What's the main goal of this refactoring?",
-    "options": [
-        {"label": "Performance", "description": "Make it run faster"},
-        {"label": "Readability", "description": "Make it easier to understand"},
-        {"label": "Maintainability", "description": "Make it easier to modify"}
-    ]
-}])
-```
-
-The agent can ask multiple questions at once, displayed as tabs. Each question supports 2-4 options plus an automatic "Other" option for free text responses.
-
-## Terminal Requirements
-
-Rig Relay's interactive interface requires a modern terminal emulator. Recommended terminal emulators include:
-
-- **WezTerm** (cross-platform)
-- **Alacritty** (cross-platform)
-- **Ghostty** (Linux and macOS)
-- **Kitty** (Linux and macOS)
-
-Most modern terminals should work, but older or minimal terminal emulators may have display issues.
-
-## Quick Start
-
-1. Navigate to your project's root directory:
-
-   ```bash
-   cd /path/to/your/project
-   ```
-
-2. Run Rig Relay:
-
-   ```bash
-   rig-relay
-   ```
-
-3. If this is your first time running Rig Relay, it will:
-   - Create a default configuration file at `~/.vibe/config.toml`
-   - Prompt you to enter your API key if it's not already configured
-   - Save your API key to `~/.vibe/.env` for future use
-
-   Alternatively, you can configure your API key separately using `rig-relay --setup`.
-
-4. Start interacting with the agent!
-
-   ```
-   > Can you find all instances of the word "TODO" in the project?
-
-   🤖 The user wants to find all instances of "TODO". The `grep` tool is perfect for this. I will use it to search the current directory.
-
-   > grep(pattern="TODO", path=".")
-
-   ... (grep tool output) ...
-
-   🤖 I found the following "TODO" comments in your project.
-   ```
-
-## Usage
-
-### Interactive Mode
-
-Simply run `rig-relay` to enter the interactive chat loop.
-
-- **Multi-line Input**: Press `Ctrl+J` or `Shift+Enter` for select terminals to insert a newline.
-- **File Paths**: Reference files in your prompt using the `@` symbol for smart autocompletion (e.g., `> Read the file @src/agent.py`).
-- **Shell Commands**: Prefix any command with `!` to execute it directly in your shell, bypassing the agent (e.g., `> !ls -l`).
-- **External Editor**: Press `Ctrl+G` to edit your current input in an external editor.
-- **Tool Output Toggle**: Press `Ctrl+O` to toggle the tool output view.
-- **Todo View Toggle**: Press `Ctrl+T` to toggle the todo list view.
-- **Debug Console**: Press `Ctrl+\` to toggle the debug console.
-- **Agent Selection**: Press `Shift+Tab` to cycle through agents (default, plan, ...).
-
-You can start Rig Relay with a prompt using the following command:
-
-```bash
-rig-relay "Refactor the main function in cli/main.py to be more modular."
-```
-
-### Trust Folder System
-
-Rig Relay includes a trust folder system to ensure you only run the agent in directories you trust. When you first run Rig Relay in a new directory which contains a `.vibe` subfolder, it may ask you to confirm whether you trust the folder.
-
-Trusted folders are remembered for future sessions. You can manage trusted folders through Rig Relay's configuration file `~/.vibe/trusted_folders.toml`.
-
-This safety feature helps prevent accidental execution in sensitive directories.
-
-### Programmatic Mode
-
-You can run Rig Relay non-interactively by piping input or using the `--prompt` flag. This is useful for scripting.
-
-```bash
-rig-relay --prompt "Refactor the main function in cli/main.py to be more modular."
-```
-
-By default, it uses `auto-approve` mode.
-
-#### Programmatic Mode Options
-
-When using `--prompt`, you can specify additional options:
-
-- **`--max-turns N`**: Limit the maximum number of assistant turns. The session will stop after N turns.
-- **`--max-price DOLLARS`**: Set a maximum cost limit in dollars. The session will be interrupted if the cost exceeds this limit.
-- **`--enabled-tools TOOL`**: Enable specific tools. In programmatic mode, this disables all other tools. Can be specified multiple times. Supports exact names, glob patterns (e.g., `bash*`), or regex with `re:` prefix (e.g., `re:^serena_.*$`).
-- **`--output FORMAT`**: Set the output format. Options:
-  - `text` (default): Human-readable text output
-  - `json`: All messages as JSON at the end
-  - `streaming`: Newline-delimited JSON per message
-
-Example:
-
-```bash
-vibe --prompt "Analyze the codebase" --max-turns 5 --max-price 1.0 --output json
-```
-
-## Voice Mode
-
-> [!WARNING]
-> Voice mode is experimental and may change in future releases.
-
-Voice mode allows you to dictate input using your microphone instead of typing.
-
-### Activating Voice Mode
-
-Toggle voice mode on or off with the `/voice` slash command:
-
-```
-> /voice
-```
-
-### Recording Shortcuts
-
-| Shortcut | Action           |
-| -------- | ---------------- |
-| `Ctrl+R` | Start recording  |
-| Any key  | Stop recording   |
-| `Escape` | Cancel recording |
-| `Ctrl+C` | Cancel recording |
-
-## Slash Commands
-
-Use slash commands for meta-actions and configuration changes during a session.
-
-### Built-in Slash Commands
-
-Rig Relay provides several built-in slash commands. Use slash commands by typing them in the input box:
-
-```
-> /help
-```
-
-### Custom Slash Commands via Skills
-
-You can define your own slash commands through the skills system. Skills are reusable components that extend Rig Relay's functionality.
-
-To create a custom slash command:
-
-1. Create a skill directory with a `SKILL.md` file
-2. Set `user-invocable = true` in the skill metadata
-3. Define the command logic in your skill
-
-Example skill metadata:
-
-```markdown
----
-name: my-skill
-description: My custom skill with slash commands
-user-invocable: true
----
-```
-
-Custom slash commands appear in the autocompletion menu alongside built-in commands.
-
-## Skills System
-
-Rig Relay's skills system allows you to extend functionality through reusable components. Skills can add new tools, slash commands, and specialized behaviors.
-
-Rig Relay follows the [Agent Skills specification](https://agentskills.io/specification) for skill format and structure.
-
-### Creating Skills
-
-Skills are defined in directories with a `SKILL.md` file containing metadata in YAML frontmatter. For example, `~/.vibe/skills/code-review/SKILL.md`:
-
-```markdown
----
-name: code-review
-description: Perform automated code reviews
-license: MIT
-compatibility: Python 3.12+
-user-invocable: true
-allowed-tools:
-  - read_file
-  - grep
-  - ask_user_question
----
-
-# Code Review Skill
-
-This skill helps analyze code quality and suggest improvements.
-```
-
-### Skill Discovery
-
-Rig Relay discovers skills from multiple locations:
-
-1. **Custom paths**: Configured in `config.toml` via `skill_paths`
-2. **Standard Agent Skills path** (project root, trusted folders only): `.agents/skills/` — [Agent Skills](https://agentskills.io) standard
-3. **Local project skills** (project root, trusted folders only): `.vibe/skills/` in your project
-4. **Global skills directory**: `~/.vibe/skills/`
-
-```toml
-skill_paths = ["/path/to/custom/skills"]
-```
-
-### Managing Skills
-
-Enable or disable skills using patterns in your configuration:
-
-```toml
-# Enable specific skills
-enabled_skills = ["code-review", "test-*"]
-
-# Disable specific skills
-disabled_skills = ["experimental-*"]
-```
-
-Skills support the same pattern matching as tools (exact names, glob patterns, and regex).
 
 ## Configuration
 
 ### Configuration File Location
 
-Rig Relay is configured via a `config.toml` file. It looks for this file first in `./.vibe/config.toml` and then falls back to `~/.vibe/config.toml`.
+Rig Relay looks for its configuration in the following order:
+1. `./.rig-relay/config.toml` (Project-specific)
+2. `~/.rig-relay/config.toml` (User-global)
 
-### API Key Configuration
+### Rig Relay Home Directory
 
-To use Rig Relay, you'll need a DeepSeek API key. You can obtain one by signing up at [https://platform.deepseek.com](https://platform.deepseek.com).
-
-You can configure your API key using `rig-relay --setup`, or through one of the methods below.
-
-Rig Relay supports multiple ways to configure your API keys:
-
-1. **Interactive Setup (Recommended for first-time users)**: When you run Rig Relay for the first time or if your API key is missing, Rig Relay will prompt you to enter it. The key will be securely saved to `~/.vibe/.env` for future sessions.
-
-2. **Environment Variables**: Set your API key as an environment variable:
-
-   ```bash
-   export DEEPSEEK_API_KEY="your_deepseek_api_key"
-   ```
-
-3. **`.env` File**: Create a `.env` file in `~/.vibe/` and add your API keys:
-
-   ```bash
-   MISTRAL_API_KEY=your_mistral_api_key
-   ```
-
-   Rig Relay automatically loads API keys from `~/.vibe/.env` on startup. Environment variables take precedence over the `.env` file if both are set.
-
-**Note**: The `.env` file is specifically for API keys and other provider credentials. General Rig Relay configuration should be done in `config.toml`.
-
-### Custom System Prompts
-
-You can create `AGENTS.md` files to add custom instructions. You can also replace the entire system prompt.
-
-Place `AGENTS.md` files in:
-- `~/.vibe/AGENTS.md` — user-level instructions for all projects
-- Project directories — project-specific instructions, loaded from cwd up to the trust root
-
-Priority: closer directories override more distant ones. Instructions in `AGENTS.md` override the default system prompt. Files are only loaded for trusted folders.
-
-Custom system prompts entirely replace the default one (`prompts/cli.md`). Create a markdown file in the `~/.vibe/prompts/` directory with your custom prompt content.
-
-To use a custom system prompt, set the `system_prompt_id` in your configuration to match the filename (without the `.md` extension):
-
-```toml
-# Use a custom system prompt
-system_prompt_id = "my_custom_prompt"
-```
-
-This will load the prompt from `~/.vibe/prompts/my_custom_prompt.md`.
-
-### Custom Agent Configurations
-
-You can create custom agent configurations for specific use cases (e.g., red-teaming, specialized tasks) by adding agent-specific TOML files in the `~/.vibe/agents/` directory.
-
-To use a custom agent, run Rig Relay with the `--agent` flag:
+By default, Rig Relay stores its configuration, logs, and history in `~/.rig-relay/`. You can override this by setting the `RIG_RELAY_HOME` environment variable:
 
 ```bash
-vibe --agent my_custom_agent
+export RIG_RELAY_HOME="/path/to/custom/home"
 ```
 
-Rig Relay will look for a file named `my_custom_agent.toml` in the agents directory and apply its configuration.
+## Legacy Compatibility
 
-Example custom agent configuration (`~/.vibe/agents/redteam.toml`):
+Rig Relay maintains backward compatibility for users transitioning from Mistral Vibe.
 
-```toml
-# Custom agent configuration for red-teaming
-active_model = "mistral-medium-3.5"
-system_prompt_id = "redteam"
+### Commands
+- `vibe` is a legacy alias for `rig-relay`.
+- `vibe-acp` is a legacy alias for `rig-relay-acp`.
 
-# Disable some tools for this agent
-disabled_tools = ["search_replace", "write_file"]
+### Paths and Environment Variables
+- `VIBE_HOME` is supported as a legacy fallback for `RIG_RELAY_HOME`.
+- `~/.vibe/` is searched if `~/.rig-relay/` does not exist.
+- `./.vibe/` is searched if `./.rig-relay/` does not exist in a project.
 
-# Override tool permissions for this agent
-[tools.bash]
-permission = "always"
+### Environment Prefixes
+- `VIBE_*` environment variables (e.g., `VIBE_ACTIVE_MODEL`) are supported as legacy fallbacks for `RIG_RELAY_*`.
 
-[tools.read_file]
-permission = "always"
-```
-
-Note: This implies that you have set up a redteam prompt named `~/.vibe/prompts/redteam.md`.
-
-### Tool Management
-
-#### Enable/Disable Tools with Patterns
-
-You can control which tools are active using `enabled_tools` and `disabled_tools`.
-These fields support exact names, glob patterns, and regular expressions.
-
-Examples:
-
-```toml
-# Only enable tools that start with "serena_" (glob)
-enabled_tools = ["serena_*"]
-
-# Regex (prefix with re:) — matches full tool name (case-insensitive)
-enabled_tools = ["re:^serena_.*$"]
-
-# Disable a group with glob; everything else stays enabled
-disabled_tools = ["mcp_*", "grep"]
-```
-
-Notes:
-
-- MCP tool names use underscores, e.g., `serena_list` not `serena.list`.
-- Regex patterns are matched against the full tool name using fullmatch.
-
-### MCP Server Configuration
-
-You can configure MCP (Model Context Protocol) servers to extend Rig Relay's capabilities. Add MCP server configurations under the `mcp_servers` section:
-
-```toml
-# Example MCP server configurations
-[[mcp_servers]]
-name = "my_http_server"
-transport = "http"
-url = "http://localhost:8000"
-headers = { "Authorization" = "Bearer my_token" }
-api_key_env = "MY_API_KEY_ENV_VAR"
-api_key_header = "Authorization"
-api_key_format = "Bearer {token}"
-
-[[mcp_servers]]
-name = "my_streamable_server"
-transport = "streamable-http"
-url = "http://localhost:8001"
-headers = { "X-API-Key" = "my_api_key" }
-
-[[mcp_servers]]
-name = "fetch_server"
-transport = "stdio"
-command = "uvx"
-args = ["mcp-server-fetch"]
-env = { "DEBUG" = "1", "LOG_LEVEL" = "info" }
-```
-
-Supported transports:
-
-- `http`: Standard HTTP transport
-- `streamable-http`: HTTP transport with streaming support
-- `stdio`: Standard input/output transport (for local processes)
-
-Key fields:
-
-- `name`: A short alias for the server (used in tool names)
-- `transport`: The transport type
-- `url`: Base URL for HTTP transports
-- `headers`: Additional HTTP headers
-- `api_key_env`: Environment variable containing the API key
-- `command`: Command to run for stdio transport
-- `args`: Additional arguments for stdio transport
-- `startup_timeout_sec`: Timeout in seconds for the server to start and initialize (default 10s)
-- `tool_timeout_sec`: Timeout in seconds for tool execution (default 60s)
-- `env`: Environment variables to set for the MCP server of transport type stdio
-
-MCP tools are named using the pattern `{server_name}_{tool_name}` and can be configured with permissions like built-in tools:
-
-```toml
-# Configure permissions for specific MCP tools
-[tools.fetch_server_get]
-permission = "always"
-
-[tools.my_http_server_query]
-permission = "ask"
-```
-
-MCP server configurations support additional features:
-
-- **Environment variables**: Set environment variables for MCP servers
-- **Custom timeouts**: Configure startup and tool execution timeouts
-
-Example with environment variables and timeouts:
-
-```toml
-[[mcp_servers]]
-name = "my_server"
-transport = "http"
-url = "http://localhost:8000"
-env = { "DEBUG" = "1", "LOG_LEVEL" = "info" }
-startup_timeout_sec = 15
-tool_timeout_sec = 120
-```
-
-### Session Management
-
-#### Session Continuation and Resumption
-
-Rig Relay supports continuing from previous sessions:
-
-- **`--continue`** or **`-c`**: Continue from the most recent saved session
-- **`--resume SESSION_ID`**: Resume a specific session by ID (supports partial matching)
-
-```bash
-# Continue from last session
-rig-relay --continue
-
-# Resume specific session
-rig-relay --resume abc123
-```
-
-Session logging must be enabled in your configuration for these features to work.
-
-#### Working Directory Control
-
-Use the `--workdir` option to specify a working directory:
-
-```bash
-rig-relay --workdir /path/to/project
-```
-
-This is useful when you want to run Rig Relay from a different location than your current directory.
-
-### Update Settings
-
-#### Auto-Update
-
-Rig Relay includes an optional automatic update feature. This is disabled by default.
-
-To enable auto-updates, add this to your `config.toml`:
-
-```toml
-enable_auto_update = false
-```
-
-### Notification Settings
-
-Rig Relay can notify you when the agent needs your attention (awaiting approval, asking a question, or task complete). This is useful when you switch to another window while the agent works.
-
-To disable notifications:
-
-```toml
-enable_notifications = false
-```
-
-### Custom Rig Relay Home Directory
-
-By default, Rig Relay stores its configuration in `~/.vibe/`. You can override this by setting the `VIBE_HOME` environment variable:
-
-```bash
-export VIBE_HOME="/path/to/custom/vibe/home"
-```
-
-This affects where Rig Relay looks for:
-
-- `config.toml` - Main configuration
-- `.env` - API keys
-- `agents/` - Custom agent configurations
-- `prompts/` - Custom system prompts
-- `tools/` - Custom tools
-- `logs/` - Session logs
-
-## Editors/IDEs
-
-Rig Relay can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). See the [ACP Setup documentation](docs/acp-setup.md) for setup instructions for various editors and IDEs.
-
-## Resources
-
-- [CHANGELOG](CHANGELOG.md) - See what's new in each version
-- [CONTRIBUTING](CONTRIBUTING.md) - Guidelines for feature requests, feedback and bug reports
-
-## Upstream and license
+## Upstream and License
 
 Rig Relay is a derivative work of [mistralai/mistral-vibe](https://github.com/mistralai/mistral-vibe), originally licensed under the Apache License, Version 2.0. 
 
@@ -663,11 +139,7 @@ For more details on the project's origin and third-party attributions, please se
 - [UPSTREAM.md](UPSTREAM.md)
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
-## Data collection & usage
-
-Use of Rig Relay may include the collection and processing of data related to your use of the service. You can enable/disable telemetry in your `config.toml` by setting `enable_telemetry`. It is disabled by default.
-
-## License
+### License
 
 Copyright 2025 Mistral AI
 

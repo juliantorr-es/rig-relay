@@ -5,8 +5,8 @@ from __future__ import annotations
 from vibe.core.skills.models import SkillInfo
 
 SKILL = SkillInfo(
-    name="vibe",
-    description="Understand the Rig Relay application internals: configuration, VIBE_HOME structure, available parameters, agents, skills, tools, and how to inspect or update the user's setup. Use this skill when the user asks about how Rig Relay works, wants to configure it, or when you need to understand the runtime environment.",
+    name="rig_relay",
+    description="Understand the Rig Relay application internals: configuration, RIG_RELAY_HOME structure, available parameters, agents, skills, tools, and how to inspect or update the user's setup. Use this skill when the user asks about how Rig Relay works, wants to configure it, or when you need to understand the runtime environment.",
     user_invocable=False,
     prompt="""# Rig Relay Self-Awareness
 
@@ -14,16 +14,16 @@ You are running inside **Rig Relay**, a standalone local coding-agent harness.
 This skill gives you full knowledge of the application internals so you can help
 the user understand, configure, and troubleshoot their Rig Relay installation.
 
-## VIBE_HOME
+## RIG_RELAY_HOME
 
-The user's Vibe home directory defaults to `~/.vibe` but can be overridden via
-the `VIBE_HOME` environment variable. All user-level configuration, skills, tools,
+The user's Rig Relay home directory defaults to `~/.rig-relay` but can be overridden via
+the `RIG_RELAY_HOME` environment variable. All user-level configuration, skills, tools,
 agents, prompts, logs, and session data live here.
 
 ### Directory Structure
 
 ```
-~/.vibe/
+~/.rig-relay/
   config.toml          # Main configuration file (TOML format)
   hooks.toml           # User-level hook definitions (experimental)
   .env                 # API keys and credentials (dotenv format)
@@ -41,19 +41,19 @@ agents, prompts, logs, and session data live here.
 
 ### Project-Local Configuration
 
-When in a trusted folder, Vibe also looks for project-local configuration:
-- `.vibe/config.toml` - Project-specific config (overrides user config)
-- `.vibe/hooks.toml` - Project-specific hooks (requires trusted folder)
-- `.vibe/skills/` - Project-specific skills
-- `.vibe/tools/` - Project-specific tools
-- `.vibe/agents/` - Project-specific agents
-- `.vibe/prompts/` - Project-specific prompts
+When in a trusted folder, Rig Relay also looks for project-local configuration:
+- `.rig-relay/config.toml` - Project-specific config (overrides user config)
+- `.rig-relay/hooks.toml` - Project-specific hooks (requires trusted folder)
+- `.rig-relay/skills/` - Project-specific skills
+- `.rig-relay/tools/` - Project-specific tools
+- `.rig-relay/agents/` - Project-specific agents
+- `.rig-relay/prompts/` - Project-specific prompts
 - `.agents/skills/` - Standard agent skills directory
 
 ## Configuration (config.toml)
 
 The configuration file uses TOML format. Settings can also be overridden via
-environment variables with the `VIBE_` prefix (e.g., `VIBE_ACTIVE_MODEL=local`).
+environment variables with the `RIG_RELAY_` prefix (e.g., `RIG_RELAY_ACTIVE_MODEL=local`).
 
 ### Key Settings
 
@@ -197,7 +197,7 @@ allowlist can still auto-approve access to directories outside the project.
 skill_paths = ["/path/to/custom/skills"]
 
 # Enable only specific skills
-enabled_skills = ["vibe", "custom-*"]
+enabled_skills = ["rig_relay", "custom-*"]
 
 # Disable specific skills
 disabled_skills = ["experimental-*"]
@@ -219,7 +219,7 @@ installed_agents = ["lean"]
 # Agent profile to use when --agent is not passed in interactive mode
 # (default: "default"). Valid values: "default", "plan", "accept-edits",
 # "auto-approve", "lean" (only when listed in installed_agents), or any
-# custom agent name from ~/.vibe/agents/ or .vibe/agents/. Subagents
+# custom agent name from ~/.rig-relay/agents/ or .rig-relay/agents/. Subagents
 # (e.g. "explore") are rejected. Ignored in programmatic mode
 # (-p/--prompt), which falls back to "auto-approve" when --agent is not
 # provided.
@@ -247,7 +247,7 @@ api_key_env = "MCP_API_KEY"
 ```toml
 [session_logging]
 enabled = true
-save_dir = ""                     # Defaults to ~/.vibe/logs/session
+save_dir = ""                     # Defaults to ~/.rig-relay/logs/session
 session_prefix = "session"
 ```
 
@@ -267,8 +267,8 @@ Or via the environment variable `VIBE_ENABLE_EXPERIMENTAL_HOOKS=true`.
 
 Hooks are defined in `hooks.toml` files (separate from `config.toml`):
 
-1. **User-level**: `~/.vibe/hooks.toml` (always loaded when hooks are enabled)
-2. **Project-level**: `<project>/.vibe/hooks.toml` (only loaded if the folder is trusted)
+1. **User-level**: `~/.rig-relay/hooks.toml` (always loaded when hooks are enabled)
+2. **Project-level**: `<project>/.rig-relay/hooks.toml` (only loaded if the folder is trusted)
 
 Both files are merged; if a hook name appears in both, the first one wins and
 a warning is shown for the duplicate.
@@ -326,7 +326,7 @@ linter hook can output the lint errors, and the agent will try to resolve them.
 #### Example: Post-Turn Linting Hook
 
 ```toml
-# .vibe/hooks.toml
+# .rig-relay/hooks.toml
 [[hooks]]
 name = "ruff-check"
 type = "post_agent_turn"
@@ -349,19 +349,19 @@ Tool, skill, and agent names support three matching modes:
 ## CLI Parameters
 
 ```
-vibe [PROMPT]                       # Start interactive session with optional prompt
-vibe -p TEXT / --prompt TEXT         # Programmatic mode (auto-approve, one-shot, exit)
-vibe --agent NAME                   # Select agent profile (falls back to `default_agent` config)
-vibe --workdir DIR                  # Change working directory
-vibe --trust                        # Trust cwd for this invocation only (not persisted)
-vibe -c / --continue                # Continue most recent session
-vibe --resume [SESSION_ID]          # Resume a specific session
-vibe -v / --version                 # Show version
-vibe --setup                        # Run onboarding/setup
-vibe --max-turns N                  # Max assistant turns (programmatic mode)
-vibe --max-price DOLLARS            # Max cost limit (programmatic mode)
-vibe --enabled-tools TOOL           # Enable specific tools (repeatable)
-vibe --output text|json|streaming   # Output format (programmatic mode)
+rig-relay [PROMPT]                 # Start interactive session with optional prompt
+rig-relay -p TEXT / --prompt TEXT   # Programmatic mode (auto-approve, one-shot, exit)
+rig-relay --agent NAME             # Select agent profile (falls back to `default_agent` config)
+rig-relay --workdir DIR            # Change working directory
+rig-relay --trust                  # Trust cwd for this invocation only (not persisted)
+rig-relay -c / --continue          # Continue most recent session
+rig-relay --resume [SESSION_ID]    # Resume a specific session
+rig-relay -v / --version           # Show version
+rig-relay --setup                  # Run onboarding/setup
+rig-relay --max-turns N            # Max assistant turns (programmatic mode)
+rig-relay --max-price DOLLARS      # Max cost limit (programmatic mode)
+rig-relay --enabled-tools TOOL     # Enable specific tools (repeatable)
+rig-relay --output text|json|streaming # Output format (programmatic mode)
 ```
 
 ## Built-in Agents
@@ -386,7 +386,7 @@ There are two kinds of agents:
 - **explore**: Read-only codebase exploration subagent (grep + read_file only).
   Spawned by the model, not selectable by the user.
 
-Custom agents are TOML files in `~/.vibe/agents/NAME.toml`.
+Custom agents are TOML files in `~/.rig-relay/agents/NAME.toml`.
 
 ## Built-in Slash Commands
 
@@ -444,27 +444,28 @@ Detailed instructions for the model...
 ### Skill Search Order (first match wins)
 
 1. `skill_paths` from config.toml
-2. `.vibe/skills/` in trusted project directory
+2. `.rig-relay/skills/` in trusted project directory
 3. `.agents/skills/` in trusted project directory
-4. `~/.vibe/skills/` (user global)
+4. `~/.rig-relay/skills/` (user global)
 
 ## Environment Variables
 
+- `RIG_RELAY_HOME` - Override the home directory (default: ~/.rig-relay)
 - `DEEPSEEK_API_KEY` - API key for DeepSeek provider
 - `MISTRAL_API_KEY` - API key for Mistral provider
-- `VIBE_ACTIVE_MODEL` - Override active model
-- `VIBE_*` - Any config field can be overridden with the `VIBE_` prefix
-- `LOG_LEVEL` - Logging level for `$VIBE_HOME/logs/vibe.log`. One of `DEBUG`,
+- `RIG_RELAY_ACTIVE_MODEL` - Override active model
+- `RIG_RELAY_*` - Any config field can be overridden with the `RIG_RELAY_` prefix
+- `LOG_LEVEL` - Logging level for `$RIG_RELAY_HOME/logs/vibe.log`. One of `DEBUG`,
   `INFO`, `WARNING` (default), `ERROR`, `CRITICAL`. Invalid values fall back
   to `WARNING`.
 - `LOG_MAX_BYTES` - Max size in bytes of `vibe.log` before rotation
   (default: `10485760`, i.e. 10 MiB).
-- `DEBUG_MODE` - When `true`, forces `DEBUG`-level logging. Under `vibe-acp`
+- `DEBUG_MODE` - When `true`, forces `DEBUG`-level logging. Under `rig-relay-acp`
   it also attaches `debugpy` on `localhost:5678`.
 
 ## API Keys (.env file)
 
-The `.env` file in VIBE_HOME stores API keys in dotenv format:
+The `.env` file in RIG_RELAY_HOME stores API keys in dotenv format:
 
 ```
 DEEPSEEK_API_KEY=your-key-here
@@ -475,9 +476,9 @@ This file is loaded on startup and its values are injected into the environment.
 
 ## Trusted Folders
 
-Vibe uses a trust system to prevent executing project-local config from untrusted
-directories. The trust database is stored in `~/.vibe/trusted_folders.toml`.
-Project-local config (`.vibe/` directory) is only loaded when the current
+Rig Relay uses a trust system to prevent executing project-local config from untrusted
+directories. The trust database is stored in `~/.rig-relay/trusted_folders.toml`.
+Project-local config (`.rig-relay/` directory) is only loaded when the current
 directory is explicitly trusted.
 
 Interactive mode prompts to trust unknown folders. Programmatic mode
@@ -487,8 +488,8 @@ trust cwd for the current invocation only (not persisted).
 ## Sensitive Files — DO NOT READ OR EDIT
 
 NEVER read, display, or edit any of these files:
-- `~/.vibe/.env` (or `$VIBE_HOME/.env`) — contains API keys and secrets
-- Any `.env`, `.env.*` file in the project or VIBE_HOME
+- `~/.rig-relay/.env` (or `$RIG_RELAY_HOME/.env`) — contains API keys and secrets
+- Any `.env`, `.env.*` file in the project or RIG_RELAY_HOME
 
 If the user asks to set or change an API key, instruct them to edit the `.env`
 file themselves. Do not offer to read it, write it, or display its contents.
@@ -498,18 +499,18 @@ Do not use tools (read_file, write_file, bash cat/echo, etc.) to access these fi
 
 To help the user modify their Vibe configuration:
 
-1. **Read current config**: Read the file at `~/.vibe/config.toml` (or the path
-   from `VIBE_HOME` env var if set)
+1. **Read current config**: Read the file at `~/.rig-relay/config.toml` (or the path
+   from `RIG_RELAY_HOME` env var if set)
 2. **Create a backup**: Before any edit, copy the file to `config.toml.bak` in the
-   same directory (e.g. `cp ~/.vibe/config.toml ~/.vibe/config.toml.bak`). This
+   same directory (e.g. `cp ~/.rig-relay/config.toml ~/.rig-relay/config.toml.bak`). This
    applies to any config file you are about to modify (`config.toml`,
    `trusted_folders.toml`, agent TOML files, etc.)
 3. **Edit the TOML file**: Make changes using the search_replace or write_file tool
 4. **Reload**: The user can run `/reload` to apply changes without restarting
 
-For API keys, tell the user to edit `~/.vibe/.env` directly — never read or
+For API keys, tell the user to edit `~/.rig-relay/.env` directly — never read or
 write that file yourself.
 
-For project-specific configuration, create/edit `.vibe/config.toml` in the
+For project-specific configuration, create/edit `.rig-relay/config.toml` in the
 project root (the folder must be trusted first).""",
 )
