@@ -2055,6 +2055,55 @@ class VibeApp(App):  # noqa: PLR0904
                 )
             )
 
+    async def _show_observability(self, **kwargs: Any) -> None:
+        from vibe.core.telemetry.duckdb_projection import DuckDBProjection, HAS_DUCKDB
+        from vibe.core.paths import SESSIONS_ROOT
+
+        if not HAS_DUCKDB:
+            await self._mount_and_scroll(
+                ErrorMessage(
+                    "DuckDB is required for observability analytics.\n\n"
+                    "Install it with: `pip install duckdb`",
+                    collapsed=self._tools_collapsed,
+                )
+            )
+            return
+
+        try:
+            analyzer = DuckDBProjection(SESSIONS_ROOT.path)
+            summary = analyzer.get_summary()
+
+            lines = [
+                "## Observability Summary",
+                "",
+                f"- **Sessions**: {summary.sessions_seen}",
+                f"- **Events**: {summary.events_seen}",
+                f"- **Receipt Candidates**: {summary.receipt_candidate_count}",
+                f"- **Malformed Lines**: {summary.malformed_line_count}",
+                "",
+                "### Usage Statistics",
+                f"- **Total Requests**: {summary.request_count}",
+                f"- **Max Estimated Tokens**: {summary.max_estimated_tokens}",
+                f"- **Avg Estimated Tokens**: {summary.avg_estimated_tokens:.1f}",
+            ]
+
+            if summary.tool_calls_by_name:
+                lines.append("\n### Tool Usage")
+                for name, count in sorted(
+                    summary.tool_calls_by_name.items(), key=lambda x: x[1], reverse=True
+                ):
+                    lines.append(f"- `{name}`: {count}")
+
+            await self._mount_and_scroll(UserCommandMessage("\n".join(lines)))
+
+        except Exception as e:
+            await self._mount_and_scroll(
+                ErrorMessage(
+                    f"Failed to analyze observability: {e}",
+                    collapsed=self._tools_collapsed,
+                )
+            )
+
     async def _loop_command(self, cmd_args: str = "", **kwargs: Any) -> None:
         widget = await self._loop_runner.handle_command(cmd_args)
         await self._mount_and_scroll(widget)

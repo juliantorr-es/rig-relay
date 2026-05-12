@@ -66,6 +66,9 @@ dependencies = [
     "zstandard>=0.25.0",
 ]
 
+[project.optional-dependencies]
+obs = ["duckdb>=1.5.0"]
+
 [project.urls]
 Homepage = "https://github.com/juliantorr-es/rig-relay"
 Repository = "https://github.com/juliantorr-es/rig-relay"

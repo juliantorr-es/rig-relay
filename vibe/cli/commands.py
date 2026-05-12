@@ -174,6 +174,11 @@ class CommandRegistry:
                 description="Show data retention information",
                 handler="_show_data_retention",
             ),
+            "obs": Command(
+                aliases=frozenset(["/obs", "/observability", "/stats"]),
+                description="Show observability and usage statistics",
+                handler="_show_observability",
+            ),
         }
 
     @property
