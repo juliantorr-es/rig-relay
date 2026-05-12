@@ -9,8 +9,7 @@ import sys
 from typing import ClassVar, Literal, final
 
 from pydantic import BaseModel, Field
-from tree_sitter import Language, Node, Parser
-import tree_sitter_bash as tsbash
+from vibe.core.tools.determinism import parse_shell_commands
 
 from vibe.core.scratchpad import is_scratchpad_path
 from vibe.core.tools.arity import build_session_pattern
@@ -33,35 +32,6 @@ from vibe.core.types import ToolResultEvent, ToolStreamEvent
 from vibe.core.utils import is_windows, kill_async_subprocess
 
 
-@lru_cache(maxsize=1)
-def _get_parser() -> Parser:
-    return Parser(Language(tsbash.language()))
-
-
-def _extract_commands(command: str) -> list[str]:
-    parser = _get_parser()
-    tree = parser.parse(command.encode("utf-8"))
-
-    commands: list[str] = []
-
-    def find_commands(node: Node) -> None:
-        if node.type == "command":
-            parts = []
-            for child in node.children:
-                if (
-                    child.type
-                    in {"command_name", "word", "string", "raw_string", "concatenation"}
-                    and child.text is not None
-                ):
-                    parts.append(child.text.decode("utf-8"))
-            if parts:
-                commands.append(" ".join(parts))
-
-        for child in node.children:
-            find_commands(child)
-
-    find_commands(tree.root_node)
-    return commands
 
 
 def _get_subprocess_encoding() -> str:
@@ -97,7 +67,7 @@ def _get_base_env() -> dict[str, str]:
 
 
 def _get_default_allowlist() -> list[str]:
-    common = ["cd", "echo", "git diff", "git log", "git status", "tree", "whoami"]
+    common = ["cd", "echo", "tree", "whoami"]
 
     if is_windows():
         return common + ["dir", "findstr", "more", "type", "ver", "where"]
@@ -118,7 +88,22 @@ def _get_default_allowlist() -> list[str]:
 
 
 def _get_default_denylist() -> list[str]:
-    common = ["gdb", "pdb", "passwd"]
+    common = [
+        "gdb",
+        "pdb",
+        "passwd",
+        "git reset",
+        "git clean",
+        "git restore",
+        "git checkout",
+        "git stash",
+        "git rebase",
+        "git merge",
+        "git push --force",
+        "git push --force-with-lease",
+        "rm -rf",
+        "rm -fr",
+    ]
 
     if is_windows():
         return common + ["cmd /k", "powershell -NoExit", "pwsh -NoExit", "notepad"]
@@ -429,7 +414,7 @@ class Bash(
         if is_windows():
             return None
 
-        command_parts = _extract_commands(args.command)
+        command_parts = parse_shell_commands(args.command)
         if not command_parts:
             return None
 

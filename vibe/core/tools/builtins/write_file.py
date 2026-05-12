@@ -9,6 +9,10 @@ from pydantic import BaseModel, Field
 
 from vibe.core.rewind.manager import FileSnapshot
 from vibe.core.scratchpad import is_scratchpad_path
+from vibe.core.tools.determinism import (
+    normalize_tool_path,
+    require_path_within_workdir,
+)
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -108,19 +112,17 @@ class WriteFile(
         )
 
     def _prepare_and_validate_path(self, args: WriteFileArgs) -> tuple[Path, bool, int]:
-        if not args.path.strip():
-            raise ToolError("Path cannot be empty")
+        file_path = normalize_tool_path(args.path)
+        require_path_within_workdir(file_path)
+
+        if file_path.is_dir():
+            raise ToolError(f"Path is a directory, not a file: {file_path}")
 
         content_bytes = len(args.content.encode("utf-8"))
         if content_bytes > self.config.max_write_bytes:
             raise ToolError(
                 f"Content exceeds {self.config.max_write_bytes} bytes limit"
             )
-
-        file_path = Path(args.path).expanduser()
-        if not file_path.is_absolute():
-            file_path = Path.cwd() / file_path
-        file_path = file_path.resolve()
 
         file_existed = file_path.exists()
 
@@ -130,6 +132,8 @@ class WriteFile(
             )
 
         if self.config.create_parent_dirs:
+            # Only create parent directories if the path is within the workdir
+            # (already checked by require_path_within_workdir, but let's be explicit)
             file_path.parent.mkdir(parents=True, exist_ok=True)
         elif not file_path.parent.exists():
             raise ToolError(f"Parent directory does not exist: {file_path.parent}")

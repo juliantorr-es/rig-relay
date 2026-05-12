@@ -23,6 +23,10 @@ from vibe.core.tools.utils import resolve_file_tool_permission
 from vibe.core.types import ToolStreamEvent
 from vibe.core.utils import VIBE_WARNING_TAG
 from vibe.core.utils.io import decode_safe
+from vibe.core.tools.determinism import (
+    normalize_tool_path,
+    require_path_within_workdir,
+)
 
 if TYPE_CHECKING:
     from vibe.core.types import ToolResultEvent
@@ -130,9 +134,8 @@ class ReadFile(
     def _prepare_and_validate_path(self, args: ReadFileArgs) -> Path:
         self._validate_inputs(args)
 
-        file_path = Path(args.path).expanduser()
-        if not file_path.is_absolute():
-            file_path = Path.cwd() / file_path
+        file_path = normalize_tool_path(args.path)
+        require_path_within_workdir(file_path)
 
         self._validate_path(file_path)
         return file_path

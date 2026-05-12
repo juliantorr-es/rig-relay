@@ -23,6 +23,10 @@ from vibe.core.tools.utils import resolve_file_tool_permission
 from vibe.core.types import ToolStreamEvent
 from vibe.core.utils import kill_async_subprocess
 from vibe.core.utils.io import read_safe
+from vibe.core.tools.determinism import (
+    normalize_tool_path,
+    require_path_within_workdir,
+)
 
 if TYPE_CHECKING:
     from vibe.core.types import ToolResultEvent
@@ -194,9 +198,8 @@ class Grep(
         if not args.pattern.strip():
             raise ToolError("Empty search pattern provided.")
 
-        path_obj = Path(args.path).expanduser()
-        if not path_obj.is_absolute():
-            path_obj = Path.cwd() / path_obj
+        path_obj = normalize_tool_path(args.path)
+        require_path_within_workdir(path_obj)
 
         if not path_obj.exists():
             raise ToolError(f"Path does not exist: {args.path}")
