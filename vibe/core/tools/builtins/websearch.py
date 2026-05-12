@@ -59,7 +59,7 @@ class WebSearch(
     ToolUIData[WebSearchArgs, WebSearchResult],
 ):
     description: ClassVar[str] = (
-        "Search the web for current information using Mistral's web search."
+        "Search the web for current information."
     )
 
     @classmethod
@@ -96,7 +96,7 @@ class WebSearch(
                 yield self._parse_response(response)
 
         except SDKError as exc:
-            raise ToolError(f"Mistral API error: {exc}") from exc
+            raise ToolError(f"Search API error: {exc}") from exc
         finally:
             await async_http_client.aclose()
 

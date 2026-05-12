@@ -1,9 +1,7 @@
-# Mistral Vibe
+# Rig Relay
 
-[![PyPI Version](https://img.shields.io/pypi/v/mistral-vibe)](https://pypi.org/project/mistral-vibe)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/release/python-3120/)
-[![CI Status](https://github.com/mistralai/mistral-vibe/actions/workflows/ci.yml/badge.svg)](https://github.com/mistralai/mistral-vibe/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/mistralai/mistral-vibe)](https://github.com/mistralai/mistral-vibe/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/juliantorr-es/rig-relay)](https://github.com/juliantorr-es/rig-relay/blob/main/LICENSE)
 
 ```
 ██████████████████░░
@@ -17,19 +15,19 @@
 ██████████████████░░
 ```
 
-**Mistral's open-source CLI coding assistant.**
+**Rig Relay is an agent harness intended to become part of Rig’s governed control plane.**
 
-Mistral Vibe is a command-line coding assistant powered by Mistral's models. It provides a conversational interface to your codebase, allowing you to use natural language to explore, modify, and interact with your projects through a powerful set of tools.
+Rig Relay is a command-line coding assistant harness. It provides a conversational interface to your codebase, allowing you to use natural language to explore, modify, and interact with your projects through a powerful set of tools.
 
 > [!WARNING]
-> Mistral Vibe works on Windows, but we officially support and target UNIX environments.
+> Rig Relay works on Windows, but we officially support and target UNIX environments.
 
-### One-line install (recommended)
-
-**Linux and macOS**
+### Quick Install
 
 ```bash
-curl -LsSf https://mistral.ai/vibe/install.sh | bash
+git clone https://github.com/juliantorr-es/rig-relay
+cd rig-relay
+uv sync
 ```
 
 **Windows**
@@ -45,7 +43,7 @@ Then, use uv command below.
 ### Using uv
 
 ```bash
-uv tool install mistral-vibe
+uv tool install rig-relay
 ```
 
 ### Using pip
@@ -195,10 +193,10 @@ Most modern terminals should work, but older or minimal terminal emulators may h
    cd /path/to/your/project
    ```
 
-2. Run Vibe:
+2. Run Rig Relay:
 
    ```bash
-   vibe
+   rig-relay
    ```
 
 3. If this is your first time running Vibe, it will:
@@ -400,18 +398,18 @@ Vibe is configured via a `config.toml` file. It looks for this file first in `./
 
 ### API Key Configuration
 
-To use Vibe, you'll need a Mistral API key. You can obtain one by signing up at [https://console.mistral.ai](https://console.mistral.ai).
+To use Rig Relay, you'll need a DeepSeek API key. You can obtain one by signing up at [https://platform.deepseek.com](https://platform.deepseek.com).
 
-You can configure your API key using `vibe --setup`, or through one of the methods below.
+You can configure your API key using `rig-relay --setup`, or through one of the methods below.
 
-Vibe supports multiple ways to configure your API keys:
+Rig Relay supports multiple ways to configure your API keys:
 
-1. **Interactive Setup (Recommended for first-time users)**: When you run Vibe for the first time or if your API key is missing, Vibe will prompt you to enter it. The key will be securely saved to `~/.vibe/.env` for future sessions.
+1. **Interactive Setup (Recommended for first-time users)**: When you run Rig Relay for the first time or if your API key is missing, Rig Relay will prompt you to enter it. The key will be securely saved to `~/.vibe/.env` for future sessions.
 
 2. **Environment Variables**: Set your API key as an environment variable:
 
    ```bash
-   export MISTRAL_API_KEY="your_mistral_api_key"
+   export DEEPSEEK_API_KEY="your_deepseek_api_key"
    ```
 
 3. **`.env` File**: Create a `.env` file in `~/.vibe/` and add your API keys:
@@ -611,9 +609,9 @@ This is useful when you want to run Vibe from a different location than your cur
 
 #### Auto-Update
 
-Vibe includes an automatic update feature that keeps your installation current. This is enabled by default.
+Rig Relay includes an optional automatic update feature. This is disabled by default.
 
-To disable auto-updates, add this to your `config.toml`:
+To enable auto-updates, add this to your `config.toml`:
 
 ```toml
 enable_auto_update = false
@@ -648,7 +646,7 @@ This affects where Vibe looks for:
 
 ## Editors/IDEs
 
-Mistral Vibe can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). See the [ACP Setup documentation](docs/acp-setup.md) for setup instructions for various editors and IDEs.
+Rig Relay can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). See the [ACP Setup documentation](docs/acp-setup.md) for setup instructions for various editors and IDEs.
 
 ## Resources
 
@@ -657,7 +655,7 @@ Mistral Vibe can be used in text editors and IDEs that support [Agent Client Pro
 
 ## Data collection & usage
 
-Use of Vibe is subject to our [Privacy Policy](https://legal.mistral.ai/terms/privacy-policy) and may include the collection and processing of data related to your use of the service, such as usage data, to operate, maintain, and improve Vibe. You can disable telemetry in your `config.toml` by setting `enable_telemetry = false`.
+Use of Rig Relay may include the collection and processing of data related to your use of the service. You can enable/disable telemetry in your `config.toml` by setting `enable_telemetry`. It is disabled by default.
 
 
 ## License

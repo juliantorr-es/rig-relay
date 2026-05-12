@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 from vibe.core.logger import logger
 
-VIBE_TRACER_NAME = "mistral_vibe"
-VIBE_AGENT_NAME = "mistral-vibe"
+VIBE_TRACER_NAME = "rig_relay"
+VIBE_AGENT_NAME = "rig-relay"
 
 
 def setup_tracing(config: VibeConfig) -> None:
@@ -90,7 +90,7 @@ async def agent_span(
 ) -> AsyncGenerator[trace.Span]:
     attributes: dict[str, Any] = {
         gen_ai_attributes.GEN_AI_OPERATION_NAME: gen_ai_attributes.GenAiOperationNameValues.INVOKE_AGENT.value,
-        gen_ai_attributes.GEN_AI_PROVIDER_NAME: gen_ai_attributes.GenAiProviderNameValues.MISTRAL_AI.value,
+        gen_ai_attributes.GEN_AI_PROVIDER_NAME: "deepseek",
         gen_ai_attributes.GEN_AI_AGENT_NAME: VIBE_AGENT_NAME,
     }
     if model:
@@ -99,7 +99,7 @@ async def agent_span(
         attributes[gen_ai_attributes.GEN_AI_CONVERSATION_ID] = session_id
 
     # Propagate conversation ID as OTEL baggage so descendant spans — including
-    # those created by the Mistral SDK — can read and attach it.
+    # those created by the provider SDK — can read and attach it.
     token = None
     if session_id:
         ctx = baggage.set_baggage(gen_ai_attributes.GEN_AI_CONVERSATION_ID, session_id)

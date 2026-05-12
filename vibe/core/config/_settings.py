@@ -164,6 +164,7 @@ class SessionLoggingConfig(BaseSettings):
         return str(Path(v).expanduser().resolve())
 
 
+DEFAULT_DEEPSEEK_API_ENV_KEY = "DEEPSEEK_API_KEY"
 DEFAULT_MISTRAL_API_ENV_KEY = "MISTRAL_API_KEY"
 DEFAULT_MISTRAL_BROWSER_AUTH_BASE_URL = "https://console.mistral.ai"
 DEFAULT_MISTRAL_BROWSER_AUTH_API_BASE_URL = "https://console.mistral.ai/api"
@@ -422,6 +423,14 @@ _DEFAULT_MISTRAL_SERVER_URL = "https://api.mistral.ai"
 
 DEFAULT_PROVIDERS = [
     ProviderConfig(
+        name="deepseek",
+        api_base="https://api.deepseek.com",
+        api_key_env_var=DEFAULT_DEEPSEEK_API_ENV_KEY,
+        api_style="openai",
+        backend=Backend.GENERIC,
+        reasoning_field_name="reasoning_content",
+    ),
+    ProviderConfig(
         name="mistral",
         api_base=f"{_DEFAULT_MISTRAL_SERVER_URL}/v1",
         api_key_env_var=DEFAULT_MISTRAL_API_ENV_KEY,
@@ -437,6 +446,18 @@ DEFAULT_PROVIDERS = [
 ]
 
 DEFAULT_MODELS = [
+    ModelConfig(
+        name="deepseek-v4-flash",
+        provider="deepseek",
+        alias="deepseek-v4-flash",
+        temperature=0.2,
+    ),
+    ModelConfig(
+        name="deepseek-v4-pro",
+        provider="deepseek",
+        alias="deepseek-v4-pro",
+        temperature=0.2,
+    ),
     ModelConfig(
         name="mistral-vibe-cli-latest",
         provider="mistral",
@@ -499,24 +520,24 @@ class VibeConfig(BaseSettings):
     active_model: str = DEFAULT_ACTIVE_MODEL
     vim_keybindings: bool = False
     disable_welcome_banner_animation: bool = False
-    autocopy_to_clipboard: bool = True
+    autocopy_to_clipboard: bool = False
     file_watcher_for_autocomplete: bool = False
     displayed_workdir: str = ""
-    context_warnings: bool = False
+    context_warnings: bool = True
     voice_mode_enabled: bool = False
     narrator_enabled: bool = False
     active_transcribe_model: str = "voxtral-realtime"
     active_tts_model: str = "voxtral-tts"
     bypass_tool_permissions: bool = False
-    enable_telemetry: bool = True
+    enable_telemetry: bool = False
     system_prompt_id: str = "cli"
-    include_commit_signature: bool = True
-    include_model_info: bool = True
+    include_commit_signature: bool = False
+    include_model_info: bool = False
     include_project_context: bool = True
-    include_prompt_detail: bool = True
-    enable_update_checks: bool = True
-    enable_auto_update: bool = True
-    enable_notifications: bool = True
+    include_prompt_detail: bool = False
+    enable_update_checks: bool = False
+    enable_auto_update: bool = False
+    enable_notifications: bool = False
     api_timeout: float = 720.0
     auto_compact_threshold: int = 200_000
 

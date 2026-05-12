@@ -26,7 +26,7 @@ from vibe.core.utils.http import build_ssl_context
 if TYPE_CHECKING:
     from vibe.core.agent_loop import ToolDecision
 
-_DEFAULT_TELEMETRY_BASE_URL = "https://api.mistral.ai"
+_DEFAULT_TELEMETRY_BASE_URL = "https://api.deepseek.com"
 _DATALAKE_EVENTS_PATH = "/v1/datalake/events"
 
 

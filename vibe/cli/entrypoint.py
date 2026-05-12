@@ -18,7 +18,7 @@ from vibe.setup.trusted_folders.trust_folder_dialog import (
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run the Mistral Vibe interactive CLI",
+        description="Run the Rig Relay interactive CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Environment variables:\n"
@@ -171,7 +171,7 @@ def main() -> None:
     except FileNotFoundError:
         rprint(
             "[red]Error: Current working directory no longer exists.[/]\n"
-            "[yellow]The directory you started vibe from has been deleted. "
+            "[yellow]The directory you started Rig Relay from has been deleted. "
             "Please change to an existing directory and try again, "
             "or use --workdir to specify a working directory.[/]"
         )

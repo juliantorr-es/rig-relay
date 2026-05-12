@@ -8,9 +8,9 @@ SKILL = SkillInfo(
     user_invocable=False,
     prompt="""# Vibe CLI Self-Awareness
 
-You are running inside **Mistral Vibe**, a CLI coding agent built by Mistral AI.
+You are running inside **Rig Relay**, a CLI coding agent harness.
 This skill gives you full knowledge of the application internals so you can help
-the user understand, configure, and troubleshoot their Vibe installation.
+the user understand, configure, and troubleshoot their Rig Relay installation.
 
 ## VIBE_HOME
 
@@ -57,31 +57,31 @@ environment variables with the `VIBE_` prefix (e.g., `VIBE_ACTIVE_MODEL=local`).
 
 ```toml
 # Model selection
-active_model = "mistral-medium-3.5"  # Model alias to use (see [[models]])
+active_model = "deepseek-v4-flash"  # Model alias to use (see [[models]])
 
 # UI preferences
 vim_keybindings = false
 disable_welcome_banner_animation = false
-autocopy_to_clipboard = true
+autocopy_to_clipboard = false
 file_watcher_for_autocomplete = false
 
 # Behavior
 bypass_tool_permissions = false    # Skip tool approval prompts
 system_prompt_id = "cli"          # System prompt: "cli", "lean", or custom .md filename
-enable_telemetry = true
-enable_update_checks = true
-enable_auto_update = true
-enable_notifications = true
+enable_telemetry = false
+enable_update_checks = false
+enable_auto_update = false
+enable_notifications = false
 api_timeout = 720.0               # API request timeout in seconds
 auto_compact_threshold = 200000   # Token count before auto-compaction
 
 # Git commit behavior
-include_commit_signature = true   # Add "Co-Authored-By" to commits
+include_commit_signature = false   # Add "Co-Authored-By" to commits
 
 # System prompt composition
-include_model_info = true         # Include model name in system prompt
+include_model_info = false         # Include model name in system prompt
 include_project_context = true    # Include project context (git info, cwd) in system prompt
-include_prompt_detail = true      # Include OS info, tool prompts, skills, and agents in system prompt
+include_prompt_detail = false      # Include OS info, tool prompts, skills, and agents in system prompt
 
 # Voice features
 voice_mode_enabled = false
@@ -93,6 +93,13 @@ active_tts_model = "voxtral-tts"
 ### Providers
 
 ```toml
+[[providers]]
+name = "deepseek"
+api_base = "https://api.deepseek.com"
+api_key_env_var = "DEEPSEEK_API_KEY"
+api_style = "openai"
+backend = "generic"
+
 [[providers]]
 name = "mistral"
 api_base = "https://api.mistral.ai/v1"
@@ -109,6 +116,18 @@ extra_headers = { "X-Custom-Header" = "value" }  # optional per-provider HTTP he
 ### Models
 
 ```toml
+[[models]]
+name = "deepseek-v4-flash"
+provider = "deepseek"
+alias = "deepseek-v4-flash"
+temperature = 0.2
+
+[[models]]
+name = "deepseek-v4-pro"
+provider = "deepseek"
+alias = "deepseek-v4-pro"
+temperature = 0.2
+
 [[models]]
 name = "mistral-vibe-cli-latest"
 provider = "mistral"
@@ -429,7 +448,7 @@ Detailed instructions for the model...
 
 ## Environment Variables
 
-- `VIBE_HOME` - Override the Vibe home directory (default: `~/.vibe`)
+- `DEEPSEEK_API_KEY` - API key for DeepSeek provider
 - `MISTRAL_API_KEY` - API key for Mistral provider
 - `VIBE_ACTIVE_MODEL` - Override active model
 - `VIBE_*` - Any config field can be overridden with the `VIBE_` prefix
@@ -446,6 +465,7 @@ Detailed instructions for the model...
 The `.env` file in VIBE_HOME stores API keys in dotenv format:
 
 ```
+DEEPSEEK_API_KEY=your-key-here
 MISTRAL_API_KEY=your-key-here
 ```
 
