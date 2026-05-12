@@ -2084,6 +2084,12 @@ class VibeApp(App):  # noqa: PLR0904
                 f"- **Total Requests**: {summary.request_count}",
                 f"- **Max Estimated Tokens**: {summary.max_estimated_tokens}",
                 f"- **Avg Estimated Tokens**: {summary.avg_estimated_tokens:.1f}",
+                "",
+                "### Artifact Savings",
+                f"- **Artifacts Written**: {summary.artifact_count}",
+                f"- **Raw Bytes**: {summary.artifact_raw_bytes_total / 1024:.1f} KiB",
+                f"- **Prompt Visible Bytes**: {summary.artifact_prompt_visible_bytes_total / 1024:.1f} KiB",
+                f"- **Estimated Saved**: {summary.artifact_bytes_saved_estimate / 1024:.1f} KiB",
             ]
 
             if summary.tool_calls_by_name:

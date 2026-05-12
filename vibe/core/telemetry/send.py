@@ -459,3 +459,29 @@ class TelemetryClient:
             "nb_session_messages": nb_session_messages,
         }
         self.send_telemetry_event(EventName.TELEPORT_FAILED, dict(payload))
+
+    def send_artifact_written(
+        self,
+        *,
+        artifact_id: str,
+        artifact_path: str,
+        tool_name: str,
+        raw_byte_size: int,
+        prompt_visible_byte_size: int,
+        sha256: str,
+        truncated: bool,
+        source_event_id: str | None = None,
+    ) -> None:
+        payload = {
+            "artifact_id": artifact_id,
+            "artifact_path": artifact_path,
+            "tool_name": tool_name,
+            "raw_byte_size": raw_byte_size,
+            "prompt_visible_byte_size": prompt_visible_byte_size,
+            "sha256": sha256,
+            "truncated": truncated,
+            "source_event_id": source_event_id,
+        }
+        self.send_telemetry_event(
+            EventName.ARTIFACT_WRITTEN, payload, receipt_candidate=True
+        )

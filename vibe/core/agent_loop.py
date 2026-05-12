@@ -1158,9 +1158,36 @@ class AgentLoop:
         result: dict[str, Any] | None = None,
         span: trace.Span | None = None,
     ) -> None:
+        from vibe.core.telemetry.artifacts import (
+            ToolOutputArtifactWriter,
+            should_artifact_tool_result,
+        )
+
+        display_text = text
+        if should_artifact_tool_result(text):
+            writer = ToolOutputArtifactWriter(self.session_id)
+            artifact = writer.write_artifact(
+                tool_name=tool_call.tool_name,
+                raw_output=text,
+                sequence=len(self.messages),
+            )
+            display_text = artifact.prompt_excerpt
+
+            self.telemetry_client.send_artifact_written(
+                artifact_id=artifact.artifact_id,
+                artifact_path=artifact.path,
+                tool_name=artifact.tool_name,
+                raw_byte_size=artifact.byte_size,
+                prompt_visible_byte_size=len(display_text.encode("utf-8")),
+                sha256=artifact.sha256,
+                truncated=True,
+            )
+
         self.messages.append(
             LLMMessage.model_validate(
-                self.format_handler.create_tool_response_message(tool_call, text)
+                self.format_handler.create_tool_response_message(
+                    tool_call, display_text
+                )
             )
         )
 

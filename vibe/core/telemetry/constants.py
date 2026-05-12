@@ -18,3 +18,4 @@ class EventName(StrEnum):
     USER_CANCELLED_ACTION = "rig.relay.user_cancelled_action"
     SLASH_COMMAND_USED = "rig.relay.slash_command_used"
     ONBOARDING_API_KEY_ADDED = "rig.relay.onboarding_api_key_added"
+    ARTIFACT_WRITTEN = "rig.relay.artifact.tool_output_written"
