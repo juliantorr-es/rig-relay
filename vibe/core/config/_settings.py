@@ -531,7 +531,9 @@ class VibeConfig(BaseSettings):
     active_transcribe_model: str = "voxtral-realtime"
     active_tts_model: str = "voxtral-tts"
     bypass_tool_permissions: bool = False
-    enable_telemetry: bool = False
+    enable_telemetry: bool = False  # Legacy alias for enable_remote_telemetry
+    enable_local_observability: bool = True
+    enable_remote_telemetry: bool = False
     system_prompt_id: str = "cli"
     include_commit_signature: bool = False
     include_model_info: bool = False

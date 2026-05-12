@@ -1221,6 +1221,7 @@ class AgentLoop:
             else 0,
             call_type=backend_metadata.call_type,
             message_id=backend_metadata.message_id,
+            messages=self.messages,
         )
 
         try:
@@ -1291,6 +1292,7 @@ class AgentLoop:
             else 0,
             call_type=backend_metadata.call_type,
             message_id=backend_metadata.message_id,
+            messages=self.messages,
         )
 
         try:

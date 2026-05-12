@@ -77,15 +77,23 @@ class TelemetryClient:
             return None
         return provider, api_key
 
-    def _is_enabled(self) -> bool:
-        """Check if telemetry is enabled in the current config."""
+    def _is_local_observability_enabled(self) -> bool:
         try:
-            return self._config_getter().enable_telemetry
+            config = self._config_getter()
+            return config.enable_local_observability
+        except Exception:
+            return True
+
+    def _is_remote_telemetry_enabled(self) -> bool:
+        """Check if remote telemetry is enabled."""
+        try:
+            config = self._config_getter()
+            return config.enable_remote_telemetry or config.enable_telemetry
         except Exception:
             return False
 
     def is_active(self) -> bool:
-        return self._is_enabled() and self._get_mistral_api_key() is not None
+        return self._is_remote_telemetry_enabled() and self._get_mistral_api_key() is not None
 
     @property
     def client(self) -> httpx.AsyncClient:
@@ -127,7 +135,20 @@ class TelemetryClient:
         *,
         correlation_id: str | None = None,
     ) -> None:
-        if not self._is_enabled():
+        # Local Observability Sink
+        if self._is_local_observability_enabled():
+            from vibe.core.telemetry.local import log_local_event
+
+            if self.session_id:
+                log_local_event(
+                    self.session_id,
+                    event_name,
+                    properties,
+                    parent_session_id=self.parent_session_id,
+                )
+
+        # Remote Telemetry Sink
+        if not self._is_remote_telemetry_enabled():
             return
         provider_and_api_key = self._get_mistral_provider_and_api_key()
         if provider_and_api_key is None:
@@ -203,6 +224,17 @@ class TelemetryClient:
             tool_call, status, result
         )
 
+        result_size = 0
+        result_keys = []
+        if result:
+            try:
+                result_str = str(result)
+                result_size = len(result_str)
+                if isinstance(result, dict):
+                    result_keys = list(result.keys())
+            except Exception:
+                pass
+
         payload = {
             "tool_name": tool_call.tool_name,
             "status": status,
@@ -213,6 +245,8 @@ class TelemetryClient:
             "nb_files_created": nb_files_created,
             "nb_files_modified": nb_files_modified,
             "message_id": message_id,
+            "result_char_count": result_size,
+            "result_keys": result_keys,
         }
         self.send_telemetry_event("vibe.tool_call_finished", payload)
 
@@ -292,8 +326,9 @@ class TelemetryClient:
         nb_prompt_chars: int,
         call_type: TelemetryCallType,
         message_id: str | None = None,
+        messages: list[LLMMessage] | None = None,
     ) -> None:
-        payload = {
+        payload: dict[str, Any] = {
             "model": model,
             "nb_context_chars": nb_context_chars,
             "nb_context_messages": nb_context_messages,
@@ -302,6 +337,63 @@ class TelemetryClient:
             "call_type": call_type,
             "message_id": message_id,
         }
+
+        if messages and self._is_local_observability_enabled():
+            from vibe.core.types import Role
+            from vibe.core.telemetry.local import compute_fingerprint
+
+            by_role: dict[str, int] = {}
+            largest_messages = []
+            system_chars = 0
+            tool_chars = 0
+            user_chars = 0
+            assistant_chars = 0
+
+            for i, m in enumerate(messages):
+                role_name = m.role.value
+                by_role[role_name] = by_role.get(role_name, 0) + 1
+                content = m.content or ""
+                length = len(content)
+
+                if m.role == Role.system:
+                    system_chars += length
+                elif m.role == Role.tool:
+                    tool_chars += length
+                elif m.role == Role.user:
+                    user_chars += length
+                elif m.role == Role.assistant:
+                    assistant_chars += length
+
+                largest_messages.append(
+                    {
+                        "role": role_name,
+                        "index": i,
+                        "chars": length,
+                        "tool_name": m.name,
+                    }
+                )
+
+            largest_messages.sort(key=lambda x: x["chars"], reverse=True)
+            largest_messages = largest_messages[:10]
+
+            # Context fingerprints
+            stable_prefix = messages[0].content or "" if messages else ""
+            dynamic_suffix = "".join(m.content or "" for m in messages[-3:])
+
+            payload["context_accounting"] = {
+                "total_messages": len(messages),
+                "total_chars": sum(len(m.content or "") for m in messages),
+                "estimated_tokens": sum(len(m.content or "") for m in messages) // 4,
+                "by_role": by_role,
+                "largest_messages": largest_messages,
+                "system_prompt_chars": system_chars,
+                "tool_result_chars": tool_chars,
+                "user_message_chars": user_chars,
+                "assistant_message_chars": assistant_chars,
+                "stable_prefix_fingerprint": compute_fingerprint(stable_prefix),
+                "dynamic_suffix_fingerprint": compute_fingerprint(dynamic_suffix),
+            }
+
         self.send_telemetry_event("vibe.request_sent", payload)
 
     def send_ready(self, *, init_duration_ms: int) -> None:
