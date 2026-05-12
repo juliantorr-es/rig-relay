@@ -27,7 +27,7 @@ class ObservabilitySummary:
     receipt_candidate_count: int = 0
     malformed_line_count: int = 0
     errors: list[str] = field(default_factory=list)
-    
+
     # Artifact metrics
     artifact_count: int = 0
     artifact_raw_bytes_total: int = 0
@@ -148,18 +148,27 @@ class DuckDBProjection:
             summary.tool_calls_by_status = dict(res)
 
             # 2f. Artifact metrics
-            art_rel = rel.filter("event_name = 'rig.relay.artifact.tool_output_written'")
+            art_rel = rel.filter(
+                "event_name = 'rig.relay.artifact.tool_output_written'"
+            )
             res = art_rel.aggregate(
                 "count(*), "
                 "sum(payload.raw_byte_size), "
                 "sum(payload.prompt_visible_byte_size)"
             ).fetchone()
-            
+
             if res and res[0] > 0:
                 summary.artifact_count = res[0]
-                summary.artifact_raw_bytes_total = int(res[1]) if res[1] is not None else 0
-                summary.artifact_prompt_visible_bytes_total = int(res[2]) if res[2] is not None else 0
-                summary.artifact_bytes_saved_estimate = summary.artifact_raw_bytes_total - summary.artifact_prompt_visible_bytes_total
+                summary.artifact_raw_bytes_total = (
+                    int(res[1]) if res[1] is not None else 0
+                )
+                summary.artifact_prompt_visible_bytes_total = (
+                    int(res[2]) if res[2] is not None else 0
+                )
+                summary.artifact_bytes_saved_estimate = (
+                    summary.artifact_raw_bytes_total
+                    - summary.artifact_prompt_visible_bytes_total
+                )
 
             res = art_rel.aggregate("payload.tool_name, count(*)").fetchall()
             summary.artifacts_by_tool = dict(res)
@@ -170,4 +179,6 @@ class DuckDBProjection:
             con.close()
 
         return summary
+
+
 # Forced refresh

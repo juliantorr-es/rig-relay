@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import hashlib
 import json
-import uuid
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
+import uuid
 
 from pydantic import BaseModel, Field
 
@@ -40,7 +40,9 @@ class PromptVisibleToolResult(BaseModel):
 
 def get_artifact_dir(session_id: str) -> Path:
     """Return the base directory for session artifacts."""
-    return Path(".rig") / "relay" / "sessions" / session_id / "artifacts" / "tool-results"
+    return (
+        Path(".rig") / "relay" / "sessions" / session_id / "artifacts" / "tool-results"
+    )
 
 
 def should_artifact_tool_result(content: str, threshold_bytes: int = 16384) -> bool:
@@ -49,7 +51,12 @@ def should_artifact_tool_result(content: str, threshold_bytes: int = 16384) -> b
 
 
 def make_prompt_excerpt(content: str, max_bytes: int = 4096) -> str:
-    """Create a bounded excerpt of the content for the model prompt."""
+    """Create a bounded excerpt of the content for the model prompt.
+
+    NOTE: Excerpt generation is lossy. It may truncate the middle of the content
+    and uses 'errors=\"ignore\"' for UTF-8 decoding at boundaries to avoid crashes.
+    The local artifact file remains the authoritative source of truth.
+    """
     encoded = content.encode("utf-8")
     if len(encoded) <= max_bytes:
         return content
@@ -63,7 +70,12 @@ def make_prompt_excerpt(content: str, max_bytes: int = 4096) -> str:
 
 
 class ToolOutputArtifactWriter:
-    """Handles atomic writing of tool output artifacts and metadata."""
+    """Handles atomic writing of tool output artifacts and metadata.
+
+    Artifacts are the authoritative source of truth for raw tool results.
+    They are stored locally in the session directory and are not subject
+    to the lossy truncation used for model-visible excerpts.
+    """
 
     def __init__(self, session_id: str) -> None:
         self.session_id = session_id
