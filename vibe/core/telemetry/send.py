@@ -256,11 +256,11 @@ class TelemetryClient:
 
     def send_user_copied_text(self, text: str) -> None:
         payload = {"text_length": len(text)}
-        self.send_telemetry_event("vibe.user_copied_text", payload)
+        self.send_telemetry_event(EventName.USER_COPIED_TEXT, payload)
 
     def send_user_cancelled_action(self, action: str) -> None:
         payload = {"action": action}
-        self.send_telemetry_event("vibe.user_cancelled_action", payload)
+        self.send_telemetry_event(EventName.USER_CANCELLED_ACTION, payload)
 
     def send_auto_compact_triggered(
         self,
@@ -291,7 +291,7 @@ class TelemetryClient:
         self, command: str, command_type: Literal["builtin", "skill"]
     ) -> None:
         payload = {"command": command.lstrip("/"), "command_type": command_type}
-        self.send_telemetry_event("vibe.slash_command_used", payload)
+        self.send_telemetry_event(EventName.SLASH_COMMAND_USED, payload)
 
     def send_new_session(
         self,
@@ -322,7 +322,7 @@ class TelemetryClient:
 
     def send_onboarding_api_key_added(self) -> None:
         self.send_telemetry_event(
-            "vibe.onboarding_api_key_added", {"version": __version__}
+            EventName.ONBOARDING_API_KEY_ADDED, {"version": __version__}
         )
 
     def send_request_sent(

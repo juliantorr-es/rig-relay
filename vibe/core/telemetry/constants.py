@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import StrEnum, auto
+from enum import StrEnum
 
 
 class EventName(StrEnum):
@@ -14,3 +14,7 @@ class EventName(StrEnum):
     USER_RATING_FEEDBACK = "rig.relay.user_rating_feedback"
     TELEPORT_COMPLETED = "rig.relay.teleport_completed"
     TELEPORT_FAILED = "rig.relay.teleport_failed"
+    USER_COPIED_TEXT = "rig.relay.user_copied_text"
+    USER_CANCELLED_ACTION = "rig.relay.user_cancelled_action"
+    SLASH_COMMAND_USED = "rig.relay.slash_command_used"
+    ONBOARDING_API_KEY_ADDED = "rig.relay.onboarding_api_key_added"

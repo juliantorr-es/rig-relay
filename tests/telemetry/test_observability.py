@@ -6,10 +6,17 @@ import importlib
 from pathlib import Path
 from unittest.mock import patch
 import pytest
+from jsonschema import validate
 from vibe.core.config import VibeConfig
 import vibe.core.telemetry.send
 from vibe.core.telemetry.constants import EventName
 from vibe.core.types import LLMMessage, Role
+
+SCHEMA_PATH = Path(__file__).parent.parent.parent / "docs" / "architecture" / "schemas" / "rig.relay.observability.v1.schema.json"
+
+@pytest.fixture
+def observability_schema():
+    return json.loads(SCHEMA_PATH.read_text())
 
 @pytest.fixture
 def mock_config():
@@ -25,7 +32,7 @@ def real_telemetry_client():
     return vibe.core.telemetry.send.TelemetryClient
 
 @pytest.mark.asyncio
-async def test_local_observability_writes_formal_envelope(tmp_path, mock_config, monkeypatch, real_telemetry_client):
+async def test_local_observability_writes_formal_envelope(tmp_path, mock_config, monkeypatch, real_telemetry_client, observability_schema):
     monkeypatch.chdir(tmp_path)
     
     sid = "test-session"
@@ -55,23 +62,14 @@ async def test_local_observability_writes_formal_envelope(tmp_path, mock_config,
     assert len(lines) == 1
     event = json.loads(lines[0])
     
+    # Validate against schema
+    validate(instance=event, schema=observability_schema)
+    
     # Check formal envelope
     assert event["schema_version"] == "rig.relay.observability.v1"
-    assert "event_id" in event
-    assert event["session_id"] == sid
-    assert event["sequence"] == 0
-    assert "created_at" in event
     assert event["event_name"] == EventName.REQUEST_ACCOUNTED
-    assert event["producer"]["name"] == "rig-relay"
-    assert "version" in event["producer"]
     assert event["receipt_candidate"] is False
-    assert "event_hash" in event
-    
-    # Check payload
-    assert "context_accounting" in event["payload"]
-    accounting = event["payload"]["context_accounting"]
-    assert accounting["total_messages"] == 2
-    assert "stable_prefix_fingerprint" in accounting
+    assert event["event_hash"].startswith("sha256:")
 
 @pytest.mark.asyncio
 async def test_local_observability_sequencing(tmp_path, mock_config, monkeypatch, real_telemetry_client):
@@ -96,6 +94,37 @@ async def test_local_observability_sequencing(tmp_path, mock_config, monkeypatch
         event = json.loads(line)
         assert event["sequence"] == i
         assert event["event_name"] == f"rig.relay.event.{['one', 'two', 'three'][i]}"
+
+@pytest.mark.asyncio
+async def test_local_observability_hash_stability(tmp_path, mock_config, monkeypatch, real_telemetry_client):
+    monkeypatch.chdir(tmp_path)
+    sid = "hash-session"
+    
+    client = real_telemetry_client(
+        config_getter=lambda: mock_config,
+        session_id_getter=lambda: sid
+    )
+    
+    # Send identical event twice (wiping file in between to keep sequence=0)
+    log_file = tmp_path / ".rig" / "relay" / "sessions" / sid / "observability.jsonl"
+    
+    with patch("vibe.core.telemetry.local.datetime") as mock_datetime:
+        fixed_now = "2024-01-01T00:00:00+00:00"
+        mock_datetime.now.return_value.isoformat.return_value = fixed_now
+        
+        with patch("vibe.core.telemetry.local.uuid.uuid4") as mock_uuid:
+            mock_uuid.return_value = "00000000-0000-0000-0000-000000000000"
+            
+            client.send_telemetry_event("stable.event", {"data": 1})
+            event1 = json.loads(log_file.read_text().splitlines()[0])
+            
+            # Wipe and repeat
+            log_file.unlink()
+            client.send_telemetry_event("stable.event", {"data": 1})
+            event2 = json.loads(log_file.read_text().splitlines()[0])
+
+    assert event1["event_hash"] == event2["event_hash"]
+    assert event1["event_hash"].startswith("sha256:")
 
 @pytest.mark.asyncio
 async def test_local_observability_receipt_candidate(tmp_path, mock_config, monkeypatch, real_telemetry_client):

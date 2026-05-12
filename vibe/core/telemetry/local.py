@@ -46,6 +46,7 @@ def log_local_event(
     path = get_observability_log_path(session_id)
 
     # 1. Determine sequence (simple line count)
+    # NOTE: This is not concurrency-safe and will need locking for parallel writers.
     sequence = 0
     if path.exists():
         try:
@@ -79,8 +80,9 @@ def log_local_event(
     }
 
     # 4. Hash the event contents (excluding the hash itself)
-    event_str = json.dumps(event, sort_keys=True)
-    event["event_hash"] = hashlib.sha256(event_str.encode("utf-8")).hexdigest()
+    # We use a deterministic compact JSON representation for the hash.
+    event_str = json.dumps(event, sort_keys=True, separators=(",", ":"))
+    event["event_hash"] = f"sha256:{hashlib.sha256(event_str.encode('utf-8')).hexdigest()}"
 
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(event) + "\n")
