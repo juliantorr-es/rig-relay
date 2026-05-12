@@ -247,8 +247,9 @@ class TelemetryClient:
             "message_id": message_id,
             "result_char_count": result_size,
             "result_keys": result_keys,
+            "receipt_candidate": True,
         }
-        self.send_telemetry_event("vibe.tool_call_finished", payload)
+        self.send_telemetry_event("vibe.tool.call_completed", payload)
 
     def send_user_copied_text(self, text: str) -> None:
         payload = {"text_length": len(text)}
@@ -394,7 +395,7 @@ class TelemetryClient:
                 "dynamic_suffix_fingerprint": compute_fingerprint(dynamic_suffix),
             }
 
-        self.send_telemetry_event("vibe.request_sent", payload)
+        self.send_telemetry_event("vibe.context.request_accounted", payload)
 
     def send_ready(self, *, init_duration_ms: int) -> None:
         payload = {"init_duration_ms": init_duration_ms}

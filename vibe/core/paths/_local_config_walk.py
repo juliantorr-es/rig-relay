@@ -11,15 +11,21 @@ from vibe.core.autocompletion.file_indexer.ignore_rules import WALK_SKIP_DIR_NAM
 
 logger = logging.getLogger("vibe")
 
-_RIG_RELAY_DIR = ".rig-relay"
+_RIG_RELAY_DIR = ".rig/relay"
+_RIG_RELAY_LEGACY_DIR = ".rig-relay"
 _VIBE_DIR = ".vibe"
 
-# Primary paths
+# Primary paths (.rig/relay/)
 _TOOLS_SUBDIR = Path(_RIG_RELAY_DIR) / "tools"
 _SKILLS_SUBDIR = Path(_RIG_RELAY_DIR) / "skills"
 _AGENTS_SUBDIR = Path(_RIG_RELAY_DIR) / "agents"
 
-# Legacy paths
+# Legacy Rig Relay paths (.rig-relay/)
+_RR_LEGACY_TOOLS_SUBDIR = Path(_RIG_RELAY_LEGACY_DIR) / "tools"
+_RR_LEGACY_SKILLS_SUBDIR = Path(_RIG_RELAY_LEGACY_DIR) / "skills"
+_RR_LEGACY_AGENTS_SUBDIR = Path(_RIG_RELAY_LEGACY_DIR) / "agents"
+
+# Legacy Vibe paths (.vibe/)
 _VIBE_TOOLS_SUBDIR = Path(_VIBE_DIR) / "tools"
 _VIBE_SKILLS_SUBDIR = Path(_VIBE_DIR) / "skills"
 _VIBE_AGENTS_SUBDIR = Path(_VIBE_DIR) / "agents"
@@ -63,8 +69,9 @@ def _collect_at(
     path: Path, entry_names: set[str], collector: _ConfigWalkCollector
 ) -> None:
     """Check a single directory for .rig-relay/, .vibe/ and .agents/ config subdirs."""
-    # 1. Primary Rig Relay Check
-    if _RIG_RELAY_DIR in entry_names and (rr_dir := path / _RIG_RELAY_DIR).is_dir():
+    # 1. Primary Rig Relay Check (.rig/relay/)
+    rr_dir = path / _RIG_RELAY_DIR
+    if rr_dir.is_dir():
         has_content = False
         if (candidate := path / _TOOLS_SUBDIR).is_dir():
             collector.tools.append(candidate)
@@ -82,7 +89,29 @@ def _collect_at(
         ):
             collector.config_dirs.append(rr_dir)
 
-    # 2. Legacy Vibe Check
+    # 2. Legacy Rig Relay Check (.rig-relay/)
+    if (
+        _RIG_RELAY_LEGACY_DIR in entry_names
+        and (rr_legacy_dir := path / _RIG_RELAY_LEGACY_DIR).is_dir()
+    ):
+        has_content = False
+        if (candidate := path / _RR_LEGACY_TOOLS_SUBDIR).is_dir():
+            collector.tools.append(candidate)
+            has_content = True
+        if (candidate := path / _RR_LEGACY_SKILLS_SUBDIR).is_dir():
+            collector.skills.append(candidate)
+            has_content = True
+        if (candidate := path / _RR_LEGACY_AGENTS_SUBDIR).is_dir():
+            collector.agents.append(candidate)
+            has_content = True
+        if (
+            has_content
+            or (rr_legacy_dir / "prompts").is_dir()
+            or (rr_legacy_dir / "config.toml").is_file()
+        ):
+            collector.config_dirs.append(rr_legacy_dir)
+
+    # 3. Legacy Vibe Check (.vibe/)
     if _VIBE_DIR in entry_names and (vibe_dir := path / _VIBE_DIR).is_dir():
         has_content = False
         if (candidate := path / _VIBE_TOOLS_SUBDIR).is_dir():

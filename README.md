@@ -102,12 +102,14 @@ rig-relay --agent plan
 ### Configuration File Location
 
 Rig Relay looks for its configuration in the following order:
-1. `./.rig-relay/config.toml` (Project-specific)
-2. `~/.rig-relay/config.toml` (User-global)
+1. `./.rig/relay/config.toml` (Project-specific)
+2. `./.rig-relay/config.toml` (Legacy project-specific)
+3. `~/.rig/relay/config.toml` (User-global)
+4. `~/.rig-relay/config.toml` (Legacy user-global)
 
 ### Rig Relay Home Directory
 
-By default, Rig Relay stores its configuration, logs, and history in `~/.rig-relay/`. You can override this by setting the `RIG_RELAY_HOME` environment variable:
+By default, Rig Relay stores its configuration, logs, and history in `~/.rig/relay/`. You can override this by setting the `RIG_RELAY_HOME` environment variable:
 
 ```bash
 export RIG_RELAY_HOME="/path/to/custom/home"
@@ -123,8 +125,8 @@ Rig Relay maintains backward compatibility for users transitioning from Mistral 
 
 ### Paths and Environment Variables
 - `VIBE_HOME` is supported as a legacy fallback for `RIG_RELAY_HOME`.
-- `~/.vibe/` is searched if `~/.rig-relay/` does not exist.
-- `./.vibe/` is searched if `./.rig-relay/` does not exist in a project.
+- `~/.rig/relay/` is the primary home; `~/.rig-relay/` and `~/.vibe/` are searched as legacy fallbacks.
+- `./.rig/relay/` is the primary project-local root; `./.rig-relay/` and `./.vibe/` are searched as legacy fallbacks.
 
 ### Environment Prefixes
 - `VIBE_*` environment variables (e.g., `VIBE_ACTIVE_MODEL`) are supported as legacy fallbacks for `RIG_RELAY_*`.

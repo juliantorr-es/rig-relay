@@ -75,7 +75,7 @@ def config_dir(
     config_file = config_dir / "config.toml"
     config_file.write_text(tomli_w.dumps(get_base_config()), encoding="utf-8")
 
-    monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_VIBE_HOME", config_dir)
+    monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", config_dir)
 
     # Re-evaluate PLAN agent overrides so the allowlist uses the monkeypatched path
     from vibe.core.agents.models import PLAN, _plan_overrides

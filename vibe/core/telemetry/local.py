@@ -28,7 +28,7 @@ class ContextAccounting(BaseModel):
 
 def get_observability_log_path(session_id: str) -> Path:
     """Return the path to the local observability JSONL log for a session."""
-    base = Path(".rig-relay") / "sessions" / session_id
+    base = Path(".rig") / "relay" / "sessions" / session_id
     base.mkdir(parents=True, exist_ok=True)
     return base / "observability.jsonl"
 
@@ -42,7 +42,7 @@ def log_local_event(
     """Write a telemetry event to the local JSONL sink."""
     path = get_observability_log_path(session_id)
     event = {
-        "event_name": event_name.replace("vibe.", "rig_relay."),
+        "event_name": event_name.replace("vibe.", "rig.relay."),
         "session_id": session_id,
         "parent_session_id": parent_session_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
