@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Derived from mistralai/mistral-vibe. Modified for Rig Relay.
-
 import asyncio
 import asyncio.subprocess as aio_subprocess
 import contextlib

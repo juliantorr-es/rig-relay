@@ -12,10 +12,6 @@ from pydantic import BaseModel, Field
 
 from vibe.core.rewind.manager import FileSnapshot
 from vibe.core.scratchpad import is_scratchpad_path
-from vibe.core.tools.determinism import (
-    normalize_tool_path,
-    require_path_within_workdir,
-)
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -23,6 +19,7 @@ from vibe.core.tools.base import (
     InvokeContext,
     ToolError,
 )
+from vibe.core.tools.determinism import normalize_tool_path, require_path_within_workdir
 from vibe.core.tools.permissions import PermissionContext
 from vibe.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from vibe.core.tools.utils import resolve_file_tool_permission

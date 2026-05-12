@@ -12,6 +12,7 @@ from vibe import __version__
 from vibe.core.config import ProviderConfig, VibeConfig
 from vibe.core.llm.format import ResolvedToolCall
 from vibe.core.telemetry.build_metadata import build_base_metadata
+from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.types import (
     AgentEntrypoint,
     EntrypointMetadata,
@@ -20,12 +21,12 @@ from vibe.core.telemetry.types import (
     TeleportFailedPayload,
     TeleportFailureStage,
 )
-from vibe.core.telemetry.constants import EventName
 from vibe.core.utils import get_server_url_from_api_base, get_user_agent
 from vibe.core.utils.http import build_ssl_context
 
 if TYPE_CHECKING:
     from vibe.core.agent_loop import ToolDecision
+    from vibe.core.types import LLMMessage
 
 _DEFAULT_TELEMETRY_BASE_URL = "https://api.deepseek.com"
 _DATALAKE_EVENTS_PATH = "/v1/datalake/events"
@@ -94,7 +95,10 @@ class TelemetryClient:
             return False
 
     def is_active(self) -> bool:
-        return self._is_remote_telemetry_enabled() and self._get_mistral_api_key() is not None
+        return (
+            self._is_remote_telemetry_enabled()
+            and self._get_mistral_api_key() is not None
+        )
 
     @property
     def client(self) -> httpx.AsyncClient:
@@ -231,8 +235,6 @@ class TelemetryClient:
         result_keys = []
         if result:
             try:
-                result_str = str(result)
-                result_size = len(result_str)
                 if isinstance(result, dict):
                     result_keys = list(result.keys())
             except Exception:
@@ -281,10 +283,7 @@ class TelemetryClient:
         if session_id is not None:
             payload["session_id"] = session_id
             payload["parent_session_id"] = parent_session_id
-        payload = {
-            **payload,
-            "compact_type": compact_type,
-        }
+        payload = {**payload, "compact_type": "auto"}
         self.send_telemetry_event(EventName.AUTO_COMPACT_TRIGGERED, payload)
 
     def send_slash_command_used(
@@ -347,8 +346,8 @@ class TelemetryClient:
         }
 
         if messages and self._is_local_observability_enabled():
-            from vibe.core.types import Role
             from vibe.core.telemetry.local import compute_fingerprint
+            from vibe.core.types import Role
 
             by_role: dict[str, int] = {}
             largest_messages = []
@@ -372,14 +371,12 @@ class TelemetryClient:
                 elif m.role == Role.assistant:
                     assistant_chars += length
 
-                largest_messages.append(
-                    {
-                        "role": role_name,
-                        "index": i,
-                        "chars": length,
-                        "tool_name": m.name,
-                    }
-                )
+                largest_messages.append({
+                    "role": role_name,
+                    "index": i,
+                    "chars": length,
+                    "tool_name": m.name,
+                })
 
             largest_messages.sort(key=lambda x: x["chars"], reverse=True)
             largest_messages = largest_messages[:10]

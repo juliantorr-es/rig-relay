@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import hashlib
 import json
-import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+import uuid
+
+from pydantic import BaseModel
 
 from vibe import __version__
-from pydantic import BaseModel
 
 
 class ContextAccounting(BaseModel):
@@ -69,20 +70,19 @@ def log_local_event(
         "session_id": session_id,
         "parent_session_id": parent_session_id,
         "sequence": sequence,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "event_name": normalized_name,
         "payload": payload,
-        "producer": {
-            "name": "rig-relay",
-            "version": __version__,
-        },
+        "producer": {"name": "rig-relay", "version": __version__},
         "receipt_candidate": receipt_candidate,
     }
 
     # 4. Hash the event contents (excluding the hash itself)
     # We use a deterministic compact JSON representation for the hash.
     event_str = json.dumps(event, sort_keys=True, separators=(",", ":"))
-    event["event_hash"] = f"sha256:{hashlib.sha256(event_str.encode('utf-8')).hexdigest()}"
+    event["event_hash"] = (
+        f"sha256:{hashlib.sha256(event_str.encode('utf-8')).hexdigest()}"
+    )
 
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(event) + "\n")

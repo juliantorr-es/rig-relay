@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Derived from mistralai/mistral-vibe. Modified for Rig Relay.
-
 import asyncio
 import codecs
 from collections.abc import AsyncGenerator
@@ -2056,8 +2055,8 @@ class VibeApp(App):  # noqa: PLR0904
             )
 
     async def _show_observability(self, **kwargs: Any) -> None:
-        from vibe.core.telemetry.duckdb_projection import DuckDBProjection, HAS_DUCKDB
         from vibe.core.paths import SESSIONS_ROOT
+        from vibe.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
 
         if not HAS_DUCKDB:
             await self._mount_and_scroll(
@@ -2093,6 +2092,11 @@ class VibeApp(App):  # noqa: PLR0904
                     summary.tool_calls_by_name.items(), key=lambda x: x[1], reverse=True
                 ):
                     lines.append(f"- `{name}`: {count}")
+
+            if summary.errors:
+                lines.append("\n### Analyzer Errors")
+                for err in summary.errors:
+                    lines.append(f"- ⚠️ {err}")
 
             await self._mount_and_scroll(UserCommandMessage("\n".join(lines)))
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Derived from mistralai/mistral-vibe. Modified for Rig Relay.
-
 import asyncio
 from collections.abc import AsyncGenerator, Callable
 from contextlib import aclosing
@@ -283,9 +282,7 @@ class VibeAcpAgentLoop(AcpAgent):
             ),
             protocol_version=PROTOCOL_VERSION,
             agent_info=Implementation(
-                name="@rig/rig-relay",
-                title="Rig Relay",
-                version=__version__,
+                name="@rig/rig-relay", title="Rig Relay", version=__version__
             ),
             auth_methods=auth_methods,
         )

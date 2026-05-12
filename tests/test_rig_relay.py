@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+
 from pydantic import ValidationError
 import pytest
 
@@ -17,11 +18,11 @@ def test_vibe_config_defaults_for_rig_relay():
     assert config.enable_auto_update is False
     assert config.enable_notifications is False
     assert config.autocopy_to_clipboard is False
-    
+
     # Check providers
     provider_names = [p.name for p in config.providers]
     assert "deepseek" in provider_names
-    
+
     deepseek = next(p for p in config.providers if p.name == "deepseek")
     assert deepseek.api_base == "https://api.deepseek.com"
     assert deepseek.api_key_env_var == "DEEPSEEK_API_KEY"
@@ -41,7 +42,7 @@ def test_relay_receipt_metadata_serialization():
         selected_model="deepseek-v4-flash",
         selected_provider="deepseek",
         result_status="success",
-        changed_files=["file1.py", "file2.py"]
+        changed_files=["file1.py", "file2.py"],
     )
     data = receipt.model_dump_json()
     parsed = json.loads(data)
@@ -53,12 +54,10 @@ def test_relay_receipt_metadata_serialization():
 def test_skill_manifest_validation():
     # Valid manifest
     manifest = SkillManifest(
-        id="test-skill",
-        title="Test Skill",
-        description="A test skill"
+        id="test-skill", title="Test Skill", description="A test skill"
     )
     assert manifest.id == "test-skill"
-    
+
     # Invalid manifest (missing required field)
     with pytest.raises(ValidationError):
         SkillManifest(id="test")

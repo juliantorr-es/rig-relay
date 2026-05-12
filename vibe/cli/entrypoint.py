@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Derived from mistralai/mistral-vibe. Modified for Rig Relay.
-
 import argparse
 import os
 from pathlib import Path
@@ -162,7 +161,9 @@ def main() -> None:
     # Legacy alias warning
     cmd_name = Path(sys.argv[0]).name
     if cmd_name == "vibe" or cmd_name.endswith("-vibe"):
-        rprint("[dim]`vibe` is a legacy compatibility alias for Rig Relay. Prefer `rig-relay`.[/]")
+        rprint(
+            "[dim]`vibe` is a legacy compatibility alias for Rig Relay. Prefer `rig-relay`.[/]"
+        )
 
     args = parse_arguments()
 

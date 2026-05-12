@@ -17,16 +17,13 @@ from vibe.core.tools.base import (
     ToolError,
     ToolPermission,
 )
+from vibe.core.tools.determinism import normalize_tool_path, require_path_within_workdir
 from vibe.core.tools.permissions import PermissionContext
 from vibe.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from vibe.core.tools.utils import resolve_file_tool_permission
 from vibe.core.types import ToolStreamEvent
 from vibe.core.utils import kill_async_subprocess
 from vibe.core.utils.io import read_safe
-from vibe.core.tools.determinism import (
-    normalize_tool_path,
-    require_path_within_workdir,
-)
 
 if TYPE_CHECKING:
     from vibe.core.types import ToolResultEvent

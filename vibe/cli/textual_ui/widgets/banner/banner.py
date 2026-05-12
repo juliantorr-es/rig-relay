@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Derived from mistralai/mistral-vibe. Modified for Rig Relay.
-
 from dataclasses import dataclass
 from typing import Any
 

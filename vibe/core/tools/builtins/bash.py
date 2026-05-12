@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator
-from functools import lru_cache
 import os
 from pathlib import Path
 import sys
 from typing import ClassVar, Literal, final
 
 from pydantic import BaseModel, Field
-from vibe.core.tools.determinism import parse_shell_commands
 
 from vibe.core.scratchpad import is_scratchpad_path
 from vibe.core.tools.arity import build_session_pattern
@@ -21,6 +19,7 @@ from vibe.core.tools.base import (
     ToolError,
     ToolPermission,
 )
+from vibe.core.tools.determinism import parse_shell_commands
 from vibe.core.tools.permissions import (
     PermissionContext,
     PermissionScope,
@@ -30,8 +29,6 @@ from vibe.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from vibe.core.tools.utils import is_path_within_workdir
 from vibe.core.types import ToolResultEvent, ToolStreamEvent
 from vibe.core.utils import is_windows, kill_async_subprocess
-
-
 
 
 def _get_subprocess_encoding() -> str:

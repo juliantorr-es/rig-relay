@@ -58,9 +58,7 @@ class WebSearch(
     BaseTool[WebSearchArgs, WebSearchResult, WebSearchConfig, BaseToolState],
     ToolUIData[WebSearchArgs, WebSearchResult],
 ):
-    description: ClassVar[str] = (
-        "Search the web for current information."
-    )
+    description: ClassVar[str] = "Search the web for current information."
 
     @classmethod
     def is_available(cls) -> bool:

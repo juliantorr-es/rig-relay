@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
+import json
 from pathlib import Path
 from typing import Any
 
 try:
     import duckdb
+
     HAS_DUCKDB = True
 except ImportError:
     HAS_DUCKDB = False
+
 
 @dataclass
 class ObservabilitySummary:
@@ -24,6 +26,8 @@ class ObservabilitySummary:
     tool_calls_by_status: dict[str, int] = field(default_factory=dict)
     receipt_candidate_count: int = 0
     malformed_line_count: int = 0
+    errors: list[str] = field(default_factory=list)
+
 
 class DuckDBProjection:
     """Read-only DuckDB projection over Rig Relay observability JSONL logs."""
@@ -42,101 +46,19 @@ class DuckDBProjection:
             )
 
         summary = ObservabilitySummary()
-        
+
         # Discover observability.jsonl files
+        if not self.session_root.exists():
+            return summary
+
         log_files = list(self.session_root.glob("*/observability.jsonl"))
         if not log_files:
             return summary
 
         summary.sessions_seen = len(log_files)
-        
-        # Use DuckDB to query JSONL files directly
-        # We use a union of all found files
-        file_paths = [str(p) for p in log_files]
-        
-        con = duckdb.connect(database=":memory:")
-        
-        try:
-            # 1. Basic event counts
-            res = con.execute(f"""
-                SELECT 
-                    count(*) as total,
-                    count(CASE WHEN receipt_candidate THEN 1 END) as receipts
-                FROM read_json_auto({file_paths})
-            """).fetchone()
-            if res:
-                summary.events_seen = res[0]
-                summary.receipt_candidate_count = res[1]
 
-            # 2. Events by name
-            res = con.execute(f"""
-                SELECT event_name, count(*) 
-                FROM read_json_auto({file_paths})
-                GROUP BY event_name
-            """).fetchall()
-            summary.events_by_name = dict(res)
-
-            # 3. Context accounting metrics
-            # Note: payload is a JSON object, DuckDB handles it as a struct or map
-            res = con.execute(f"""
-                SELECT 
-                    count(*),
-                    max(payload.context_accounting.estimated_tokens),
-                    avg(payload.context_accounting.estimated_tokens)
-                FROM read_json_auto({file_paths})
-                WHERE event_name = 'rig.relay.context.request_accounted'
-            """).fetchone()
-            if res and res[0] > 0:
-                summary.request_count = res[0]
-                summary.max_estimated_tokens = int(res[1]) if res[1] is not None else 0
-                summary.avg_estimated_tokens = float(res[2]) if res[2] is not None else 0.0
-
-            # 4. Largest requests
-            res = con.execute(f"""
-                SELECT 
-                    payload.context_accounting.model,
-                    payload.context_accounting.estimated_tokens,
-                    session_id,
-                    created_at
-                FROM read_json_auto({file_paths})
-                WHERE event_name = 'rig.relay.context.request_accounted'
-                ORDER BY payload.context_accounting.estimated_tokens DESC
-                LIMIT 5
-            """).fetchall()
-            for r in res:
-                summary.largest_requests.append({
-                    "model": r[0],
-                    "tokens": r[1],
-                    "session_id": r[2],
-                    "timestamp": r[3]
-                })
-
-            # 5. Tool calls
-            res = con.execute(f"""
-                SELECT payload.tool_name, count(*)
-                FROM read_json_auto({file_paths})
-                WHERE event_name = 'rig.relay.tool.call_completed'
-                GROUP BY payload.tool_name
-            """).fetchall()
-            summary.tool_calls_by_name = dict(res)
-
-            res = con.execute(f"""
-                SELECT payload.status, count(*)
-                FROM read_json_auto({file_paths})
-                WHERE event_name = 'rig.relay.tool.call_completed'
-                GROUP BY payload.status
-            """).fetchall()
-            summary.tool_calls_by_status = dict(res)
-
-        except Exception as e:
-            # If DuckDB fails due to schema mismatch or malformed JSON, 
-            # we might need to fall back to manual counting for malformed lines.
-            # For now, we report the error.
-            pass
-        finally:
-            con.close()
-
-        # 6. Malformed line count (manual pass for robustness)
+        # 1. Malformed line count (manual pass for robustness)
+        # We do this first so it's available even if DuckDB fails
         malformed = 0
         for path in log_files:
             try:
@@ -148,8 +70,79 @@ class DuckDBProjection:
                             json.loads(line)
                         except json.JSONDecodeError:
                             malformed += 1
-            except Exception:
-                pass
+            except Exception as e:
+                summary.errors.append(f"Failed to read {path.name}: {e}")
         summary.malformed_line_count = malformed
+
+        # 2. DuckDB Projections
+        file_paths = [str(p) for p in log_files]
+        con = duckdb.connect(database=":memory:")
+
+        try:
+            # Using Relation API to avoid fragile SQL string interpolation
+            rel = con.read_json(file_paths)
+
+            # 2a. Basic event counts
+            res = rel.aggregate(
+                "count(*) as total, count(CASE WHEN receipt_candidate THEN 1 END) as receipts"
+            ).fetchone()
+            if res:
+                summary.events_seen = res[0]
+                summary.receipt_candidate_count = res[1]
+
+            # 2b. Events by name
+            res = rel.aggregate("event_name, count(*)").fetchall()
+            summary.events_by_name = dict(res)
+
+            # 2c. Context accounting metrics
+            # Filter for specific events to avoid schema noise in non-accounting payloads
+            acc_rel = rel.filter("event_name = 'rig.relay.context.request_accounted'")
+            res = acc_rel.aggregate(
+                "count(*), "
+                "max(payload.context_accounting.estimated_tokens), "
+                "avg(payload.context_accounting.estimated_tokens)"
+            ).fetchone()
+
+            if res and res[0] > 0:
+                summary.request_count = res[0]
+                summary.max_estimated_tokens = int(res[1]) if res[1] is not None else 0
+                summary.avg_estimated_tokens = (
+                    float(res[2]) if res[2] is not None else 0.0
+                )
+
+            # 2d. Largest requests
+            # We use project() to pick specific nested fields
+            res = (
+                acc_rel
+                .project(
+                    "payload.context_accounting.model as model, "
+                    "payload.context_accounting.estimated_tokens as tokens, "
+                    "session_id, created_at"
+                )
+                .order("tokens DESC")
+                .limit(5)
+                .fetchall()
+            )
+
+            for r in res:
+                summary.largest_requests.append({
+                    "model": r[0],
+                    "tokens": r[1],
+                    "session_id": r[2],
+                    "timestamp": r[3],
+                })
+
+            # 2e. Tool calls
+            tool_rel = rel.filter("event_name = 'rig.relay.tool.call_completed'")
+            res = tool_rel.aggregate("payload.tool_name, count(*)").fetchall()
+            summary.tool_calls_by_name = dict(res)
+
+            res = tool_rel.aggregate("payload.status, count(*)").fetchall()
+            summary.tool_calls_by_status = dict(res)
+
+        except Exception as e:
+            summary.errors.append(f"DuckDB projection failed: {e}")
+        finally:
+            con.close()
 
         return summary

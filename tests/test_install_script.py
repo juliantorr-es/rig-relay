@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Derived from mistralai/mistral-vibe. Modified for Rig Relay.
-
 from pathlib import Path
 import shlex
 import stat
@@ -119,7 +118,8 @@ def test_install_reports_missing_path_for_uv_tool_bin(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert (
-        "Your PATH does not include the folder that contains 'rig-relay'." in result.stderr
+        "Your PATH does not include the folder that contains 'rig-relay'."
+        in result.stderr
     )
     assert f'export PATH="{uv_bin_dir}:$PATH"' in result.stderr
     assert (
@@ -195,6 +195,5 @@ def test_update_succeeds_when_vibe_is_already_on_path(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "Updating rig-relay from GitHub repository using uv..." in result.stdout
     assert (
-        "Installing rig-relay from GitHub repository using uv..."
-        not in result.stdout
+        "Installing rig-relay from GitHub repository using uv..." not in result.stdout
     )

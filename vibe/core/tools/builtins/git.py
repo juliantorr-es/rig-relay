@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-import os
 from abc import ABC, abstractmethod
+import asyncio
 from collections.abc import AsyncGenerator
+import os
 from pathlib import Path
-from typing import ClassVar, final
+from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -52,6 +52,7 @@ class GitBase[TArgs: BaseModel](
         # This is an abstract base class; sub-classes must implement run.
         raise NotImplementedError
         yield  # type: ignore
+
     async def _run_git(self, operation: str, args: list[str]) -> GitResult:
         argv = ["git", operation] + args
 
@@ -75,7 +76,9 @@ class GitBase[TArgs: BaseModel](
                 )
             except TimeoutError:
                 await kill_async_subprocess(proc, kill_process_group=False)
-                raise ToolError(f"Git {operation} timed out after {self.config.timeout}s")
+                raise ToolError(
+                    f"Git {operation} timed out after {self.config.timeout}s"
+                )
 
             stdout_raw = (
                 stdout_bytes.decode("utf-8", errors="ignore") if stdout_bytes else ""

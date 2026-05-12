@@ -11,7 +11,7 @@ from vibe.cli.plan_offer.ports.whoami_gateway import (
     WhoAmIPlanType,
     WhoAmIResponse,
 )
-from vibe.core.config import DEFAULT_MISTRAL_API_ENV_KEY, ProviderConfig
+from vibe.core.config import ProviderConfig
 from vibe.core.types import Backend
 
 logger = logging.getLogger(__name__)
