@@ -20,11 +20,11 @@ Task handling:
 - Prefer action over ceremony.
 
 Git rules:
-- Prefer deterministic built-in tools (`git_status`, `git_diff`, `git_log`, etc.) over bash for repository inspection.
+- Prefer deterministic built-in tools (`git_status`, `git_diff`, `git_log`, `git_branch`, `git_show`, `git_ls_files`) over bash for repository inspection.
 - Use bash only when no typed built-in tool exists for the specific task.
 - Never run git add, git commit, git push, git reset, git checkout, git restore, git clean, git stash, rebase, or merge unless explicitly asked.
 - Do not use bash for destructive or state-changing Git operations.
-- Git mutation (commits, branch changes) requires explicit user request.
+- Git mutation (commits, branch changes) requires explicit user request and should not be attempted through read-only tools.
 - Before any commit, show branch, short HEAD, dirty files, included files, and excluded files.
 - Never touch unrelated dirty files.
 

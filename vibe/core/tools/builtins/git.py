@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator
 import os
+from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import Any, ClassVar, final
-from abc import ABC
+from typing import ClassVar, final
 
 from pydantic import BaseModel, Field
 
@@ -17,307 +17,320 @@ from vibe.core.tools.base import (
     ToolError,
     ToolPermission,
 )
+from vibe.core.tools.determinism import truncate_text
 from vibe.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
-from vibe.core.types import ToolResultEvent, ToolStreamEvent
+from vibe.core.utils import kill_async_subprocess
 
 
 class GitResult(BaseModel):
+    operation: str
+    argv: list[str]
     stdout: str
     stderr: str
     returncode: int
-    argv: list[str]
+    truncated_stdout: bool
+    truncated_stderr: bool
 
 
 class GitToolConfig(BaseToolConfig):
     permission: ToolPermission = ToolPermission.ALWAYS
     max_output_bytes: int = Field(
-        default=64_000, description="Maximum total bytes to capture from git output."
+        default=64_000, description="Hard cap for Git command output."
     )
-    timeout: int = Field(
-        default=30, description="Default timeout for git commands in seconds."
-    )
+    timeout: int = Field(default=30, description="Timeout for Git commands in seconds.")
 
 
-async def _run_git_command(
-    argv: list[str], config: GitToolConfig, ctx: InvokeContext | None = None
-) -> GitResult:
-    """Run a git command using create_subprocess_exec and return structured results."""
-    env = {
-        **os.environ,
-        "GIT_PAGER": "cat",
-        "PAGER": "cat",
-        "LC_ALL": "en_US.UTF-8",
-    }
-
-    # Use context workdir if available, otherwise cwd
-    cwd = Path.cwd()
-    if ctx and ctx.session_dir:
-        # Note: session_dir might not be the project root, but Path.cwd() in Rig Relay 
-        # is typically the project root during invocation.
-        pass
-
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "git",
-            *argv,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            stdin=asyncio.subprocess.DEVNULL,
-            env=env,
-            cwd=str(cwd),
-        )
-
-        try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=config.timeout
-            )
-        except asyncio.TimeoutError:
-            try:
-                proc.kill()
-            except ProcessLookupError:
-                pass
-            raise ToolError(f"Git command timed out after {config.timeout}s: git {' '.join(argv)}")
-
-        stdout = stdout_bytes.decode("utf-8", errors="replace")[: config.max_output_bytes]
-        stderr = stderr_bytes.decode("utf-8", errors="replace")[: config.max_output_bytes]
-        returncode = proc.returncode or 0
-
-        if returncode != 0:
-            error_msg = f"Git command failed with exit code {returncode}\n"
-            error_msg += f"Command: git {' '.join(argv)}\n"
-            if stderr:
-                error_msg += f"Stderr: {stderr.strip()}\n"
-            if stdout:
-                error_msg += f"Stdout: {stdout.strip()}\n"
-            raise ToolError(error_msg.strip())
-
-        return GitResult(
-            stdout=stdout,
-            stderr=stderr,
-            returncode=returncode,
-            argv=["git"] + argv,
-        )
-    except Exception as e:
-        if isinstance(e, ToolError):
-            raise
-        raise ToolError(f"Failed to execute git command: {e}") from e
-
-
-def _normalize_paths(paths: list[str]) -> list[str]:
-    """Normalize paths and prevent them from being interpreted as options."""
-    if not paths:
-        return []
-    
-    clean_paths = []
-    for p in paths:
-        clean_paths.append(p)
-    return clean_paths
-
-
-class _GitToolBase[TArgs: BaseModel](
+class GitBase[TArgs: BaseModel](
     BaseTool[TArgs, GitResult, GitToolConfig, BaseToolState],
     ToolUIData[TArgs, GitResult],
     ABC,
 ):
-    @classmethod
-    def get_status_text(cls) -> str:
-        return "Running git command"
+    @abstractmethod
+    async def run(
+        self, args: TArgs, ctx: InvokeContext | None = None
+    ) -> AsyncGenerator[GitResult, None]:
+        # This is an abstract base class; sub-classes must implement run.
+        raise NotImplementedError
+        yield  # type: ignore
+    async def _run_git(self, operation: str, args: list[str]) -> GitResult:
+        argv = ["git", operation] + args
 
+        env = os.environ.copy()
+        env["GIT_PAGER"] = "cat"
+        env["PAGER"] = "cat"
+        env["TERM"] = "dumb"
+        env["LC_ALL"] = "en_US.UTF-8"
 
-# --- Git Status ---
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *argv,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+            )
 
-class GitStatusArgs(BaseModel):
-    short: bool = Field(default=True, description="Show status in short format.")
-    branch: bool = Field(default=True, description="Show branch information.")
-    porcelain: bool = Field(default=False, description="Use porcelain format (machine-readable).")
+            try:
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                    proc.communicate(), timeout=self.config.timeout
+                )
+            except TimeoutError:
+                await kill_async_subprocess(proc, kill_process_group=False)
+                raise ToolError(f"Git {operation} timed out after {self.config.timeout}s")
 
+            stdout_raw = (
+                stdout_bytes.decode("utf-8", errors="ignore") if stdout_bytes else ""
+            )
+            stderr_raw = (
+                stderr_bytes.decode("utf-8", errors="ignore") if stderr_bytes else ""
+            )
 
-class GitStatus(_GitToolBase[GitStatusArgs]):
-    description: ClassVar[str] = "Get the status of the repository (git status)."
+            stdout, truncated_stdout = truncate_text(
+                stdout_raw, self.config.max_output_bytes
+            )
+            stderr, truncated_stderr = truncate_text(
+                stderr_raw, self.config.max_output_bytes
+            )
 
-    @classmethod
-    def format_call_display(cls, args: GitStatusArgs) -> ToolCallDisplay:
-        return ToolCallDisplay(summary="git status")
+            if proc.returncode != 0:
+                raise ToolError(
+                    f"Git {operation} failed with code {proc.returncode}\n"
+                    f"STDOUT: {stdout[:200]}\n"
+                    f"STDERR: {stderr[:200]}"
+                )
+
+            return GitResult(
+                operation=operation,
+                argv=argv,
+                stdout=stdout,
+                stderr=stderr,
+                returncode=proc.returncode,
+                truncated_stdout=truncated_stdout,
+                truncated_stderr=truncated_stderr,
+            )
+
+        except ToolError:
+            raise
+        except Exception as e:
+            raise ToolError(f"Error executing git {operation}: {e}")
+
+    def _validate_path(self, path: str) -> str:
+        if not path.strip():
+            raise ToolError("Path cannot be empty")
+        if path.startswith("-"):
+            raise ToolError(f"Path spec cannot start with '-': {path}")
+
+        p = Path(path).expanduser()
+        if p.is_absolute():
+            try:
+                # Must be within workdir
+                rel = p.resolve().relative_to(Path.cwd().resolve())
+                return str(rel)
+            except ValueError:
+                raise ToolError(f"Path is outside the project directory: {path}")
+        return path
+
+    def _validate_paths(self, paths: list[str]) -> list[str]:
+        return [self._validate_path(p) for p in paths]
 
     @classmethod
     def format_result_display(cls, result: GitResult) -> ToolResultDisplay:
-        return ToolResultDisplay(success=True, message="Fetched repository status")
+        message = f"Git {result.operation} completed."
+        warnings = []
+        if result.truncated_stdout or result.truncated_stderr:
+            warnings.append("Output was truncated due to size limit.")
+        return ToolResultDisplay(success=True, message=message, warnings=warnings)
+
+
+class GitStatusArgs(BaseModel):
+    short: bool = True
+    branch: bool = True
+    porcelain: bool = False
+
+
+class GitStatus(GitBase[GitStatusArgs]):
+    description: ClassVar[str] = "Show the working tree status."
 
     async def run(
         self, args: GitStatusArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | GitResult, None]:
-        argv = ["status"]
-        if args.short:
+    ) -> AsyncGenerator[GitResult, None]:
+        argv = []
+        if args.porcelain:
+            argv.append("--porcelain=v1")
+        elif args.short:
             argv.append("--short")
+
         if args.branch:
             argv.append("--branch")
-        if args.porcelain:
-            argv.append("--porcelain")
-        
-        yield await _run_git_command(argv, self.config, ctx)
 
+        yield await self._run_git("status", argv)
 
-# --- Git Diff ---
+    @classmethod
+    def format_call_display(cls, args: GitStatusArgs) -> ToolCallDisplay:
+        return ToolCallDisplay(summary="Checking git status")
+
+    @classmethod
+    def get_status_text(cls) -> str:
+        return "Checking status"
+
 
 class GitDiffArgs(BaseModel):
-    paths: list[str] = Field(default_factory=list, description="Optional paths to limit the diff.")
-    cached: bool = Field(default=False, description="Show diff of staged changes.")
-    stat: bool = Field(default=False, description="Show stats instead of full patch.")
+    paths: list[str] = Field(default_factory=list)
+    cached: bool = False
+    stat: bool = False
 
 
-class GitDiff(_GitToolBase[GitDiffArgs]):
-    description: ClassVar[str] = "Show changes between commits, commit and working tree, etc."
-
-    @classmethod
-    def format_call_display(cls, args: GitDiffArgs) -> ToolCallDisplay:
-        return ToolCallDisplay(summary=f"git diff{' --cached' if args.cached else ''}")
-
-    @classmethod
-    def format_result_display(cls, result: GitResult) -> ToolResultDisplay:
-        return ToolResultDisplay(success=True, message="Fetched git diff")
+class GitDiff(GitBase[GitDiffArgs]):
+    description: ClassVar[str] = (
+        "Show changes between commits, commit and working tree, etc."
+    )
 
     async def run(
         self, args: GitDiffArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | GitResult, None]:
-        argv = ["diff"]
+    ) -> AsyncGenerator[GitResult, None]:
+        argv = []
         if args.cached:
             argv.append("--cached")
         if args.stat:
             argv.append("--stat")
-        
+
         if args.paths:
             argv.append("--")
-            argv.extend(_normalize_paths(args.paths))
-        
-        yield await _run_git_command(argv, self.config, ctx)
+            argv.extend(self._validate_paths(args.paths))
 
+        yield await self._run_git("diff", argv)
 
-# --- Git Log ---
+    @classmethod
+    def format_call_display(cls, args: GitDiffArgs) -> ToolCallDisplay:
+        summary = "Checking git diff"
+        if args.paths:
+            summary += f" for {', '.join(args.paths)}"
+        return ToolCallDisplay(summary=summary)
+
+    @classmethod
+    def get_status_text(cls) -> str:
+        return "Checking diff"
+
 
 class GitLogArgs(BaseModel):
-    max_count: int = Field(default=20, description="Limit the number of commits to show.")
-    oneline: bool = Field(default=True, description="Show each commit on a single line.")
-    paths: list[str] = Field(default_factory=list, description="Limit log to specific paths.")
+    max_count: int = 20
+    oneline: bool = True
+    paths: list[str] = Field(default_factory=list)
 
 
-class GitLog(_GitToolBase[GitLogArgs]):
-    description: ClassVar[str] = "Show the commit logs."
-
-    @classmethod
-    def format_call_display(cls, args: GitLogArgs) -> ToolCallDisplay:
-        return ToolCallDisplay(summary=f"git log -n {args.max_count}")
-
-    @classmethod
-    def format_result_display(cls, result: GitResult) -> ToolResultDisplay:
-        return ToolResultDisplay(success=True, message="Fetched git log")
+class GitLog(GitBase[GitLogArgs]):
+    description: ClassVar[str] = "Show commit logs."
 
     async def run(
         self, args: GitLogArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | GitResult, None]:
-        argv = ["log", "-n", str(args.max_count)]
+    ) -> AsyncGenerator[GitResult, None]:
+        max_count = max(1, min(args.max_count, 100))
+        argv = [f"-n{max_count}"]
         if args.oneline:
             argv.append("--oneline")
-        
+
         if args.paths:
             argv.append("--")
-            argv.extend(_normalize_paths(args.paths))
-        
-        yield await _run_git_command(argv, self.config, ctx)
+            argv.extend(self._validate_paths(args.paths))
 
+        yield await self._run_git("log", argv)
 
-# --- Git Branch ---
+    @classmethod
+    def format_call_display(cls, args: GitLogArgs) -> ToolCallDisplay:
+        summary = f"Reading git log (last {args.max_count})"
+        return ToolCallDisplay(summary=summary)
+
+    @classmethod
+    def get_status_text(cls) -> str:
+        return "Reading log"
+
 
 class GitBranchArgs(BaseModel):
-    show_current: bool = Field(default=True, description="Show only the current branch name.")
+    show_current: bool = True
 
 
-class GitBranch(_GitToolBase[GitBranchArgs]):
-    description: ClassVar[str] = "List, create, or delete branches."
-
-    @classmethod
-    def format_call_display(cls, args: GitBranchArgs) -> ToolCallDisplay:
-        return ToolCallDisplay(summary="git branch")
-
-    @classmethod
-    def format_result_display(cls, result: GitResult) -> ToolResultDisplay:
-        return ToolResultDisplay(success=True, message="Fetched git branch info")
+class GitBranch(GitBase[GitBranchArgs]):
+    description: ClassVar[str] = "List branches."
 
     async def run(
         self, args: GitBranchArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | GitResult, None]:
-        argv = ["branch"]
+    ) -> AsyncGenerator[GitResult, None]:
+        argv = []
         if args.show_current:
             argv.append("--show-current")
-        
-        yield await _run_git_command(argv, self.config, ctx)
+        yield await self._run_git("branch", argv)
 
+    @classmethod
+    def format_call_display(cls, args: GitBranchArgs) -> ToolCallDisplay:
+        return ToolCallDisplay(summary="Checking current git branch")
 
-# --- Git Show ---
+    @classmethod
+    def get_status_text(cls) -> str:
+        return "Checking branch"
+
 
 class GitShowArgs(BaseModel):
-    ref: str = Field(default="HEAD", description="The reference to show (e.g., HEAD, a commit hash, a branch name).")
-    paths: list[str] = Field(default_factory=list, description="Limit output to specific paths.")
+    ref: str
+    paths: list[str] = Field(default_factory=list)
 
 
-class GitShow(_GitToolBase[GitShowArgs]):
-    description: ClassVar[str] = "Show various types of objects (git show)."
-
-    @classmethod
-    def format_call_display(cls, args: GitShowArgs) -> ToolCallDisplay:
-        return ToolCallDisplay(summary=f"git show {args.ref}")
-
-    @classmethod
-    def format_result_display(cls, result: GitResult) -> ToolResultDisplay:
-        # Since format_result_display doesn't have access to args, we just use a generic message
-        # Or we could override get_result_display if we really want to show the ref
-        return ToolResultDisplay(success=True, message="Showed git object")
+class GitShow(GitBase[GitShowArgs]):
+    description: ClassVar[str] = "Show various types of objects."
 
     async def run(
         self, args: GitShowArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | GitResult, None]:
-        argv = ["show", args.ref]
-        
+    ) -> AsyncGenerator[GitResult, None]:
+        if args.ref.startswith("-"):
+            raise ToolError(f"Ref cannot start with '-': {args.ref}")
+
+        argv = [args.ref]
         if args.paths:
             argv.append("--")
-            argv.extend(_normalize_paths(args.paths))
-        
-        yield await _run_git_command(argv, self.config, ctx)
+            argv.extend(self._validate_paths(args.paths))
 
+        yield await self._run_git("show", argv)
 
-# --- Git Ls-Files ---
+    @classmethod
+    def format_call_display(cls, args: GitShowArgs) -> ToolCallDisplay:
+        return ToolCallDisplay(summary=f"Showing git object {args.ref}")
+
+    @classmethod
+    def get_status_text(cls) -> str:
+        return "Showing object"
+
 
 class GitLsFilesArgs(BaseModel):
-    paths: list[str] = Field(default_factory=list, description="Limit listing to specific paths.")
-    others: bool = Field(default=False, description="Show untracked files in the output.")
-    modified: bool = Field(default=False, description="Show modified files in the output.")
-    deleted: bool = Field(default=False, description="Show deleted files in the output.")
+    paths: list[str] = Field(default_factory=list)
+    others: bool = False
+    modified: bool = False
+    deleted: bool = False
 
 
-class GitLsFiles(_GitToolBase[GitLsFilesArgs]):
-    description: ClassVar[str] = "Show information about files in the index and the working tree."
-
-    @classmethod
-    def format_call_display(cls, args: GitLsFilesArgs) -> ToolCallDisplay:
-        return ToolCallDisplay(summary="git ls-files")
-
-    @classmethod
-    def format_result_display(cls, result: GitResult) -> ToolResultDisplay:
-        return ToolResultDisplay(success=True, message="Listed git files")
+class GitLsFiles(GitBase[GitLsFilesArgs]):
+    description: ClassVar[str] = (
+        "Show information about files in the index and the working tree."
+    )
 
     async def run(
         self, args: GitLsFilesArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | GitResult, None]:
-        argv = ["ls-files"]
+    ) -> AsyncGenerator[GitResult, None]:
+        argv = []
         if args.others:
             argv.append("--others")
-            argv.append("--exclude-standard")
         if args.modified:
             argv.append("--modified")
         if args.deleted:
             argv.append("--deleted")
-        
+
         if args.paths:
             argv.append("--")
-            argv.extend(_normalize_paths(args.paths))
-        
-        yield await _run_git_command(argv, self.config, ctx)
+            argv.extend(self._validate_paths(args.paths))
+
+        yield await self._run_git("ls-files", argv)
+
+    @classmethod
+    def format_call_display(cls, args: GitLsFilesArgs) -> ToolCallDisplay:
+        return ToolCallDisplay(summary="Listing git files")
+
+    @classmethod
+    def get_status_text(cls) -> str:
+        return "Listing files"

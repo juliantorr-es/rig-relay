@@ -95,5 +95,6 @@ def parse_shell_commands(command: str) -> list[str]:
         find_commands(tree.root_node)
         return commands
     except Exception:
-        # If parsing fails, we return an empty list or fall back to conservative behavior
+        # Fall back to an empty list on any parsing or runtime failure
+        # to ensure downstream permission logic remains conservative.
         return []

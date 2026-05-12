@@ -100,3 +100,16 @@ def test_parse_shell_commands():
     assert "echo 'hello world'" in commands
     assert "grep hello" in commands
     assert "rm -rf /tmp" in commands
+
+
+def test_parse_shell_commands_does_not_crash_on_parser_failure(monkeypatch):
+    import vibe.core.tools.determinism as determinism
+    
+    # Monkeypatch _get_bash_parser to raise an exception
+    def mock_get_parser():
+        raise RuntimeError("Parser failure")
+    
+    monkeypatch.setattr(determinism, "_get_bash_parser", mock_get_parser)
+    
+    # Should return empty list and not raise
+    assert parse_shell_commands("ls -la") == []
