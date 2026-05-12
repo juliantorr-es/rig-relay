@@ -23,7 +23,7 @@ def ensure_public_remote() -> None:
     result = run_git_command("remote", "-v", capture_output=True, check=False)
     remotes = result.stdout
 
-    public_remote_url = "git@github.com:mistralai/mistral-vibe.git"
+    public_remote_url = "git@github.com:juliantorr-es/rig-relay.git"
     if public_remote_url in remotes:
         print("Public remote already exists with correct URL")
         return
@@ -192,20 +192,8 @@ def squash_commits(
     current_user_result = run_git_command("config", "user.email", capture_output=True)
     current_user_email = current_user_result.stdout.strip()
 
-    # Filter out current user and create co-authored lines
-    vibe_marker = "vibe@mistral.ai"
-    unique_coauthors = {
-        f"Co-authored-by: {contributor}"
-        for contributor in contributors
-        if contributor
-        and current_user_email not in contributor
-        and vibe_marker not in contributor
-    }
-
-    # Add Mistral Vibe as co-author
-    coauthored_lines = sorted(unique_coauthors) + [
-        "Co-authored-by: Mistral Vibe <vibe@mistral.ai>"
-    ]
+    # Create co-authored lines
+    coauthored_lines = sorted(unique_coauthors)
 
     # Create commit message
     commit_message = f"v{current_version}\n"

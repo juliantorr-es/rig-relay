@@ -49,7 +49,7 @@ uv tool install rig-relay
 ### Using pip
 
 ```bash
-pip install mistral-vibe
+pip install rig-relay
 ```
 
 ## Table of Contents
@@ -81,7 +81,7 @@ pip install mistral-vibe
   - [MCP Server Configuration](#mcp-server-configuration)
   - [Session Management](#session-management)
   - [Update Settings](#update-settings)
-  - [Custom Vibe Home Directory](#custom-vibe-home-directory)
+  - [Custom Rig Relay Home Directory](#custom-rig-relay-home-directory)
 - [Editors/IDEs](#editorsides)
 - [Resources](#resources)
 - [Data collection & usage](#data-collection--usage)
@@ -97,7 +97,7 @@ pip install mistral-vibe
   - Manage a `todo` list to track the agent's work.
   - Ask interactive questions to gather user input (`ask_user_question`).
   - Delegate tasks to subagents for parallel work (`task`).
-- **Project-Aware Context**: Vibe automatically scans your project's file structure and Git status to provide relevant context to the agent, improving its understanding of your codebase.
+- **Project-Aware Context**: Rig Relay automatically scans your project's file structure and Git status to provide relevant context to the agent, improving its understanding of your codebase.
 - **Advanced CLI Experience**: Built with modern libraries for a smooth and efficient workflow.
   - Autocompletion for slash commands (`/`) and file paths (`@`).
   - Persistent command history.
@@ -108,7 +108,7 @@ pip install mistral-vibe
 
 ### Built-in Agents
 
-Vibe comes with several built-in agent profiles, each designed for different use cases:
+Rig Relay comes with several built-in agent profiles, each designed for different use cases:
 
 - **`default`**: Standard agent that requires approval for tool executions. Best for general use.
 - **`plan`**: Read-only agent for exploration and planning. Auto-approves safe tools like `grep` and `read_file`.
@@ -118,7 +118,7 @@ Vibe comes with several built-in agent profiles, each designed for different use
 Use the `--agent` flag to select a different agent:
 
 ```bash
-vibe --agent plan
+rig-relay --agent plan
 ```
 
 To change the default agent used when `--agent` is not passed, set
@@ -134,12 +134,12 @@ custom agent file in `~/.vibe/agents/` or the project's `.vibe/agents/`
 directory. Subagents such as `explore` are not accepted.
 
 > Note: `default_agent` only applies to interactive sessions. In
-> programmatic mode (`-p` / `--prompt`), Vibe falls back to `auto-approve`
+> programmatic mode (`-p` / `--prompt`), Rig Relay falls back to `auto-approve`
 > when `--agent` is not provided, so `default_agent` is ignored.
 
 ### Subagents and Task Delegation
 
-Vibe supports subagents for delegating tasks. Subagents run independently and can perform specialized work without user interaction, preventing the context from being overloaded.
+Rig Relay supports subagents for delegating tasks. Subagents run independently and can perform specialized work without user interaction, preventing the context from being overloaded.
 
 The `task` tool allows the agent to delegate work to subagents:
 
@@ -151,7 +151,7 @@ The `task` tool allows the agent to delegate work to subagents:
 > task(task="Analyze the project structure and architecture", agent="explore")
 ```
 
-Create custom subagents by adding `agent_type = "subagent"` to your agent configuration. Vibe comes with a built-in subagent called `explore`, a read-only subagent for codebase exploration used internally for delegation.
+Create custom subagents by adding `agent_type = "subagent"` to your agent configuration. Rig Relay comes with a built-in subagent called `explore`, a read-only subagent for codebase exploration used internally for delegation.
 
 ### Interactive User Questions
 
@@ -176,7 +176,7 @@ The agent can ask multiple questions at once, displayed as tabs. Each question s
 
 ## Terminal Requirements
 
-Vibe's interactive interface requires a modern terminal emulator. Recommended terminal emulators include:
+Rig Relay's interactive interface requires a modern terminal emulator. Recommended terminal emulators include:
 
 - **WezTerm** (cross-platform)
 - **Alacritty** (cross-platform)
@@ -199,12 +199,12 @@ Most modern terminals should work, but older or minimal terminal emulators may h
    rig-relay
    ```
 
-3. If this is your first time running Vibe, it will:
+3. If this is your first time running Rig Relay, it will:
    - Create a default configuration file at `~/.vibe/config.toml`
    - Prompt you to enter your API key if it's not already configured
    - Save your API key to `~/.vibe/.env` for future use
 
-   Alternatively, you can configure your API key separately using `vibe --setup`.
+   Alternatively, you can configure your API key separately using `rig-relay --setup`.
 
 4. Start interacting with the agent!
 
@@ -224,7 +224,7 @@ Most modern terminals should work, but older or minimal terminal emulators may h
 
 ### Interactive Mode
 
-Simply run `vibe` to enter the interactive chat loop.
+Simply run `rig-relay` to enter the interactive chat loop.
 
 - **Multi-line Input**: Press `Ctrl+J` or `Shift+Enter` for select terminals to insert a newline.
 - **File Paths**: Reference files in your prompt using the `@` symbol for smart autocompletion (e.g., `> Read the file @src/agent.py`).
@@ -235,26 +235,26 @@ Simply run `vibe` to enter the interactive chat loop.
 - **Debug Console**: Press `Ctrl+\` to toggle the debug console.
 - **Agent Selection**: Press `Shift+Tab` to cycle through agents (default, plan, ...).
 
-You can start Vibe with a prompt using the following command:
+You can start Rig Relay with a prompt using the following command:
 
 ```bash
-vibe "Refactor the main function in cli/main.py to be more modular."
+rig-relay "Refactor the main function in cli/main.py to be more modular."
 ```
 
 ### Trust Folder System
 
-Vibe includes a trust folder system to ensure you only run the agent in directories you trust. When you first run Vibe in a new directory which contains a `.vibe` subfolder, it may ask you to confirm whether you trust the folder.
+Rig Relay includes a trust folder system to ensure you only run the agent in directories you trust. When you first run Rig Relay in a new directory which contains a `.vibe` subfolder, it may ask you to confirm whether you trust the folder.
 
-Trusted folders are remembered for future sessions. You can manage trusted folders through its configuration file `~/.vibe/trusted_folders.toml`.
+Trusted folders are remembered for future sessions. You can manage trusted folders through Rig Relay's configuration file `~/.vibe/trusted_folders.toml`.
 
 This safety feature helps prevent accidental execution in sensitive directories.
 
 ### Programmatic Mode
 
-You can run Vibe non-interactively by piping input or using the `--prompt` flag. This is useful for scripting.
+You can run Rig Relay non-interactively by piping input or using the `--prompt` flag. This is useful for scripting.
 
 ```bash
-vibe --prompt "Refactor the main function in cli/main.py to be more modular."
+rig-relay --prompt "Refactor the main function in cli/main.py to be more modular."
 ```
 
 By default, it uses `auto-approve` mode.
@@ -307,7 +307,7 @@ Use slash commands for meta-actions and configuration changes during a session.
 
 ### Built-in Slash Commands
 
-Vibe provides several built-in slash commands. Use slash commands by typing them in the input box:
+Rig Relay provides several built-in slash commands. Use slash commands by typing them in the input box:
 
 ```
 > /help
@@ -315,7 +315,7 @@ Vibe provides several built-in slash commands. Use slash commands by typing them
 
 ### Custom Slash Commands via Skills
 
-You can define your own slash commands through the skills system. Skills are reusable components that extend Vibe's functionality.
+You can define your own slash commands through the skills system. Skills are reusable components that extend Rig Relay's functionality.
 
 To create a custom slash command:
 
@@ -337,9 +337,9 @@ Custom slash commands appear in the autocompletion menu alongside built-in comma
 
 ## Skills System
 
-Vibe's skills system allows you to extend functionality through reusable components. Skills can add new tools, slash commands, and specialized behaviors.
+Rig Relay's skills system allows you to extend functionality through reusable components. Skills can add new tools, slash commands, and specialized behaviors.
 
-Vibe follows the [Agent Skills specification](https://agentskills.io/specification) for skill format and structure.
+Rig Relay follows the [Agent Skills specification](https://agentskills.io/specification) for skill format and structure.
 
 ### Creating Skills
 
@@ -365,7 +365,7 @@ This skill helps analyze code quality and suggest improvements.
 
 ### Skill Discovery
 
-Vibe discovers skills from multiple locations:
+Rig Relay discovers skills from multiple locations:
 
 1. **Custom paths**: Configured in `config.toml` via `skill_paths`
 2. **Standard Agent Skills path** (project root, trusted folders only): `.agents/skills/` — [Agent Skills](https://agentskills.io) standard
@@ -394,7 +394,7 @@ Skills support the same pattern matching as tools (exact names, glob patterns, a
 
 ### Configuration File Location
 
-Vibe is configured via a `config.toml` file. It looks for this file first in `./.vibe/config.toml` and then falls back to `~/.vibe/config.toml`.
+Rig Relay is configured via a `config.toml` file. It looks for this file first in `./.vibe/config.toml` and then falls back to `~/.vibe/config.toml`.
 
 ### API Key Configuration
 
@@ -418,9 +418,9 @@ Rig Relay supports multiple ways to configure your API keys:
    MISTRAL_API_KEY=your_mistral_api_key
    ```
 
-   Vibe automatically loads API keys from `~/.vibe/.env` on startup. Environment variables take precedence over the `.env` file if both are set.
+   Rig Relay automatically loads API keys from `~/.vibe/.env` on startup. Environment variables take precedence over the `.env` file if both are set.
 
-**Note**: The `.env` file is specifically for API keys and other provider credentials. General Vibe configuration should be done in `config.toml`.
+**Note**: The `.env` file is specifically for API keys and other provider credentials. General Rig Relay configuration should be done in `config.toml`.
 
 ### Custom System Prompts
 
@@ -447,13 +447,13 @@ This will load the prompt from `~/.vibe/prompts/my_custom_prompt.md`.
 
 You can create custom agent configurations for specific use cases (e.g., red-teaming, specialized tasks) by adding agent-specific TOML files in the `~/.vibe/agents/` directory.
 
-To use a custom agent, run Vibe with the `--agent` flag:
+To use a custom agent, run Rig Relay with the `--agent` flag:
 
 ```bash
 vibe --agent my_custom_agent
 ```
 
-Vibe will look for a file named `my_custom_agent.toml` in the agents directory and apply its configuration.
+Rig Relay will look for a file named `my_custom_agent.toml` in the agents directory and apply its configuration.
 
 Example custom agent configuration (`~/.vibe/agents/redteam.toml`):
 
@@ -502,7 +502,7 @@ Notes:
 
 ### MCP Server Configuration
 
-You can configure MCP (Model Context Protocol) servers to extend Vibe's capabilities. Add MCP server configurations under the `mcp_servers` section:
+You can configure MCP (Model Context Protocol) servers to extend Rig Relay's capabilities. Add MCP server configurations under the `mcp_servers` section:
 
 ```toml
 # Example MCP server configurations
@@ -580,17 +580,17 @@ tool_timeout_sec = 120
 
 #### Session Continuation and Resumption
 
-Vibe supports continuing from previous sessions:
+Rig Relay supports continuing from previous sessions:
 
 - **`--continue`** or **`-c`**: Continue from the most recent saved session
 - **`--resume SESSION_ID`**: Resume a specific session by ID (supports partial matching)
 
 ```bash
 # Continue from last session
-vibe --continue
+rig-relay --continue
 
 # Resume specific session
-vibe --resume abc123
+rig-relay --resume abc123
 ```
 
 Session logging must be enabled in your configuration for these features to work.
@@ -600,10 +600,10 @@ Session logging must be enabled in your configuration for these features to work
 Use the `--workdir` option to specify a working directory:
 
 ```bash
-vibe --workdir /path/to/project
+rig-relay --workdir /path/to/project
 ```
 
-This is useful when you want to run Vibe from a different location than your current directory.
+This is useful when you want to run Rig Relay from a different location than your current directory.
 
 ### Update Settings
 
@@ -619,7 +619,7 @@ enable_auto_update = false
 
 ### Notification Settings
 
-Vibe can notify you when the agent needs your attention (awaiting approval, asking a question, or task complete). This is useful when you switch to another window while the agent works.
+Rig Relay can notify you when the agent needs your attention (awaiting approval, asking a question, or task complete). This is useful when you switch to another window while the agent works.
 
 To disable notifications:
 
@@ -627,15 +627,15 @@ To disable notifications:
 enable_notifications = false
 ```
 
-### Custom Vibe Home Directory
+### Custom Rig Relay Home Directory
 
-By default, Vibe stores its configuration in `~/.vibe/`. You can override this by setting the `VIBE_HOME` environment variable:
+By default, Rig Relay stores its configuration in `~/.vibe/`. You can override this by setting the `VIBE_HOME` environment variable:
 
 ```bash
 export VIBE_HOME="/path/to/custom/vibe/home"
 ```
 
-This affects where Vibe looks for:
+This affects where Rig Relay looks for:
 
 - `config.toml` - Main configuration
 - `.env` - API keys

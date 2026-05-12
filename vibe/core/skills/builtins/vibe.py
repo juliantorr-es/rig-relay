@@ -4,11 +4,11 @@ from vibe.core.skills.models import SkillInfo
 
 SKILL = SkillInfo(
     name="vibe",
-    description="Understand the Vibe CLI application internals: configuration, VIBE_HOME structure, available parameters, agents, skills, tools, and how to inspect or update the user's setup. Use this skill when the user asks about how Vibe works, wants to configure it, or when you need to understand the runtime environment.",
+    description="Understand the Rig Relay application internals: configuration, VIBE_HOME structure, available parameters, agents, skills, tools, and how to inspect or update the user's setup. Use this skill when the user asks about how Rig Relay works, wants to configure it, or when you need to understand the runtime environment.",
     user_invocable=False,
-    prompt="""# Vibe CLI Self-Awareness
+    prompt="""# Rig Relay Self-Awareness
 
-You are running inside **Rig Relay**, a CLI coding agent harness.
+You are running inside **Rig Relay**, a standalone local coding-agent harness.
 This skill gives you full knowledge of the application internals so you can help
 the user understand, configure, and troubleshoot their Rig Relay installation.
 

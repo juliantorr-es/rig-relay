@@ -11,7 +11,7 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Static
 
-from vibe.cli.textual_ui.constants import MistralColors
+from vibe.cli.textual_ui.constants import BrandColors
 from vibe.cli.textual_ui.widgets.no_markup_static import NoMarkupStatic
 from vibe.cli.textual_ui.widgets.spinner import SpinnerMixin, SpinnerType
 
@@ -32,28 +32,25 @@ def _format_elapsed(seconds: int) -> str:
 
 class LoadingWidget(SpinnerMixin, Static):
     TARGET_COLORS = (
-        MistralColors.YELLOW,
-        MistralColors.ORANGE_LIGHT,
-        MistralColors.ORANGE,
-        MistralColors.ORANGE_DARK,
-        MistralColors.RED,
+        BrandColors.YELLOW,
+        BrandColors.ORANGE_LIGHT,
+        BrandColors.ORANGE,
+        BrandColors.ORANGE_DARK,
+        BrandColors.RED,
     )
     SPINNER_TYPE = SpinnerType.SNAKE
 
     EASTER_EGGS: ClassVar[list[str]] = [
-        "Eating a chocolatine",
-        "Eating a pain au chocolat",
-        "Réflexion",
-        "Analyse",
-        "Contemplation",
-        "Synthèse",
-        "Reading Proust",
-        "Oui oui baguette",
-        "Counting Rs in strawberry",
-        "Seeding Mistral weights",
-        "Vibing",
-        "Sending good vibes",
-        "Petting le chat",
+        "Aligning gravitons",
+        "Calibrating subagents",
+        "De-Mistralizing the harness",
+        "Synthesizing results",
+        "Observing the workspace",
+        "Tracing execution paths",
+        "Hashing the truth",
+        "Optimizing context windows",
+        "Fetching remote knowledge",
+        "Securing the sandbox",
     ]
 
     EASTER_EGGS_HALLOWEEN: ClassVar[list[str]] = [

@@ -34,22 +34,21 @@ from vibe.core.llm.types import BackendLike
 
 def get_base_config() -> dict[str, Any]:
     return {
-        "active_model": "devstral-latest",
+        "active_model": "deepseek-v4-flash",
         "providers": [
             {
-                "name": "mistral",
-                "api_base": "https://api.mistral.ai/v1",
-                "api_key_env_var": "MISTRAL_API_KEY",
-                "browser_auth_base_url": "https://console.mistral.ai",
-                "browser_auth_api_base_url": "https://console.mistral.ai/api",
-                "backend": "mistral",
+                "name": "deepseek",
+                "api_base": "https://api.deepseek.com",
+                "api_key_env_var": "DEEPSEEK_API_KEY",
+                "api_style": "openai",
+                "backend": "generic",
             }
         ],
         "models": [
             {
-                "name": "mistral-vibe-cli-latest",
-                "provider": "mistral",
-                "alias": "devstral-latest",
+                "name": "deepseek-v4-flash",
+                "provider": "deepseek",
+                "alias": "deepseek-v4-flash",
             }
         ],
         "enable_auto_update": False,
@@ -139,6 +138,7 @@ def _scratchpad_dir(
 @pytest.fixture(autouse=True)
 def _mock_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MISTRAL_API_KEY", "mock")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "mock")
 
 
 @pytest.fixture(autouse=True)

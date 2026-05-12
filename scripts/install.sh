@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Mistral Vibe Installation Script
+# Rig Relay Installation Script
 # This script installs uv if not present and then installs mistral-vibe using uv
 
 set -euo pipefail
@@ -120,14 +120,14 @@ function install_vibe() {
     info "Installing mistral-vibe from GitHub repository using uv..."
     uv tool install mistral-vibe
 
-    success "Mistral Vibe installed successfully! (commands: vibe, vibe-acp)"
+    success "Rig Relay installed successfully! (commands: vibe, vibe-acp)"
 }
 
 function update_vibe() {
     info "Updating mistral-vibe from GitHub repository using uv..."
     uv tool upgrade mistral-vibe
 
-    success "Mistral Vibe updated successfully!"
+    success "Rig Relay updated successfully!"
 }
 
 function main() {
@@ -142,7 +142,7 @@ function main() {
     echo "██████████████████░░"
     echo "██████████████████░░"
     echo
-    echo "Starting Mistral Vibe installation..."
+    echo "Starting Rig Relay installation..."
     echo
 
     check_platform

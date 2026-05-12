@@ -22,7 +22,7 @@ def parse_arguments() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Environment variables:\n"
-            "  VIBE_HOME       Override the Vibe home directory (default: ~/.vibe)\n"
+            "  VIBE_HOME       Override the Rig Relay home directory (default: ~/.vibe)\n"
             "  LOG_LEVEL       Logging level: DEBUG, INFO, WARNING (default), ERROR, CRITICAL.\n"
             "                  Logs are written to $VIBE_HOME/logs/vibe.log.\n"
             "  LOG_MAX_BYTES   Max size of vibe.log before rotation (default: 10485760).\n"

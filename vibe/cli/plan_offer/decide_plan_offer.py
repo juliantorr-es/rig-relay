@@ -16,12 +16,12 @@ from vibe.core.types import Backend
 
 logger = logging.getLogger(__name__)
 
-CONSOLE_CLI_URL = "https://console.mistral.ai/codestral/cli"
-UPGRADE_URL = CONSOLE_CLI_URL
-SWITCH_TO_PRO_KEY_URL = CONSOLE_CLI_URL
+CONSOLE_CLI_URL = ""
+UPGRADE_URL = ""
+SWITCH_TO_PRO_KEY_URL = ""
 
 
-class MistralCodePlanName(StrEnum):
+class RelayPlanName(StrEnum):
     FREE = "F"
     ENTERPRISE = "E"
 
@@ -61,16 +61,16 @@ class PlanInfo:
     def is_teleport_eligible(self) -> bool:
         return self.is_chat_pro_plan() and not self.prompt_switching_to_pro_plan
 
-    def is_free_mistral_code_plan(self) -> bool:
+    def is_free_relay_plan(self) -> bool:
         return (
             self.plan_type == WhoAmIPlanType.MISTRAL_CODE
-            and self.plan_name.upper() == MistralCodePlanName.FREE
+            and self.plan_name.upper() == RelayPlanName.FREE
         )
 
-    def is_mistral_code_enterprise_plan(self) -> bool:
+    def is_relay_enterprise_plan(self) -> bool:
         return (
             self.plan_type == WhoAmIPlanType.MISTRAL_CODE
-            and self.plan_name.upper() == MistralCodePlanName.ENTERPRISE
+            and self.plan_name.upper() == RelayPlanName.ENTERPRISE
         )
 
 
@@ -88,7 +88,7 @@ async def decide_plan_offer(api_key: str | None, gateway: WhoAmIGateway) -> Plan
 
 
 def resolve_api_key_for_plan(provider: ProviderConfig) -> str | None:
-    api_env_key = DEFAULT_MISTRAL_API_ENV_KEY
+    api_env_key = "DEEPSEEK_API_KEY"
 
     if provider.backend == Backend.MISTRAL:
         api_env_key = provider.api_key_env_var
@@ -97,15 +97,7 @@ def resolve_api_key_for_plan(provider: ProviderConfig) -> str | None:
 
 
 def plan_offer_cta(payload: PlanInfo | None) -> str | None:
-    if not payload:
-        return
-    if payload.prompt_switching_to_pro_plan:
-        return f"### Switch to your [Le Chat Pro API key]({SWITCH_TO_PRO_KEY_URL})"
-    if (
-        payload.plan_type in {WhoAmIPlanType.API, WhoAmIPlanType.UNAUTHORIZED}
-        or payload.is_free_mistral_code_plan()
-    ):
-        return f"### Unlock more with Vibe - [Upgrade to Le Chat Pro]({UPGRADE_URL})"
+    return None
 
 
 def plan_title(payload: PlanInfo | None) -> str | None:  # noqa: PLR0911
@@ -117,8 +109,9 @@ def plan_title(payload: PlanInfo | None) -> str | None:  # noqa: PLR0911
         return "[API] Experiment plan"
     if payload.is_paid_api_plan():
         return "[API] Scale plan"
-    if payload.is_free_mistral_code_plan():
-        return "Mistral Code Free"
-    if payload.is_mistral_code_enterprise_plan():
-        return "Mistral Code Enterprise"
+    if payload.is_free_relay_plan():
+        return "Rig Relay Free"
+    if payload.is_relay_enterprise_plan():
+        return "Rig Relay Enterprise"
+    return None
     return None

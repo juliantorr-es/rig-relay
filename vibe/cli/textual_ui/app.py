@@ -349,7 +349,7 @@ class VibeApp(App):  # noqa: PLR0904
         self._terminal_notifier = terminal_notifier or TextualNotificationAdapter(
             self,
             get_enabled=lambda: self.config.enable_notifications,
-            default_title="Vibe",
+            default_title="Rig Relay",
         )
         self._agent_running = False
         self._interrupt_requested = False
@@ -2990,7 +2990,7 @@ class VibeApp(App):  # noqa: PLR0904
 
         if self.config.enable_auto_update and await do_update():
             self.notify(
-                f"{update_message_prefix}\nVibe was updated successfully. Please restart to use the new version.",
+                f"{update_message_prefix}\nRig Relay was updated successfully. Please restart to use the new version.",
                 title="Update successful",
                 severity="information",
                 timeout=float("inf"),
