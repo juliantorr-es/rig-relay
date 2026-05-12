@@ -146,3 +146,4 @@ class DuckDBProjection:
             con.close()
 
         return summary
+# Forced refresh
