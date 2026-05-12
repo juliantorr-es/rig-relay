@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 import asyncio
 from collections.abc import AsyncGenerator, Callable
 from contextlib import aclosing
@@ -251,14 +253,14 @@ class VibeAcpAgentLoop(AcpAgent):
             [
                 TerminalAuthMethod(
                     type="terminal",
-                    id="vibe-setup",
+                    id="rig-relay-setup",
                     name="Register your API Key",
-                    description="Register your API Key inside Mistral Vibe",
+                    description="Register your API Key inside Rig Relay",
                     field_meta={
                         "terminal-auth": {
                             "command": command,
                             "args": args,
-                            "label": "Mistral Vibe Setup",
+                            "label": "Rig Relay Setup",
                         }
                     },
                 )
@@ -281,8 +283,8 @@ class VibeAcpAgentLoop(AcpAgent):
             ),
             protocol_version=PROTOCOL_VERSION,
             agent_info=Implementation(
-                name="@mistralai/mistral-vibe",
-                title="Mistral Vibe",
+                name="@rig/rig-relay",
+                title="Rig Relay",
                 version=__version__,
             ),
             auth_methods=auth_methods,

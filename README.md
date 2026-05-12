@@ -653,10 +653,19 @@ Rig Relay can be used in text editors and IDEs that support [Agent Client Protoc
 - [CHANGELOG](CHANGELOG.md) - See what's new in each version
 - [CONTRIBUTING](CONTRIBUTING.md) - Guidelines for feature requests, feedback and bug reports
 
+## Upstream and license
+
+Rig Relay is a derivative work of [mistralai/mistral-vibe](https://github.com/mistralai/mistral-vibe), originally licensed under the Apache License, Version 2.0. 
+
+This project is an independent derivative and is not affiliated with, endorsed by, or sponsored by Mistral AI. We have modified the upstream codebase to create a neutral, standalone agent harness.
+
+For more details on the project's origin and third-party attributions, please see:
+- [UPSTREAM.md](UPSTREAM.md)
+- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+
 ## Data collection & usage
 
 Use of Rig Relay may include the collection and processing of data related to your use of the service. You can enable/disable telemetry in your `config.toml` by setting `enable_telemetry`. It is disabled by default.
-
 
 ## License
 

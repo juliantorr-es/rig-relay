@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 from collections.abc import MutableMapping
 from enum import StrEnum, auto
 import os

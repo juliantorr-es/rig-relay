@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 import sys
 from typing import override
 
@@ -73,4 +75,4 @@ def test_successfully_completes(
     onboarding.run_onboarding(StubApp("completed"))
 
     out = capsys.readouterr().out
-    assert 'Setup complete 🎉. Run "vibe" to start using the Mistral Vibe CLI.' in out
+    assert 'Setup complete 🎉. Run "vibe" to start using the Rig Relay CLI.' in out

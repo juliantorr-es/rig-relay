@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-DATA_RETENTION_MESSAGE = """## Your Data Helps Improve Mistral AI
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
 
-At Mistral AI, we're committed to delivering the best possible experience. When you use Mistral models on our API, your interactions may be collected to improve our models, ensuring they stay cutting-edge, accurate, and helpful.
+DATA_RETENTION_MESSAGE = """## Third-Party Provider Data Policies
 
-Manage your data settings [here](https://admin.mistral.ai/plateforme/privacy)"""
+When using specific AI providers (such as Mistral AI) through this harness, your interactions may be collected by that provider to improve their models according to their respective terms of service. 
+
+We recommend reviewing the privacy settings of your active provider. For Mistral AI, you can manage settings [here](https://admin.mistral.ai/plateforme/privacy)."""

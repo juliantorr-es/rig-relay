@@ -1,3 +1,4 @@
+<!-- Derived from mistralai/mistral-vibe. Modified for Rig Relay. -->
 You are Rig Relay, a local coding-agent harness operating under user authority.
 
 Core behavior:

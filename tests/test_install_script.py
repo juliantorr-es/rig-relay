@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 from pathlib import Path
 import shlex
 import stat
@@ -24,7 +26,7 @@ case "$*" in
   "tool dir --bin")
     echo "$tool_bin_dir"
     ;;
-  "tool install mistral-vibe"|"tool upgrade mistral-vibe")
+  "tool install rig-relay"|"tool upgrade rig-relay")
     mkdir -p "$tool_bin_dir"
     cat >"$tool_bin_dir/vibe" <<'VIBE'
 #!/usr/bin/env bash
@@ -117,7 +119,7 @@ def test_install_reports_missing_path_for_uv_tool_bin(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert (
-        "Your PATH does not include the folder that contains 'vibe'." in result.stderr
+        "Your PATH does not include the folder that contains 'rig-relay'." in result.stderr
     )
     assert f'export PATH="{uv_bin_dir}:$PATH"' in result.stderr
     assert (
@@ -163,7 +165,7 @@ def test_install_fails_when_vibe_not_in_uv_tool_dir(tmp_path: Path) -> None:
         case "$*" in
           "--version") echo "uv 0.test" ;;
           "tool dir --bin") echo "$tool_bin_dir" ;;
-          "tool install mistral-vibe") mkdir -p "$tool_bin_dir" ;;
+          "tool install rig-relay") mkdir -p "$tool_bin_dir" ;;
           *) echo "unexpected: $*" >&2; exit 1 ;;
         esac
         """,
@@ -176,7 +178,7 @@ def test_install_fails_when_vibe_not_in_uv_tool_dir(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 1
-    assert "uv did not expose a 'vibe' executable" in result.stderr
+    assert "uv did not expose a 'rig-relay' executable" in result.stderr
     assert "Your PATH does not include" not in result.stderr
 
 
@@ -191,8 +193,8 @@ def test_update_succeeds_when_vibe_is_already_on_path(tmp_path: Path) -> None:
     result = _run_install_script(home, [fake_bin], {"UV_TOOL_BIN_DIR": str(fake_bin)})
 
     assert result.returncode == 0
-    assert "Updating mistral-vibe from GitHub repository using uv..." in result.stdout
+    assert "Updating rig-relay from GitHub repository using uv..." in result.stdout
     assert (
-        "Installing mistral-vibe from GitHub repository using uv..."
+        "Installing rig-relay from GitHub repository using uv..."
         not in result.stdout
     )

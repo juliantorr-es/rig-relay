@@ -1,6 +1,7 @@
+<!-- Derived from mistralai/mistral-vibe. Modified for Rig Relay. -->
 # Rig Relay Documentation
 
-Welcome to the Rig Relay documentation! For basic setup, see the [main README](https://github.com/mistralai/rig-relay#readme).
+Welcome to the Rig Relay documentation! For basic setup, see the [main README](https://github.com/juliantorr-es/rig-relay#readme).
 
 ## Available Documentation
 

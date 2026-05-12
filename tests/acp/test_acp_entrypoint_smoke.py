@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 import asyncio
 import asyncio.subprocess as aio_subprocess
 import contextlib
@@ -159,8 +161,8 @@ async def test_vibe_acp_initialize_and_new_session(vibe_home_dir: Path) -> None:
 
     try:
         assert initialize_response.protocol_version == PROTOCOL_VERSION
-        assert initialize_response.agent_info.name == "@mistralai/mistral-vibe"
-        assert initialize_response.agent_info.title == "Mistral Vibe"
+        assert initialize_response.agent_info.name == "@rig/rig-relay"
+        assert initialize_response.agent_info.title == "Rig Relay"
 
         session = await asyncio.wait_for(
             conn.new_session(cwd=str(Path.cwd()), mcp_servers=[]), timeout=10
@@ -200,11 +202,11 @@ async def test_vibe_acp_initialize_exposes_terminal_auth_when_supported(
         assert len(initialize_response.auth_methods) == 1
 
         auth_method = initialize_response.auth_methods[0]
-        assert auth_method.id == "vibe-setup"
+        assert auth_method.id == "rig-relay-setup"
         assert auth_method.field_meta is not None
 
         terminal_auth = auth_method.field_meta["terminal-auth"]
-        assert terminal_auth["label"] == "Mistral Vibe Setup"
+        assert terminal_auth["label"] == "Rig Relay Setup"
         assert terminal_auth["command"]
         assert terminal_auth["args"]
     finally:
@@ -231,7 +233,7 @@ def test_vibe_acp_setup_shows_onboarding_and_exits_on_cancel(
     child.logfile_read = captured
 
     try:
-        child.expect(ansi_tolerant_pattern("Welcome to Mistral Vibe"), timeout=10)
+        child.expect(ansi_tolerant_pattern("Welcome to Rig Relay"), timeout=10)
         child.sendcontrol("c")
         child.expect(pexpect.EOF, timeout=10)
     finally:

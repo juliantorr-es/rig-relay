@@ -53,7 +53,7 @@ This section is for developers who want to set up the repository for local devel
 
    ```bash
    git clone <repository-url>
-   cd mistral-vibe
+   cd rig-relay
    ```
 
 2. Install dependencies:

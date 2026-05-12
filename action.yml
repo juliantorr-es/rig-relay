@@ -1,4 +1,5 @@
 ---
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
 name: Rig Relay
 description: "Download, install, and run Rig Relay"
 author: Mistral AI

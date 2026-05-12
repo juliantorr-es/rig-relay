@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 import sys
 from typing import Any
 
@@ -56,5 +58,5 @@ def run_onboarding(
             )
         case "completed":
             rprint(
-                '\nSetup complete 🎉. Run "vibe" to start using the Mistral Vibe CLI.\n'
+                '\nSetup complete 🎉. Run "vibe" to start using the Rig Relay CLI.\n'
             )

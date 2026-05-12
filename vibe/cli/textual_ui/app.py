@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 import asyncio
 import codecs
 from collections.abc import AsyncGenerator

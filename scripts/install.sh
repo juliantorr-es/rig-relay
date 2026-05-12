@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Rig Relay Installation Script
-# This script installs uv if not present and then installs mistral-vibe using uv
+# This script installs uv if not present and then installs rig-relay using uv
 
 set -euo pipefail
 
@@ -107,8 +107,8 @@ function check_vibe_installed() {
 
     local uv_bin_dir
     uv_bin_dir=$(uv tool dir --bin 2>/dev/null || true)
-    if [[ -n "$uv_bin_dir" && -x "$uv_bin_dir/vibe" ]]; then
-        info "vibe is already installed (off PATH) at $uv_bin_dir/vibe"
+    if [[ -n "$uv_bin_dir" && -x "$uv_bin_dir/rig-relay" ]]; then
+        info "rig-relay is already installed (off PATH) at $uv_bin_dir/rig-relay"
         VIBE_INSTALLED=true
         return
     fi
@@ -117,15 +117,15 @@ function check_vibe_installed() {
 }
 
 function install_vibe() {
-    info "Installing mistral-vibe from GitHub repository using uv..."
-    uv tool install mistral-vibe
+    info "Installing rig-relay from GitHub repository using uv..."
+    uv tool install rig-relay
 
     success "Rig Relay installed successfully! (commands: vibe, vibe-acp)"
 }
 
 function update_vibe() {
-    info "Updating mistral-vibe from GitHub repository using uv..."
-    uv tool upgrade mistral-vibe
+    info "Updating rig-relay from GitHub repository using uv..."
+    uv tool upgrade rig-relay
 
     success "Rig Relay updated successfully!"
 }
@@ -178,10 +178,10 @@ function main() {
         fi
 
         if [[ -n "$VIBE_BIN_PATH" ]]; then
-            print_missing_path_instructions "vibe" "$VIBE_BIN_PATH"
+            print_missing_path_instructions "rig-relay" "$VIBE_BIN_PATH"
         else
-            error "Installation completed but 'vibe' command not found"
-            error "uv did not expose a 'vibe' executable in the expected tools directory."
+            error "Installation completed but 'rig-relay' command not found"
+            error "uv did not expose a 'rig-relay' executable in the expected tools directory."
             error "Please check your installation and PATH settings"
         fi
         exit 1

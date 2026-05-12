@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 import io
 import os
 from pathlib import Path
@@ -31,7 +33,7 @@ def _build_wheel(dist_dir: Path) -> Path:
         cwd=TESTS_ROOT.parent,
         check=True,
     )
-    wheels = sorted(dist_dir.glob("mistral_vibe-*.whl"))
+    wheels = sorted(dist_dir.glob("rig_relay-*.whl"))
     assert len(wheels) == 1
     return wheels[0]
 
@@ -106,5 +108,5 @@ def test_fresh_wheel_install_can_spawn_cli_and_complete_happy_path(
             child.close()
 
     output = captured.getvalue()
-    assert "Welcome to Mistral Vibe" not in output
+    assert "Welcome to Rig Relay" not in output
     assert streaming_mock_server.requests[-1].get("model") == "mock-model"

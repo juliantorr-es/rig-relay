@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 from pathlib import Path
 
 import pexpect
@@ -23,7 +25,7 @@ def test_spawn_cli_shows_onboarding_when_api_key_missing(
     monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
 
     with spawned_vibe_process(e2e_workdir) as (child, captured):
-        child.expect(ansi_tolerant_pattern("Welcome to Mistral Vibe"), timeout=15)
+        child.expect(ansi_tolerant_pattern("Welcome to Rig Relay"), timeout=15)
         child.sendcontrol("c")
         child.expect(pexpect.EOF, timeout=10)
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 from acp import PROTOCOL_VERSION
 from acp.schema import (
     AgentCapabilities,
@@ -34,7 +36,7 @@ class TestACPInitialize:
             ),
         )
         assert response.agent_info == Implementation(
-            name="@mistralai/mistral-vibe", title="Mistral Vibe", version="2.9.6"
+            name="@rig/rig-relay", title="Rig Relay", version="2.9.6"
         )
 
         assert response.auth_methods == []
@@ -62,18 +64,18 @@ class TestACPInitialize:
             ),
         )
         assert response.agent_info == Implementation(
-            name="@mistralai/mistral-vibe", title="Mistral Vibe", version="2.9.6"
+            name="@rig/rig-relay", title="Rig Relay", version="2.9.6"
         )
 
         assert response.auth_methods is not None
         assert len(response.auth_methods) == 1
         auth_method = response.auth_methods[0]
-        assert auth_method.id == "vibe-setup"
+        assert auth_method.id == "rig-relay-setup"
         assert auth_method.name == "Register your API Key"
-        assert auth_method.description == "Register your API Key inside Mistral Vibe"
+        assert auth_method.description == "Register your API Key inside Rig Relay"
         assert auth_method.field_meta is not None
         assert "terminal-auth" in auth_method.field_meta
         terminal_auth_meta = auth_method.field_meta["terminal-auth"]
         assert "command" in terminal_auth_meta
         assert "args" in terminal_auth_meta
-        assert terminal_auth_meta["label"] == "Mistral Vibe Setup"
+        assert terminal_auth_meta["label"] == "Rig Relay Setup"

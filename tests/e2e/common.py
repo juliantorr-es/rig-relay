@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 import io
@@ -69,7 +71,7 @@ def wait_for_request_count(
 
 
 def wait_for_main_screen(child: pexpect.spawn, timeout: float = 20.0) -> None:
-    child.expect(ansi_tolerant_pattern("Mistral Vibe v"), timeout=timeout)
+    child.expect(ansi_tolerant_pattern("Rig Relay v"), timeout=timeout)
 
 
 def wait_for_rendered_text(

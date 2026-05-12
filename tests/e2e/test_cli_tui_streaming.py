@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
+
 from pathlib import Path
 
 import pexpect
@@ -36,7 +38,7 @@ def test_spawn_cli_to_send_and_receive_message(
         child.expect(pexpect.EOF, timeout=10)
 
     output = captured.getvalue()
-    assert "Welcome to Mistral Vibe" not in output
+    assert "Welcome to Rig Relay" not in output
 
     request_payload = streaming_mock_server.requests[-1]
     assert request_payload.get("stream") is True
