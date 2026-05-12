@@ -3025,15 +3025,29 @@ class VibeApp(App):  # noqa: PLR0904
             if self._update_notifier is None or self._update_cache_repository is None:
                 return
 
+            if self.config.enable_auto_update:
+                # Early refusal for auto-update in the fork
+                self.notify(
+                    "Auto-update is disabled in Rig Relay to protect fork-local changes.",
+                    title="Update disabled",
+                    severity="warning",
+                    timeout=10,
+                )
+                return
+
             update_availability = await get_update_if_available(
                 update_notifier=self._update_notifier,
                 current_version=self._current_version,
                 update_cache_repository=self._update_cache_repository,
             )
         except UpdateError as error:
+            # We don't notify on errors in the fork usually, but if enabled we stay silent
+            return
+        except RuntimeError as e:
+            # Handle the refusal from do_update if it somehow gets called
             self.notify(
-                error.message,
-                title="Update check failed",
+                str(e),
+                title="Update disabled",
                 severity="warning",
                 timeout=10,
             )
@@ -3045,20 +3059,12 @@ class VibeApp(App):  # noqa: PLR0904
         if update_availability is None or not update_availability.should_notify:
             return
 
-        update_message_prefix = (
-            f"{self._current_version} => {update_availability.latest_version}"
+        # This path should be unreachable given get_update_if_available returns None,
+        # but we keep a safe fallback for the fork.
+        message = (
+            f"Update available: {update_availability.latest_version}. "
+            "Please pull and merge upstream changes manually."
         )
-
-        if self.config.enable_auto_update and await do_update():
-            self.notify(
-                f"{update_message_prefix}\nRig Relay was updated successfully. Please restart to use the new version.",
-                title="Update successful",
-                severity="information",
-                timeout=float("inf"),
-            )
-            return
-
-        message = f"{update_message_prefix}\nPlease update mistral-vibe with your package manager"
 
         self.notify(
             message, title="Update available", severity="information", timeout=10

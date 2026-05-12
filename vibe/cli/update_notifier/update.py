@@ -85,55 +85,16 @@ async def get_update_if_available(
     update_cache_repository: UpdateCacheRepository,
     get_current_timestamp: Callable[[], int] = lambda: int(time.time()),
 ) -> UpdateAvailability | None:
-    if not (current := _parse_version(current_version)):
-        return None
-
-    if update_cache := await update_cache_repository.get():
-        if _is_cache_fresh(update_cache, get_current_timestamp):
-            return _get_cached_update_if_any(update_cache, current)
-
-    try:
-        update = await update_notifier.fetch_update()
-    except UpdateGatewayError as error:
-        await _write_update_cache(
-            update_cache_repository, current_version, get_current_timestamp
-        )
-        raise UpdateError(_describe_gateway_error(error)) from error
-
-    if not update:
-        await _write_update_cache(
-            update_cache_repository, current_version, get_current_timestamp
-        )
-        return None
-
-    if not (latest_version := _parse_version(update.latest_version)):
-        return None
-
-    if latest_version <= current:
-        await _write_update_cache(
-            update_cache_repository, current_version, get_current_timestamp
-        )
-        return None
-
-    await _write_update_cache(
-        update_cache_repository, update.latest_version, get_current_timestamp
-    )
-
-    return UpdateAvailability(latest_version=update.latest_version, should_notify=True)
+    # Rig Relay disables automatic update checks to protect fork-local changes.
+    # Manual merge of upstream Mistral Vibe is the authoritative upgrade path.
+    return None
 
 
-UPDATE_COMMANDS = ["uv tool upgrade mistral-vibe", "brew upgrade mistral-vibe"]
+UPDATE_COMMANDS: list[str] = []
 
 
 async def do_update() -> bool:
-    for command in UPDATE_COMMANDS:
-        process = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            stdin=asyncio.subprocess.DEVNULL,
-        )
-        await process.wait()
-        if process.returncode == 0:
-            return True
-    return False
+    raise RuntimeError(
+        "Rig Relay disables automatic updates to protect fork-local changes. "
+        "Please pull and merge upstream changes manually."
+    )

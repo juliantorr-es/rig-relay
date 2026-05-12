@@ -120,6 +120,22 @@ By default, Rig Relay stores its configuration, logs, and history in `~/.rig/rel
 export RIG_RELAY_HOME="/path/to/custom/home"
 ```
 
+## Maintenance and Updates
+
+Rig Relay **disables automatic updates and remote version checks by design**. As a forked derivative, Rig Relay must be updated manually to ensure local enhancements and governance policies are preserved.
+
+To update Rig Relay:
+1. Fetch latest changes from the origin:
+   ```bash
+   git fetch origin
+   ```
+2. Inspect and merge manually:
+   ```bash
+   git merge origin/main
+   ```
+
+Do **not** use `uv tool upgrade mistral-vibe` or similar upstream commands, as they will replace Rig Relay with the upstream product.
+
 ## Legacy Compatibility
 
 Rig Relay maintains backward compatibility for users transitioning from Mistral Vibe.

@@ -10,7 +10,7 @@ The upstream project is licensed under the [Apache License, Version 2.0](https:/
 
 Rig Relay is a derivative work that significantly modifies the upstream codebase to establish a standalone, neutral agent harness. Key changes include:
 - Transitioning to DeepSeek-compatible defaults.
-- Hardening privacy settings by disabling telemetry, update checks, and auto-copy behaviors by default.
+- Hardening privacy settings by disabling telemetry, auto-copy behaviors, and **permanently disabling automatic updates**.
 - Neutralizing product branding in CLI displays and system prompts.
 - Implementing a Rig-compatible primitive layer for task receipts and safety policies.
 - Establishing a governed agent substrate for internal tool control.

@@ -538,8 +538,8 @@ class VibeConfig(BaseSettings):
     include_model_info: bool = False
     include_project_context: bool = True
     include_prompt_detail: bool = False
-    enable_update_checks: bool = False
-    enable_auto_update: bool = False
+    enable_update_checks: bool = False  # Disabled in Rig Relay fork
+    enable_auto_update: bool = False  # Disabled in Rig Relay fork
     enable_notifications: bool = False
     api_timeout: float = 720.0
     auto_compact_threshold: int = 200_000
