@@ -405,10 +405,26 @@ class TestTelemetryClient:
         }
 
     def test_send_new_session_payload(
-        self, telemetry_events: list[dict[str, Any]]
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         config = build_test_vibe_config(enable_telemetry=True)
         client = TelemetryClient(config_getter=lambda: config)
+        telemetry_events: list[dict[str, Any]] = []
+
+        def record_telemetry(
+            self: Any,
+            event_name: str,
+            properties: dict[str, Any],
+            *,
+            correlation_id: str | None = None,
+        ) -> None:
+            merged = self.build_client_event_metadata() | properties
+            event: dict[str, Any] = {"event_name": event_name, "properties": merged}
+            if correlation_id is not None:
+                event["correlation_id"] = correlation_id
+            telemetry_events.append(event)
+
+        monkeypatch.setattr(TelemetryClient, "send_telemetry_event", record_telemetry)
 
         client.send_new_session(
             has_agents_md=True,

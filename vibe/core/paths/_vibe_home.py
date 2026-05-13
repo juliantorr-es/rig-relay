@@ -84,9 +84,7 @@ def resolve_evidence_root_resolution() -> EvidenceRootResolution:
             else EvidenceRootMode.USER_GLOBAL
         )
         return EvidenceRootResolution(
-            path=_DEFAULT_RIG_RELAY_HOME,
-            mode=mode,
-            source="default",
+            path=_DEFAULT_RIG_RELAY_HOME, mode=mode, source="default"
         )
 
     for candidate in _legacy_home_candidates():

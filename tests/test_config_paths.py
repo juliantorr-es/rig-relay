@@ -186,9 +186,7 @@ def test_get_vibe_home_classifies_test_temp_root(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PYTEST_CURRENT_TEST", "tests/test_config_paths.py::test")
     temp_home = tmp_path / "pytest-123" / "relay"
-    monkeypatch.setattr(
-        "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", temp_home
-    )
+    monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", temp_home)
     resolution = resolve_evidence_root_resolution()
     assert resolution.mode == EvidenceRootMode.TEST_TEMP
 
