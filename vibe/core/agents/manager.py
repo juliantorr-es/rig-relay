@@ -123,7 +123,7 @@ class AgentManager:
         for base in self._search_paths:
             if not base.is_dir():
                 continue
-            for agent_file in base.glob("*.toml"):
+            for agent_file in sorted(base.glob("*.toml")):
                 if not agent_file.is_file():
                     continue
                 if (agent := self._try_load_agent(agent_file)) is not None:

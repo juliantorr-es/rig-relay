@@ -392,7 +392,7 @@ class SessionLogger:
         now = utc_now()
         ago = now - timedelta(minutes=5)
 
-        tmp_files = self.save_dir.glob("**/*.json.tmp")  # Recursive search
+        tmp_files = sorted(self.save_dir.glob("**/*.json.tmp"))  # Recursive search
 
         for file_path in tmp_files:
             if file_path.is_file():

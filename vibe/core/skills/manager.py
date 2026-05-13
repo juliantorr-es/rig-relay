@@ -90,7 +90,7 @@ class SkillManager:
 
     def _discover_skills_in_dir(self, base: Path) -> dict[str, SkillInfo]:
         skills: dict[str, SkillInfo] = {}
-        for skill_dir in base.iterdir():
+        for skill_dir in sorted(base.iterdir()):
             if not skill_dir.is_dir():
                 continue
             skill_file = skill_dir / "SKILL.md"

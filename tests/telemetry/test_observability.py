@@ -8,10 +8,9 @@ from unittest.mock import patch
 from jsonschema import validate
 import pytest
 
-from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.config import VibeConfig
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.telemetry.constants import EventName
-import vibe.core.telemetry.send
 from vibe.core.types import LLMMessage, Role
 
 SCHEMA_PATH = (
@@ -55,9 +54,10 @@ def real_telemetry_client(monkeypatch):
 
     # Re-apply the real method to the class just in case the reload didn't fully clean it
     from vibe.core.telemetry.send import TelemetryClient as RealClient
+
     monkeypatch.setattr(
         "vibe.core.telemetry.send.TelemetryClient.send_telemetry_event",
-        RealClient.send_telemetry_event
+        RealClient.send_telemetry_event,
     )
 
     return vibe.core.telemetry.send.TelemetryClient

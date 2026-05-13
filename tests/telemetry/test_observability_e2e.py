@@ -460,7 +460,7 @@ async def test_shadow_request_assembly_failure_does_not_fail_model_request(
 
 
 @pytest.mark.asyncio
-async def test_disposable_smoke_emits_artifact_and_shadow_evidence(
+async def test_provider_independent_repo_local_evidence_smoke(
     tmp_path, monkeypatch, real_telemetry_client, observability_schema
 ):
     monkeypatch.chdir(tmp_path)
@@ -523,6 +523,7 @@ async def test_disposable_smoke_emits_artifact_and_shadow_evidence(
     backend = FakeBackend([mock_llm_chunk(content="assistant reply")])
     loop.backend = backend
 
+    # This is a provider-independent evidence smoke, not the CLI inspection smoke.
     result = await loop._chat(model_override=cfg.get_active_model())
 
     assert result.message.content == "assistant reply"
@@ -569,3 +570,61 @@ async def test_disposable_smoke_emits_artifact_and_shadow_evidence(
     assert artifact_event["payload"]["raw_byte_size"] > 16_384
     assert artifact_event["payload"]["payload_sha256"].startswith("sha256:")
     assert "raw_output" not in artifact_event["payload"]
+
+
+@pytest.mark.asyncio
+async def test_evidence_isolation_from_stale_sessions(
+    tmp_path, monkeypatch, real_telemetry_client
+):
+    """Prove that local evidence roots are isolated from global sessions."""
+    # 1. Setup 'global' home (mocked via config_dir fixture already, but we'll use it)
+    global_home = tmp_path / "global_home"
+    global_home.mkdir()
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", global_home
+    )
+
+    # Create a stale session in the global home
+    stale_session_id = "stale-session"
+    stale_log = global_home / "sessions" / stale_session_id / "observability.jsonl"
+    stale_log.parent.mkdir(parents=True)
+    stale_event = {
+        "event_name": "stale_event",
+        "session_id": stale_session_id,
+        "receipt_candidate": False,
+        "payload": {},
+        "created_at": "2024-01-01T00:00:00Z",
+    }
+    stale_log.write_text(json.dumps(stale_event) + "\n")
+
+    # 2. Setup 'local' repo home
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    local_home = repo_root / ".rig" / "relay"
+    monkeypatch.setenv("RIG_RELAY_HOME", str(local_home))
+
+    # Create a fresh session in the local home
+    fresh_session_id = "fresh-session"
+    fresh_log = local_home / "sessions" / fresh_session_id / "observability.jsonl"
+    fresh_log.parent.mkdir(parents=True)
+    fresh_event = {
+        "event_name": "fresh_event",
+        "session_id": fresh_session_id,
+        "receipt_candidate": False,
+        "payload": {},
+        "created_at": "2024-01-01T00:00:01Z",
+    }
+    fresh_log.write_text(json.dumps(fresh_event) + "\n")
+
+    # 3. Verify SESSIONS_ROOT points to local
+    from vibe.core.paths._vibe_home import SESSIONS_ROOT
+
+    assert SESSIONS_ROOT.path == local_home / "sessions"
+
+    # 4. Verify DuckDBProjection only sees the fresh session
+    if HAS_DUCKDB:
+        analyzer = DuckDBProjection()  # Default root should follow SESSIONS_ROOT
+        summary = analyzer.get_summary()
+        assert summary.sessions_seen == 1
+        assert summary.events_by_name.get("fresh_event") == 1
+        assert "stale_event" not in summary.events_by_name

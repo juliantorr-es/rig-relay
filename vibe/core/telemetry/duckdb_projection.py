@@ -82,7 +82,7 @@ class DuckDBProjection:
         if not self.session_root.exists():
             return summary
 
-        log_files = list(self.session_root.glob("*/observability.jsonl"))
+        log_files = sorted(self.session_root.glob("*/observability.jsonl"))
         if not log_files:
             return summary
 

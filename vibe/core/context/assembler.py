@@ -140,7 +140,9 @@ async def load_latest_layout(session_id: str) -> ContextLayoutPlan | None:
         return None
 
     layouts = sorted(
-        report_dir.glob("layout_*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        report_dir.glob("layout_*.json"),
+        key=lambda p: (p.stat().st_mtime, p.name),
+        reverse=True,
     )
     if not layouts:
         return None
@@ -261,7 +263,9 @@ def build_context_assembly_report(
     )
 
     # Largest blocks
-    sorted_blocks = sorted(blocks, key=lambda b: b.byte_size, reverse=True)
+    sorted_blocks = sorted(
+        blocks, key=lambda b: (b.byte_size, b.fingerprint), reverse=True
+    )
     largest_blocks = [
         {"kind": b.kind, "size": b.byte_size, "tokens": b.estimated_tokens}
         for b in sorted_blocks[:5]

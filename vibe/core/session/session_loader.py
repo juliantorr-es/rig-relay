@@ -97,7 +97,7 @@ class SessionLoader:
             return None
 
         pattern = f"{config.session_prefix}_*"
-        session_dirs = list(save_dir.glob(pattern))
+        session_dirs = sorted(save_dir.glob(pattern))
 
         return SessionLoader.latest_session(
             session_dirs, working_directory=working_directory
@@ -131,7 +131,7 @@ class SessionLoader:
             return []
 
         short_id = shorten_session_id(session_id)
-        return list(save_dir.glob(f"{config.session_prefix}_*_{short_id}"))
+        return sorted(save_dir.glob(f"{config.session_prefix}_*_{short_id}"))
 
     @staticmethod
     def _convert_to_utc_iso(date_str: str) -> str:
@@ -150,7 +150,7 @@ class SessionLoader:
             return []
 
         pattern = f"{config.session_prefix}_*"
-        session_dirs = list(save_dir.glob(pattern))
+        session_dirs = sorted(save_dir.glob(pattern))
 
         sessions: list[SessionInfo] = []
         for session_dir in session_dirs:

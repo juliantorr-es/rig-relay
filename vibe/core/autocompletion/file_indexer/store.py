@@ -150,7 +150,7 @@ class FileIndexStore:
         results: list[IndexEntry] = []
         try:
             with os.scandir(directory) as iterator:
-                for entry in iterator:
+                for entry in sorted(iterator, key=lambda e: e.name):
                     if cancel_check and cancel_check():
                         break
 

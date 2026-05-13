@@ -228,7 +228,7 @@ def test_no_executable_stack(binary_dir: Path) -> None:
 
     # Check main binary + everything under _internal/
     candidates = [binary_dir / "vibe-acp"]
-    candidates.extend(internal_dir.rglob("*"))
+    candidates.extend(sorted(internal_dir.rglob("*")))
 
     for filepath in candidates:
         if not filepath.is_file():

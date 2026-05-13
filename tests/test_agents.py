@@ -742,7 +742,7 @@ class TestActConsumersUseAclosing:
     def test_no_bare_async_for_over_act(self) -> None:
         vibe_pkg = TESTS_ROOT.parent / "vibe"
         violations: list[str] = []
-        for path in vibe_pkg.rglob("*.py"):
+        for path in sorted(vibe_pkg.rglob("*.py")):
             tree = ast.parse(path.read_text(), filename=str(path))
             for node in ast.walk(tree):
                 if not isinstance(node, ast.AsyncFor):

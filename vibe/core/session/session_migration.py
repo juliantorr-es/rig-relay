@@ -20,7 +20,9 @@ async def migrate_sessions(session_config: SessionLoggingConfig) -> int:
         return 0
 
     successful_migrations = 0
-    session_files = list(Path(save_dir).glob(f"{session_config.session_prefix}_*.json"))
+    session_files = sorted(
+        Path(save_dir).glob(f"{session_config.session_prefix}_*.json")
+    )
     for session_file in session_files:
         try:
             session_data = read_safe(session_file).text
