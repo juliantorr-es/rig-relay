@@ -15,11 +15,9 @@ generate missing evidence.
 
 ## Evidence Root Modes
 
-The selected evidence root is classified as one of:
-
-- `repo_local`
+- `user_global` (**Default and preferred policy**)
+- `repo_local` (**Test/debug/isolation mode**)
 - `explicit_home`
-- `user_global`
 - `legacy_vibe_home`
 - `test_temp`
 
@@ -29,8 +27,10 @@ Current precedence remains unchanged:
 2. default user-global Relay home
 3. legacy fallback only when canonical home is absent and legacy config is allowed
 
-Repo-local evidence is observable and supported for validation, but it is not
-the default root policy.
+- Normal dogfood and project work should use the **User Global** Relay home.
+- Repo-local evidence is observable and supported for validation, but it is reserved
+  for **isolated experiments, deterministic tests, and explicit exports**.
+- It is not the default doctrine for project history.
 
 ## Doctor CLI
 

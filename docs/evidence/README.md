@@ -12,5 +12,6 @@ Current state:
 - `rig-relay doctor evidence` validates one selected session.
 - The validator prefers a manifest when present and falls back to scan-based
   validation for legacy sessions.
-- Root defaults have not changed.
+- Root defaults have not changed; the **User Global** Relay home (`~/.rig/relay`) is the default durable home for all evidence.
+- Repo-local evidence is supported for isolated tests and experiments but is not the default doctrine.
 

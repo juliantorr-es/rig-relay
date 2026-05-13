@@ -6,7 +6,7 @@ This document outlines how to use Rig Relay to build and harden Rig Relay, using
 
 ### 1. Starting a Self-Dogfood Session
 
-To use Rig Relay on itself, run it from the root of the Rig Relay repository:
+To use Rig Relay on itself, run it from the root of the Rig Relay repository. By default, evidence will be stored in your global Relay home (`~/.rig/relay`):
 
 ```bash
 cd rig-relay
@@ -15,11 +15,10 @@ rig-relay "Help me implement a new tool determinism check"
 
 ### 2. Setting Evidence Root for Dogfood
 
-For rigorous analysis, use a dedicated evidence root:
+Normal dogfood sessions should use the global Relay home. However, to isolate a test or experiment (e.g., to keep dogfood evidence separate from your main history), use `RIG_RELAY_HOME`:
 
 ```bash
-export RIG_RELAY_EVIDENCE_ROOT=./.dogfood/evidence
-rig-relay "Audit the grep tool for determinism"
+RIG_RELAY_HOME=./.dogfood rig-relay "Audit the grep tool for determinism"
 ```
 
 ### 3. Allowed Workflows
@@ -39,18 +38,21 @@ rig-relay "Audit the grep tool for determinism"
 
 ### 5. Post-Session Validation
 
-After a dogfood session, validate the evidence:
+After a dogfood session, validate the evidence. If you used the default global home, you don't need to pass `--evidence-root`. If you used an isolated root (e.g., via `RIG_RELAY_HOME=./.dogfood`), point the doctor there:
 
 ```bash
-rig-relay doctor evidence --evidence-root ./.dogfood/evidence --session <SESSION_ID>
+rig-relay doctor evidence --evidence-root ./.dogfood --session <SESSION_ID>
 ```
+
+> [!NOTE]
+> When using `RIG_RELAY_HOME=./.dogfood`, the evidence root passed to the doctor is `./.dogfood`.
 
 ### 6. Inspecting Tool Determinism
 
 Use the specialized reporter to see how tools behaved:
 
 ```bash
-rig-relay doctor tool-determinism --evidence-root ./.dogfood/evidence --session <SESSION_ID>
+rig-relay doctor tool-determinism --evidence-root ./.dogfood --session <SESSION_ID>
 ```
 
 ## Classification Guidelines

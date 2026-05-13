@@ -18,7 +18,7 @@ This doctrine defines the taxonomy of Rig Relay validation gates to ensure clear
 | **Deterministic Unit** | Prove core logic (assembly, layout) in isolation. | Fixed hashes/content. | Absolute (Level 4) |
 
 ## What each smoke proves
-- **Evidence Smoke**: Proves that if the model *were* to respond, the relay would record it correctly in the repository-local `.rig/relay` root.
+- **Evidence Smoke**: Proves that if the model *were* to respond, the relay would record it correctly in the selected evidence root (e.g., repo-local for isolation).
 - **CLI Smoke**: Proves that the user's environment is compatible with the `vibe` entrypoint.
 
 ## What each smoke does not prove
