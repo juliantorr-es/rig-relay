@@ -25,9 +25,7 @@ PROVIDER_HELP = {
     "deepseek": ("https://platform.deepseek.com/api_keys", "DeepSeek Platform"),
     "mistral": ("https://console.mistral.ai/codestral/cli", "Mistral AI Studio"),
 }
-CONFIG_DOCS_URL = (
-    "https://github.com/mistralai/mistral-vibe?tab=readme-ov-file#configuration"
-)
+CONFIG_DOCS_URL = "https://github.com/juliantorr-es/rig-relay#configuration"
 
 
 def _save_api_key_to_env_file(env_key: str, api_key: str) -> None:
@@ -102,7 +100,7 @@ class ApiKeyScreen(OnboardingScreen):
             return
 
         help_url, help_name = PROVIDER_HELP[self.provider.name]
-        yield NoMarkupStatic(f"Grab your {provider_name} API key from the {help_name}:")
+        yield NoMarkupStatic(f"Get your {provider_name} API key from {help_name}:")
         yield Center(
             Horizontal(
                 NoMarkupStatic("→ ", classes="link-chevron"),
@@ -112,7 +110,7 @@ class ApiKeyScreen(OnboardingScreen):
         )
 
     def _compose_config_docs(self) -> ComposeResult:
-        yield Static("[dim]Learn more about Vibe configuration:[/]")
+        yield Static("[dim]Learn more about Rig Relay configuration:[/]")
         yield Horizontal(
             NoMarkupStatic("→ ", classes="link-chevron"),
             Link(CONFIG_DOCS_URL, url=CONFIG_DOCS_URL),
@@ -125,18 +123,19 @@ class ApiKeyScreen(OnboardingScreen):
         self.input_widget = Input(
             password=True,
             id="key",
-            placeholder="Paste your API key here",
+            placeholder="Paste provider key here",
             validators=[Length(minimum=1, failure_description="No API key provided.")],
         )
 
         with Vertical(id="api-key-outer"):
             yield NoMarkupStatic("", classes="spacer")
-            yield Center(NoMarkupStatic("One last thing...", id="api-key-title"))
+            yield Center(NoMarkupStatic("Provider key", id="api-key-title"))
             with Center():
                 with Vertical(id="api-key-content"):
                     yield from self._compose_provider_link(provider_name)
                     yield NoMarkupStatic(
-                        "...and paste it below to finish the setup:", id="paste-hint"
+                        "Rig Relay needs a provider key to run model turns.",
+                        id="paste-hint",
                     )
                     yield Center(Horizontal(self.input_widget, id="input-box"))
                     yield NoMarkupStatic("", id="feedback")

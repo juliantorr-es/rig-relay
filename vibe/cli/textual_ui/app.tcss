@@ -1,4 +1,10 @@
-$mistral_orange: #FF8205;
+$relay_green: #39FF88;
+$relay_green_soft: #7CFF9B;
+$relay_bg: #06110B;
+$relay_cream: #F1E8C8;
+$relay_amber: #FFB000;
+$relay_blue: #2F5BEA;
+$relay_red: #E53935;
 
 * {
     scrollbar-color: ansi_black;
@@ -11,7 +17,7 @@ $mistral_orange: #FF8205;
 }
 
 Screen {
-    background: transparent;
+    background: $relay_bg;
 }
 
 Horizontal {
@@ -127,13 +133,13 @@ TextArea > .text-area--cursor {
     }
 
     &.border-recording {
-        border: solid $mistral_orange;
-        border-title-color: $mistral_orange;
+        border: solid $relay_green;
+        border-title-color: $relay_green;
     }
 
     &.border-remote {
-        border: solid $mistral_orange;
-        border-title-color: $mistral_orange;
+        border: solid $relay_blue;
+        border-title-color: $relay_blue;
     }
 }
 
@@ -146,7 +152,7 @@ TextArea > .text-area--cursor {
 #recording-indicator {
     width: auto;
     background: transparent;
-    color: $mistral_orange;
+    color: $relay_green;
     text-style: bold;
     padding: 0 1 0 0;
 }
@@ -177,7 +183,7 @@ Markdown {
     color: ansi_default;
 
     .code_inline {
-        color: ansi_green;
+        color: $relay_green_soft;
         background: transparent;
         text-style: bold;
     }
@@ -199,7 +205,7 @@ Markdown {
 
     MarkdownBlockQuote {
         background: transparent;
-        border-left: outer ansi_bright_black;
+        border-left: outer $relay_green;
     }
 
     MarkdownBullet,
@@ -239,8 +245,8 @@ Markdown {
     height: auto;
     text-style: bold;
     padding-left: 1;
-    border-left: heavy $mistral_orange;
-    color: $mistral_orange;
+    border-left: heavy $relay_green;
+    color: $relay_green_soft;
 }
 
 .assistant-message {
@@ -1010,7 +1016,7 @@ NarratorStatus {
 }
 
 #banner-brand {
-    color: $mistral_orange;
+    color: $relay_green;
     text-style: bold;
     width: auto;
 }
@@ -1049,7 +1055,7 @@ NarratorStatus {
 }
 
 .whats-new-message {
-    border-left: heavy $mistral_orange;
+    border-left: heavy $relay_green;
     margin-bottom: 1;
 
     Markdown {
@@ -1078,7 +1084,7 @@ NarratorStatus {
     link-style: none;
     link-background-hover: transparent;
     link-style-hover: underline;
-    link-color-hover: $mistral_orange;
+    link-color-hover: $relay_green_soft;
 }
 
 .whats-new-message.after-history {

@@ -232,7 +232,7 @@ def test_vibe_acp_setup_shows_onboarding_and_exits_on_cancel(
     child.logfile_read = captured
 
     try:
-        child.expect(ansi_tolerant_pattern("Welcome to Rig Relay"), timeout=10)
+        child.expect(ansi_tolerant_pattern("Press Enter ↵"), timeout=10)
         child.sendcontrol("c")
         child.expect(pexpect.EOF, timeout=10)
     finally:
@@ -270,15 +270,15 @@ async def test_vibe_acp_survives_broken_config(vibe_home_dir: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_vibe_acp_new_session_fails_without_api_key(vibe_home_dir: Path) -> None:
+async def test_vibe_acp_new_session_starts_without_api_key(vibe_home_dir: Path) -> None:
     proc, _initialize_response, conn = await _connect_and_initialize(
         vibe_home_dir=vibe_home_dir, include_api_key=False
     )
 
     try:
-        with pytest.raises(RequestError, match="Missing API key"):
-            await asyncio.wait_for(
-                conn.new_session(cwd=str(Path.cwd()), mcp_servers=[]), timeout=10
-            )
+        session = await asyncio.wait_for(
+            conn.new_session(cwd=str(Path.cwd()), mcp_servers=[]), timeout=10
+        )
+        assert session.session_id
     finally:
         await _terminate_process(proc)

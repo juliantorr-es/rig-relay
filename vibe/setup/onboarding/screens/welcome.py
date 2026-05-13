@@ -14,7 +14,7 @@ from vibe.setup.onboarding.base import OnboardingScreen
 
 WELCOME_PREFIX = "Welcome to "
 WELCOME_HIGHLIGHT = "Rig Relay"
-WELCOME_SUFFIX = " - Let's get you started!"
+WELCOME_SUFFIX = ""
 WELCOME_TEXT = WELCOME_PREFIX + WELCOME_HIGHLIGHT + WELCOME_SUFFIX
 
 HIGHLIGHT_START = len(WELCOME_PREFIX)
@@ -23,16 +23,14 @@ HIGHLIGHT_END = HIGHLIGHT_START + len(WELCOME_HIGHLIGHT)
 BUTTON_TEXT = "Press Enter ↵"
 
 GRADIENT_COLORS = [
-    "#ff6b00",
-    "#ff7b00",
-    "#ff8c00",
-    "#ff9d00",
-    "#ffae00",
-    "#ffbf00",
-    "#ffae00",
-    "#ff9d00",
-    "#ff8c00",
-    "#ff7b00",
+    "#39FF88",
+    "#7CFF9B",
+    "#F1E8C8",
+    "#FFB000",
+    "#2F5BEA",
+    "#E53935",
+    "#FFB000",
+    "#F1E8C8",
 ]
 
 
@@ -70,10 +68,15 @@ class WelcomeScreen(OnboardingScreen):
             with Center():
                 yield Static("", id="welcome-text")
             with Center():
+                yield NoMarkupStatic(
+                    "local evidence control plane", id="welcome-subtitle"
+                )
+            with Center():
                 yield NoMarkupStatic("", id="enter-hint", classes="hidden")
 
     def on_mount(self) -> None:
         self._welcome_text = self.query_one("#welcome-text", Static)
+        self.query_one("#welcome-subtitle", NoMarkupStatic)
         self._enter_hint = self.query_one("#enter-hint", Static)
         self._typing_timer = self.set_interval(0.04, self._type_next_char)
         self.focus()
@@ -82,7 +85,7 @@ class WelcomeScreen(OnboardingScreen):
         text = WELCOME_TEXT[:length]
 
         if length <= HIGHLIGHT_START:
-            return text
+            return f"[bold #39FF88]{text}[/]"
 
         prefix = text[:HIGHLIGHT_START]
         highlight_len = min(length, HIGHLIGHT_END) - HIGHLIGHT_START
@@ -92,8 +95,8 @@ class WelcomeScreen(OnboardingScreen):
 
         if length > HIGHLIGHT_END:
             suffix = text[HIGHLIGHT_END:]
-            return prefix + highlight + suffix
-        return prefix + highlight
+            return f"[bold #39FF88]{prefix}[/]{highlight}{suffix}"
+        return f"[bold #39FF88]{prefix}[/]{highlight}"
 
     def _type_next_char(self) -> None:
         if self._char_index >= len(WELCOME_TEXT):

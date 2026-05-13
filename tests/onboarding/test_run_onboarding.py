@@ -45,7 +45,7 @@ def test_warns_on_save_error(
     onboarding.run_onboarding(StubApp("save_error:disk full"))
 
     out = capsys.readouterr().out
-    assert "Could not save API key" in out
+    assert "Could not save provider key" in out
     assert "disk full" in out
 
 
@@ -59,10 +59,10 @@ def test_exits_on_invalid_api_key_env_var(
 
     assert excinfo.value.code == 1
     out = capsys.readouterr().out
-    assert "Could not save the API key because this provider is configured" in out
-    assert "invalid" in out
-    assert "environment variable name: BAD=NAME" in out
-    assert "was not saved for this session" in out
+    assert "Could not save the provider key" in out
+    assert "environment variable name" in out
+    assert "BAD=NAME" in out
+    assert "The key was not saved for this session." in out
     assert "set for this session only" not in out
 
 
@@ -74,4 +74,4 @@ def test_successfully_completes(
     onboarding.run_onboarding(StubApp("completed"))
 
     out = capsys.readouterr().out
-    assert 'Setup complete 🎉. Run "vibe" to start using the Rig Relay CLI.' in out
+    assert 'Setup complete. Run "rig-relay" to start using Rig Relay.' in out

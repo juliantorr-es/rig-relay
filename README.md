@@ -24,7 +24,7 @@ Rig Relay is a command-line coding assistant harness. It provides a conversation
 
 ## Current Status
 
-Rig Relay is a standalone fork of Mistral Vibe with a different runtime home, primary executable names, and default operational posture. It is being shaped into a neutral, governed harness suitable for Rig workflows.
+Rig Relay is a standalone, provider-neutral local coding harness with a different runtime home, primary executable names, and default operational posture. It is being shaped into a governed control plane suitable for Rig workflows.
 
 ## Install
 
@@ -76,7 +76,7 @@ rig-relay --help
 
 ## Configure DeepSeek
 
-Rig Relay prefers DeepSeek for its high-performance reasoning capabilities.
+Rig Relay needs a provider key before it can run model turns. DeepSeek is the default backend in the current distribution.
 
 1. Obtain an API key from [platform.deepseek.com](https://platform.deepseek.com).
 2. Set the environment variable:
@@ -152,6 +152,13 @@ export DEEPSEEK_API_KEY="sk-..."
 ```
 
 If upstream Mistral Vibe is also installed, use `rig-relay` instead of `vibe` to avoid command ambiguity.
+
+### Brand direction
+
+- Rig Relay is the product; providers are interchangeable backends.
+- Visual direction: Bauhaus structure plus green phosphor terminal nostalgia.
+- Animation should stay small, decorative, and automation-safe.
+- Evidence, manifests, receipts, and doctor output stay first-class and legible.
 
 ## Maintenance and Updates
 

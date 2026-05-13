@@ -133,3 +133,144 @@ async def test_search_replace_does_not_write_when_block_fails(tmp_path, monkeypa
 
     # Verify file content is unchanged
     assert target.read_text(encoding="utf-8") == "Hello World"
+
+
+# ── write_file mutation evidence ──────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_write_file_new_file_hashes(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="new.txt", content="hello"))
+    )
+
+    assert result.before_sha256 is None
+    assert result.after_sha256.startswith("sha256:")
+    assert len(result.after_sha256) == 64 + len("sha256:")  # sha256: + 64 hex chars
+    assert result.created_file is True
+    assert result.overwrote_existing_file is False
+    assert result.bytes_written == 5
+    assert result.file_existed is False
+
+
+@pytest.mark.asyncio
+async def test_write_file_overwrite_hashes(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "existing.txt"
+    target.write_text("old content", encoding="utf-8")
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(path="existing.txt", content="new content", overwrite=True)
+        )
+    )
+
+    assert result.before_sha256 is not None
+    assert result.before_sha256.startswith("sha256:")
+    assert result.after_sha256.startswith("sha256:")
+    assert result.before_sha256 != result.after_sha256
+    assert result.created_file is False
+    assert result.overwrote_existing_file is True
+    assert result.file_existed is True
+
+
+@pytest.mark.asyncio
+async def test_write_file_same_content_overwrite(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    content = "same stuff"
+    target = tmp_path / "same.txt"
+    target.write_text(content, encoding="utf-8")
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(path="same.txt", content=content, overwrite=True)
+        )
+    )
+
+    assert result.before_sha256 == result.after_sha256
+    assert result.overwrote_existing_file is True
+
+
+@pytest.mark.asyncio
+async def test_write_file_overwrite_false_on_existing_does_not_emit_hash(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "protected.txt"
+    target.write_text("do not touch", encoding="utf-8")
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    with pytest.raises(ToolError, match="exists"):
+        await collect_result(
+            tool.run(WriteFileArgs(path="protected.txt", content="overwrite attempt"))
+        )
+
+    assert target.read_text(encoding="utf-8") == "do not touch"
+
+
+@pytest.mark.asyncio
+async def test_write_file_parent_dirs_created_flag(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config = WriteFileConfig(create_parent_dirs=True)
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="a/b/c/file.txt", content="nested"))
+    )
+
+    assert result.parent_dirs_created is True
+    assert result.created_file is True
+    assert result.after_sha256.startswith("sha256:")
+
+    # Second write to same path should not re-create dirs
+    result2 = await collect_result(
+        tool.run(
+            WriteFileArgs(path="a/b/c/file.txt", content="replaced", overwrite=True)
+        )
+    )
+    assert result2.parent_dirs_created is False
+
+
+@pytest.mark.asyncio
+async def test_write_file_result_serializes(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="out.json", content='{"k":1}'))
+    )
+
+    dump = result.model_dump()
+    assert "before_sha256" in dump
+    assert "after_sha256" in dump
+    assert "created_file" in dump
+    assert "overwrote_existing_file" in dump
+    assert "parent_dirs_created" in dump
+    assert dump["created_file"] is True
+    assert dump["after_sha256"].startswith("sha256:")
+
+
+# ── search_replace mutation evidence ──────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_search_replace_successful_records_hashes(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "code.py"
+    target.write_text("x = 1\ny = 2\n", encoding="utf-8")
+
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    content = "<<<<<<< SEARCH\nx = 1\n=======\nx = 99\n

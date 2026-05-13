@@ -162,18 +162,19 @@
 - `DETERMINISTIC_REPO_STATE` — same SEARCH/REPLACE on same file state produces same result
 - But fuzzy matching introduces non-determinism at the matching threshold boundary
 
-**Evidence currently available**: None at tool level.
+**Evidence currently available**:
+- `before_file_sha256: dict[str, str]` — SHA256 of file bytes before edits, keyed by repo-relative path
+- `after_file_sha256: dict[str, str]` — SHA256 of file bytes after edits
+- `changed_files: list[str]` — files with non-zero line changes
+- `total_block_count`, `blocks_applied` (already present), `failed_block_count`
 
-**Missing evidence**:
-- Before/after content SHA256 per file
-- Structured diff patch
-- Number of blocks applied vs total blocks
-- Per-block success/failure
+**Missing evidence** (deferred):
+- Structured diff/patch artifact (deferred)
+- Per-block apply details (deferred)
+- Fuzzy match placement hardening (deferred)
 
-**Recommended hardening**:
-- Add before_content_sha256 + after_content_sha256 to result model
-- Emit structured diff artifact
-- Add block-level apply results to evidence
+**Implemented hardening (2025-05-17)**:
+- Added `before_file_sha256`, `after_file_sha256`, `changed_files`, `failed_block_count`, `total_block_count` to `SearchReplaceResult`
 
 ---
 
@@ -316,18 +317,20 @@
 - `DETERMINISTIC_REPO_STATE` — same write on same repo state = same outcome
 - But parent directory creation changes filesystem state even on "canceled" writes (because `_prepare_and_validate_path` creates dirs before `_write_file`)
 
-**Evidence currently available**: None at tool level.
+**Evidence currently available**:
+- `before_sha256` (``sha256:`` hex of file bytes before write, or ``None`` for new files)
+- `after_sha256` (``sha256:`` hex of file bytes after write)
+- `created_file` / `overwrote_existing_file` flags
+- `parent_dirs_created` flag
+- `bytes_written` count
 
-**Missing evidence**:
-- Before-content SHA256 (from file snapshot)
-- After-content SHA256
-- File snapshot reference in evidence
-- Whether parent dirs were created
+**Missing evidence** (deferred):
+- Typed `file_write` artifact envelope (next slice)
+- Diff/patch evidence (deferred)
+- Rollback capability (deferred)
 
-**Recommended hardening**:
-- Add before_sha256 + after_sha256 to result model
-- Link to `FileSnapshot` in evidence
-- Emit parent_dir_created flag
+**Implemented hardening (2025-05-17)**:
+- Added `before_sha256`, `after_sha256`, `created_file`, `overwrote_existing_file`, `parent_dirs_created` to `WriteFileResult`
 
 ---
 
@@ -407,22 +410,18 @@ Ranked by composite score of risk, frequency, token waste, and wrong-edit potent
 
 ## Recommended Next Implementation Slice
 
-**Slice: Add before/after content SHA256 to `write_file` and `search_replace` evidence**
+**Slice: Typed `file_write` artifact and diff/patch evidence**
 
-**Why this slice**:
+**Why this slice (after mutation hashes are complete)**:
 
-1. **Highest safety impact per line of code changed**: Adding SHA256 hashing to the result model in both tools adds <20 lines of Python but enables deterministic verification of every workspace mutation.
-2. **Unblocks dogfood value**: The current dogfood sessions capture tool_call_completed events but can't verify that a write_file or search_replace actually produced the intended file state. With content hashes, we can validate that re-running the same tool with same args on the same repo state produces the same file hash.
-3. **Prerequisite for later work**: Before/after hashing is needed for rollback support, incremental caching, and autonomous edit verification.
-4. **Clean isolation**: Touches only `write_file.py`, `search_replace.py`, and their tests. No config, no provider, no new dependencies.
+1. **Completes the mutation evidence chain**: Before/after hashes (implemented) tell us *that* a file changed. Typed artifacts tell us *how* — structured diff patches for search_replace, file_write envelopes for write_file.
+2. **Enables autonomous promotion gates**: Diff evidence is needed to decide whether an edit is safe to auto-approve.
+3. **Prerequisite for rollback**: Before/after hashes are present now; diff patches complete the rollback story.
 
-Implementation sketch:
-- `WriteFileResult`: add `before_sha256: str | None` and `after_sha256: str | None`
-- `SearchReplaceResult`: add `before_file_sha256: dict[str, str]` and `after_file_sha256: dict[str, str]` (keyed by file path)
-- Both tools already have `get_file_snapshot` / `get_file_snapshot_for_path` — reuse the snapshot infrastructure
-- Existing snapshot infra reads file bytes before write; we just need to SHA256 them
-
-This slice is the single highest-ROI hardening step: low code change, high determinism verification value, unblocks downstream work.
+**Deferred from this slice**:
+- Fuzzy matching placement hardening for `search_replace`
+- Semantic placement artifacts
+- Full autonomous merging
 
 ---
 

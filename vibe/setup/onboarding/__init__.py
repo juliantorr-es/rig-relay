@@ -42,20 +42,18 @@ def run_onboarding(
         case str() as s if s.startswith("env_var_error:"):
             env_key = s.removeprefix("env_var_error:")
             rprint(
-                "\n[yellow]Could not save the API key because this provider is "
-                f"configured with an invalid environment variable name: {env_key}.[/]"
-                "\n[dim]The API key was not saved for this session. "
+                "\n[yellow]Could not save the provider key because the configured "
+                f"environment variable name is invalid: {env_key}.[/]"
+                "\n[dim]The key was not saved for this session. "
                 "Update the provider's `api_key_env_var` setting in your config and try again.[/]\n"
             )
             sys.exit(1)
         case str() as s if s.startswith("save_error:"):
             err = s.removeprefix("save_error:")
             rprint(
-                f"\n[yellow]Warning: Could not save API key to .env file: {err}[/]"
-                "\n[dim]The API key is set for this session only. "
+                f"\n[yellow]Warning: Could not save provider key to .env file: {err}[/]"
+                "\n[dim]The key is set for this session only. "
                 f"You may need to set it manually in {GLOBAL_ENV_FILE.path}[/]\n"
             )
         case "completed":
-            rprint(
-                '\nSetup complete 🎉. Run "vibe" to start using the Rig Relay CLI.\n'
-            )
+            rprint('\nSetup complete. Run "rig-relay" to start using Rig Relay.\n')

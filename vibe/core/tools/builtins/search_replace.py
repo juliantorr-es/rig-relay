@@ -23,7 +23,7 @@ from vibe.core.tools.base import (
 from vibe.core.tools.determinism import normalize_tool_path, require_path_within_workdir
 from vibe.core.tools.permissions import PermissionContext
 from vibe.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
-from vibe.core.tools.utils import resolve_file_tool_permission
+from vibe.core.tools.utils import resolve_file_tool_permission, sha256_file_bytes
 from vibe.core.types import ToolResultEvent, ToolStreamEvent
 from vibe.core.utils.io import ReadSafeResult, read_safe_async
 
@@ -67,6 +67,11 @@ class SearchReplaceResult(BaseModel):
     lines_changed: int
     content: str
     warnings: list[str] = Field(default_factory=list)
+    before_file_sha256: dict[str, str] = Field(default_factory=dict)
+    after_file_sha256: dict[str, str] = Field(default_factory=dict)
+    changed_files: list[str] = Field(default_factory=list)
+    failed_block_count: int = 0
+    total_block_count: int = 0
 
 
 class SearchReplaceConfig(BaseToolConfig):
@@ -140,6 +145,11 @@ class SearchReplace(
     ) -> AsyncGenerator[ToolStreamEvent | SearchReplaceResult, None]:
         file_path, search_replace_blocks = self._prepare_and_validate_args(args)
 
+        total_block_count = len(search_replace_blocks)
+        before_snapshot = self.get_file_snapshot_for_path(str(file_path))
+        before_hash = sha256_file_bytes(before_snapshot.content)
+        assert before_hash is not None  # file must exist at this point
+
         decoded = await self._read_file(file_path)
         original_content = decoded.text
 
@@ -161,10 +171,15 @@ class SearchReplace(
             raise ToolError(error_message)
 
         modified_content = block_result.content
+        try:
+            repo_file_key = file_path.relative_to(Path.cwd()).as_posix()
+        except ValueError:
+            repo_file_key = file_path.as_posix()
 
         # Calculate line changes
         if modified_content == original_content:
             lines_changed = 0
+            after_hash = before_hash
         else:
             original_lines = len(original_content.splitlines())
             new_lines = len(modified_content.splitlines())
@@ -177,6 +192,10 @@ class SearchReplace(
                 pass
 
             await self._write_file(file_path, modified_content, decoded.encoding)
+            after_hash = sha256_file_bytes(file_path.read_bytes())
+
+        failed_block_count = total_block_count - block_result.applied
+        changed_files = [repo_file_key] if lines_changed != 0 else []
 
         yield SearchReplaceResult(
             file=str(file_path),
@@ -184,6 +203,11 @@ class SearchReplace(
             lines_changed=lines_changed,
             warnings=block_result.warnings,
             content=args.content,
+            before_file_sha256={repo_file_key: before_hash},
+            after_file_sha256={repo_file_key: after_hash},
+            changed_files=changed_files,
+            failed_block_count=failed_block_count,
+            total_block_count=total_block_count,
         )
 
     @final

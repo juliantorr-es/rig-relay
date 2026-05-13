@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 from pathlib import Path, PurePath
 
 from vibe.core.scratchpad import is_scratchpad_path
@@ -122,3 +123,13 @@ def resolve_file_tool_permission(
         )
 
     return None
+
+
+def sha256_file_bytes(data: bytes | None) -> str | None:
+    """Return a ``sha256:<hex>`` fingerprint of raw file bytes.
+
+    Returns ``None`` when *data* is ``None`` (e.g. file did not exist).
+    """
+    if data is None:
+        return None
+    return f"sha256:{hashlib.sha256(data).hexdigest()}"
