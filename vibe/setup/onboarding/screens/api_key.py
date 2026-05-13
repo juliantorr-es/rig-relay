@@ -22,7 +22,8 @@ from vibe.setup.onboarding.base import OnboardingScreen
 from vibe.setup.onboarding.context import OnboardingContext
 
 PROVIDER_HELP = {
-    "mistral": ("https://console.mistral.ai/codestral/cli", "Mistral AI Studio")
+    "deepseek": ("https://platform.deepseek.com/api_keys", "DeepSeek Platform"),
+    "mistral": ("https://console.mistral.ai/codestral/cli", "Mistral AI Studio"),
 }
 CONFIG_DOCS_URL = (
     "https://github.com/mistralai/mistral-vibe?tab=readme-ov-file#configuration"
@@ -63,9 +64,9 @@ def persist_api_key(
     return "completed"
 
 
-def _get_mistral_provider() -> ProviderConfig:
+def _get_default_provider() -> ProviderConfig:
     return next(
-        provider for provider in DEFAULT_PROVIDERS if provider.name == "mistral"
+        provider for provider in DEFAULT_PROVIDERS if provider.name == "deepseek"
     )
 
 
@@ -75,7 +76,7 @@ def _resolve_onboarding_provider(
     resolved_provider = provider or OnboardingContext.load().provider
     if resolved_provider.api_key_env_var:
         return resolved_provider
-    return _get_mistral_provider()
+    return _get_default_provider()
 
 
 class ApiKeyScreen(OnboardingScreen):

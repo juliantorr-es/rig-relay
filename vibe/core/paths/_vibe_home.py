@@ -21,6 +21,16 @@ _LEGACY_RIG_RELAY_HOME = Path.home() / ".rig-relay"
 _LEGACY_VIBE_HOME = Path.home() / ".vibe"
 
 
+def is_legacy_vibe_home(path: Path) -> bool:
+    """Return True if the given path is one of the legacy Vibe home directories."""
+    # We use resolve() to handle symlinks and relative path comparisons accurately
+    try:
+        p = path.resolve()
+        return p == _LEGACY_RIG_RELAY_HOME.resolve() or p == _LEGACY_VIBE_HOME.resolve()
+    except (OSError, ValueError):
+        return path in (_LEGACY_RIG_RELAY_HOME, _LEGACY_VIBE_HOME)
+
+
 def _get_vibe_home() -> Path:
     # 1. Check RIG_RELAY_HOME environment variable
     if rig_relay_home := os.getenv("RIG_RELAY_HOME"):

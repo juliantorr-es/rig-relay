@@ -15,14 +15,14 @@ the user understand, configure, and troubleshoot their Rig Relay installation.
 
 ## RIG_RELAY_HOME
 
-The user's Rig Relay home directory defaults to `~/.rig-relay` but can be overridden via
+The user's Rig Relay home directory defaults to `~/.rig/relay` but can be overridden via
 the `RIG_RELAY_HOME` environment variable. All user-level configuration, skills, tools,
 agents, prompts, logs, and session data live here.
 
 ### Directory Structure
 
 ```
-~/.rig-relay/
+~/.rig/relay/
   config.toml          # Main configuration file (TOML format)
   hooks.toml           # User-level hook definitions (experimental)
   .env                 # API keys and credentials (dotenv format)
@@ -41,12 +41,12 @@ agents, prompts, logs, and session data live here.
 ### Project-Local Configuration
 
 When in a trusted folder, Rig Relay also looks for project-local configuration:
-- `.rig-relay/config.toml` - Project-specific config (overrides user config)
-- `.rig-relay/hooks.toml` - Project-specific hooks (requires trusted folder)
-- `.rig-relay/skills/` - Project-specific skills
-- `.rig-relay/tools/` - Project-specific tools
-- `.rig-relay/agents/` - Project-specific agents
-- `.rig-relay/prompts/` - Project-specific prompts
+- `.rig/relay/config.toml` - Project-specific config (overrides user config)
+- `.rig/relay/hooks.toml` - Project-specific hooks (requires trusted folder)
+- `.rig/relay/skills/` - Project-specific skills
+- `.rig/relay/tools/` - Project-specific tools
+- `.rig/relay/agents/` - Project-specific agents
+- `.rig/relay/prompts/` - Project-specific prompts
 - `.agents/skills/` - Standard agent skills directory
 
 ## Configuration (config.toml)
@@ -218,7 +218,7 @@ installed_agents = ["lean"]
 # Agent profile to use when --agent is not passed in interactive mode
 # (default: "default"). Valid values: "default", "plan", "accept-edits",
 # "auto-approve", "lean" (only when listed in installed_agents), or any
-# custom agent name from ~/.rig-relay/agents/ or .rig-relay/agents/. Subagents
+# custom agent name from ~/.rig/relay/agents/ or .rig/relay/agents/. Subagents
 # (e.g. "explore") are rejected. Ignored in programmatic mode
 # (-p/--prompt), which falls back to "auto-approve" when --agent is not
 # provided.
@@ -246,7 +246,7 @@ api_key_env = "MCP_API_KEY"
 ```toml
 [session_logging]
 enabled = true
-save_dir = ""                     # Defaults to ~/.rig-relay/logs/session
+save_dir = ""                     # Defaults to ~/.rig/relay/logs/session
 session_prefix = "session"
 ```
 
@@ -266,8 +266,8 @@ Or via the environment variable `VIBE_ENABLE_EXPERIMENTAL_HOOKS=true`.
 
 Hooks are defined in `hooks.toml` files (separate from `config.toml`):
 
-1. **User-level**: `~/.rig-relay/hooks.toml` (always loaded when hooks are enabled)
-2. **Project-level**: `<project>/.rig-relay/hooks.toml` (only loaded if the folder is trusted)
+1. **User-level**: `~/.rig/relay/hooks.toml` (always loaded when hooks are enabled)
+2. **Project-level**: `<project>/.rig/relay/hooks.toml` (only loaded if the folder is trusted)
 
 Both files are merged; if a hook name appears in both, the first one wins and
 a warning is shown for the duplicate.
@@ -325,7 +325,7 @@ linter hook can output the lint errors, and the agent will try to resolve them.
 #### Example: Post-Turn Linting Hook
 
 ```toml
-# .rig-relay/hooks.toml
+# .rig/relay/hooks.toml
 [[hooks]]
 name = "ruff-check"
 type = "post_agent_turn"
@@ -385,7 +385,7 @@ There are two kinds of agents:
 - **explore**: Read-only codebase exploration subagent (grep + read_file only).
   Spawned by the model, not selectable by the user.
 
-Custom agents are TOML files in `~/.rig-relay/agents/NAME.toml`.
+Custom agents are TOML files in `~/.rig/relay/agents/NAME.toml`.
 
 ## Built-in Slash Commands
 
@@ -443,13 +443,13 @@ Detailed instructions for the model...
 ### Skill Search Order (first match wins)
 
 1. `skill_paths` from config.toml
-2. `.rig-relay/skills/` in trusted project directory
+2. `.rig/relay/skills/` in trusted project directory
 3. `.agents/skills/` in trusted project directory
-4. `~/.rig-relay/skills/` (user global)
+4. `~/.rig/relay/skills/` (user global)
 
 ## Environment Variables
 
-- `RIG_RELAY_HOME` - Override the home directory (default: ~/.rig-relay)
+- `RIG_RELAY_HOME` - Override the home directory (default: ~/.rig/relay)
 - `DEEPSEEK_API_KEY` - API key for DeepSeek provider
 - `MISTRAL_API_KEY` - API key for Mistral provider
 - `RIG_RELAY_ACTIVE_MODEL` - Override active model
@@ -476,8 +476,8 @@ This file is loaded on startup and its values are injected into the environment.
 ## Trusted Folders
 
 Rig Relay uses a trust system to prevent executing project-local config from untrusted
-directories. The trust database is stored in `~/.rig-relay/trusted_folders.toml`.
-Project-local config (`.rig-relay/` directory) is only loaded when the current
+directories. The trust database is stored in `~/.rig/relay/trusted_folders.toml`.
+Project-local config (`.rig/relay/` directory) is only loaded when the current
 directory is explicitly trusted.
 
 Interactive mode prompts to trust unknown folders. Programmatic mode
@@ -487,7 +487,7 @@ trust cwd for the current invocation only (not persisted).
 ## Sensitive Files — DO NOT READ OR EDIT
 
 NEVER read, display, or edit any of these files:
-- `~/.rig-relay/.env` (or `$RIG_RELAY_HOME/.env`) — contains API keys and secrets
+- `~/.rig/relay/.env` (or `$RIG_RELAY_HOME/.env`) — contains API keys and secrets
 - Any `.env`, `.env.*` file in the project or RIG_RELAY_HOME
 
 If the user asks to set or change an API key, instruct them to edit the `.env`
@@ -498,18 +498,18 @@ Do not use tools (read_file, write_file, bash cat/echo, etc.) to access these fi
 
 To help the user modify their Vibe configuration:
 
-1. **Read current config**: Read the file at `~/.rig-relay/config.toml` (or the path
+1. **Read current config**: Read the file at `~/.rig/relay/config.toml` (or the path
    from `RIG_RELAY_HOME` env var if set)
 2. **Create a backup**: Before any edit, copy the file to `config.toml.bak` in the
-   same directory (e.g. `cp ~/.rig-relay/config.toml ~/.rig-relay/config.toml.bak`). This
+   same directory (e.g. `cp ~/.rig/relay/config.toml ~/.rig/relay/config.toml.bak`). This
    applies to any config file you are about to modify (`config.toml`,
    `trusted_folders.toml`, agent TOML files, etc.)
 3. **Edit the TOML file**: Make changes using the search_replace or write_file tool
 4. **Reload**: The user can run `/reload` to apply changes without restarting
 
-For API keys, tell the user to edit `~/.rig-relay/.env` directly — never read or
+For API keys, tell the user to edit `~/.rig/relay/.env` directly — never read or
 write that file yourself.
 
-For project-specific configuration, create/edit `.rig-relay/config.toml` in the
+For project-specific configuration, create/edit `.rig/relay/config.toml` in the
 project root (the folder must be trusted first).""",
 )

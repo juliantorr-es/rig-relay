@@ -524,6 +524,7 @@ class VibeApp(App):  # noqa: PLR0904
 
         self.call_after_refresh(self._refresh_banner)
         self._show_hook_config_issues_once()
+        self._show_legacy_config_warning_if_needed()
 
         self.run_worker(self._watch_init_completion(), exclusive=False)
 
@@ -543,6 +544,28 @@ class VibeApp(App):  # noqa: PLR0904
                 markup=False,
                 timeout=10,
             )
+
+    def _show_legacy_config_warning_if_needed(self) -> None:
+        if not self.config.is_legacy_config:
+            return
+
+        # Warning for legacy path
+        self.notify(
+            "Loaded legacy Vibe config. Update .rig/relay/config.toml to switch.",
+            severity="warning",
+            timeout=10,
+        )
+
+        # Warning for legacy model if DeepSeek is available but not active
+        active_model = self.config.get_active_model()
+        if active_model.provider == "mistral":
+            has_deepseek_key = bool(os.getenv("DEEPSEEK_API_KEY"))
+            if has_deepseek_key:
+                self.notify(
+                    "Rig Relay default is deepseek-v4-flash. Use model selector to switch.",
+                    severity="information",
+                    timeout=10,
+                )
 
     async def _watch_init_completion(self) -> None:
         """Show 'Initializing' loading indicator until background init finishes."""

@@ -58,19 +58,19 @@ async def test_ui_gets_through_the_onboarding_successfully() -> None:
 
     assert GLOBAL_ENV_FILE.path.is_file()
     env_contents = GLOBAL_ENV_FILE.path.read_text(encoding="utf-8")
-    assert "MISTRAL_API_KEY" in env_contents
+    assert "DEEPSEEK_API_KEY" in env_contents
     assert api_key_value in env_contents
 
 
-def test_api_key_screen_falls_back_to_mistral_for_provider_without_env_key() -> None:
+def test_api_key_screen_falls_back_to_deepseek_for_provider_without_env_key() -> None:
     screen = ApiKeyScreen(
         provider=ProviderConfig(
             name="llamacpp", api_base="http://127.0.0.1:8080/v1", api_key_env_var=""
         )
     )
 
-    assert screen.provider.name == "mistral"
-    assert screen.provider.api_key_env_var == "MISTRAL_API_KEY"
+    assert screen.provider.name == "deepseek"
+    assert screen.provider.api_key_env_var == "DEEPSEEK_API_KEY"
 
 
 def test_api_key_screen_keeps_provider_with_explicit_env_key() -> None:
@@ -85,7 +85,7 @@ def test_api_key_screen_keeps_provider_with_explicit_env_key() -> None:
     assert screen.provider == provider
 
 
-def test_api_key_screen_uses_mistral_fallback_for_context_without_env_key(
+def test_api_key_screen_uses_deepseek_fallback_for_context_without_env_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -99,8 +99,8 @@ def test_api_key_screen_uses_mistral_fallback_for_context_without_env_key(
 
     screen = ApiKeyScreen()
 
-    assert screen.provider.name == "mistral"
-    assert screen.provider.api_key_env_var == "MISTRAL_API_KEY"
+    assert screen.provider.name == "deepseek"
+    assert screen.provider.api_key_env_var == "DEEPSEEK_API_KEY"
 
 
 def test_persist_api_key_returns_save_error_for_invalid_env_var_name() -> None:

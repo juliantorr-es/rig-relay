@@ -29,7 +29,12 @@ import tomli_w
 from vibe.core.agents.models import BuiltinAgentName
 from vibe.core.config.harness_files import get_harness_files_manager
 from vibe.core.logger import logger
-from vibe.core.paths import GLOBAL_ENV_FILE, SESSION_LOG_DIR
+from vibe.core.paths import (
+    GLOBAL_ENV_FILE,
+    SESSION_LOG_DIR,
+    VIBE_HOME,
+    is_legacy_vibe_home,
+)
 from vibe.core.prompts import SystemPrompt
 from vibe.core.types import Backend
 from vibe.core.utils import get_server_url_from_api_base
@@ -683,6 +688,10 @@ class VibeConfig(BaseSettings):
         return super().model_dump(**kwargs)
 
     @property
+    def is_legacy_config(self) -> bool:
+        return is_legacy_vibe_home(VIBE_HOME.path)
+
+    @property
     def vibe_code_api_key(self) -> str:
         return os.getenv(self.vibe_code_api_key_env_var, "")
 
@@ -850,6 +859,15 @@ class VibeConfig(BaseSettings):
             )
             for model in self.models
         ]
+        return self
+
+    @model_validator(mode="after")
+    def _ensure_default_models_available(self) -> VibeConfig:
+        """Ensure that Rig Relay's default models are always available in the UI."""
+        existing_aliases = {m.alias for m in self.models}
+        for default_model in DEFAULT_MODELS:
+            if default_model.alias not in existing_aliases:
+                self.models.append(default_model)
         return self
 
     @model_validator(mode="after")
