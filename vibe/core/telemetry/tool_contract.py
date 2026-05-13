@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum, auto
 from typing import Any
 
@@ -126,5 +126,5 @@ class ToolReasoningTrace(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
     created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )

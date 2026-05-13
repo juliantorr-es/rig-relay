@@ -1,0 +1,385 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.workflow_event.v1.schema.json",
+  "title": "Workflow Event v1",
+  "description": "Canonical evaluation event for agent workflow observability. Covers tool calls, state changes, refusals, and artifact emission. Designed for append-only JSONL storage and derived dataset compilation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "session_id",
+    "sequence",
+    "created_at",
+    "event_name"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.workflow_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique event identifier."
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Owning session."
+    },
+    "parent_session_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Parent session when this is a delegated task session."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic event sequence within the session."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp."
+    },
+    "event_name": {
+      "type": "string",
+      "description": "Dot-separated event kind, e.g. rig.relay.tool.call_completed.",
+      "examples": [
+        "rig.relay.tool.call_completed",
+        "rig.relay.session.started",
+        "rig.relay.session.closed",
+        "rig.relay.guard.refused_write",
+        "rig.relay.guard.dirty_snapshot_captured",
+        "rig.relay.context.request_accounted",
+        "rig.relay.artifact.tool_output_written"
+      ]
+    },
+    "event_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the canonical JSON event (excluding this field)."
+    },
+
+    "agent_profile": {
+      "type": "string",
+      "description": "Agent profile name active when the event was emitted."
+    },
+    "provider": {
+      "type": "string",
+      "description": "LLM provider in use (e.g. anthropic, openai, deepseek)."
+    },
+    "model": {
+      "type": "string",
+      "description": "Model identifier string."
+    },
+    "thinking_enabled": {
+      "type": "boolean",
+      "description": "Whether extended thinking / chain-of-thought was active."
+    },
+    "thinking_type": {
+      "type": ["string", "null"],
+      "description": "Thinking variant if applicable (e.g. extended, reasoning_effort)."
+    },
+    "reasoning_effort": {
+      "type": ["string", "null"],
+      "description": "Reasoning effort level if configurable."
+    },
+
+    "tool_call_id": {
+      "type": ["string", "null"],
+      "description": "InvokeContext tool_call_id for tool-scoped events."
+    },
+    "tool_name": {
+      "type": ["string", "null"],
+      "description": "Tool name for tool-scoped events."
+    },
+    "tool_input_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 of the canonical tool input JSON."
+    },
+    "tool_output_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the complete tool output text."
+    },
+    "tool_output_kind": {
+      "type": ["string", "null"],
+      "enum": ["inline", "artifacted", "empty", "error", "mixed", "unknown"]
+    },
+    "determinism_class": {
+      "type": ["string", "null"],
+      "description": "Classification of output determinism for this tool call."
+    },
+    "mutation_class": {
+      "type": ["string", "null"],
+      "description": "Classification of mutation behavior (none, files, git, etc.)."
+    },
+    "status": {
+      "type": ["string", "null"],
+      "enum": ["success", "failure", "skipped", "blocked", "refused", null],
+      "description": "Outcome status for the operation."
+    },
+    "decision": {
+      "type": ["string", "null"],
+      "enum": ["agree", "reject", "ask_user", null],
+      "description": "Permission decision made for the tool call."
+    },
+    "latency_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Tool call wall-clock latency in milliseconds."
+    },
+    "input_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Byte size of the tool input."
+    },
+    "output_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Byte size of the tool output."
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings emitted during the operation."
+    },
+
+    "repo_state_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the full GitStateArtifact for the repository at event time."
+    },
+    "dirty_file_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of dirty files in the working tree at mission start."
+    },
+    "dirty_file_snapshot": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["relative_path_hash", "index_status", "worktree_status", "file_bytes_sha256"],
+        "properties": {
+          "relative_path_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Salted SHA256 of the repository-relative file path."
+          },
+          "index_status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1,
+            "description": "Git index status code (porcelain v1)."
+          },
+          "worktree_status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1,
+            "description": "Git worktree status code (porcelain v1)."
+          },
+          "is_untracked": { "type": "boolean" },
+          "is_conflicted": { "type": "boolean" },
+          "file_bytes_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "SHA256 of file bytes at mission start."
+          },
+          "blob_before_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "SHA256 of file bytes at mission start (alias for file_bytes_sha256, null for untracked)."
+          }
+        }
+      },
+      "description": "Full dirty file snapshot from DirtyFileGuard at mission start. Paths are hashed for privacy."
+    },
+
+    "files_read": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["path_hash", "tool_name"],
+        "properties": {
+          "path_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Salted SHA256 of the file path read."
+          },
+          "tool_name": {
+            "type": "string",
+            "description": "Tool used to read (read_file, grep, git_show, etc.)."
+          },
+          "tool_call_id": {
+            "type": "string",
+            "description": "Tool call that performed the read."
+          }
+        }
+      },
+      "description": "Files read during the session. Paths are hashed for privacy."
+    },
+    "files_changed": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["path_hash", "operation"],
+        "properties": {
+          "path_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Salted SHA256 of the file path changed."
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["created", "modified", "search_replaced"],
+            "description": "Type of mutation applied."
+          },
+          "before_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "SHA256 of file bytes before mutation."
+          },
+          "after_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "SHA256 of file bytes after mutation."
+          },
+          "expected_before_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "expected_before_sha256 provided by the agent, if any."
+          },
+          "was_protected": {
+            "type": "boolean",
+            "description": "True if the file was dirty at mission start."
+          }
+        }
+      },
+      "description": "Files created or modified during the session."
+    },
+    "refusal": {
+      "type": ["object", "null"],
+      "required": ["reason"],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Machine-readable refusal reason code."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Human-readable refusal explanation."
+        },
+        "path_hash": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Salted SHA256 of the path involved, if file-specific."
+        },
+        "tool_name": {
+          "type": ["string", "null"],
+          "description": "Tool whose operation was refused."
+        }
+      },
+      "description": "Details when a write or mutation was refused by the guard."
+    },
+    "tests_run": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["command_hash", "exit_code"],
+        "properties": {
+          "command_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "SHA256 of the command string executed."
+          },
+          "exit_code": {
+            "type": "integer",
+            "description": "Process exit code."
+          },
+          "duration_ms": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Wall-clock duration of the test run."
+          },
+          "tool_call_id": {
+            "type": "string",
+            "description": "Tool call that triggered the test run."
+          }
+        }
+      },
+      "description": "Test runs executed during the session."
+    },
+    "human_followup": {
+      "type": ["boolean", "null"],
+      "description": "True if the event represents or immediately follows a human interaction (question asked, input provided)."
+    },
+    "human_interaction_kind": {
+      "type": ["string", "null"],
+      "enum": ["question_asked", "input_provided", "action_cancelled", "rating_given", null],
+      "description": "Kind of human interaction, if applicable."
+    },
+
+    "task_id": {
+      "type": ["string", "null"],
+      "description": "Delegation task identifier when this session is a child task."
+    },
+    "task_graph": {
+      "type": ["object", "null"],
+      "description": "Fleet/delegate task graph metadata for this session.",
+      "properties": {
+        "child_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of child tasks delegated."
+        },
+        "child_profiles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Agent profiles used by child tasks."
+        },
+        "path_scopes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Path scopes assigned to child tasks."
+        },
+        "parallelism": {
+          "type": "string",
+          "enum": ["sequential", "concurrent", "mixed"],
+          "description": "Execution parallelism strategy."
+        },
+        "conflicts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conflict descriptions, if any."
+        }
+      }
+    },
+
+    "artifact_kind": {
+      "type": ["string", "null"],
+      "description": "Kind of artifact emitted, if this is an artifact event."
+    },
+    "artifact_record_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the full artifact envelope."
+    },
+
+    "receipt_candidate": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this event is a receipt candidate for the Merkle chain."
+    },
+    "producer": {
+      "type": "object",
+      "description": "Producer identification.",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

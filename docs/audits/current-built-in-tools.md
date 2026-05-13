@@ -5,6 +5,7 @@
 > HEAD: 8986750
 > See `docs/audits/data/current_builtin_tools.jsonl` for machine-readable records.
 > See also: [bash replacement opportunity map](bash-replacement-opportunity-map.md)
+> Out-of-scope findings from tool audits are recorded in the [findings registry](../findings/out-of-scope-findings.md).
 
 ## Executive Summary
 
@@ -224,7 +225,7 @@
 - `NONDETERMINISTIC_PROVIDER` — subagent uses an LLM, outputs are inherently non-deterministic
 - But the lack of subagent call evidence means we can't even measure how non-deterministic
 
-**Evidence currently available**: Task results now record provider, model, thinking request state, tool-access/result-compression policy, a deterministic task-result hash, and a typed `task_session_link` artifact with parent/child IDs, scope metadata, and manifest hashes when available.
+**Evidence currently available**: Task results now record provider, model, thinking request state, tool-access/result-compression policy, a deterministic task-result hash, a typed `task_session_link` artifact with parent/child IDs, scope metadata, and manifest hashes when available, plus a read-only fleet report that validates overlaps, schedules non-overlapping children in parallel, and returns child summaries.
 
 **Missing evidence**:
 - Subagent tool call evidence shard references
@@ -233,12 +234,15 @@
 - Explicit attachment of task metadata to the parent evidence stream
 - Child artifact manifest rollup for parent audit summaries
 - Typed task packets for scope/policy validation
+- Read-only fleet reports for parallel planning and parallel child execution
+- Cross-session coordination primitives for claims, leases, artifacts, and conflicts
 
 **Recommended hardening**:
 - Link subagent session UUID in parent evidence
 - Capture subagent tool-call evidence shards with parent session reference
 - Add after-task file diff to detect workspace mutations
 - Add task-level evidence for provider/options selection when delegation is thinking-enabled
+- Add coordination-plane evidence so sessions can publish claims, leases, and handoffs in real time
 
 ---
 
@@ -336,6 +340,8 @@
 **Implemented hardening (2025-05-17)**:
 - Added `before_sha256`, `after_sha256`, `created_file`, `overwrote_existing_file`, `parent_dirs_created` to `WriteFileResult`
 - Added typed `file_write` artifact emission for `write_file` and `search_replace`
+- Added `expected_before_sha256` and `allow_overwrite_protected` safety fields to `WriteFileArgs` and `SearchReplaceArgs`
+- Added `DirtyFileGuard` runtime — captures protected dirty files at session start via `git status --porcelain=v1`, gates write operations on dirty files, blocks destructive git commands (`restore`, `reset`, `clean`, `stash`) in bash
 
 ---
 
@@ -393,8 +399,8 @@ Ranked by composite score of risk, frequency, token waste, and wrong-edit potent
 
 ### P0 Rationale
 
-- **search_replace**: Fuzzy matching can silently corrupt files. No before/after hash means we can't detect or verify. This is the highest wrong-edit risk tool in the inventory.
-- **write_file**: Can overwrite works without traceability. Adding before/after SHA256 is a small change with large safety impact.
+- **search_replace**: Fuzzy matching can silently corrupt files. Now protected by `expected_before_sha256` guard — edits to pre-existing dirty files require a hash match. Still the highest wrong-edit risk tool in the inventory.
+- **write_file**: Can overwrite works without traceability. Now protected by `allow_overwrite_protected` + `expected_before_sha256` guard — whole-file overwrites of dirty files are refused by default.
 - **grep**: Already has typed artifact support but unstable result ordering undermines determinism. Sorting results is a trivial fix.
 - **bash**: Highest blast radius — uncontrolled mutations, no evidence trail. Hardest to harden fully but partial evidence (SHA256, command parse) is low-hanging fruit.
 
@@ -436,3 +442,4 @@ Ranked by composite score of risk, frequency, token waste, and wrong-edit potent
 - Self-dogfood docs: [`docs/dogfood/rig-relay-self-dogfood.md`](../dogfood/rig-relay-self-dogfood.md)
 - Tool contracts: [`vibe/core/telemetry/tool_contract.py`](../../vibe/core/telemetry/tool_contract.py)
 - Artifact schemas: [`docs/audits/artifact-schema-doctrine.md`](./artifact-schema-doctrine.md)
+- Governance: [Cross-Session Coordination](../governance/cross-session-coordination.md), [Usage Data Doctrine](../governance/usage-data-doctrine.md)

@@ -89,6 +89,8 @@ Always go through `uv` — never invoke bare `python` or `pip`.
 - Never use `git commit --amend`, `git push --force`, or `git push --force-with-lease`.
 - Always create new commits and push with a plain `git push`.
 - If a push is rejected due to upstream changes, rebase onto the updated remote branch — never merge and never force-push.
+- **Agent checkpoint commits**: Agents may create local checkpoint commits for session-owned files using the `checkpoint` tool. Agents may NOT push, amend, rebase, merge, reset, clean, stash, restore, or commit files outside their mission scope. Only the user pushes. See `docs/governance/cross-session-coordination.md`.
+- Direct `git commit` and `git add` via bash are blocked. Use the `checkpoint` tool instead.
 
 ## Dirty-file preservation
 
@@ -109,6 +111,30 @@ Always go through `uv` — never invoke bare `python` or `pip`.
 
 In Cursor / Pyright, the "Add import" quick fix is missing — use the workspace snippets `acpschema`, `acphelpers`, `vibetypes`, `vibeconfig` to insert the import line, then rename the symbol.
 
+## Usage data
+
+- Rig Relay emits structured workflow observability data to `~/.rig/relay/sessions/<session_id>/observability.jsonl`. See `docs/governance/usage-data-doctrine.md` for the full governance doctrine.
+- **Do not emit raw file contents, secrets, or private code** into observability events. Use SHA256 hashes for everything content-derived.
+- **Dirty file snapshots, refusals, files_read, and tests_run** are currently in-memory only. When touching the guard or tool execution path, prefer emitting these as `rig.relay.guard.dirty_snapshot_captured`, `rig.relay.guard.refused_write`, `rig.relay.tool.files_read`, and `rig.relay.tool.tests_run` events.
+- New telemetry events: add the event name to `EventName` in `vibe/core/telemetry/constants.py`. Follow the `rig.relay.<domain>.<verb>` naming convention.
+- New artifacts: subclass the pattern in `vibe/core/telemetry/artifacts.py`. Register the artifact kind in the `ArtifactEnvelope` model.
+- Schemas for derived eval datasets live in `docs/schemas/rig.relay.*.v1.schema.json`. Alignment between source fields and schema fields is governed by the usage data doctrine.
+- **Never feed raw usage data back into agent prompts.** Compile into small decision artifacts (see doctrine for derived dataset list).
+- Export and remote telemetry are opt-in only. Default is local-first.
+- **Cross-session coordination** uses typed state, not chat transcripts. See `docs/governance/cross-session-coordination.md`. Emit `coord.*` events for task claims, path reservations, heartbeats, artifacts, conflicts, handoffs, and compact projections.
+- **Coordination events are evaluation data.** Every `coord.*` event feeds the derived datasets defined in the usage data doctrine (`cross_session_coordination_dataset.jsonl`, `coordination_conflict_dataset.jsonl`, `artifact_reuse_dataset.jsonl`).
+- Coordination is local-first (file-backed under `.build/rig-relay/coordination/`). Watchable backends are future and opt-in.
+
+## Out-of-scope findings
+
+When an agent discovers important debt, design gaps, or best-practice violations outside the current mission scope, it must NOT fix them opportunistically. Instead:
+
+- Append a structured finding to `docs/findings/out-of-scope-findings.jsonl`.
+- When useful, add or update the corresponding Markdown index in `docs/findings/out-of-scope-findings.md`.
+- Findings must include affected files, language/subsystem, why it matters, best-practice anchor, and a recommended future slice.
+- The JSONL registry is append-only — never edit or remove existing rows.
+- Every final mission report should include an "Out-of-scope findings recorded" section linking to the registry.
+- See `docs/findings/language-practices/python.md` for Python-specific best-practice anchors used by findings (PEP 8, Ruff PLR rules, Diátaxis).
 
 ## Autoimprovement
 

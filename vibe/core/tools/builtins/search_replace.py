@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 import difflib
 from pathlib import Path
 import re
@@ -10,9 +11,11 @@ from typing import ClassVar, NamedTuple, final
 import anyio
 from pydantic import BaseModel, Field
 
+from vibe.core.coordination import CoordinationStore
 from vibe.core.guard import get_guard
 from vibe.core.rewind.manager import FileSnapshot
 from vibe.core.scratchpad import is_scratchpad_path
+from vibe.core.telemetry.artifacts import ToolOutputArtifactWriter
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
@@ -62,7 +65,12 @@ class SearchReplaceArgs(BaseModel):
     content: str
     expected_before_sha256: str | None = Field(
         default=None,
-        description="sha256:<hex> of the current file bytes. Required when modifying a protected file.",
+        description=(
+            "sha256:<hex> of the file bytes as they exist right now, before your patch. "
+            "Required when editing a file that was dirty (modified, staged, or untracked) at session start. "
+            "The patch will be REFUSED if this hash does not match the current file bytes — "
+            "re-read the file and recompute the hash if you get a stale-hash refusal."
+        ),
     )
 
 
@@ -77,6 +85,13 @@ class SearchReplaceResult(BaseModel):
     changed_files: list[str] = Field(default_factory=list)
     failed_block_count: int = 0
     total_block_count: int = 0
+
+
+@dataclass(frozen=True)
+class SearchReplaceCoordinationContext:
+    session_id: str
+    task_id: str
+    relative_path: str
 
 
 class SearchReplaceConfig(BaseToolConfig):
@@ -131,6 +146,164 @@ class SearchReplace(
     def get_status_text(cls) -> str:
         return "Editing files"
 
+    @staticmethod
+    def _coordination_store(ctx: InvokeContext | None) -> CoordinationStore | None:
+        if ctx is None or ctx.session_dir is None:
+            return None
+        return CoordinationStore(
+            Path.cwd() / ".build" / "rig-relay" / "coordination"
+        )
+
+    @staticmethod
+    def _build_coordination_context(
+        ctx: InvokeContext | None, file_path: Path
+    ) -> SearchReplaceCoordinationContext | None:
+        if ctx is None or ctx.session_dir is None or ctx.tool_call_id is None:
+            return None
+        return SearchReplaceCoordinationContext(
+            session_id=ctx.session_dir.name,
+            task_id=ctx.tool_call_id,
+            relative_path=file_path.as_posix(),
+        )
+
+    @staticmethod
+    def _build_coordination_state(
+        ctx: InvokeContext | None, file_path: Path
+    ) -> tuple[CoordinationStore | None, SearchReplaceCoordinationContext | None]:
+        return SearchReplace._coordination_store(ctx), SearchReplace._build_coordination_context(ctx, file_path)
+
+    @staticmethod
+    def _claim_coordination(
+        store: CoordinationStore | None,
+        coordination: SearchReplaceCoordinationContext | None,
+    ) -> bool:
+        if store is None or coordination is None:
+            return False
+        claim_result = store.claim_task(
+            session_id=coordination.session_id,
+            task_id=coordination.task_id,
+            claim_kind="search_replace",
+            ttl_seconds=300,
+            scope={"allowed_paths": [coordination.relative_path]},
+        )
+        if not claim_result.allowed:
+            return False
+        reservation_result = store.reserve_paths(
+            session_id=coordination.session_id,
+            task_id=coordination.task_id,
+            mode="write",
+            paths=[coordination.relative_path],
+            ttl_seconds=300,
+        )
+        if not reservation_result.allowed:
+            raise ToolError("search_replace coordination reservation refused")
+        return True
+
+    @staticmethod
+    def _publish_coordination_artifact(
+        store: CoordinationStore | None,
+        coordination: SearchReplaceCoordinationContext | None,
+        result: SearchReplaceResult,
+    ) -> None:
+        if store is None or coordination is None:
+            return
+        artifact = ToolOutputArtifactWriter(coordination.session_id).write_artifact(
+            tool_name="search_replace",
+            raw_output=result.model_dump_json(exclude_none=True),
+            source_event_id=coordination.task_id,
+        )
+        store.publish_artifact(
+            session_id=coordination.session_id,
+            task_id=coordination.task_id,
+            artifact_kind="search_replace",
+            artifact_uri=artifact.path,
+            artifact_sha256=artifact.artifact_record_sha256 or artifact.payload_sha256,
+            schema_id="rig.relay.artifact.envelope.v1",
+        )
+
+    @staticmethod
+    def _build_search_replace_result(
+        *,
+        file_path: Path,
+        before_hash: str,
+        original_content: str,
+        modified_content: str,
+        block_result: BlockApplyResult,
+        total_block_count: int,
+    ) -> SearchReplaceResult:
+        try:
+            repo_file_key = file_path.relative_to(Path.cwd()).as_posix()
+        except ValueError:
+            repo_file_key = file_path.as_posix()
+
+        if modified_content == original_content:
+            lines_changed = 0
+            after_hash = before_hash
+        else:
+            lines_changed = len(modified_content.splitlines()) - len(
+                original_content.splitlines()
+            )
+            after_hash = sha256_file_bytes(file_path.read_bytes())
+            assert after_hash is not None
+
+        return SearchReplaceResult(
+            file=str(file_path),
+            blocks_applied=block_result.applied,
+            lines_changed=lines_changed,
+            warnings=block_result.warnings,
+            content=modified_content,
+            before_file_sha256={repo_file_key: before_hash},
+            after_file_sha256={repo_file_key: after_hash},
+            changed_files=[repo_file_key] if modified_content != original_content else [],
+            failed_block_count=total_block_count - block_result.applied,
+            total_block_count=total_block_count,
+        )
+
+    async def _apply_search_replace(
+        self,
+        *,
+        file_path: Path,
+        search_replace_blocks: list[SearchReplaceBlock],
+        total_block_count: int,
+    ) -> tuple[str, SearchReplaceResult]:
+        before_snapshot = self.get_file_snapshot_for_path(str(file_path))
+        before_hash = sha256_file_bytes(before_snapshot.content)
+        assert before_hash is not None
+        decoded = await self._read_file(file_path)
+        original_content = decoded.text
+        block_result = self._apply_blocks(
+            original_content,
+            search_replace_blocks,
+            file_path,
+            self.config.fuzzy_threshold,
+        )
+        if block_result.errors:
+            error_message = "SEARCH/REPLACE blocks failed:\n" + "\n\n".join(
+                block_result.errors
+            )
+            if block_result.warnings:
+                error_message += "\n\nWarnings encountered:\n" + "\n".join(
+                    block_result.warnings
+                )
+            raise ToolError(error_message)
+        modified_content = block_result.content
+        if modified_content != original_content:
+            try:
+                if self.config.create_backup:
+                    await self._backup_file(file_path)
+            except Exception:
+                pass
+            await self._write_file(file_path, modified_content, decoded.encoding)
+        result = self._build_search_replace_result(
+            file_path=file_path,
+            before_hash=before_hash,
+            original_content=original_content,
+            modified_content=modified_content,
+            block_result=block_result,
+            total_block_count=total_block_count,
+        )
+        return modified_content, result
+
     def get_file_snapshot(self, args: SearchReplaceArgs) -> FileSnapshot | None:
         return self.get_file_snapshot_for_path(args.file_path)
 
@@ -149,8 +322,9 @@ class SearchReplace(
         self, args: SearchReplaceArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | SearchReplaceResult, None]:
         file_path, search_replace_blocks = self._prepare_and_validate_args(args)
-
         total_block_count = len(search_replace_blocks)
+        coordination_store, coordination = self._build_coordination_state(ctx, file_path)
+        reservation_allowed = self._claim_coordination(coordination_store, coordination)
 
         guard = get_guard()
         check = guard.check_search_replace(
@@ -162,70 +336,21 @@ class SearchReplace(
 
         guard.mark_touched(file_path)
 
-        before_snapshot = self.get_file_snapshot_for_path(str(file_path))
-        before_hash = sha256_file_bytes(before_snapshot.content)
-        assert before_hash is not None  # file must exist at this point
-
-        decoded = await self._read_file(file_path)
-        original_content = decoded.text
-
-        block_result = self._apply_blocks(
-            original_content,
-            search_replace_blocks,
-            file_path,
-            self.config.fuzzy_threshold,
-        )
-
-        if block_result.errors:
-            error_message = "SEARCH/REPLACE blocks failed:\n" + "\n\n".join(
-                block_result.errors
-            )
-            if block_result.warnings:
-                error_message += "\n\nWarnings encountered:\n" + "\n".join(
-                    block_result.warnings
-                )
-            raise ToolError(error_message)
-
-        modified_content = block_result.content
         try:
-            repo_file_key = file_path.relative_to(Path.cwd()).as_posix()
-        except ValueError:
-            repo_file_key = file_path.as_posix()
-
-        # Calculate line changes
-        if modified_content == original_content:
-            lines_changed = 0
-            after_hash = before_hash
-        else:
-            original_lines = len(original_content.splitlines())
-            new_lines = len(modified_content.splitlines())
-            lines_changed = new_lines - original_lines
-
-            try:
-                if self.config.create_backup:
-                    await self._backup_file(file_path)
-            except Exception:
-                pass
-
-            await self._write_file(file_path, modified_content, decoded.encoding)
-            after_hash = sha256_file_bytes(file_path.read_bytes())
-            assert after_hash is not None  # file was just written
-
-        failed_block_count = total_block_count - block_result.applied
-        changed_files = [repo_file_key] if modified_content != original_content else []
-
-        yield SearchReplaceResult(
-            file=str(file_path),
-            blocks_applied=block_result.applied,
-            lines_changed=lines_changed,
-            warnings=block_result.warnings,
-            content=args.content,
-            before_file_sha256={repo_file_key: before_hash},
-            after_file_sha256={repo_file_key: after_hash},
-            changed_files=changed_files,
-            failed_block_count=failed_block_count,
-            total_block_count=total_block_count,
-        )
+            modified_content, result = await self._apply_search_replace(
+                file_path=file_path,
+                search_replace_blocks=search_replace_blocks,
+                total_block_count=total_block_count,
+            )
+            self._publish_coordination_artifact(coordination_store, coordination, result)
+            yield result
+        finally:
+            if coordination_store is not None and coordination is not None and reservation_allowed:
+                coordination_store.release_paths(
+                    session_id=coordination.session_id,
+                    task_id=coordination.task_id,
+                    paths=[coordination.relative_path],
+                )
 
     @final
     def _prepare_and_validate_args(

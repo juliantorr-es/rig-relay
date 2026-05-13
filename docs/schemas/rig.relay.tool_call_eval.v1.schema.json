@@ -1,0 +1,334 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.tool_call_eval.v1.schema.json",
+  "title": "Tool Call Eval v1",
+  "description": "Flattened evaluation row for a single tool call. One row per tool invocation. Derived from the workflow event stream. Designed for tool-level behavioral analysis — joinable with mission_outcome rows via session_id.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "session_id",
+    "tool_call_id",
+    "tool_name",
+    "sequence",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.tool_call_eval.v1"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Owning session. Joinable with mission_outcome.session_id."
+    },
+    "tool_call_id": {
+      "type": "string",
+      "description": "Unique tool call identifier (InvokeContext.tool_call_id)."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic sequence within the session."
+    },
+    "step_index": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Agent step index when this call was made."
+    },
+
+    "agent_profile": {
+      "type": "string",
+      "description": "Agent profile name active during this call."
+    },
+    "provider": {
+      "type": "string",
+      "description": "LLM provider in use."
+    },
+    "model": {
+      "type": "string",
+      "description": "Model identifier string."
+    },
+    "thinking_enabled": {
+      "type": "boolean",
+      "description": "Whether extended thinking was active."
+    },
+
+    "tool_name": {
+      "type": "string",
+      "description": "Tool name (e.g. read_file, write_file, search_replace, grep, bash, task)."
+    },
+    "tool_category": {
+      "type": ["string", "null"],
+      "enum": ["read", "write", "search", "execute", "delegate", "git_read", "git_write", "user_interaction", "other", null],
+      "description": "Broad tool category for grouping in analysis."
+    },
+
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "skipped", "blocked", "refused"],
+      "description": "Outcome of the tool call."
+    },
+    "decision": {
+      "type": ["string", "null"],
+      "enum": ["agree", "reject", "ask_user", null],
+      "description": "Permission decision."
+    },
+    "approval_type": {
+      "type": ["string", "null"],
+      "description": "Approval mechanism (ALWAYS, ASK, NEVER, etc.)."
+    },
+
+    "tool_input_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 of the canonical tool input JSON."
+    },
+    "tool_output_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the complete tool output text."
+    },
+    "tool_output_kind": {
+      "type": ["string", "null"],
+      "enum": ["inline", "artifacted", "empty", "error", "mixed", "unknown"]
+    },
+    "tool_output_artifact_path": {
+      "type": ["string", "null"],
+      "description": "Relative path to artifact file, if output was artifacted."
+    },
+
+    "determinism_class": {
+      "type": ["string", "null"],
+      "description": "Determinism classification for this tool call."
+    },
+    "mutation_class": {
+      "type": ["string", "null"],
+      "description": "Mutation classification (none, files, git, etc.)."
+    },
+    "is_deterministic": {
+      "type": ["boolean", "null"],
+      "description": "Derived: true if determinism_class indicates deterministic output."
+    },
+    "is_mutating": {
+      "type": ["boolean", "null"],
+      "description": "Derived: true if mutation_class indicates file or git mutation."
+    },
+
+    "latency_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Wall-clock latency for this tool call."
+    },
+    "input_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Byte size of the tool input."
+    },
+    "output_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Byte size of the tool output."
+    },
+    "inline_output_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Bytes returned inline to the model."
+    },
+    "artifacted_output_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Bytes written to artifact file."
+    },
+    "truncated": {
+      "type": "boolean",
+      "description": "Whether output was truncated for prompt visibility."
+    },
+
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings emitted during this call."
+    },
+    "warning_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Derived: length of warnings array."
+    },
+
+    "files_read": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["path_hash"],
+        "properties": {
+          "path_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Salted SHA256 of the file path read."
+          }
+        }
+      },
+      "description": "Files read by this tool call (for read_file, git_show, git_diff)."
+    },
+    "files_read_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Derived: number of files read by this call."
+    },
+
+    "files_changed": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["path_hash", "operation"],
+        "properties": {
+          "path_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Salted SHA256 of the file path changed."
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["created", "modified", "search_replaced"]
+          },
+          "before_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "after_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "was_protected": {
+            "type": "boolean",
+            "description": "True if the file was dirty at mission start."
+          },
+          "expected_hash_matched": {
+            "type": ["boolean", "null"],
+            "description": "True if expected_before_sha256 matched current file bytes."
+          }
+        }
+      },
+      "description": "Files created or modified by this tool call."
+    },
+    "files_changed_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Derived: number of files changed by this call."
+    },
+
+    "refusal_reason": {
+      "type": ["string", "null"],
+      "description": "Machine-readable refusal reason code, if refused."
+    },
+    "refusal_detail": {
+      "type": ["string", "null"],
+      "description": "Human-readable refusal explanation."
+    },
+    "refused_path_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Salted SHA256 of the path that was refused."
+    },
+
+    "search_query_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 of the normalized search query, if this is a grep call."
+    },
+    "search_result_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the search result set, if a search was performed."
+    },
+    "search_total_matches": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Total matches returned by the search."
+    },
+    "search_truncated": {
+      "type": ["boolean", "null"],
+      "description": "Whether search results were truncated."
+    },
+
+    "test_command_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the test command, if this call ran tests."
+    },
+    "test_exit_code": {
+      "type": ["integer", "null"],
+      "description": "Process exit code, if this call ran tests."
+    },
+    "test_duration_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Wall-clock duration of the test run."
+    },
+
+    "is_retry": {
+      "type": "boolean",
+      "description": "True if this call is a retry of a previous failed call."
+    },
+    "retry_of_tool_call_id": {
+      "type": ["string", "null"],
+      "description": "If a retry, the tool_call_id of the original attempt."
+    },
+    "retry_sequence": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Retry attempt number (1 = first retry)."
+    },
+
+    "next_action_kind": {
+      "type": ["string", "null"],
+      "enum": ["another_tool", "assistant_response", "user_input", "plan_update", "stop", "unknown", null],
+      "description": "What the agent did immediately after this call."
+    },
+    "preceding_tool_name": {
+      "type": ["string", "null"],
+      "description": "Tool name of the immediately preceding call (for pattern analysis)."
+    },
+    "following_tool_name": {
+      "type": ["string", "null"],
+      "description": "Tool name of the immediately following call."
+    },
+
+    "is_delegation": {
+      "type": "boolean",
+      "description": "True if this is a task() delegation call."
+    },
+    "delegation_agent_profile": {
+      "type": ["string", "null"],
+      "description": "Agent profile used for the delegated task."
+    },
+    "delegation_child_session_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Session ID of the delegated child task."
+    },
+
+    "is_human_interaction": {
+      "type": "boolean",
+      "description": "True if this call represents a human interaction."
+    },
+    "human_interaction_kind": {
+      "type": ["string", "null"],
+      "enum": ["question_asked", "input_provided", "action_cancelled", "rating_given", null]
+    },
+
+    "receipt_candidate": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this call generated a Merkle receipt."
+    },
+
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp."
+    }
+  },
+  "additionalProperties": false
+}

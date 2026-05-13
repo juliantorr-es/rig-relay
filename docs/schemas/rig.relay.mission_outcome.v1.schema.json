@@ -1,0 +1,283 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.mission_outcome.v1.schema.json",
+  "title": "Mission Outcome v1",
+  "description": "Flattened evaluation row for a single mission (session). One row per session. Derived from the workflow event stream. Designed for training/eval-grade behavioral analysis — joinable with tool_call_eval rows via session_id.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "session_id",
+    "agent_profile",
+    "provider",
+    "model",
+    "thinking_enabled",
+    "completion_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.mission_outcome.v1"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Primary key. Joinable with tool_call_eval.session_id."
+    },
+    "parent_session_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Parent session if this was a delegated task."
+    },
+    "task_id": {
+      "type": ["string", "null"],
+      "description": "Delegation task identifier."
+    },
+
+    "agent_profile": {
+      "type": "string",
+      "description": "Agent profile name (e.g. explore, build, review)."
+    },
+    "provider": {
+      "type": "string",
+      "description": "LLM provider (e.g. anthropic, openai, deepseek)."
+    },
+    "model": {
+      "type": "string",
+      "description": "Model identifier string."
+    },
+    "thinking_enabled": {
+      "type": "boolean",
+      "description": "Whether extended thinking was active."
+    },
+    "thinking_type": {
+      "type": ["string", "null"],
+      "description": "Thinking variant if applicable."
+    },
+    "reasoning_effort": {
+      "type": ["string", "null"],
+      "description": "Reasoning effort level if configurable."
+    },
+
+    "completion_status": {
+      "type": "string",
+      "enum": ["completed", "failed", "cancelled", "blocked"],
+      "description": "Final session outcome."
+    },
+    "stop_reason": {
+      "type": ["string", "null"],
+      "description": "Reason the session ended, if available."
+    },
+    "duration_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Total wall-clock session duration in milliseconds."
+    },
+    "turn_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of agent turns (steps) in the session."
+    },
+
+    "tool_calls_total": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total tool calls made in the session."
+    },
+    "tool_calls_succeeded": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tool calls with status=success."
+    },
+    "tool_calls_failed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tool calls with status=failure."
+    },
+    "tool_calls_refused": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tool calls with status=refused (guard or permission)."
+    },
+    "tool_calls_skipped": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tool calls with status=skipped."
+    },
+    "tool_names_used": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Distinct tool names invoked during the session."
+    },
+
+    "files_read_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Distinct files read during the session (by path_hash)."
+    },
+    "files_changed_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Distinct files created or modified (by path_hash)."
+    },
+    "files_created_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Files created via write_file."
+    },
+    "files_modified_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Files modified via write_file or search_replace."
+    },
+
+    "dirty_files_before": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of dirty files at mission start (from DirtyFileGuard)."
+    },
+    "protected_files_touched": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Dirty files that were modified by the mission."
+    },
+    "protected_files_skipped": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Dirty files the mission skipped (did not touch)."
+    },
+    "write_refusals": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Times the guard refused a write or search_replace."
+    },
+    "expected_hash_matches": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Times an expected_before_sha256 matched, allowing a protected write."
+    },
+    "expected_hash_mismatches": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Times an expected_before_sha256 did NOT match, blocking a protected write."
+    },
+
+    "tests_run_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of test commands executed."
+    },
+    "tests_passed": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of test runs with exit_code=0."
+    },
+    "tests_failed": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of test runs with exit_code!=0."
+    },
+
+    "human_interactions": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of human followup interactions (questions, input, cancellations, ratings)."
+    },
+    "questions_asked": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of ask_user_question invocations."
+    },
+    "user_cancellations": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of user_cancelled_action events."
+    },
+
+    "child_session_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of child sessions delegated via task()."
+    },
+    "child_profiles_used": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Distinct agent profiles used by child tasks."
+    },
+    "delegation_parallelism": {
+      "type": ["string", "null"],
+      "enum": ["sequential", "concurrent", "mixed", null],
+      "description": "Execution parallelism strategy for child tasks."
+    },
+    "delegation_conflicts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of reported conflicts between child tasks."
+    },
+
+    "search_queries": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of grep search queries executed."
+    },
+    "search_results_clicked": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of files read within 2 steps after a search result."
+    },
+    "search_results_edited": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of files edited within 2 steps after a search result."
+    },
+
+    "context_chars_peak": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Peak context size in characters during the session."
+    },
+    "context_auto_compactions": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of auto-compaction triggers."
+    },
+
+    "latency_total_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Sum of all tool call latencies in the session."
+    },
+    "input_bytes_total": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Sum of all tool input bytes."
+    },
+    "output_bytes_total": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Sum of all tool output bytes."
+    },
+
+    "warnings_total": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of warning strings across all events."
+    },
+    "repo_state_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Final repository state SHA256 from GitStateArtifact."
+    },
+
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Session start timestamp."
+    },
+    "closed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Session close timestamp."
+    }
+  },
+  "additionalProperties": false
+}

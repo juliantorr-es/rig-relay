@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -16,6 +17,7 @@ from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPe
 from vibe.core.tools.builtins.task import (
     Task,
     TaskArgs,
+    TaskFleetSpec,
     TaskProviderOptions,
     TaskResult,
     TaskScope,
@@ -362,6 +364,19 @@ class TestTaskToolExecution:
         assert payload["payload"]["child_session_id"] == "child-session"
         assert payload["payload"]["status"] == "completed"
 
+        coordination_events = (
+            Path.cwd() / ".build" / "rig-relay" / "coordination" / "events.jsonl"
+        )
+        events = [
+            json.loads(line)
+            for line in coordination_events.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        assert [event["event_name"] for event in events] == [
+            "coord.task.claimed",
+            "coord.artifact.published",
+        ]
+
     @pytest.mark.asyncio
     async def test_structured_task_spec_uses_agent_profile_and_scope(
         self, task_tool: Task, ctx: InvokeContext
@@ -401,6 +416,225 @@ class TestTaskToolExecution:
 
         assert isinstance(result, TaskResult)
         assert captured["provider"].extra_body == {}
+
+    @pytest.mark.asyncio
+    async def test_fleet_spec_returns_read_only_validation_packet(
+        self, task_tool: Task, ctx: InvokeContext
+    ) -> None:
+        spec = TaskFleetSpec(
+            tasks=[
+                TaskSpec(
+                    task_id="a",
+                    task="inspect a",
+                    scope=TaskScope(allowed_paths=["vibe/core/tools/builtins/task.py"]),
+                ),
+                TaskSpec(
+                    task_id="b",
+                    task="inspect b",
+                    scope=TaskScope(allowed_paths=["vibe/core/tools/builtins/task.py"]),
+                ),
+            ]
+        )
+
+        result = await collect_result(task_tool.run(TaskArgs(fleet_spec=spec), ctx))
+
+        assert isinstance(result, TaskResult)
+        payload = json.loads(result.response)
+        assert payload["tasks"] == 2
+        assert payload["dependencies"] == 0
+        assert payload["overlapping_path_groups"]
+
+    @pytest.mark.asyncio
+    async def test_fleet_spec_runs_non_overlapping_tasks_and_returns_report(
+        self, task_tool: Task, ctx: InvokeContext, tmp_path: Path
+    ) -> None:
+        manager = ctx.agent_manager
+        assert manager is not None
+        session_dir = tmp_path / "session"
+        child_a_dir = session_dir / "agents" / "child-a"
+        child_b_dir = session_dir / "agents" / "child-b"
+        child_a_dir.mkdir(parents=True)
+        child_b_dir.mkdir(parents=True)
+        (child_a_dir / "manifest.json").write_text("{}", encoding="utf-8")
+        (child_b_dir / "manifest.json").write_text("{}", encoding="utf-8")
+
+        async def act_a(task: str):
+            yield AssistantEvent(content="A done")
+
+        async def act_b(task: str):
+            yield AssistantEvent(content="B done")
+
+        with patch(
+            "vibe.core.tools.builtins.task.VibeConfig.load", return_value=manager.config
+        ):
+            with patch(
+                "vibe.core.tools.builtins.task.AgentLoop"
+            ) as mock_agent_loop_class:
+                mock_agent_a = MagicMock()
+                mock_agent_a.act = act_a
+                mock_agent_a.messages = [LLMMessage(role=Role.system, content="system")]
+                mock_agent_a.set_approval_callback = MagicMock()
+                mock_agent_a.session_id = "child-a"
+                mock_agent_a.session_logger.session_dir = child_a_dir
+
+                mock_agent_b = MagicMock()
+                mock_agent_b.act = act_b
+                mock_agent_b.messages = [LLMMessage(role=Role.system, content="system")]
+                mock_agent_b.set_approval_callback = MagicMock()
+                mock_agent_b.session_id = "child-b"
+                mock_agent_b.session_logger.session_dir = child_b_dir
+
+                mock_agent_loop_class.side_effect = [mock_agent_a, mock_agent_b]
+
+                spec = TaskFleetSpec(
+                    tasks=[
+                        TaskSpec(
+                            task_id="a",
+                            task="inspect a",
+                            scope=TaskScope(
+                                allowed_paths=["vibe/core/tools/builtins/task.py"]
+                            ),
+                        ),
+                        TaskSpec(
+                            task_id="b",
+                            task="inspect b",
+                            scope=TaskScope(
+                                allowed_paths=["vibe/core/tools/builtins/write_file.py"]
+                            ),
+                        ),
+                    ]
+                )
+                result = await collect_result(
+                    task_tool.run(
+                        TaskArgs(fleet_spec=spec),
+                        InvokeContext(
+                            tool_call_id="fleet-call-id",
+                            agent_manager=manager,
+                            session_dir=session_dir,
+                            parent_turn_id="parent-turn-1",
+                        ),
+                    )
+                )
+
+        assert isinstance(result, TaskResult)
+        payload = json.loads(result.response)
+        assert payload["status"] == "completed"
+        assert payload["children"]
+        assert [child["task_id"] for child in payload["children"]] == ["a", "b"]
+        assert payload["children"][0]["child_session_id"] == "child-a"
+        assert payload["children"][1]["child_session_id"] == "child-b"
+        assert payload["scheduled_groups"] == [["a", "b"]]
+
+    @pytest.mark.asyncio
+    async def test_fleet_spec_runs_non_overlapping_tasks_in_parallel(
+        self, task_tool: Task, ctx: InvokeContext, tmp_path: Path
+    ) -> None:
+        manager = ctx.agent_manager
+        assert manager is not None
+        session_dir = tmp_path / "session"
+        child_a_dir = session_dir / "agents" / "child-a"
+        child_b_dir = session_dir / "agents" / "child-b"
+        child_a_dir.mkdir(parents=True)
+        child_b_dir.mkdir(parents=True)
+        (child_a_dir / "manifest.json").write_text("{}", encoding="utf-8")
+        (child_b_dir / "manifest.json").write_text("{}", encoding="utf-8")
+
+        started: list[str] = []
+        release = asyncio.Event()
+
+        async def act(task: str):
+            started.append(task)
+            if len(started) == 2:
+                release.set()
+            await release.wait()
+            yield AssistantEvent(content=f"{task} done")
+
+        with patch(
+            "vibe.core.tools.builtins.task.VibeConfig.load", return_value=manager.config
+        ):
+            with patch(
+                "vibe.core.tools.builtins.task.AgentLoop"
+            ) as mock_agent_loop_class:
+                mock_agent_a = MagicMock()
+                mock_agent_a.act = act
+                mock_agent_a.messages = [LLMMessage(role=Role.system, content="system")]
+                mock_agent_a.set_approval_callback = MagicMock()
+                mock_agent_a.session_id = "child-a"
+                mock_agent_a.session_logger.session_dir = child_a_dir
+
+                mock_agent_b = MagicMock()
+                mock_agent_b.act = act
+                mock_agent_b.messages = [LLMMessage(role=Role.system, content="system")]
+                mock_agent_b.set_approval_callback = MagicMock()
+                mock_agent_b.session_id = "child-b"
+                mock_agent_b.session_logger.session_dir = child_b_dir
+
+                mock_agent_loop_class.side_effect = [mock_agent_a, mock_agent_b]
+
+                spec = TaskFleetSpec(
+                    tasks=[
+                        TaskSpec(
+                            task_id="a",
+                            task="inspect a",
+                            scope=TaskScope(
+                                allowed_paths=["vibe/core/tools/builtins/task.py"]
+                            ),
+                        ),
+                        TaskSpec(
+                            task_id="b",
+                            task="inspect b",
+                            scope=TaskScope(
+                                allowed_paths=["vibe/core/tools/builtins/write_file.py"]
+                            ),
+                        ),
+                    ]
+                )
+                result = await asyncio.wait_for(
+                    collect_result(
+                        task_tool.run(
+                            TaskArgs(fleet_spec=spec),
+                            InvokeContext(
+                                tool_call_id="fleet-call-id",
+                                agent_manager=manager,
+                                session_dir=session_dir,
+                                parent_turn_id="parent-turn-1",
+                            ),
+                        )
+                    ),
+                    timeout=2,
+                )
+
+        assert isinstance(result, TaskResult)
+        assert len(started) == 2
+        payload = json.loads(result.response)
+        assert payload["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_fleet_spec_refuses_overlapping_paths(
+        self, task_tool: Task, ctx: InvokeContext
+    ) -> None:
+        spec = TaskFleetSpec(
+            tasks=[
+                TaskSpec(
+                    task_id="a",
+                    task="inspect a",
+                    scope=TaskScope(allowed_paths=["vibe/core/tools/builtins/task.py"]),
+                ),
+                TaskSpec(
+                    task_id="b",
+                    task="inspect b",
+                    scope=TaskScope(allowed_paths=["vibe/core/tools/builtins/task.py"]),
+                ),
+            ]
+        )
+
+        result = await collect_result(task_tool.run(TaskArgs(fleet_spec=spec), ctx))
+
+        assert isinstance(result, TaskResult)
+        payload = json.loads(result.response)
+        assert payload["status"] == "refused"
+        assert payload["overlapping_path_groups"]
+        assert payload["children"] == []
 
     @pytest.mark.asyncio
     async def test_non_thinking_deepseek_path_remains_available(

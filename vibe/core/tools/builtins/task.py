@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import aclosing
 from datetime import UTC, datetime
@@ -13,8 +14,10 @@ from pydantic import BaseModel, Field
 from vibe.core.agent_loop import AgentLoop
 from vibe.core.agents.models import AgentType, BuiltinAgentName
 from vibe.core.config import ModelConfig, SessionLoggingConfig, VibeConfig
+from vibe.core.coordination import CoordinationStore
 from vibe.core.telemetry.artifacts import (
     TaskSessionLinkArtifact,
+    ToolOutputArtifact,
     ToolOutputArtifactWriter,
 )
 from vibe.core.telemetry.local import dump_canonical_json
@@ -61,6 +64,16 @@ class TaskSpec(BaseModel):
     expected_outputs: list[str] = Field(default_factory=list)
 
 
+class TaskFleetEdge(BaseModel):
+    from_task_id: str
+    to_task_id: str
+
+
+class TaskFleetSpec(BaseModel):
+    tasks: list[TaskSpec] = Field(default_factory=list)
+    dependencies: list[TaskFleetEdge] = Field(default_factory=list)
+
+
 class TaskArgs(BaseModel):
     task: str | None = Field(
         default=None, description="The task to delegate to the subagent"
@@ -72,6 +85,10 @@ class TaskArgs(BaseModel):
     task_spec: TaskSpec | None = Field(
         default=None,
         description="Structured delegation packet with mode, scope, and provider policy.",
+    )
+    fleet_spec: TaskFleetSpec | None = Field(
+        default=None,
+        description="Structured read-only fleet packet for parallel investigation.",
     )
     provider_options: TaskProviderOptions | None = Field(
         default=None,
@@ -85,6 +102,10 @@ class TaskArgs(BaseModel):
         if self.task is not None:
             return self.task
         raise ToolError("Task text is required")
+
+    @property
+    def is_fleet(self) -> bool:
+        return self.fleet_spec is not None
 
 
 class TaskResult(BaseModel):
@@ -102,6 +123,38 @@ class TaskResult(BaseModel):
     timeout_seconds: float | None = None
     task_result_sha256: str | None = None
     warnings: list[str] = Field(default_factory=list)
+
+
+class TaskFleetValidationResult(BaseModel):
+    tasks: int = 0
+    dependencies: int = 0
+    overlapping_path_groups: list[list[str]] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class TaskFleetChildResult(BaseModel):
+    task_id: str
+    agent_profile: str
+    child_session_id: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    completed: bool = False
+    turns_used: int = 0
+    task_result_sha256: str | None = None
+    child_artifact_manifest_sha256: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
+class TaskFleetReport(TaskFleetValidationResult):
+    status: Literal["completed", "failed", "refused"] = "completed"
+    scheduled_groups: list[list[str]] = Field(default_factory=list)
+    children: list[TaskFleetChildResult] = Field(default_factory=list)
+
+
+class TaskExecutionSummary(BaseModel):
+    result: TaskResult
+    child_session_dir: str | None = None
+    child_artifact_manifest_sha256: str | None = None
 
 
 class TaskProviderOptions(BaseModel):
@@ -185,6 +238,14 @@ class Task(
         return Task._sha256_payload(result.model_dump(exclude_none=True))
 
     @staticmethod
+    def _coordination_store(ctx: InvokeContext) -> CoordinationStore | None:
+        if ctx.session_dir is None:
+            return None
+        return CoordinationStore(
+            Path.cwd() / ".build" / "rig-relay" / "coordination"
+        )
+
+    @staticmethod
     def _sha256_payload(payload: dict[str, Any]) -> str:
         return (
             "sha256:"
@@ -197,9 +258,12 @@ class Task(
 
     @staticmethod
     def _file_sha256(path: Path) -> str | None:
-        if not path.is_file():
+        try:
+            if not path.is_file():
+                return None
+            return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+        except Exception:
             return None
-        return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
     @staticmethod
     def _build_call_config(config: VibeConfig, plan: TaskExecutionPlan) -> VibeConfig:
@@ -236,6 +300,445 @@ class Task(
         )
         agent_profile_name = task_spec.agent_profile if task_spec else args.agent
         return task_spec, provider_options, agent_profile_name
+
+    @staticmethod
+    def _path_groups(tasks: list[TaskSpec]) -> list[list[str]]:
+        groups: list[list[str]] = []
+        for task in tasks:
+            if task.scope.allowed_paths:
+                groups.append(
+                    sorted({Path(path).as_posix() for path in task.scope.allowed_paths})
+                )
+        return groups
+
+    @staticmethod
+    def _detect_path_overlaps(path_groups: list[list[str]]) -> list[list[str]]:
+        overlaps: list[list[str]] = []
+        for index, group in enumerate(path_groups):
+            group_set = set(group)
+            for other in path_groups[index + 1 :]:
+                if group_set & set(other):
+                    merged = sorted(group_set | set(other))
+                    if merged not in overlaps:
+                        overlaps.append(merged)
+        overlaps.sort(key=lambda item: (len(item), item))
+        return overlaps
+
+    @staticmethod
+    def _validate_fleet_spec(fleet_spec: TaskFleetSpec) -> TaskFleetValidationResult:
+        path_groups = Task._path_groups(fleet_spec.tasks)
+        return TaskFleetValidationResult(
+            tasks=len(fleet_spec.tasks),
+            dependencies=len(fleet_spec.dependencies),
+            overlapping_path_groups=Task._detect_path_overlaps(path_groups),
+        )
+
+    @staticmethod
+    def _fleet_task_order(fleet_spec: TaskFleetSpec) -> dict[str, int]:
+        return {task.task_id: index for index, task in enumerate(fleet_spec.tasks)}
+
+    @staticmethod
+    def _validate_fleet_scope(fleet_spec: TaskFleetSpec) -> list[str]:
+        warnings: list[str] = []
+        for task in fleet_spec.tasks:
+            if task.scope.allow_write:
+                warnings.append(f"Task '{task.task_id}' requests writes in fleet mode.")
+            if task.scope.allow_bash:
+                warnings.append(f"Task '{task.task_id}' requests bash in fleet mode.")
+        return warnings
+
+    @staticmethod
+    def _validate_fleet_dependencies(
+        fleet_spec: TaskFleetSpec, task_order: dict[str, int]
+    ) -> tuple[list[list[str]], list[str]]:
+        adjacency: dict[str, set[str]] = {
+            task.task_id: set() for task in fleet_spec.tasks
+        }
+        indegree: dict[str, int] = {task.task_id: 0 for task in fleet_spec.tasks}
+        warnings: list[str] = []
+
+        for edge in fleet_spec.dependencies:
+            if edge.from_task_id not in adjacency:
+                warnings.append(
+                    f"Dependency references unknown task '{edge.from_task_id}'."
+                )
+                continue
+            if edge.to_task_id not in adjacency:
+                warnings.append(
+                    f"Dependency references unknown task '{edge.to_task_id}'."
+                )
+                continue
+            if edge.to_task_id in adjacency[edge.from_task_id]:
+                continue
+            adjacency[edge.from_task_id].add(edge.to_task_id)
+            indegree[edge.to_task_id] += 1
+
+        ready = sorted(
+            [task_id for task_id, degree in indegree.items() if degree == 0],
+            key=task_order.__getitem__,
+        )
+        scheduled_groups: list[list[str]] = []
+        scheduled_count = 0
+
+        while ready:
+            scheduled_groups.append(list(ready))
+            scheduled_count += len(ready)
+            next_ready: set[str] = set()
+            for task_id in ready:
+                for dependent in adjacency[task_id]:
+                    indegree[dependent] -= 1
+                    if indegree[dependent] == 0:
+                        next_ready.add(dependent)
+            ready = sorted(next_ready, key=task_order.__getitem__)
+
+        if scheduled_count != len(fleet_spec.tasks):
+            warnings.append("Fleet dependency graph contains a cycle.")
+
+        return scheduled_groups, warnings
+
+    @staticmethod
+    def _task_fleet_report(
+        *,
+        fleet_result: TaskFleetValidationResult,
+        status: Literal["completed", "failed", "refused"],
+        scheduled_groups: list[list[str]] | None = None,
+        children: list[TaskFleetChildResult] | None = None,
+    ) -> TaskFleetReport:
+        return TaskFleetReport(
+            tasks=fleet_result.tasks,
+            dependencies=fleet_result.dependencies,
+            overlapping_path_groups=fleet_result.overlapping_path_groups,
+            warnings=fleet_result.warnings,
+            status=status,
+            scheduled_groups=scheduled_groups or [],
+            children=children or [],
+        )
+
+    @staticmethod
+    def _build_fleet_child_result(
+        *,
+        task_spec: TaskSpec,
+        result: TaskResult,
+        child_session_dir: Path | None,
+        child_artifact_manifest_sha256: str | None,
+    ) -> TaskFleetChildResult:
+        return TaskFleetChildResult(
+            task_id=task_spec.task_id,
+            agent_profile=task_spec.agent_profile,
+            child_session_id=child_session_dir.name if child_session_dir else None,
+            provider=result.provider,
+            model=result.model,
+            completed=result.completed,
+            turns_used=result.turns_used,
+            task_result_sha256=result.task_result_sha256,
+            child_artifact_manifest_sha256=child_artifact_manifest_sha256,
+            warnings=result.warnings,
+        )
+
+    @staticmethod
+    def _ensure_subagent_agent(
+        agent_manager: Any, agent_profile_name: str
+    ) -> None:
+        try:
+            agent = agent_manager.get_agent(agent_profile_name)
+        except ValueError as e:
+            raise ToolError(f"Unknown agent: {agent_profile_name}") from e
+        if agent.agent_type != AgentType.SUBAGENT:
+            raise ToolError(
+                f"Agent '{agent_profile_name}' is a {agent.agent_type.value} agent. "
+                "Only subagents can be used with the task tool. "
+                "This is a security constraint to prevent recursive spawning."
+            )
+
+    async def _collect_subagent_output(
+        self,
+        *,
+        ctx: InvokeContext,
+        args: TaskArgs,
+        agent_manager: Any,
+        plan: TaskExecutionPlan,
+        agent_profile_name: str,
+        prompt_text: str,
+        emit_tool_events: bool,
+    ) -> tuple[TaskExecutionSummary, list[ToolStreamEvent]]:
+        self._ensure_subagent_agent(agent_manager, agent_profile_name)
+        subagent_loop = self._build_subagent_loop(
+            ctx=ctx,
+            args=args,
+            agent_manager=agent_manager,
+            plan=plan,
+            agent_profile_name=agent_profile_name,
+        )
+
+        task_text = prompt_text
+        if ctx.scratchpad_dir:
+            task_text = (
+                f"Scratchpad directory: {ctx.scratchpad_dir}\n"
+                "You can read and write files here without permission prompts.\n\n"
+                f"{prompt_text}"
+            )
+
+        accumulated_response: list[str] = []
+        completed = True
+        tool_events: list[ToolStreamEvent] = []
+        try:
+            async with aclosing(subagent_loop.act(task_text)) as events:
+                async for event in events:
+                    if isinstance(event, AssistantEvent) and event.content:
+                        accumulated_response.append(event.content)
+                        if event.stopped_by_middleware:
+                            completed = False
+                    elif isinstance(event, ToolResultEvent):
+                        if event.skipped:
+                            completed = False
+                        elif (
+                            emit_tool_events
+                            and event.result
+                            and event.tool_class
+                        ):
+                            adapter = ToolUIDataAdapter(event.tool_class)
+                            display = adapter.get_result_display(event)
+                            tool_events.append(
+                                ToolStreamEvent(
+                                    tool_name=self.get_name(),
+                                    message=f"{event.tool_name}: {display.message}",
+                                    tool_call_id=ctx.tool_call_id,
+                                )
+                            )
+        except Exception as e:
+            completed = False
+            accumulated_response.append(f"\n[Subagent error: {e}]")
+
+        turns_used = sum(msg.role == Role.assistant for msg in subagent_loop.messages)
+        result = self._build_task_result(
+            response="".join(accumulated_response),
+            turns_used=turns_used,
+            completed=completed,
+            plan=plan,
+        )
+        child_session_dir = subagent_loop.session_logger.session_dir
+        child_session_path = (
+            child_session_dir if isinstance(child_session_dir, Path) else None
+        )
+        return (
+            TaskExecutionSummary(
+                result=result,
+                child_session_dir=(
+                    child_session_path.name if child_session_path is not None else None
+                ),
+                child_artifact_manifest_sha256=(
+                    self._file_sha256(child_session_path / "manifest.json")
+                    if child_session_path is not None
+                    else None
+                ),
+            ),
+            tool_events,
+        )
+
+    async def _execute_subagent_task(
+        self,
+        *,
+        args: TaskArgs,
+        ctx: InvokeContext,
+        agent_manager: Any,
+        plan: TaskExecutionPlan,
+        agent_profile_name: str,
+        task_id: str,
+        task_spec: TaskSpec | None,
+        prompt_text: str,
+        emit_tool_events: bool,
+    ) -> AsyncGenerator[ToolStreamEvent | TaskExecutionSummary, None]:
+        store = self._coordination_store(ctx)
+        session_id = ctx.session_dir.name if ctx.session_dir is not None else None
+        reserved_paths = list(task_spec.scope.allowed_paths) if task_spec else []
+        if store is not None and session_id is not None:
+            store.claim_task(
+                session_id=session_id,
+                task_id=task_id,
+                claim_kind="delegate" if task_spec is None else "fleet_child",
+                ttl_seconds=300,
+                scope={"allowed_paths": reserved_paths},
+            )
+            if reserved_paths:
+                store.reserve_paths(
+                    session_id=session_id,
+                    task_id=task_id,
+                    mode="write" if task_spec and task_spec.scope.allow_write else "read",
+                    paths=reserved_paths,
+                    ttl_seconds=300,
+                )
+
+        try:
+            summary, tool_events = await self._collect_subagent_output(
+                ctx=ctx,
+                args=args,
+                agent_manager=agent_manager,
+                plan=plan,
+                agent_profile_name=agent_profile_name,
+                prompt_text=prompt_text,
+                emit_tool_events=emit_tool_events,
+            )
+            artifact = self._write_task_session_link_artifact(
+                ctx=ctx,
+                args=args,
+                prompt_text=prompt_text,
+                plan=plan,
+                result=summary.result,
+                task_spec=task_spec,
+                child_session_dir=(
+                    Path(summary.child_session_dir)
+                    if summary.child_session_dir is not None
+                    else None
+                ),
+                started_at=datetime.now(UTC),
+                completed_at=datetime.now(UTC),
+            )
+            if artifact is not None and store is not None and session_id is not None:
+                store.publish_artifact(
+                    session_id=session_id,
+                    task_id=task_id,
+                    artifact_kind="task_session_link",
+                    artifact_uri=artifact.path,
+                    artifact_sha256=artifact.artifact_record_sha256 or artifact.payload_sha256,
+                    schema_id="rig.relay.artifact.task_session_link.v1",
+                )
+            for event in tool_events:
+                yield event
+            yield summary
+        finally:
+            if store is not None and session_id is not None and reserved_paths:
+                store.release_paths(
+                    session_id=session_id,
+                    task_id=task_id,
+                    paths=reserved_paths,
+                )
+
+    async def _run_fleet_child(
+        self,
+        *,
+        args: TaskArgs,
+        ctx: InvokeContext,
+        agent_manager: Any,
+        task_spec: TaskSpec,
+    ) -> TaskFleetChildResult:
+        plan = self._build_execution_plan(
+            agent_manager.config, task_spec.provider_options
+        )
+        if plan.warnings:
+            result = self._build_task_result(
+                response="", turns_used=0, completed=False, plan=plan
+            )
+            return self._build_fleet_child_result(
+                task_spec=task_spec,
+                result=result,
+                child_session_dir=None,
+                child_artifact_manifest_sha256=None,
+            )
+        summary: TaskExecutionSummary | None = None
+        async for item in self._execute_subagent_task(
+            args=args,
+            ctx=ctx,
+            agent_manager=agent_manager,
+            plan=plan,
+            agent_profile_name=task_spec.agent_profile,
+            task_id=task_spec.task_id,
+            task_spec=task_spec,
+            prompt_text=task_spec.task,
+            emit_tool_events=False,
+        ):
+            if isinstance(item, TaskExecutionSummary):
+                summary = item
+        assert summary is not None
+        return self._build_fleet_child_result(
+            task_spec=task_spec,
+            result=summary.result,
+            child_session_dir=(
+                Path(summary.child_session_dir)
+                if summary.child_session_dir is not None
+                else None
+            ),
+            child_artifact_manifest_sha256=summary.child_artifact_manifest_sha256,
+        )
+
+    async def _run_fleet_flow(
+        self, args: TaskArgs, ctx: InvokeContext, agent_manager: Any
+    ) -> AsyncGenerator[TaskFleetReport, None]:
+        fleet_spec = args.fleet_spec
+        assert fleet_spec is not None
+        validation = self._validate_fleet_spec(fleet_spec)
+        warnings = list(validation.warnings)
+        warnings.extend(self._validate_fleet_scope(fleet_spec))
+        task_order = self._fleet_task_order(fleet_spec)
+        scheduled_groups: list[list[str]] = []
+        children: list[TaskFleetChildResult] = []
+
+        if validation.overlapping_path_groups:
+            yield self._task_fleet_report(
+                fleet_result=validation, status="refused", children=[]
+            )
+            return
+
+        scheduled_groups, dependency_warnings = self._validate_fleet_dependencies(
+            fleet_spec, task_order
+        )
+        warnings.extend(dependency_warnings)
+        if warnings:
+            yield self._task_fleet_report(
+                fleet_result=validation,
+                status="refused",
+                scheduled_groups=scheduled_groups,
+                children=[],
+            )
+            return
+
+        task_by_id = {task.task_id: task for task in fleet_spec.tasks}
+        for group in scheduled_groups:
+            group_results = await asyncio.gather(*[
+                self._run_fleet_child(
+                    args=args,
+                    ctx=ctx,
+                    agent_manager=agent_manager,
+                    task_spec=task_by_id[task_id],
+                )
+                for task_id in group
+            ])
+            children.extend(group_results)
+
+        children.sort(key=lambda child: task_order[child.task_id])
+        yield self._task_fleet_report(
+            fleet_result=validation,
+            status="completed",
+            scheduled_groups=scheduled_groups,
+            children=children,
+        )
+
+    async def _run_delegate_flow(
+        self, args: TaskArgs, ctx: InvokeContext, agent_manager: Any
+    ) -> AsyncGenerator[ToolStreamEvent | TaskResult, None]:
+        task_spec, provider_options, agent_profile_name = self._resolve_delegate_inputs(
+            args
+        )
+        plan = self._build_execution_plan(agent_manager.config, provider_options)
+        if plan.warnings:
+            yield self._build_task_result(
+                response="", turns_used=0, completed=False, plan=plan
+            )
+            return
+        async for item in self._execute_subagent_task(
+            args=args,
+            ctx=ctx,
+            agent_manager=agent_manager,
+            plan=plan,
+            agent_profile_name=agent_profile_name,
+            task_id=task_spec.task_id if task_spec is not None else ctx.tool_call_id,
+            task_spec=task_spec,
+            prompt_text=args.task_text,
+            emit_tool_events=True,
+        ):
+            if isinstance(item, ToolStreamEvent):
+                yield item
+            else:
+                yield item.result
 
     @staticmethod
     def _build_subagent_loop(
@@ -282,15 +785,16 @@ class Task(
         *,
         ctx: InvokeContext,
         args: TaskArgs,
+        prompt_text: str,
         plan: TaskExecutionPlan,
         result: TaskResult,
         task_spec: TaskSpec | None,
         child_session_dir: Path | None,
         started_at: datetime,
         completed_at: datetime,
-    ) -> None:
+    ) -> ToolOutputArtifact | None:
         if ctx.session_dir is None:
-            return
+            return None
 
         writer = ToolOutputArtifactWriter(str(ctx.session_dir.name))
         child_session_id = child_session_dir.name if child_session_dir else None
@@ -334,7 +838,7 @@ class Task(
                 task_spec.expected_outputs if task_spec is not None else []
             ),
             timeout_seconds=result.timeout_seconds,
-            input_prompt_sha256=self._prompt_sha256(args.task_text),
+            input_prompt_sha256=self._prompt_sha256(prompt_text),
             output_result_sha256=result.task_result_sha256,
             child_artifact_manifest_sha256=child_manifest_sha256,
             linkage_sha256="",
@@ -350,7 +854,7 @@ class Task(
                 exclude_none=True, exclude={"started_at", "completed_at"}
             )
         )
-        writer.write_task_session_link_artifact(
+        return writer.write_task_session_link_artifact(
             artifact=linkage, tool_call_id=ctx.tool_call_id
         )
 
@@ -464,94 +968,14 @@ class Task(
             raise ToolError("Task tool requires agent_manager in context")
 
         agent_manager = ctx.agent_manager
-        task_spec, provider_options, agent_profile_name = self._resolve_delegate_inputs(
-            args
-        )
-        plan = self._build_execution_plan(agent_manager.config, provider_options)
-        if plan.warnings:
-            yield self._build_task_result(
-                response="", turns_used=0, completed=False, plan=plan
-            )
-            return
-
-        try:
-            if (
-                agent_manager.get_agent(agent_profile_name).agent_type
-                != AgentType.SUBAGENT
-            ):
-                raise ToolError(
-                    f"Agent '{agent_profile_name}' is a "
-                    f"{agent_manager.get_agent(agent_profile_name).agent_type.value} agent. "
-                    "Only subagents can be used with the task tool. "
-                    "This is a security constraint to prevent recursive spawning."
+        if args.fleet_spec is not None:
+            async for fleet_result in self._run_fleet_flow(args, ctx, agent_manager):
+                yield TaskResult(
+                    response=dump_canonical_json(fleet_result.model_dump()),
+                    turns_used=0,
+                    completed=fleet_result.status == "completed",
+                    warnings=fleet_result.warnings,
                 )
-        except ValueError as e:
-            raise ToolError(f"Unknown agent: {agent_profile_name}") from e
-
-        subagent_loop = self._build_subagent_loop(
-            ctx=ctx,
-            args=args,
-            agent_manager=agent_manager,
-            plan=plan,
-            agent_profile_name=agent_profile_name,
-        )
-
-        task_text = args.task_text
-        if ctx.scratchpad_dir:
-            task_text = (
-                f"Scratchpad directory: {ctx.scratchpad_dir}\n"
-                "You can read and write files here without permission prompts.\n\n"
-                f"{args.task}"
-            )
-
-        accumulated_response: list[str] = []
-        completed = True
-        started_at = datetime.now(UTC)
-        try:
-            async with aclosing(subagent_loop.act(task_text)) as events:
-                async for event in events:
-                    if isinstance(event, AssistantEvent) and event.content:
-                        accumulated_response.append(event.content)
-                        if event.stopped_by_middleware:
-                            completed = False
-                    elif isinstance(event, ToolResultEvent):
-                        if event.skipped:
-                            completed = False
-                        elif event.result and event.tool_class:
-                            adapter = ToolUIDataAdapter(event.tool_class)
-                            display = adapter.get_result_display(event)
-                            message = f"{event.tool_name}: {display.message}"
-                            yield ToolStreamEvent(
-                                tool_name=self.get_name(),
-                                message=message,
-                                tool_call_id=ctx.tool_call_id,
-                            )
-
-            turns_used = sum(
-                msg.role == Role.assistant for msg in subagent_loop.messages
-            )
-
-        except Exception as e:
-            completed = False
-            accumulated_response.append(f"\n[Subagent error: {e}]")
-            turns_used = sum(
-                msg.role == Role.assistant for msg in subagent_loop.messages
-            )
-
-        result = self._build_task_result(
-            response="".join(accumulated_response),
-            turns_used=turns_used,
-            completed=completed,
-            plan=plan,
-        )
-        self._write_task_session_link_artifact(
-            ctx=ctx,
-            args=args,
-            plan=plan,
-            result=result,
-            task_spec=task_spec,
-            child_session_dir=subagent_loop.session_logger.session_dir,
-            started_at=started_at,
-            completed_at=datetime.now(UTC),
-        )
-        yield result
+            return
+        async for item in self._run_delegate_flow(args, ctx, agent_manager):
+            yield item

@@ -2,6 +2,8 @@
 
 This document outlines how to use Rig Relay to build and harden Rig Relay, using its own evidence system to identify determinism gaps and tool failures. Rig Relay is the product; providers are interchangeable backends.
 
+Out-of-scope findings discovered during dogfood sessions are recorded in the [findings registry](../findings/out-of-scope-findings.md).
+
 ## Operational Workflow
 
 ### 1. Starting a Self-Dogfood Session
@@ -79,6 +81,14 @@ The report shows:
 - Retry/error patterns
 - Aggregate latency and byte metrics
 
+### 8. Cross-Session Coordination
+
+When multiple Rig Relay sessions are active, use the coordination plane described in [Cross-Session Coordination](../governance/cross-session-coordination.md) to publish claims, leases, heartbeats, artifacts, and conflicts.
+
+Do not coordinate through free-form transcript sharing when a typed coordination update will do.
+
+Coordination events (`coord.*`) are not just operational state — they feed the derived evaluation datasets defined in the [Usage Data Doctrine](../governance/usage-data-doctrine.md). Every path reservation, conflict report, artifact publication, and handoff becomes measurable behavioral evidence for future fleet/delegate orchestration.
+
 ## Latency-First Design Principle
 
 Tool-output latency takes priority over model magic. The fastest latency wins come from making tools produce compact, typed, reusable artifacts so the model sees handles + summaries instead of huge raw outputs. Tool content should stay in the dynamic suffix (later in the prompt) so stable prefixes remain cacheable.
@@ -106,13 +116,15 @@ Based on initial evidence collection, the following areas are prioritized for to
 
 1.  **Mutation Evidence Hashes (Completed 2025-05-17)**: `write_file` and `search_replace` now emit before/after SHA256 content hashes, creation/overwrite flags, block counts, and changed file lists. See `WriteFileResult` and `SearchReplaceResult`.
 2.  **Typed File Write/Diff Artifacts (Completed 2025-05-13)**: `write_file` and `search_replace` now emit structured `file_write` artifact envelopes with unified diff evidence, byte/line counts, and changed-line ranges. Rollback and semantic placement remain deferred.
-3.  **Typed Search Results (Completed 2026-05-13)**: `grep` now emits typed search query and search result artifacts with deterministic ordering, backend, counts, truncation flags, and result-set hashes.
-4.  **Path Normalization (High)**: Ensure all file-based tools (`read_file`, `write_file`, `grep`, `search_replace`) use absolute, canonicalized paths in evidence, even if models pass relative paths.
-5.  **Bash Output Filtering (Medium)**: Scrub environment-specific details (paths, usernames) from `bash` tool output to improve cache hit rates.
-6.  **Git State Capture (Medium)**: `git_status` now emits typed repo-state evidence. Extend the remaining git tools with comparable structured artifacts.
-7.  **Task Session Linkage (Low)**: `task` now emits a typed `task_session_link` artifact with parent/child IDs, provider/options metadata, scope metadata, and child manifest hashes when available. The remaining gap is child-artifact rollup.
-8.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
-9.  **Thinking Delegation Boundary (Low)**: Keep thinking-mode delegation opt-in and provider-scoped; default task runs should remain non-thinking.
+3.  **Dirty-File Preservation Guard (Completed 2025-05-18)**: `DirtyFileGuard` captures protected dirty files at session start via `git status --porcelain=v1`. `write_file` and `search_replace` now require `expected_before_sha256` for edits to pre-existing dirty files. Destructive git commands (`restore`, `reset`, `clean`, `stash`) are blocked in `bash`. Fields exposed through ACP/tool schemas.
+4.  **Typed Search Results (Completed 2026-05-13)**: `grep` now emits typed search query and search result artifacts with deterministic ordering, backend, counts, truncation flags, and result-set hashes.
+5.  **Path Normalization (High)**: Ensure all file-based tools (`read_file`, `write_file`, `grep`, `search_replace`) use absolute, canonicalized paths in evidence, even if models pass relative paths.
+6.  **Bash Output Filtering (Medium)**: Scrub environment-specific details (paths, usernames) from `bash` tool output to improve cache hit rates.
+7.  **Git State Capture (Medium)**: `git_status` now emits typed repo-state evidence. Extend the remaining git tools with comparable structured artifacts.
+8.  **Task Session Linkage (Low)**: `task` now emits a typed `task_session_link` artifact with parent/child IDs, provider/options metadata, scope metadata, and child manifest hashes when available. The fleet path now returns a read-only aggregated report with child summaries for non-overlapping specs. The remaining gap is child-artifact rollup.
+9.  **Fleet Validation (Low)**: `task` now accepts read-only `TaskFleetSpec` packets and returns a validation report that flags path overlaps before scheduling. The scheduler itself is still deferred.
+10.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
+11.  **Thinking Delegation Boundary (Low)**: Keep thinking-mode delegation opt-in and provider-scoped; default task runs should remain non-thinking.
 
 See the [bash replacement opportunity map](../audits/bash-replacement-opportunity-map.md) for the parallel shell-to-typed-tool migration audit.
 
@@ -120,6 +132,7 @@ See the [bash replacement opportunity map](../audits/bash-replacement-opportunit
 
 1.  **Mutation Evidence Hashing (Completed)**: `write_file` and `search_replace` now emit before/after SHA256 hashes. See [current built-in tools audit](../audits/current-built-in-tools.md).
 2.  **Typed File Write/Diff Evidence (Completed)**: `write_file` and `search_replace` now emit structured `file_write` artifact envelopes and diff/patch evidence for write tools. Rollback and semantic placement remain future work.
-3.  **Fuzzy Search Hardening (Deferred)**: Audit fuzzy matching behavior in `search_replace` to reduce wrong-edit risk at the matching threshold boundary.
-4.  **Semantic Placement (Deferred)**: Audit `semantic_placement` artifacts to ensure edits land in the correct symbols.
-5.  **Token Optimization**: Analyze artifact kind density to identify candidates for summarization or deduplication based on [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).
+3.  **Dirty-File Preservation Guard (Completed)**: `DirtyFileGuard` now captures protected dirty files at session start and gates write operations. `write_file` and `search_replace` require `expected_before_sha256` for edits to pre-existing dirty files. Destructive git commands are blocked in `bash`. See [current built-in tools audit](../audits/current-built-in-tools.md).
+4.  **Fuzzy Search Hardening (Deferred)**: Audit fuzzy matching behavior in `search_replace` to reduce wrong-edit risk at the matching threshold boundary.
+5.  **Semantic Placement (Deferred)**: Audit `semantic_placement` artifacts to ensure edits land in the correct symbols.
+6.  **Token Optimization**: Analyze artifact kind density to identify candidates for summarization or deduplication based on [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).

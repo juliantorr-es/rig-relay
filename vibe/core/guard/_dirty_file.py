@@ -1,12 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum, auto
 import hashlib
 from pathlib import Path
 import subprocess
 from typing import ClassVar
+from uuid import uuid4
 
 from vibe.core.logger import logger
+
+
+class DirtyGuardFailurePolicy(StrEnum):
+    WARN_ALLOW = auto()
+    FAIL_CLOSED_FOR_MUTATION = auto()
+
+
+class GuardCaptureReason(StrEnum):
+    AGENT_LOOP_INIT = "agent_loop_init"
+    RESET_SESSION = "reset_session"
+    FORK_CHILD = "fork_child"
+    MANUAL_RECAPTURE = "manual_recapture"
 
 
 @dataclass(frozen=True)
@@ -14,12 +29,12 @@ class DirtyFileSnapshot:
     """Immutable snapshot of a single dirty file at mission start."""
 
     relative_path: str
-    index_status: str  # XY from porcelain: ' M', 'A ', '??', etc.
+    index_status: str
     worktree_status: str
     is_untracked: bool
     is_conflicted: bool
-    blob_before_sha256: str | None  # sha256:<hex> of file bytes, None if untracked (no git blob)
-    file_bytes_sha256: str | None  # sha256:<hex> of file bytes, None if file didn't exist
+    blob_before_sha256: str | None
+    file_bytes_sha256: str | None
 
 
 @dataclass
@@ -33,6 +48,18 @@ class DirtyFileGuard:
     dirty_snapshots: dict[str, DirtyFileSnapshot] = field(default_factory=dict)
     _captured: bool = False
     _repo_root: Path | None = None
+    _capture_error: str | None = None
+
+    # ── snapshot identity ────────────────────────────────────────
+
+    baseline_id: str = ""
+    captured_at: str | None = None
+    capture_reason: GuardCaptureReason = GuardCaptureReason.AGENT_LOOP_INIT
+    parent_baseline_id: str | None = None
+
+    # ── failure policy ───────────────────────────────────────────
+
+    failure_policy: DirtyGuardFailurePolicy = DirtyGuardFailurePolicy.WARN_ALLOW
 
     # ── mission tracking ────────────────────────────────────────
 
@@ -41,15 +68,41 @@ class DirtyFileGuard:
     refused_writes: list[dict[str, str]] = field(default_factory=list)
 
     _STATUS_LINE_PATH_OFFSET: ClassVar[int] = 3
+    _idempotent_key: str = ""
 
     # ── public API ──────────────────────────────────────────────
 
-    def capture(self) -> None:
-        """Run ``git status --porcelain=v1`` and hash every dirty file."""
+    def capture(
+        self,
+        repo_root: Path | None = None,
+        *,
+        reason: GuardCaptureReason = GuardCaptureReason.AGENT_LOOP_INIT,
+        failure_policy: DirtyGuardFailurePolicy | None = None,
+        parent_baseline_id: str | None = None,
+    ) -> None:
+        """Run ``git status --porcelain=v1`` and hash every dirty file.
+
+        Idempotent within the same baseline — subsequent calls are no-ops
+        unless ``recapture()`` was called first.
+
+        Args:
+            repo_root: Override for the repo root. Defaults to ``Path.cwd()``.
+            reason: Why this capture is happening.
+            failure_policy: Override the guard's failure policy for this capture.
+            parent_baseline_id: Parent baseline for child/fork sessions.
+        """
         if self._captured:
             return
 
-        self._repo_root = Path.cwd().resolve()
+        self._repo_root = (repo_root or Path.cwd()).resolve()
+        self.capture_reason = reason
+        self.parent_baseline_id = parent_baseline_id
+        self.baseline_id = uuid4().hex
+        self.captured_at = datetime.now(UTC).isoformat()
+
+        if failure_policy is not None:
+            self.failure_policy = failure_policy
+
         try:
             result = subprocess.run(
                 ["git", "--no-optional-locks", "status", "--porcelain=v1"],
@@ -61,6 +114,7 @@ class DirtyFileGuard:
                 timeout=10,
             )
         except Exception as exc:
+            self._capture_error = str(exc)
             logger.warning("DirtyFileGuard: git status failed: %s", exc)
             self._captured = True
             return
@@ -71,6 +125,42 @@ class DirtyFileGuard:
                 self.dirty_snapshots[snapshot.relative_path] = snapshot
 
         self._captured = True
+
+    def recapture(
+        self,
+        repo_root: Path | None = None,
+        *,
+        reason: GuardCaptureReason = GuardCaptureReason.MANUAL_RECAPTURE,
+        failure_policy: DirtyGuardFailurePolicy | None = None,
+    ) -> None:
+        """Force a new capture, generating a new baseline.
+
+        Preserves the current baseline as ``parent_baseline_id``.
+        Resets tracking counters (touched, skipped, refused).
+        """
+        old_baseline = self.baseline_id
+        self.dirty_snapshots.clear()
+        self.touched_files.clear()
+        self.skipped_files.clear()
+        self.refused_writes.clear()
+        self._captured = False
+        self._capture_error = None
+        self.baseline_id = ""
+        self.captured_at = None
+        self.capture(
+            repo_root=repo_root,
+            reason=reason,
+            failure_policy=failure_policy,
+            parent_baseline_id=old_baseline if old_baseline else None,
+        )
+
+    @property
+    def capture_succeeded(self) -> bool:
+        return self._captured and self._capture_error is None
+
+    @property
+    def capture_failed(self) -> bool:
+        return self._captured and self._capture_error is not None
 
     def is_protected(self, path: str | Path) -> bool:
         """Return True if *path* was dirty at mission start."""
@@ -84,6 +174,64 @@ class DirtyFileGuard:
         key = self._normalize_path(path)
         return self.dirty_snapshots.get(key)
 
+    def _check_capture_failed(self) -> WriteGuardResult | None:
+        """Return a refusal if capture failed under FAIL_CLOSED_FOR_MUTATION, else None."""
+        if (
+            self.capture_failed
+            and self.failure_policy == DirtyGuardFailurePolicy.FAIL_CLOSED_FOR_MUTATION
+        ):
+            return WriteGuardResult(
+                allowed=False,
+                reason="dirty_guard_capture_failed",
+                detail=(
+                    "Dirty file guard capture failed. Mutation tools are blocked. "
+                    f"Capture error: {self._capture_error}"
+                ),
+            )
+        return None
+
+    def _verify_protected_file_hash(
+        self,
+        key: str,
+        snapshot: DirtyFileSnapshot,
+        *,
+        expected_before_sha256: str | None,
+    ) -> WriteGuardResult:
+        """Verify expected hash for a protected file. Caller already confirmed file is dirty."""
+        current_hash = self._hash_file(key)
+        if current_hash is None:
+            return WriteGuardResult(
+                allowed=False,
+                reason="protected_file_missing",
+                detail=f"File '{key}' was dirty at mission start but no longer exists.",
+                snapshot=snapshot,
+            )
+
+        if expected_before_sha256 is None:
+            return WriteGuardResult(
+                allowed=False,
+                reason="protected_file_missing_expected_hash",
+                detail=(
+                    f"File '{key}' was dirty at mission start. "
+                    "Provide expected_before_sha256 matching the current file bytes."
+                ),
+                snapshot=snapshot,
+            )
+
+        if expected_before_sha256 != current_hash:
+            return WriteGuardResult(
+                allowed=False,
+                reason="protected_file_stale_hash",
+                detail=(
+                    f"File '{key}' bytes no longer match expected_before_sha256. "
+                    f"Expected {expected_before_sha256}, current {current_hash}. "
+                    "Re-read the file and apply a narrower patch preserving existing changes."
+                ),
+                snapshot=snapshot,
+            )
+
+        return WriteGuardResult(allowed=True, reason="protected_file_hash_matched")
+
     def check_write_file(
         self,
         path: str | Path,
@@ -91,12 +239,12 @@ class DirtyFileGuard:
         allow_overwrite_protected: bool = False,
         expected_before_sha256: str | None = None,
     ) -> WriteGuardResult:
-        """Check whether a ``write_file`` operation should proceed.
-
-        Returns:
-            WriteGuardResult with ``allowed`` and a structured reason.
-        """
+        """Check whether a ``write_file`` operation should proceed."""
         self.capture()
+
+        if refusal := self._check_capture_failed():
+            return refusal
+
         key = self._normalize_path(path)
         snapshot = self.dirty_snapshots.get(key)
 
@@ -115,106 +263,41 @@ class DirtyFileGuard:
                 snapshot=snapshot,
             )
 
-        current_hash = self._hash_file(key)
-        if current_hash is None:
-            return WriteGuardResult(
-                allowed=False,
-                reason="protected_file_missing",
-                detail=f"File '{key}' was dirty at mission start but no longer exists.",
-                snapshot=snapshot,
-            )
-
-        if expected_before_sha256 is None:
-            return WriteGuardResult(
-                allowed=False,
-                reason="protected_file_missing_expected_hash",
-                detail=(
-                    f"File '{key}' was dirty at mission start. "
-                    "Provide expected_before_sha256 matching the current file bytes."
-                ),
-                snapshot=snapshot,
-            )
-
-        if expected_before_sha256 != current_hash:
-            return WriteGuardResult(
-                allowed=False,
-                reason="protected_file_stale_hash",
-                detail=(
-                    f"File '{key}' bytes no longer match expected_before_sha256. "
-                    f"Expected {expected_before_sha256}, current {current_hash}. "
-                    "Re-read the file and apply a narrower patch preserving existing changes."
-                ),
-                snapshot=snapshot,
-            )
-
-        return WriteGuardResult(allowed=True, reason="protected_file_hash_matched")
+        return self._verify_protected_file_hash(
+            key, snapshot, expected_before_sha256=expected_before_sha256
+        )
 
     def check_search_replace(
-        self,
-        path: str | Path,
-        *,
-        expected_before_sha256: str | None = None,
+        self, path: str | Path, *, expected_before_sha256: str | None = None
     ) -> WriteGuardResult:
         """Check whether a ``search_replace`` operation on a protected file should proceed."""
         self.capture()
+
+        if refusal := self._check_capture_failed():
+            return refusal
+
         key = self._normalize_path(path)
         snapshot = self.dirty_snapshots.get(key)
 
         if snapshot is None:
             return WriteGuardResult(allowed=True, reason="file_was_clean")
 
-        current_hash = self._hash_file(key)
-        if current_hash is None:
-            return WriteGuardResult(
-                allowed=False,
-                reason="protected_file_missing",
-                detail=f"File '{key}' was dirty at mission start but no longer exists.",
-                snapshot=snapshot,
-            )
-
-        if expected_before_sha256 is None:
-            return WriteGuardResult(
-                allowed=False,
-                reason="protected_file_missing_expected_hash",
-                detail=(
-                    f"File '{key}' was dirty at mission start. "
-                    "Provide expected_before_sha256 matching the current file bytes."
-                ),
-                snapshot=snapshot,
-            )
-
-        if expected_before_sha256 != current_hash:
-            return WriteGuardResult(
-                allowed=False,
-                reason="protected_file_stale_hash",
-                detail=(
-                    f"File '{key}' bytes no longer match expected_before_sha256. "
-                    f"Expected {expected_before_sha256}, current {current_hash}. "
-                    "Re-read the file and apply a narrower patch preserving existing changes."
-                ),
-                snapshot=snapshot,
-            )
-
-        return WriteGuardResult(allowed=True, reason="protected_file_hash_matched")
+        return self._verify_protected_file_hash(
+            key, snapshot, expected_before_sha256=expected_before_sha256
+        )
 
     def blocked_git_commands(self) -> frozenset[str]:
         """Return the set of destructive git commands blocked by the guard."""
-        return frozenset(
-            {
-                "git restore",
-                "git checkout",
-                "git reset",
-                "git clean",
-                "git stash",
-            }
-        )
+        return frozenset({
+            "git restore",
+            "git checkout",
+            "git reset",
+            "git clean",
+            "git stash",
+        })
 
     def is_destructive_git_command(self, command: str) -> tuple[bool, str | None]:
-        """Check if *command* is a blocked destructive git operation.
-
-        Returns:
-            (is_blocked, reason) — reason is None if not blocked.
-        """
+        """Check if *command* is a blocked destructive git operation."""
         stripped = command.strip()
         for blocked in self.blocked_git_commands():
             if stripped == blocked or stripped.startswith(blocked + " "):
@@ -246,6 +329,15 @@ class DirtyFileGuard:
         touched = sorted(self.touched_files)
         skipped = sorted(self.skipped_files.keys())
         return {
+            "baseline_id": self.baseline_id,
+            "captured_at": self.captured_at,
+            "capture_reason": self.capture_reason.value,
+            "parent_baseline_id": self.parent_baseline_id,
+            "repo_root": str(self._repo_root) if self._repo_root else None,
+            "capture_method": "git status --porcelain=v1",
+            "capture_succeeded": self.capture_succeeded,
+            "capture_error": self._capture_error,
+            "failure_policy": self.failure_policy.value,
             "dirty_files_before_mission": pre_existing,
             "dirty_file_count": len(pre_existing),
             "files_touched_by_mission": touched,
@@ -274,7 +366,6 @@ class DirtyFileGuard:
         raw_path = line[self._STATUS_LINE_PATH_OFFSET :]
         rel = Path(raw_path).as_posix()
 
-        # Handle rename: "R  old -> new"
         if " -> " in rel:
             rel = rel.split(" -> ")[-1]
 

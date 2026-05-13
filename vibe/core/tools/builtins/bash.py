@@ -100,6 +100,8 @@ def _get_default_denylist() -> list[str]:
         "git merge",
         "git push --force",
         "git push --force-with-lease",
+        "git commit",
+        "git add",
         "rm -rf",
         "rm -fr",
     ]

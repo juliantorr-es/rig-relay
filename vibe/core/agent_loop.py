@@ -24,6 +24,7 @@ from vibe.cli.terminal_detect import detect_terminal
 from vibe.core.agents.manager import AgentManager
 from vibe.core.agents.models import AgentProfile, BuiltinAgentName
 from vibe.core.config import ModelConfig, ProviderConfig, VibeConfig
+from vibe.core.guard import DirtyGuardFailurePolicy, GuardCaptureReason, get_guard
 from vibe.core.hooks.manager import HooksManager
 from vibe.core.hooks.models import HookConfigResult, HookType, HookUserMessage
 from vibe.core.llm.backend.factory import BACKEND_FACTORY
@@ -338,6 +339,23 @@ class AgentLoop:
             entrypoint_metadata_getter=lambda: self.entrypoint_metadata,
         )
         self.session_logger = SessionLogger(config.session_logging, self.session_id)
+
+        # ── dirty-file guard: snapshot protected files before any tool call ──
+        try:
+            policy = (
+                DirtyGuardFailurePolicy.FAIL_CLOSED_FOR_MUTATION
+                if is_subagent
+                else DirtyGuardFailurePolicy.WARN_ALLOW
+            )
+            reason = (
+                GuardCaptureReason.FORK_CHILD
+                if is_subagent
+                else GuardCaptureReason.AGENT_LOOP_INIT
+            )
+            get_guard().capture(reason=reason, failure_policy=policy)
+        except Exception:
+            pass
+
         self._hook_config_result = hook_config_result
         self._hooks_manager = (
             HooksManager(hook_config_result.hooks) if hook_config_result else None
@@ -1748,6 +1766,12 @@ class AgentLoop:
         )
         self.emit_new_session_telemetry()
 
+        # ── dirty-file guard: new session baseline ──
+        try:
+            get_guard().recapture(reason=GuardCaptureReason.RESET_SESSION)
+        except Exception:
+            pass
+
     async def fork(self, message_id: str | None = None) -> AgentLoop:
         messages = self._messages_for_fork(message_id)
         forked = AgentLoop(
@@ -1763,6 +1787,16 @@ class AgentLoop:
         forked.session_logger.reset_session(
             forked.session_id, parent_session_id=self.session_id
         )
+
+        # ── dirty-file guard: child baseline from current repo state ──
+        try:
+            get_guard().recapture(
+                reason=GuardCaptureReason.FORK_CHILD,
+                failure_policy=DirtyGuardFailurePolicy.FAIL_CLOSED_FOR_MUTATION,
+            )
+        except Exception:
+            pass
+
         forked.messages.extend(messages)
         await forked.session_logger.save_interaction(
             forked.messages,

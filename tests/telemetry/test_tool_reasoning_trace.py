@@ -3,15 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from jsonschema import validate
 
-from vibe.core.telemetry.tool_contract import (
-    ToolDeterminismClass,
-    ToolMutationClass,
-    ToolOutputKind,
-    ToolReasoningTrace,
-)
+from vibe.core.telemetry.tool_contract import ToolOutputKind, ToolReasoningTrace
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 SCHEMA_DIR = REPO_ROOT / "docs" / "schemas"
@@ -158,7 +152,6 @@ def test_telemetry_send_reasoning_trace_signature():
     """Verify the send_tool_reasoning_trace method exists and accepts expected params."""
     from unittest.mock import MagicMock
 
-    from vibe.core.telemetry.constants import EventName
     from vibe.core.telemetry.send import TelemetryClient
 
     mock_config = MagicMock()
@@ -181,9 +174,9 @@ def test_telemetry_send_reasoning_trace_signature():
 
 def test_doctor_identifies_largest_inline_output():
     """Doctor summarize_tool_reasoning must identify largest inline outputs."""
+    from vibe.core.telemetry.constants import EventName
     from vibe.core.telemetry.doctor import summarize_tool_reasoning
     from vibe.core.telemetry.local import dump_canonical_json
-    from vibe.core.telemetry.constants import EventName
 
     tmp_dir = Path("/tmp/test_doctor_trace_inline")
     session_id = "test-inline"
@@ -228,9 +221,9 @@ def test_doctor_identifies_largest_inline_output():
 
 def test_doctor_identifies_slow_tool_call():
     """Doctor summarize_tool_reasoning must identify slowest tool calls."""
+    from vibe.core.telemetry.constants import EventName
     from vibe.core.telemetry.doctor import summarize_tool_reasoning
     from vibe.core.telemetry.local import dump_canonical_json
-    from vibe.core.telemetry.constants import EventName
 
     tmp_dir = Path("/tmp/test_doctor_trace_slow")
     session_id = "test-slow"

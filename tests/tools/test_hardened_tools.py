@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.tools.base import BaseToolState, ToolError, ToolPermission
+from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
 from vibe.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
 from vibe.core.tools.builtins.search_replace import (
     SearchReplace,
@@ -253,6 +255,37 @@ async def test_write_file_result_serializes(tmp_path, monkeypatch):
     assert dump["after_sha256"].startswith("sha256:")
 
 
+@pytest.mark.asyncio
+async def test_write_file_emits_coordination_events(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    session_dir = tmp_path / "session"
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    await collect_result(
+        tool.run(
+            WriteFileArgs(path="coord.txt", content="hello"),
+            InvokeContext(tool_call_id="tool-call", session_dir=session_dir),
+        )
+    )
+
+    events_path = tmp_path / ".build" / "rig-relay" / "coordination" / "events.jsonl"
+    events = [
+        json.loads(line)
+        for line in events_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    assert [event["event_name"] for event in events] == [
+        "coord.task.claimed",
+        "coord.path.reserved",
+        "coord.artifact.published",
+        "coord.path.released",
+    ]
+    assert events[0]["payload"]["schema_version"] == "rig.relay.coordination.task_claim.v1"
+    assert events[2]["payload"]["artifact_kind"] == "write_file"
+
+
 # ── search_replace mutation evidence ──────────────────────────────────
 
 
@@ -386,3 +419,37 @@ async def test_search_replace_result_serializes(tmp_path, monkeypatch):
     assert "total_block_count" in dump
     assert isinstance(dump["before_file_sha256"], dict)
     assert dump["total_block_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_search_replace_emits_coordination_events(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    session_dir = tmp_path / "session"
+    target = tmp_path / "code.py"
+    target.write_text("x = 1\n", encoding="utf-8")
+
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    content = _sr_block("x = 1", "x = 2")
+    await collect_result(
+        tool.run(
+            SearchReplaceArgs(file_path="code.py", content=content),
+            InvokeContext(tool_call_id="tool-call", session_dir=session_dir),
+        )
+    )
+
+    events_path = tmp_path / ".build" / "rig-relay" / "coordination" / "events.jsonl"
+    events = [
+        json.loads(line)
+        for line in events_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    assert [event["event_name"] for event in events] == [
+        "coord.task.claimed",
+        "coord.path.reserved",
+        "coord.artifact.published",
+        "coord.path.released",
+    ]
+    assert events[2]["payload"]["artifact_kind"] == "search_replace"

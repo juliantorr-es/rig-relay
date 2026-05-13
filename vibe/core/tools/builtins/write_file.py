@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, final
 
 import anyio
 from pydantic import BaseModel, Field
 
+from vibe.core.coordination import CoordinationStore
 from vibe.core.guard import get_guard
 from vibe.core.rewind.manager import FileSnapshot
 from vibe.core.scratchpad import is_scratchpad_path
+from vibe.core.telemetry.artifacts import ToolOutputArtifactWriter
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
@@ -34,11 +37,20 @@ class WriteFileArgs(BaseModel):
     )
     allow_overwrite_protected: bool = Field(
         default=False,
-        description="Must be set to true to overwrite a file that was dirty at mission start.",
+        description=(
+            "Set to true ONLY when overwriting a file that was dirty (modified, staged, or untracked) "
+            "at session start. Must be paired with expected_before_sha256. "
+            "Leave false for clean files and new files."
+        ),
     )
     expected_before_sha256: str | None = Field(
         default=None,
-        description="sha256:<hex> of the current file bytes. Required when overwriting a protected file.",
+        description=(
+            "sha256:<hex> of the file bytes as they exist right now, before your write. "
+            "Required when allow_overwrite_protected=true. "
+            "The write will be REFUSED if this hash does not match the current file bytes — "
+            "re-read the file and recompute the hash if you get a stale-hash refusal."
+        ),
     )
 
 
@@ -52,6 +64,14 @@ class WriteFileResult(BaseModel):
     created_file: bool = False
     overwrote_existing_file: bool = False
     parent_dirs_created: bool = False
+
+
+@dataclass(frozen=True)
+class WriteFileCoordinationContext:
+    session_id: str
+    task_id: str
+    path: Path
+    relative_path: str
 
 
 class WriteFileConfig(BaseToolConfig):
@@ -99,6 +119,75 @@ class WriteFile(
     def get_status_text(cls) -> str:
         return "Writing file"
 
+    @staticmethod
+    def _coordination_store(ctx: InvokeContext | None) -> CoordinationStore | None:
+        if ctx is None or ctx.session_dir is None:
+            return None
+        return CoordinationStore(
+            Path.cwd() / ".build" / "rig-relay" / "coordination"
+        )
+
+    @staticmethod
+    def _build_coordination_context(
+        ctx: InvokeContext | None, file_path: Path
+    ) -> WriteFileCoordinationContext | None:
+        if ctx is None or ctx.session_dir is None or ctx.tool_call_id is None:
+            return None
+        return WriteFileCoordinationContext(
+            session_id=ctx.session_dir.name,
+            task_id=ctx.tool_call_id,
+            path=file_path,
+            relative_path=file_path.as_posix(),
+        )
+
+    @staticmethod
+    def _maybe_claim_coordination(
+        store: CoordinationStore | None, coordination: WriteFileCoordinationContext | None
+    ) -> bool:
+        if store is None or coordination is None:
+            return False
+        claim_result = store.claim_task(
+            session_id=coordination.session_id,
+            task_id=coordination.task_id,
+            claim_kind="write_file",
+            ttl_seconds=300,
+            scope={"allowed_paths": [coordination.relative_path]},
+        )
+        if not claim_result.allowed:
+            return False
+        reservation_result = store.reserve_paths(
+            session_id=coordination.session_id,
+            task_id=coordination.task_id,
+            mode="write",
+            paths=[coordination.relative_path],
+            ttl_seconds=300,
+        )
+        if not reservation_result.allowed:
+            raise ToolError("write_file coordination reservation refused")
+        return True
+
+    @staticmethod
+    def _maybe_publish_coordination_artifact(
+        store: CoordinationStore | None,
+        coordination: WriteFileCoordinationContext | None,
+        result: WriteFileResult,
+    ) -> None:
+        if store is None or coordination is None:
+            return
+        artifact = ToolOutputArtifactWriter(coordination.session_id).write_artifact(
+            tool_name="write_file",
+            raw_output=result.model_dump_json(exclude_none=True),
+            source_event_id=coordination.task_id,
+        )
+        store.publish_artifact(
+            session_id=coordination.session_id,
+            task_id=coordination.task_id,
+            artifact_kind="write_file",
+            artifact_uri=artifact.path,
+            artifact_sha256=artifact.artifact_record_sha256 or artifact.payload_sha256,
+            schema_id="rig.relay.artifact.envelope.v1",
+        )
+
     def get_file_snapshot(self, args: WriteFileArgs) -> FileSnapshot | None:
         return self.get_file_snapshot_for_path(args.path)
 
@@ -119,6 +208,11 @@ class WriteFile(
         file_path, file_existed, content_bytes, parent_dirs_created = (
             self._prepare_and_validate_path(args)
         )
+        coordination_store = self._coordination_store(ctx)
+        coordination = self._build_coordination_context(ctx, file_path)
+        reservation_allowed = self._maybe_claim_coordination(
+            coordination_store, coordination
+        )
 
         guard = get_guard()
         check = guard.check_write_file(
@@ -135,21 +229,34 @@ class WriteFile(
         snapshot = self.get_file_snapshot_for_path(str(file_path))
         before_sha256 = sha256_file_bytes(snapshot.content)
 
-        await self._write_file(args, file_path)
+        try:
+            await self._write_file(args, file_path)
 
-        after_sha256 = sha256_file_bytes(file_path.read_bytes())
+            after_sha256 = sha256_file_bytes(file_path.read_bytes())
+            assert after_sha256 is not None  # file was just written
 
-        yield WriteFileResult(
-            path=str(file_path),
-            bytes_written=content_bytes,
-            file_existed=file_existed,
-            content=args.content,
-            before_sha256=before_sha256,
-            after_sha256=after_sha256,
-            created_file=not file_existed,
-            overwrote_existing_file=file_existed,
-            parent_dirs_created=parent_dirs_created,
-        )
+            result = WriteFileResult(
+                path=str(file_path),
+                bytes_written=content_bytes,
+                file_existed=file_existed,
+                content=args.content,
+                before_sha256=before_sha256,
+                after_sha256=after_sha256,
+                created_file=not file_existed,
+                overwrote_existing_file=file_existed,
+                parent_dirs_created=parent_dirs_created,
+            )
+            self._maybe_publish_coordination_artifact(
+                coordination_store, coordination, result
+            )
+            yield result
+        finally:
+            if coordination_store is not None and coordination is not None and reservation_allowed:
+                coordination_store.release_paths(
+                    session_id=coordination.session_id,
+                    task_id=coordination.task_id,
+                    paths=[coordination.relative_path],
+                )
 
     def _prepare_and_validate_path(
         self, args: WriteFileArgs
