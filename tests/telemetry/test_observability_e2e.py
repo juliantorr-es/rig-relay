@@ -392,6 +392,7 @@ async def test_observability_e2e_shadow_request_assembly(
 
     from tests.mock.utils import mock_llm_chunk
     from tests.stubs.fake_backend import FakeBackend
+
     backend = FakeBackend([mock_llm_chunk(content="assistant reply")])
     loop.backend = backend
     model = mock_config.get_active_model()
@@ -440,6 +441,7 @@ async def test_shadow_request_assembly_failure_does_not_fail_model_request(
 
     from tests.mock.utils import mock_llm_chunk
     from tests.stubs.fake_backend import FakeBackend
+
     backend = FakeBackend([mock_llm_chunk(content="assistant reply")])
     loop.backend = backend
     model = mock_config.get_active_model()
@@ -455,3 +457,115 @@ async def test_shadow_request_assembly_failure_does_not_fail_model_request(
 
     assert result.message.content == "assistant reply"
     assert backend.requests_messages
+
+
+@pytest.mark.asyncio
+async def test_disposable_smoke_emits_artifact_and_shadow_evidence(
+    tmp_path, monkeypatch, real_telemetry_client, observability_schema
+):
+    monkeypatch.chdir(tmp_path)
+
+    repo_root = tmp_path / "smoke-repo"
+    repo_root.mkdir()
+    monkeypatch.chdir(repo_root)
+
+    monkeypatch.setenv("RIG_RELAY_HOME", str(repo_root / ".rig" / "relay"))
+    monkeypatch.setenv("RIG_RELAY_DISABLE_LEGACY_CONFIG", "1")
+
+    from pydantic import BaseModel
+
+    from tests.conftest import build_test_vibe_config
+    from tests.mock.utils import mock_llm_chunk
+    from tests.stubs.fake_backend import FakeBackend
+    from vibe.core.agent_loop import AgentLoop
+    from vibe.core.config.harness_files import (
+        init_harness_files_manager,
+        reset_harness_files_manager,
+    )
+    from vibe.core.llm.format import ResolvedToolCall
+    from vibe.core.paths._vibe_home import SESSIONS_ROOT
+    from vibe.core.telemetry.constants import EventName
+    from vibe.core.tools.base import BaseTool
+    from vibe.core.types import LLMMessage, Role
+
+    class MockArgs(BaseModel):
+        path: str = "big_log.txt"
+
+    reset_harness_files_manager()
+    init_harness_files_manager("user")
+
+    big_log = repo_root / "big_log.txt"
+    big_log.write_text("\n".join(f"line {i:04d} {'x' * 240}" for i in range(1200)))
+
+    cfg = build_test_vibe_config(
+        enable_local_observability=True,
+        include_project_context=False,
+        include_prompt_detail=False,
+        include_model_info=False,
+        include_commit_signature=False,
+    )
+
+    loop = AgentLoop(config=cfg)
+    loop.session_id = "smoke-session"
+    loop.messages.append(LLMMessage(role=Role.system, content="System instruction"))
+    loop.messages.append(LLMMessage(role=Role.user, content="Inspect big_log.txt"))
+
+    tool_call = ResolvedToolCall(
+        tool_name="read_file",
+        tool_class=BaseTool,
+        validated_args=MockArgs(),
+        call_id="call-smoke",
+    )
+
+    large_tool_output = big_log.read_text(encoding="utf-8")
+    loop._handle_tool_response(tool_call, large_tool_output, "success")
+
+    backend = FakeBackend([mock_llm_chunk(content="assistant reply")])
+    loop.backend = backend
+
+    result = await loop._chat(model_override=cfg.get_active_model())
+
+    assert result.message.content == "assistant reply"
+    assert len(backend.requests_messages) == 1
+
+    session_root = SESSIONS_ROOT.path / loop.session_id
+    observability_file = session_root / "observability.jsonl"
+    assert observability_file.exists()
+
+    context_dir = session_root / "context"
+    artifact_dir = session_root / "artifacts" / "tool-results"
+    shadow_reports = sorted(context_dir.glob("shadow_request_*.json"))
+    layout_reports = sorted(context_dir.glob("layout_*.json"))
+    assembly_reports = sorted(context_dir.glob("assembly_*.json"))
+    artifact_files = sorted(artifact_dir.glob("*.json"))
+
+    assert shadow_reports
+    assert layout_reports
+    assert assembly_reports
+    assert artifact_files
+
+    events = [json.loads(line) for line in observability_file.read_text().splitlines()]
+    event_names = [event["event_name"] for event in events]
+    assert EventName.ARTIFACT_WRITTEN in event_names
+    assert EventName.SHADOW_REQUEST_ASSEMBLED in event_names
+    assert EventName.CONTEXT_LAYOUT_PLANNED in event_names
+    assert EventName.CONTEXT_ASSEMBLY_REPORTED in event_names
+
+    shadow_event = next(
+        event
+        for event in events
+        if event["event_name"] == EventName.SHADOW_REQUEST_ASSEMBLED
+    )
+    validate(instance=shadow_event, schema=observability_schema)
+    assert shadow_event["payload"]["reason_not_applied"] == "shadow_mode_only"
+
+    artifact_event = next(
+        event for event in events if event["event_name"] == EventName.ARTIFACT_WRITTEN
+    )
+    assert (
+        artifact_event["payload"]["schema_version"]
+        == "rig.relay.tool_output_artifact.v1"
+    )
+    assert artifact_event["payload"]["raw_byte_size"] > 16_384
+    assert artifact_event["payload"]["payload_sha256"].startswith("sha256:")
+    assert "raw_output" not in artifact_event["payload"]
