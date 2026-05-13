@@ -145,6 +145,32 @@ class GitStateArtifact(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class TaskSessionLinkArtifact(BaseModel):
+    artifact_kind: str = "task_session_link"
+    parent_session_id: str | None = None
+    parent_turn_id: str | None = None
+    parent_tool_call_id: str | None = None
+    task_id: str | None = None
+    child_session_id: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    thinking_requested: bool = False
+    thinking_enabled: bool | None = None
+    thinking_type: str | None = None
+    reasoning_effort: str | None = None
+    tool_access_policy: str | None = None
+    result_compression_policy: str | None = None
+    timeout_seconds: float | None = None
+    input_prompt_sha256: str | None = None
+    output_result_sha256: str | None = None
+    child_artifact_manifest_sha256: str | None = None
+    linkage_sha256: str | None = None
+    status: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
 class PromptVisibleToolResult(BaseModel):
     tool_name: str
     artifact_id: str | None = None
@@ -423,6 +449,59 @@ class ToolOutputArtifactWriter:
             payload=payload,
             artifact_id=artifact_id,
             tool_name=artifact.tool_name,
+            path=str(artifact_path),
+            byte_size=len(payload_bytes),
+            truncated_for_prompt=False,
+            prompt_excerpt=None,
+        )
+
+    def write_task_session_link_artifact(
+        self,
+        *,
+        artifact: TaskSessionLinkArtifact,
+        tool_call_id: str | None,
+        sequence: int = 0,
+    ) -> ToolOutputArtifact:
+        payload = artifact.model_dump(exclude_none=True)
+        self.artifact_dir.mkdir(parents=True, exist_ok=True)
+
+        artifact_id = str(uuid.uuid4())
+        filename = f"{sequence:04d}_task_session_link_{artifact_id[:8]}.json"
+        artifact_path = self.artifact_dir / filename
+        payload_bytes = dump_canonical_json(payload).encode("utf-8")
+        payload_sha256 = f"sha256:{hashlib.sha256(payload_bytes).hexdigest()}"
+        envelope = {
+            "schema_version": "rig.relay.artifact.envelope.v1",
+            "artifact_kind": "task_session_link",
+            "session_id": self.session_id,
+            "tool_call_id": tool_call_id,
+            "created_at": datetime.now(UTC).isoformat(),
+            "payload_sha256": payload_sha256,
+            "payload": payload,
+            "metadata": {
+                "artifact_id": artifact_id,
+                "tool_name": "task",
+                "producer": "rig-relay",
+                "producer_version": "2.9.6",
+                "evidence_relative_path": str(
+                    artifact_path.relative_to(self.artifact_dir.parent.parent.parent)
+                ),
+                "mime_type": "application/json",
+                "encoding": "utf-8",
+            },
+        }
+        envelope_bytes = dump_canonical_json(envelope).encode("utf-8")
+        artifact_record_sha256 = f"sha256:{hashlib.sha256(envelope_bytes).hexdigest()}"
+        envelope["artifact_record_sha256"] = artifact_record_sha256
+        artifact_path.write_text(dump_canonical_json(envelope), encoding="utf-8")
+        return ToolOutputArtifact(
+            session_id=self.session_id,
+            tool_call_id=tool_call_id,
+            payload_sha256=payload_sha256,
+            artifact_record_sha256=artifact_record_sha256,
+            payload=payload,
+            artifact_id=artifact_id,
+            tool_name="task",
             path=str(artifact_path),
             byte_size=len(payload_bytes),
             truncated_for_prompt=False,

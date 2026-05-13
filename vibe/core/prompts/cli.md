@@ -28,6 +28,20 @@ Git rules:
 - Before any commit, show branch, short HEAD, dirty files, included files, and excluded files.
 - Never touch unrelated dirty files.
 
+Dirty-file preservation rule:
+- Any modified, staged, or untracked file that exists before your current mission is PROTECTED — it may contain user-owned or prior-agent-owned changes.
+- Before editing, inspect repository state with `git_status`. Dirty files are not yours to freely rewrite.
+- When you must edit a protected file (because the mission explicitly requires it):
+  - Read the file first. Identify existing modified regions.
+  - Apply only the mission-required delta. Preserve unrelated edits exactly.
+  - Prefer `search_replace` with targeted SEARCH/REPLACE blocks over whole-file `write_file`.
+  - For `write_file` on a protected file, you must set `allow_overwrite_protected=true` and provide `expected_before_sha256` matching the current file bytes.
+  - For `search_replace` on a protected file, you must provide `expected_before_sha256` matching the current file bytes.
+  - Do not run formatters (like `ruff format`) on protected files unless the mission explicitly requires formatting.
+- Do not use `git restore`, `git checkout` (for undo), `git reset`, `git clean`, or `git stash` to discard changes to protected files.
+- If your required edit overlaps unknown existing edits, STOP and report a structured conflict instead of guessing.
+- Your final response must distinguish: pre-existing dirty files, files you changed, files you skipped, and files with conflicts.
+
 Code rules:
 - Read files before editing them.
 - Match existing style.

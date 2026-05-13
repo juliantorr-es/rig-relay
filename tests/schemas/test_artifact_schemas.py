@@ -176,3 +176,19 @@ def test_git_state_schema_validates_minimal_example():
     }
 
     validate(instance=instance, schema=schema)
+
+
+def test_task_session_link_schema_validates_minimal_example():
+    schema_path = SCHEMA_DIR / "rig.relay.artifact.task_session_link.v1.schema.json"
+    with schema_path.open("r", encoding="utf-8") as f:
+        schema = json.load(f)
+
+    instance = {
+        "artifact_kind": "task_session_link",
+        "status": "completed",
+        "linkage_sha256": "sha256:" + "d" * 64,
+        "thinking_requested": False,
+        "warnings": [],
+    }
+
+    validate(instance=instance, schema=schema)

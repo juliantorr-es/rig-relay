@@ -10,6 +10,7 @@ from typing import ClassVar, NamedTuple, final
 import anyio
 from pydantic import BaseModel, Field
 
+from vibe.core.guard import get_guard
 from vibe.core.rewind.manager import FileSnapshot
 from vibe.core.scratchpad import is_scratchpad_path
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
@@ -59,6 +60,10 @@ class BlockApplyResult(NamedTuple):
 class SearchReplaceArgs(BaseModel):
     file_path: str
     content: str
+    expected_before_sha256: str | None = Field(
+        default=None,
+        description="sha256:<hex> of the current file bytes. Required when modifying a protected file.",
+    )
 
 
 class SearchReplaceResult(BaseModel):

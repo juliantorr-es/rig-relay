@@ -7,6 +7,7 @@ from typing import ClassVar, final
 import anyio
 from pydantic import BaseModel, Field
 
+from vibe.core.guard import get_guard
 from vibe.core.rewind.manager import FileSnapshot
 from vibe.core.scratchpad import is_scratchpad_path
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
@@ -30,6 +31,14 @@ class WriteFileArgs(BaseModel):
     content: str
     overwrite: bool = Field(
         default=False, description="Must be set to true to overwrite an existing file."
+    )
+    allow_overwrite_protected: bool = Field(
+        default=False,
+        description="Must be set to true to overwrite a file that was dirty at mission start.",
+    )
+    expected_before_sha256: str | None = Field(
+        default=None,
+        description="sha256:<hex> of the current file bytes. Required when overwriting a protected file.",
     )
 
 
@@ -110,6 +119,15 @@ class WriteFile(
         file_path, file_existed, content_bytes, parent_dirs_created = (
             self._prepare_and_validate_path(args)
         )
+
+        guard = get_guard()
+        check = guard.check_write_file(
+            file_path,
+            allow_overwrite_protected=args.allow_overwrite_protected,
+            expected_before_sha256=args.expected_before_sha256,
+        )
+        if not check.allowed:
+            raise ToolError(f"write_file refused: {check.detail}")
 
         snapshot = self.get_file_snapshot_for_path(str(file_path))
         before_sha256 = sha256_file_bytes(snapshot.content)

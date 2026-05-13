@@ -59,6 +59,7 @@ Every artifact envelope MUST include:
 | `rig.relay.artifact.file_read.v1.schema.json` | file_read | Draft |
 | `rig.relay.artifact.file_write.v1.schema.json` | file_write | Active |
 | `rig.relay.artifact.git_state.v1.schema.json` | git_state | Active |
+| `rig.relay.artifact.task_session_link.v1.schema.json` | task_session_link | Active |
 | `rig.relay.artifact.semantic_placement.v1.schema.json` | semantic_placement | Draft |
 | `rig.relay.artifact.tool_determinism_summary.v1.schema.json` | tool_determinism_summary | Active |
 | `rig.relay.evidence.manifest.v1.schema.json` | evidence_manifest | Active |
@@ -76,5 +77,6 @@ The `tool_reasoning_trace` artifact records observable metadata around tool use 
 4.  **File I/O Telemetry**: Implement `file_read` and `file_write` artifact emission for all built-in file tools.
 5.  **Git State Telemetry**: `git_status` emits typed repo-state evidence with branch, HEAD, dirty counts, and upstream metadata where observable.
 6.  **Semantic Placement Reports**: Add artifacts for `search_replace` and other edit tools documenting why a specific placement was selected.
-7.  **Token Usage Analysis**: Build tools to analyze token waste based on artifact types and content density. The reasoning trace event (`TOOL_REASONING_TRACE`) now provides per-call inline vs artifacted byte counts and latency for this analysis.
-7.  **Dataset Export Tooling**: Create a `rig-relay doctor export` command that merges typed artifacts into structured evaluation datasets.
+7.  **Task Delegation Linkage**: Add rollup tooling for `task_session_link` artifacts so parent sessions can summarize child manifest provenance without storing hidden reasoning.
+8.  **Token Usage Analysis**: Build tools to analyze token waste based on artifact types and content density. The reasoning trace event (`TOOL_REASONING_TRACE`) now provides per-call inline vs artifacted byte counts and latency for this analysis.
+9.  **Dataset Export Tooling**: Create a `rig-relay doctor export` command that merges typed artifacts into structured evaluation datasets.

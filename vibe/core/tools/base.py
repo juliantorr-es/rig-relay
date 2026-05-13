@@ -45,6 +45,7 @@ class InvokeContext:
     """Context passed to tools during invocation."""
 
     tool_call_id: str
+    parent_turn_id: str | None = field(default=None)
     approval_callback: ApprovalCallback | None = field(default=None)
     agent_manager: AgentManager | None = field(default=None)
     user_input_callback: UserInputCallback | None = field(default=None)

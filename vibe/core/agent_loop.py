@@ -78,6 +78,8 @@ from vibe.core.telemetry.types import (
     TelemetryCallType,
     TelemetryRequestMetadata,
 )
+
+_TRUNCATION_PROMPT_BYTES = 64_000
 from vibe.core.teleport.errors import ServiceTeleportError
 from vibe.core.teleport.telemetry import TeleportTelemetryTracker
 from vibe.core.teleport.types import TeleportCompleteEvent
@@ -1053,6 +1055,7 @@ class AgentLoop:
             async for item in tool_instance.invoke(
                 ctx=InvokeContext(
                     tool_call_id=tool_call.call_id,
+                    parent_turn_id=self._current_user_message_id,
                     agent_manager=self.agent_manager,
                     session_dir=self.session_logger.session_dir,
                     entrypoint_metadata=self.entrypoint_metadata,
@@ -1226,7 +1229,7 @@ class AgentLoop:
                 raw_output=text,
                 sequence=len(self.messages),
             )
-            display_text = artifact.prompt_excerpt
+            display_text = artifact.prompt_excerpt or ""
             session_root = SESSIONS_ROOT.path / self.session_id
             artifact_relative_path = (
                 Path(artifact.path).relative_to(session_root).as_posix()
@@ -1296,9 +1299,13 @@ class AgentLoop:
             latency_ms=duration_ms or 0.0,
             input_bytes=len(input_json.encode("utf-8")),
             output_bytes=text_bytes,
-            inline_output_bytes=text_bytes if output_kind == ToolOutputKind.INLINE else 0,
-            artifacted_output_bytes=text_bytes if output_kind == ToolOutputKind.ARTIFACTED else 0,
-            truncated=text_bytes > 64_000,
+            inline_output_bytes=text_bytes
+            if output_kind == ToolOutputKind.INLINE
+            else 0,
+            artifacted_output_bytes=text_bytes
+            if output_kind == ToolOutputKind.ARTIFACTED
+            else 0,
+            truncated=text_bytes > _TRUNCATION_PROMPT_BYTES,
             determinism_class=str(determinism_class_str),
             mutation_class=str(mutation_class_str),
         )
@@ -1312,9 +1319,7 @@ class AgentLoop:
         span: trace.Span | None = None,
     ) -> ToolResultEvent:
         """Create a ToolResultEvent for a failed tool and record the failure."""
-        self._handle_tool_response(
-            tool_call, error_msg, "failure", decision, span=span
-        )
+        self._handle_tool_response(tool_call, error_msg, "failure", decision, span=span)
         return ToolResultEvent(
             tool_name=tool_call.tool_name,
             tool_class=tool_call.tool_class,

@@ -14,7 +14,7 @@
 | **Read-only tools** | 12 (ask_user_question, exit_plan_mode, git_branch, git_diff, git_log, git_ls_files, git_show, git_status, grep, read_file, skill, web_fetch, web_search) |
 | **Workspace-mutating tools** | 4 (bash, search_replace, task, write_file) |
 | **External/network/provider tools** | 5 (ask_user_question, bash, task, web_fetch, web_search) |
-| **Tools with typed artifacts today** | 2 (grep, git_status — search and repo-state artifacts) |
+| **Tools with typed artifacts today** | 3 (grep, git_status, task — search, repo-state, and delegation-link artifacts) |
 | **Unknown/unclassified tools** | 0 — all 18 have explicit determinism + mutation classes |
 | **Biggest annoyance pattern** | No structured evidence fields emitted at tool level — determinism/mutation is declared but not instrumented in tool output, making dogfood session analysis reliant on agent-loop instrumentation alone |
 | **Highest-priority hardening target** | `search_replace` — highest wrong-edit risk due to fuzzy matching with no before/after content hash in evidence |
@@ -41,7 +41,7 @@
 | `read_file` | Read file with line range | deterministic_repo_state | read_only | No | No | Byte-boundary truncation | P2 | Add content SHA256 + line count to evidence |
 | `search_replace` | Apply SEARCH/REPLACE edits | deterministic_repo_state | writes_workspace | No | No | Fuzzy matching can apply wrong edits | P0 | Add before/after SHA256 + diff patch to evidence |
 | `skill` | Load a skill | deterministic_repo_state | read_only | No | No | Sampled file listing | P2 | Add SHA256 of loaded content to evidence |
-| `task` | Delegate to subagent | nondeterministic_provider | writes_workspace | Yes (provider) | No | Subagent mutations unobservable | P1 | Add subagent session linkage to evidence |
+| `task` | Delegate to subagent | nondeterministic_provider | writes_workspace | Yes (provider) | Yes (task_session_link) | Child artifact rollup still missing | P1 | Aggregate child artifact manifest hashes into linkage evidence |
 | `todo` | Manage todo list | deterministic_pure | writes_temp_only | No | No | Ephemeral in-memory state | P3 | Add state SHA256 to evidence |
 | `web_fetch` | Fetch URL content | nondeterministic_external_io | read_only | Yes (network) | No | HTML→MD conversion is lossy | P2 | Add content SHA256 + timestamp to evidence |
 | `web_search` | Search web via Mistral | nondeterministic_external_io | read_only | Yes (provider) | No | Provider may not use web_search | P2 | Add query SHA256 + source count to evidence |
@@ -224,14 +224,14 @@
 - `NONDETERMINISTIC_PROVIDER` — subagent uses an LLM, outputs are inherently non-deterministic
 - But the lack of subagent call evidence means we can't even measure how non-deterministic
 
-**Evidence currently available**: Task results now record provider, model, thinking request state, tool-access/result-compression policy, and a deterministic task-result hash.
+**Evidence currently available**: Task results now record provider, model, thinking request state, tool-access/result-compression policy, a deterministic task-result hash, and a typed `task_session_link` artifact with parent/child IDs plus manifest hashes when available.
 
 **Missing evidence**:
-- Subagent session ID linkage
 - Subagent tool call evidence shard references
 - Subagent workspace delta (files created/modified)
 - Subagent message count and completion status
 - Explicit attachment of task metadata to the parent evidence stream
+- Child artifact manifest rollup for parent audit summaries
 
 **Recommended hardening**:
 - Link subagent session UUID in parent evidence
@@ -400,7 +400,7 @@ Ranked by composite score of risk, frequency, token waste, and wrong-edit potent
 ### P1 Rationale
 
 - **git tools**: All share the same missing HEAD hash pattern. Adding it is a one-line change per tool that dramatically improves evidence traceability.
-- **task**: Subagent isolation is architecturally complex, but adding session linkage is a small change that enables future hardening.
+- **task**: Subagent isolation is architecturally complex, but session linkage and child manifest hashes are now available; the remaining gap is rollup quality.
 
 ### P2 Rationale
 

@@ -192,6 +192,17 @@ class ProviderConfig(BaseModel):
     extra_headers: dict[str, str] = Field(default_factory=dict)
     extra_body: dict[str, Any] = Field(default_factory=dict)
 
+    def with_overrides(self, **updates: Any) -> ProviderConfig:
+        data = self.model_dump()
+        extra_headers = updates.pop("extra_headers", None)
+        extra_body = updates.pop("extra_body", None)
+        if extra_headers is not None:
+            data["extra_headers"] = deep_update(data["extra_headers"], extra_headers)
+        if extra_body is not None:
+            data["extra_body"] = deep_update(data["extra_body"], extra_body)
+        data.update(updates)
+        return type(self).model_validate(data)
+
     def _is_legacy_mistral_provider_without_backend(self) -> bool:
         return (
             self.name == "mistral"

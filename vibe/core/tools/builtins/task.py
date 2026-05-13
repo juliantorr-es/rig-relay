@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from contextlib import aclosing
+from datetime import UTC, datetime
 import fnmatch
 import hashlib
+from pathlib import Path
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
@@ -11,6 +13,10 @@ from pydantic import BaseModel, Field
 from vibe.core.agent_loop import AgentLoop
 from vibe.core.agents.models import AgentType, BuiltinAgentName
 from vibe.core.config import ModelConfig, SessionLoggingConfig, VibeConfig
+from vibe.core.telemetry.artifacts import (
+    TaskSessionLinkArtifact,
+    ToolOutputArtifactWriter,
+)
 from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
@@ -142,13 +148,103 @@ class Task(
 
     @staticmethod
     def _task_result_sha256(result: TaskResult) -> str:
+        return Task._sha256_payload(result.model_dump(exclude_none=True))
+
+    @staticmethod
+    def _sha256_payload(payload: dict[str, Any]) -> str:
         return (
             "sha256:"
-            + hashlib.sha256(
-                dump_canonical_json(result.model_dump(exclude_none=True)).encode(
-                    "utf-8"
-                )
-            ).hexdigest()
+            + hashlib.sha256(dump_canonical_json(payload).encode("utf-8")).hexdigest()
+        )
+
+    @staticmethod
+    def _prompt_sha256(prompt: str) -> str:
+        return Task._sha256_payload({"prompt": prompt})
+
+    @staticmethod
+    def _file_sha256(path: Path) -> str | None:
+        if not path.is_file():
+            return None
+        return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+    @staticmethod
+    def _build_call_config(config: VibeConfig, plan: TaskExecutionPlan) -> VibeConfig:
+        call_config = config.model_copy(deep=True)
+        if plan.model:
+            call_config.active_model = plan.model
+        if plan.extra_body:
+            provider = call_config.get_active_provider().with_overrides(
+                extra_body=plan.extra_body
+            )
+            for index, candidate in enumerate(call_config.providers):
+                if candidate.name == provider.name:
+                    call_config.providers[index] = provider
+                    break
+        return call_config
+
+    @staticmethod
+    def _derive_task_session_status(*, plan: TaskExecutionPlan, completed: bool) -> str:
+        if plan.warnings:
+            return "refused"
+        if completed:
+            return "completed"
+        return "truncated"
+
+    def _write_task_session_link_artifact(
+        self,
+        *,
+        ctx: InvokeContext,
+        args: TaskArgs,
+        plan: TaskExecutionPlan,
+        result: TaskResult,
+        child_session_dir: Path | None,
+        started_at: datetime,
+        completed_at: datetime,
+    ) -> None:
+        if ctx.session_dir is None:
+            return
+
+        writer = ToolOutputArtifactWriter(str(ctx.session_dir.name))
+        child_session_id = child_session_dir.name if child_session_dir else None
+        child_manifest_sha256 = None
+        if child_session_dir is not None:
+            child_manifest_sha256 = self._file_sha256(
+                child_session_dir / "manifest.json"
+            )
+
+        linkage = TaskSessionLinkArtifact(
+            parent_session_id=ctx.session_dir.name,
+            parent_turn_id=ctx.parent_turn_id,
+            parent_tool_call_id=ctx.tool_call_id,
+            task_id=ctx.tool_call_id,
+            child_session_id=child_session_id,
+            provider=result.provider,
+            model=result.model,
+            thinking_requested=result.thinking_requested,
+            thinking_enabled=result.thinking_enabled,
+            thinking_type=result.thinking_type,
+            reasoning_effort=result.reasoning_effort,
+            tool_access_policy=result.tool_access_policy,
+            result_compression_policy=result.result_compression_policy,
+            timeout_seconds=result.timeout_seconds,
+            input_prompt_sha256=self._prompt_sha256(args.task),
+            output_result_sha256=result.task_result_sha256,
+            child_artifact_manifest_sha256=child_manifest_sha256,
+            linkage_sha256="",
+            status=self._derive_task_session_status(
+                plan=plan, completed=result.completed
+            ),
+            started_at=started_at.isoformat(),
+            completed_at=completed_at.isoformat(),
+            warnings=result.warnings,
+        )
+        linkage.linkage_sha256 = self._sha256_payload(
+            linkage.model_dump(
+                exclude_none=True, exclude={"started_at", "completed_at"}
+            )
+        )
+        writer.write_task_session_link_artifact(
+            artifact=linkage, tool_call_id=ctx.tool_call_id
         )
 
     @staticmethod
@@ -280,19 +376,18 @@ class Task(
                 f"This is a security constraint to prevent recursive spawning."
             )
 
-        session_logging = SessionLoggingConfig(
-            save_dir=str(ctx.session_dir / "agents") if ctx.session_dir else "",
-            session_prefix=args.agent,
-            enabled=ctx.session_dir is not None,
+        call_config = self._build_call_config(
+            VibeConfig.load(
+                session_logging=SessionLoggingConfig(
+                    save_dir=str(ctx.session_dir / "agents") if ctx.session_dir else "",
+                    session_prefix=args.agent,
+                    enabled=ctx.session_dir is not None,
+                )
+            ),
+            plan,
         )
-        base_config = VibeConfig.load(session_logging=session_logging)
-        if plan.model:
-            base_config.active_model = plan.model
-        if plan.extra_body:
-            provider = base_config.get_active_provider()
-            provider.extra_body = {**provider.extra_body, **plan.extra_body}
         subagent_loop = AgentLoop(
-            config=base_config,
+            config=call_config,
             agent_name=args.agent,
             entrypoint_metadata=ctx.entrypoint_metadata,
             is_subagent=True,
@@ -312,6 +407,7 @@ class Task(
 
         accumulated_response: list[str] = []
         completed = True
+        started_at = datetime.now(UTC)
         try:
             async with aclosing(subagent_loop.act(task_text)) as events:
                 async for event in events:
@@ -343,9 +439,19 @@ class Task(
                 msg.role == Role.assistant for msg in subagent_loop.messages
             )
 
-        yield self._build_task_result(
+        result = self._build_task_result(
             response="".join(accumulated_response),
             turns_used=turns_used,
             completed=completed,
             plan=plan,
         )
+        self._write_task_session_link_artifact(
+            ctx=ctx,
+            args=args,
+            plan=plan,
+            result=result,
+            child_session_dir=subagent_loop.session_logger.session_dir,
+            started_at=started_at,
+            completed_at=datetime.now(UTC),
+        )
+        yield result

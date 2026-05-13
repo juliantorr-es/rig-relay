@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +11,7 @@ from tests.mock.utils import collect_result
 from vibe.core.agents.manager import AgentManager
 from vibe.core.agents.models import BUILTIN_AGENTS, AgentType
 from vibe.core.config import ProviderConfig
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
 from vibe.core.tools.builtins.task import (
     Task,
@@ -220,6 +223,62 @@ class TestTaskToolExecution:
             assert result.thinking_enabled is True
             assert result.reasoning_effort == "high"
             assert result.provider == "deepseek"
+            assert captured_provider["provider"] is not None
+
+    @pytest.mark.asyncio
+    async def test_deepseek_thinking_does_not_mutate_shared_provider_config(
+        self, task_tool: Task, ctx: InvokeContext, tmp_path: Path
+    ) -> None:
+        config = build_test_vibe_config(
+            include_project_context=False, include_prompt_detail=False
+        )
+        original_provider = config.get_active_provider()
+        assert original_provider.extra_body == {}
+
+        session_dir = tmp_path / "session"
+        child_dir = session_dir / "agents" / "child-session"
+        child_dir.mkdir(parents=True)
+        (child_dir / "manifest.json").write_text("{}", encoding="utf-8")
+
+        async def mock_act(task: str):
+            yield AssistantEvent(content="Done")
+
+        with patch(
+            "vibe.core.tools.builtins.task.VibeConfig.load", return_value=config
+        ):
+            with patch(
+                "vibe.core.tools.builtins.task.AgentLoop"
+            ) as mock_agent_loop_class:
+                mock_agent_loop = MagicMock()
+                mock_agent_loop.act = mock_act
+                mock_agent_loop.messages = [
+                    LLMMessage(role=Role.system, content="system")
+                ]
+                mock_agent_loop.set_approval_callback = MagicMock()
+                mock_agent_loop.session_id = "child-session"
+                mock_agent_loop.session_logger.session_dir = child_dir
+                mock_agent_loop_class.return_value = mock_agent_loop
+
+                args = TaskArgs(
+                    task="analyze",
+                    agent="explore",
+                    provider_options=TaskProviderOptions(
+                        provider="deepseek",
+                        thinking_enabled=True,
+                        reasoning_effort="high",
+                    ),
+                )
+                test_ctx = InvokeContext(
+                    tool_call_id="test-call-id",
+                    agent_manager=ctx.agent_manager,
+                    session_dir=session_dir,
+                    parent_turn_id="parent-turn-1",
+                )
+                result = await collect_result(task_tool.run(args, test_ctx))
+
+        assert isinstance(result, TaskResult)
+        assert original_provider.extra_body == {}
+        assert config.get_active_provider().extra_body == {}
 
     @pytest.mark.asyncio
     async def test_thinking_request_against_unsupported_provider_returns_warning(
@@ -242,6 +301,58 @@ class TestTaskToolExecution:
         assert "unsupported provider" in result.warnings[0].lower()
         assert result.thinking_requested is True
         assert result.thinking_enabled is None
+
+    @pytest.mark.asyncio
+    async def test_task_emits_task_session_link_artifact(
+        self, task_tool: Task, ctx: InvokeContext, tmp_path: Path
+    ) -> None:
+        manager = ctx.agent_manager
+        assert manager is not None
+        session_dir = tmp_path / "session"
+        child_dir = session_dir / "agents" / "child-session"
+        child_dir.mkdir(parents=True)
+        (child_dir / "manifest.json").write_text("{}", encoding="utf-8")
+
+        async def mock_act(task: str):
+            yield AssistantEvent(content="Answer")
+
+        with patch(
+            "vibe.core.tools.builtins.task.VibeConfig.load",
+            return_value=manager.config,
+        ):
+            with patch(
+                "vibe.core.tools.builtins.task.AgentLoop"
+            ) as mock_agent_loop_class:
+                mock_agent_loop = MagicMock()
+                mock_agent_loop.act = mock_act
+                mock_agent_loop.messages = [
+                    LLMMessage(role=Role.system, content="system")
+                ]
+                mock_agent_loop.set_approval_callback = MagicMock()
+                mock_agent_loop.session_id = "child-session"
+                mock_agent_loop.session_logger.session_dir = child_dir
+                mock_agent_loop_class.return_value = mock_agent_loop
+
+                args = TaskArgs(task="analyze", agent="explore")
+                test_ctx = InvokeContext(
+                    tool_call_id="test-call-id",
+                    agent_manager=manager,
+                    session_dir=session_dir,
+                    parent_turn_id="parent-turn-1",
+                )
+                result = await collect_result(task_tool.run(args, test_ctx))
+
+        assert isinstance(result, TaskResult)
+        artifact_dir = (
+            SESSIONS_ROOT.path / session_dir.name / "artifacts" / "tool-results"
+        )
+        artifact_files = sorted(artifact_dir.glob("*.json"))
+        assert artifact_files
+        payload = json.loads(artifact_files[0].read_text(encoding="utf-8"))
+        assert payload["artifact_kind"] == "task_session_link"
+        assert payload["payload"]["parent_turn_id"] == "parent-turn-1"
+        assert payload["payload"]["child_session_id"] == "child-session"
+        assert payload["payload"]["status"] == "completed"
 
     @pytest.mark.asyncio
     async def test_non_thinking_deepseek_path_remains_available(
