@@ -39,8 +39,10 @@ This roadmap defines the automated validation gates required to mature Rig Relay
 ## Suggested Command Names
 - `rig-relay doctor`: General health check.
 - `rig-relay verify-session <id>`: Deep integrity check for a specific run.
+- `rig-relay doctor evidence --evidence-root <path> --session <id>`: Selected-session evidence validation gate with manifest-aware parity checks.
 
 ## Recommended Implementation Order
 1.  **Sorted Traversal Guard**: Add a unit test that mock-shuffles directories and asserts stable discovery.
 2.  **Schema Validator**: Integrate `jsonschema` into the telemetry test suite.
 3.  **Doctor Basic**: Implement `rig-relay doctor --paths`.
+4.  **Evidence Doctor**: Validate a selected session with canonical JSON, explicit file references, and optional manifest coverage.

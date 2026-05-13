@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import hashlib
 import json
 from pathlib import Path
 
 from vibe.core.telemetry import validate_evidence_session
+from vibe.core.telemetry.artifacts import ToolOutputArtifactWriter
 from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.local import dump_canonical_json
+import vibe.core.telemetry.manifest as manifest_mod
+from vibe.core.telemetry.manifest import write_session_manifest
 
 
 def _write_event(log_file: Path, event: dict) -> None:
@@ -57,37 +61,13 @@ def test_valid_repo_local_evidence_session_passes(tmp_path, monkeypatch):
     artifact_dir.mkdir(parents=True)
     context_dir.mkdir(parents=True)
     monkeypatch.chdir(repo_root)
+    monkeypatch.setenv("RIG_RELAY_HOME", str(repo_root / ".rig" / "relay"))
+    monkeypatch.setenv("RIG_RELAY_DISABLE_LEGACY_CONFIG", "1")
 
-    artifact_path = artifact_dir / "0000_read_file_abcd.json"
-    artifact_path.write_text(
-        dump_canonical_json({
-            "schema_version": "rig.relay.tool_output_artifact.v1",
-            "artifact_id": "artifact-1",
-            "session_id": session_id,
-            "source_event_id": None,
-            "tool_name": "read_file",
-            "created_at": "2024-01-01T00:00:00Z",
-            "payload_sha256": "sha256:abc",
-            "artifact_record_sha256": "sha256:def",
-            "byte_size": 3,
-            "mime_type": "application/json",
-            "encoding": "utf-8",
-            "raw_payload_kind": "text",
-            "truncated_for_prompt": True,
-            "prompt_excerpt": "abc",
-            "payload": {
-                "tool_name": "read_file",
-                "raw_output": "abc",
-                "raw_payload_kind": "text",
-            },
-            "metadata": {
-                "producer": "rig-relay",
-                "producer_version": "2.9.6",
-                "path": str(artifact_path.relative_to(session_root)),
-            },
-        }),
-        encoding="utf-8",
+    artifact = ToolOutputArtifactWriter(session_id).write_artifact(
+        tool_name="read_file", raw_output="abc"
     )
+    artifact_path = Path(artifact.path)
     assembly_path = context_dir / "assembly_1.json"
     layout_path = context_dir / "layout_1.json"
     shadow_path = context_dir / "shadow_request_1.json"
@@ -117,13 +97,15 @@ def test_valid_repo_local_evidence_session_passes(tmp_path, monkeypatch):
                 "evidence_relative_path": artifact_path.relative_to(
                     session_root
                 ).as_posix(),
-                "evidence_sha256": _sha256_prefix(artifact_path),
-                "artifact_id": "artifact-1",
+                "evidence_sha256": artifact.artifact_record_sha256,
+                "artifact_id": artifact.artifact_id,
                 "artifact_path": artifact_path.relative_to(session_root).as_posix(),
                 "tool_name": "read_file",
-                "raw_byte_size": 3,
-                "prompt_visible_byte_size": 3,
-                "payload_sha256": "sha256:abc",
+                "raw_byte_size": artifact.byte_size,
+                "prompt_visible_byte_size": len(
+                    artifact.prompt_excerpt.encode("utf-8")
+                ),
+                "payload_sha256": artifact.payload_sha256,
                 "truncated": True,
                 "schema_version": "rig.relay.tool_output_artifact.v1",
             },
@@ -215,6 +197,7 @@ def test_valid_repo_local_evidence_session_passes(tmp_path, monkeypatch):
             sequence=4,
         ),
     )
+    write_session_manifest(session_root, session_id)
 
     result = validate_evidence_session(repo_root / ".rig" / "relay", session_id)
     assert result.status == "pass"
@@ -386,3 +369,165 @@ def test_old_style_session_warns_without_root_metadata(tmp_path):
     result = validate_evidence_session(root, "s1")
     assert result.status == "warn"
     assert any("evidence_root_mode/source" in warning for warning in result.warnings)
+
+
+def test_manifest_builder_is_stable_for_equivalent_inputs(tmp_path, monkeypatch):
+    root = tmp_path / "root"
+    session = root / "sessions" / "s1"
+    artifact_dir = session / "artifacts" / "tool-results"
+    context_dir = session / "context"
+    artifact_dir.mkdir(parents=True)
+    context_dir.mkdir(parents=True)
+    (session / "observability.jsonl").write_text("{}", encoding="utf-8")
+    (artifact_dir / "a.json").write_text("{}", encoding="utf-8")
+    (context_dir / "assembly_1.json").write_text("{}", encoding="utf-8")
+    (context_dir / "layout_1.json").write_text("{}", encoding="utf-8")
+    (context_dir / "shadow_request_1.json").write_text("{}", encoding="utf-8")
+
+    fixed_now = type(
+        "FrozenDatetime",
+        (),
+        {"now": staticmethod(lambda _tz=None: datetime(2024, 1, 1, tzinfo=UTC))},
+    )
+    monkeypatch.setattr(manifest_mod, "datetime", fixed_now)
+
+    first = manifest_mod.build_manifest_bytes(session, "s1")
+    second = manifest_mod.build_manifest_bytes(session, "s1")
+
+    assert first == second
+    data = json.loads(first)
+    assert data["schema_version"] == "rig.relay.evidence_manifest.v1"
+    assert {entry["relative_path"] for entry in data["entries"]} == {
+        "artifacts/tool-results/a.json",
+        "context/assembly_1.json",
+        "context/layout_1.json",
+        "context/shadow_request_1.json",
+        "observability.jsonl",
+    }
+
+
+def test_manifest_sha_mismatch_fails(tmp_path):
+    root = tmp_path / "root"
+    session = root / "sessions" / "s1"
+    context_dir = session / "context"
+    context_dir.mkdir(parents=True)
+    _write_event(
+        session / "observability.jsonl",
+        _event(
+            "s1",
+            EventName.SESSION_STARTED,
+            {
+                "evidence_root_mode": "repo_local",
+                "evidence_root_source": "RIG_RELAY_HOME",
+            },
+        ),
+    )
+    (context_dir / "assembly_1.json").write_text("{}", encoding="utf-8")
+    (session / "manifest.json").write_text(
+        dump_canonical_json({
+            "schema_version": "rig.relay.evidence_manifest.v1",
+            "session_id": "s1",
+            "created_at": "2024-01-01T00:00:00Z",
+            "evidence_root_mode": "repo_local",
+            "evidence_root_source": "RIG_RELAY_HOME",
+            "entries": [
+                {
+                    "evidence_kind": "observability_log",
+                    "relative_path": "observability.jsonl",
+                    "sha256": _sha256_prefix(session / "observability.jsonl"),
+                    "size_bytes": (session / "observability.jsonl").stat().st_size,
+                },
+                {
+                    "evidence_kind": "context_assembly_report",
+                    "relative_path": "context/assembly_1.json",
+                    "sha256": "sha256:deadbeef",
+                    "size_bytes": (context_dir / "assembly_1.json").stat().st_size,
+                },
+            ],
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    result = validate_evidence_session(root, "s1")
+    assert result.status == "fail"
+    assert any(
+        "manifest entry hash mismatch" in check for check in result.failed_checks
+    )
+
+
+def test_manifest_path_escape_fails(tmp_path):
+    root = tmp_path / "root"
+    session = root / "sessions" / "s1"
+    session.mkdir(parents=True)
+    (session / "observability.jsonl").write_text("{}", encoding="utf-8")
+    (session / "manifest.json").write_text(
+        dump_canonical_json({
+            "schema_version": "rig.relay.evidence_manifest.v1",
+            "session_id": "s1",
+            "created_at": "2024-01-01T00:00:00Z",
+            "evidence_root_mode": "repo_local",
+            "evidence_root_source": "RIG_RELAY_HOME",
+            "entries": [
+                {
+                    "evidence_kind": "observability_log",
+                    "relative_path": "../escape.json",
+                    "sha256": "sha256:deadbeef",
+                    "size_bytes": 2,
+                }
+            ],
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    result = validate_evidence_session(root, "s1")
+    assert result.status == "fail"
+    assert any("unsafe relative_path" in check for check in result.failed_checks)
+
+
+def test_manifest_missing_file_fails(tmp_path):
+    root = tmp_path / "root"
+    session = root / "sessions" / "s1"
+    session.mkdir(parents=True)
+    log_file = session / "observability.jsonl"
+    _write_event(
+        log_file,
+        _event(
+            "s1",
+            EventName.SESSION_STARTED,
+            {
+                "evidence_root_mode": "repo_local",
+                "evidence_root_source": "RIG_RELAY_HOME",
+            },
+        ),
+    )
+    (session / "manifest.json").write_text(
+        dump_canonical_json({
+            "schema_version": "rig.relay.evidence_manifest.v1",
+            "session_id": "s1",
+            "created_at": "2024-01-01T00:00:00Z",
+            "evidence_root_mode": "repo_local",
+            "evidence_root_source": "RIG_RELAY_HOME",
+            "entries": [
+                {
+                    "evidence_kind": "observability_log",
+                    "relative_path": "observability.jsonl",
+                    "sha256": _sha256_prefix(log_file),
+                    "size_bytes": log_file.stat().st_size,
+                },
+                {
+                    "evidence_kind": "context_assembly_report",
+                    "relative_path": "context/assembly_1.json",
+                    "sha256": "sha256:deadbeef",
+                    "size_bytes": 2,
+                },
+            ],
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    result = validate_evidence_session(root, "s1")
+    assert result.status == "fail"
+    assert any(
+        "manifest entry missing evidence file" in check
+        for check in result.failed_checks
+    )

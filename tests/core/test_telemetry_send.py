@@ -404,9 +404,7 @@ class TestTelemetryClient:
             "nb_session_messages": 4,
         }
 
-    def test_send_new_session_payload(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_send_new_session_payload(self, monkeypatch: pytest.MonkeyPatch) -> None:
         config = build_test_vibe_config(enable_telemetry=True)
         client = TelemetryClient(config_getter=lambda: config)
         telemetry_events: list[dict[str, Any]] = []

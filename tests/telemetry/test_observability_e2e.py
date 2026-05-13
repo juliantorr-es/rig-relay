@@ -12,6 +12,7 @@ from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
 from vibe.core.telemetry.local import log_local_event
+from vibe.core.telemetry.validation import validate_evidence_session
 
 SCHEMA_PATH = (
     Path(__file__).parent.parent.parent
@@ -509,6 +510,7 @@ async def test_provider_independent_repo_local_evidence_smoke(
     loop.session_id = "smoke-session"
     loop.messages.append(LLMMessage(role=Role.system, content="System instruction"))
     loop.messages.append(LLMMessage(role=Role.user, content="Inspect big_log.txt"))
+    loop.emit_new_session_telemetry()
 
     tool_call = ResolvedToolCall(
         tool_name="read_file",
@@ -627,6 +629,17 @@ async def test_provider_independent_repo_local_evidence_smoke(
     assert len(shadow_reports) == 1
     assert len(layout_reports) == 1
     assert len(assembly_reports) == 1
+
+    loop.emit_session_closed_telemetry()
+    manifest_path = session_root / "manifest.json"
+    assert manifest_path.exists()
+
+    validation = validate_evidence_session(SESSIONS_ROOT.path.parent, loop.session_id)
+    assert validation.status == "pass"
+    assert validation.root_mode == "repo_local"
+    assert validation.root_source == "RIG_RELAY_HOME"
+    assert validation.event_count >= 4
+    assert validation.referenced_file_count >= 4
 
 
 @pytest.mark.asyncio

@@ -187,14 +187,21 @@ def _resume_previous_session(
     )
 
 
-def run_cli(args: argparse.Namespace) -> None:
-    load_dotenv_values()
-    bootstrap_config_files()
+def _run_doctor_command(args: argparse.Namespace) -> None:
+    if getattr(args, "doctor_command", None) != "evidence":
+        rprint("[red]Error: unknown doctor command[/]")
+        sys.exit(2)
 
-    if args.setup:
-        run_onboarding(entrypoint_metadata=_build_cli_entrypoint_metadata())
-        sys.exit(0)
+    from vibe.core.telemetry.doctor import run_evidence_validation
 
+    sys.exit(
+        run_evidence_validation(
+            args.evidence_root, args.session, json_output=getattr(args, "json", False)
+        )
+    )
+
+
+def _run_standard_cli(args: argparse.Namespace) -> None:
     try:
         is_interactive = args.prompt is None
         config = load_config_or_exit(interactive=is_interactive)
@@ -276,7 +283,20 @@ def run_cli(args: argparse.Namespace) -> None:
                     is_resuming_session=loaded_session is not None,
                 ),
             )
-
     except (KeyboardInterrupt, EOFError):
         rprint("\n[dim]Bye![/]")
         sys.exit(0)
+
+
+def run_cli(args: argparse.Namespace) -> None:
+    if getattr(args, "command", None) == "doctor":
+        _run_doctor_command(args)
+
+    load_dotenv_values()
+    bootstrap_config_files()
+
+    if args.setup:
+        run_onboarding(entrypoint_metadata=_build_cli_entrypoint_metadata())
+        sys.exit(0)
+
+    _run_standard_cli(args)

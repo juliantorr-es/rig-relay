@@ -39,6 +39,29 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--version", action="version", version=f"%(prog)s {__version__}"
     )
+    subparsers = parser.add_subparsers(dest="command")
+
+    doctor_parser = subparsers.add_parser(
+        "doctor", help="Run read-only diagnostics for a selected session"
+    )
+    doctor_subparsers = doctor_parser.add_subparsers(dest="doctor_command")
+    evidence_parser = doctor_subparsers.add_parser(
+        "evidence", help="Validate evidence integrity for one session"
+    )
+    evidence_parser.add_argument(
+        "--evidence-root",
+        type=Path,
+        required=True,
+        metavar="PATH",
+        help="Evidence root that owns the selected session.",
+    )
+    evidence_parser.add_argument(
+        "--session", required=True, metavar="SESSION_ID", help="Session id to validate."
+    )
+    evidence_parser.add_argument(
+        "--json", action="store_true", help="Emit machine-readable JSON output."
+    )
+
     parser.add_argument(
         "--show-config-paths",
         action="store_true",

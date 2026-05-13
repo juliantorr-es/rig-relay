@@ -35,6 +35,7 @@ from vibe.core.llm.format import (
     ResolvedToolCall,
 )
 from vibe.core.llm.types import BackendLike
+from vibe.core.logger import logger
 from vibe.core.middleware import (
     CHAT_AGENT_EXIT,
     CHAT_AGENT_REMINDER,
@@ -62,6 +63,7 @@ from vibe.core.session.session_migration import migrate_sessions_entrypoint
 from vibe.core.skills.manager import SkillManager
 from vibe.core.system_prompt import get_universal_system_prompt
 from vibe.core.telemetry.build_metadata import build_request_metadata
+from vibe.core.telemetry.manifest import write_session_manifest
 from vibe.core.telemetry.send import TelemetryClient
 from vibe.core.telemetry.types import (
     EntrypointMetadata,
@@ -522,6 +524,16 @@ class AgentLoop:
 
     def emit_session_closed_telemetry(self) -> None:
         self.telemetry_client.send_session_closed()
+        try:
+            write_session_manifest(
+                SESSIONS_ROOT.path / self.session_id, self.session_id
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to write evidence manifest for session %s: %s",
+                self.session_id,
+                e,
+            )
 
     async def aclose(self) -> None:
         with contextlib.suppress(Exception):

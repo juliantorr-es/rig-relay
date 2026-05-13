@@ -8,6 +8,7 @@ from typing import Any
 
 from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.local import dump_canonical_json
+from vibe.core.telemetry.manifest import load_manifest
 
 
 @dataclass(slots=True)
@@ -149,7 +150,21 @@ def _collect_references(
                 f"malformed evidence_sha256 for {evidence_relative_path}"
             )
             continue
-        if _sha256_prefix(resolved) != evidence_sha256:
+        if event_name == str(EventName.ARTIFACT_WRITTEN):
+            try:
+                artifact_data = json.loads(resolved.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                result.failed_checks.append(
+                    f"artifact evidence unreadable for {evidence_relative_path}: {exc}"
+                )
+                continue
+            expected_hash = artifact_data.get(
+                "artifact_record_sha256"
+            ) or _sha256_prefix(resolved)
+        else:
+            expected_hash = _sha256_prefix(resolved)
+
+        if expected_hash != evidence_sha256:
             result.failed_checks.append(
                 f"evidence hash mismatch for {evidence_relative_path}"
             )
@@ -185,7 +200,23 @@ def _check_file_to_event_parity(
             result.failed_checks.append(f"missing event for {event_name}")
 
 
-def _collect_evidence_files(session_root: Path) -> list[Path]:
+def _collect_session_evidence_files(session_root: Path) -> list[Path]:
+    files: list[Path] = []
+    observability = session_root / "observability.jsonl"
+    if observability.exists():
+        files.append(observability)
+    artifact_dir = session_root / "artifacts" / "tool-results"
+    context_dir = session_root / "context"
+    if artifact_dir.exists():
+        files.extend(sorted(artifact_dir.glob("*.json")))
+    if context_dir.exists():
+        files.extend(sorted(context_dir.glob("assembly_*.json")))
+        files.extend(sorted(context_dir.glob("layout_*.json")))
+        files.extend(sorted(context_dir.glob("shadow_request_*.json")))
+    return [path.resolve() for path in files]
+
+
+def _collect_contract_evidence_files(session_root: Path) -> list[Path]:
     files: list[Path] = []
     artifact_dir = session_root / "artifacts" / "tool-results"
     context_dir = session_root / "context"
@@ -196,6 +227,70 @@ def _collect_evidence_files(session_root: Path) -> list[Path]:
         files.extend(sorted(context_dir.glob("layout_*.json")))
         files.extend(sorted(context_dir.glob("shadow_request_*.json")))
     return [path.resolve() for path in files]
+
+
+def _validate_manifest(
+    session_root: Path, result: EvidenceValidationResult
+) -> tuple[set[Path], bool]:
+    try:
+        manifest = load_manifest(session_root)
+    except json.JSONDecodeError as exc:
+        result.failed_checks.append(f"manifest is invalid JSON: {exc.msg}")
+        return set(), True
+    if manifest is None:
+        result.warnings.append("manifest missing; using scan fallback")
+        return set(), False
+
+    manifest_path = session_root / "manifest.json"
+    manifest_text = manifest_path.read_text(encoding="utf-8")
+    if manifest_text.rstrip("\n") != dump_canonical_json(manifest):
+        result.failed_checks.append("manifest is not canonical JSON")
+        return set(), True
+
+    entries = manifest.get("entries")
+    if not isinstance(entries, list):
+        result.failed_checks.append("manifest entries must be a list")
+        return set(), True
+
+    manifest_paths: set[Path] = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            result.failed_checks.append(f"manifest entry {index} must be an object")
+            continue
+
+        relative_path = entry.get("relative_path")
+        sha256 = entry.get("sha256")
+        if not isinstance(relative_path, str) or not _is_safe_relative_path(
+            relative_path
+        ):
+            result.failed_checks.append(
+                f"manifest entry {index} has unsafe relative_path"
+            )
+            continue
+        if not isinstance(sha256, str) or not sha256.startswith("sha256:"):
+            result.failed_checks.append(f"manifest entry {index} has malformed sha256")
+            continue
+
+        resolved = (session_root / relative_path).resolve()
+        if not resolved.is_relative_to(session_root):
+            result.failed_checks.append(
+                f"manifest entry {index} escapes session root: {relative_path}"
+            )
+            continue
+        if not resolved.exists():
+            result.failed_checks.append(
+                f"manifest entry missing evidence file: {relative_path}"
+            )
+            continue
+        if _sha256_prefix(resolved) != sha256:
+            result.failed_checks.append(
+                f"manifest entry hash mismatch: {relative_path}"
+            )
+            continue
+
+        manifest_paths.add(resolved)
+
+    return manifest_paths, True
 
 
 def validate_evidence_session(
@@ -234,10 +329,15 @@ def validate_evidence_session(
         for event in events
         if isinstance(event.get("event_name"), str)
     }
+    manifest_paths, manifest_present = _validate_manifest(session_root, result)
     referenced_paths, _ = _collect_references(events, session_root, result)
     _check_file_to_event_parity(session_root, event_by_name, result)
 
-    for path in _collect_evidence_files(session_root):
+    evidence_files = _collect_session_evidence_files(session_root)
+    if manifest_present and set(evidence_files) != manifest_paths:
+        result.failed_checks.append("manifest does not cover current evidence files")
+
+    for path in _collect_contract_evidence_files(session_root):
         if path not in referenced_paths:
             result.unreferenced_evidence_file_count += 1
             result.failed_checks.append(
