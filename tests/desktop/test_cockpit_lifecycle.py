@@ -20,7 +20,9 @@ def api(mock_store):
     with patch("scripts.rig_relay_desktop_cockpit.ChatStore", return_value=mock_store):
         with patch("scripts.rig_relay_desktop_cockpit.VibeConfig.load"):
             with patch("scripts.rig_relay_desktop_cockpit.AgentLoop"):
-                with patch("scripts.rig_relay_desktop_cockpit.ChatAgentAdapter") as mock_adapter_cls:
+                with patch(
+                    "scripts.rig_relay_desktop_cockpit.ChatAgentAdapter"
+                ) as mock_adapter_cls:
                     api = CockpitAPI()
                     api._adapter = mock_adapter_cls.return_value
                     api._adapter.is_running = False
@@ -44,7 +46,7 @@ def test_cockpit_api_idempotency_duplicate_client_id(api):
     msg = MagicMock(role=ChatRole.USER)
     msg.metadata = {"client_message_id": "c1"}
     api._chat_state.messages = [msg]
-    
+
     # Send same client_id
     result = api.send_chat_message("Hi again", client_message_id="c1")
     # Should return state without starting a new loop
@@ -54,7 +56,7 @@ def test_cockpit_api_idempotency_duplicate_client_id(api):
 def test_cockpit_api_cross_thread_scheduling(api):
     loop = MagicMock()
     api._loop_holder = [loop]
-    
+
     with patch("asyncio.run_coroutine_threadsafe") as mock_run:
         api.send_chat_message("Thread safe?")
         assert mock_run.called

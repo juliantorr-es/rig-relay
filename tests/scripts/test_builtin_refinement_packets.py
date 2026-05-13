@@ -77,7 +77,9 @@ def test_dry_run_reports_selected_items_without_writing_files(tmp_path: Path) ->
     report = tmp_path / "report.md"
     _write_jsonl(backlog, _sample_backlog())
     report.write_text("# report", encoding="utf-8")
-    packet_paths, warnings = generate_packets(backlog, report, tmp_path / "out", 1, None, True)
+    packet_paths, warnings = generate_packets(
+        backlog, report, tmp_path / "out", 1, None, True
+    )
     assert packet_paths
     assert not warnings
     assert not any((tmp_path / "out").rglob("mission_packet.json"))
@@ -88,7 +90,9 @@ def test_generator_creates_one_packet_per_top_backlog_item(tmp_path: Path) -> No
     report = tmp_path / "report.md"
     _write_jsonl(backlog, _sample_backlog())
     report.write_text("# report", encoding="utf-8")
-    packet_paths, warnings = generate_packets(backlog, report, tmp_path / "out", 2, None, False)
+    packet_paths, warnings = generate_packets(
+        backlog, report, tmp_path / "out", 2, None, False
+    )
     assert len(packet_paths) == 2
     assert not warnings
     assert len(list((tmp_path / "out").glob("*/mission_packet.json"))) == 2
@@ -112,7 +116,11 @@ def test_generated_packet_references_source_item_id(tmp_path: Path) -> None:
     _write_jsonl(backlog, _sample_backlog())
     report.write_text("# report", encoding="utf-8")
     generate_packets(backlog, report, tmp_path / "out", 1, None, False)
-    packet = json.loads(next((tmp_path / "out").glob("*/mission_packet.json")).read_text(encoding="utf-8"))
+    packet = json.loads(
+        next((tmp_path / "out").glob("*/mission_packet.json")).read_text(
+            encoding="utf-8"
+        )
+    )
     assert packet["source_item_id"] == "refine_1"
 
 
@@ -148,12 +156,7 @@ def test_priority_filter_and_limit_work(tmp_path: Path) -> None:
     _write_jsonl(backlog, _sample_backlog())
     report.write_text("# report", encoding="utf-8")
     packet_paths, warnings = generate_packets(
-        backlog,
-        report,
-        tmp_path / "out",
-        1,
-        {"P0"},
-        False,
+        backlog, report, tmp_path / "out", 1, {"P0"}, False
     )
     assert len(packet_paths) == 1
     assert not warnings
@@ -166,8 +169,17 @@ def test_mission_packet_validates_against_existing_schema(tmp_path: Path) -> Non
     _write_jsonl(backlog, _sample_backlog())
     report.write_text("# report", encoding="utf-8")
     generate_packets(backlog, report, tmp_path / "out", 1, None, False)
-    packet = json.loads(next((tmp_path / "out").glob("*/mission_packet.json")).read_text(encoding="utf-8"))
+    packet = json.loads(
+        next((tmp_path / "out").glob("*/mission_packet.json")).read_text(
+            encoding="utf-8"
+        )
+    )
     schema = json.loads(
-        (Path(__file__).resolve().parent.parent.parent / "docs" / "schemas" / "rig.relay.builtin_tool_refinement_packet.v1.schema.json").read_text(encoding="utf-8")
+        (
+            Path(__file__).resolve().parent.parent.parent
+            / "docs"
+            / "schemas"
+            / "rig.relay.builtin_tool_refinement_packet.v1.schema.json"
+        ).read_text(encoding="utf-8")
     )
     jsonschema.validate(instance=packet, schema=schema)

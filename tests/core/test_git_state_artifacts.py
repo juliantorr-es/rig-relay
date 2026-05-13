@@ -55,15 +55,16 @@ def _payload_sha256(payload: dict[str, object]) -> str:
 
 
 @pytest.mark.asyncio
-async def test_git_status_emits_clean_state_artifact(tmp_path, monkeypatch, status_tool):
+async def test_git_status_emits_clean_state_artifact(
+    tmp_path, monkeypatch, status_tool
+):
     monkeypatch.chdir(tmp_path)
     outputs = {
         ("branch", ("--show-current",)): _fake_result("branch", stdout="main\n"),
         ("rev-parse", ("HEAD",)): _fake_result("rev-parse", stdout="abc123\n"),
-        (
-            "rev-parse",
-            ("--abbrev-ref", "--symbolic-full-name", "@{u}"),
-        ): _fake_result("rev-parse", stdout="origin/main\n"),
+        ("rev-parse", ("--abbrev-ref", "--symbolic-full-name", "@{u}")): _fake_result(
+            "rev-parse", stdout="origin/main\n"
+        ),
         ("rev-list", ("--left-right", "--count", "HEAD...@{u}")): _fake_result(
             "rev-list", stdout="0\t0\n"
         ),
@@ -78,8 +79,7 @@ async def test_git_status_emits_clean_state_artifact(tmp_path, monkeypatch, stat
 
     artifact = GitStateArtifact.model_validate(payload)
     written = ToolOutputArtifactWriter("session-1").write_git_state_artifact(
-        artifact=artifact,
-        tool_call_id="call-1",
+        artifact=artifact, tool_call_id="call-1"
     )
     content = json.loads(Path(written.path).read_text(encoding="utf-8"))
     validate(instance=content["payload"], schema=json.loads(_schema_path().read_text()))
@@ -97,10 +97,9 @@ async def test_git_status_emits_dirty_state_with_deterministic_ordering(
     outputs = {
         ("branch", ("--show-current",)): _fake_result("branch", stdout="feature\n"),
         ("rev-parse", ("HEAD",)): _fake_result("rev-parse", stdout="deadbeef\n"),
-        (
-            "rev-parse",
-            ("--abbrev-ref", "--symbolic-full-name", "@{u}"),
-        ): _fake_result("rev-parse", stdout="origin/feature\n"),
+        ("rev-parse", ("--abbrev-ref", "--symbolic-full-name", "@{u}")): _fake_result(
+            "rev-parse", stdout="origin/feature\n"
+        ),
         ("rev-list", ("--left-right", "--count", "HEAD...@{u}")): _fake_result(
             "rev-list", stdout="2\t1\n"
         ),
@@ -145,8 +144,6 @@ async def test_git_status_emits_dirty_state_with_deterministic_ordering(
 def test_git_state_artifact_schema_validates_minimal_example():
     schema = json.loads(_schema_path().read_text(encoding="utf-8"))
     instance = GitStateArtifact(
-        repo_root=".",
-        dirty_files=[],
-        state_sha256="sha256:" + "a" * 64,
+        repo_root=".", dirty_files=[], state_sha256="sha256:" + "a" * 64
     ).model_dump(exclude_none=True)
     validate(instance=instance, schema=schema)

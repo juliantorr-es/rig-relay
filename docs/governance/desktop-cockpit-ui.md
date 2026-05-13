@@ -597,6 +597,8 @@ to widget cards depending on the active mode:
 | telemetry_bundle | --- | --- | Telemetry Bundle |
 | update | --- | --- | Update Status |
 | source_status | --- | --- | Projection Sources |
+| identity | Identity | --- | Identity |
+| telemetry_consent | --- | --- | Telemetry Consent |
 | read_only_actions | Action buttons | --- | --- |
 | --- | --- | --- | Identity |
 | --- | --- | --- | Authorization Receipts |

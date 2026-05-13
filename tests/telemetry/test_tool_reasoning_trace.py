@@ -290,6 +290,7 @@ def test_tool_reasoning_trace_determinism_contract():
 
     # Should be serializable to JSON
     import json
+
     json_str = trace.model_dump_json()
     parsed = json.loads(json_str)
     assert parsed["tool_name"] == "grep"

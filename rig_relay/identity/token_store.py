@@ -18,6 +18,7 @@ from rig_relay.identity.models import (
     IdentitySessionStatus,
     TokenBundleMetadata,
 )
+from rig_relay.identity.state_paths import identity_state_root
 
 
 class TokenStore(ABC):
@@ -56,7 +57,7 @@ class DevFileTokenStore(TokenStore):
 
     def __init__(self, store_root: Path | None = None) -> None:
         if store_root is None:
-            store_root = Path.home() / ".rig" / "relay" / "identity"
+            store_root = identity_state_root()
         self._store_root = store_root
         self._store_root.mkdir(parents=True, exist_ok=True)
 

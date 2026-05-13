@@ -150,6 +150,17 @@
             <div id="operate-intent-result" class="intent-result-card" style="display:none"></div>
           </div>
         </div>
+
+        <!-- Provider Health Pill (Operate — no key controls) -->
+        <div class="widget-card" id="widget-provider-health">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Model Providers</span>
+            <div id="provider-health-pill" class="safety-indicator ok"><span class="dot"></span> Checking...</div>
+          </div>
+          <div class="widget-card-body">
+            <span class="small-note" id="provider-health-detail">No provider data loaded.</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -254,6 +265,75 @@
               <button id="sign-out-btn" onclick="signOutProvider()" class="secondary-btn" style="display:none">Sign Out</button>
             </div>
             <div id="identity-intent-result" class="intent-result-card" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Model Providers -->
+        <div class="widget-card" id="widget-model-providers">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Model Providers</span>
+            <div id="sys-providers-pill" class="safety-indicator warn"><span class="dot"></span> —</div>
+          </div>
+          <div class="widget-card-body">
+            <p class="small-note" style="margin-top:0">Configure API keys for model providers. Keys stay local. No keys in telemetry or audit.</p>
+            <table class="kv" id="providers-table">
+              <tr><td class="k">Loading...</td><td>—</td></tr>
+            </table>
+            <div id="provider-select-area" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle)">
+              <select id="provider-select" style="background:var(--bg-color);color:var(--text-primary);border:1px solid var(--border-color);border-radius:4px;padding:4px 8px;font-size:0.8rem">
+                <option value="">Select provider...</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="google">Google Gemini</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="deepseek">DeepSeek</option>
+              </select>
+              <input id="provider-key-input" type="password" placeholder="Paste API key..." style="width:100%;margin-top:6px;background:var(--bg-color);color:var(--text-primary);border:1px solid var(--border-color);border-radius:4px;padding:6px;font-size:0.8rem;font-family:var(--font-mono)" />
+              <div class="action-buttons compact" style="margin-top:6px">
+                <button onclick="saveProviderKey()">Save Key</button>
+                <button onclick="removeProviderKey()" class="secondary-btn">Remove Key</button>
+                <button onclick="checkProviderHealth()" class="secondary-btn">Check Status</button>
+              </div>
+              <p class="small-note">API keys are stored locally, never in telemetry or audit. Cleared from input after save.</p>
+            </div>
+            <div id="provider-intent-result" class="intent-result-card" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Telemetry Consent -->
+        <div class="widget-card" id="widget-telemetry-consent">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Telemetry Consent</span>
+            <div id="consent-status-pill" class="safety-indicator warn"><span class="dot"></span> Not Requested</div>
+          </div>
+          <div class="widget-card-body">
+            <p class="small-note" style="margin-top:0">Content-light telemetry only. No raw prompts, model outputs, source code, stdout/stderr, diffs, secrets, or receipt bodies.</p>
+            <table class="kv" id="consent-details">
+              <tr><td class="k">Status</td><td id="consent-status">not_requested</td></tr>
+              <tr><td class="k">Scopes Granted</td><td id="consent-scopes">—</td></tr>
+              <tr><td class="k">Granted</td><td id="consent-granted-at">—</td></tr>
+              <tr><td class="k">Revoked</td><td id="consent-revoked-at">—</td></tr>
+              <tr><td class="k">Local Only</td><td id="consent-local-only">true</td></tr>
+            </table>
+            <div class="scope-section" style="margin-top:8px">
+              <div class="scope-group-label">Basic Telemetry (opt-in defaults)</div>
+              <label class="scope-check"><input type="checkbox" id="scope-usage_metrics" checked onchange="updateConsentButton()"> <span>Usage Metrics</span></label>
+              <label class="scope-check"><input type="checkbox" id="scope-content_light_bundles" checked onchange="updateConsentButton()"> <span>Content-Light Bundles</span></label>
+              <label class="scope-check"><input type="checkbox" id="scope-crash_reports" checked onchange="updateConsentButton()"> <span>Crash Reports</span></label>
+              <label class="scope-check"><input type="checkbox" id="scope-coordination_metrics" checked onchange="updateConsentButton()"> <span>Coordination Metrics</span></label>
+              <label class="scope-check"><input type="checkbox" id="scope-tool_refinement_metrics" checked onchange="updateConsentButton()"> <span>Tool Refinement Metrics</span></label>
+              <div class="scope-group-label" style="margin-top:8px">Commercial / Dataset License (never default — opt in only)</div>
+              <p class="small-note" style="margin:4px 0 6px 0">These scopes permit inclusion in aggregated, anonymized derived datasets for benchmarking reports and potential commercial licensing. Separate from privacy consent.</p>
+              <label class="scope-check"><input type="checkbox" id="scope-provider_model_benchmarking" onchange="updateConsentButton()"> <span>Provider Model Benchmarking</span></label>
+              <label class="scope-check"><input type="checkbox" id="scope-local_model_benchmarking" onchange="updateConsentButton()"> <span>Local Model Benchmarking</span></label>
+              <label class="scope-check"><input type="checkbox" id="scope-commercial_dataset_license" onchange="updateConsentButton()"> <span>Commercial Dataset License</span></label>
+              <label class="scope-check"><input type="checkbox" id="scope-aggregate_public_reporting" onchange="updateConsentButton()"> <span>Aggregate Public Reporting</span></label>
+            </div>
+            <div class="action-buttons compact" style="margin-top:8px">
+              <button id="btn-grant-consent" onclick="grantTelemetryConsent()">Grant Consent</button>
+              <button onclick="revokeTelemetryConsent()" class="secondary-btn">Revoke Consent</button>
+            </div>
+            <div id="consent-intent-result" class="intent-result-card" style="display:none"></div>
           </div>
         </div>
 

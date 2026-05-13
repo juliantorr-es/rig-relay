@@ -83,8 +83,6 @@ def test_dry_run_without_drive_deps_adds_warning(tmp_path: Path):
     assert len(drive_warnings) == 0
 
 
-
-
 def test_dry_run_writes_valid_receipt_json(tmp_path: Path):
     bundle = tmp_path / "bundle_valid.zip"
     bundle.write_bytes(b"data")

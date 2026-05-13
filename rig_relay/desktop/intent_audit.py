@@ -4,7 +4,10 @@ Durable, content-light audit events and result artifacts for the Desktop
 Intent API. Writes to .build/rig-relay/desktop/intents/.
 
 All entries are content-light: no raw prompts, model outputs, source code,
-stdout/stderr bodies, diffs, secrets, or raw private paths.
+stdout/stderr bodies, diffs, secrets, API keys, or raw private paths.
+
+Provider audit fields (safe for audit — no raw keys):
+    provider, configured, key_source, key_fingerprint, status, warnings
 """
 
 from __future__ import annotations

@@ -212,11 +212,7 @@ def _run_doctor_command(args: argparse.Namespace) -> None:
     elif doctor_command == "runtime":
         from vibe.core.telemetry.doctor import run_runtime_provenance_check
 
-        sys.exit(
-            run_runtime_provenance_check(
-                json_output=getattr(args, "json", False),
-            )
-        )
+        sys.exit(run_runtime_provenance_check(json_output=getattr(args, "json", False)))
     else:
         rprint("[red]Error: unknown doctor command[/]")
         sys.exit(2)

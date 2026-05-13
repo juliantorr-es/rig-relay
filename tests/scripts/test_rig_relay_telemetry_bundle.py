@@ -61,12 +61,14 @@ def _try_validate(instance: dict, schema_path: Path) -> list[str]:
 def test_consent_schema_validates_sample():
     sample = {
         "schema_version": "rig.relay.telemetry_consent.v1",
-        "participant_id": "anon_test_001",
-        "share_level": "derived_only",
-        "destination": "google_drive",
-        "consent_text_version": "v1",
-        "consented_at": "2026-05-13T00:00:00+00:00",
-        "can_contact": False,
+        "consent_id": "cons_test_001",
+        "subject_hash": "sha256:abc123",
+        "provider": "local",
+        "status": "granted",
+        "scopes": ["usage_metrics", "content_light_bundles"],
+        "granted_at": "2026-05-13T00:00:00+00:00",
+        "policy_version": "2026-05-13",
+        "local_only": True,
     }
     errors = _try_validate(sample, CONSENT_SCHEMA)
     assert not errors, f"Schema errors: {errors}"
@@ -577,3 +579,123 @@ def test_relay_validate_bundle_same_behavior(tmp_path):
     assert valid1 == valid2
     assert msgs1 == msgs2
     assert not valid1  # nonexistent file
+
+
+# ── State Root Bundle Tests ──
+
+
+class TestBundleStateRoot:
+    def test_bundle_with_explicit_consent_file_includes_consent_status(
+        self, tmp_path: Path
+    ):
+        """Bundle with --consent-file includes consent status in manifest."""
+        derived = tmp_path / "derived"
+        derived.mkdir()
+        (derived / "data.jsonl").write_text('{"x": 1}\n')
+
+        consent_data = {
+            "schema_version": "rig.relay.telemetry_consent.v1",
+            "consent_id": "cons_bundle_test",
+            "subject_hash": "sha256:test",
+            "provider": "local",
+            "status": "granted",
+            "scopes": ["usage_metrics"],
+            "granted_at": "2026-05-14T00:00:00Z",
+            "policy_version": "2026-05-13",
+            "local_only": True,
+        }
+        consent_file = tmp_path / "consent.json"
+        consent_file.write_text(json.dumps(consent_data, indent=2))
+
+        manifest = create_bundle(
+            participant_id="test_consent_bundle",
+            share_level="derived_only",
+            derived_dir=derived,
+            reports_dir=tmp_path / "reports",
+            output_dir=tmp_path / "out",
+            consent_file=consent_file,
+            dry_run=False,
+        )
+        # Verify consent_status in manifest
+        assert manifest.get("consent_status") is not None
+        assert manifest["consent_status"]["status"] == "granted"
+        assert "subject_hash" in manifest["consent_status"]
+        assert "scopes" in manifest["consent_status"]
+
+    def test_bundle_without_consent_file_does_not_include_consent(self, tmp_path: Path):
+        """Bundle without consent file and without state_root has no consent_status."""
+        derived = tmp_path / "derived"
+        derived.mkdir()
+        (derived / "data.jsonl").write_text('{"x": 1}\n')
+
+        manifest = create_bundle(
+            participant_id="test_no_consent",
+            share_level="derived_only",
+            derived_dir=derived,
+            reports_dir=tmp_path / "reports",
+            output_dir=tmp_path / "out",
+            dry_run=False,
+        )
+        assert manifest.get("consent_status") is None, (
+            f"Expected no consent_status, got {manifest.get('consent_status')}"
+        )
+
+    def test_bundle_with_state_root_detects_consent(self, tmp_path: Path):
+        """Bundle with --state-root reads consent from that root."""
+        derived = tmp_path / "derived"
+        derived.mkdir()
+        (derived / "data.jsonl").write_text('{"x": 1}\n')
+
+        # Write consent to state_root/consent/
+        state_root = tmp_path / "state_root"
+        consent_dir = state_root / "consent"
+        consent_dir.mkdir(parents=True)
+        consent_record = {
+            "schema_version": "rig.relay.telemetry_consent.v1",
+            "consent_id": "cons_state_root",
+            "subject_hash": "sha256:state_root_test",
+            "provider": "local",
+            "status": "granted",
+            "scopes": ["usage_metrics"],
+            "granted_at": "2026-05-14T00:00:00Z",
+            "policy_version": "2026-05-13",
+            "local_only": True,
+        }
+        consent_path = consent_dir / "telemetry_consent.json"
+        consent_path.write_text(json.dumps(consent_record, indent=2))
+
+        manifest = create_bundle(
+            participant_id="test_state_root",
+            share_level="derived_only",
+            derived_dir=derived,
+            reports_dir=tmp_path / "reports",
+            output_dir=tmp_path / "out",
+            state_root=state_root,
+            dry_run=False,
+        )
+        assert manifest.get("consent_status") is not None
+        assert manifest["consent_status"]["status"] == "granted"
+        assert manifest["consent_status"]["subject_hash"] == "sha256:state_root_test"
+
+    def test_bundle_state_root_does_not_read_home(self, tmp_path: Path):
+        """Bundle with tmp state_root does NOT read ~/.rig/relay/."""
+        derived = tmp_path / "derived"
+        derived.mkdir()
+        (derived / "data.jsonl").write_text('{"x": 1}\n')
+
+        # Use a fresh tmp state_root with no consent file
+        state_root = tmp_path / "empty_state"
+        manifest = create_bundle(
+            participant_id="test_empty_state",
+            share_level="derived_only",
+            derived_dir=derived,
+            reports_dir=tmp_path / "reports",
+            output_dir=tmp_path / "out",
+            state_root=state_root,
+            dry_run=False,
+        )
+        # If the bundle read ~/.rig/relay/consent, it would have consent_status
+        # from the real consent file. But with empty state_root, there's nothing.
+        assert manifest.get("consent_status") is None, (
+            "Bundle read ~/.rig/relay/ despite passing explicit empty state_root"
+        )

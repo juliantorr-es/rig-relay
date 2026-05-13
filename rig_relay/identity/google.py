@@ -51,6 +51,23 @@ class GoogleIdentityProvider(IdentityProvider):
     def default_scopes(self) -> list[str]:
         return list(GOOGLE_MINIMAL_SCOPES)
 
+    @staticmethod
+    def validate_scopes(scopes: list[str] | None = None) -> list[str]:
+        """Validate scopes and return warnings for disallowed scopes.
+
+        In alpha, only openid, email, profile are allowed.
+        Drive scopes are rejected with warnings.
+        """
+        warnings: list[str] = []
+        if scopes is None:
+            return warnings
+        for scope in scopes:
+            if "drive" in scope.lower():
+                warnings.append(
+                    f"Google Drive scope '{scope}' not allowed in alpha. Drive access deferred."
+                )
+        return warnings
+
     def build_auth_url(
         self, redirect_uri: str, state: str, scopes: list[str] | None = None
     ) -> str:

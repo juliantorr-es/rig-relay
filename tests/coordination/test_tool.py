@@ -16,13 +16,17 @@ from vibe.core.tools.builtins.coordination import (
 @pytest.fixture
 def tool(tmp_path: Path) -> Coordination:
     return Coordination(
-        config_getter=lambda: CoordinationToolConfig(store_root=tmp_path / "coordination"),
+        config_getter=lambda: CoordinationToolConfig(
+            store_root=tmp_path / "coordination"
+        ),
         state=BaseToolState(),
     )
 
 
 @pytest.mark.asyncio
-async def test_claim_task_and_publish_artifact(tool: Coordination, tmp_path: Path) -> None:
+async def test_claim_task_and_publish_artifact(
+    tool: Coordination, tmp_path: Path
+) -> None:
     result = await collect_result(
         tool.run(
             CoordinationArgs(
@@ -43,7 +47,9 @@ async def test_claim_task_and_publish_artifact(tool: Coordination, tmp_path: Pat
 
 
 @pytest.mark.asyncio
-async def test_reserve_paths_and_read_projection(tool: Coordination, tmp_path: Path) -> None:
+async def test_reserve_paths_and_read_projection(
+    tool: Coordination, tmp_path: Path
+) -> None:
     claim = await collect_result(
         tool.run(
             CoordinationArgs(

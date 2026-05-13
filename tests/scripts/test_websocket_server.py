@@ -382,6 +382,7 @@ class TestReadOnlyProtocol:
             "get_projection",
             "get_available_actions",
             "get_chat_state",
+            "get_progress_events",
             "desktop_intent",
             "subscribe",
             "unsubscribe",

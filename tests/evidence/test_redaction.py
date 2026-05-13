@@ -123,7 +123,7 @@ def test_emit_result_strips_raw_receipt(tmp_path: Path) -> None:
     emit_result(result, build_root=tmp_path)
     artifact = tmp_path / "intent_results" / "intent_test_001.json"
     text = artifact.read_text(encoding="utf-8")
-    assert "\"authorization_receipt\":" not in text
+    assert '"authorization_receipt":' not in text
     assert "raw" not in text
     loaded = json.loads(text)
     assert loaded["authorization_receipt_sha256"].startswith("sha256:")

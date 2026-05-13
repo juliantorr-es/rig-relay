@@ -320,3 +320,26 @@ defines a signed cryptographic container for protected intent requests. In this
 slice, the envelope is schema and model only — it is not wired to execution.
 
 See [Local Action Envelope Schema](../docs/schemas/rig.relay.local_action_envelope.v1.schema.json).
+## MCP Night Demo Readiness
+
+Rig Relay is demo-ready for MCP Night with a complete development harness demo:
+
+- **Demo Guide**: `docs/demo/mcp-night-development-harness-demo.md` — five-minute talk track with exact cockpit clicks, fallback paths, and expected outputs.
+- **Demo Artifacts**: `docs/demo/fixtures/model-observation-demo.json` and `docs/demo/fixtures/provider-ranking-demo.json` — content-light, schema-validated example records that show the observation/ranking dataset story.
+- **Safe Intents**: All demo steps use safe, read-only intents (`generate_refinement_report`, `create_refinement_packets`, `run_validation_suite`, `refresh_projection`). No protected mutation buttons (bash, write, spawn, fleet, delegate) are present.
+- **Content-Light Guarantee**: Demo fixtures contain no raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, or private paths. Verified by schema validation and redaction integration tests.
+- **Demo Tests**: `tests/demo/test_mcp_night_demo_fixtures.py` (22 tests) validate schema compliance, content-light guarantee, redaction safety, and demo guide consistency.
+- **Consent Gates**: Provider model benchmarking and local model benchmarking scopes are required for observation collection. Active consent semantics prevent use after revocation.
+
+See `docs/demo/mcp-night-development-harness-demo.md` for the full demo flow.
+
+### Textual TUI Retirement
+
+The Textual TUI (`vibe/cli/`) is a legacy/deprecated interface. The pywebview
+desktop cockpit is the primary local human UX. See
+`docs/governance/textual-retirement-policy.md` for:
+- No new product features targeting Textual
+- Primary surface is pywebview cockpit
+- CLI remains for automation/scripting
+- Textual deletion criteria
+- Migration status table

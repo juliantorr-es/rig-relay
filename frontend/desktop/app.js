@@ -107,6 +107,10 @@ function renderProjection(data) {
   renderProjectionSources(data);
   renderStorageDiagnostics(data);
   renderConnectionStatus(data);
+
+  // Provider data
+  renderProviderHealthPill(data);
+  renderModelProvidersInSystem(data.providers);
 }
 
 function renderNextAction(data) {
@@ -355,6 +359,113 @@ function renderConnectionStatus(data) {
   }
 }
 
+// ── Provider Rendering ──
+
+function renderProviderHealthPill(data) {
+  var pill = document.getElementById('provider-health-pill');
+  var detail = document.getElementById('provider-health-detail');
+  if (!pill) return;
+
+  // Try to get provider status from the projection
+  var providerData = data.providers;
+  if (!providerData || !providerData.total) {
+    setText(pill.querySelector('.dot + *') || pill.lastChild, 'No data');
+    pill.className = 'safety-indicator warn';
+    if (detail) setText(detail, 'No provider data in projection.');
+    return;
+  }
+
+  var configured = providerData.configured || 0;
+  var total = providerData.total || 0;
+  setText(pill.querySelector('.dot + *') || pill.lastChild, configured + '/' + total + ' configured');
+  pill.className = 'safety-indicator ' + (configured > 0 ? 'ok' : 'warn');
+  if (detail) setText(detail, configured + ' of ' + total + ' model providers configured.');
+}
+
+function renderModelProvidersInSystem(providerData) {
+  var body = document.getElementById('providers-table');
+  var pill = document.getElementById('sys-providers-pill');
+  if (!body) return;
+
+  if (!providerData || !providerData.providers || !providerData.providers.length) {
+    body.innerHTML = '<tr><td class="k">No data</td><td>Run provider_status to load.</td></tr>';
+    if (pill) { pill.className = 'safety-indicator warn'; setText(pill.querySelector('.dot + *') || pill.lastChild, '—'); }
+    return;
+  }
+
+  var html = '';
+  var configuredCount = 0;
+  providerData.providers.forEach(function(p) {
+    var configured = p.configured || false;
+    var keySource = p.key_source || 'missing';
+    var fingerprint = p.key_fingerprint || '';
+    var status = p.status || 'unknown';
+    if (configured) configuredCount++;
+
+    html += '<tr>' +
+      '<td class="k">' + escapeHtml(p.display_name || p.provider) + '</td>' +
+      '<td class="' + (configured ? 'ok' : 'warning') + '">' + (configured ? 'Configured' : 'Missing') + '</td>' +
+      '<td style="font-size:0.7rem;color:var(--text-muted)">' + escapeHtml(keySource) + '</td>' +
+      '<td style="font-size:0.65rem;font-family:var(--font-mono);color:var(--text-muted)">' + escapeHtml(fingerprint.substring(0, 20)) + '</td>' +
+      '<td class="' + (status === 'valid' ? 'ok' : 'warning') + '" style="font-size:0.7rem">' + escapeHtml(status) + '</td>' +
+      '</tr>';
+  });
+
+  body.innerHTML = html;
+  if (pill) {
+    pill.className = 'safety-indicator ' + (configuredCount > 0 ? 'ok' : 'warn');
+    setText(pill.querySelector('.dot + *') || pill.lastChild, configuredCount + '/' + providerData.providers.length + ' configured');
+  }
+}
+
+// ── Provider Actions ──
+
+function saveProviderKey() {
+  var select = document.getElementById('provider-select');
+  var input = document.getElementById('provider-key-input');
+  var provider = select ? select.value : '';
+  var apiKey = input ? input.value : '';
+
+  if (!provider) { alert('Please select a provider.'); return; }
+  if (!apiKey) { alert('Please paste an API key.'); return; }
+
+  runIntentWithCallback('provider_onboarding_save_key', { provider: provider, api_key: apiKey }, function(result) {
+    displayIntentResult('provider-intent-result', result);
+    // Clear the input field after save — no raw key remains visible
+    if (input) input.value = '';
+    // Refresh provider status
+    loadProviderStatus();
+  });
+}
+
+function removeProviderKey() {
+  var select = document.getElementById('provider-select');
+  var provider = select ? select.value : '';
+  if (!provider) { alert('Please select a provider.'); return; }
+
+  runIntentWithCallback('provider_onboarding_remove_key', { provider: provider }, function(result) {
+    displayIntentResult('provider-intent-result', result);
+    loadProviderStatus();
+  });
+}
+
+function checkProviderHealth() {
+  var select = document.getElementById('provider-select');
+  var provider = select ? select.value : '';
+
+  runIntentWithCallback('provider_health_check', { provider: provider, network_allowed: false }, function(result) {
+    displayIntentResult('provider-intent-result', result);
+  });
+}
+
+function loadProviderStatus() {
+  runIntentWithCallback('provider_status', {}, function(result) {
+    if (result && result.status === 'completed' && result.extra_fields) {
+      renderModelProvidersInSystem(result.extra_fields);
+    }
+  });
+}
+
 // ── Intent Result Display ──
 
 function displayIntentResult(elementId, result) {
@@ -409,6 +520,8 @@ function renderStructuredCard(kind, summary, result) {
     case 'chat_state':
     case 'authorization_receipt':
     case 'identity_status':
+    case 'provider_status':
+    case 'provider_onboarding':
     case 'summary':
     default:
       return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
@@ -799,6 +912,111 @@ function runIntentWithCallback(name, params, callback) {
       console.warn('Intent failed:', e);
     });
   }
+}
+
+// ── Telemetry Consent (System mode) ──
+
+function renderConsentStatus(result) {
+  var pill = document.getElementById('consent-status-pill');
+  var statusEl = document.getElementById('consent-status');
+  var scopesEl = document.getElementById('consent-scopes');
+  var grantedEl = document.getElementById('consent-granted-at');
+  var revokedEl = document.getElementById('consent-revoked-at');
+  var localEl = document.getElementById('consent-local-only');
+
+  var extra = result.extra_fields || {};
+  var status = extra.status || 'not_requested';
+  var scopes = extra.scopes || [];
+  var grantedAt = extra.granted_at || '';
+  var revokedAt = extra.revoked_at || '';
+
+  if (pill) {
+    if (status === 'granted') {
+      setText(pill, 'Granted');
+      pill.className = 'safety-indicator ok';
+    } else if (status === 'revoked') {
+      setText(pill, 'Revoked');
+      pill.className = 'safety-indicator warn';
+    } else if (status === 'denied') {
+      setText(pill, 'Denied');
+      pill.className = 'safety-indicator error';
+    } else {
+      setText(pill, 'Not Requested');
+      pill.className = 'safety-indicator warn';
+    }
+  }
+  if (statusEl) setText(statusEl, status);
+  if (scopesEl) setText(scopesEl, scopes.length > 0 ? scopes.join(', ') : '—');
+  if (grantedEl) setText(grantedEl, grantedAt || '—');
+  if (revokedEl) setText(revokedEl, revokedAt || '—');
+  if (localEl) setText(localEl, 'true');
+
+  // Sync checkbox states to match current consent scopes
+  syncConsentCheckboxes(scopes);
+}
+
+function syncConsentCheckboxes(scopes) {
+  var allScopes = [
+    'usage_metrics', 'content_light_bundles', 'crash_reports',
+    'coordination_metrics', 'tool_refinement_metrics',
+    'provider_model_benchmarking', 'local_model_benchmarking',
+    'commercial_dataset_license', 'aggregate_public_reporting'
+  ];
+  allScopes.forEach(function(s) {
+    var cb = document.getElementById('scope-' + s);
+    if (cb) {
+      cb.checked = scopes.indexOf(s) >= 0;
+    }
+  });
+}
+
+function updateConsentButton() {
+  var btn = document.getElementById('btn-grant-consent');
+  if (!btn) return;
+  // Disable button if no scopes are checked
+  var anyChecked = document.querySelectorAll('.scope-check input:checked').length > 0;
+  btn.disabled = !anyChecked;
+}
+
+function handleConsentIntentResult(result) {
+  var el = document.getElementById('consent-intent-result');
+  if (!el) return;
+
+  el.style.display = 'block';
+  el.className = 'intent-result-card ' + (result.status === 'completed' ? 'ok' : 'warn');
+
+  var html = '<div class="status-line">' + escapeHtml(result.intent_name || 'Consent') + ': ' + escapeHtml(result.status || 'unknown') + '</div>';
+  if (result.summary) {
+    html += '<div class="detail-line">' + escapeHtml(result.summary) + '</div>';
+  }
+  el.innerHTML = html;
+
+  // Refresh consent status
+  runIntentWithCallback('telemetry_consent_status', {}, function(statusResult) {
+    renderConsentStatus(statusResult);
+  });
+}
+
+function grantTelemetryConsent() {
+  // Collect checked scopes from checkboxes
+  var checkedScopes = [];
+  document.querySelectorAll('.scope-check input:checked').forEach(function(cb) {
+    // Extract scope name from id="scope-{name}"
+    var scopeId = cb.id;
+    if (scopeId && scopeId.indexOf('scope-') === 0) {
+      checkedScopes.push(scopeId.substring(6));
+    }
+  });
+  if (checkedScopes.length === 0) return;
+  runIntentWithCallback('telemetry_consent_grant', { scopes: checkedScopes }, function(result) {
+    handleConsentIntentResult(result);
+  });
+}
+
+function revokeTelemetryConsent() {
+  runIntentWithCallback('telemetry_consent_revoke', {}, function(result) {
+    handleConsentIntentResult(result);
+  });
 }
 
 // ── Progress Timeline (Review mode) ──

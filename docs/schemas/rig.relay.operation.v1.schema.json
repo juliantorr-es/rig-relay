@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.operation.v1.schema.json",
+  "title": "Rig Relay Operation v1",
+  "description": "Content-light operation record representing a Relay session or operation. Derived from Rig's Workspace/Operation vocabulary. No raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, API keys, or raw private paths.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "operation_id",
+    "operation_kind",
+    "status",
+    "created_at",
+    "updated_at",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.operation.v1"]
+    },
+    "operation_id": {
+      "type": "string",
+      "description": "Unique operation identifier."
+    },
+    "operation_kind": {
+      "type": "string",
+      "description": "Kind of operation (e.g. session, intent, validation, checkpoint, spawn)."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["created", "running", "completed", "failed", "cancelled", "refused"],
+      "description": "Current status of the operation."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the operation was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the operation was last updated."
+    },
+    "lane_id": {
+      "type": ["string", "null"],
+      "description": "Optional lane/child-session identifier this operation belongs to."
+    },
+    "parent_operation_id": {
+      "type": ["string", "null"],
+      "description": "Optional parent operation identifier for hierarchical operations."
+    },
+    "intent_id": {
+      "type": ["string", "null"],
+      "description": "Optional intent identifier that triggered this operation."
+    },
+    "progress_event_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "References (SHA256) to progress events associated with this operation."
+    },
+    "receipt_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "References (SHA256) to authorization receipts associated with this operation."
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "sha256"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Artifact kind (e.g. intent_result, progress_event, child_session_result)."
+          },
+          "sha256": {
+            "type": "string",
+            "description": "SHA256 content hash of the artifact."
+          }
+        }
+      },
+      "description": "Content-light artifact references associated with this operation."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human-readable warnings about the operation or its data."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "Guarantee that the record contains no raw content."
+    }
+  },
+  "additionalProperties": false
+}

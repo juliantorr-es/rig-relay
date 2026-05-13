@@ -87,7 +87,11 @@ class TestVersioningPolicyDoc:
 class TestReadmeProvenance:
     def test_readme_has_independent_version_note(self):
         text = README.read_text("utf-8")
-        assert "independent version" in text or "0.1.0a1" in text or "v0.1.0-alpha.1" in text
+        assert (
+            "independent version" in text
+            or "0.1.0a1" in text
+            or "v0.1.0-alpha.1" in text
+        )
 
 
 class TestInstallDoc:

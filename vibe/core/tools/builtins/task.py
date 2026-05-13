@@ -241,9 +241,7 @@ class Task(
     def _coordination_store(ctx: InvokeContext) -> CoordinationStore | None:
         if ctx.session_dir is None:
             return None
-        return CoordinationStore(
-            Path.cwd() / ".build" / "rig-relay" / "coordination"
-        )
+        return CoordinationStore(Path.cwd() / ".build" / "rig-relay" / "coordination")
 
     @staticmethod
     def _sha256_payload(payload: dict[str, Any]) -> str:
@@ -436,9 +434,7 @@ class Task(
         )
 
     @staticmethod
-    def _ensure_subagent_agent(
-        agent_manager: Any, agent_profile_name: str
-    ) -> None:
+    def _ensure_subagent_agent(agent_manager: Any, agent_profile_name: str) -> None:
         try:
             agent = agent_manager.get_agent(agent_profile_name)
         except ValueError as e:
@@ -491,11 +487,7 @@ class Task(
                     elif isinstance(event, ToolResultEvent):
                         if event.skipped:
                             completed = False
-                        elif (
-                            emit_tool_events
-                            and event.result
-                            and event.tool_class
-                        ):
+                        elif emit_tool_events and event.result and event.tool_class:
                             adapter = ToolUIDataAdapter(event.tool_class)
                             display = adapter.get_result_display(event)
                             tool_events.append(
@@ -563,7 +555,9 @@ class Task(
                 store.reserve_paths(
                     session_id=session_id,
                     task_id=task_id,
-                    mode="write" if task_spec and task_spec.scope.allow_write else "read",
+                    mode="write"
+                    if task_spec and task_spec.scope.allow_write
+                    else "read",
                     paths=reserved_paths,
                     ttl_seconds=300,
                 )
@@ -599,7 +593,8 @@ class Task(
                     task_id=task_id,
                     artifact_kind="task_session_link",
                     artifact_uri=artifact.path,
-                    artifact_sha256=artifact.artifact_record_sha256 or artifact.payload_sha256,
+                    artifact_sha256=artifact.artifact_record_sha256
+                    or artifact.payload_sha256,
                     schema_id="rig.relay.artifact.task_session_link.v1",
                 )
             for event in tool_events:
@@ -608,9 +603,7 @@ class Task(
         finally:
             if store is not None and session_id is not None and reserved_paths:
                 store.release_paths(
-                    session_id=session_id,
-                    task_id=task_id,
-                    paths=reserved_paths,
+                    session_id=session_id, task_id=task_id, paths=reserved_paths
                 )
 
     async def _run_fleet_child(

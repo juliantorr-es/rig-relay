@@ -1068,6 +1068,7 @@ derived/*.dataset.jsonl ──→ DuckDB SELECT/filter/count ──→ derived/*
 ### Consent and Privacy
 
 - Explicit opt-in with written consent record (`rig.relay.telemetry_consent.v1`)
+- **Commercial dataset licensing is separate from privacy consent.** The `commercial_dataset_license` and `aggregate_public_reporting` scopes are never default — must be explicitly granted.
 - Bundle manifest with content-light guarantee (`rig.relay.telemetry_bundle_manifest.v1`)
 - Redaction validator scans all bundle content before creation
 - Google Drive upload is resumable, with local receipt (`rig.relay.google_drive_upload_receipt.v1`)

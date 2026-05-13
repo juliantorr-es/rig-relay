@@ -150,9 +150,7 @@ class SearchReplace(
     def _coordination_store(ctx: InvokeContext | None) -> CoordinationStore | None:
         if ctx is None or ctx.session_dir is None:
             return None
-        return CoordinationStore(
-            Path.cwd() / ".build" / "rig-relay" / "coordination"
-        )
+        return CoordinationStore(Path.cwd() / ".build" / "rig-relay" / "coordination")
 
     @staticmethod
     def _build_coordination_context(
@@ -170,7 +168,9 @@ class SearchReplace(
     def _build_coordination_state(
         ctx: InvokeContext | None, file_path: Path
     ) -> tuple[CoordinationStore | None, SearchReplaceCoordinationContext | None]:
-        return SearchReplace._coordination_store(ctx), SearchReplace._build_coordination_context(ctx, file_path)
+        return SearchReplace._coordination_store(
+            ctx
+        ), SearchReplace._build_coordination_context(ctx, file_path)
 
     @staticmethod
     def _claim_coordination(
@@ -254,7 +254,9 @@ class SearchReplace(
             content=modified_content,
             before_file_sha256={repo_file_key: before_hash},
             after_file_sha256={repo_file_key: after_hash},
-            changed_files=[repo_file_key] if modified_content != original_content else [],
+            changed_files=[repo_file_key]
+            if modified_content != original_content
+            else [],
             failed_block_count=total_block_count - block_result.applied,
             total_block_count=total_block_count,
         )
@@ -323,7 +325,9 @@ class SearchReplace(
     ) -> AsyncGenerator[ToolStreamEvent | SearchReplaceResult, None]:
         file_path, search_replace_blocks = self._prepare_and_validate_args(args)
         total_block_count = len(search_replace_blocks)
-        coordination_store, coordination = self._build_coordination_state(ctx, file_path)
+        coordination_store, coordination = self._build_coordination_state(
+            ctx, file_path
+        )
         reservation_allowed = self._claim_coordination(coordination_store, coordination)
 
         guard = get_guard()
@@ -342,10 +346,16 @@ class SearchReplace(
                 search_replace_blocks=search_replace_blocks,
                 total_block_count=total_block_count,
             )
-            self._publish_coordination_artifact(coordination_store, coordination, result)
+            self._publish_coordination_artifact(
+                coordination_store, coordination, result
+            )
             yield result
         finally:
-            if coordination_store is not None and coordination is not None and reservation_allowed:
+            if (
+                coordination_store is not None
+                and coordination is not None
+                and reservation_allowed
+            ):
                 coordination_store.release_paths(
                     session_id=coordination.session_id,
                     task_id=coordination.task_id,

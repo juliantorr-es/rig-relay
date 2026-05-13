@@ -190,6 +190,69 @@ def _build_semantic_snippets(build_root: Path) -> dict[str, Any]:
     }
 
 
+def _build_providers(state_root: Path | None = None) -> dict[str, Any]:
+    """Build provider status by merging env-var and dev-file key stores.
+
+    Env vars take precedence over dev-file keys. Uses check_provider_status
+    with network_allowed=False for honest status: configured providers show
+    as "skipped" (not "valid") unless a real network check succeeded.
+    """
+    from rig_relay.identity.state_paths import provider_state_root
+    from rig_relay.providers.health_check import check_provider_status
+    from rig_relay.providers.key_store import (
+        DevFileProviderKeyStore,
+        EnvProviderKeyStore,
+    )
+    from rig_relay.providers.registry import PROVIDER_REGISTRY
+
+    providers_dir = (
+        provider_state_root(root=state_root) if state_root is not None else None
+    )
+    env_ks = EnvProviderKeyStore()
+    dev_ks = DevFileProviderKeyStore(providers_dir=providers_dir)
+
+    merged: list[dict[str, Any]] = []
+    configured_count = 0
+    valid_count = 0
+
+    for info in PROVIDER_REGISTRY:
+        # Prefer env vars, fall back to dev files for key detection
+        if env_ks.has_key(info.provider):
+            ks = env_ks
+        elif dev_ks.has_key(info.provider):
+            ks = dev_ks
+        else:
+            ks = None
+
+        if ks is not None:
+            status_obj = check_provider_status(info.provider, ks, network_allowed=False)
+            d = status_obj.to_dict()
+            configured_count += 1
+            if d.get("status") == "valid":
+                valid_count += 1
+        else:
+            d = {
+                "provider": info.provider.value,
+                "display_name": info.display_name,
+                "configured": False,
+                "key_source": "missing",
+                "key_fingerprint": "",
+                "base_url": info.base_url if info.supports_base_url else None,
+                "default_model": info.default_model,
+                "status": "skipped",
+                "warnings": [],
+                "last_checked_at": datetime.now(UTC).isoformat(),
+            }
+        merged.append(d)
+
+    return {
+        "total": len(merged),
+        "configured": configured_count,
+        "valid_count": valid_count,
+        "providers": merged,
+    }
+
+
 def _build_telemetry_bundle(build_root: Path) -> dict[str, Any]:
     """Find the most recent telemetry bundle manifest."""
     bundle_dir = build_root / "telemetry-bundles"
@@ -307,6 +370,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
     telemetry_bundle = _build_telemetry_bundle(root)
     update = _build_update(root)
     storage = _build_storage(root)
+    providers = _build_providers()
 
     source_status = {
         "current_state": current_state["available"],
@@ -316,6 +380,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
         "telemetry_bundle": telemetry_bundle["available"],
         "update": update["available"],
         "storage": storage["available"],
+        "provider_status": providers["total"] > 0,
     }
 
     warnings: list[str] = []
@@ -338,6 +403,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
         "telemetry_bundle": telemetry_bundle,
         "update": update,
         "storage": storage,
+        "providers": providers,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

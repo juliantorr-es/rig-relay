@@ -1,0 +1,41 @@
+{
+  "schema_version": "rig.relay.model_observation.v1",
+  "observation_id": "obs_demo_mcp_night_001",
+  "created_at": "2026-05-15T10:00:00Z",
+  "task_kind": "code_gen",
+  "task_fingerprint": "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "provider_kind": "cloud",
+  "provider_name": "openai",
+  "model_id": "gpt-4o",
+  "backend": "api",
+  "endpoint_kind": "chat",
+  "machine_profile_id": null,
+  "input_tokens": 1024,
+  "output_tokens": 512,
+  "context_tokens": 2048,
+  "latency_ms": 2340.5,
+  "time_to_first_token_ms": 420.0,
+  "prompt_eval_tps": 48.2,
+  "decode_tps": 62.1,
+  "peak_memory_gb": null,
+  "estimated_cost_usd": 0.0032,
+  "tool_call_count": 4,
+  "tool_success_count": 3,
+  "retry_count": 1,
+  "refusal_count": 0,
+  "failure_count": 0,
+  "validation_status": "passed",
+  "user_outcome": "accepted",
+  "content_light_guarantee": true,
+  "artifact_refs": [
+    {
+      "kind": "refinement_packet",
+      "sha256": "sha256:1111222233334444555566667777888899990000aaaabbbbccccddddeeeeffff"
+    },
+    {
+      "kind": "validation_result",
+      "sha256": "sha256:ffffeeeebbbbccccdddd1111222233334444555566667777888899990000aaaa"
+    }
+  ],
+  "warnings": []
+}

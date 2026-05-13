@@ -1,0 +1,185 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.provider_ranking_snapshot.v1.schema.json",
+  "title": "Rig Relay Provider Ranking Snapshot v1",
+  "description": "Content-light snapshot of aggregated provider and model rankings across observed tasks. No raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, API keys, or raw private paths.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "rig.relay.provider_ranking_snapshot.v1"
+      ]
+    },
+    "ranking_id": {
+      "type": "string",
+      "description": "Unique ranking snapshot identifier"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the snapshot was created"
+    },
+    "task_kind": {
+      "type": "string",
+      "description": "Kind of task this ranking applies to"
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of observations in this snapshot"
+    },
+    "provider_scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "provider_name": {
+            "type": "string"
+          },
+          "task_success_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "cost_efficiency_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "latency_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "tool_reliability_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "privacy_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "overall_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "provider_name",
+          "task_success_score",
+          "cost_efficiency_score",
+          "latency_score",
+          "tool_reliability_score",
+          "privacy_score",
+          "overall_score"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Aggregated scores per cloud provider"
+    },
+    "model_scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "model_id": {
+            "type": "string"
+          },
+          "provider_name": {
+            "type": "string"
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "api",
+              "mlx",
+              "llama_cpp"
+            ]
+          },
+          "task_success_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "cost_efficiency_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "latency_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "tool_reliability_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "privacy_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "local_comfort_score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "overall_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "model_id",
+          "provider_name",
+          "backend",
+          "task_success_score",
+          "cost_efficiency_score",
+          "latency_score",
+          "tool_reliability_score",
+          "privacy_score",
+          "overall_score"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Aggregated scores per model"
+    },
+    "confidence_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Confidence level based on sample count and data quality"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human-readable warnings about this ranking snapshot"
+    }
+  },
+  "required": [
+    "schema_version",
+    "ranking_id",
+    "created_at",
+    "task_kind",
+    "sample_count",
+    "provider_scores",
+    "model_scores",
+    "confidence_level"
+  ],
+  "additionalProperties": false
+}

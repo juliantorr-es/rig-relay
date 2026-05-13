@@ -104,7 +104,9 @@ def test_mission_packet_schema_validates_sample():
             "heartbeat": True,
         },
         "checkpoint_policy": "off",
-        "validation_commands": ["uv run pytest -n0 tests/coordination/test_exporter.py"],
+        "validation_commands": [
+            "uv run pytest -n0 tests/coordination/test_exporter.py"
+        ],
         "done_when": ["focused tests pass or failure report emitted"],
         "max_runtime_seconds": 1800,
         "created_at": datetime.now(UTC).isoformat(),
@@ -151,7 +153,7 @@ def test_aggregate_schema_validates_sample():
                 "session_id": "session_1",
                 "agent_profile": "tester",
                 "status": "completed",
-            },
+            }
         ],
         "overall_status": "clean",
         "recommended_next_action": "Propose manual push",
@@ -174,8 +176,7 @@ def test_cockpit_generator_tolerates_missing_coordination(monkeypatch, tmp_path)
         tmp_path / "no-coordination" / "events.jsonl",
     )
     monkeypatch.setattr(
-        "scripts.rig_relay_create_sprint_cockpit.BUILD_ROOT",
-        tmp_path / "no-build",
+        "scripts.rig_relay_create_sprint_cockpit.BUILD_ROOT", tmp_path / "no-build"
     )
     packet, _ = generate_cockpit(output_dir=tmp_path)
     errors = _try_validate(packet, COCKPIT_SCHEMA)
@@ -269,8 +270,7 @@ def test_cockpit_generator_markdown_includes_warnings(tmp_path, monkeypatch):
         tmp_path / "missing" / "events.jsonl",
     )
     monkeypatch.setattr(
-        "scripts.rig_relay_create_sprint_cockpit.BUILD_ROOT",
-        tmp_path / "no-build",
+        "scripts.rig_relay_create_sprint_cockpit.BUILD_ROOT", tmp_path / "no-build"
     )
     _, markdown = generate_cockpit(output_dir=tmp_path)
     assert "## Warnings" in markdown

@@ -14,6 +14,26 @@ REQUIRED_DELIVERABLES = [
     "docs/governance/frontend-rendering-safety.md",
 ]
 
+# Expected schemas from port_now item 1 (vocabulary)
+REQUIRED_PORT_NOW_SCHEMAS = [
+    "docs/schemas/rig.relay.operation.v1.schema.json",
+    "docs/schemas/rig.relay.child_session.receipt.v1.schema.json",
+]
+
+# Expected module from port_now item 2 (projection widget contract)
+REQUIRED_PROJECTION_WIDGET_MODULE = "rig_relay/desktop/projection_widgets.py"
+
+# Expected test from port_now item 2 (projection contract)
+REQUIRED_PROJECTION_CONTRACT_TEST = "tests/scripts/test_desktop_projection_contract.py"
+
+# Expected test from port_now item 7 (frontend safety)
+REQUIRED_FRONTEND_SAFETY_TEST = (
+    "tests/frontend/test_no_inner_html_for_untrusted_fields.mjs"
+)
+
+# Expected doc from port_now item 4 (Textual retirement)
+REQUIRED_TEXTUAL_RETIREMENT_DOC = "docs/governance/textual-retirement-policy.md"
+
 
 def test_deliverables_exist() -> None:
     """All five required deliverables exist."""
@@ -231,3 +251,81 @@ def test_new_docs_dont_mention_intake_quote_domain() -> None:
             assert term.lower() not in text.lower(), (
                 f"Leaked Intake term '{term}' in {doc.name}"
             )
+
+
+# ── Port Now Schema Enforcement ──
+
+
+def test_port_now_schemas_exist() -> None:
+    """All port_now vocabulary schemas exist."""
+    missing = []
+    for path in REQUIRED_PORT_NOW_SCHEMAS:
+        full = REPO_ROOT / path
+        if not full.is_file():
+            missing.append(path)
+    assert not missing, f"Missing port_now schemas: {missing}"
+
+
+def test_projection_widget_module_exists() -> None:
+    """Projection widget contract module exists."""
+    assert (REPO_ROOT / REQUIRED_PROJECTION_WIDGET_MODULE).is_file()
+
+
+def test_projection_contract_test_exists() -> None:
+    """Projection contract test exists."""
+    assert (REPO_ROOT / REQUIRED_PROJECTION_CONTRACT_TEST).is_file()
+
+
+def test_frontend_safety_test_exists() -> None:
+    """Frontend safety regression test exists."""
+    assert (REPO_ROOT / REQUIRED_FRONTEND_SAFETY_TEST).is_file()
+
+
+def test_textual_retirement_policy_exists() -> None:
+    """Textual retirement policy document exists."""
+    assert (REPO_ROOT / REQUIRED_TEXTUAL_RETIREMENT_DOC).is_file()
+
+
+# ── Deferred Item Enforcement ──
+
+
+def test_deferred_items_have_explicit_status() -> None:
+    """All deferred items in the cannibalization plan have an explicit status label."""
+    path = REPO_ROOT / "docs/audits/rig-intake-cannibalization-plan.md"
+    text = path.read_text(encoding="utf-8")
+    # Items 8-12 should have status labels
+    deferred_headers = [
+        "#### 8. Rig Lane/Review/Promotion/Recommendation Card Shapes",
+        "#### 9. Debug Bundle",
+        "#### 10. Intake Passkey Localhost Caveats",
+        "#### 11. Rig Provider/Runtime Registries",
+        "#### 12. Intake Deployment Adapters",
+    ]
+    for header in deferred_headers:
+        assert header in text, f"Missing deferred header: {header}"
+
+
+def test_deferred_items_have_status_markers() -> None:
+    """All deferred items have an [⏳ intentionally deferred] or [✅ done] marker."""
+    path = REPO_ROOT / "docs/audits/rig-intake-cannibalization-plan.md"
+    text = path.read_text(encoding="utf-8")
+    # Items 8-12 should have status markers
+    for i in range(8, 13):
+        assert "[⏳ intentionally deferred]" in text or "[✅" in text, (
+            f"Item {i} missing status marker"
+        )
+
+
+def test_all_port_now_items_done() -> None:
+    """All port_now items have a [✅ done] status marker."""
+    path = REPO_ROOT / "docs/audits/rig-intake-cannibalization-plan.md"
+    text = path.read_text(encoding="utf-8")
+    for i in range(1, 8):
+        header_line = f"#### {i}."
+        # Find the line and check it has [✅ done]
+        for line in text.splitlines():
+            if header_line in line:
+                assert "[✅ done]" in line, (
+                    f"Port_now item {i} missing [✅ done] marker: {line.strip()}"
+                )
+                break

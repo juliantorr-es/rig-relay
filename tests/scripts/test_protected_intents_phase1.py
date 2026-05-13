@@ -156,3 +156,131 @@ class TestProtectedIntentsPhase1:
         # Ensure raw receipt is NOT in the event
         assert "authorization_receipt" not in result_event
         # And not in the result dict either (already checked by TestProtectedIntentsPhase1 if we had more tests)
+
+
+class TestProtectedIntentProgressBracketing:
+    """Verify Phase 1 protected intents emit bracketed progress events."""
+
+    def test_checkpoint_commit_without_receipt_emits_started_then_refused(self):
+        from rig_relay.desktop.progress_events import (
+            EVENT_OPERATION_REFUSED,
+            EVENT_OPERATION_STARTED,
+        )
+
+        events: list[dict[str, Any]] = []
+
+        def emitter(data: dict[str, Any]) -> None:
+            events.append(data)
+
+        request = _valid_request("checkpoint.commit", {"include_paths": ["README.md"]})
+        result = execute_desktop_intent(request, progress_emitter=emitter)
+        assert result["status"] == "refused"
+
+        started = [e for e in events if e.get("event_type") == EVENT_OPERATION_STARTED]
+        refused = [e for e in events if e.get("event_type") == EVENT_OPERATION_REFUSED]
+        assert len(started) == 1
+        assert len(refused) == 1
+        assert started[0]["sequence"] < refused[0]["sequence"]
+
+    def test_checkpoint_commit_with_valid_receipt_emits_started_then_completed(
+        self, monkeypatch: Any
+    ):
+        from rig_relay.desktop import intents
+        from rig_relay.desktop.progress_events import (
+            EVENT_OPERATION_COMPLETED,
+            EVENT_OPERATION_STARTED,
+        )
+
+        events: list[dict[str, Any]] = []
+
+        def emitter(data: dict[str, Any]) -> None:
+            events.append(data)
+
+        def mock_execute(
+            intent_id: str,
+            params: dict[str, Any],
+            receipt_data: dict[str, Any] | None = None,
+        ):
+            return intents._build_result(
+                "checkpoint.commit", intent_id, "completed", summary="Mock success"
+            )
+
+        monkeypatch.setattr(intents, "_execute_checkpoint_commit", mock_execute)
+
+        receipt = generate_dev_receipt("checkpoint.commit")
+        request = _valid_request("checkpoint.commit", {"include_paths": ["README.md"]})
+        request["authorization_receipt"] = receipt
+
+        result = execute_desktop_intent(request, progress_emitter=emitter)
+        assert result["status"] == "completed"
+
+        started = [e for e in events if e.get("event_type") == EVENT_OPERATION_STARTED]
+        completed = [
+            e for e in events if e.get("event_type") == EVENT_OPERATION_COMPLETED
+        ]
+        assert len(started) == 1
+        assert len(completed) >= 1
+        assert started[0]["sequence"] < completed[0]["sequence"]
+        for ev in events:
+            assert ev.get("content_light_guarantee") is True
+
+    def test_lease_cleanup_archive_with_valid_receipt_emits_started_then_completed(
+        self, monkeypatch: Any
+    ):
+        from rig_relay.desktop import intents
+        from rig_relay.desktop.progress_events import (
+            EVENT_OPERATION_COMPLETED,
+            EVENT_OPERATION_STARTED,
+        )
+
+        events: list[dict[str, Any]] = []
+
+        def emitter(data: dict[str, Any]) -> None:
+            events.append(data)
+
+        def mock_execute(intent_id: str, params: dict[str, Any]):
+            return intents._build_result(
+                "lease_cleanup.archive",
+                intent_id,
+                "completed",
+                summary="Mock cleanup success",
+            )
+
+        monkeypatch.setattr(intents, "_execute_lease_cleanup_archive", mock_execute)
+
+        receipt = generate_dev_receipt("lease_cleanup.archive")
+        request = _valid_request("lease_cleanup.archive")
+        request["authorization_receipt"] = receipt
+
+        result = execute_desktop_intent(request, progress_emitter=emitter)
+        assert result["status"] == "completed"
+
+        started = [e for e in events if e.get("event_type") == EVENT_OPERATION_STARTED]
+        completed = [
+            e for e in events if e.get("event_type") == EVENT_OPERATION_COMPLETED
+        ]
+        assert len(started) == 1
+        assert len(completed) >= 1
+        assert started[0]["sequence"] < completed[0]["sequence"]
+
+    def test_still_refused_protected_intent_emits_refused_only(self):
+        """Still-refused intents (bash, write_file, etc.) emit only refused."""
+        from rig_relay.desktop.intents import PROTECTED_INTENTS
+        from rig_relay.desktop.progress_events import EVENT_OPERATION_REFUSED
+
+        events: list[dict[str, Any]] = []
+
+        def emitter(data: dict[str, Any]) -> None:
+            events.append(data)
+
+        protected_name = next(iter(PROTECTED_INTENTS))
+        result = execute_desktop_intent(
+            _valid_request(protected_name), progress_emitter=emitter
+        )
+        assert result["status"] == "refused"
+
+        refused = [e for e in events if e.get("event_type") == EVENT_OPERATION_REFUSED]
+        assert len(refused) >= 1
+        for ev in events:
+            assert ev.get("content_light_guarantee") is True
+            assert "receipt" not in str(ev.get("message", ""))

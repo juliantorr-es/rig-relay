@@ -50,6 +50,29 @@ class GitHubIdentityProvider(IdentityProvider):
     def default_scopes(self) -> list[str]:
         return list(GITHUB_MINIMAL_SCOPES)
 
+    @staticmethod
+    def validate_scopes(scopes: list[str] | None = None) -> list[str]:
+        """Validate scopes and return warnings for disallowed scopes.
+
+        In alpha, only read:user and user:email are allowed.
+        Repo scopes, admin scopes, workflow scopes are rejected with warnings.
+        """
+        warnings: list[str] = []
+        if scopes is None:
+            return warnings
+        for scope in scopes:
+            if scope.startswith("repo") or scope == "repo":
+                warnings.append(
+                    f"GitHub repo scope '{scope}' not allowed in alpha. Repo access deferred."
+                )
+            if scope.startswith("admin:"):
+                warnings.append(f"GitHub admin scope '{scope}' not allowed in alpha.")
+            if scope.startswith("workflow"):
+                warnings.append(
+                    f"GitHub workflow scope '{scope}' not allowed in alpha."
+                )
+        return warnings
+
     def build_auth_url(
         self, redirect_uri: str, state: str, scopes: list[str] | None = None
     ) -> str:

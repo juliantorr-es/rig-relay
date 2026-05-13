@@ -720,6 +720,24 @@ button.secondary-btn:hover {
   padding-top: 4px;
 }
 
+/* ── Provider-specific ── */
+#providers-table td {
+  padding: 4px 6px;
+  vertical-align: middle;
+  font-size: 0.78rem;
+}
+
+#providers-table td.k {
+  width: 100px;
+  color: var(--text-muted);
+}
+
+#provider-select-area {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
 /* ── Subsection title for Review/System ── */
 .section-title {
   font-size: 0.85rem;
@@ -748,6 +766,37 @@ footer {
 }
 
 footer p { margin: 0; }
+
+/* ── Scope checkboxes (Telemetry Consent) ── */
+.scope-section {
+  margin-top: 8px;
+}
+
+.scope-group-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.scope-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.scope-check input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.scope-check span {
+  color: var(--text-primary);
+}
 
 /* ── Responsive adjustments ── */
 @media (max-width: 900px) {

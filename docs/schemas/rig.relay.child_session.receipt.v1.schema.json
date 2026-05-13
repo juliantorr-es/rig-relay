@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.child_session.receipt.v1.schema.json",
+  "title": "Rig Relay Child Session Receipt v1",
+  "description": "Content-light receipt record for a completed child session. Derived from Rig's Receipt vocabulary. No raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, API keys, raw receipts, or raw private paths.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "child_session_id",
+    "status",
+    "started_at",
+    "tool_counts",
+    "validation_status",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.child_session.receipt.v1"]
+    },
+    "receipt_id": {
+      "type": "string",
+      "description": "Unique receipt identifier."
+    },
+    "child_session_id": {
+      "type": "string",
+      "description": "Identifier of the child session this receipt belongs to."
+    },
+    "lane_id": {
+      "type": ["string", "null"],
+      "description": "Optional lane identifier (e.g. fleet slot) for multi-lane sessions."
+    },
+    "parent_operation_id": {
+      "type": ["string", "null"],
+      "description": "Optional parent operation identifier."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "failed", "cancelled", "timed_out", "refused"],
+      "description": "Completion status of the child session."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the child session started."
+    },
+    "ended_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the child session ended. Null if not yet ended."
+    },
+    "tool_counts": {
+      "type": "object",
+      "required": ["total_calls", "successful_calls", "failed_calls"],
+      "properties": {
+        "total_calls": {
+          "type": "integer",
+          "description": "Total number of tool calls made during the child session."
+        },
+        "successful_calls": {
+          "type": "integer",
+          "description": "Number of successful tool calls."
+        },
+        "failed_calls": {
+          "type": "integer",
+          "description": "Number of failed tool calls."
+        }
+      },
+      "description": "Tool call counts for the child session."
+    },
+    "validation_status": {
+      "type": "string",
+      "enum": ["passed", "failed", "skipped", "unknown"],
+      "description": "Validation status of the child session's outputs."
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "sha256"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Artifact kind (e.g. intent_result, progress_event, mission_packet)."
+          },
+          "sha256": {
+            "type": "string",
+            "description": "SHA256 content hash of the artifact."
+          }
+        }
+      },
+      "description": "Content-light artifact references produced by the child session."
+    },
+    "progress_event_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "References (SHA256) to progress events associated with this child session."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human-readable warnings about the receipt or its data."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "Guarantee that the record contains no raw content."
+    }
+  },
+  "additionalProperties": false
+}

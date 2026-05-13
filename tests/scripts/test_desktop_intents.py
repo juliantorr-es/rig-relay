@@ -697,6 +697,8 @@ class TestResultCardRendering:
             "checkpoint",
             "lease_cleanup",
             "identity_status",
+            "provider_status",
+            "provider_onboarding",
             "summary",
         }
         handled_by_renderer = {
@@ -713,6 +715,8 @@ class TestResultCardRendering:
             "chat_state",
             "authorization_receipt",
             "identity_status",
+            "provider_status",
+            "provider_onboarding",
             "summary",
         }
         unhandled = known_backend_kinds - handled_by_renderer

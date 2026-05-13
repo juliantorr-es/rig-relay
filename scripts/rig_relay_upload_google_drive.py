@@ -93,7 +93,11 @@ def _upload_dry_run(
 
 
 def _upload_real(
-    bundle_path: Path, folder_id: str | None, participant_id: str, share_level: str
+    bundle_path: Path,
+    folder_id: str | None,
+    participant_id: str,
+    share_level: str,
+    state_root: Path | None = None,
 ) -> dict[str, Any]:
     """Real Google Drive upload with resumable upload.
 
@@ -104,6 +108,7 @@ def _upload_real(
         folder_id: Target Google Drive folder ID (or None).
         participant_id: Anonymous participant identifier.
         share_level: Share level for this upload.
+        state_root: Explicit state root. If None, uses ~/.rig/relay/.
 
     Returns:
         Upload receipt dict.
@@ -113,15 +118,19 @@ def _upload_real(
     """
     from typing import cast
 
+    from rig_relay.identity.state_paths import default_relay_state_root
+
     SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
     now = datetime.now(UTC)
     bundle_sha256 = _sha256_file(bundle_path)
     bundle_name = bundle_path.name
 
+    relay_root = state_root or default_relay_state_root()
+
     # Authenticate (OAuth 2.0 local server flow)
     creds: Credentials | None = None
-    token_path = Path.home() / ".rig" / "relay" / "drive_token.json"
+    token_path = relay_root / "drive_token.json"
 
     if token_path.is_file():
         creds = cast(
@@ -132,7 +141,7 @@ def _upload_real(
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(GoogleAuthRequest())
         else:
-            creds_path = Path.home() / ".rig" / "relay" / "drive_credentials.json"
+            creds_path = relay_root / "drive_credentials.json"
             if not creds_path.is_file():
                 raise RuntimeError(
                     f"OAuth credentials not found at {creds_path}. "
@@ -203,6 +212,7 @@ def upload_bundle(
     share_level: str = "derived_only",
     dry_run: bool = True,
     confirm: bool = False,
+    state_root: Path | None = None,
 ) -> dict[str, Any]:
     """Upload a telemetry bundle to Google Drive.
 
@@ -213,6 +223,7 @@ def upload_bundle(
         share_level: Share level for this upload.
         dry_run: If True, create a local receipt without network access.
         confirm: If True, proceed with real upload (requires dry_run=False).
+        state_root: Explicit state root. If None, uses ~/.rig/relay/.
 
     Returns:
         Upload receipt dict.
@@ -230,6 +241,7 @@ def upload_bundle(
         folder_id=folder_id,
         participant_id=participant_id,
         share_level=share_level,
+        state_root=state_root,
     )
 
 
@@ -292,6 +304,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=False,
         help="Skip authorization check (dev mode only).",
     )
+    parser.add_argument(
+        "--state-root",
+        type=Path,
+        default=None,
+        help="Explicit state root path (default: ~/.rig/relay).",
+    )
     return parser.parse_args(argv)
 
 
@@ -339,6 +357,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     try:
+        state_root = args.state_root
         receipt = upload_bundle(
             bundle_path=args.bundle,
             folder_id=args.folder_id,
@@ -346,6 +365,7 @@ def main(argv: list[str] | None = None) -> int:
             share_level=args.share_level,
             dry_run=args.dry_run,
             confirm=args.confirm,
+            state_root=state_root,
         )
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)

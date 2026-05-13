@@ -1,63 +1,84 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.telemetry_consent.v1.schema.json",
-  "title": "Telemetry Consent v1",
-  "description": "Explicit telemetry consent record for Rig Relay beta telemetry sharing. Records participant opt-in, share level, destination, and consent version. Local consent and remote sharing are separate concerns.",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.telemetry_consent.v1.schema.json",
+  "title": "Rig Relay Telemetry Consent v1",
+  "description": "Content-light consent record for telemetry data sharing. No raw email, raw tokens, raw prompts, raw code, or raw output.",
   "type": "object",
-  "required": [
-    "schema_version",
-    "participant_id",
-    "share_level",
-    "destination",
-    "consent_text_version",
-    "consented_at"
-  ],
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "rig.relay.telemetry_consent.v1"
+      "enum": ["rig.relay.telemetry_consent.v1"]
     },
-    "participant_id": {
+    "consent_id": {
       "type": "string",
-      "description": "Anonymous participant identifier (e.g. anon_<hex>)."
+      "description": "Unique consent record identifier"
     },
-    "project": {
+    "subject_hash": {
       "type": "string",
-      "default": "rig-relay",
-      "description": "Project name."
+      "description": "SHA256 hash of the subject identifier (account_id or participant_id). Not a raw email or account ID."
     },
-    "share_level": {
+    "provider": {
       "type": "string",
-      "enum": ["off", "derived_only", "evidence_hashes", "debug_local_only", "debug_opt_in"],
-      "description": "What data may be shared. 'off' means no remote sharing."
+      "description": "Identity provider name (e.g. github, google) or 'local' for no-identity consent"
     },
-    "destination": {
+    "status": {
       "type": "string",
-      "description": "Remote destination identifier (e.g. google_drive, local, custom)."
+      "enum": ["not_requested", "granted", "denied", "revoked"],
+      "description": "Current consent status"
     },
-    "consent_text_version": {
-      "type": "string",
-      "description": "Version of the consent/onboarding text the participant acknowledged."
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "usage_metrics",
+          "content_light_bundles",
+          "crash_reports",
+          "coordination_metrics",
+          "tool_refinement_metrics",
+          "provider_model_benchmarking",
+          "local_model_benchmarking",
+          "commercial_dataset_license",
+          "aggregate_public_reporting"
+        ]
+      },
+      "description": "Consented telemetry scopes",
+      "minItems": 0
     },
-    "consented_at": {
+    "granted_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 UTC timestamp of consent."
-    },
-    "can_contact": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether the participant consents to follow-up contact."
-    },
-    "notes": {
-      "type": "string",
-      "description": "Optional notes about consent context."
+      "description": "ISO 8601 timestamp when consent was granted"
     },
     "revoked_at": {
-      "type": ["string", "null"],
+      "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 UTC timestamp if consent was revoked."
+      "description": "ISO 8601 timestamp when consent was revoked"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional ISO 8601 timestamp when consent expires"
+    },
+    "policy_version": {
+      "type": "string",
+      "description": "Version of the consent policy at time of recording"
+    },
+    "local_only": {
+      "type": "boolean",
+      "description": "If true, consent is stored only locally and not synced to remote",
+      "default": true
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable warnings about this consent record"
     }
   },
+  "required": [
+    "schema_version",
+    "consent_id",
+    "status"
+  ],
   "additionalProperties": false
 }

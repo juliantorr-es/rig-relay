@@ -476,3 +476,290 @@ class TestIdentityAuditContentLight:
                 content = art.read_text(encoding="utf-8")
                 assert "access_token" not in content
                 assert "refresh_token" not in content
+
+
+# ── Telemetry Consent Tests ──
+
+
+class TestTelemetryConsent:
+    def test_telemetry_consent_status_returns_content_light(self):
+        result = execute_desktop_intent(_valid_request("telemetry_consent_status"))
+        assert result["status"] == "completed"
+        assert result["result_kind"] == "telemetry_consent"
+        extra = result.get("extra_fields", {})
+        assert "status" in extra
+        assert "scopes" in extra
+        assert "access_token" not in str(result.get("extra_fields", {}))
+        assert "raw_prompt" not in str(result)
+
+    def test_telemetry_consent_grant_records_content_light(self):
+        result = execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_consent_grant",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_grant",
+            "parameters": {
+                "scopes": ["usage_metrics", "content_light_bundles"],
+                "subject_hash": "sha256:abc123",
+                "provider": "local",
+            },
+            "dry_run": True,
+        })
+        assert result["status"] == "completed"
+        extra = result.get("extra_fields", {})
+        assert extra.get("status") == "granted"
+        assert "usage_metrics" in extra.get("scopes", [])
+        assert "content_light_bundles" in extra.get("scopes", [])
+        assert result["result_kind"] == "telemetry_consent"
+        # Verify no raw tokens in result
+        assert "access_token" not in str(result)
+        assert "refresh_token" not in str(result)
+
+    def test_telemetry_consent_revoke_records_revoked(self):
+        # First grant
+        execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_consent_pre",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_grant",
+            "parameters": {"scopes": ["usage_metrics"]},
+            "dry_run": True,
+        })
+        # Then revoke
+        result = execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_consent_revoke",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_revoke",
+            "parameters": {},
+            "dry_run": True,
+        })
+        assert result["status"] == "completed"
+        extra = result.get("extra_fields", {})
+        assert extra.get("status") == "revoked"
+        assert extra.get("revoked_at", "") != ""
+
+    def test_consent_audit_artifact_no_tokens(self, tmp_path: Path):
+        from rig_relay.desktop.intent_audit import emit_result
+
+        for intent_name in (
+            "telemetry_consent_status",
+            "telemetry_consent_grant",
+            "telemetry_consent_revoke",
+        ):
+            params = {}
+            if intent_name == "telemetry_consent_grant":
+                params = {"scopes": ["usage_metrics"]}
+            result = execute_desktop_intent({
+                "schema_version": "rig.relay.desktop_intent_request.v1",
+                "intent_id": f"test_audit_{intent_name}",
+                "created_at": "2026-05-14T00:00:00Z",
+                "intent_name": intent_name,
+                "parameters": params,
+                "dry_run": True,
+            })
+            build_root = tmp_path / f"intent_audit_{intent_name}"
+            build_root.mkdir(parents=True)
+            emit_result(result, build_root=build_root)
+            artifacts = list((build_root / "intent_results").glob("*.json"))
+            if artifacts:
+                for art in artifacts:
+                    content = art.read_text(encoding="utf-8")
+                    assert "access_token" not in content
+                    assert "refresh_token" not in content
+
+    def test_identity_intents_not_in_phase_1_protected(self):
+        from rig_relay.desktop.intents import PHASE_1_ENABLED
+
+        identity_intents = [
+            "identity_status",
+            "sign_in_github_start",
+            "sign_in_google_start",
+            "sign_out_provider",
+            "telemetry_consent_status",
+            "telemetry_consent_grant",
+            "telemetry_consent_revoke",
+        ]
+        for intent in identity_intents:
+            assert intent not in PHASE_1_ENABLED, (
+                f"{intent} must not be in PHASE_1_ENABLED"
+            )
+
+
+# ── Scope Enforcement Tests ──
+
+
+class TestScopeEnforcement:
+    def test_github_scopes_are_identity_only(self):
+        from rig_relay.identity.github import GitHubIdentityProvider
+
+        provider = GitHubIdentityProvider(client_id="test", client_secret="test")
+        assert provider.default_scopes() == ["read:user", "user:email"]
+        for scope in provider.default_scopes():
+            assert "repo" not in scope
+            assert "admin" not in scope
+            assert "workflow" not in scope
+
+    def test_github_repo_scope_warned(self):
+        from rig_relay.identity.github import GitHubIdentityProvider
+
+        warnings = GitHubIdentityProvider.validate_scopes(["repo", "read:user"])
+        assert any("repo" in w for w in warnings)
+
+    def test_google_scopes_are_identity_only(self):
+        from rig_relay.identity.google import GoogleIdentityProvider
+
+        provider = GoogleIdentityProvider(client_id="test", client_secret="test")
+        assert provider.default_scopes() == ["openid", "email", "profile"]
+        for scope in provider.default_scopes():
+            assert "drive" not in scope
+
+    def test_google_drive_scope_warned(self):
+        from rig_relay.identity.google import GoogleIdentityProvider
+
+        warnings = GoogleIdentityProvider.validate_scopes([
+            "openid",
+            "email",
+            "https://www.googleapis.com/auth/drive.file",
+        ])
+        assert any("drive" in w.lower() for w in warnings)
+
+    def test_identity_intent_does_not_alter_authorization(self):
+        """Sign-in does not alter protected intent authorization."""
+        result = execute_desktop_intent(_valid_request("identity_status"))
+        assert result["status"] == "completed"
+        # Authorization should not be implied
+        assert result.get("authorization_required", False) is False
+
+    def test_consent_grant_does_not_imply_protected_authority(self):
+        result = execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_consent_no_auth",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_grant",
+            "parameters": {"scopes": ["usage_metrics"]},
+            "dry_run": True,
+        })
+        assert result["status"] == "completed"
+        assert result.get("authorization_required", False) is False
+
+
+# ── State Root Isolation Tests ──
+
+
+class TestStateRootIsolation:
+    def test_consent_store_tmp_path_does_not_touch_home(self, tmp_path: Path):
+        """ConsentStore with explicit store_root writes only to tmp_path."""
+        from rig_relay.identity.consent_store import ConsentStore
+        from rig_relay.identity.telemetry_consent import grant_consent
+
+        store = ConsentStore(store_root=tmp_path / "consent")
+        record = grant_consent(subject_hash="sha256:test", provider="test")
+        store.save(record)
+
+        # Verify file is under tmp_path
+        consent_file = tmp_path / "consent" / "telemetry_consent.json"
+        assert consent_file.is_file()
+        # Verify NOT in home
+        assert str(consent_file).startswith(str(tmp_path))
+
+    def test_token_store_tmp_path_does_not_touch_home(self, tmp_path: Path):
+        """DevFileTokenStore with explicit store_root writes only to tmp_path."""
+        from rig_relay.identity.models import IdentityProviderKind
+        from rig_relay.identity.token_store import DevFileTokenStore
+
+        store = DevFileTokenStore(store_root=tmp_path / "identity")
+        bundle = {
+            "access_token": "test_token",
+            "account_id": "123",
+            "email": "test@test.com",
+        }
+        store.put(IdentityProviderKind.GITHUB, bundle)
+
+        token_file = tmp_path / "identity" / "github.json"
+        assert token_file.is_file()
+        assert str(token_file).startswith(str(tmp_path))
+
+    def test_telemetry_consent_grant_with_state_root(self, tmp_path: Path):
+        """telemetry_consent_grant with explicit state_root writes to tmp_path."""
+        result = execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_state_root_grant",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_grant",
+            "parameters": {"scopes": ["usage_metrics"], "state_root": str(tmp_path)},
+            "dry_run": True,
+        })
+        assert result["status"] == "completed"
+        # Verify consent was written to tmp_path
+        consent_file = tmp_path / "consent" / "telemetry_consent.json"
+        assert consent_file.is_file(), f"Consent file not at {consent_file}"
+
+    def test_telemetry_consent_status_with_state_root(self, tmp_path: Path):
+        """telemetry_consent_status from explicit state_root."""
+        # First grant with state_root
+        execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_state_root_status_pre",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_grant",
+            "parameters": {"scopes": ["usage_metrics"], "state_root": str(tmp_path)},
+            "dry_run": True,
+        })
+        # Then read status from same state_root
+        result = execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_state_root_status",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_status",
+            "parameters": {"state_root": str(tmp_path)},
+            "dry_run": True,
+        })
+        assert result["status"] == "completed"
+        extra = result.get("extra_fields", {})
+        assert extra.get("status") == "granted", (
+            f"Expected granted, got {extra.get('status')}"
+        )
+
+    def test_telemetry_consent_revoke_with_state_root(self, tmp_path: Path):
+        """telemetry_consent_revoke from explicit state_root."""
+        # Grant
+        execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_revoke_grant",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_grant",
+            "parameters": {"scopes": ["usage_metrics"], "state_root": str(tmp_path)},
+            "dry_run": True,
+        })
+        # Revoke
+        result = execute_desktop_intent({
+            "schema_version": "rig.relay.desktop_intent_request.v1",
+            "intent_id": "test_revoke",
+            "created_at": "2026-05-14T00:00:00Z",
+            "intent_name": "telemetry_consent_revoke",
+            "parameters": {"state_root": str(tmp_path)},
+            "dry_run": True,
+        })
+        assert result["status"] == "completed"
+        extra = result.get("extra_fields", {})
+        assert extra.get("status") == "revoked"
+
+    def test_default_state_root_is_home_relay(self):
+        """default_relay_state_root() returns ~/.rig/relay/."""
+        from rig_relay.identity.state_paths import default_relay_state_root
+
+        expected = Path.home() / ".rig" / "relay"
+        assert default_relay_state_root() == expected
+
+    def test_identity_state_root_with_explicit_root(self, tmp_path: Path):
+        """identity_state_root with explicit root."""
+        from rig_relay.identity.state_paths import identity_state_root
+
+        assert identity_state_root(root=tmp_path) == tmp_path / "identity"
+
+    def test_consent_state_root_with_explicit_root(self, tmp_path: Path):
+        """consent_state_root with explicit root."""
+        from rig_relay.identity.state_paths import consent_state_root
+
+        assert consent_state_root(root=tmp_path) == tmp_path / "consent"

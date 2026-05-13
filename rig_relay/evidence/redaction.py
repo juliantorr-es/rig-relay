@@ -20,6 +20,30 @@ _FORBIDDEN_FIELD_KEYS = {
     "raw_diff",
     "authorization_receipt",
     "secrets",
+    # Provider API key fields — must never appear in audit/telemetry
+    "api_key",
+    "provider_api_key",
+    "openai_api_key",
+    "anthropic_api_key",
+    "gemini_api_key",
+    "google_api_key",
+    "openrouter_api_key",
+    "deepseek_api_key",
+    "authorization",
+    "authorization_header",
+    "bearer_token",
+    # Observation content-light fields — must never appear in model observations
+    "raw_prompt",
+    "prompt",
+    "raw_model_output",
+    "model_output",
+    "source_code",
+    "diff",
+    "stdout",
+    "stderr",
+    "access_token",
+    "refresh_token",
+    "private_path",
 }
 
 _SENSITIVE_NAME_PATTERNS = (
@@ -35,6 +59,8 @@ _SENSITIVE_NAME_PATTERNS = (
     "stdout",
     "stderr",
     "diff",
+    "authorization",
+    "bearer",
 )
 
 _ABSOLUTE_PATH_RE = re.compile(r"^(?:/|[A-Za-z]:\\)")

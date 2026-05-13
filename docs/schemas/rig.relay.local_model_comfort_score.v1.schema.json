@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.local_model_comfort_score.v1.schema.json",
+  "title": "Rig Relay Local Model Comfort Score v1",
+  "description": "Content-light comfort score for running a model locally on a specific machine profile. No raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, API keys, or raw private paths.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "rig.relay.local_model_comfort_score.v1"
+      ]
+    },
+    "model_id": {
+      "type": "string",
+      "description": "Model identifier"
+    },
+    "backend": {
+      "type": "string",
+      "enum": [
+        "mlx",
+        "llama_cpp"
+      ],
+      "description": "Local backend used to serve the model"
+    },
+    "quantization": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Quantization level (e.g. q4_0, q8_0, fp16)"
+    },
+    "machine_profile_id": {
+      "type": "string",
+      "description": "Machine profile identifier (e.g. m1-pro-16gb, i7-32gb)"
+    },
+    "memory_headroom_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Score for available memory headroom. 1.0 = ample, 0.0 = insufficient."
+    },
+    "speed_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Score for inference speed. 1.0 = real-time capable, 0.0 = unusably slow."
+    },
+    "context_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Score for context window capacity. 1.0 = full context fits, 0.0 = context too small."
+    },
+    "stability_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Score for runtime stability. 1.0 = no crashes, 0.0 = frequent failures."
+    },
+    "comfort_category": {
+      "type": "string",
+      "enum": [
+        "comfortable",
+        "maybe",
+        "not_recommended"
+      ],
+      "description": "Overall comfort recommendation for running this model locally"
+    },
+    "evidence_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of observations supporting this comfort score"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human-readable warnings about this comfort score"
+    }
+  },
+  "required": [
+    "schema_version",
+    "model_id",
+    "backend",
+    "machine_profile_id",
+    "memory_headroom_score",
+    "speed_score",
+    "context_score",
+    "stability_score",
+    "comfort_category",
+    "evidence_count"
+  ],
+  "additionalProperties": false
+}

@@ -282,7 +282,9 @@ async def test_write_file_emits_coordination_events(tmp_path, monkeypatch):
         "coord.artifact.published",
         "coord.path.released",
     ]
-    assert events[0]["payload"]["schema_version"] == "rig.relay.coordination.task_claim.v1"
+    assert (
+        events[0]["payload"]["schema_version"] == "rig.relay.coordination.task_claim.v1"
+    )
     assert events[2]["payload"]["artifact_kind"] == "write_file"
 
 

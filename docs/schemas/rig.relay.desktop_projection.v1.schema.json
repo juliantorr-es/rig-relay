@@ -16,6 +16,7 @@
     "telemetry_bundle",
     "update",
     "storage",
+    "providers",
     "warnings",
     "read_only_actions"
   ],
@@ -171,6 +172,35 @@
         }
       },
       "required": ["available"]
+    },
+    "providers": {
+      "type": "object",
+      "description": "Content-light provider status summary. Merges env-var and dev-file keys (env vars take precedence). No raw API keys. valid_count tracks providers with confirmed real network validation.",
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "configured": { "type": "integer", "minimum": 0 },
+        "valid_count": { "type": "integer", "minimum": 0 },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "provider": { "type": "string" },
+              "display_name": { "type": "string" },
+              "configured": { "type": "boolean" },
+              "key_source": { "type": "string" },
+              "key_fingerprint": { "type": "string" },
+              "base_url": { "type": ["string", "null"] },
+              "default_model": { "type": ["string", "null"] },
+              "status": { "type": "string", "description": "One of: valid, skipped, unknown, invalid, error" },
+              "warnings": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["provider", "display_name", "configured", "key_source", "key_fingerprint", "status"]
+          },
+          "description": "List of content-light provider entries."
+        }
+      },
+      "required": ["total", "configured", "valid_count", "providers"]
     },
     "warnings": {
       "type": "array",

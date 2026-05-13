@@ -123,9 +123,7 @@ class WriteFile(
     def _coordination_store(ctx: InvokeContext | None) -> CoordinationStore | None:
         if ctx is None or ctx.session_dir is None:
             return None
-        return CoordinationStore(
-            Path.cwd() / ".build" / "rig-relay" / "coordination"
-        )
+        return CoordinationStore(Path.cwd() / ".build" / "rig-relay" / "coordination")
 
     @staticmethod
     def _build_coordination_context(
@@ -142,7 +140,8 @@ class WriteFile(
 
     @staticmethod
     def _maybe_claim_coordination(
-        store: CoordinationStore | None, coordination: WriteFileCoordinationContext | None
+        store: CoordinationStore | None,
+        coordination: WriteFileCoordinationContext | None,
     ) -> bool:
         if store is None or coordination is None:
             return False
@@ -251,7 +250,11 @@ class WriteFile(
             )
             yield result
         finally:
-            if coordination_store is not None and coordination is not None and reservation_allowed:
+            if (
+                coordination_store is not None
+                and coordination is not None
+                and reservation_allowed
+            ):
                 coordination_store.release_paths(
                     session_id=coordination.session_id,
                     task_id=coordination.task_id,

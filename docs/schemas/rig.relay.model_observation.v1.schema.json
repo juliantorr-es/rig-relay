@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.model_observation.v1.schema.json",
+  "title": "Rig Relay Model Observation v1",
+  "description": "Content-light model observation record for cloud and local model benchmarking. No raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, API keys, or raw private paths.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "rig.relay.model_observation.v1"
+      ]
+    },
+    "observation_id": {
+      "type": "string",
+      "description": "Unique observation identifier"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the observation was created"
+    },
+    "task_kind": {
+      "type": "string",
+      "description": "Kind of task observed (e.g. code_gen, code_review, qa, chat, tool_use)"
+    },
+    "task_fingerprint": {
+      "type": "string",
+      "description": "SHA256 fingerprint of the task content. Not the raw task."
+    },
+    "provider_kind": {
+      "type": "string",
+      "enum": [
+        "cloud",
+        "local"
+      ],
+      "description": "Whether the model is a cloud provider or running locally"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Name of the provider (e.g. openai, anthropic, ollama, mlx)"
+    },
+    "model_id": {
+      "type": "string",
+      "description": "Model identifier (e.g. gpt-4o, llama-3-70b)"
+    },
+    "backend": {
+      "type": "string",
+      "enum": [
+        "api",
+        "mlx",
+        "llama_cpp"
+      ],
+      "description": "Backend used to serve the model"
+    },
+    "endpoint_kind": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Kind of endpoint (e.g. chat, completion, embedding)"
+    },
+    "machine_profile_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional machine profile identifier for local model observations"
+    },
+    "input_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Number of input/prompt tokens"
+    },
+    "output_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Number of output/completion tokens"
+    },
+    "context_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Total context window tokens used"
+    },
+    "latency_ms": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Total end-to-end latency in milliseconds"
+    },
+    "time_to_first_token_ms": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Time to first token in milliseconds"
+    },
+    "prompt_eval_tps": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Prompt evaluation tokens per second"
+    },
+    "decode_tps": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Decode tokens per second"
+    },
+    "peak_memory_gb": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Peak memory usage in gigabytes"
+    },
+    "estimated_cost_usd": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Estimated cost in USD"
+    },
+    "tool_call_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of tool calls made"
+    },
+    "tool_success_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of successful tool calls"
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of retry attempts"
+    },
+    "refusal_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of model refusals"
+    },
+    "failure_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of failed calls"
+    },
+    "validation_status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "skipped",
+        "unknown"
+      ],
+      "description": "Result of validation for this observation"
+    },
+    "user_outcome": {
+      "type": "string",
+      "enum": [
+        "accepted",
+        "revised",
+        "rejected",
+        "unknown"
+      ],
+      "description": "User's outcome with the model output"
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "This record contains no raw prompts, outputs, code, diffs, secrets, or private paths"
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "kind",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "description": "References to related artifacts (kind + sha256 only, no raw content)"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human-readable warnings about this observation"
+    }
+  },
+  "required": [
+    "schema_version",
+    "observation_id",
+    "created_at",
+    "task_kind",
+    "task_fingerprint",
+    "provider_kind",
+    "provider_name",
+    "model_id",
+    "backend",
+    "tool_call_count",
+    "tool_success_count",
+    "retry_count",
+    "refusal_count",
+    "failure_count",
+    "validation_status",
+    "user_outcome",
+    "content_light_guarantee"
+  ],
+  "additionalProperties": false
+}

@@ -2,10 +2,11 @@
 
 ## Status
 
-**Draft.** This plan classifies architecture patterns from
+**Established.** This plan classifies architecture patterns from
 [Rig](https://github.com/juliantorr-es/Rig) and
 [Intake](https://github.com/juliantorr-es/Intake) for selective porting into
-Rig Relay. See also the existing
+Rig Relay. All P0 items are implemented and test-backed. P1 items have
+deferred stubs with documented reasons. See also the existing
 [Rig-to-Relay Porting Doctrine](../governance/rig-to-relay-porting-doctrine.md)
 and [Pattern Inventory](../governance/rig-to-relay-pattern-inventory.md) for
 prior porting work.
@@ -45,11 +46,18 @@ All sources fetched 2026-05-14 from `main` branches via GitHub raw content.
 
 ## Classification
 
+Status legend:
+- **✅ done** — implemented and test-backed
+- **✅ done-with-test-gap** — implemented but missing regression tests
+- **⏳ intentionally deferred** — deferred with documented reason and stub policy
+- **🚫 blocked** — blocked by external dependency
+- **↪️ superseded** — replaced by a better solution
+
 ### port_now — do in next implementation slice
 
 All P0 items.
 
-#### 1. Workspace / Operation / Lane / Receipt / Projection vocabulary
+#### 1. Workspace / Operation / Lane / Receipt / Projection vocabulary  [✅ done]
 
 | Field | Value |
 |---|---|
@@ -60,40 +68,40 @@ All P0 items.
 | **Risk** | Low. Pure vocabulary alignment and schema additions. No code refactor needed. |
 | **Validation** | `uv run pyright`, `uv run pytest -n0 tests/docs/` |
 
-#### 2. Desktop Projection Widget Contract
+#### 2. Desktop Projection Widget Contract  [✅ done]
 
 | Field | Value |
 |---|---|
 | **Source repo** | Rig |
 | **Source documents** | `docs/architecture/workspace-ui-projection-contract.md` |
-| **Target in Rig Relay** | `docs/governance/relay-desktop-projection-contract.md`, update `rig_relay/desktop/projection_widgets.py` (new file), `tests/scripts/test_desktop_projection_contract.py` |
+| **Target in Rig Relay** | `docs/governance/relay-desktop-projection-contract.md`, `rig_relay/desktop/projection_widgets.py`, `tests/scripts/test_desktop_projection_contract.py` |
 | **Rationale** | Rig's UI projection contract explicitly says "frontend is a renderer, not a governor" and defines 8 widget types with fields, allowed intentions, and forbidden inferences. Rig Relay's current projection builder (`scripts/rig_relay_desktop_projection.py`) already produces a content-light projection but does not organize it into Rig's widget hierarchy. Porting the widget contract gives the desktop cockpit a structured render framework. |
 | **Risk** | Medium. The Rig widget set (WorkspaceHeader, AgentLaneCard, LaneReviewCard, PromotionPlanCard, LaneRecommendationCard, CommandProgressCard, ReceiptTimeline, WorkspaceGitState, WorkspaceLaneSummary) must be adapted to Relay concepts, not copied verbatim. Relay-specific widgets: OperatorHeader, SafetyState, NextAction, ActiveChildSessions, ValidationSummary, StorageBudget, ReceiptTimeline, LatestIntentResult, RefinementBacklog. |
 | **Validation** | `uv run pytest -n0 tests/docs/test_rig_intake_cannibalization_plan.py` + manual review of `scripts/rig_relay_desktop_projection.py` for widget alignment |
 
-#### 3. ProgressEvent Stream Model
+#### 3. ProgressEvent Stream Model  [✅ done]
 
 | Field | Value |
 |---|---|
 | **Source repo** | Rig |
 | **Source documents** | `docs/architecture/workspace-progress-stream.md` |
-| **Target in Rig Relay** | `docs/schemas/rig.relay.progress_event.v1.schema.json`, `rig_relay/desktop/progress_events.py` (new), update `frontend/desktop/` with progress timeline rendering |
+| **Target in Rig Relay** | `docs/schemas/rig.relay.progress_event.v1.schema.json`, `rig_relay/desktop/progress_events.py`, `rig_relay/desktop/websocket_server.py`, `tests/scripts/test_progress_events.py` |
 | **Rationale** | Rig defines a clean ProgressEvent model with phases (operation.started, operation.log, operation.progress, operation.completed, workspace.projection.refreshed, etc.), WebSocket envelope shape, and transport guidance (prefer existing WS, no second transport). Rig Relay already has a desktop WebSocket server (`scripts/rig_relay_desktop_websocket.py`) and an intent event schema (`rig.relay.desktop_intent_event.v1`). Rig's progress_event fills the gap between intent dispatch and projection refresh. |
 | **Risk** | Medium. Rig's ProgressEvent uses Rig-specific fields (workspace_id, workspace_path, receipt_candidate). Must be adapted to Relay equivalents (session_id, operation_id, child_session_id). Transport is already WebSocket — no new transport needed. |
 | **Validation** | `uv run python scripts/rig_relay_validate_schemas.py` (schema validation), `uv run pytest -n0 tests/docs/` |
 
-#### 4. Textual-Retired Product Copy
+#### 4. Textual-Retired Product Copy  [✅ done]
 
 | Field | Value |
 |---|---|
 | **Source repo** | Rig |
 | **Source documents** | Rig README: "Textual TUI: Retired. Use `rig ui` for a rich interface or CLI commands for terminal workflows." |
-| **Target in Rig Relay** | Update `README.md`, `docs/governance/textual-retirement.md` (new), update product copy in `vibe/core/skills/builtins/vibe.py` |
+| **Target in Rig Relay** | Update `README.md`, `docs/governance/textual-retirement-policy.md`, update product copy in `vibe/core/skills/builtins/vibe.py` |
 | **Rationale** | Rig Relay's README still describes it as "a command-line coding assistant harness" and documents `vibe` as a compatibility alias. The README should say: "Rig Relay is a governed local agent cockpit. CLI agents propose work. Relay routes tools, coordinates child sessions, preserves evidence, validates outputs, and keeps mutation authority local." The Textual TUI should be documented as legacy/diagnostics-only. |
 | **Risk** | Low. Copy-only change. Does not modify behavior. |
 | **Validation** | `uv run ruff format .` and `uv run ruff check --fix .` |
 
-#### 5. Hosted/Local Authority Boundary
+#### 5. Hosted/Local Authority Boundary  [✅ done]
 
 | Field | Value |
 |---|---|
@@ -104,18 +112,18 @@ All P0 items.
 | **Risk** | Low. Policy document only. No code changes. |
 | **Validation** | `uv run ruff format .`, `uv run pyright` |
 
-#### 6. Signed Local Action Envelope
+#### 6. Signed Local Action Envelope  [✅ done]
 
 | Field | Value |
 |---|---|
 | **Source repo** | Intake |
 | **Source documents** | `docs/architecture/hosted-local-boundary.md` (Signed Local Device Actions section) |
-| **Target in Rig Relay** | `docs/schemas/rig.relay.local_action_envelope.v1.schema.json`, `rig_relay/governance/local_action_envelope.py` (new) |
+| **Target in Rig Relay** | `docs/schemas/rig.relay.local_action_envelope.v1.schema.json`, `rig_relay/governance/local_action_envelope.py`, `tests/governance/test_local_action_envelope.py` |
 | **Rationale** | Intake's signed local action envelope uses Ed25519 signatures, canonicalized payloads, action_id/nonce/issued_at replay prevention, and cryptographic signatures. This is the exact model for Rig Relay's future protected-intent receipt system. The receipt-gated protected intents system already exists in `rig_relay/evidence/receipt_gate.py` — the signed envelope gives it a cryptographic container for intent requests. |
 | **Risk** | Low for schema definition. Implementation is future; this slice defines the schema and model only. |
 | **Validation** | `uv run python scripts/rig_relay_validate_schemas.py` |
 
-#### 7. Frontend Rendering Safety Doctrine
+#### 7. Frontend Rendering Safety Doctrine  [✅ done]
 
 | Field | Value |
 |---|---|
@@ -130,7 +138,7 @@ All P0 items.
 
 All P1 items.
 
-#### 8. Rig Lane/Review/Promotion/Recommendation Card Shapes
+#### 8. Rig Lane/Review/Promotion/Recommendation Card Shapes  [⏳ intentionally deferred]
 
 | Field | Value |
 |---|---|
@@ -141,7 +149,7 @@ All P1 items.
 | **Risk** | Medium. Requires UI redesign first. Do not implement until the cockpit widget hierarchy is stable. |
 | **Validation** | Manual UI review + `uv run pytest -n0 tests/docs/` |
 
-#### 9. Debug Bundle
+#### 9. Debug Bundle  [⏳ intentionally deferred]
 
 | Field | Value |
 |---|---|
@@ -152,7 +160,7 @@ All P1 items.
 | **Risk** | Low. Mostly script consolidation and documentation. |
 | **Validation** | `uv run pytest -n0 tests/` |
 
-#### 10. Intake Passkey Localhost Caveats
+#### 10. Intake Passkey Localhost Caveats  [⏳ intentionally deferred]
 
 | Field | Value |
 |---|---|
@@ -167,7 +175,7 @@ All P1 items.
 
 All P2 items.
 
-#### 11. Rig Provider/Runtime Registries
+#### 11. Rig Provider/Runtime Registries  [⏳ intentionally deferred]
 
 | Field | Value |
 |---|---|
@@ -176,7 +184,7 @@ All P2 items.
 | **Rationale** | Useful once Vibe provider layer becomes painful. Not the immediate bottleneck. Rig's `rig provider list` / `rig runtime list` / `rig model list` commands could inspire a Relay-native provider registry. |
 | **Risk** | Low priority. Keep on backlog. |
 
-#### 12. Intake Deployment Adapters
+#### 12. Intake Deployment Adapters  [⏳ intentionally deferred]
 
 | Field | Value |
 |---|---|

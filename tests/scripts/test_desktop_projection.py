@@ -41,6 +41,8 @@ class TestProjectionBuilder:
             "semantic_snippets",
             "telemetry_bundle",
             "update",
+            "storage",
+            "providers",
             "warnings",
             "read_only_actions",
         ]
@@ -265,6 +267,60 @@ class TestProjectionContentSafeguards:
         serialized = json.dumps(projection_from_build)
         # Home directory paths should not appear
         assert "/Users/" not in serialized
+
+
+class TestProjectionProviders:
+    """Provider status section in projection is built correctly."""
+
+    def test_providers_in_projection(self, projection_from_build) -> None:
+        assert "providers" in projection_from_build
+        providers = projection_from_build["providers"]
+        assert isinstance(providers, dict)
+        assert "total" in providers
+        assert "configured" in providers
+        assert "valid_count" in providers
+        assert "providers" in providers
+        assert isinstance(providers["total"], int)
+        assert isinstance(providers["configured"], int)
+        assert isinstance(providers["valid_count"], int)
+        assert isinstance(providers["providers"], list)
+        assert providers["total"] == 5  # All 5 providers in registry
+        assert providers["valid_count"] >= 0
+        assert providers["valid_count"] <= providers["configured"]
+
+    def test_providers_have_content_light_structure(
+        self, projection_from_build
+    ) -> None:
+        """Each provider entry has content-light fields, no raw keys."""
+        providers = projection_from_build["providers"]
+        for p in providers["providers"]:
+            assert "provider" in p
+            assert "display_name" in p
+            assert "configured" in p
+            assert isinstance(p["configured"], bool)
+            assert "key_source" in p
+            assert "key_fingerprint" in p
+            assert "status" in p
+            assert "warnings" in p
+            assert "last_checked_at" in p
+            # No raw keys
+            assert "api_key" not in p
+            assert "sk-" not in str(p)
+
+    def test_providers_source_status_is_bool(self, projection_from_build) -> None:
+        """provider_status source status is a boolean."""
+        source_status = projection_from_build.get("source_status", {})
+        assert "provider_status" in source_status
+        assert isinstance(source_status["provider_status"], bool)
+
+    def test_providers_no_raw_keys_in_projection(self, projection_from_build) -> None:
+        """No raw API key fragments anywhere in the projection providers field."""
+        serialized = str(projection_from_build["providers"])
+        forbidden = ["sk-", "api_key", "secret"]
+        for pattern in forbidden:
+            assert pattern not in serialized, (
+                f"Forbidden pattern '{pattern}' found in providers"
+            )
 
 
 class TestProjectionStorage:

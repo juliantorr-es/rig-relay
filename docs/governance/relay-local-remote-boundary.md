@@ -122,3 +122,4 @@ executing any mutation.
 - [Usage Data Doctrine](usage-data-doctrine.md)
 - [Telemetry Redaction Boundary](telemetry-redaction-boundary.md)
 - [Desktop Cockpit UI](desktop-cockpit-ui.md)
+- [Model Observation Dataset](model-observation-dataset.md)

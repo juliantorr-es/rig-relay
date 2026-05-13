@@ -123,6 +123,7 @@ def create_bundle(
     reports_dir: Path | None = None,
     output_dir: Path | None = None,
     consent_file: Path | None = None,
+    state_root: Path | None = None,
     dry_run: bool = True,
 ) -> dict[str, Any]:
     """Create a telemetry bundle or print a dry-run summary.
@@ -134,6 +135,9 @@ def create_bundle(
         reports_dir: Directory containing Markdown reports.
         output_dir: Directory for output bundle zip.
         consent_file: Optional path to consent JSON.
+        state_root: Explicit state root for identity/consent auto-detect.
+            If provided and no --consent-file, reads consent from
+            <state_root>/consent/. Does not auto-read ~/.rig/relay/.
         dry_run: If True, print summary without creating zip.
 
     Returns:
@@ -219,7 +223,7 @@ def create_bundle(
                     "row_count": 0,
                 })
 
-    # Consent file
+    # Consent file (explicit path or auto-detect from ConsentStore)
     consent_data: dict[str, Any] | None = None
     parsed_consent: dict[str, Any] | None = None
     if consent_file and consent_file.is_file():
@@ -234,6 +238,39 @@ def create_bundle(
                 consent_data = None
         except json.JSONDecodeError as e:
             forbidden_issues.append(f"Consent file parse error: {e}")
+
+    # Consent auto-detect from state_root (only if --state-root provided)
+    if consent_data is None and state_root is not None:
+        try:
+            from rig_relay.identity.consent_store import ConsentStore
+
+            store = ConsentStore(store_root=state_root / "consent")
+            record = store.get()
+            if record.status.value != "not_requested":
+                consent_data = record.model_dump_content_light()
+        except Exception:
+            pass
+
+    # Identity summary from state_root (only if provided)
+    identity_summary: dict[str, Any] | None = None
+    try:
+        from rig_relay.identity.token_store import DevFileTokenStore
+
+        id_root = (state_root / "identity") if state_root else None
+        id_store = (
+            DevFileTokenStore(store_root=id_root) if id_root else DevFileTokenStore()
+        )
+        statuses = id_store.all_statuses()
+        any_signed_in = any(s.get("status") == "signed_in" for s in statuses.values())
+        if any_signed_in:
+            identity_summary = {
+                "providers": {
+                    k: {"status": v.get("status", "unknown")}
+                    for k, v in statuses.items()
+                }
+            }
+    except Exception:
+        pass
 
     # Refuse if forbidden content detected
     if forbidden_issues:
@@ -256,6 +293,20 @@ def create_bundle(
         "row_counts": row_counts,
         "bundle_sha256": "",
         "content_light_guarantee": len(forbidden_issues) == 0,
+        "identity_status": identity_summary,
+        "consent_status": (
+            {
+                "status": consent_data.get("status", "unknown"),
+                "subject_hash": consent_data.get("subject_hash", ""),
+                "scopes": consent_data.get("scopes", []),
+                "policy_version": consent_data.get("policy_version", ""),
+                "has_commercial_license": (
+                    "commercial_dataset_license" in consent_data.get("scopes", [])
+                ),
+            }
+            if consent_data
+            else None
+        ),
         "warnings": [],
     }
     manifest = assert_remote_safe(manifest)
@@ -361,6 +412,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--consent-file", type=Path, default=None, help="Path to consent JSON file."
     )
     parser.add_argument(
+        "--state-root",
+        type=Path,
+        default=None,
+        help="Explicit state root for identity/consent auto-detect. "
+        "If provided, consent is read from <state-root>/consent/. "
+        "If not provided, does not auto-read ~/.rig/relay/.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         default=True,
@@ -398,6 +457,7 @@ def main(argv: list[str] | None = None) -> int:
             reports_dir=args.reports_dir,
             output_dir=args.output_dir,
             consent_file=args.consent_file,
+            state_root=args.state_root,
             dry_run=args.dry_run,
         )
     except ValueError as e:

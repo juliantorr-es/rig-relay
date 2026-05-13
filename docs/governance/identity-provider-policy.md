@@ -104,6 +104,89 @@ These are separate toggles:
 - `drive_upload_status` — whether Drive is authorized
 - `github_repo_access_status` — whether GitHub repo access is granted
 
+## Telemetry Consent
+
+Sign-in does **not** imply telemetry consent. These are separate toggles:
+
+| Toggle | Scope | UI Location |
+|---|---|---|
+| `identity_status` | Who is the user | System → Identity |
+| `telemetry_consent_status` | Whether telemetry is shared | System → Telemetry Consent |
+| `telemetry_consent_grant` | Grant consent for content-light telemetry | System → Telemetry Consent |
+| `telemetry_consent_revoke` | Revoke existing consent | System → Telemetry Consent |
+
+### Consent Behavior
+
+- Consent records are stored locally in `~/.rig/relay/consent/telemetry_consent.json`
+- OAuth tokens are stored separately in `~/.rig/relay/identity/` — never in consent records
+- Consent records are content-light: no raw email, raw tokens, raw prompts, raw code, raw output
+- Revocation updates the record to `revoked` status — does not delete history
+- Telemetry bundles include consent status (status + subject_hash + scopes + policy_version) when consent exists
+
+### Consent Scopes
+
+Consent is granular per scope. Basic scopes (usage metrics, content-light bundles, crash reports, coordination metrics, tool refinement metrics) are opt-in defaults. Commercial scopes (provider model benchmarking, local model benchmarking, commercial dataset license, aggregate public reporting) are **never default** — must be explicitly checked by the user.
+
+- **Commercial scopes** permit inclusion in aggregated, anonymized derived datasets for benchmarking reports and potential commercial licensing.
+- **Basic and commercial scopes are independent.** A user may grant basic telemetry consent without granting commercial dataset license.
+- The `has_commercial_dataset_license()` helper checks for the `COMMERCIAL_DATASET_LICENSE` scope specifically.
+- Current policy version: `alpha-usage-data-license-v1`.
+- See [Usage Data Commercial License](../legal/usage-data-license-alpha.md) and [Privacy Notice](../legal/privacy-notice-alpha.md) for legal terms.
+
+### Content-Light Guarantee
+
+Telemetry bundles and consent records follow the content-light guarantee:
+- No raw prompts or model outputs
+- No source code or file contents
+- No stdout/stderr bodies
+- No diffs or secrets
+- No raw receipt bodies
+- No OAuth tokens
+
+## State Root
+
+All identity and consent state is rooted under an explicit state root directory.
+
+### Production Default
+
+```
+~/.rig/relay/
+├── identity/       # OAuth token bundles (DevFileTokenStore)
+├── consent/        # Telemetry consent records (ConsentStore)
+│   └── telemetry_consent.json
+└── providers/       # Provider onboarding keys (future)
+```
+
+### Test Isolation
+
+Tests must pass `tmp_path` as an explicit root. Banks must never read from
+`~/.rig/relay/` during unit tests.
+
+```python
+# Test: explicit store_root prevents home access
+store = ConsentStore(store_root=tmp_path / "consent")
+store.save(record)
+```
+
+### Bundle Isolation
+
+- `--consent-file PATH` reads consent from the exact file path.
+- `--state-root PATH` auto-detects consent from `<state_root>/consent/`.
+- Without either flag, the bundle creator does **not** auto-read `~/.rig/relay/`.
+- Identity summary is only included if `--state-root` is provided and identity
+  data exists at `<state_root>/identity/`.
+
+### State Root Helpers
+
+The `rig_relay.identity.state_paths` module provides root helpers:
+
+| Helper | Returns |
+|---|---|
+| `default_relay_state_root()` | `~/.rig/relay/` |
+| `identity_state_root(root)` | `<root>/identity` |
+| `consent_state_root(root)` | `<root>/consent` |
+| `provider_state_root(root)` | `<root>/providers` |
+
 ## Cross-References
 
 - [Desktop Cockpit UI](desktop-cockpit-ui.md)
@@ -113,3 +196,5 @@ These are separate toggles:
 - [Identity Provider Schema](../schemas/rig.relay.identity_provider.v1.schema.json)
 - [Identity Session Schema](../schemas/rig.relay.identity_session.v1.schema.json)
 - [OAuth Callback Receipt Schema](../schemas/rig.relay.oauth_callback_receipt.v1.schema.json)
+- [Telemetry Consent Schema](../schemas/rig.relay.telemetry_consent.v1.schema.json)
+- [Telemetry Bundle Manifest Schema](../schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json)

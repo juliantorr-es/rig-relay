@@ -12,6 +12,10 @@ Allowed first-slice intents:
     validate_telemetry_bundle, run_queue_plan_dry_run, run_spawn_plan_dry_run,
     run_validation_suite
 
+Provider intents (safe/control-plane — no protected action authority):
+    provider_status, provider_onboarding_save_key,
+    provider_onboarding_remove_key, provider_health_check
+
 Phase 1 protected intents (receipt-gated, Phase 1):
     checkpoint.commit, lease_cleanup.archive
 
@@ -175,6 +179,76 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
             }
         },
     },
+    # ── Telemetry Consent Intents ──
+    "telemetry_consent_status": {
+        "description": "Return current telemetry consent status. Content-light — no raw tokens, email, prompts, code, or output.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "telemetry_consent_grant": {
+        "description": "Grant telemetry consent for specified scopes. Records consent locally. Does not upload automatically.",
+        "affects_projection": False,
+        "parameters": {
+            "scopes": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": [
+                    "usage_metrics",
+                    "content_light_bundles",
+                    "crash_reports",
+                    "coordination_metrics",
+                    "tool_refinement_metrics",
+                ],
+                "description": "Scopes to grant consent for.",
+            },
+            "subject_hash": {"type": "string", "default": ""},
+            "provider": {"type": "string", "default": "local"},
+        },
+    },
+    "telemetry_consent_revoke": {
+        "description": "Revoke telemetry consent. Sets status to revoked. Does not delete history.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    # ── Provider Onboarding Intents ──
+    "provider_status": {
+        "description": "Return content-light provider summaries for all registered providers.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "provider_onboarding_save_key": {
+        "description": "Save a provider API key locally. Returns fingerprint only — never raw key.",
+        "affects_projection": False,
+        "parameters": {
+            "provider": {
+                "type": "string",
+                "enum": ["openai", "anthropic", "google", "openrouter", "deepseek"],
+            },
+            "api_key": {"type": "string", "description": "The API key to store."},
+        },
+    },
+    "provider_onboarding_remove_key": {
+        "description": "Remove a locally stored provider API key.",
+        "affects_projection": False,
+        "parameters": {
+            "provider": {
+                "type": "string",
+                "enum": ["openai", "anthropic", "google", "openrouter", "deepseek"],
+            }
+        },
+    },
+    "provider_health_check": {
+        "description": "Check provider health. network_allowed=False by default — no network calls in safe mode.",
+        "affects_projection": False,
+        "parameters": {
+            "provider": {
+                "type": "string",
+                "default": "",
+                "description": "Optional provider name. If empty, checks all.",
+            },
+            "network_allowed": {"type": "boolean", "default": False},
+        },
+    },
 }
 
 # Phase 1 protected intents — receipt-gated execution enabled
@@ -297,11 +371,15 @@ def execute_desktop_intent(
     emit_received(request)
 
     # Helper to emit progress event if emitter is available
+    _emit_seq = 0
+
     def _emit_progress(
         event_type: str, phase: str, status: str = "running", **extra: Any
     ) -> None:
         if progress_emitter is None:
             return
+        nonlocal _emit_seq
+        _emit_seq += 1
         event = build_progress_event(
             operation_id=intent_id or intent_name,
             event_type=event_type,
@@ -309,7 +387,7 @@ def execute_desktop_intent(
             status=status,
             source="intents",
             intent_id=intent_id,
-            sequence=1,
+            sequence=_emit_seq,
             message=extra.get("message", phase),
             result_kind=extra.get("result_kind", ""),
             projection_refresh_recommended=extra.get(
@@ -323,6 +401,13 @@ def execute_desktop_intent(
 
     # Check Phase 1 protected intents (receipt-gated)
     if intent_name in PHASE_1_ENABLED:
+        _emit_progress(
+            EVENT_OPERATION_STARTED,
+            phase="phase_1_protected",
+            status="running",
+            message=f"Starting Phase 1 protected intent '{intent_name}'",
+            result_kind=PHASE_1_ENABLED.get(intent_name, ""),
+        )
         result = _handle_phase_1_protected_intent(
             intent_name,
             intent_id,
@@ -330,14 +415,39 @@ def execute_desktop_intent(
             request.get("authorization_receipt"),
         )
         status = result.get("status", "failed")
-        _emit_progress(
-            EVENT_OPERATION_COMPLETED
-            if status == "completed"
-            else EVENT_OPERATION_FAILED,
-            phase="phase_1_protected",
-            status=status,
-            message=f"Phase 1 protected intent '{intent_name}': {status}",
-        )
+        if status == "refused":
+            _emit_progress(
+                EVENT_OPERATION_REFUSED,
+                phase="phase_1_protected",
+                status="refused",
+                message=result.get(
+                    "summary", f"Protected intent '{intent_name}' refused"
+                ),
+            )
+        elif status == "completed":
+            _emit_progress(
+                EVENT_OPERATION_COMPLETED,
+                phase="phase_1_protected",
+                status="completed",
+                message=result.get(
+                    "summary", f"Protected intent '{intent_name}' completed"
+                ),
+                result_kind=result.get("result_kind", ""),
+                projection_refresh_recommended=result.get(
+                    "projection_refresh_recommended", False
+                ),
+                warnings=result.get("warnings", []),
+            )
+        else:
+            _emit_progress(
+                EVENT_OPERATION_FAILED,
+                phase="phase_1_protected",
+                status="failed",
+                message=result.get(
+                    "summary", f"Protected intent '{intent_name}' failed"
+                ),
+                warnings=result.get("warnings", []),
+            )
         emit_result(result)
         return result
 
@@ -578,6 +688,27 @@ def _execute_allowed_intent(
             intent_id, "google", params
         ),
         "sign_out_provider": lambda: _execute_sign_out_provider(intent_id, params),
+        # ── Telemetry Consent Handlers ──
+        "telemetry_consent_status": lambda: _execute_telemetry_consent_status(
+            intent_id, params
+        ),
+        "telemetry_consent_grant": lambda: _execute_telemetry_consent_grant(
+            intent_id, params
+        ),
+        "telemetry_consent_revoke": lambda: _execute_telemetry_consent_revoke(
+            intent_id, params
+        ),
+        # ── Provider Onboarding Handlers ──
+        "provider_status": lambda: _execute_provider_status(intent_id),
+        "provider_onboarding_save_key": lambda: _execute_provider_onboarding_save_key(
+            intent_id, params
+        ),
+        "provider_onboarding_remove_key": lambda: (
+            _execute_provider_onboarding_remove_key(intent_id, params)
+        ),
+        "provider_health_check": lambda: _execute_provider_health_check(
+            intent_id, params
+        ),
     }
     handler = handlers.get(intent_name)
     if handler is None:
@@ -1476,4 +1607,338 @@ def _execute_sign_out_provider(
             "failed",
             error_code="execution_error",
             summary=f"Sign out failed: {e}",
+        )
+
+
+# ── Telemetry Consent Intent Handlers ────────────────────────────────
+
+
+def _execute_telemetry_consent_status(
+    intent_id: str, params: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Return current telemetry consent status. Content-light."""
+    try:
+        from pathlib import Path
+
+        from rig_relay.identity.consent_store import ConsentStore
+        from rig_relay.identity.state_paths import consent_state_root
+
+        _params = params or {}
+        state_root_raw = _params.get("state_root", None)
+        state_root = Path(state_root_raw) if state_root_raw else None
+        consent_root = consent_state_root(root=state_root) if state_root else None
+        store = ConsentStore(store_root=consent_root)
+        summary = store.summary()
+        consent_id = summary.get("consent_id", "")
+        status = summary.get("status", "not_requested")
+        scopes = summary.get("scopes", [])
+        granted_at = summary.get("granted_at", "")
+        revoked_at = summary.get("revoked_at", "")
+
+        from rig_relay.identity.telemetry_consent import has_commercial_dataset_license
+
+        record = store.get()
+        has_commercial = has_commercial_dataset_license(record)
+
+        return _build_result(
+            "telemetry_consent_status",
+            intent_id,
+            "completed",
+            result_kind="telemetry_consent",
+            summary=f"Consent status: {status}. Scopes: {len(scopes)}.",
+            extra_fields={
+                "consent_id": consent_id,
+                "status": status,
+                "scopes": scopes,
+                "granted_at": granted_at,
+                "revoked_at": revoked_at,
+                "has_commercial_license": has_commercial,
+            },
+        )
+    except Exception as e:
+        return _build_result(
+            "telemetry_consent_status",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Consent status failed: {e}",
+        )
+
+
+def _execute_telemetry_consent_grant(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Grant telemetry consent for specified scopes.
+
+    Records consent locally. Does not upload automatically.
+    Content-light: no raw tokens, email, prompts, code, or output.
+    """
+    try:
+        from pathlib import Path
+
+        from rig_relay.identity.consent_store import ConsentStore
+        from rig_relay.identity.state_paths import consent_state_root
+        from rig_relay.identity.telemetry_consent import (
+            TelemetryConsentScope,
+            grant_consent,
+        )
+
+        raw_scopes: list[str] = params.get(
+            "scopes",
+            [
+                "usage_metrics",
+                "content_light_bundles",
+                "crash_reports",
+                "coordination_metrics",
+                "tool_refinement_metrics",
+            ],
+        )
+        scopes = [
+            TelemetryConsentScope(s)
+            for s in raw_scopes
+            if s in {m.value for m in TelemetryConsentScope}
+        ]
+        subject_hash = str(params.get("subject_hash", ""))
+        provider = str(params.get("provider", "local"))
+        state_root_raw = params.get("state_root", None)
+        state_root = Path(state_root_raw) if state_root_raw else None
+        consent_root = consent_state_root(root=state_root) if state_root else None
+
+        from rig_relay.identity.telemetry_consent import (
+            TelemetryConsentScope,
+            has_commercial_dataset_license,
+        )
+
+        record = grant_consent(
+            subject_hash=subject_hash, provider=provider, scopes=scopes or None
+        )
+        if has_commercial_dataset_license(record):
+            record.warnings = record.warnings or []
+            record.warnings.append("commercial_dataset_license_granted")
+        store = ConsentStore(store_root=consent_root)
+        store.save(record)
+
+        return _build_result(
+            "telemetry_consent_grant",
+            intent_id,
+            "completed",
+            result_kind="telemetry_consent",
+            summary=f"Consent granted. Status: granted. Scopes: {len(record.scopes)}.",
+            extra_fields={
+                "consent_id": record.consent_id,
+                "status": record.status.value,
+                "scopes": [s.value for s in record.scopes],
+                "granted_at": record.granted_at,
+            },
+        )
+    except Exception as e:
+        return _build_result(
+            "telemetry_consent_grant",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Consent grant failed: {e}",
+        )
+
+
+def _execute_telemetry_consent_revoke(
+    intent_id: str, params: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Revoke telemetry consent. Does not delete history."""
+    try:
+        from pathlib import Path
+
+        from rig_relay.identity.consent_store import ConsentStore
+        from rig_relay.identity.state_paths import consent_state_root
+        from rig_relay.identity.telemetry_consent import revoke_consent
+
+        _params = params or {}
+        state_root_raw = _params.get("state_root", None)
+        state_root = Path(state_root_raw) if state_root_raw else None
+        consent_root = consent_state_root(root=state_root) if state_root else None
+        store = ConsentStore(store_root=consent_root)
+        existing = store.get()
+        record = revoke_consent(existing)
+        store.save(record)
+
+        return _build_result(
+            "telemetry_consent_revoke",
+            intent_id,
+            "completed",
+            result_kind="telemetry_consent",
+            summary=f"Consent revoked. Previous status was: {existing.status.value}.",
+            extra_fields={
+                "consent_id": record.consent_id,
+                "status": record.status.value,
+                "revoked_at": record.revoked_at,
+            },
+        )
+    except Exception as e:
+        return _build_result(
+            "telemetry_consent_revoke",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Consent revoke failed: {e}",
+        )
+
+
+# ── Provider Onboarding Handlers ──────────────────────────────────────
+
+
+def _execute_provider_status(intent_id: str) -> dict[str, Any]:
+    """Return content-light provider summaries."""
+    try:
+        from rig_relay.providers import provider_status as ps
+
+        summary = ps()
+        configured = summary.get("configured", 0)
+        total = summary.get("total", 0)
+        return _build_result(
+            "provider_status",
+            intent_id,
+            "completed",
+            result_kind="provider_status",
+            summary=f"Providers: {configured}/{total} configured.",
+            extra_fields={
+                "total": total,
+                "configured": configured,
+                "providers": summary.get("providers", []),
+            },
+        )
+    except Exception as e:
+        return _build_result(
+            "provider_status",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Provider status check failed: {e}",
+        )
+
+
+def _execute_provider_onboarding_save_key(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Save a provider API key locally. Returns fingerprint only — never raw key."""
+    try:
+        provider_name = str(params.get("provider", ""))
+        api_key = str(params.get("api_key", ""))
+
+        if not provider_name or not api_key:
+            return _build_result(
+                "provider_onboarding_save_key",
+                intent_id,
+                "refused",
+                error_code="missing_parameter",
+                summary="Both 'provider' and 'api_key' are required.",
+            )
+
+        from rig_relay.providers import provider_onboarding_save_key as save_key
+
+        result = save_key(provider_name, api_key)
+        status = result.get("status", "failed")
+        if status == "completed":
+            return _build_result(
+                "provider_onboarding_save_key",
+                intent_id,
+                "completed",
+                result_kind="provider_onboarding",
+                summary=f"API key saved for {provider_name.title()}.",
+                extra_fields={
+                    "provider": provider_name,
+                    "key_source": result.get("key_source", ""),
+                    "key_fingerprint": result.get("key_fingerprint", ""),
+                },
+            )
+        return _build_result(
+            "provider_onboarding_save_key",
+            intent_id,
+            "failed",
+            error_code="save_failed",
+            summary=result.get("summary", "Save failed."),
+            warnings=result.get("warnings", []),
+        )
+    except Exception as e:
+        return _build_result(
+            "provider_onboarding_save_key",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Save key failed: {e}",
+        )
+
+
+def _execute_provider_onboarding_remove_key(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Remove a locally stored provider API key."""
+    try:
+        provider_name = str(params.get("provider", ""))
+        if not provider_name:
+            return _build_result(
+                "provider_onboarding_remove_key",
+                intent_id,
+                "refused",
+                error_code="missing_parameter",
+                summary="'provider' is required.",
+            )
+
+        from rig_relay.providers import provider_onboarding_remove_key as remove_key
+
+        result = remove_key(provider_name)
+        return _build_result(
+            "provider_onboarding_remove_key",
+            intent_id,
+            "completed",
+            result_kind="provider_onboarding",
+            summary=result.get("summary", f"Key removed for {provider_name.title()}."),
+            extra_fields={"provider": provider_name, "key_source": "missing"},
+        )
+    except Exception as e:
+        return _build_result(
+            "provider_onboarding_remove_key",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Remove key failed: {e}",
+        )
+
+
+def _execute_provider_health_check(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Check provider health — content-light, no network by default."""
+    try:
+        provider_name = str(params.get("provider", "")) or None
+        network_allowed = bool(params.get("network_allowed", False))
+
+        from rig_relay.providers import provider_health_check as health_check
+
+        result = health_check(
+            provider_name=provider_name, network_allowed=network_allowed
+        )
+        providers = result.get("providers", [])
+        configured_count = sum(1 for p in providers if p.get("configured", False))
+        total = len(providers)
+
+        return _build_result(
+            "provider_health_check",
+            intent_id,
+            "completed",
+            result_kind="provider_status",
+            summary=f"Health check: {configured_count}/{total} providers configured.",
+            extra_fields={
+                "total": total,
+                "configured": configured_count,
+                "providers": providers,
+                "network_allowed": network_allowed,
+            },
+        )
+    except Exception as e:
+        return _build_result(
+            "provider_health_check",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Health check failed: {e}",
         )
