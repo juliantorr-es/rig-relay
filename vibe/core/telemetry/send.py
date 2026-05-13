@@ -476,7 +476,7 @@ class TelemetryClient:
             "path": artifact_path,
             "sha256": sha256,
         }
-        self.log_local_event(
+        self.send_telemetry_event(
             EventName.ARTIFACT_WRITTEN, payload, receipt_candidate=True
         )
 
@@ -505,7 +505,7 @@ class TelemetryClient:
             "largest_blocks": largest_blocks,
             "optimization_hints": optimization_hints,
         }
-        self.log_local_event(
+        self.send_telemetry_event(
             EventName.CONTEXT_ASSEMBLY_REPORTED, payload, receipt_candidate=False
         )
 
@@ -544,6 +544,6 @@ class TelemetryClient:
             "layout_path": layout_path,
             "layout_hash": layout_hash,
         }
-        self.log_local_event(
+        self.send_telemetry_event(
             EventName.CONTEXT_LAYOUT_PLANNED, payload, receipt_candidate=False
         )

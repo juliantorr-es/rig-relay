@@ -118,16 +118,25 @@ async def test_observability_e2e_tool_completion(
     )
 
     from vibe.core.llm.format import ResolvedToolCall
+    from vibe.core.tools.base import BaseTool
+    from pydantic import BaseModel
 
-    tool_call = ResolvedToolCall(tool_call_id="call-1", tool_name="ls", args={})
+    class MockArgs(BaseModel):
+        pass
+
+    tool_call = ResolvedToolCall(
+        call_id="call-1",
+        tool_name="ls",
+        tool_class=BaseTool,
+        validated_args=MockArgs(),
+    )
 
     # 1. Emit tool completion via TelemetryClient
     client.send_tool_call_finished(
         tool_call=tool_call,
         status="success",
-        nb_files_created=1,
-        nb_files_modified=0,
-        result_keys=["files"],
+        decision=None,
+        result={"files": ["test.txt"], "file_existed": False},
         model="gpt-4",
         agent_profile_name="default",
     )
@@ -172,9 +181,17 @@ async def test_observability_e2e_artifacting(
     loop.session_id = session_id
 
     from vibe.core.llm.format import ResolvedToolCall
+    from vibe.core.tools.base import BaseTool
+    from pydantic import BaseModel
+
+    class MockArgs(BaseModel):
+        command: str
 
     tool_call = ResolvedToolCall(
-        tool_call_id="call-big", tool_name="bash", args={"command": "cat big_file"}
+        call_id="call-big",
+        tool_name="bash",
+        tool_class=BaseTool,
+        validated_args=MockArgs(command="cat big_file"),
     )
 
     # Very large output to trigger artifacting
@@ -245,7 +262,7 @@ async def test_observability_e2e_context_assembly(
 
     from vibe.core.config import ModelConfig
 
-    model = ModelConfig(name="test-model", alias="test", backend="api")
+    model = ModelConfig(name="test-model", provider="test", alias="test", backend="api")
 
     # 1. Trigger context assembly report
     await loop._report_context_assembly(model)
@@ -299,7 +316,7 @@ async def test_observability_e2e_context_layout(
 
     from vibe.core.config import ModelConfig
 
-    model = ModelConfig(name="test-model", alias="test", backend="api")
+    model = ModelConfig(name="test-model", provider="test", alias="test", backend="api")
 
     # 1. Trigger context reporting (includes assembly and layout)
     await loop._report_context_assembly(model)

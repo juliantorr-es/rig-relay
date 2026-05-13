@@ -187,6 +187,9 @@ def test_deterministic_sorting_by_source_index():
         stability=ContextBlockStability.STABLE,
         cacheable=True,
         content="First",
+        byte_size=5,
+        estimated_tokens=1,
+        fingerprint="sha256:1",
         source_index=0,
     )
     b2 = ContextBlock(
@@ -194,17 +197,22 @@ def test_deterministic_sorting_by_source_index():
         stability=ContextBlockStability.STABLE,
         cacheable=True,
         content="Second",
+        byte_size=6,
+        estimated_tokens=1,
+        fingerprint="sha256:2",
         source_index=1,
     )
 
     report = ContextAssemblyReport(
         session_id="sort-test",
         blocks=[b2, b1],  # Out of order
-        total_bytes=0,
-        total_estimated_tokens=0,
-        stable_prefix_bytes=0,
+        total_bytes=11,
+        total_estimated_tokens=2,
+        stable_prefix_bytes=11,
         dynamic_suffix_bytes=0,
-        cache_candidate_bytes=0,
+        cache_candidate_bytes=11,
+        stable_prefix_fingerprint="sha256:abc",
+        dynamic_suffix_fingerprint="sha256:def",
         largest_blocks=[],
         optimization_hints=[],
     )

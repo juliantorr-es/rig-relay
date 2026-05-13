@@ -280,6 +280,26 @@ def build_context_assembly_report(
     )
 
 
+async def write_assembly_report(report: ContextAssemblyReport) -> Path:
+    """Write the full context assembly report to the session directory."""
+    report_dir = Path(".rig") / "relay" / "sessions" / report.session_id / "context"
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    path = report_dir / f"assembly_{report.report_id[:8]}.json"
+
+    # Atomic write with deterministic JSON
+    temp_path = path.with_suffix(".tmp")
+    try:
+        content = report.model_dump_json(indent=2)
+        temp_path.write_text(content, encoding="utf-8")
+        temp_path.replace(path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+    return path
+
+
 def _make_block(
     kind: ContextBlockKind,
     stability: Any,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from unittest.mock import patch
+import uuid
 
 import pytest
 
@@ -20,15 +21,31 @@ def session_root(tmp_path):
 def write_event(
     session_dir: Path, event_name: str, payload: dict, receipt: bool = False
 ):
+    # Ensure payload has a stable-ish schema for DuckDB inference
+    full_payload = {
+        "context_accounting": None,
+        "tool_name": None,
+        "status": None,
+        "raw_byte_size": 0,
+        "total_estimated_tokens": 0,
+        "stable_prefix_bytes": 0,
+        "dynamic_suffix_bytes": 0,
+        "cache_candidate_bytes": 0,
+        "cacheability_ratio": 0.0,
+        "prefix_stability_status": None,
+        "optimization_hints": [],
+    }
+    full_payload.update(payload)
+
     log_file = session_dir / "observability.jsonl"
     event = {
         "schema_version": "rig.relay.observability.v1",
-        "event_id": "test-id",
+        "event_id": str(uuid.uuid4()),
         "session_id": session_dir.name,
         "sequence": 0,
         "created_at": "2024-01-01T00:00:00Z",
         "event_name": event_name,
-        "payload": payload,
+        "payload": full_payload,
         "producer": {"name": "rig-relay", "version": "1.0.0"},
         "receipt_candidate": receipt,
         "event_hash": "sha256:abc",

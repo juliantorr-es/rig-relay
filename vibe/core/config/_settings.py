@@ -862,12 +862,33 @@ class VibeConfig(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _ensure_default_providers_available(self) -> VibeConfig:
+        """Ensure that Rig Relay's default providers are always available."""
+        existing_names = {p.name for p in self.providers}
+        for default_provider in DEFAULT_PROVIDERS:
+            if default_provider.name not in existing_names:
+                self.providers.append(default_provider)
+        return self
+
+    @model_validator(mode="after")
     def _ensure_default_models_available(self) -> VibeConfig:
         """Ensure that Rig Relay's default models are always available in the UI."""
         existing_aliases = {m.alias for m in self.models}
         for default_model in DEFAULT_MODELS:
             if default_model.alias not in existing_aliases:
                 self.models.append(default_model)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_model_providers(self) -> VibeConfig:
+        """Validate that every configured model has a corresponding provider."""
+        provider_names = {p.name for p in self.providers}
+        for model in self.models:
+            if model.provider not in provider_names:
+                raise ValueError(
+                    f"Model '{model.alias}' references missing provider '{model.provider}'. "
+                    "Please check your config.toml or ensure default providers are loaded."
+                )
         return self
 
     @model_validator(mode="after")
