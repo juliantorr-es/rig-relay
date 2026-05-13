@@ -1,28 +1,40 @@
 // Rig Relay Desktop WebSocket Client
 // Connects to local WebSocket projection stream for live updates.
+// Token-gated: sends auth on connect before any protocol messages.
 // Falls back to pywebview JS bridge if WebSocket unavailable.
 
 class ProjectionWebSocketClient {
   constructor(options = {}) {
     this.wsUrl = options.wsUrl || 'ws://127.0.0.1:9876';
+    this.token = options.token || null;
     this.reconnectDelay = options.reconnectDelay || 2000;
     this.maxReconnectDelay = options.maxReconnectDelay || 30000;
     this.onProjection = options.onProjection || (() => {});
     this.onStatusChange = options.onStatusChange || (() => {});
     this.onError = options.onError || (() => {});
+    this.onAuthFailed = options.onAuthFailed || (() => {});
 
     this.ws = null;
     this.connected = false;
+    this.authenticated = false;
     this.reconnectAttempts = 0;
     this.currentDelay = this.reconnectDelay;
     this._intentionalClose = false;
     this._subscriptionActive = false;
 
-    this.connect();
+    if (this.token) {
+      this.connect();
+    } else {
+      this.onStatusChange('offline', 'No token available');
+    }
   }
 
   connect() {
     if (this._intentionalClose) return;
+    if (!this.token) {
+      this.onStatusChange('offline', 'No token available');
+      return;
+    }
 
     try {
       this.ws = new WebSocket(this.wsUrl);
@@ -34,13 +46,11 @@ class ProjectionWebSocketClient {
 
     this.ws.onopen = () => {
       this.connected = true;
-      this.reconnectAttempts = 0;
-      this.currentDelay = this.reconnectDelay;
-      this.onStatusChange('connected');
+      this.authenticated = false;
+      this.onStatusChange('authenticating');
 
-      // Request initial data
-      this.send({ type: 'get_projection' });
-      this.send({ type: 'get_available_actions' });
+      // Send auth as first message
+      this.send({ type: 'auth', token: this.token });
     };
 
     this.ws.onmessage = (event) => {
@@ -53,19 +63,71 @@ class ProjectionWebSocketClient {
       }
 
       switch (message.type) {
+        case 'auth_ok':
+          this.authenticated = true;
+          this.reconnectAttempts = 0;
+          this.currentDelay = this.reconnectDelay;
+          this.onStatusChange('connected');
+
+          // Request initial data
+          this.send({ type: 'get_projection' });
+          this.send({ type: 'get_available_actions' });
+          break;
+
+        case 'auth_error':
+          this.authenticated = false;
+          this.onAuthFailed('Server rejected token: ' + (message.message || 'unknown'));
+          this.onStatusChange('auth_failed', message.message || 'Invalid token');
+          this._intentionalClose = true;
+          this.ws.close();
+          break;
+
+        case 'auth_required':
+          this.authenticated = false;
+          this.onAuthFailed('Server requires authentication');
+          this.onStatusChange('auth_failed', 'Authentication required');
+          this._intentionalClose = true;
+          this.ws.close();
+          break;
+
+        case 'auth_timeout':
+          this.authenticated = false;
+          this.onAuthFailed('Authentication timed out: ' + (message.message || ''));
+          this.onStatusChange('auth_failed', message.message || 'Authentication timeout');
+          this._intentionalClose = true;
+          this.ws.close();
+          break;
+
+        case 'rate_limited':
+          this._handleError('Rate limited by server: ' + (message.message || ''));
+          this.onStatusChange('auth_failed', message.message || 'Rate limited');
+          this._intentionalClose = true;
+          this.ws.close();
+          break;
+
+        case 'message_too_large':
+          this._handleError('Message too large: ' + (message.message || ''));
+          this.onStatusChange('auth_failed', message.message || 'Message too large');
+          this._intentionalClose = true;
+          this.ws.close();
+          break;
+
         case 'projection':
           this.onProjection(message.data);
           break;
+
         case 'available_actions':
-          // Store for potential future use
           this._availableActions = message.actions || [];
           break;
+
         case 'error':
           this._handleError('Server error: ' + (message.message || 'unknown'));
           break;
+
         case 'pong':
           // Keepalive acknowledged
           break;
+
         default:
           this._handleError('Unknown message type: ' + message.type);
       }
@@ -73,6 +135,7 @@ class ProjectionWebSocketClient {
 
     this.ws.onclose = () => {
       this.connected = false;
+      this.authenticated = false;
       this.onStatusChange('disconnected');
       if (!this._intentionalClose) {
         this._scheduleReconnect();
@@ -115,6 +178,7 @@ class ProjectionWebSocketClient {
   close() {
     this._intentionalClose = true;
     this._subscriptionActive = false;
+    this.authenticated = false;
     if (this.ws) {
       this.ws.close();
       this.ws = null;

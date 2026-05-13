@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.chatgpt_dev_bundle_manifest.v1.schema.json",
+  "title": "ChatGPT Dev Bundle Manifest",
+  "description": "Manifest for a ChatGPT-friendly curated dev bundle",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "created_at",
+    "profile",
+    "source_root",
+    "output_zip",
+    "estimated_total_tokens",
+    "estimated_total_text_bytes",
+    "zip_size_bytes",
+    "chatgpt_upload_safe",
+    "hard_file_limit_mb",
+    "target_bundle_mb",
+    "max_tokens_per_text_file",
+    "included_files",
+    "excluded_files",
+    "row_counts",
+    "warnings",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema identifier"
+    },
+    "bundle_id": {
+      "type": "string",
+      "description": "Unique bundle identifier"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 creation timestamp"
+    },
+    "profile": {
+      "type": "string",
+      "enum": ["lite", "analysis", "full-dev"],
+      "description": "Bundle profile"
+    },
+    "source_root": {
+      "type": "string",
+      "description": "Absolute path to the build root used"
+    },
+    "output_zip": {
+      "type": "string",
+      "description": "Absolute path to the generated zip"
+    },
+    "estimated_total_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sum of estimated tokens across all text files"
+    },
+    "estimated_total_text_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sum of text file sizes in bytes"
+    },
+    "zip_size_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Compressed zip size in bytes"
+    },
+    "chatgpt_upload_safe": {
+      "type": "boolean",
+      "description": "True if bundle fits ChatGPT constraints (<512 MB zip, each text file <2M tokens)"
+    },
+    "hard_file_limit_mb": {
+      "type": "integer",
+      "description": "ChatGPT hard upload cap in MB"
+    },
+    "target_bundle_mb": {
+      "type": "integer",
+      "description": "Target bundle size for this profile in MB"
+    },
+    "max_tokens_per_text_file": {
+      "type": "integer",
+      "description": "Maximum allowed tokens per text file"
+    },
+    "included_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "kind", "estimated_tokens", "size_bytes", "source", "reason_included", "sha256"],
+        "properties": {
+          "path": {"type": "string", "description": "Relative path within the bundle"},
+          "kind": {"type": "string", "description": "File kind (readme, manifest, summary, json, jsonl, md)"},
+          "estimated_tokens": {"type": "integer", "minimum": 0},
+          "size_bytes": {"type": "integer", "minimum": 0},
+          "source": {"type": "string", "description": "Source artifact path"},
+          "reason_included": {"type": "string", "description": "Why this file was included"},
+          "sha256": {"type": "string", "description": "SHA256 of file content"}
+        }
+      }
+    },
+    "excluded_files": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Patterns or paths intentionally excluded"
+      }
+    },
+    "row_counts": {
+      "type": "object",
+      "additionalProperties": {"type": "integer"},
+      "description": "Row counts for derived datasets included"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Warnings about missing data or budget limits"
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "description": "True if bundle contains no raw prompts, model outputs, source code, diffs, or secrets"
+    }
+  }
+}

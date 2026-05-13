@@ -251,7 +251,7 @@ Semantic change snippets are now part of the derived dataset pipeline. See `scri
 - **Update Policy**: Notification-first, no restart during active sessions, 7-state update machine. See [`docs/governance/update-policy.md`](../governance/update-policy.md).
 - **Update Status Schema**: Structured JSON payload at `docs/schemas/rig.relay.update_status.v1.schema.json`. Generator at `scripts/rig_relay_update_status.py`.
 - **Telemetry Budget**: Capped upload sizes, row limits, retention windows. See [`docs/governance/usage-data-doctrine.md`](../governance/usage-data-doctrine.md#telemetry-budget) and `docs/schemas/rig.relay.telemetry_budget.v1.schema.json`.
-- **Desktop Cockpit**: Read-only pywebview shell with JS bridge API. No mutation authority. See [`docs/governance/desktop-cockpit-ui.md`](../governance/desktop-cockpit-ui.md), `scripts/rig_relay_desktop_cockpit.py`, and `frontend/desktop/`.
+- **Desktop Cockpit**: Read-only pywebview shell with WebSocket projection stream (token-gated, localhost-only, auth-timeout, size-limited, rate-limited) and JS bridge API fallback. No mutation authority. See [`docs/governance/desktop-cockpit-ui.md`](../governance/desktop-cockpit-ui.md), `scripts/rig_relay_desktop_cockpit.py`, and `frontend/desktop/`.
 
 - **Google Drive Upload**: Core beta dependency. Dry-run by default. Real upload requires consent, validation, credentials, and `--confirm`. See `scripts/rig_relay_upload_google_drive.py` and [`docs/governance/usage-data-doctrine.md`](../governance/usage-data-doctrine.md#google-drive-core-dependency).
 - **Stale Lease Cleanup**: Governed cleanup for accumulated coordination leases. Dry-run by default. Active leases never touched. See `scripts/rig_relay_cleanup_coordination_leases.py`.

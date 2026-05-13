@@ -5,6 +5,7 @@
 // Connection state
 let wsClient = null;
 let wsConnected = false;
+let wsAuthFailed = false;
 
 function renderProjection(projection) {
   // Header info
@@ -28,6 +29,10 @@ function renderProjection(projection) {
     connEl.textContent = 'Bridge';
     connEl.className = 'source-status ok';
     connEl.title = 'Connected via pywebview JS bridge';
+  } else if (wsAuthFailed) {
+    connEl.textContent = 'Auth Failed';
+    connEl.className = 'source-status warning';
+    connEl.title = 'WebSocket authentication failed; check server token';
   } else {
     connEl.textContent = 'Offline';
     connEl.className = 'source-status warning';
@@ -168,6 +173,7 @@ function row(key, value, cls) {
   return '<tr><td class="k">' + escapeHtml(key) + '</td><td' + clsAttr + '>' + valStr + '</td></tr>';
 }
 
+// Refresh from bridge or WS
 async function refreshAll() {
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true;
@@ -194,22 +200,65 @@ async function refreshAll() {
   }
 }
 
-// Set up WebSocket connection
-function initWebSocket() {
+// Set up WebSocket connection with token from pywebview bridge
+async function initWebSocket() {
+  let wsToken = null;
+  let wsPort = 9876;
+
+  // Try to get token and port from pywebview bridge
+  if (window.pywebview && window.pywebview.api) {
+    try {
+      if (typeof window.pywebview.api.get_ws_config === 'function') {
+        const config = await window.pywebview.api.get_ws_config();
+        wsToken = config.token || null;
+        wsPort = config.port || 9876;
+      }
+    } catch (e) {
+      console.warn('Could not get WS config from bridge:', e);
+    }
+  }
+
+  // Fallback to window config (injected in index.html)
+  if (!wsToken && window.__RIG_RELAY_CONFIG) {
+    wsToken = window.__RIG_RELAY_CONFIG.wsToken || null;
+    wsPort = window.__RIG_RELAY_CONFIG.wsPort || 9876;
+  }
+
+  const wsUrl = 'ws://127.0.0.1:' + wsPort;
+
   wsClient = new ProjectionWebSocketClient({
-    wsUrl: 'ws://127.0.0.1:9876',
+    wsUrl: wsUrl,
+    token: wsToken,
     onProjection: (data) => {
       wsConnected = true;
+      wsAuthFailed = false;
       renderProjection(data);
     },
-    onStatusChange: (status, delay, attempt) => {
+    onStatusChange: (status, detail, attempt) => {
       const connEl = document.getElementById('connection-status');
       switch (status) {
+        case 'authenticating':
+          connEl.textContent = 'WS Auth...';
+          connEl.className = 'source-status warning';
+          connEl.title = 'Authenticating with WebSocket server';
+          break;
         case 'connected':
           wsConnected = true;
+          wsAuthFailed = false;
           connEl.textContent = 'WS';
           connEl.className = 'source-status ok';
           connEl.title = 'Connected via WebSocket projection stream';
+          break;
+        case 'auth_failed':
+          wsConnected = false;
+          wsAuthFailed = true;
+          connEl.textContent = 'Auth Failed';
+          connEl.className = 'source-status warning';
+          connEl.title = 'WebSocket auth failed: ' + (detail || 'unknown');
+          // Fall back to pywebview bridge if available
+          if (window.pywebview && window.pywebview.api) {
+            loadFromBridge();
+          }
           break;
         case 'disconnected':
           wsConnected = false;
@@ -220,7 +269,17 @@ function initWebSocket() {
         case 'reconnecting':
           connEl.textContent = 'WS Reconnect (' + attempt + ')';
           connEl.className = 'source-status warning';
-          connEl.title = 'Reconnecting in ' + delay + 'ms';
+          connEl.title = 'Reconnecting in ' + (detail || '?') + 'ms';
+          break;
+        case 'offline':
+          wsConnected = false;
+          connEl.textContent = 'WS Offline';
+          connEl.className = 'source-status warning';
+          connEl.title = 'WebSocket offline: ' + (detail || 'no token');
+          // Fall back to pywebview bridge
+          if (window.pywebview && window.pywebview.api) {
+            loadFromBridge();
+          }
           break;
         case 'closed':
           wsConnected = false;
@@ -229,8 +288,30 @@ function initWebSocket() {
     },
     onError: (message) => {
       console.warn('WebSocket:', message);
+    },
+    onAuthFailed: (message) => {
+      console.warn('WebSocket auth failed:', message);
     }
   });
+}
+
+// Load initial data from pywebview bridge
+async function loadFromBridge() {
+  if (!window.pywebview || !window.pywebview.api) return;
+
+  const connEl = document.getElementById('connection-status');
+  connEl.textContent = 'Bridge';
+  connEl.className = 'source-status ok';
+  connEl.title = 'Fell back to pywebview JS bridge';
+
+  try {
+    if (typeof window.pywebview.api.get_projection === 'function') {
+      const projection = await window.pywebview.api.get_projection();
+      renderProjection(projection);
+    }
+  } catch (e) {
+    console.warn('Bridge fallback failed:', e);
+  }
 }
 
 // Try WebSocket on page ready; fall back to pywebview JS bridge
@@ -240,13 +321,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initWebSocket();
   }
 
-  // If no pywebview and no WS after 2s, show offline state
+  // If no pywebview and no WS after 3s, show offline state
   setTimeout(() => {
-    if (!wsConnected && !(window.pywebview && window.pywebview.api)) {
+    if (!wsConnected && !wsAuthFailed && !(window.pywebview && window.pywebview.api)) {
       const connEl = document.getElementById('connection-status');
       connEl.textContent = 'Offline';
       connEl.className = 'source-status warning';
       connEl.title = 'No active connection';
     }
-  }, 2000);
+  }, 3000);
 });

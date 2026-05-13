@@ -152,11 +152,30 @@ Python runtime
 - **Connection indicator**: A new `#connection-status` element in the header
   shows "WS" (WebSocket), "Bridge" (pywebview), or "Offline" (no connection).
 
-### WebSocket Protocol
+### Authentication
+
+Every WebSocket connection **must** send an `auth` message as its first message.
+The server requires a valid session token before any protocol messages are
+processed. Authentication failures result in `auth_error` or `auth_required`
+responses, and the connection is closed.
+
+**Auth flow:**
+1. Client opens WebSocket connection
+2. Client sends {"type": "auth", "token": "<session-token>"}
+3. Server responds with `auth_ok` on success, or `auth_error` on failure
+4. After `auth_ok`, protocol messages are accepted
+
+The session token is generated per desktop server instance via
+`secrets.token_hex(32)`. It is exposed to the frontend only through the
+pywebview JS bridge (`CockpitAPI.get_ws_config()`). The token is never
+printed in normal logs.
+
+### WebSocket Protocol (after authentication)
 
 **Client → Server:**
 | Type | Fields | Description |
 |---|---|---|
+| `auth` | `token` (str) | Authenticate (first message required) |
 | `get_projection` | — | Request full projection |
 | `get_available_actions` | — | Request available actions list |
 | `subscribe` | `interval` (int, 5–300s) | Periodic projection push |
@@ -166,6 +185,9 @@ Python runtime
 **Server → Client:**
 | Type | Fields | Description |
 |---|---|---|
+| `auth_ok` | — | Authentication succeeded |
+| `auth_error` | `message` | Authentication failed |
+| `auth_required` | — | First message was not auth |
 | `projection` | `data`, `seq` | Content-light projection |
 | `available_actions` | `actions`, `seq` | List of read-only actions |
 | `error` | `message` | Error description |
@@ -212,7 +234,7 @@ uv run python scripts/rig_relay_desktop_cockpit.py --no-ws
 
 Port of Rig's `runtime_websocket.py` (`WebSocketStreamMessage` pattern), adapted
 for Rig Relay's content-light projection model. Key differences:
-- No token-gated session yet (documented as future)
+- Token-gated session (auth message required before protocol)
 - Content-light only (no raw prompts, outputs, or file contents)
 - Polling-based push (no file-watch-driven push yet; `watchfiles` is available for future)
 - Single server per cockpit instance (no UIServer abstraction)
