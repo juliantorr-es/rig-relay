@@ -1,0 +1,2 @@
+{"id":"SESSION-LIFECYCLE-STATE-001","area":"state","priority":"P2","risk":"unreliable session finalization on crash","recommendation":"implement journaled manifest updates"}
+{"id":"SESSION-LIFECYCLE-STATE-002","area":"events","priority":"P1","risk":"missing lifecycle transitions in telemetry","recommendation":"add mandatory READY and TURN_END events"}

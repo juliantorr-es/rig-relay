@@ -1,0 +1,2 @@
+{"id":"VALIDATION-GATE-001","area":"doctor","priority":"P1","risk":"broken integrity between JSONL and artifacts","recommendation":"implement rig-relay doctor integrity checks"}
+{"id":"VALIDATION-GATE-002","area":"ci","priority":"P1","risk":"non-deterministic traversal regressions","recommendation":"add CI gate for sorted directory discovery"}

@@ -1,0 +1,2 @@
+{"id":"PROVIDER-ADAPTER-CONTRACT-001","area":"interface","priority":"P1","risk":"stochastic provider behavior breaks deterministic relay logic","recommendation":"enforce strict mapping in ProviderAdapterPort"}
+{"id":"PROVIDER-ADAPTER-CONTRACT-002","area":"usage","priority":"P1","risk":"non-normalized usage metrics","recommendation":"standardize prompt/completion/cache token fields"}

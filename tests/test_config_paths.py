@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from vibe.core.paths import resolve_history_path, resolve_log_path
-from vibe.core.paths._vibe_home import _get_vibe_home
+from vibe.core.paths._vibe_home import (
+    EvidenceRootMode,
+    _get_vibe_home,
+    resolve_evidence_root_resolution,
+)
 
 
 def test_get_vibe_home_prefers_rig_relay_home_env(
@@ -16,6 +20,7 @@ def test_get_vibe_home_prefers_rig_relay_home_env(
     monkeypatch.setenv("RIG_RELAY_HOME", str(custom_home))
     monkeypatch.setenv("VIBE_HOME", "/some/other/path")
     assert _get_vibe_home() == custom_home
+    assert resolve_evidence_root_resolution().mode == EvidenceRootMode.EXPLICIT_HOME
 
 
 def test_get_vibe_home_prefers_canonical_over_vibe_home_env(
@@ -41,12 +46,13 @@ def test_get_vibe_home_prefers_canonical_home_over_legacy_env(
 def test_get_vibe_home_ignores_legacy_when_disabled(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    rr_dir = tmp_path / ".rig" / "relay"
+    rr_dir = Path.home() / ".rig" / "relay"
     monkeypatch.delenv("RIG_RELAY_HOME", raising=False)
     monkeypatch.setenv("VIBE_HOME", str(tmp_path / "legacy"))
     monkeypatch.setenv("RIG_RELAY_DISABLE_LEGACY_CONFIG", "1")
     monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", rr_dir)
     assert _get_vibe_home() == rr_dir
+    assert resolve_evidence_root_resolution().mode == EvidenceRootMode.USER_GLOBAL
 
 
 def test_get_vibe_home_prefers_existing_rig_relay_dir(
@@ -55,11 +61,10 @@ def test_get_vibe_home_prefers_existing_rig_relay_dir(
     monkeypatch.delenv("RIG_RELAY_HOME", raising=False)
     monkeypatch.delenv("VIBE_HOME", raising=False)
 
-    rr_dir = tmp_path / ".rig" / "relay"
+    rr_dir = Path.home() / ".rig" / "relay"
     rr_legacy_dir = tmp_path / ".rig-relay"
     vibe_dir = tmp_path / ".vibe"
 
-    rr_dir.mkdir(parents=True)
     rr_legacy_dir.mkdir()
     vibe_dir.mkdir()
 
@@ -71,6 +76,7 @@ def test_get_vibe_home_prefers_existing_rig_relay_dir(
 
     # Should prefer .rig/relay if all exist
     assert _get_vibe_home() == rr_dir
+    assert resolve_evidence_root_resolution().mode == EvidenceRootMode.USER_GLOBAL
 
 
 def test_get_vibe_home_uses_legacy_only_when_canonical_missing_and_allowed(
@@ -93,6 +99,7 @@ def test_get_vibe_home_uses_legacy_only_when_canonical_missing_and_allowed(
     monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", vibe_dir)
 
     assert _get_vibe_home() == Path(tmp_path / "legacy-env").resolve()
+    assert resolve_evidence_root_resolution().mode == EvidenceRootMode.LEGACY_VIBE_HOME
 
 
 def test_get_vibe_home_falls_back_to_legacy_rig_relay_dir(
@@ -115,6 +122,7 @@ def test_get_vibe_home_falls_back_to_legacy_rig_relay_dir(
 
     # Should fall back to .rig-relay if .rig/relay doesn't exist
     assert _get_vibe_home() == rr_legacy_dir
+    assert resolve_evidence_root_resolution().mode == EvidenceRootMode.LEGACY_VIBE_HOME
 
 
 def test_get_vibe_home_falls_back_to_existing_vibe_dir(
@@ -136,6 +144,7 @@ def test_get_vibe_home_falls_back_to_existing_vibe_dir(
 
     # Should fall back to .vibe if neither .rig/relay nor .rig-relay exist
     assert _get_vibe_home() == vibe_dir
+    assert resolve_evidence_root_resolution().mode == EvidenceRootMode.LEGACY_VIBE_HOME
 
 
 def test_get_vibe_home_defaults_to_rig_relay_for_new_install(
@@ -144,7 +153,7 @@ def test_get_vibe_home_defaults_to_rig_relay_for_new_install(
     monkeypatch.delenv("RIG_RELAY_HOME", raising=False)
     monkeypatch.delenv("VIBE_HOME", raising=False)
 
-    rr_dir = tmp_path / ".rig" / "relay"
+    rr_dir = Path.home() / ".rig" / "relay"
     rr_legacy_dir = tmp_path / ".rig-relay"
     vibe_dir = tmp_path / ".vibe"
 
@@ -156,6 +165,32 @@ def test_get_vibe_home_defaults_to_rig_relay_for_new_install(
 
     # None exist
     assert _get_vibe_home() == rr_dir
+    assert resolve_evidence_root_resolution().mode == EvidenceRootMode.USER_GLOBAL
+
+
+def test_get_vibe_home_classifies_repo_local_explicit_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    monkeypatch.chdir(repo_root)
+    home = repo_root / ".rig" / "relay"
+    monkeypatch.setenv("RIG_RELAY_HOME", str(home))
+    resolution = resolve_evidence_root_resolution()
+    assert resolution.mode == EvidenceRootMode.REPO_LOCAL
+
+
+def test_get_vibe_home_classifies_test_temp_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "tests/test_config_paths.py::test")
+    temp_home = tmp_path / "pytest-123" / "relay"
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", temp_home
+    )
+    resolution = resolve_evidence_root_resolution()
+    assert resolution.mode == EvidenceRootMode.TEST_TEMP
 
 
 def test_resolve_history_path_prefers_canonical_and_legacy_fallback(

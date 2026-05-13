@@ -1,0 +1,2 @@
+{"id":"EVIDENCE-ROOT-POLICY-001","area":"doctrine","priority":"P0","risk":"confusion over where evidence is written","recommendation":"print active root mode on session start"}
+{"id":"EVIDENCE-ROOT-POLICY-002","area":"migration","priority":"P2","risk":"orphaned global history","recommendation":"add move-evidence command"}

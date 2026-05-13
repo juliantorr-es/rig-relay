@@ -51,7 +51,7 @@ from vibe.core.middleware import (
     TurnLimitMiddleware,
     make_plan_agent_reminder,
 )
-from vibe.core.paths._vibe_home import SESSIONS_ROOT
+from vibe.core.paths._vibe_home import SESSIONS_ROOT, resolve_evidence_root_resolution
 from vibe.core.plan_session import PlanSession
 from vibe.core.prompts import UtilityPrompt
 from vibe.core.rewind import RewindManager
@@ -513,6 +513,8 @@ class AgentLoop:
             client_name=client_name,
             client_version=client_version,
             terminal_emulator=terminal_emulator,
+            evidence_root_mode=resolve_evidence_root_resolution().mode.value,
+            evidence_root_source=resolve_evidence_root_resolution().source,
         )
 
     def emit_ready_telemetry(self, init_duration_ms: int) -> None:

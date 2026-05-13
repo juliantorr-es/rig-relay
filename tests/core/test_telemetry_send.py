@@ -419,11 +419,13 @@ class TestTelemetryClient:
             client_name="vscode",
             client_version="1.96.0",
             terminal_emulator="vscode",
+            evidence_root_mode="repo_local",
+            evidence_root_source="RIG_RELAY_HOME",
         )
 
         assert len(telemetry_events) == 1
         event_name = telemetry_events[0]["event_name"]
-        assert event_name == "vibe.new_session"
+        assert event_name == "rig.relay.session.started"
         properties = telemetry_events[0]["properties"]
         assert properties["has_agents_md"] is True
         assert properties["nb_skills"] == 2
@@ -433,6 +435,8 @@ class TestTelemetryClient:
         assert properties["client_name"] == "vscode"
         assert properties["client_version"] == "1.96.0"
         assert properties["terminal_emulator"] == "vscode"
+        assert properties["evidence_root_mode"] == "repo_local"
+        assert properties["evidence_root_source"] == "RIG_RELAY_HOME"
         assert "version" in properties
 
     @pytest.mark.asyncio

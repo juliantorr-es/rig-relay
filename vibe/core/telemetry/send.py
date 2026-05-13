@@ -301,6 +301,8 @@ class TelemetryClient:
         client_name: str | None,
         client_version: str | None,
         terminal_emulator: str | None = None,
+        evidence_root_mode: str | None = None,
+        evidence_root_source: str | None = None,
     ) -> None:
         payload = {
             "has_agents_md": has_agents_md,
@@ -312,6 +314,8 @@ class TelemetryClient:
             "client_name": client_name,
             "client_version": client_version,
             "terminal_emulator": terminal_emulator,
+            "evidence_root_mode": evidence_root_mode,
+            "evidence_root_source": evidence_root_source,
         }
         self.send_telemetry_event(EventName.SESSION_STARTED, payload)
 

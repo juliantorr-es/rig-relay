@@ -1,0 +1,2 @@
+{"id":"SECURITY-PRIVACY-001","area":"privacy","priority":"P1","risk":"absolute path leakage in artifacts","recommendation":"normalize all paths to repo-root relative"}
+{"id":"SECURITY-PRIVACY-002","area":"secrets","priority":"P1","risk":"accidental credential leakage in tool output artifacts","recommendation":"implement secret scrubbing middleware for tool outputs"}

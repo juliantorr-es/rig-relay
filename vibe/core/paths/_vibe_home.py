@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from enum import StrEnum
 import os
 from pathlib import Path
 
@@ -14,6 +16,21 @@ class GlobalPath:
     @property
     def path(self) -> Path:
         return self._resolver()
+
+
+class EvidenceRootMode(StrEnum):
+    REPO_LOCAL = "repo_local"
+    EXPLICIT_HOME = "explicit_home"
+    USER_GLOBAL = "user_global"
+    LEGACY_VIBE_HOME = "legacy_vibe_home"
+    TEST_TEMP = "test_temp"
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceRootResolution:
+    path: Path
+    mode: EvidenceRootMode
+    source: str
 
 
 _DEFAULT_RIG_RELAY_HOME = Path.home() / ".rig" / "relay"
@@ -34,6 +51,59 @@ def _disable_legacy_config() -> bool:
     return os.getenv("RIG_RELAY_DISABLE_LEGACY_CONFIG") == "1"
 
 
+def _looks_like_test_temp(path: Path) -> bool:
+    if os.getenv("PYTEST_CURRENT_TEST") is None:
+        return False
+    text = str(path)
+    return "/tmp/" in text or "/var/folders/" in text or "pytest-" in text
+
+
+def _looks_repo_local(path: Path) -> bool:
+    try:
+        cwd = Path.cwd().resolve()
+        resolved = path.resolve()
+        return resolved.is_relative_to(cwd) and resolved.parts[-2:] == (".rig", "relay")
+    except (OSError, ValueError):
+        return False
+
+
+def resolve_evidence_root_resolution() -> EvidenceRootResolution:
+    if rig_relay_home := os.getenv("RIG_RELAY_HOME"):
+        resolved = Path(rig_relay_home).expanduser().resolve()
+        mode = (
+            EvidenceRootMode.REPO_LOCAL
+            if _looks_repo_local(resolved)
+            else EvidenceRootMode.EXPLICIT_HOME
+        )
+        return EvidenceRootResolution(path=resolved, mode=mode, source="RIG_RELAY_HOME")
+
+    if _DEFAULT_RIG_RELAY_HOME.exists() or _disable_legacy_config():
+        mode = (
+            EvidenceRootMode.TEST_TEMP
+            if _looks_like_test_temp(_DEFAULT_RIG_RELAY_HOME)
+            else EvidenceRootMode.USER_GLOBAL
+        )
+        return EvidenceRootResolution(
+            path=_DEFAULT_RIG_RELAY_HOME,
+            mode=mode,
+            source="default",
+        )
+
+    for candidate in _legacy_home_candidates():
+        mode = EvidenceRootMode.LEGACY_VIBE_HOME
+        return EvidenceRootResolution(path=candidate, mode=mode, source="legacy")
+
+    return EvidenceRootResolution(
+        path=_DEFAULT_RIG_RELAY_HOME,
+        mode=(
+            EvidenceRootMode.TEST_TEMP
+            if _looks_like_test_temp(_DEFAULT_RIG_RELAY_HOME)
+            else EvidenceRootMode.USER_GLOBAL
+        ),
+        source="default",
+    )
+
+
 def _legacy_home_candidates() -> tuple[Path, ...]:
     candidates: list[Path] = []
     if vibe_home := os.getenv("VIBE_HOME"):
@@ -45,27 +115,21 @@ def _legacy_home_candidates() -> tuple[Path, ...]:
 
 
 def _get_vibe_home() -> Path:
-    if rig_relay_home := os.getenv("RIG_RELAY_HOME"):
-        return Path(rig_relay_home).expanduser().resolve()
-
-    if _DEFAULT_RIG_RELAY_HOME.exists() or _disable_legacy_config():
-        return _DEFAULT_RIG_RELAY_HOME
-
-    for candidate in _legacy_home_candidates():
-        return candidate
-
-    return _DEFAULT_RIG_RELAY_HOME
+    return resolve_evidence_root_resolution().path
 
 
 def get_vibe_home_diagnostics() -> dict[str, object]:
-    home = VIBE_HOME.path
+    resolution = resolve_evidence_root_resolution()
     legacy_candidates = _legacy_home_candidates()
     legacy_home = next(
-        (candidate for candidate in legacy_candidates if candidate == home), None
+        (candidate for candidate in legacy_candidates if candidate == resolution.path),
+        None,
     )
     return {
-        "active_home": home,
-        "is_legacy": is_legacy_vibe_home(home),
+        "active_home": resolution.path,
+        "root_mode": resolution.mode.value,
+        "root_source": resolution.source,
+        "is_legacy": is_legacy_vibe_home(resolution.path),
         "legacy_disabled": _disable_legacy_config(),
         "legacy_home": legacy_home,
     }
