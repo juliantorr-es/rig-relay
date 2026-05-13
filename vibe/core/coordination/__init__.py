@@ -1,6 +1,8 @@
+"""This module is a legacy compatibility adapter. New product code should import from rig_relay.coordination."""
+
 from __future__ import annotations
 
-from vibe.core.coordination._models import (
+from rig_relay.coordination.models import (
     CoordinationArtifactRef,
     CoordinationClaimResult,
     CoordinationConflict,
@@ -31,7 +33,7 @@ from vibe.core.coordination._models import (
     reset_path_salt_for_testing,
     salted_path_hash,
 )
-from vibe.core.coordination._store import CoordinationStore
+from rig_relay.coordination.store import CoordinationStore, FileCoordinationStore
 
 __all__ = [
     "CoordinationArtifactRef",
@@ -45,6 +47,7 @@ __all__ = [
     "CoordinationStateProjection",
     "CoordinationStore",
     "CoordinationTaskClaim",
+    "FileCoordinationStore",
     "build_artifact_published_payload",
     "build_checkpoint_committed_payload",
     "build_checkpoint_refused_payload",

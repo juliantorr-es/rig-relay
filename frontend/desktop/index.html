@@ -11,46 +11,150 @@
     <h1>Rig Relay Cockpit</h1>
     <span id="version-badge" class="subtitle">Loading...</span>
     <span id="connection-status" class="source-status">—</span>
-    <span id="source-status" class="source-status">—</span>
     <button id="refresh-btn" onclick="refreshAll()">Refresh</button>
   </header>
 
   <div id="warning-banner" class="warning-banner" style="display:none"></div>
 
-  <main id="dashboard">
-    <section id="card-current_state" class="card">
-      <h2>Current State</h2>
-      <div id="content-current_state" class="card-content"><span class="missing">Not generated yet. Run: coord status</span></div>
-    </section>
+  <div id="main-container">
+    <div id="chat-section">
+      <div id="chat-header">
+        <span class="chat-title">Chat</span>
+        <div id="chat-status-badge" class="source-status warning">Backend Offline</div>
+      </div>
+      <div id="chat-transcript">
+        <div class="message system">
+          Welcome to Rig Relay Cockpit. The chat backend is initialized in stub mode.
+        </div>
+      </div>
+      <div id="chat-composer-container">
+        <div id="chat-composer">
+          <textarea id="chat-input" placeholder="Type a message..." maxlength="4000"></textarea>
+          <button id="send-btn" disabled>Send</button>
+        </div>
+        <div id="composer-footer">
+          <span id="char-count">0/4000</span>
+          <button id="clear-chat-btn" class="secondary-btn">Clear Chat</button>
+        </div>
+      </div>
+    </div>
 
-    <section id="card-queue" class="card">
-      <h2>Queue Plan</h2>
-      <div id="content-queue" class="card-content"><span class="missing">Not generated yet. Run: queue plan</span></div>
-    </section>
+    <div id="right-rail">
+      <div class="section-title">Projection</div>
+      <div id="cards-container">
+        <!-- current_state -->
+        <div class="card" id="card-current_state">
+          <div class="card-header">
+            <span class="card-title">Current State</span>
+            <div id="status-current_state" class="source-status warning">Wait</div>
+          </div>
+          <div class="card-content" id="content-current_state">
+            <span class="missing">Loading...</span>
+          </div>
+        </div>
 
-    <section id="card-dataset" class="card">
-      <h2>Dataset Summary</h2>
-      <div id="content-dataset" class="card-content">Loading...</div>
-    </section>
+        <!-- queue -->
+        <div class="card" id="card-queue">
+          <div class="card-header">
+            <span class="card-title">Queue Plan</span>
+            <div id="status-queue" class="source-status warning">Wait</div>
+          </div>
+          <div class="card-content" id="content-queue">
+            <span class="missing">Loading...</span>
+          </div>
+        </div>
 
-    <section id="card-semantic_snippets" class="card">
-      <h2>Semantic Snippets</h2>
-      <div id="content-semantic_snippets" class="card-content">Loading...</div>
-    </section>
+        <!-- dataset -->
+        <div class="card" id="card-dataset">
+          <div class="card-header">
+            <span class="card-title">Dataset Summary</span>
+            <div id="status-dataset" class="source-status warning">Wait</div>
+          </div>
+          <div class="card-content" id="content-dataset">
+            <span class="missing">Loading...</span>
+          </div>
+        </div>
 
-    <section id="card-telemetry_bundle" class="card">
-      <h2>Telemetry Bundle</h2>
-      <div id="content-telemetry_bundle" class="card-content"><span class="missing">Not generated yet. Run: telemetry bundle</span></div>
-    </section>
+        <!-- semantic_snippets -->
+        <div class="card" id="card-semantic_snippets">
+          <div class="card-header">
+            <span class="card-title">Semantic Snippets</span>
+            <div id="status-semantic_snippets" class="source-status warning">Wait</div>
+          </div>
+          <div class="card-content" id="content-semantic_snippets">
+            <span class="missing">Loading...</span>
+          </div>
+        </div>
 
-    <section id="card-update" class="card">
-      <h2>Update Status</h2>
-      <div id="content-update" class="card-content">Loading...</div>
-    </section>
-  </main>
+        <!-- telemetry_bundle -->
+        <div class="card" id="card-telemetry_bundle">
+          <div class="card-header">
+            <span class="card-title">Telemetry Bundle</span>
+            <div id="status-telemetry_bundle" class="source-status warning">Wait</div>
+          </div>
+          <div class="card-content" id="content-telemetry_bundle">
+            <span class="missing">Loading...</span>
+          </div>
+        </div>
+
+        <!-- update -->
+        <div class="card" id="card-update">
+          <div class="card-header">
+            <span class="card-title">Update Status</span>
+            <div id="status-update" class="source-status warning">Wait</div>
+          </div>
+          <div class="card-content" id="content-update">
+            <span class="missing">Loading...</span>
+          </div>
+        </div>
+
+        <!-- actions -->
+        <div class="card" id="card-actions">
+          <div class="card-header">
+            <span class="card-title">Actions</span>
+            <div class="source-status info">Dry-run</div>
+          </div>
+          <div class="card-content" id="content-actions">
+            <p class="small-note">Safe, read-only and dry-run actions only.</p>
+            <div class="action-buttons">
+              <button class="intent-btn" onclick="runIntent('refresh_projection')">Refresh Projection</button>
+              <button class="intent-btn" onclick="runIntent('run_validation_suite')">Run Validation Suite</button>
+              <button class="intent-btn" onclick="runIntent('run_storage_audit')">Run Storage Audit</button>
+              <button class="intent-btn" onclick="runIntent('generate_refinement_report')">Generate Refinement Report</button>
+              <button class="intent-btn" onclick="runIntent('create_chatgpt_dev_bundle_dry_run')">Create Dev Bundle Dry-Run</button>
+            </div>
+            <div id="intent-result" class="intent-result"></div>
+          </div>
+        </div>
+
+        <div class="card" id="card-dev-receipts">
+          <div class="card-header">
+            <span class="card-title">Dev Receipts</span>
+            <div class="source-status warning">Dev / Local Only</div>
+          </div>
+          <div class="card-content" id="content-dev-receipts">
+            <p class="small-note">Mint and inspect local authorization receipts for Phase 1 protected intents.</p>
+            <div class="action-buttons">
+              <select id="receipt-action">
+                <option value="checkpoint.commit">checkpoint.commit</option>
+                <option value="lease_cleanup.archive">lease_cleanup.archive</option>
+              </select>
+              <input id="receipt-ttl" type="number" min="30" max="3600" value="300" />
+              <button class="intent-btn" onclick="mintDevReceipt()">Mint Dev Receipt</button>
+            </div>
+            <div class="action-buttons" style="margin-top: 0.5rem;">
+              <textarea id="receipt-json" placeholder="Paste receipt JSON to inspect" rows="4"></textarea>
+              <button class="intent-btn" onclick="inspectDevReceipt()">Inspect Receipt</button>
+            </div>
+            <div id="receipt-result" class="intent-result"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <footer>
-    <p>Rig Relay — Read-only cockpit. No mutation authority.</p>
+    <p>Rig Relay — pywebview desktop chat shell.</p>
   </footer>
 
   <script src="websocket.js"></script>

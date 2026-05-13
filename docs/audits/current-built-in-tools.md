@@ -11,19 +11,23 @@
 
 | Metric | Value |
 |--------|-------|
-| **Total built-in tools found** | 18 |
-| **Read-only tools** | 12 (ask_user_question, exit_plan_mode, git_branch, git_diff, git_log, git_ls_files, git_show, git_status, grep, read_file, skill, web_fetch, web_search) |
+| **Total built-in tools found** | 19 |
+| **Read-only tools** | 13 (ask_user_question, exit_plan_mode, git_branch, git_diff, git_log, git_ls_files, git_show, git_status, grep, read_file, skill, validation_suite, web_fetch, web_search) |
 | **Workspace-mutating tools** | 4 (bash, search_replace, task, write_file) |
 | **External/network/provider tools** | 5 (ask_user_question, bash, task, web_fetch, web_search) |
-| **Tools with typed artifacts today** | 3 (grep, git_status, task — search, repo-state, and delegation-link artifacts) |
-| **Unknown/unclassified tools** | 0 — all 18 have explicit determinism + mutation classes |
+| **Tools with typed artifacts today** | 4 (grep, git_status, task, validation_suite — search, repo-state, delegation-link, and validation evidence artifacts) |
+| **Unknown/unclassified tools** | 0 — all 19 have explicit determinism + mutation classes |
 | **Biggest annoyance pattern** | No structured evidence fields emitted at tool level — determinism/mutation is declared but not instrumented in tool output, making dogfood session analysis reliant on agent-loop instrumentation alone |
 | **Highest-priority hardening target** | `search_replace` — highest wrong-edit risk due to fuzzy matching with no before/after content hash in evidence |
 
+## Refinement Reports
+
+The inventory above is a static baseline. Built-in tool refinement reports now turn derived usage data into a ranked backlog so the next hardening slice is driven by observed pressure, not intuition.
+
 ### Classification Summary
 
-- **Determinism**: 1 `deterministic_pure` (todo, exit_plan_mode), 11 `deterministic_repo_state`, 1 `nondeterministic_provider` (task), 4 `nondeterministic_external_io` (bash, webfetch, websearch, ask_user_question)
-- **Mutation**: 12 `read_only`, 3 `writes_workspace` (bash, search_replace, write_file), 1 `writes_temp_only` (todo), 1 `nondeterministic_provider` + `writes_workspace` (task)
+- **Determinism**: 1 `deterministic_pure` (todo, exit_plan_mode), 11 `deterministic_repo_state`, 2 `nondeterministic_provider` (task, validation_suite), 4 `nondeterministic_external_io` (bash, webfetch, websearch, ask_user_question)
+- **Mutation**: 13 `read_only`, 3 `writes_workspace` (bash, search_replace, write_file), 1 `writes_temp_only` (todo), 1 `nondeterministic_provider` + `writes_workspace` (task), 1 `nondeterministic_external_io` + `read_only` (validation_suite)
 
 ## Inventory Table
 
@@ -44,6 +48,7 @@
 | `skill` | Load a skill | deterministic_repo_state | read_only | No | No | Sampled file listing | P2 | Add SHA256 of loaded content to evidence |
 | `task` | Delegate to subagent | nondeterministic_provider | writes_workspace | Yes (provider) | Yes (task_session_link) | Child artifact rollup still missing | P1 | Aggregate child artifact manifest hashes into linkage evidence |
 | `todo` | Manage todo list | deterministic_pure | writes_temp_only | No | No | Ephemeral in-memory state | P3 | Add state SHA256 to evidence |
+| `validation_suite` | Run allowlisted validation commands | nondeterministic_external_io | read_only | Yes (subprocess) | Yes (validation_suite_summary, validation_step_result) | 6 steps: ruff_check, ruff_format_check, pyright, schema_validation, storage_audit, desktop_cockpit_dry_run. Path-scoped allowlist, no mutation by default, deterministic sha256, content-light hashes+previews. Desktop Intent API: run_validation_suite | P0 | ✅ Implemented. First P0 bash replacement built-in. |
 | `web_fetch` | Fetch URL content | nondeterministic_external_io | read_only | Yes (network) | No | HTML→MD conversion is lossy | P2 | Add content SHA256 + timestamp to evidence |
 | `web_search` | Search web via Mistral | nondeterministic_external_io | read_only | Yes (provider) | No | Provider may not use web_search | P2 | Add query SHA256 + source count to evidence |
 | `write_file` | Create/overwrite file | deterministic_repo_state | writes_workspace | No | No | No preview/diff before overwrite | P0 | Add before/after SHA256 + snapshot ref to evidence |

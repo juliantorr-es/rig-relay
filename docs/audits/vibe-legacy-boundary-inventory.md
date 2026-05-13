@@ -65,12 +65,16 @@ target in the Relay-native architecture.
 
 | Field | Value |
 |---|---|
-| **Current responsibility** | Coordination store, models, path leases, task claims, conflict detection, state projections |
+| **Current responsibility** | Coordination store, models, path leases, task claims, conflict detection, state projections, tool execution helpers |
 | **Product-critical?** | Yes — multi-session governance |
-| **Relay-native target** | `rig_relay.coordination.store`, `rig_relay.coordination.leases` |
-| **Migration status** | `legacy` |
-| **Risk** | `CoordinationStore` is used by checkpoint tool and guard. Migration requires stable interface |
-| **Recommended slice** | Phase 2. Start with `current_state` + queue planner (lowest-risk seams) |
+| **Relay-native target** | `rig_relay.coordination.store`, `rig_relay.coordination.models` |
+| **Migration status** | `migrated` for models/store — `vibe.core.coordination` is now an adapter; see [Coordination Migration Inventory](coordination-migration-inventory.md) |
+| **Risk** | `CoordinationStore` is used by checkpoint tool and guard. Tool-layer migration still waits on the load-bearing store/model seam |
+| **Recommended slice** | Next: continue tool-layer migration in `rig_relay.coordination.tool` while leaving the registry adapter in place |
+
+The coordination seam is the next planned governance boundary because it is the
+shared substrate for claims, reservations, artifacts, conflicts, and current-state
+readiness. The refinement pipeline independently marked coordination as P0.
 
 ### 6. `vibe/core/guard/`
 
@@ -79,9 +83,9 @@ target in the Relay-native architecture.
 | **Current responsibility** | Dirty file guard: capture, snapshot, report, touch tracking |
 | **Product-critical?** | Yes — core governance primitive |
 | **Relay-native target** | `rig_relay.governance.guard` |
-| **Migration status** | `legacy` |
+| **Migration status** | `migrated` (guard module is now a compatibility adapter re-exporting from rig_relay.governance.dirty_guard) |
 | **Risk** | Tightly coupled to checkpoint tool. Migration requires coordination lease stability |
-| **Recommended slice** | Phase 2 alongside checkpoint tool migration |
+| **Recommended slice** | Phase 2. Dirty-file guard seam is migrated. Next: coordination store migration |
 
 ### 7. `vibe/core/auth/`
 
@@ -90,9 +94,9 @@ target in the Relay-native architecture.
 | **Current responsibility** | Crypto (encrypt/decrypt), GitHub auth provider, authorization receipts |
 | **Product-critical?** | Yes — authorization gates |
 | **Relay-native target** | `rig_relay.governance.auth` |
-| **Migration status** | `adapting` (receipt.py already a Relay-native seam) |
+| **Migration status** | `migrated` (receipt.py is now a compatibility adapter re-exporting from rig_relay.governance.auth_receipts) |
 | **Risk** | GitHub auth is Vibe-specific (keyring). Crypto module has no Relay equivalent yet |
-| **Recommended slice** | Phase 2. Receipt module is already Relay-native. Migrate crypto/auth adapters |
+| **Recommended slice** | Phase 2. Auth receipt seam is migrated. Migrate crypto/auth adapters next |
 
 ### 8. `vibe/cli/`
 
@@ -156,10 +160,10 @@ target in the Relay-native architecture.
 | P0 | `vibe/core/agent_loop.py` | `legacy` | `rig_relay.runtime.agent_loop` | Phase 4 |
 | P0 | `vibe/core/llm/` | `legacy` | `rig_relay.runtime.providers` | Phase 4 |
 | P0 | `vibe/core/tools/builtins/` | `legacy` | `rig_relay.runtime.tools` | Phase 2 |
-| P0 | `vibe/core/coordination/` | `legacy` | `rig_relay.coordination.*` | Phase 2 |
-| P0 | `vibe/core/guard/` | `legacy` | `rig_relay.governance.guard` | Phase 2 |
+| P0 | `vibe/core/coordination/` | `migrated` | `rig_relay.coordination.models`, `rig_relay.coordination.store` | Phase 2 |
+| P0 | `vibe/core/guard/` | `migrated` | `rig_relay.governance.dirty_guard` | Phase 2 |
 | P0 | `vibe/core/telemetry/` | `legacy` | `rig_relay.governance.telemetry` | Phase 2 |
-| P0 | `vibe/core/auth/` | `adapting` | `rig_relay.governance.auth` | Phase 2 |
+| P0 | `vibe/core/auth/` | `migrated` | `rig_relay.governance.auth` | Phase 2 |
 | P0 | `vibe/cli/` | `legacy` | `rig_relay.cli.*` | Phase 3 |
 | P1 | `scripts/` | `adapting` | `rig_relay.*` | Phase 2 |
 | P1 | `frontend/desktop/` | `legacy` | `rig_relay.desktop.frontend` | Phase 2 |

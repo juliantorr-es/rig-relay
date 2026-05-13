@@ -7,6 +7,7 @@ Historical/reference stream for Rig Relay conversation summaries. These document
 ```
 YYYY-MM-DD--project--phase-range--topic--kind.md
 ```
+- [2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md](2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md) — Reconciliation of the validation suite and implementation of Phase 1 receipt-gated intents.
 
 Fields (separated by double hyphens `--`):
 

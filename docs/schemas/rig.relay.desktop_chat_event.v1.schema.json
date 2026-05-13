@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Relay Desktop Chat Event",
+  "description": "Content-light event emitted by the desktop chat shell.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "created_at",
+    "event_name"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "event_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "event_name": {
+      "type": "string",
+      "enum": [
+        "chat.message.created",
+        "chat.message.refused",
+        "chat.message.updated",
+        "chat.view.cleared",
+        "chat.response.cancelled",
+        "chat.backend.stubbed"
+      ]
+    },
+    "message_id": { "type": "string" },
+    "client_message_id": { "type": ["string", "null"] },
+    "role": { "type": "string" },
+    "status": { "type": ["string", "null"] },
+    "content_sha256": { "type": "string" },
+    "content_preview": { "type": "string", "maxLength": 120 },
+    "warning_codes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

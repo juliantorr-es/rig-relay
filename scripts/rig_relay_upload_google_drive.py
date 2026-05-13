@@ -42,7 +42,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-from vibe.core.auth.receipt import validate_receipt
+from rig_relay.governance.auth_receipts import validate_receipt
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_RECEIPT_DIR = REPO_ROOT / ".build" / "rig-relay" / "drive-uploads"

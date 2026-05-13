@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.desktop_intent_result.v1.schema.json",
+  "title": "Desktop Intent Result v1",
+  "description": "Content-light result from executing a desktop intent. Never includes raw prompts, model outputs, source code, stdout/stderr bodies, diffs, secrets, or raw private paths.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "intent_id",
+    "created_at",
+    "intent_name",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.desktop_intent_result.v1"
+    },
+    "intent_id": {
+      "type": "string",
+      "description": "Matches the intent_id from the request."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "intent_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["accepted", "completed", "refused", "failed"]
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": true
+    },
+    "result_kind": {
+      "type": "string",
+      "description": "Kind of result data: summary, projection, error, etc."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Human-readable one-line result summary."
+    },
+    "output_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "References to generated output files (paths relative to repo root)."
+    },
+    "projection_refresh_recommended": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if the projection should be refreshed after this intent."
+    },
+    "authorization_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this intent requires a receipt-gated future authorization step."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "error_code": {
+      "type": "string",
+      "description": "Machine-readable error code when status is refused or failed."
+    }
+  },
+  "additionalProperties": false
+}

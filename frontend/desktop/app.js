@@ -1,211 +1,416 @@
-// Rig Relay Desktop Cockpit — Read-Only Frontend
-// Receives content-light projection from WebSocket stream or pywebview JS bridge.
-// No mutation authority.
-
-// Connection state
+// Rig Relay Cockpit Frontend Logic
 let wsClient = null;
 let wsConnected = false;
 let wsAuthFailed = false;
 
-function renderProjection(projection) {
-  // Header info
-  const versionEl = document.getElementById('version-badge');
-  versionEl.textContent = 'v' + projection.app_version;
+let chatState = {
+  messages: [],
+  backend_wired: false,
+  pending_response: false
+};
 
-  const avail = projection.source_status;
-  const availableCount = Object.values(avail).filter(Boolean).length;
-  const totalCount = Object.keys(avail).length;
-  const statusEl = document.getElementById('source-status');
-  statusEl.textContent = availableCount + '/' + totalCount + ' sources';
-  statusEl.className = 'source-status ' + (availableCount === totalCount ? 'ok' : 'warning');
+// --- Projection Rendering ---
 
-  // Connection indicator
-  const connEl = document.getElementById('connection-status');
-  if (wsConnected) {
-    connEl.textContent = 'WS';
-    connEl.className = 'source-status ok';
-    connEl.title = 'Connected via WebSocket projection stream';
-  } else if (window.pywebview && window.pywebview.api) {
-    connEl.textContent = 'Bridge';
-    connEl.className = 'source-status ok';
-    connEl.title = 'Connected via pywebview JS bridge';
-  } else if (wsAuthFailed) {
-    connEl.textContent = 'Auth Failed';
-    connEl.className = 'source-status warning';
-    connEl.title = 'WebSocket authentication failed; check server token';
-  } else {
-    connEl.textContent = 'Offline';
-    connEl.className = 'source-status warning';
-    connEl.title = 'No active connection';
-  }
+function renderProjection(data) {
+  if (!data) return;
 
-  // Warning banner
-  const warnBanner = document.getElementById('warning-banner');
-  if (projection.warnings && projection.warnings.length > 0) {
-    warnBanner.style.display = 'block';
-    warnBanner.innerHTML = '<strong>Warnings:</strong><ul>' +
-      projection.warnings.map(w => '<li>' + escapeHtml(w) + '</li>').join('') + '</ul>';
-  } else {
-    warnBanner.style.display = 'none';
-  }
+  // Version
+  document.getElementById('version-badge').textContent = (data.alpha_label || 'Alpha') + ' ' + (data.app_version || '');
 
-  // Render each category
-  renderCurrentState(projection.current_state);
-  renderQueue(projection.queue);
-  renderDataset(projection.dataset);
-  renderSemanticSnippets(projection.semantic_snippets);
-  renderTelemetryBundle(projection.telemetry_bundle);
-  renderUpdate(projection.update);
+  // Cards
+  renderCurrentState(data.current_state);
+  renderQueue(data.queue);
+  renderDataset(data.dataset);
+  renderSemanticSnippets(data.semantic_snippets);
+  renderTelemetryBundle(data.telemetry_bundle);
+  renderUpdate(data.update);
+
+  // Connection status (managed by WS client or loadFromBridge)
 }
 
 function renderCurrentState(data) {
   const el = document.getElementById('content-current_state');
+  const status = document.getElementById('status-current_state');
   if (!data || !data.available) {
-    el.innerHTML = '<span class="missing">Not generated yet.</span>';
+    el.innerHTML = '<span class="missing">Not generated yet. Run: coord status</span>';
+    status.className = 'source-status warning';
+    status.textContent = 'Wait';
     return;
   }
+  status.className = 'source-status ok';
+  status.textContent = 'OK';
   el.innerHTML = '<table class="kv">' +
-    row('Active Children', data.active_children) +
-    row('Max Children', data.max_children) +
-    row('Available Slots', data.available_child_slots) +
-    row('Active Writers', data.active_writers) +
-    row('Active Readers', data.active_readers) +
-    row('Conflicts', data.conflicts, data.conflicts > 0 ? 'error' : '') +
-    row('Stale Leases', data.stale_leases, data.stale_leases > 0 ? 'warning' : '') +
-    row('Checkpoint Commits', data.checkpoint_commits) +
-    row('Checkpoint Refusals', data.checkpoint_refusals, data.checkpoint_refusals > 0 ? 'warning' : '') +
-    '</table>';
+    row('Session ID', (data.session_id || '').substring(0, 16) + '...') +
+    row('Provider', data.provider_id) +
+    row('Model', data.model_id) +
+    row('Role', data.agent_role) +
+    row('Files Changed', data.files_changed_count) +
+    row('Tool Calls', data.tool_calls_count) +
+    '</table><div class="small-note">Updated: ' + (data.updated_at || 'unknown') + '</div>';
 }
 
 function renderQueue(data) {
   const el = document.getElementById('content-queue');
+  const status = document.getElementById('status-queue');
   if (!data || !data.available) {
-    el.innerHTML = '<span class="missing">Not generated yet.</span>';
+    el.innerHTML = '<span class="missing">Not generated yet. Run: queue plan</span>';
+    status.className = 'source-status warning';
+    status.textContent = 'Wait';
     return;
   }
+  status.className = 'source-status ok';
+  status.textContent = 'OK';
   el.innerHTML = '<table class="kv">' +
-    row('Ready Items', data.ready_items) +
-    row('Blocked Items', data.blocked_items, data.blocked_items > 0 ? 'warning' : '') +
-    row('Waiting Items', data.waiting_items) +
-    row('Total Items', data.total_items) +
-    '</table>';
+    row('Plan ID', (data.plan_id || '').substring(0, 16) + '...') +
+    row('Ready', data.ready_count, data.ready_count > 0 ? 'ok' : '') +
+    row('Blocked', data.blocked_count, data.blocked_count > 0 ? 'warning' : '') +
+    row('Waiting', data.waiting_count) +
+    row('Completed', data.completed_count) +
+    '</table><div class="small-note">Planned: ' + (data.planned_at || 'unknown') + '</div>';
 }
 
 function renderDataset(data) {
   const el = document.getElementById('content-dataset');
+  const status = document.getElementById('status-dataset');
   if (!data || !data.available) {
-    el.innerHTML = '<span class="missing">Not generated yet.</span>';
+    el.innerHTML = '<span class="missing">Not exported yet.</span>';
+    status.className = 'source-status warning';
+    status.textContent = 'Wait';
     return;
   }
+  status.className = 'source-status ok';
+  status.textContent = 'OK';
   el.innerHTML = '<table class="kv">' +
-    row('Sessions Observed', data.sessions_observed) +
-    row('Coordination Events', data.coordination_events_total) +
-    row('Tool Calls', data.tool_calls_total) +
-    row('Coordination Rows', data.coordination_rows) +
-    row('Tool Failure Rows', data.tool_failure_rows) +
-    row('Provider Perf Rows', data.provider_perf_rows) +
-    row('Findings Rows', data.findings_rows) +
-    row('Artifact Reuse Rows', data.artifact_reuse_rows) +
-    row('Checkpoint Rows', data.checkpoint_rows) +
-    row('Skipped Events', data.skipped_event_count, data.skipped_event_count > 0 ? 'warning' : '') +
-    row('Strict Mode', data.strict ? 'Yes' : 'No') +
-    row('Datasets Generated', data.datasets_generated ? 'Yes' : 'No') +
+    row('Rows', data.row_count) +
+    row('Sources', data.source_count) +
+    row('Size', data.size_bytes ? (data.size_bytes / 1024).toFixed(1) + ' KiB' : '0') +
     '</table><div class="small-note">Exported: ' + (data.exported_at || 'unknown') + '</div>';
 }
 
 function renderSemanticSnippets(data) {
   const el = document.getElementById('content-semantic_snippets');
+  const status = document.getElementById('status-semantic_snippets');
   if (!data || !data.available) {
     el.innerHTML = '<span class="missing">Not generated yet.</span>';
+    status.className = 'source-status warning';
+    status.textContent = 'Wait';
     return;
   }
+  status.className = 'source-status ok';
+  status.textContent = 'OK';
   el.innerHTML = '<table class="kv">' +
-    row('Snippet Count', data.snippet_count) +
+    row('Snippets', data.snippet_count) +
     row('Skipped', data.skipped_count) +
-    row('Forbidden', data.forbidden_count, data.forbidden_count > 0 ? 'error' : '') +
     row('Strict Mode', data.strict_mode ? 'Yes' : 'No') +
-    row('Remote Sharing Safe', data.remote_sharing_safe ? 'Yes' : 'No') +
     '</table><div class="small-note">Created: ' + (data.created_at || 'unknown') + '</div>';
 }
 
 function renderTelemetryBundle(data) {
   const el = document.getElementById('content-telemetry_bundle');
+  const status = document.getElementById('status-telemetry_bundle');
   if (!data || !data.available) {
     el.innerHTML = '<span class="missing">Not generated yet.</span>';
+    status.className = 'source-status warning';
+    status.textContent = 'Wait';
     return;
   }
+  status.className = 'source-status ok';
+  status.textContent = 'OK';
   el.innerHTML = '<table class="kv">' +
-    row('Bundle ID', data.bundle_id) +
-    row('Share Level', data.share_level) +
+    row('Bundle ID', (data.bundle_id || '').substring(0, 16) + '...') +
     row('Status', data.status) +
-    row('SHA256', (data.bundle_sha256 || '').substring(0, 16) + '...') +
+    row('Share', data.share_level) +
     '</table><div class="small-note">Created: ' + (data.created_at || 'unknown') + '</div>';
 }
 
 function renderUpdate(data) {
   const el = document.getElementById('content-update');
+  const status = document.getElementById('status-update');
   if (!data || !data.available) {
     el.innerHTML = '<span class="missing">Not available.</span>';
+    status.className = 'source-status warning';
+    status.textContent = 'Wait';
     return;
   }
+  status.className = 'source-status ok';
+  status.textContent = 'OK';
   const hasUpdate = data.update_available;
   el.innerHTML = '<table class="kv">' +
     row('Current', data.current_version) +
     row('Latest', data.latest_version) +
-    row('Update Available', hasUpdate ? '<span class="ok">Yes</span>' : 'No') +
-    row('State', data.update_state) +
-    row('Restart Required', data.restart_required ? '<span class="warning">Yes</span>' : 'No') +
-    row('Restart Safe', data.restart_safe ? 'Yes' : 'No') +
-    row('Blocked By Sessions', data.blocked_by_active_sessions, data.blocked_by_active_sessions > 0 ? 'warning' : '') +
+    row('Update', hasUpdate ? '<span class="ok">Yes</span>' : 'No') +
     '</table>';
 }
 
-// Helper: escape HTML entities
+// --- Chat Rendering ---
+
+function renderChat(state) {
+  if (!state) return;
+  chatState = state;
+
+  const badge = document.getElementById('chat-status-badge');
+  if (state.backend_wired) {
+    badge.textContent = 'Backend Online';
+    badge.className = 'source-status ok';
+  } else {
+    badge.textContent = 'Backend Offline';
+    badge.className = 'source-status warning';
+  }
+
+  const transcript = document.getElementById('chat-transcript');
+  transcript.innerHTML = '';
+  
+  if (state.messages.length === 0) {
+    transcript.innerHTML = '<div class="message system">No messages yet.</div>';
+  }
+
+  state.messages.forEach(msg => {
+    const msgEl = document.createElement('div');
+    msgEl.className = 'message ' + msg.role.toLowerCase();
+    if (msg.status) msgEl.classList.add(msg.status);
+    
+    // SAFE RENDERING: use textContent
+    msgEl.textContent = msg.content;
+    
+    transcript.appendChild(msgEl);
+  });
+  
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const sendBtn = document.getElementById('send-btn');
+  sendBtn.disabled = true;
+  input.disabled = true;
+
+  try {
+    if (window.pywebview && window.pywebview.api) {
+      const clientMessageId = Date.now().toString();
+      const newState = await window.pywebview.api.send_chat_message(text, clientMessageId);
+      if (newState.error) {
+        console.warn('Backend error:', newState.error);
+        // Show as a system message instead of alert
+        const transcript = document.getElementById('chat-transcript');
+        const errEl = document.createElement('div');
+        errEl.className = 'message system error';
+        errEl.textContent = 'Error: ' + newState.error;
+        transcript.appendChild(errEl);
+        transcript.scrollTop = transcript.scrollHeight;
+      } else {
+        renderChat(newState);
+        input.value = '';
+        updateCharCount();
+      }
+    } else {
+      console.warn('Bridge not available');
+    }
+  } catch (e) {
+    console.error('Failed to send message:', e);
+  } finally {
+    sendBtn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+async function clearChat() {
+  if (window.pywebview && window.pywebview.api) {
+    const newState = await window.pywebview.api.clear_chat_view();
+    renderChat(newState);
+  }
+}
+
+function updateCharCount() {
+  const input = document.getElementById('chat-input');
+  const count = input.value.length;
+  const countEl = document.getElementById('char-count');
+  countEl.textContent = count + '/4000';
+  
+  const sendBtn = document.getElementById('send-btn');
+  sendBtn.disabled = count === 0 || count > 4000;
+}
+
+// --- Helpers ---
+
 function escapeHtml(str) {
   if (typeof str !== 'string') return String(str);
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Helper: key-value table row
 function row(key, value, cls) {
   const valStr = value === null || value === undefined ? '—' : String(value);
   const clsAttr = cls ? ' class="' + cls + '"' : '';
   return '<tr><td class="k">' + escapeHtml(key) + '</td><td' + clsAttr + '>' + valStr + '</td></tr>';
 }
 
-// Refresh from bridge or WS
+// --- Main Loop ---
+
+async function runIntent(intentName) {
+  const resultEl = document.getElementById('intent-result');
+  resultEl.textContent = 'Running ' + intentName + '...';
+  resultEl.className = 'intent-result pending';
+
+  const intentId = Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 10);
+  const request = {
+    type: 'desktop_intent',
+    schema_version: 'rig.relay.desktop_intent_request.v1',
+    intent_id: intentId,
+    created_at: new Date().toISOString(),
+    intent_name: intentName,
+    parameters: {},
+    dry_run: true,
+  };
+
+  try {
+    // Try WebSocket first
+    if (wsConnected && wsClient) {
+      wsClient.sendMessage(request);
+      // Result comes back as a separate message, set up a one-time handler
+      const origOnMessage = wsClient.onMessage;
+      wsClient.onMessage = (msg) => {
+        if (msg.type === 'desktop_intent_result' && msg.data && msg.data.intent_name === intentName) {
+          displayIntentResult(msg.data);
+          wsClient.onMessage = origOnMessage;
+        } else if (origOnMessage) {
+          origOnMessage(msg);
+        }
+      };
+      // Fallback: if no response in 10s, show pending
+      setTimeout(() => {
+        if (resultEl.textContent === 'Running ' + intentName + '...') {
+          resultEl.textContent = 'Intent sent via WebSocket, waiting for response...';
+        }
+      }, 10000);
+    } else if (window.pywebview && window.pywebview.api) {
+      const result = await window.pywebview.api.run_desktop_intent(request);
+      displayIntentResult(result);
+    } else {
+      resultEl.textContent = 'No WebSocket or pywebview bridge available.';
+      resultEl.className = 'intent-result error';
+    }
+  } catch (e) {
+    resultEl.textContent = 'Error: ' + e.message;
+    resultEl.className = 'intent-result error';
+  }
+}
+
+function displayIntentResult(result) {
+  const resultEl = document.getElementById('intent-result');
+  if (!result) {
+    resultEl.textContent = 'No result returned.';
+    resultEl.className = 'intent-result error';
+    return;
+  }
+  const status = result.status || 'unknown';
+  const summary = result.summary || 'No summary.';
+  const warnings = result.warnings || [];
+  let html = '<strong>' + status.toUpperCase() + '</strong>: ' + escapeHtml(summary);
+  if (warnings.length > 0) {
+    html += '<div class="small-note">Warnings: ' + escapeHtml(warnings.join('; ')) + '</div>';
+  }
+  if (result.projection_refresh_recommended) {
+    html += '<div class="small-note">Projection refresh recommended.</div>';
+  }
+  resultEl.innerHTML = html;
+  resultEl.className = 'intent-result ' + (status === 'completed' ? 'ok' : status === 'refused' ? 'warning' : 'error');
+}
+
+async function mintDevReceipt() {
+  const resultEl = document.getElementById('receipt-result');
+  const action = document.getElementById('receipt-action').value;
+  const ttl = Number(document.getElementById('receipt-ttl').value || 300);
+  resultEl.textContent = 'Minting receipt...';
+  resultEl.className = 'intent-result pending';
+  try {
+    if (window.pywebview && window.pywebview.api) {
+      const result = await window.pywebview.api.mint_authorization_receipt_dev(action, ttl, '');
+      displayReceiptResult(result);
+    } else {
+      resultEl.textContent = 'Bridge unavailable.';
+      resultEl.className = 'intent-result error';
+    }
+  } catch (e) {
+    resultEl.textContent = 'Error: ' + e.message;
+    resultEl.className = 'intent-result error';
+  }
+}
+
+async function inspectDevReceipt() {
+  const resultEl = document.getElementById('receipt-result');
+  const raw = document.getElementById('receipt-json').value.trim();
+  resultEl.textContent = 'Inspecting receipt...';
+  resultEl.className = 'intent-result pending';
+  try {
+    const receipt = raw ? JSON.parse(raw) : {};
+    if (window.pywebview && window.pywebview.api) {
+      const result = await window.pywebview.api.inspect_authorization_receipt(receipt);
+      displayReceiptResult(result);
+    } else {
+      resultEl.textContent = 'Bridge unavailable.';
+      resultEl.className = 'intent-result error';
+    }
+  } catch (e) {
+    resultEl.textContent = 'Error: ' + e.message;
+    resultEl.className = 'intent-result error';
+  }
+}
+
+function displayReceiptResult(result) {
+  const resultEl = document.getElementById('receipt-result');
+  if (!result) {
+    resultEl.textContent = 'No result returned.';
+    resultEl.className = 'intent-result error';
+    return;
+  }
+  const summary = [
+    '<strong>' + escapeHtml(result.status || 'unknown').toUpperCase() + '</strong>',
+    escapeHtml(result.action || 'unknown'),
+    escapeHtml(result.receipt_sha256 || ''),
+    escapeHtml(result.expires_at || ''),
+  ].join('<br>');
+  let html = summary;
+  if (result.receipt_ref) {
+    html += '<div class="small-note">Receipt ref: ' + escapeHtml(result.receipt_ref) + '</div>';
+  }
+  if (Array.isArray(result.warnings) && result.warnings.length > 0) {
+    html += '<div class="small-note">Warnings: ' + escapeHtml(result.warnings.join('; ')) + '</div>';
+  }
+  resultEl.innerHTML = html;
+  resultEl.className = 'intent-result ' + (result.valid ? 'ok' : 'warning');
+}
+
 async function refreshAll() {
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true;
   btn.textContent = 'Refreshing...';
 
   try {
+    // Refresh projection
     if (wsConnected && wsClient) {
       wsClient.requestProjection();
+      wsClient.sendMessage({"type": "get_chat_state"});
     } else if (window.pywebview && window.pywebview.api) {
       const projection = await window.pywebview.api.get_projection();
       renderProjection(projection);
-    } else {
-      document.querySelectorAll('.card-content').forEach(el => {
-        el.innerHTML = '<span class="missing">No active connection. Open via cockpit or start WebSocket server.</span>';
-      });
+      const chat = await window.pywebview.api.get_chat_state();
+      renderChat(chat);
     }
   } catch (e) {
-    document.querySelectorAll('.card-content').forEach(el => {
-      el.innerHTML = '<span class="error">Error: ' + escapeHtml(e.message) + '</span>';
-    });
+    console.error('Refresh failed:', e);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Refresh';
   }
 }
 
-// Set up WebSocket connection with token from pywebview bridge
 async function initWebSocket() {
   let wsToken = null;
   let wsPort = 9876;
 
-  // Try to get token and port from pywebview bridge
   if (window.pywebview && window.pywebview.api) {
     try {
       if (typeof window.pywebview.api.get_ws_config === 'function') {
@@ -218,12 +423,6 @@ async function initWebSocket() {
     }
   }
 
-  // Fallback to window config (injected in index.html)
-  if (!wsToken && window.__RIG_RELAY_CONFIG) {
-    wsToken = window.__RIG_RELAY_CONFIG.wsToken || null;
-    wsPort = window.__RIG_RELAY_CONFIG.wsPort || 9876;
-  }
-
   const wsUrl = 'ws://127.0.0.1:' + wsPort;
 
   wsClient = new ProjectionWebSocketClient({
@@ -231,103 +430,71 @@ async function initWebSocket() {
     token: wsToken,
     onProjection: (data) => {
       wsConnected = true;
-      wsAuthFailed = false;
       renderProjection(data);
+    },
+    onMessage: (msg) => {
+      if (msg.type === 'chat_state') {
+        renderChat(msg.data);
+      } else if (msg.type === 'chat_state_updated') {
+        wsClient.sendMessage({"type": "get_chat_state"});
+      }
     },
     onStatusChange: (status, detail, attempt) => {
       const connEl = document.getElementById('connection-status');
-      switch (status) {
-        case 'authenticating':
-          connEl.textContent = 'WS Auth...';
-          connEl.className = 'source-status warning';
-          connEl.title = 'Authenticating with WebSocket server';
-          break;
-        case 'connected':
-          wsConnected = true;
-          wsAuthFailed = false;
-          connEl.textContent = 'WS';
-          connEl.className = 'source-status ok';
-          connEl.title = 'Connected via WebSocket projection stream';
-          break;
-        case 'auth_failed':
-          wsConnected = false;
-          wsAuthFailed = true;
-          connEl.textContent = 'Auth Failed';
-          connEl.className = 'source-status warning';
-          connEl.title = 'WebSocket auth failed: ' + (detail || 'unknown');
-          // Fall back to pywebview bridge if available
-          if (window.pywebview && window.pywebview.api) {
-            loadFromBridge();
-          }
-          break;
-        case 'disconnected':
-          wsConnected = false;
-          connEl.textContent = 'WS Disconnected';
-          connEl.className = 'source-status warning';
-          connEl.title = 'WebSocket disconnected';
-          break;
-        case 'reconnecting':
-          connEl.textContent = 'WS Reconnect (' + attempt + ')';
-          connEl.className = 'source-status warning';
-          connEl.title = 'Reconnecting in ' + (detail || '?') + 'ms';
-          break;
-        case 'offline':
-          wsConnected = false;
-          connEl.textContent = 'WS Offline';
-          connEl.className = 'source-status warning';
-          connEl.title = 'WebSocket offline: ' + (detail || 'no token');
-          // Fall back to pywebview bridge
-          if (window.pywebview && window.pywebview.api) {
-            loadFromBridge();
-          }
-          break;
-        case 'closed':
-          wsConnected = false;
-          break;
+      connEl.className = 'source-status ' + (status === 'connected' ? 'ok' : 'warning');
+      connEl.textContent = status === 'connected' ? 'WS' : 'WS ' + status;
+      
+      if (status === 'connected') {
+        wsConnected = true;
+        // Request initial chat state too
+        wsClient.sendMessage({"type": "get_chat_state"});
+      } else if (status === 'offline' || status === 'auth_failed') {
+        wsConnected = false;
+        loadFromBridge();
       }
-    },
-    onError: (message) => {
-      console.warn('WebSocket:', message);
-    },
-    onAuthFailed: (message) => {
-      console.warn('WebSocket auth failed:', message);
     }
   });
 }
 
-// Load initial data from pywebview bridge
 async function loadFromBridge() {
   if (!window.pywebview || !window.pywebview.api) return;
-
   const connEl = document.getElementById('connection-status');
   connEl.textContent = 'Bridge';
   connEl.className = 'source-status ok';
-  connEl.title = 'Fell back to pywebview JS bridge';
 
   try {
-    if (typeof window.pywebview.api.get_projection === 'function') {
-      const projection = await window.pywebview.api.get_projection();
-      renderProjection(projection);
-    }
+    const projection = await window.pywebview.api.get_projection();
+    renderProjection(projection);
+    const chat = await window.pywebview.api.get_chat_state();
+    renderChat(chat);
   } catch (e) {
     console.warn('Bridge fallback failed:', e);
   }
 }
 
-// Try WebSocket on page ready; fall back to pywebview JS bridge
 document.addEventListener('DOMContentLoaded', () => {
-  // Try WebSocket first
+  // Chat UI listeners
+  document.getElementById('chat-input').addEventListener('input', updateCharCount);
+  document.getElementById('send-btn').addEventListener('click', sendMessage);
+  document.getElementById('clear-chat-btn').addEventListener('click', clearChat);
+  document.getElementById('chat-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Init
   if (typeof ProjectionWebSocketClient !== 'undefined') {
     initWebSocket();
+  } else {
+    loadFromBridge();
   }
-
-  // If no pywebview and no WS after 3s, show offline state
-  setTimeout(() => {
-    if (!wsConnected && !wsAuthFailed && !(window.pywebview && window.pywebview.api)) {
-      const connEl = document.getElementById('connection-status');
-      connEl.textContent = 'Offline';
-      connEl.className = 'source-status warning';
-      connEl.title = 'No active connection';
+  
+  // Periodic refresh for projection if no WS
+  setInterval(() => {
+    if (!wsConnected && window.pywebview && window.pywebview.api) {
+      loadFromBridge();
     }
-  }, 3000);
+  }, 10000);
 });

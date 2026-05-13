@@ -13,16 +13,28 @@ import json
 from pathlib import Path
 import secrets
 import threading
+from typing import Any
 
+from rig_relay.desktop.chat_agent_adapter import ChatAgentAdapter
+from rig_relay.desktop.chat_state import ChatMessage, ChatRole
+from rig_relay.desktop.chat_store import ChatStore
 from rig_relay.desktop.projection import build_projection
 from rig_relay.desktop.websocket_server import (
     DEFAULT_PORT as DEFAULT_WS_PORT,
     ProjectionWebSocketServer,
 )
+from vibe import __version__
+from vibe.core.agent_loop import AgentLoop
+from vibe.core.config import VibeConfig
+from vibe.core.hooks.config import load_hooks_from_fs
+from vibe.core.logger import logger
+from vibe.core.telemetry.build_metadata import build_entrypoint_metadata
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
 FRONTEND_DIR = REPO_ROOT / "frontend" / "desktop"
+
+MAX_MESSAGE_LENGTH = 4000
 
 
 def _print_summary(projection: dict) -> None:
@@ -59,13 +71,32 @@ def _dry_run(ws_port: int = DEFAULT_WS_PORT) -> None:
     print(json.dumps(projection, indent=2))
 
 
-def _run_ws_server(build_root: Path, host: str, port: int, token: str) -> None:
+def _run_ws_server(
+    build_root: Path,
+    host: str,
+    port: int,
+    token: str,
+    chat_state_provider: Any | None = None,
+    loop_holder: list[asyncio.AbstractEventLoop] | None = None,
+    server_holder: list[ProjectionWebSocketServer] | None = None,
+) -> None:
     """Run the WebSocket projection stream in a background thread."""
 
     async def _start() -> None:
+        loop = asyncio.get_running_loop()
+        if loop_holder is not None:
+            loop_holder[0] = loop
+
         server = ProjectionWebSocketServer(
-            build_root=build_root, host=host, port=port, token=token
+            build_root=build_root,
+            host=host,
+            port=port,
+            token=token,
+            chat_state_provider=chat_state_provider,
         )
+        if server_holder is not None:
+            server_holder[0] = server
+
         await server.start()
         print(f"WebSocket projection stream on ws://{host}:{port}")
         try:
@@ -81,6 +112,190 @@ def _run_ws_server(build_root: Path, host: str, port: int, token: str) -> None:
 def _generate_ws_token() -> str:
     """Generate a session token for the WebSocket projection stream."""
     return secrets.token_hex(32)
+
+
+class CockpitAPI:
+    """Read-only API exposed to JS bridge (fallback transport)."""
+
+    def __init__(
+        self,
+        ws_token: str | None = None,
+        ws_port: int | None = None,
+        loop_holder: list[asyncio.AbstractEventLoop] | None = None,
+        server_holder: list[ProjectionWebSocketServer] | None = None,
+    ) -> None:
+        self._store = ChatStore(chat_root=BUILD_ROOT / "desktop" / "chat")
+        self._chat_state = self._store.load_state()
+        self._ws_token = ws_token
+        self._ws_port = ws_port
+        self._loop_holder = loop_holder
+        self._server_holder = server_holder
+
+        # Initialize AgentLoop
+        config = VibeConfig.load()
+        hook_config_result = load_hooks_from_fs(config)
+        entrypoint_metadata = build_entrypoint_metadata(
+            agent_entrypoint="desktop",
+            agent_version=__version__,
+            client_name="rig_relay_desktop",
+            client_version=__version__,
+        )
+        self._agent_loop = AgentLoop(
+            config,
+            agent_name=config.default_agent,
+            enable_streaming=True,
+            entrypoint_metadata=entrypoint_metadata,
+            defer_heavy_init=True,
+            hook_config_result=hook_config_result,
+        )
+        self._adapter = ChatAgentAdapter(
+            agent_loop=self._agent_loop,
+            store=self._store,
+            on_update=self._notify_update,
+        )
+
+        # Log startup event
+        self._store.append_event(
+            "chat.backend.ready",
+            note="CockpitAPI initialized with AgentLoop",
+            backend_wired=True,
+        )
+
+        # Update state to reflect backend status
+        self._chat_state.backend_wired = True
+        self._store.save_state(self._chat_state)
+
+    def _notify_update(self) -> None:
+        """Trigger a WebSocket broadcast of the chat state update."""
+        lh = self._loop_holder
+        sh = self._server_holder
+        if (
+            lh is not None
+            and lh[0] is not None
+            and sh is not None
+            and sh[0] is not None
+        ):
+            lh[0].call_soon_threadsafe(
+                lambda: asyncio.create_task(sh[0].broadcast_chat_state_updated())
+            )
+
+    def get_projection(self) -> dict:
+        return build_projection(build_root=BUILD_ROOT)
+
+    def refresh_projection(self) -> dict:
+        return build_projection(build_root=BUILD_ROOT)
+
+    def get_available_actions(self) -> list[str]:
+        from rig_relay.desktop.projection import READ_ONLY_ACTIONS
+
+        return list(READ_ONLY_ACTIONS)
+
+    def get_ws_config(self) -> dict:
+        """Return WebSocket config (token, host, port) for frontend.
+
+        Token is never printed in normal logs. Exposed only through
+        the pywebview bridge to the frontend.
+        """
+        return {
+            "token": self._ws_token or "",
+            "host": "127.0.0.1",
+            "port": self._ws_port or DEFAULT_WS_PORT,
+        }
+
+    def get_chat_state(self) -> dict:
+        return self._chat_state.model_dump(mode="json")
+
+    def send_chat_message(
+        self, text: str, client_message_id: str | None = None
+    ) -> dict:
+        if not text.strip():
+            return {"error": "Empty message refused"}
+
+        # Max length enforced
+        if len(text) > MAX_MESSAGE_LENGTH:
+            return {"error": "Message too long"}
+
+        # Refuse if another response is active
+        if self._adapter.is_running:
+            return {"error": "another_response_active"}
+
+        # Idempotency check for client_message_id
+        if client_message_id:
+            for msg in self._chat_state.messages:
+                if msg.metadata.get("client_message_id") == client_message_id:
+                    return self.get_chat_state()
+
+        # Generate a message ID if not provided
+        msg_id = client_message_id or f"msg_{secrets.token_hex(8)}"
+
+        # Immediate feedback: append user message synchronously
+        user_msg = ChatMessage(
+            role=ChatRole.USER,
+            content=text,
+            metadata={"client_message_id": client_message_id}
+            if client_message_id
+            else {"msg_id": msg_id},
+        )
+        self._chat_state.messages.append(user_msg)
+        self._store.append_event("chat.message.created", message=user_msg)
+        self._store.save_state(self._chat_state)
+
+        # Schedule processing on the background loop (thread-safe)
+        lh = self._loop_holder
+        if lh is not None and lh[0] is not None:
+            asyncio.run_coroutine_threadsafe(
+                self._adapter.process_message(text, msg_id), lh[0]
+            )
+        else:
+            # If no loop, we just keep the user message but no assistant will respond
+            logger.warning("No background loop for agent response")
+
+        return self.get_chat_state()
+
+    def clear_chat_view(self) -> dict:
+        self._chat_state.messages = []
+        self._store.save_state(self._chat_state)
+        self._store.append_event("chat.view.cleared")
+        self._notify_update()
+        return self.get_chat_state()
+
+    def cancel_chat_response(self) -> dict:
+        if not self._adapter.is_running:
+            return {"error": "no_active_response"}
+
+        if self._adapter.cancel():
+            self._store.append_event("chat.response.cancelled")
+            self._notify_update()
+            return self.get_chat_state()
+
+        return {"error": "cancel_failed"}
+
+    def run_desktop_intent(self, intent_request: dict) -> dict:
+        """Execute a governed desktop intent (read-only/dry-run only).
+
+        Args:
+            intent_request: Dict matching desktop_intent_request schema.
+
+        Returns:
+            Content-light intent result dict.
+        """
+        from rig_relay.desktop.intents import execute_desktop_intent
+
+        return execute_desktop_intent(
+            request=intent_request, chat_state_provider=self.get_chat_state
+        )
+
+    def mint_authorization_receipt_dev(
+        self, action: str, ttl_seconds: int = 300, reason: str = ""
+    ) -> dict:
+        from rig_relay.desktop.authorization_receipts import mint_dev_receipt
+
+        return mint_dev_receipt(action, ttl_seconds=ttl_seconds, reason=reason)
+
+    def inspect_authorization_receipt(self, authorization_receipt: dict) -> dict:
+        from rig_relay.desktop.authorization_receipts import inspect_receipt
+
+        return inspect_receipt(authorization_receipt)
 
 
 def _open_window(ws_port: int | None) -> None:
@@ -99,46 +314,39 @@ def _open_window(ws_port: int | None) -> None:
         return
 
     ws_token: str | None = None
-    ws_thread: threading.Thread | None = None
     if ws_port is not None:
         ws_token = _generate_ws_token()
+
+    loop_holder: list[asyncio.AbstractEventLoop] = [None]  # type: ignore[list-item]
+    server_holder: list[ProjectionWebSocketServer] = [None]  # type: ignore[list-item]
+
+    api = CockpitAPI(
+        ws_token=ws_token,
+        ws_port=ws_port,
+        loop_holder=loop_holder,
+        server_holder=server_holder,
+    )
+
+    if ws_port is not None:
         ws_thread = threading.Thread(
             target=_run_ws_server,
-            args=(BUILD_ROOT, "127.0.0.1", ws_port, ws_token),
+            args=(
+                BUILD_ROOT,
+                "127.0.0.1",
+                ws_port,
+                ws_token,
+                api.get_chat_state,
+                loop_holder,
+                server_holder,
+            ),
             daemon=True,
         )
         ws_thread.start()
 
-    class CockpitAPI:
-        """Read-only API exposed to JS bridge (fallback transport)."""
-
-        def get_projection(self) -> dict:
-            return build_projection(build_root=BUILD_ROOT)
-
-        def refresh_projection(self) -> dict:
-            return build_projection(build_root=BUILD_ROOT)
-
-        def get_available_actions(self) -> list[str]:
-            from rig_relay.desktop.projection import READ_ONLY_ACTIONS
-
-            return list(READ_ONLY_ACTIONS)
-
-        def get_ws_config(self) -> dict:
-            """Return WebSocket config (token, host, port) for frontend.
-
-            Token is never printed in normal logs. Exposed only through
-            the pywebview bridge to the frontend.
-            """
-            return {
-                "token": ws_token or "",
-                "host": "127.0.0.1",
-                "port": ws_port or DEFAULT_WS_PORT,
-            }
-
     webview.create_window(
         title="Rig Relay Cockpit",
         url=str(index_path),
-        js_api=CockpitAPI(),
+        js_api=api,
         width=1200,
         height=800,
         resizable=True,

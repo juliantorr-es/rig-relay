@@ -238,6 +238,34 @@ Output (all in `--output-dir`):
 - `coordination_conflict_dataset.jsonl`
 - `artifact_reuse_dataset.jsonl`
 - `checkpoint_eval_dataset.jsonl`
+
+### Built-in Tool Refinement Reports
+
+Built-in tool refinement reports convert observed usage data into a ranked implementation backlog. They consume derived datasets only, not raw observability logs, and they stay content-light by using counts, labels, hashes, and schema-safe aggregates.
+
+The refinement loop is:
+
+1. Export or compact derived datasets.
+2. Generate a refinement report from the derived corpus.
+3. Review the ranked backlog for built-ins that should be improved, split, hardened, promoted, or replaced.
+4. Implement the smallest safe slice and re-run the report to verify pressure changed.
+
+Refinement reports are product feedback artifacts, not raw evidence exports.
+
+### Built-in Refinement Packets
+
+Built-in refinement packets convert ranked usage-data findings into bounded implementation missions. They bridge the refinement backlog into the reviewer/orchestrator loop without requiring a human to rewrite the same scope text each time.
+
+Packet generation rules:
+
+1. Start from `builtin_tool_refinement_backlog.jsonl`.
+2. Select the top ranked items by priority and deterministic score.
+3. Emit one mission packet per selected item.
+4. Keep packet content-light and bounded to the targeted tool/refinement slice.
+
+The packet is a planning artifact. It does not carry raw evidence or raw operational data.
+
+The first high-value shell replacement built-in is `validation_suite` (✅ implemented): it is allowlist-based, returns structured evidence with content-light hashes+previews, replaces repeated validation command bundles without arbitrary shell execution, and is wired into the Desktop Intent API as `run_validation_suite`.
 - `export_manifest.json`
 
 Mapping:
@@ -966,6 +994,67 @@ uv run python scripts/rig_relay_cleanup_coordination_leases.py --archive --confi
 - Active leases are never touched.
 - Archive mode moves stale/expired files to `.build/rig-relay/coordination/archived/`.
 - Deletion requires explicit `--confirm` and `--remove`.
+
+### Storage Lifecycle
+
+The `.build/rig-relay/` artifact tree has three storage tiers with explicit retention defaults.
+Storage lifecycle must exist **before** delegate/fleet execution.
+
+See [Storage Retention Policy](storage-retention-policy.md) for the full doctrine.
+
+#### Tiers
+
+| Tier | Contents | Retention |
+|------|----------|-----------|
+| **Hot** | Raw observability, coordination artifacts, leases, desktop snapshots, telemetry bundles | Hours-to-days |
+| **Warm** | Derived JSONL datasets, reports, ChatGPT bundles, cockpit snapshots | Weeks-to-months |
+| **Cold** | Parquet rollups, manifests | Months-to-permanent |
+
+#### Budget Schema: `rig.relay.storage_budget.v1`
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `warn_local_mb` | 1024 | Warning threshold |
+| `max_local_mb` | 2048 | Hard cap — blocks compaction |
+| `refuse_fleet_over_mb` | 4096 | Blocks fleet/delegate execution |
+| `raw_observability_days` | 3 | Retention for raw observability JSONL |
+| `raw_tool_artifacts_days` | 3 | Retention for coordination artifacts |
+| `coordination_events_days` | 14 | Retention for events.jsonl |
+| `stale_leases_hours` | 24 | Age threshold for stale leases |
+| `derived_jsonl_days` | 30 | Retention for derived JSONL (after Parquet exists) |
+| `parquet_rollups_days` | 365 | Retention for Parquet files |
+
+#### Protected Classes (Never Deleted)
+
+- Rollup manifests, export manifests
+- Upload receipts, checkpoint receipts
+- Parent convergence reports
+- Active coordination leases
+
+#### Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/rig_relay_storage_audit.py` | Read-only storage inspection + budget status |
+| `scripts/rig_relay_compact_artifacts.py` | DuckDB JSONL→Parquet compaction (dry-run default) |
+| `scripts/rig_relay_gc_artifacts.py` | Retention-based GC (dry-run default, protected classes preserved) |
+
+#### Compaction Pipeline
+
+```
+derived/*.dataset.jsonl ──→ DuckDB SELECT/filter/count ──→ derived/*.parquet
+                               └─→ derived/rollup_manifest.json
+```
+
+- Never destructive. Raw logs stay until GC.
+- Dry-run is the default. `--confirm` required for writes.
+- Never compacts raw logs (prefixes: `raw_`, `observability`, `events`, `tool_artifacts`).
+
+#### GC Enforcement
+
+- Fleet/delegate must check `storage_audit.total_size_mb < refuse_fleet_over_mb`
+- Audit returns budget status: `ok`, `warn`, `over_budget`, `fleet_blocked`
+- Allowed GC candidates: stale leases, old projection snapshots, old telemetry zips (keep manifest), old raw observability, old derived JSONL (after Parquet exists), temp files
 
 
 ### Consent and Privacy

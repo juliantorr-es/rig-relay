@@ -166,6 +166,23 @@
       "default": "content_light",
       "description": "Privacy policy for state contents."
     },
+    "storage_status": {
+      "type": "object",
+      "description": "Content-light storage lifecycle summary (from rig_relay.evidence.storage_lifecycle.compute_storage_summary).",
+      "properties": {
+        "budget_status": { "type": "string" },
+        "total_size_bytes": { "type": "integer", "minimum": 0 },
+        "total_size_mb": { "type": "number", "minimum": 0 },
+        "category_count": { "type": "integer", "minimum": 0 },
+        "largest_category": { "type": "string" },
+        "rollup_candidate_count": { "type": "integer", "minimum": 0 },
+        "prune_candidate_count": { "type": "integer", "minimum": 0 },
+        "stale_lease_count": { "type": "integer", "minimum": 0 },
+        "recommendations": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
     "forbidden_fields": {
       "type": "array",
       "items": { "type": "string" },

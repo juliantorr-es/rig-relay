@@ -1,0 +1,14 @@
+{
+  "authorization_required": false,
+  "created_at": "2026-05-13T20:12:32.830100+00:00",
+  "dry_run": true,
+  "intent_id": "test_intent_002",
+  "intent_name": "inspect_authorization_receipt",
+  "output_refs": [],
+  "projection_refresh_recommended": false,
+  "result_kind": "authorization_receipt",
+  "schema_version": "rig.relay.desktop_intent_result.v1",
+  "status": "completed",
+  "summary": "Receipt valid: checkpoint.commit (sha256:d8cb44400)",
+  "warnings": []
+}

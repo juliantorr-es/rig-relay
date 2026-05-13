@@ -15,6 +15,7 @@
     "semantic_snippets",
     "telemetry_bundle",
     "update",
+    "storage",
     "warnings",
     "read_only_actions"
   ],
@@ -130,6 +131,44 @@
         "restart_required": { "type": "boolean" },
         "restart_safe": { "type": "boolean" },
         "blocked_by_active_sessions": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["available"]
+    },
+    "storage": {
+      "type": "object",
+      "description": "Storage lifecycle summary from the build artifact tree (computed by rig_relay.evidence.storage_lifecycle).",
+      "properties": {
+        "available": { "type": "boolean" },
+        "budget_status": {
+          "type": "string",
+          "enum": ["ok", "warn", "over_budget", "fleet_blocked", "unknown"],
+          "description": "Current storage budget status."
+        },
+        "total_size_mb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total size of .build/rig-relay in megabytes."
+        },
+        "rollup_candidate_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of JSONL datasets without corresponding Parquet rollup."
+        },
+        "prune_candidate_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of files older than their retention window."
+        },
+        "stale_lease_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of stale coordination leases."
+        },
+        "recommendations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Recommended storage lifecycle actions."
+        }
       },
       "required": ["available"]
     },

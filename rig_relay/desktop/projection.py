@@ -23,6 +23,8 @@ from typing import Any
 
 import jsonschema
 
+from rig_relay.evidence.storage_lifecycle import compute_storage_summary
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
 
@@ -216,6 +218,23 @@ def _build_telemetry_bundle(build_root: Path) -> dict[str, Any]:
     }
 
 
+def _build_storage(build_root: Path) -> dict[str, Any]:
+    """Compute storage summary from build artifacts."""
+    summary = compute_storage_summary(build_root=build_root)
+    if summary.get("budget_status") == "unknown":
+        return {"available": False}
+
+    return {
+        "available": True,
+        "budget_status": summary.get("budget_status", "unknown"),
+        "total_size_mb": summary.get("total_size_mb", 0.0),
+        "rollup_candidate_count": summary.get("rollup_candidate_count", 0),
+        "prune_candidate_count": summary.get("prune_candidate_count", 0),
+        "stale_lease_count": summary.get("stale_lease_count", 0),
+        "recommendations": summary.get("recommendations", []),
+    }
+
+
 def _build_update(build_root: Path) -> dict[str, Any]:
     """Run or read update status. Falls back to checking build dir."""
     status_path = build_root / "update_status.json"
@@ -287,6 +306,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
     semantic_snippets = _build_semantic_snippets(root)
     telemetry_bundle = _build_telemetry_bundle(root)
     update = _build_update(root)
+    storage = _build_storage(root)
 
     source_status = {
         "current_state": current_state["available"],
@@ -295,6 +315,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
         "semantic_snippets": semantic_snippets["available"],
         "telemetry_bundle": telemetry_bundle["available"],
         "update": update["available"],
+        "storage": storage["available"],
     }
 
     warnings: list[str] = []
@@ -316,6 +337,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
         "semantic_snippets": semantic_snippets,
         "telemetry_bundle": telemetry_bundle,
         "update": update,
+        "storage": storage,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

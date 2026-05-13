@@ -18,11 +18,19 @@ receipts and policy enforcement.
    changes, and telemetry share level changes must not execute without explicit
    user verification.
 
+   In the desktop cockpit dev/local phase, `mint_authorization_receipt_dev`
+   and `inspect_authorization_receipt` exist as control-plane aids for
+   `checkpoint.commit` and `lease_cleanup.archive`. They do not expose
+   protected execution buttons.
+
 3. **Authorization receipts are short-lived and action-scoped** — a receipt
    authorizes exactly one action on exactly one resource for a limited time.
 
 4. **Receipts contain no secrets** — no private keys, raw biometric data,
    passwords, or raw credential material.
+
+   Audit and result artifacts record receipt hashes, status, and expiry only.
+   Raw receipt bodies remain out of audit logs.
 
 ## Protected Actions
 

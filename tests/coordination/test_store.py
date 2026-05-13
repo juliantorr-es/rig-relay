@@ -4,11 +4,8 @@ from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
 
-from vibe.core.coordination import (
-    CoordinationConflict,
-    CoordinationSession,
-    CoordinationStore,
-)
+from rig_relay.coordination.models import CoordinationConflict, CoordinationSession
+from rig_relay.coordination.store import CoordinationStore
 
 
 def test_register_session_and_heartbeat(tmp_path: Path) -> None:
@@ -34,10 +31,7 @@ def test_register_session_and_heartbeat(tmp_path: Path) -> None:
     events = (tmp_path / "events.jsonl").read_text(encoding="utf-8").splitlines()
     assert events
     event = json.loads(events[-1])
-    assert any(
-        "heartbeat" in json.loads(line)["event_name"]
-        for line in events
-    )
+    assert any("heartbeat" in json.loads(line)["event_name"] for line in events)
     assert event["schema_version"] == "rig.relay.coordination.event.v1"
     assert event["event_name"] == "coord.projection.read"
     assert event.get("session_id") is None

@@ -20,7 +20,7 @@
     "tool_calls_total": 1672,
     "tool_failure_rows": 129
   },
-  "generated_at": "2026-05-13T18:23:43.063050+00:00",
+  "generated_at": "2026-05-13T19:17:50.398850+00:00",
   "queue": {
     "available": false
   },
@@ -48,8 +48,20 @@
     "dataset": true,
     "queue": false,
     "semantic_snippets": true,
+    "storage": true,
     "telemetry_bundle": false,
     "update": true
+  },
+  "storage": {
+    "available": true,
+    "budget_status": "ok",
+    "prune_candidate_count": 0,
+    "recommendations": [
+      "Run compaction: 8 JSONL dataset(s) without Parquet"
+    ],
+    "rollup_candidate_count": 8,
+    "stale_lease_count": 0,
+    "total_size_mb": 4.053
   },
   "telemetry_bundle": {
     "available": false

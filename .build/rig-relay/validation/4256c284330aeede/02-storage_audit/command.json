@@ -1,0 +1,1 @@
+{"command":["uv","run","python","scripts/rig_relay_storage_audit.py","--root",".build/rig-relay"]}

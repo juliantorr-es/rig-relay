@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.desktop_intent_event.v1.schema.json",
+  "title": "Desktop Intent Event v1",
+  "description": "Content-light audit event for desktop intent lifecycle. Never includes raw prompts, model outputs, source code, stdout/stderr bodies, diffs, secrets, or raw private paths.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "intent_id",
+    "intent_name",
+    "event_name",
+    "status",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.desktop_intent_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier."
+    },
+    "intent_id": {
+      "type": "string",
+      "description": "Matches the intent_id from the request."
+    },
+    "intent_name": {
+      "type": "string",
+      "description": "Name of the intent."
+    },
+    "event_name": {
+      "type": "string",
+      "enum": ["desktop.intent.received", "desktop.intent.completed", "desktop.intent.refused", "desktop.intent.failed"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Final status of the intent execution."
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": true
+    },
+    "authorization_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "result_kind": {
+      "type": "string",
+      "description": "Kind of result data."
+    },
+    "output_ref_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "projection_seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "result_sha256": {
+      "type": "string",
+      "description": "SHA256 of the intent result JSON bytes."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

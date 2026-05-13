@@ -65,6 +65,9 @@ Before launching any child mission, the reviewer MUST:
 1. Read the current coordination projection (active sessions, path leases, conflicts).
 2. Verify no write lease overlap exists with the intended mission.
 3. Verify the sprint's `max_parallel_sessions` limit is not exceeded.
+4. Verify storage budget is not `fleet_blocked` — check `current_state.storage_status.budget_status`
+   or `projection.storage.budget_status`. See [Storage Retention Policy § Fleet Preflight
+   Enforcement](storage-retention-policy.md#fleet-preflight-enforcement) for thresholds.
 
 ### Reviewer Must Aggregate Reports Before Follow-Up
 
@@ -80,6 +83,26 @@ Before launching a follow-up mission, the reviewer MUST:
 - The reviewer never runs `git commit` or `git add` directly.
 - Checkpoints are created by child sessions through the existing `checkpoint` tool, governed
   by dirty-file guard, path leases, and checkpoint policy.
+
+## Desktop Intent API
+
+The desktop Intent API (see `rig_relay/desktop/intents.py`) provides a governed
+entry point for safe orchestration actions from the desktop cockpit:
+
+- **Dry-run only**: All intents are read-only or dry-run. Protected mutation
+  intents are explicitly refused.
+- **Schema-validated**: Every intent is validated against the request schema
+  before dispatch.
+- **Content-light results**: Counts, statuses, hashes, and refs only — never
+  raw data.
+- **Future receipt-gated**: Protected intents return `authorization_required=true`
+  and will be wired through authorization receipts in a future slice.
+
+Allowed intents: `refresh_projection`, `generate_refinement_report`,
+`run_storage_audit`, `run_queue_plan_dry_run`, `run_spawn_plan_dry_run`,
+`create_refinement_packets`, and others.
+
+See `docs/governance/desktop-cockpit-ui.md` for the full intent catalog.
 
 ## Packet Types
 
@@ -117,6 +140,8 @@ Created by the reviewer for each child session. Defines the mission bounds:
 - `coordination_policy` (claim_task, reserve_paths, heartbeat)
 - `checkpoint_policy` (off, prompt, auto)
 - `validation_commands`, `done_when`, `max_runtime_seconds`
+
+Built-in refinement packet generators may create a narrower packet schema for derived implementation slices, but the reviewer still expects the same bounded-mission properties: explicit scope, clear validation, and content-light instructions.
 
 ### 3. Child Session Result (`rig.relay.child_session_result.v1`)
 

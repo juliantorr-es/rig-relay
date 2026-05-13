@@ -1,6 +1,13 @@
+"""Legacy compatibility adapter for dirty-file guard.
+
+New product code should import from ``rig_relay.governance.dirty_guard``.
+This module re-exports the implementation to preserve backward compatibility
+for ``from vibe.core.guard import ...`` during the alpha period.
+"""
+
 from __future__ import annotations
 
-from vibe.core.guard._dirty_file import (
+from rig_relay.governance.dirty_guard import (
     DirtyFileGuard,
     DirtyFileSnapshot,
     DirtyGuardFailurePolicy,

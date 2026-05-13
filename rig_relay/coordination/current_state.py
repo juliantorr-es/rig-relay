@@ -22,6 +22,8 @@ from typing import Any
 
 import duckdb
 
+from rig_relay.evidence.storage_lifecycle import compute_storage_summary
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_COORD_ROOT = REPO_ROOT / ".build" / "rig-relay" / "coordination"
 DEFAULT_DERIVED_DIR = REPO_ROOT / ".build" / "rig-relay" / "derived"
@@ -303,6 +305,8 @@ def generate_current_state(
     if checkpoint_rows == 0 and writers > 0:
         warnings.append("No checkpoint rows in dataset despite active writers.")
 
+    storage_status = compute_storage_summary()
+
     return {
         "schema_version": "rig.relay.current_state.v1",
         "generated_at": now.isoformat(),
@@ -326,6 +330,7 @@ def generate_current_state(
         "recent_conflicts": recent_conflicts[:20],
         "stale_items": stale_items[:20],
         "dataset_completeness": dataset_completeness,
+        "storage_status": storage_status,
         "recommendations": recommendations,
         "warnings": warnings if warnings else None,
         "content_policy": "content_light",

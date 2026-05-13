@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.storage_budget.v1.schema.json",
+  "title": "Storage Budget v1",
+  "description": "Storage budget policy for Rig Relay's local .build/rig-relay/ artifact tree. Defines retention windows, sampling rates, and capacity thresholds that gate fleet/delegate execution.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "warn_local_mb",
+    "max_local_mb",
+    "refuse_fleet_over_mb",
+    "max_bundle_mb",
+    "max_chatgpt_bundle_mb",
+    "raw_observability_days",
+    "raw_tool_artifacts_days",
+    "coordination_events_days",
+    "stale_leases_hours",
+    "desktop_projection_snapshots_days",
+    "telemetry_bundle_zip_days",
+    "derived_jsonl_days",
+    "parquet_rollups_days",
+    "keep_all_failures",
+    "keep_all_refusals",
+    "keep_all_conflicts",
+    "keep_all_checkpoint_refusals",
+    "sample_success_rate",
+    "max_semantic_snippets_per_session",
+    "max_command_events_per_session"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.storage_budget.v1"
+    },
+    "warn_local_mb": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 1048576,
+      "description": "Storage threshold in MB that triggers a warning. Default: 1024 (1 GB)."
+    },
+    "max_local_mb": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 1048576,
+      "description": "Hard cap in MB for local storage. Compaction is blocked above this threshold. Default: 2048 (2 GB)."
+    },
+    "refuse_fleet_over_mb": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 1048576,
+      "description": "Storage threshold in MB above which fleet/delegate execution is refused. Default: 4096 (4 GB)."
+    },
+    "max_bundle_mb": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "Maximum telemetry bundle size in MB. Default: 250."
+    },
+    "max_chatgpt_bundle_mb": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1024,
+      "description": "Maximum ChatGPT dev bundle size in MB. Default: 512."
+    },
+    "raw_observability_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 90,
+      "description": "Retention period for raw observability JSONL files in days. Default: 3."
+    },
+    "raw_tool_artifacts_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 90,
+      "description": "Retention period for raw coordination artifacts in days. Default: 3."
+    },
+    "coordination_events_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365,
+      "description": "Retention period for coordination events.jsonl in days. Default: 14."
+    },
+    "stale_leases_hours": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8760,
+      "description": "Age in hours after which a coordination lease is considered stale. Default: 24."
+    },
+    "desktop_projection_snapshots_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 90,
+      "description": "Retention period for desktop projection snapshots in days. Default: 1."
+    },
+    "telemetry_bundle_zip_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365,
+      "description": "Retention period for telemetry bundle zip files in days. Manifest is kept permanently. Default: 7."
+    },
+    "derived_jsonl_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365,
+      "description": "Retention period for derived JSONL datasets in days. Default: 30."
+    },
+    "parquet_rollups_days": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 3650,
+      "description": "Retention period for parquet rollup files in days. Default: 365."
+    },
+    "keep_all_failures": {
+      "type": "boolean",
+      "description": "If true, retain 100% of failure events regardless of sampling. Default: true."
+    },
+    "keep_all_refusals": {
+      "type": "boolean",
+      "description": "If true, retain 100% of refusal events regardless of sampling. Default: true."
+    },
+    "keep_all_conflicts": {
+      "type": "boolean",
+      "description": "If true, retain 100% of coordination conflict events regardless of sampling. Default: true."
+    },
+    "keep_all_checkpoint_refusals": {
+      "type": "boolean",
+      "description": "If true, retain 100% of checkpoint refusal events regardless of sampling. Default: true."
+    },
+    "sample_success_rate": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Fraction of successful tool calls to retain. Default: 0.05."
+    },
+    "max_semantic_snippets_per_session": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000,
+      "description": "Maximum semantic change snippets retained per session. Default: 200."
+    },
+    "max_command_events_per_session": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000,
+      "description": "Maximum command events retained per session. Default: 5000."
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the storage budget configuration."
+    }
+  },
+  "additionalProperties": false
+}

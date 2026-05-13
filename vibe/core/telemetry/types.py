@@ -10,7 +10,7 @@ class ClientMetadata(BaseModel):
     version: str
 
 
-AgentEntrypoint = Literal["cli", "acp", "programmatic", "unknown"]
+AgentEntrypoint = Literal["cli", "acp", "programmatic", "desktop", "unknown"]
 
 
 class EntrypointMetadata(BaseModel):

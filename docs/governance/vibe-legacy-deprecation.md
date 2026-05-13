@@ -41,8 +41,19 @@ a controlled migration, not a high-risk rewrite.
 ### Current Phase
 
 **Phase 3 (Legacy quarantine)** — The `vibe/legacy/` namespace is established.
-Six scripts migrated to `rig_relay.*` modules. Remaining Vibe core modules
-are being quarantined behind the legacy barrier.
+Six scripts migrated to `rig_relay.*` modules. Authorization receipt seam
+migrated. Dirty-file guard seam migrated: `vibe/core/guard/` is now a
+compatibility adapter re-exporting from `rig_relay.governance.dirty_guard`.
+Desktop Chat Shell state and WebSocket protocol established as Relay-native
+seams in `rig_relay.desktop.chat_state`. Coordination migration is now
+explicitly inventory-first: `docs/audits/coordination-migration-inventory.md`
+records the current surface, target boundary, and adapter strategy. The
+coordination models and store now live in `rig_relay.coordination.*`, while
+`vibe.core.coordination` remains a compatibility adapter during alpha. The
+built-in coordination tool execution helpers now live in `rig_relay.coordination.tool`,
+while `vibe.core.tools.builtins.coordination` remains the registry-facing
+compatibility adapter. Full tool registry migration is deferred to a later slice. Remaining
+Vibe core modules are being quarantined behind the legacy barrier.
 
 ## Compatibility Rules
 

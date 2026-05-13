@@ -18,7 +18,7 @@ import shutil
 import sys
 from typing import Any
 
-from vibe.core.auth.receipt import validate_receipt
+from rig_relay.governance.auth_receipts import validate_receipt
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_COORDINATION_ROOT = REPO_ROOT / ".build" / "rig-relay" / "coordination"

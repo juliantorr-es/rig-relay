@@ -37,7 +37,12 @@ These traces power the `rig-relay doctor tool-reasoning` report for identifying 
 | `skill` | `builtins.skill` | `deterministic_repo_state` | `read_only` | High | Medium | Full |
 | `task` | `builtins.task` | `nondeterministic_provider` | `writes_workspace` | Medium | Low | Full (provider/model/thinking metadata + deterministic task-result hash + task_session_link artifact + typed task packet + read-only fleet report with parallel child summaries) |
 | `todo` | `builtins.todo` | `deterministic_pure` | `writes_temp_only` | High | High | Full |
+| `validation_suite` | `builtins.validation_suite` | `nondeterministic_external_io` | `read_only` | High | High | Full (allowlist-based step summaries, command hashes, stdout/stderr hashes, artifact refs) |
 | `exit_plan_mode` | `builtins.exit_plan_mode` | `deterministic_pure` | `read_only` | N/A | N/A | Full |
+
+## Refinement Backlog Linkage
+
+The determinism inventory is an input to built-in tool refinement reports. Those reports rank tools by failure, refusal, truncation, fallback, storage pressure, and coordination pressure so hardening work can be ordered from actual usage evidence.
 
 ## Determinism Classes
 

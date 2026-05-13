@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from vibe.core.coordination import CoordinationStore
 from vibe.core.guard import DirtyFileGuard, get_guard
 from vibe.core.telemetry.local import dump_canonical_json
+from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -62,6 +63,10 @@ class Checkpoint(
     description: ClassVar[str] = (
         "Create a governed local checkpoint commit for session-owned files."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.NONDETERMINISTIC_EXTERNAL_IO
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.WRITES_WORKSPACE
 
     _STATUS_LINE_LENGTH: ClassVar[int] = 3
 

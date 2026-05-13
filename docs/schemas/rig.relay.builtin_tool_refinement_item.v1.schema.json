@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.builtin_tool_refinement_item.v1.schema.json",
+  "title": "Built-in Tool Refinement Item v1",
+  "description": "Content-light backlog row derived from Rig Relay usage data. Each row summarizes observed pressure on a built-in tool or shell pattern and recommends a deterministic refinement slice.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "item_id",
+    "created_at",
+    "tool_name",
+    "tool_family",
+    "refinement_kind",
+    "priority",
+    "confidence",
+    "evidence_window",
+    "evidence_sources",
+    "event_count",
+    "failure_count",
+    "refusal_count",
+    "timeout_count",
+    "fallback_to_bash_count",
+    "truncation_count",
+    "artifact_size_bytes",
+    "storage_pressure_score",
+    "coordination_pressure_score",
+    "suggested_replacement_tool",
+    "recommended_action",
+    "rationale",
+    "safety_notes",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.builtin_tool_refinement_item.v1"
+    },
+    "item_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tool_name": {
+      "type": "string"
+    },
+    "tool_family": {
+      "type": "string"
+    },
+    "refinement_kind": {
+      "type": "string",
+      "enum": [
+        "harden_existing_tool",
+        "replace_shell_pattern",
+        "add_structured_artifact",
+        "reduce_artifact_weight",
+        "split_tool",
+        "merge_tool",
+        "add_preflight",
+        "add_receipt_gate",
+        "add_coordination_hook",
+        "add_schema",
+        "improve_error_message",
+        "deprecate_tool",
+        "promote_to_builtin"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "evidence_window": {
+      "type": "string"
+    },
+    "evidence_sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "failure_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "refusal_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timeout_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fallback_to_bash_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncation_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artifact_size_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "storage_pressure_score": {
+      "type": "number",
+      "minimum": 0
+    },
+    "coordination_pressure_score": {
+      "type": "number",
+      "minimum": 0
+    },
+    "suggested_replacement_tool": {
+      "type": ["string", "null"]
+    },
+    "recommended_action": {
+      "type": "string"
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "safety_notes": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

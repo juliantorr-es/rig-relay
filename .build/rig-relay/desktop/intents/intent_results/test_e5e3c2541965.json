@@ -1,0 +1,17 @@
+{
+  "authorization_action": "checkpoint.commit",
+  "authorization_receipt_sha256": "sha256:db63e5a2e0ce6033365b3c5b8e24422994e289bb8db7cdbe40b39091f995b44c",
+  "authorization_required": false,
+  "authorization_status": "valid",
+  "created_at": "2026-05-13T20:13:06.504402+00:00",
+  "dry_run": true,
+  "intent_id": "test_e5e3c2541965",
+  "intent_name": "checkpoint.commit",
+  "output_refs": [],
+  "projection_refresh_recommended": false,
+  "result_kind": "summary",
+  "schema_version": "rig.relay.desktop_intent_result.v1",
+  "status": "completed",
+  "summary": "Mock success",
+  "warnings": []
+}

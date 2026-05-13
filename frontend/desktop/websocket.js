@@ -13,6 +13,7 @@ class ProjectionWebSocketClient {
     this.onStatusChange = options.onStatusChange || (() => {});
     this.onError = options.onError || (() => {});
     this.onAuthFailed = options.onAuthFailed || (() => {});
+    this.onMessage = options.onMessage || (() => {});
 
     this.ws = null;
     this.connected = false;
@@ -124,6 +125,15 @@ class ProjectionWebSocketClient {
           this._handleError('Server error: ' + (message.message || 'unknown'));
           break;
 
+        case 'desktop_intent_result':
+          this.onMessage(message);
+          break;
+
+        case 'chat_state':
+        case 'chat_state_updated':
+          this.onMessage(message);
+          break;
+
         case 'pong':
           // Keepalive acknowledged
           break;
@@ -164,6 +174,10 @@ class ProjectionWebSocketClient {
   subscribe(interval) {
     this._subscriptionActive = true;
     return this.send({ type: 'subscribe', interval: interval || 30 });
+  }
+
+  sendMessage(data) {
+    return this.send(data);
   }
 
   unsubscribe() {

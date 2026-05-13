@@ -68,6 +68,7 @@ The Python package exposes these commands via `pyproject.toml` `[project.scripts
 |---|---|
 | `rig-relay` | `vibe.cli.entrypoint:main` |
 | `rig-relay-acp` | `vibe.acp.entrypoint:main` |
+| `rig-relay-cockpit` | `scripts.rig_relay_desktop_cockpit:main` |
 
 ## Version
 

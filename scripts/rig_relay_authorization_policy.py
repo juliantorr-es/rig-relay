@@ -22,7 +22,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from vibe.core.auth.receipt import (
+from rig_relay.governance.auth_receipts import (
     DEFAULT_POLICY,
     action_requires_authorization,
     generate_dev_receipt,

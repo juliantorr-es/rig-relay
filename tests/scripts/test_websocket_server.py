@@ -294,6 +294,83 @@ class TestAuthConnectionTracking:
             await server.close()
 
 
+class TestChatState:
+    """Chat state protocol tests."""
+
+    @pytest.mark.asyncio
+    async def test_get_chat_state_returns_state(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        def mock_chat_state():
+            return {"messages": [{"role": "system", "content": "hello"}]}
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="test-token",
+            auth_timeout=100,
+            chat_state_provider=mock_chat_state,
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "test-token")
+                await ws.send(json.dumps({"type": "get_chat_state"}))
+                response = json.loads(await ws.recv())
+                assert response["type"] == "chat_state"
+                assert response["data"]["messages"][0]["content"] == "hello"
+                assert "seq" in response
+        finally:
+            await server.close()
+
+    @pytest.mark.asyncio
+    async def test_get_chat_state_error_when_no_provider(
+        self, unused_tcp_port: int
+    ) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port, token="test-token", auth_timeout=100
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "test-token")
+                await ws.send(json.dumps({"type": "get_chat_state"}))
+                response = json.loads(await ws.recv())
+                assert response["type"] == "error"
+                assert "Chat state not available" in response["message"]
+        finally:
+            await server.close()
+
+    @pytest.mark.asyncio
+    async def test_broadcast_chat_state_updated(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port, token="test-token", auth_timeout=100
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "test-token")
+
+                # Broadcast
+                await server.broadcast_chat_state_updated()
+
+                # Receive update notification
+                response = json.loads(await ws.recv())
+                assert response["type"] == "chat_state_updated"
+                assert "seq" in response
+        finally:
+            await server.close()
+
+
 class TestReadOnlyProtocol:
     """Only allowed read-only message types are accepted after auth."""
 
@@ -304,9 +381,12 @@ class TestReadOnlyProtocol:
             "auth",
             "get_projection",
             "get_available_actions",
+            "get_chat_state",
+            "desktop_intent",
             "subscribe",
             "unsubscribe",
             "ping",
+            "chat_state_updated",
         })
         assert ALLOWED_MESSAGE_TYPES == expected
 

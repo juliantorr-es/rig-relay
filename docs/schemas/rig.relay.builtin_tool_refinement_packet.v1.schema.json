@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.builtin_tool_refinement_packet.v1.schema.json",
+  "title": "Built-in Tool Refinement Packet v1",
+  "description": "Bounded mission packet generated from a built-in tool refinement backlog row. The packet bridges ranked usage-data findings into a reviewer/orchestrator mission.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "packet_id",
+    "created_at",
+    "source_item_id",
+    "priority",
+    "tool_name",
+    "refinement_kind",
+    "mission_title",
+    "mission_prompt_path",
+    "evidence_summary_path",
+    "recommended_validation",
+    "constraints",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.builtin_tool_refinement_packet.v1"
+    },
+    "packet_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_item_id": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "tool_name": {
+      "type": "string"
+    },
+    "refinement_kind": {
+      "type": "string"
+    },
+    "mission_title": {
+      "type": "string"
+    },
+    "mission_prompt_path": {
+      "type": "string"
+    },
+    "evidence_summary_path": {
+      "type": "string"
+    },
+    "recommended_validation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mission_packet_path": {
+      "type": ["string", "null"]
+    },
+    "allowed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

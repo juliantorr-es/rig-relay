@@ -8,6 +8,8 @@ Protocol:
     {"type": "auth", "token": "..."}        — authenticate (first message required)
     {"type": "get_projection"}              — request full projection
     {"type": "get_available_actions"}        — request available actions list
+    {"type": "get_chat_state"}              — request current chat state
+    {"type": "desktop_intent", ...}         — execute a governed intent (read-only/dry-run only)
     {"type": "subscribe", "interval": 30}   — periodic projection push (N seconds)
     {"type": "unsubscribe"}                 — stop periodic push
     {"type": "ping"}                        — keepalive
@@ -18,6 +20,8 @@ Protocol:
     {"type": "auth_required"}               — first message was not auth
     {"type": "projection", "data": {...}, "seq": N}
     {"type": "available_actions", "actions": [...], "seq": N}
+    {"type": "chat_state", "data": {...}, "seq": N}
+    {"type": "desktop_intent_result", "data": {...}, "seq": N}
     {"type": "error", "message": "..."}
     {"type": "pong"}
 
@@ -40,6 +44,7 @@ from pathlib import Path
 import secrets
 from typing import Any
 
+from rig_relay.desktop.intents import execute_desktop_intent, validate_intent_request
 from rig_relay.desktop.projection import READ_ONLY_ACTIONS, build_projection
 
 DEFAULT_HOST = "127.0.0.1"
@@ -52,9 +57,12 @@ ALLOWED_MESSAGE_TYPES = frozenset({
     "auth",
     "get_projection",
     "get_available_actions",
+    "get_chat_state",
+    "desktop_intent",
     "subscribe",
     "unsubscribe",
     "ping",
+    "chat_state_updated",  # Push-only type
 })
 
 DEFAULT_AUTH_TIMEOUT = 5
@@ -96,6 +104,7 @@ class ProjectionWebSocketServer:
         auth_timeout: int = DEFAULT_AUTH_TIMEOUT,
         max_message_bytes: int = DEFAULT_MAX_MESSAGE_BYTES,
         rate_limit_per_minute: int = DEFAULT_RATE_LIMIT_PER_MINUTE,
+        chat_state_provider: Any | None = None,
     ) -> None:
         self._build_root = build_root
         self._host = host
@@ -107,8 +116,10 @@ class ProjectionWebSocketServer:
         self._auth_timeout = auth_timeout
         self._max_message_bytes = max_message_bytes
         self._rate_limit_per_minute = rate_limit_per_minute
+        self._chat_state_provider = chat_state_provider
         self._seq = 0
         self._server: Any = None
+        self._connections: set[Any] = set()
         self._connection_count = 0
         self._rejected_count = 0
         self._last_connection_at: str | None = None
@@ -262,6 +273,7 @@ class ProjectionWebSocketServer:
             if subscribe_task is not None:
                 subscribe_task.cancel()
             async with self._lock:
+                self._connections.discard(websocket)
                 if subscribe_task is not None and self._active_subscriptions > 0:
                     self._active_subscriptions -= 1
 
@@ -301,6 +313,8 @@ class ProjectionWebSocketServer:
 
                     self._last_connection_at = datetime.now(UTC).isoformat()
                 await _send_json(websocket, {"type": "auth_ok"})
+                async with self._lock:
+                    self._connections.add(websocket)
                 return True
 
             async with self._lock:
@@ -317,7 +331,7 @@ class ProjectionWebSocketServer:
         await _send_json(websocket, {"type": "auth_required"})
         return False
 
-    async def _handle_authenticated_message(
+    async def _handle_authenticated_message(  # noqa: PLR0912
         self,
         websocket: Any,
         message: dict[str, Any],
@@ -343,6 +357,23 @@ class ProjectionWebSocketServer:
                         "seq": self._next_seq(),
                     },
                 )
+
+            case "get_chat_state":
+                if self._chat_state_provider:
+                    chat_state = self._chat_state_provider()
+                    await _send_json(
+                        websocket,
+                        {
+                            "type": "chat_state",
+                            "data": chat_state,
+                            "seq": self._next_seq(),
+                        },
+                    )
+                else:
+                    await _send_json(
+                        websocket,
+                        {"type": "error", "message": "Chat state not available"},
+                    )
 
             case "subscribe":
                 if subscribe_task is not None:
@@ -372,6 +403,49 @@ class ProjectionWebSocketServer:
             case "ping":
                 await _send_json(websocket, {"type": "pong"})
 
+            case "desktop_intent":
+                # Strip WS envelope fields before schema validation
+                intent_msg = {k: v for k, v in message.items() if k != "type"}
+                validation_errors = validate_intent_request(intent_msg)
+                if validation_errors:
+                    await _send_json(
+                        websocket,
+                        {
+                            "type": "desktop_intent_result",
+                            "data": {
+                                "schema_version": "rig.relay.desktop_intent_result.v1",
+                                "intent_id": intent_msg.get("intent_id", "unknown"),
+                                "created_at": __import__("datetime")
+                                .datetime.now(__import__("datetime").timezone.utc)
+                                .isoformat(),
+                                "intent_name": intent_msg.get("intent_name", "unknown"),
+                                "status": "refused",
+                                "dry_run": True,
+                                "result_kind": "validation_error",
+                                "summary": f"Intent request validation failed: {'; '.join(validation_errors)}",
+                                "output_refs": [],
+                                "projection_refresh_recommended": False,
+                                "authorization_required": False,
+                                "warnings": [],
+                                "error_code": "validation_failed",
+                            },
+                            "seq": self._next_seq(),
+                        },
+                    )
+                else:
+                    result = execute_desktop_intent(
+                        request=intent_msg,
+                        chat_state_provider=self._chat_state_provider,
+                    )
+                    await _send_json(
+                        websocket,
+                        {
+                            "type": "desktop_intent_result",
+                            "data": result,
+                            "seq": self._next_seq(),
+                        },
+                    )
+
             case _:
                 await _send_json(
                     websocket,
@@ -379,6 +453,22 @@ class ProjectionWebSocketServer:
                 )
 
         return subscribe_task
+
+    async def broadcast_chat_state_updated(self) -> None:
+        """Broadcast chat_state_updated event to all authenticated clients."""
+        async with self._lock:
+            if not self._connections:
+                return
+
+            message = {"type": "chat_state_updated", "seq": self._next_seq()}
+
+            # Send to all active connections
+            # We use list() to avoid mutation during iteration
+            for ws in list(self._connections):
+                try:
+                    await _send_json(ws, message)
+                except Exception:
+                    self._connections.discard(ws)
 
     def _build_projection(self) -> dict[str, Any]:
         """Build a content-light projection from available artifacts."""

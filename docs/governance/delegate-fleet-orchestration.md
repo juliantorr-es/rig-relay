@@ -18,6 +18,16 @@ reviewer pulls ready work from a persistent backlog, dispatches only what is saf
 coordination constraints, and leaves sequential work pending until the dependency graph
 allows it to move.
 
+## Desktop Intent API
+
+The desktop Intent API (`rig_relay/desktop/intents.py`) provides governed,
+schema-validated access to safe orchestration actions from the desktop cockpit.
+Protected mutation intents (including `spawn.execute`, `fleet.execute`, and
+`delegate.execute`) are explicitly refused with `authorization_required=true`
+until receipt-gated intent execution exists in a future slice.
+
+See `docs/governance/desktop-cockpit-ui.md` for the full intent catalog.
+
 ## Canonical Concepts
 
 ### Delegate
@@ -190,6 +200,8 @@ A work item becomes **ready** when:
 4. Requested write paths do not overlap active write reservations.
 5. Profile/tool policy is valid.
 6. Validation/checkpoint policy is acceptable.
+7. Storage budget is not `fleet_blocked` (checked via `compute_storage_summary()`). See
+   [Storage Retention Policy § Fleet Preflight Enforcement](storage-retention-policy.md#fleet-preflight-enforcement).
 
 ## Canonical Loop
 
@@ -326,11 +338,24 @@ or cancel failed items.
 ## Orchestration Loop Summary
 
 ```
-queue_plan → spawn_plan → spawn_execute → current_state → parent_convergence_report → queue update
+preflight (storage check) → queue_plan → spawn_plan → spawn_execute → current_state → parent_convergence_report → queue update
 ```
 
 The reviewer repeats this loop until the queue is empty, the sprint is blocked, or human
 review is requested.
+
+### Storage Preflight
+
+Before each loop iteration, the orchestrator reads `current_state.storage_status` to verify:
+
+- `budget_status` is not `fleet_blocked` — if blocked, the loop pauses and recommends GC.
+- `stale_lease_count` is below warning threshold — high counts indicate coordination drift.
+
+The preflight step uses `compute_storage_summary()` from `rig_relay.evidence.storage_lifecycle`,
+which is called by both `generate_current_state()` and `build_projection()`.
+
+See [Storage Retention Policy § Fleet Preflight Enforcement](storage-retention-policy.md#fleet-preflight-enforcement)
+for the full rule set.
 
 ## References
 - [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md)

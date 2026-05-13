@@ -267,6 +267,41 @@ class TestProjectionContentSafeguards:
         assert "/Users/" not in serialized
 
 
+class TestProjectionStorage:
+    """Storage section in projection is built correctly."""
+
+    def test_storage_in_projection(self, projection_from_build) -> None:
+        assert "storage" in projection_from_build
+        storage = projection_from_build["storage"]
+        assert isinstance(storage, dict)
+        assert "available" in storage
+
+    def test_storage_source_status(self, projection_from_build) -> None:
+        source_status = projection_from_build.get("source_status", {})
+        assert "storage" in source_status
+        assert isinstance(source_status["storage"], bool)
+
+    def test_storage_required_fields_when_available(self, tmp_path) -> None:
+        build_root = tmp_path / ".build" / "rig-relay"
+        build_root.mkdir(parents=True)
+        from rig_relay.desktop.projection import build_projection
+
+        proj = build_projection(build_root=build_root)
+        storage = proj.get("storage", {})
+        if storage.get("available"):
+            assert "budget_status" in storage
+            assert isinstance(storage.get("total_size_mb"), (int, float))
+            assert isinstance(storage.get("rollup_candidate_count"), int)
+            assert isinstance(storage.get("prune_candidate_count"), int)
+
+    def test_missing_storage_is_not_invented(self, tmp_path) -> None:
+        build_root = tmp_path / ".build" / "rig-relay"
+        proj = build_projection(build_root=build_root)
+        storage = proj.get("storage", {})
+        # Unknown build root returns available=false, never missing
+        assert "available" in storage
+
+
 class TestDesktopCockpit:
     """Desktop cockpit script uses projection builder correctly."""
 

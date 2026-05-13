@@ -508,6 +508,30 @@ def test_stable_path_key_different_from_salted():
     assert key != salted
 
 
+# ── Storage Status Tests ────────────────────────────────────────────────
+
+
+def test_current_state_has_storage_status(tmp_path):
+    """generate_current_state includes storage_status from compute_storage_summary."""
+    state = generate_current_state(
+        coordination_root=tmp_path, derived_dir=tmp_path / "derived"
+    )
+    assert "storage_status" in state
+    storage = state["storage_status"]
+    assert isinstance(storage, dict)
+    assert "budget_status" in storage
+    assert "total_size_bytes" in storage
+    assert "total_size_mb" in storage
+    # Missing build root should return warning dict, not crash
+    assert storage["budget_status"] in (
+        "unknown",
+        "ok",
+        "warn",
+        "over_budget",
+        "fleet_blocked",
+    )
+
+
 # ── Relay-native import tests ────────────────────────────────────────────
 
 

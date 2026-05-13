@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Relay Desktop Chat State",
+  "description": "Content-light chat session state for the pywebview desktop shell.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "backend_wired",
+    "messages",
+    "pending_response",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "backend_wired": {
+      "type": "boolean"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "message_id",
+          "created_at",
+          "role",
+          "content"
+        ],
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "system",
+              "tool",
+              "status"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "pending_response": {
+      "type": "boolean"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

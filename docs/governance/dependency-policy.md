@@ -92,4 +92,5 @@ fallback paths for capabilities that are part of the product.
 - [uv — Dependency Management](https://docs.astral.sh/uv/concepts/projects/dependencies/)
 - [Install Channels](../install.md)
 - [Usage Data Doctrine](usage-data-doctrine.md)
+- [Storage Retention Policy](storage-retention-policy.md)
 - [Desktop Cockpit UI Doctrine](desktop-cockpit-ui.md)
