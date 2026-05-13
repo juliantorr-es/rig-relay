@@ -14,7 +14,7 @@
 | **Read-only tools** | 12 (ask_user_question, exit_plan_mode, git_branch, git_diff, git_log, git_ls_files, git_show, git_status, grep, read_file, skill, web_fetch, web_search) |
 | **Workspace-mutating tools** | 4 (bash, search_replace, task, write_file) |
 | **External/network/provider tools** | 5 (ask_user_question, bash, task, web_fetch, web_search) |
-| **Tools with typed artifacts today** | 1 (grep — search query + result artifacts) |
+| **Tools with typed artifacts today** | 2 (grep, git_status — search and repo-state artifacts) |
 | **Unknown/unclassified tools** | 0 — all 18 have explicit determinism + mutation classes |
 | **Biggest annoyance pattern** | No structured evidence fields emitted at tool level — determinism/mutation is declared but not instrumented in tool output, making dogfood session analysis reliant on agent-loop instrumentation alone |
 | **Highest-priority hardening target** | `search_replace` — highest wrong-edit risk due to fuzzy matching with no before/after content hash in evidence |
@@ -36,7 +36,7 @@
 | `git_log` | Show commit logs | deterministic_repo_state | read_only | No | No | Format varies | P1 | Add HEAD hash to evidence |
 | `git_ls_files` | List tracked files | deterministic_repo_state | read_only | No | No | Unstable order | P1 | Add HEAD hash + file count to evidence |
 | `git_show` | Show objects | deterministic_repo_state | read_only | No | No | Large object truncation | P1 | Add ref SHA256 to evidence |
-| `git_status` | Show working tree | deterministic_repo_state | read_only | No | No | Output shape varies by args | P1 | Add HEAD hash + dirty count to evidence |
+| `git_status` | Show working tree | deterministic_repo_state | read_only | No | **Yes** (git_state) | Output shape varies by args | P1 | Add ignored-file counts when a read-only probe is warranted |
 | `grep` | Search files with regex | deterministic_repo_state | read_only | No | **Yes** (search_query, search_result) | Unstable result order | P0 | Sort results by path+line for determinism |
 | `read_file` | Read file with line range | deterministic_repo_state | read_only | No | No | Byte-boundary truncation | P2 | Add content SHA256 + line count to evidence |
 | `search_replace` | Apply SEARCH/REPLACE edits | deterministic_repo_state | writes_workspace | No | No | Fuzzy matching can apply wrong edits | P0 | Add before/after SHA256 + diff patch to evidence |
@@ -185,23 +185,23 @@
 
 **What is annoying about them**:
 - All six are in one file but registered as separate tools
-- No HEAD commit hash in any tool's result
 - Output format varies by flags (short vs porcelain, oneline vs full)
-- No structured result — just raw git output with truncation flags
+- Only `git_status` currently emits a typed evidence artifact
+- No structured result for the other git tools yet beyond raw output and truncation flags
 - Wrong-edit risk is low since they're read-only, but the git tools themselves track `READ_ONLY` even though `bash` can do git write operations
 
 **Determinism risks**:
 - `DETERMINISTIC_REPO_STATE` is correct
 - But without HEAD hash in evidence, two calls on different commits look the same in the determinism log
 
-**Evidence currently available**: None at tool level.
+**Evidence currently available**: Typed `git_state` artifact for `git_status`, with branch, HEAD, dirty-file counts, upstream counts when available, and a deterministic state hash.
 
 **Missing evidence**:
-- HEAD commit SHA256
-- Structured fields relevant to each tool (file count, branch name, etc.)
+- Ignored-file counts without an extra read-only probe
+- Structured evidence for `git_diff`, `git_log`, `git_branch`, `git_show`, and `git_ls_files`
 
 **Recommended hardening**:
-- Add HEAD hash to all git tool results and evidence
+- Add typed per-tool evidence for the remaining git read-only surfaces
 
 ---
 

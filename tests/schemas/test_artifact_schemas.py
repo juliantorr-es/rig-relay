@@ -153,3 +153,26 @@ def test_search_results_schema_validates_minimal_example():
     }
 
     validate(instance=instance, schema=schema)
+
+
+def test_git_state_schema_validates_minimal_example():
+    schema_path = SCHEMA_DIR / "rig.relay.artifact.git_state.v1.schema.json"
+    with schema_path.open("r", encoding="utf-8") as f:
+        schema = json.load(f)
+
+    instance = {
+        "tool_name": "git_status",
+        "repo_root": ".",
+        "is_dirty": False,
+        "dirty_file_count": 0,
+        "staged_file_count": 0,
+        "unstaged_file_count": 0,
+        "untracked_file_count": 0,
+        "conflict_file_count": 0,
+        "dirty_files": [],
+        "ordering_policy": "rig_normalized_path_kind",
+        "state_sha256": "sha256:" + "c" * 64,
+        "warnings": [],
+    }
+
+    validate(instance=instance, schema=schema)

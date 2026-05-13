@@ -109,6 +109,42 @@ class SearchResultArtifact(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class GitStateFile(BaseModel):
+    relative_path: str
+    change_kind: str
+    staged: bool = False
+    unstaged: bool = False
+    untracked: bool = False
+    conflicted: bool = False
+    rename_from: str | None = None
+    rename_to: str | None = None
+
+
+class GitStateArtifact(BaseModel):
+    tool_name: str = "git_status"
+    repo_root: str
+    branch: str | None = None
+    head_sha: str | None = None
+    head_short_sha: str | None = None
+    upstream_branch: str | None = None
+    upstream_ahead_count: int | None = None
+    upstream_behind_count: int | None = None
+    is_detached_head: bool | None = None
+    is_dirty: bool = False
+    dirty_file_count: int = 0
+    staged_file_count: int = 0
+    unstaged_file_count: int = 0
+    untracked_file_count: int = 0
+    conflict_file_count: int = 0
+    ignored_file_count: int | None = None
+    dirty_files: list[GitStateFile] = Field(default_factory=list)
+    ordering_policy: str = "rig_normalized_path_kind"
+    state_sha256: str
+    stdout_sha256: str | None = None
+    stderr_sha256: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
 class PromptVisibleToolResult(BaseModel):
     tool_name: str
     artifact_id: str | None = None
@@ -343,3 +379,52 @@ class ToolOutputArtifactWriter:
         result_path.write_text(dump_canonical_json(result_envelope), encoding="utf-8")
 
         return query_path, result_path
+
+    def write_git_state_artifact(
+        self, *, artifact: GitStateArtifact, tool_call_id: str | None, sequence: int = 0
+    ) -> ToolOutputArtifact:
+        payload = artifact.model_dump(exclude_none=True)
+        self.artifact_dir.mkdir(parents=True, exist_ok=True)
+
+        artifact_id = str(uuid.uuid4())
+        filename = f"{sequence:04d}_git_state_{artifact_id[:8]}.json"
+        artifact_path = self.artifact_dir / filename
+        payload_bytes = dump_canonical_json(payload).encode("utf-8")
+        payload_sha256 = f"sha256:{hashlib.sha256(payload_bytes).hexdigest()}"
+        envelope = {
+            "schema_version": "rig.relay.artifact.envelope.v1",
+            "artifact_kind": "git_state",
+            "session_id": self.session_id,
+            "tool_call_id": tool_call_id,
+            "created_at": datetime.now(UTC).isoformat(),
+            "payload_sha256": payload_sha256,
+            "payload": payload,
+            "metadata": {
+                "artifact_id": artifact_id,
+                "tool_name": artifact.tool_name,
+                "producer": "rig-relay",
+                "producer_version": "2.9.6",
+                "evidence_relative_path": str(
+                    artifact_path.relative_to(self.artifact_dir.parent.parent.parent)
+                ),
+                "mime_type": "application/json",
+                "encoding": "utf-8",
+            },
+        }
+        envelope_bytes = dump_canonical_json(envelope).encode("utf-8")
+        artifact_record_sha256 = f"sha256:{hashlib.sha256(envelope_bytes).hexdigest()}"
+        envelope["artifact_record_sha256"] = artifact_record_sha256
+        artifact_path.write_text(dump_canonical_json(envelope), encoding="utf-8")
+        return ToolOutputArtifact(
+            session_id=self.session_id,
+            tool_call_id=tool_call_id,
+            payload_sha256=payload_sha256,
+            artifact_record_sha256=artifact_record_sha256,
+            payload=payload,
+            artifact_id=artifact_id,
+            tool_name=artifact.tool_name,
+            path=str(artifact_path),
+            byte_size=len(payload_bytes),
+            truncated_for_prompt=False,
+            prompt_excerpt=None,
+        )

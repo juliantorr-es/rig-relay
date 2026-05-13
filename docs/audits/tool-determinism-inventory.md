@@ -25,7 +25,7 @@ These traces power the `rig-relay doctor tool-reasoning` report for identifying 
 | `write_file` | `builtins.write_file` | `deterministic_repo_state` | `writes_workspace` | High | High | Full (before/after SHA256, creation/overwrite flags, parent dirs) |
 | `grep` | `builtins.grep` | `deterministic_repo_state` | `read_only` | High | Medium (Recursive order) | Full (typed search_query/search_result with backend/count/order evidence) |
 | `bash` | `builtins.bash` | `nondeterministic_external_io` | `writes_workspace` | Low | Low | Full |
-| `git` | `builtins.git` | `deterministic_repo_state` | `read_only` | Medium | Medium | Full |
+| `git` | `builtins.git` | `deterministic_repo_state` | `read_only` | Medium | Medium | Full (`git_status` emits typed git_state evidence) |
 | `websearch` | `builtins.websearch` | `nondeterministic_external_io` | `read_only` | High | Low (Provider dependent) | Full |
 | `webfetch` | `builtins.webfetch` | `nondeterministic_external_io` | `read_only` | High | Low | Full |
 | `ask_user_question` | `builtins.ask_user_question` | `nondeterministic_external_io` | `read_only` | N/A | N/A | Full |

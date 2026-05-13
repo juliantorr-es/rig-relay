@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.git_state.v1.schema.json",
+  "title": "Git State Artifact",
+  "type": "object",
+  "required": [
+    "tool_name",
+    "repo_root",
+    "is_dirty",
+    "dirty_file_count",
+    "staged_file_count",
+    "unstaged_file_count",
+    "untracked_file_count",
+    "conflict_file_count",
+    "dirty_files",
+    "ordering_policy",
+    "state_sha256"
+  ],
+  "properties": {
+    "tool_name": {
+      "type": "string",
+      "const": "git_status"
+    },
+    "repo_root": {
+      "type": "string"
+    },
+    "branch": {
+      "type": ["string", "null"]
+    },
+    "head_sha": {
+      "type": ["string", "null"]
+    },
+    "head_short_sha": {
+      "type": ["string", "null"]
+    },
+    "upstream_branch": {
+      "type": ["string", "null"]
+    },
+    "upstream_ahead_count": {
+      "type": ["integer", "null"]
+    },
+    "upstream_behind_count": {
+      "type": ["integer", "null"]
+    },
+    "is_detached_head": {
+      "type": ["boolean", "null"]
+    },
+    "is_dirty": {
+      "type": "boolean"
+    },
+    "dirty_file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "staged_file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unstaged_file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "untracked_file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "conflict_file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ignored_file_count": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "dirty_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relative_path", "change_kind"],
+        "properties": {
+          "relative_path": {
+            "type": "string"
+          },
+          "change_kind": {
+            "type": "string"
+          },
+          "staged": {
+            "type": "boolean"
+          },
+          "unstaged": {
+            "type": "boolean"
+          },
+          "untracked": {
+            "type": "boolean"
+          },
+          "conflicted": {
+            "type": "boolean"
+          },
+          "rename_from": {
+            "type": ["string", "null"]
+          },
+          "rename_to": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "ordering_policy": {
+      "type": "string"
+    },
+    "state_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "stdout_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "stderr_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

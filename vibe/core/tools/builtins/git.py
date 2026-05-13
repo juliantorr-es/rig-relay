@@ -3,12 +3,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
 from collections.abc import AsyncGenerator
+import hashlib
 import os
 from pathlib import Path
 from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
+from vibe.core.telemetry.artifacts import (
+    GitStateArtifact,
+    GitStateFile,
+    ToolOutputArtifactWriter,
+)
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
@@ -158,6 +164,7 @@ class GitStatusArgs(BaseModel):
 
 class GitStatus(GitBase[GitStatusArgs]):
     description: ClassVar[str] = "Show the working tree status."
+    _STATUS_LINE_PATH_OFFSET: ClassVar[int] = 3
 
     async def run(
         self, args: GitStatusArgs, ctx: InvokeContext | None = None
@@ -171,7 +178,159 @@ class GitStatus(GitBase[GitStatusArgs]):
         if args.branch:
             argv.append("--branch")
 
-        yield await self._run_git("status", argv)
+        result = await self._run_git("status", argv)
+        if ctx and ctx.session_dir and ctx.tool_call_id:
+            try:
+                await self._emit_git_state_artifact(result, ctx)
+            except Exception:
+                pass
+        yield result
+
+    async def _emit_git_state_artifact(
+        self, result: GitResult, ctx: InvokeContext
+    ) -> None:
+        payload = await self._build_git_state_payload(result)
+        payload["stdout_sha256"] = self._sha256_text(result.stdout)
+        payload["stderr_sha256"] = (
+            self._sha256_text(result.stderr) if result.stderr else None
+        )
+        payload["state_sha256"] = self._sha256_payload(payload)
+        artifact = GitStateArtifact.model_validate(payload)
+        session_dir = ctx.session_dir
+        assert session_dir is not None
+        writer = ToolOutputArtifactWriter(str(session_dir.name))
+        writer.write_git_state_artifact(
+            artifact=artifact, tool_call_id=ctx.tool_call_id
+        )
+
+    @staticmethod
+    def _sha256_text(text: str) -> str:
+        return f"sha256:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
+
+    @staticmethod
+    def _sha256_payload(payload: dict[str, object]) -> str:
+        from vibe.core.telemetry.local import dump_canonical_json
+
+        return f"sha256:{hashlib.sha256(dump_canonical_json(payload).encode('utf-8')).hexdigest()}"
+
+    async def _build_git_state_payload(self, result: GitResult) -> dict[str, object]:
+        branch = await self._read_git_branch()
+        head_sha = await self._read_git_head_sha()
+        (
+            upstream_branch,
+            upstream_ahead,
+            upstream_behind,
+        ) = await self._read_git_upstream()
+        dirty_files, staged, unstaged, untracked, conflicted = self._parse_dirty_files(
+            result.stdout
+        )
+        return {
+            "tool_name": "git_status",
+            "repo_root": Path.cwd().resolve().as_posix(),
+            "branch": branch,
+            "head_sha": head_sha,
+            "head_short_sha": head_sha[:7] if head_sha else None,
+            "upstream_branch": upstream_branch,
+            "upstream_ahead_count": upstream_ahead,
+            "upstream_behind_count": upstream_behind,
+            "is_detached_head": branch is None,
+            "is_dirty": bool(dirty_files),
+            "dirty_file_count": len(dirty_files),
+            "staged_file_count": staged,
+            "unstaged_file_count": unstaged,
+            "untracked_file_count": untracked,
+            "conflict_file_count": conflicted,
+            "ignored_file_count": None,
+            "dirty_files": [item.model_dump() for item in dirty_files],
+            "ordering_policy": "rig_normalized_path_kind",
+            "warnings": [],
+        }
+
+    async def _read_git_head_sha(self) -> str | None:
+        try:
+            result = await self._run_git("rev-parse", ["HEAD"])
+        except ToolError:
+            return None
+        return result.stdout.strip() or None
+
+    async def _read_git_branch(self) -> str | None:
+        try:
+            result = await self._run_git("branch", ["--show-current"])
+        except ToolError:
+            return None
+        branch = result.stdout.strip()
+        return branch or None
+
+    async def _read_git_upstream(self) -> tuple[str | None, int | None, int | None]:
+        try:
+            branch_result = await self._run_git(
+                "rev-parse", ["--abbrev-ref", "--symbolic-full-name", "@{u}"]
+            )
+            upstream_branch = branch_result.stdout.strip() or None
+            if upstream_branch is None:
+                return None, None, None
+            counts_result = await self._run_git(
+                "rev-list", ["--left-right", "--count", "HEAD...@{u}"]
+            )
+            ahead_text, behind_text = counts_result.stdout.strip().split("\t", 1)
+            return upstream_branch, int(ahead_text), int(behind_text)
+        except (ToolError, ValueError):
+            return None, None, None
+
+    def _parse_dirty_files(
+        self, stdout: str
+    ) -> tuple[list[GitStateFile], int, int, int, int]:
+        dirty_files: list[GitStateFile] = []
+        seen_paths: set[str] = set()
+        staged = unstaged = untracked = conflicted = 0
+
+        for line in stdout.splitlines():
+            if not line or line.startswith("## "):
+                continue
+            parsed = self._parse_status_line(line)
+            if parsed is None:
+                continue
+            rel, status = parsed
+            if rel in seen_paths:
+                continue
+            seen_paths.add(rel)
+            staged_flag = self._is_staged_status(status)
+            unstaged_flag = self._is_unstaged_status(status)
+            untracked_flag = status == "??"
+            conflicted_flag = "U" in status
+            staged += int(staged_flag)
+            unstaged += int(unstaged_flag)
+            untracked += int(untracked_flag)
+            conflicted += int(conflicted_flag)
+            dirty_files.append(
+                GitStateFile(
+                    relative_path=rel,
+                    change_kind=status.strip() or "unknown",
+                    staged=staged_flag,
+                    unstaged=unstaged_flag,
+                    untracked=untracked_flag,
+                    conflicted=conflicted_flag,
+                )
+            )
+
+        dirty_files.sort(key=lambda item: (item.relative_path, item.change_kind))
+        return dirty_files, staged, unstaged, untracked, conflicted
+
+    @staticmethod
+    def _parse_status_line(line: str) -> tuple[str, str] | None:
+        if len(line) <= GitStatus._STATUS_LINE_PATH_OFFSET:
+            return None
+        status = line[:2]
+        path = line[GitStatus._STATUS_LINE_PATH_OFFSET :]
+        return Path(path).as_posix(), status
+
+    @staticmethod
+    def _is_staged_status(status: str) -> bool:
+        return status[0] not in {" ", "?"}
+
+    @staticmethod
+    def _is_unstaged_status(status: str) -> bool:
+        return status[1] not in {" ", "?"}
 
     @classmethod
     def format_call_display(cls, args: GitStatusArgs) -> ToolCallDisplay:

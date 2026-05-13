@@ -108,17 +108,20 @@ class GrepArgs(BaseModel):
 class GrepMatch(BaseModel):
     path: str
     line: int | None = None
+    column: int | None = None
+    line_content: str | None = None
+    match_text: str | None = None
 
     @classmethod
     def from_output_line(cls, raw: str) -> GrepMatch | None:
-        """Parse a single grep/rg output line in `file:line:content` format.
+        """Parse a single grep/rg output line in ``file:line:content`` format.
 
         Handles Windows drive-letter paths like ``C:\\repo\\file.py:10:match``
-        by skipping a single-letter first segment.
+        and content containing colons like ``file.py:10:def hello():``.
         """
-        parts = raw.split(":", 3)
-        MIN_MATCH_PARTS = 2
-        if len(parts) < MIN_MATCH_PARTS:
+        parts = raw.split(":", 2)
+        MIN_PARTS = 2
+        if len(parts) < MIN_PARTS:
             return None
 
         # Windows drive letter: first part is a single letter (e.g. "C")
@@ -130,21 +133,38 @@ class GrepMatch(BaseModel):
         )
         if is_windows_path:
             file_path = f"{parts[0]}:{parts[1]}"
-            line_str = parts[2]
+            line_and_content = parts[2]
         else:
             file_path = parts[0]
-            line_str = parts[1]
+            if len(parts) >= 3:
+                line_and_content = f"{parts[1]}:{parts[2]}"
+            else:
+                line_and_content = parts[1] if len(parts) > 1 else ""
+
+        if ":" in line_and_content:
+            line_str, content = line_and_content.split(":", 1)
+        else:
+            line_str = line_and_content
+            content = ""
 
         try:
             line_num = int(line_str) if line_str else None
-        except (ValueError, TypeError):
+        except ValueError:
             line_num = None
-        return cls(path=str(Path(file_path).resolve()), line=line_num)
+            content = line_and_content
+
+        return cls(
+            path=str(Path(file_path).resolve()),
+            line=line_num,
+            line_content=content,
+            match_text=content,
+        )
 
 
 class GrepResult(BaseModel):
     matches: str
     match_count: int
+    total_match_count: int = 0
     was_truncated: bool = Field(
         description="True if output was cut short by max_matches or max_output_bytes."
     )
@@ -199,63 +219,112 @@ class Grep(
 
         exclude_patterns = self._collect_exclude_patterns()
         cmd = self._build_command(args, exclude_patterns, backend)
-        stdout = await self._execute_search(cmd)
+        stdout, stdout_bytes, stderr_bytes = await self._execute_search(cmd)
 
         max_matches = args.max_matches or self.config.default_max_matches
         result = self._parse_output(stdout, max_matches)
 
         if ctx and ctx.session_dir and ctx.tool_call_id:
             try:
-                self._emit_search_artifacts(args, result, ctx)
+                self._emit_search_artifacts(
+                    args, result, backend, stdout_bytes, stderr_bytes, ctx
+                )
             except Exception as e:
                 logger.warning("Failed to emit search artifacts: %s", e)
 
         yield result
 
     def _emit_search_artifacts(
-        self, args: GrepArgs, result: GrepResult, ctx: InvokeContext
+        self,
+        args: GrepArgs,
+        result: GrepResult,
+        backend: GrepBackend,
+        stdout_bytes: bytes,
+        stderr_bytes: bytes,
+        ctx: InvokeContext,
     ) -> None:
-        """Emit typed search query and result artifacts."""
-        # 1. Build Query Artifact
-        query_payload = args.model_dump()
-        normalized_query_json = dump_canonical_json(query_payload)
-        query_sha256 = f"sha256:{hashlib.sha256(normalized_query_json.encode('utf-8')).hexdigest()}"
+        query_json = dump_canonical_json(self._build_query_payload(args, backend))
+        query_sha256 = _sha256_bytes(query_json.encode("utf-8"))
 
         query_artifact = SearchQueryArtifact(
-            query_text=args.pattern,
-            query_kind="regex",  # grep/ripgrep use regex by default
-            root_scope=str(args.path),
-            include_globs=[],  # Not directly exposed in GrepArgs currently
+            tool_name="grep",
+            query=args.pattern,
+            backend=backend.value,
+            root=str(args.path),
             exclude_globs=self._collect_exclude_patterns(),
-            case_mode="smart",  # ripgrep uses smart-case in our cmd
-            ignore_mode=args.use_default_ignore,
-            max_results=args.max_matches or self.config.default_max_matches,
+            regex=True,
             normalized_query_sha256=query_sha256,
         )
 
-        # 2. Build Result Artifact
-        items = []
-        for match in sorted(result.matches, key=lambda m: (m.path, m.line_number)):
-            items.append(
-                SearchResultItem(
-                    relative_path=match.path,
-                    start_line=match.line_number,
-                    excerpt=match.line_content,
-                    excerpt_sha256=f"sha256:{hashlib.sha256(match.line_content.encode('utf-8')).hexdigest()}",
-                )
-            )
-
-        result_artifact = SearchResultArtifact(
-            query_sha256=query_sha256, results=items, truncated=result.truncated
+        items = self._build_sorted_result_items(result)
+        matched_file_count = len({i.relative_path for i in items})
+        truncation_reason = self._build_truncation_reason(result)
+        warnings = (
+            ["Output was truncated due to size/match limits"]
+            if result.was_truncated
+            else []
         )
 
-        # 3. Write Artifacts
+        result_artifact = SearchResultArtifact(
+            query_sha256=query_sha256,
+            results=items,
+            truncated=result.was_truncated,
+            backend=backend.value,
+            ordering_policy="rig_normalized_path_line_column_match",
+            total_match_count=result.total_match_count,
+            returned_match_count=len(items),
+            matched_file_count=matched_file_count,
+            returned_file_count=matched_file_count,
+            truncation_reason=truncation_reason,
+            result_set_sha256=_compute_result_set_sha256(
+                items, result.total_match_count, matched_file_count
+            ),
+            stdout_sha256=_sha256_bytes(stdout_bytes) if stdout_bytes else None,
+            stderr_sha256=_sha256_bytes(stderr_bytes) if stderr_bytes else None,
+            warnings=warnings,
+        )
+
         writer = ToolOutputArtifactWriter(str(ctx.session_dir.name))
         writer.write_search_artifacts(
             query_artifact=query_artifact,
             result_artifact=result_artifact,
             tool_call_id=ctx.tool_call_id,
         )
+
+    def _build_query_payload(self, args: GrepArgs, backend: GrepBackend) -> dict:
+        return {
+            "pattern": args.pattern,
+            "path": args.path,
+            "max_matches": args.max_matches or self.config.default_max_matches,
+            "use_default_ignore": args.use_default_ignore,
+            "backend": backend.value,
+            "exclude_patterns": sorted(self._collect_exclude_patterns()),
+        }
+
+    def _build_sorted_result_items(self, result: GrepResult) -> list[SearchResultItem]:
+        items = []
+        for match in result.parsed_matches:
+            rel = _repo_relative(match.path)
+            excerpt = match.line_content or ""
+            items.append(
+                SearchResultItem(
+                    relative_path=rel,
+                    start_line=match.line,
+                    excerpt=excerpt,
+                    excerpt_sha256=_sha256_bytes(excerpt.encode("utf-8"))
+                    if excerpt
+                    else None,
+                    match_text=match.match_text,
+                )
+            )
+        items.sort(key=lambda i: (i.relative_path, i.start_line or 0, i.excerpt or ""))
+        return items
+
+    @staticmethod
+    def _build_truncation_reason(result: GrepResult) -> str | None:
+        if not result.was_truncated:
+            return None
+        return "result count exceeded max_matches or output size exceeded max_output_bytes"
 
     def _validate_args(self, args: GrepArgs) -> None:
         if not args.pattern.strip():
@@ -343,7 +412,7 @@ class Grep(
 
         return cmd
 
-    async def _execute_search(self, cmd: list[str]) -> str:
+    async def _execute_search(self, cmd: list[str]) -> tuple[str, bytes, bytes]:
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -370,7 +439,7 @@ class Grep(
                 error_msg = stderr or f"Process exited with code {proc.returncode}"
                 raise ToolError(f"grep error: {error_msg}")
 
-            return stdout
+            return stdout, stdout_bytes or b"", stderr_bytes or b""
 
         except ToolError:
             raise
@@ -379,12 +448,13 @@ class Grep(
 
     def _parse_output(self, stdout: str, max_matches: int) -> GrepResult:
         output_lines = stdout.splitlines() if stdout else []
+        total_lines = len(output_lines)
 
         truncated_lines = output_lines[:max_matches]
         truncated_output = "\n".join(truncated_lines)
 
         was_truncated = (
-            len(output_lines) > max_matches
+            total_lines > max_matches
             or len(truncated_output) > self.config.max_output_bytes
         )
 
@@ -393,6 +463,7 @@ class Grep(
         return GrepResult(
             matches=final_output,
             match_count=len(truncated_lines),
+            total_match_count=total_lines,
             was_truncated=was_truncated,
         )
 
@@ -427,3 +498,35 @@ class Grep(
     @classmethod
     def get_status_text(cls) -> str:
         return "Searching files"
+
+
+# ── module-level evidence helpers ──────────────────────────────────
+
+
+def _sha256_bytes(data: bytes) -> str:
+    return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+
+def _repo_relative(path: str) -> str:
+    try:
+        return Path(path).resolve().relative_to(Path.cwd()).as_posix()
+    except ValueError:
+        return path
+
+
+def _compute_result_set_sha256(
+    items: list[SearchResultItem], total_count: int, file_count: int
+) -> str:
+    payload = {
+        "total_match_count": total_count,
+        "matched_file_count": file_count,
+        "items": [
+            {
+                "relative_path": i.relative_path,
+                "start_line": i.start_line,
+                "excerpt": i.excerpt,
+            }
+            for i in items
+        ],
+    }
+    return _sha256_bytes(dump_canonical_json(payload).encode("utf-8"))
