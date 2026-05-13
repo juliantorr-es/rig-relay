@@ -197,11 +197,22 @@ def test_valid_repo_local_evidence_session_passes(tmp_path, monkeypatch):
             sequence=4,
         ),
     )
+    _write_event(
+        log_file,
+        _event(
+            session_id,
+            EventName.SESSION_CLOSED,
+            {
+                "session_id": session_id,
+            },
+            sequence=5,
+        ),
+    )
     write_session_manifest(session_root, session_id)
 
     result = validate_evidence_session(repo_root / ".rig" / "relay", session_id)
     assert result.status == "pass"
-    assert result.event_count == 5
+    assert result.event_count == 6
     assert result.referenced_file_count == 4
     assert result.unreferenced_evidence_file_count == 0
 
@@ -369,6 +380,85 @@ def test_old_style_session_warns_without_root_metadata(tmp_path):
     result = validate_evidence_session(root, "s1")
     assert result.status == "warn"
     assert any("evidence_root_mode/source" in warning for warning in result.warnings)
+    assert any("session.closed" in warning for warning in result.warnings)
+
+
+def test_missing_manifest_warns_and_falls_back(tmp_path):
+    root = tmp_path / "root"
+    session = root / "sessions" / "s1"
+    artifact_dir = session / "artifacts" / "tool-results"
+    artifact_dir.mkdir(parents=True)
+    artifact = artifact_dir / "0000_read_file_abcd.json"
+    artifact.write_text("{}", encoding="utf-8")
+    log_file = session / "observability.jsonl"
+    _write_event(
+        log_file,
+        _event(
+            "s1",
+            EventName.SESSION_STARTED,
+            {
+                "evidence_root_mode": "repo_local",
+                "evidence_root_source": "RIG_RELAY_HOME",
+            },
+        ),
+    )
+    _write_event(
+        log_file,
+        _event(
+            "s1",
+            EventName.ARTIFACT_WRITTEN,
+            {
+                "session_id": "s1",
+                "evidence_kind": "tool_output_artifact",
+                "evidence_relative_path": artifact.relative_to(session).as_posix(),
+                "evidence_sha256": _sha256_prefix(artifact),
+                "artifact_id": "artifact-1",
+                "artifact_path": artifact.relative_to(session).as_posix(),
+                "tool_name": "read_file",
+                "raw_byte_size": 2,
+                "prompt_visible_byte_size": 2,
+                "payload_sha256": "sha256:abc",
+                "truncated": False,
+                "schema_version": "rig.relay.tool_output_artifact.v1",
+            },
+            sequence=1,
+        ),
+    )
+    _write_event(
+        log_file,
+        _event(
+            "s1",
+            EventName.SESSION_CLOSED,
+            {"session_id": "s1"},
+            sequence=2,
+        ),
+    )
+
+    result = validate_evidence_session(root, "s1")
+    assert result.status == "warn"
+    assert any("manifest missing" in warning for warning in result.warnings)
+    assert result.referenced_file_count == 1
+
+
+def test_missing_session_closed_warns(tmp_path):
+    root = tmp_path / "root"
+    session = root / "sessions" / "s1"
+    session.mkdir(parents=True)
+    log_file = session / "observability.jsonl"
+    _write_event(
+        log_file,
+        _event(
+            "s1",
+            EventName.SESSION_STARTED,
+            {
+                "evidence_root_mode": "repo_local",
+                "evidence_root_source": "RIG_RELAY_HOME",
+            },
+        ),
+    )
+    result = validate_evidence_session(root, "s1")
+    assert result.status == "warn"
+    assert any("session.closed" in warning for warning in result.warnings)
 
 
 def test_manifest_builder_is_stable_for_equivalent_inputs(tmp_path, monkeypatch):

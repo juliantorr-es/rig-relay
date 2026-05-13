@@ -9,6 +9,11 @@ Owner area: tests
 ## Executive Summary
 This roadmap defines the automated validation gates required to mature Rig Relay's evidence model. It distinguishes between CI-level regressions and user-facing "doctor" checks for local environment health.
 
+Current state:
+- `rig-relay doctor evidence` exists and validates one selected session read-only
+- the provider-independent repo-local evidence smoke already exercises artifact, shadow, context, and manifest evidence
+- root defaults have not changed; validation is scoped to the caller-selected evidence root
+
 ## Gate Inventory
 | Gate Name | Maturity | Target | Description |
 | :--- | :--- | :--- | :--- |

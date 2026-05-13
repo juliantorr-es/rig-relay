@@ -9,6 +9,12 @@ Owner area: evidence
 ## Executive Summary
 This document designs a verifiable evidence graph for Rig Relay. Currently, evidence files (observability logs, artifacts, context reports) exist in the filesystem but are not cryptographically linked. We propose a `manifest.json` that acts as the anchor for a session's integrity, enabling detection of corruption, deletion, or tampering.
 
+Current implemented state:
+- a minimal per-session `manifest.json` already exists
+- `rig-relay doctor evidence` validates one selected session read-only
+- the validator prefers the manifest when present and falls back to scan-based validation for legacy sessions
+- the next layer remains receipt-chain / Merkle work, not root-default policy changes
+
 ## Proposed Docs Path
 `docs/architecture/evidence-manifest-receipt-chain.md`
 

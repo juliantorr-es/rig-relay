@@ -9,6 +9,11 @@ Owner area: config
 ## Executive Summary
 This doctrine defines where Rig Relay evidence should live. The primary shift is from a "User Global" default to a "Context-Aware" model that prefers Repo-Local storage when working within a project, ensuring evidence is portable with the code it helped create.
 
+Current implementation note:
+- root defaults have not changed yet
+- root mode is observable in session-start telemetry
+- repo-local validation is supported as a selected root, but it is not the default policy
+
 ## Root Mode Definitions
 - **REPO_LOCAL**: `./.rig/relay/`. Preferred for project work.
 - **USER_GLOBAL**: `~/.rig/relay/`. Fallback for ad-hoc queries.

@@ -93,6 +93,16 @@ def _session_start_metadata(
         result.passed_check_count += 1
 
 
+def _session_closed_warning(
+    events: list[dict[str, Any]], result: EvidenceValidationResult
+) -> None:
+    if any(event.get("event_name") == EventName.SESSION_CLOSED for event in events):
+        result.passed_check_count += 1
+        return
+
+    result.warnings.append("missing rig.relay.session.closed event")
+
+
 def _collect_references(
     events: list[dict[str, Any]], session_root: Path, result: EvidenceValidationResult
 ) -> tuple[set[Path], dict[str, list[Path]]]:
@@ -324,6 +334,7 @@ def validate_evidence_session(
     result.failed_checks.extend(canonical_errors)
 
     _session_start_metadata(events, result)
+    _session_closed_warning(events, result)
     event_by_name = {
         str(event.get("event_name")): event
         for event in events
