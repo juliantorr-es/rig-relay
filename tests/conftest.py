@@ -68,7 +68,7 @@ def tmp_working_directory(
 @pytest.fixture(autouse=True)
 def config_dir(
     monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
-) -> Path:
+) -> Generator[Path, None, None]:
     tmp_path = tmp_path_factory.mktemp("rig")
     config_dir = tmp_path / ".rig" / "relay"
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -87,7 +87,7 @@ def config_dir(
         "vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path / ".vibe-mock"
     )
 
-    init_harness_files_manager(config_dir)
+    init_harness_files_manager("user")
 
     # Re-evaluate PLAN agent overrides so the allowlist uses the monkeypatched path
     from vibe.core.agents.models import PLAN, _plan_overrides
@@ -256,16 +256,17 @@ def build_test_vibe_app(
     resolved_config = config or build_test_vibe_config()
 
     app = VibeApp(
-        options=StartupOptions(model=resolved_config.active_model),
-        config=resolved_config,
+        startup=StartupOptions(),
         agent_loop=agent_loop or build_test_agent_loop(config=resolved_config),
-        whoami_gateway=FakeWhoAmIGateway(
+        plan_offer_gateway=FakeWhoAmIGateway(
             response=WhoAmIResponse(
-                plan_type=WhoAmIPlanType.FREE, email="test@example.com"
+                plan_type=WhoAmIPlanType.UNKNOWN,
+                plan_name="Free",
+                prompt_switching_to_pro_plan=False,
             )
         ),
         update_cache_repository=FakeUpdateCacheRepository(),
-        update_gateway=FakeUpdateGateway(),
+        update_notifier=FakeUpdateGateway(),
         voice_manager=FakeVoiceManager(),
         **kwargs,
     )

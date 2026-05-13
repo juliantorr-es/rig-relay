@@ -151,7 +151,7 @@ async def test_run_sdk_error_wrapped(websearch):
         )
         with patch.object(Mistral, "__aenter__", return_value=None):
             with patch.object(Mistral, "__aexit__", return_value=None):
-                with pytest.raises(ToolError, match="Mistral API error"):
+                with pytest.raises(ToolError, match="Search API error"):
                     await collect_result(websearch.run(WebSearchArgs(query="test")))
 
 

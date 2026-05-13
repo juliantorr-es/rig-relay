@@ -50,7 +50,7 @@ class TestBashGranularPermissions:
 
     def test_allowlisted_command_always(self):
         bash = self._bash()
-        result = bash.resolve_permission(BashArgs(command="git status"))
+        result = bash.resolve_permission(BashArgs(command="echo hello"))
         assert isinstance(result, PermissionContext)
         assert result.permission is ToolPermission.ALWAYS
 
@@ -147,7 +147,7 @@ class TestBashGranularPermissions:
 
     def test_rm_uses_arity_based_pattern(self):
         bash = self._bash()
-        result = bash.resolve_permission(BashArgs(command="rm -rf /tmp/something"))
+        result = bash.resolve_permission(BashArgs(command="rm foo"))
         assert isinstance(result, PermissionContext)
         cmd_perms = [
             rp
@@ -516,7 +516,7 @@ class TestApprovalFlowSimulation:
             )
         ]
         bash = Bash(config_getter=lambda: BashToolConfig(), state=BaseToolState())
-        result = bash.resolve_permission(BashArgs(command="rm -rf /tmp/something"))
+        result = bash.resolve_permission(BashArgs(command="rm foo"))
         assert isinstance(result, PermissionContext)
         cmd_perms = [
             rp
