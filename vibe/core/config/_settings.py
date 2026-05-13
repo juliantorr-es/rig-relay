@@ -190,6 +190,7 @@ class ProviderConfig(BaseModel):
     project_id: str = ""
     region: str = ""
     extra_headers: dict[str, str] = Field(default_factory=dict)
+    extra_body: dict[str, Any] = Field(default_factory=dict)
 
     def _is_legacy_mistral_provider_without_backend(self) -> bool:
         return (

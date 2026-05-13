@@ -112,6 +112,7 @@ Based on initial evidence collection, the following areas are prioritized for to
 6.  **Git State Capture (Medium)**: `git_status` now emits typed repo-state evidence. Extend the remaining git tools with comparable structured artifacts.
 7.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
 8.  **Subagent Isolation (Low)**: Harden `task` tool to strictly sandbox subagent workspace mutations and capture their evidence shards.
+9.  **Thinking Delegation Boundary (Low)**: Keep thinking-mode delegation opt-in and provider-scoped; default task runs should remain non-thinking.
 
 See the [bash replacement opportunity map](../audits/bash-replacement-opportunity-map.md) for the parallel shell-to-typed-tool migration audit.
 

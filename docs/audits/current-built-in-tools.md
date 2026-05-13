@@ -207,7 +207,7 @@
 
 ### `task` — Task (subagent delegation)
 
-**What it does**: Delegates a task to a subagent (default: `explore`) for independent execution in its own AgentLoop.
+**What it does**: Delegates a task to a subagent (default: `explore`) for independent execution in its own AgentLoop, with an explicit provider/options envelope when callers need it.
 
 **What it's good for**: Parallel exploration, research, or isolated work that doesn't need user interaction.
 
@@ -218,23 +218,26 @@
 - No evidence shard capture from subagent — subagent tool calls are invisible in the parent evidence
 - Subagent writes files in the workspace without those writes being tracked in parent evidence
 - `writes_workspace` mutation class is correct but the scope of writes is completely opaque
+- Thinking-mode delegation is opt-in and should stay off by default for normal deterministic workflows
 
 **Determinism risks**:
 - `NONDETERMINISTIC_PROVIDER` — subagent uses an LLM, outputs are inherently non-deterministic
 - But the lack of subagent call evidence means we can't even measure how non-deterministic
 
-**Evidence currently available**: None at tool level.
+**Evidence currently available**: Task results now record provider, model, thinking request state, tool-access/result-compression policy, and a deterministic task-result hash.
 
 **Missing evidence**:
 - Subagent session ID linkage
 - Subagent tool call evidence shard references
 - Subagent workspace delta (files created/modified)
 - Subagent message count and completion status
+- Explicit attachment of task metadata to the parent evidence stream
 
 **Recommended hardening**:
 - Link subagent session UUID in parent evidence
 - Capture subagent tool-call evidence shards with parent session reference
 - Add after-task file diff to detect workspace mutations
+- Add task-level evidence for provider/options selection when delegation is thinking-enabled
 
 ---
 

@@ -136,7 +136,7 @@ class GrepMatch(BaseModel):
             line_and_content = parts[2]
         else:
             file_path = parts[0]
-            if len(parts) >= 3:
+            if len(parts) >= MIN_WINDOWS_PARTS:
                 line_and_content = f"{parts[1]}:{parts[2]}"
             else:
                 line_and_content = parts[1] if len(parts) > 1 else ""
@@ -284,6 +284,8 @@ class Grep(
             warnings=warnings,
         )
 
+        if ctx.session_dir is None:
+            return
         writer = ToolOutputArtifactWriter(str(ctx.session_dir.name))
         writer.write_search_artifacts(
             query_artifact=query_artifact,
@@ -324,7 +326,9 @@ class Grep(
     def _build_truncation_reason(result: GrepResult) -> str | None:
         if not result.was_truncated:
             return None
-        return "result count exceeded max_matches or output size exceeded max_output_bytes"
+        return (
+            "result count exceeded max_matches or output size exceeded max_output_bytes"
+        )
 
     def _validate_args(self, args: GrepArgs) -> None:
         if not args.pattern.strip():

@@ -6,6 +6,7 @@ Use `task` to delegate work to a subagent for independent execution.
 - **Specialized work**: Use the appropriate subagent for the type of task (exploration, research, etc.)
 - **Parallel execution**: Launch multiple subagents for independent tasks
 - **Autonomous work**: Tasks that don't require back-and-forth with the user
+- **Thinking delegation**: Opt into provider-scoped thinking mode only when the task truly needs heavier reasoning
 
 ## Best Practices
 
@@ -22,3 +23,4 @@ Use `task` to delegate work to a subagent for independent execution.
 - Subagents cannot write or modify files
 - Subagents cannot ask the user questions
 - Results are returned as text when the subagent completes
+- Thinking mode is opt-in and provider-scoped; normal task runs should stay non-thinking

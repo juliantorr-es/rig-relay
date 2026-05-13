@@ -3,13 +3,15 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from contextlib import aclosing
 import fnmatch
-from typing import ClassVar
+import hashlib
+from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
 from vibe.core.agent_loop import AgentLoop
 from vibe.core.agents.models import AgentType, BuiltinAgentName
-from vibe.core.config import SessionLoggingConfig, VibeConfig
+from vibe.core.config import ModelConfig, SessionLoggingConfig, VibeConfig
+from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
@@ -41,12 +43,54 @@ class TaskArgs(BaseModel):
         default="explore",
         description="Name of the agent profile to use (must be a subagent)",
     )
+    provider_options: TaskProviderOptions | None = Field(
+        default=None,
+        description="Explicit provider/model options for the delegated subagent.",
+    )
 
 
 class TaskResult(BaseModel):
     response: str = Field(description="The accumulated response from the subagent")
     turns_used: int = Field(description="Number of turns the subagent used")
     completed: bool = Field(description="Whether the task completed normally")
+    provider: str | None = None
+    model: str | None = None
+    thinking_requested: bool = False
+    thinking_enabled: bool | None = None
+    thinking_type: str | None = None
+    reasoning_effort: str | None = None
+    tool_access_policy: str | None = None
+    result_compression_policy: str | None = None
+    timeout_seconds: float | None = None
+    task_result_sha256: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
+class TaskProviderOptions(BaseModel):
+    provider: str | None = None
+    model: str | None = None
+    thinking_enabled: bool | None = None
+    thinking_type: Literal["enabled", "disabled"] | None = None
+    reasoning_effort: str | None = None
+    max_tokens: int | None = None
+    timeout_seconds: float | None = None
+    tool_access_policy: str | None = None
+    result_compression_policy: str | None = None
+
+
+class TaskExecutionPlan(BaseModel):
+    provider: str | None = None
+    model: str | None = None
+    thinking_requested: bool = False
+    thinking_enabled: bool | None = None
+    thinking_type: str | None = None
+    reasoning_effort: str | None = None
+    max_tokens: int | None = None
+    timeout_seconds: float | None = None
+    tool_access_policy: str | None = None
+    result_compression_policy: str | None = None
+    extra_body: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class TaskToolConfig(BaseToolConfig):
@@ -96,6 +140,107 @@ class Task(
     def get_status_text(cls) -> str:
         return "Running subagent"
 
+    @staticmethod
+    def _task_result_sha256(result: TaskResult) -> str:
+        return (
+            "sha256:"
+            + hashlib.sha256(
+                dump_canonical_json(result.model_dump(exclude_none=True)).encode(
+                    "utf-8"
+                )
+            ).hexdigest()
+        )
+
+    @staticmethod
+    def _resolve_model(
+        config: VibeConfig, provider_options: TaskProviderOptions
+    ) -> ModelConfig:
+        if provider_options.model:
+            for model in config.models:
+                if provider_options.model in {model.alias, model.name}:
+                    return model
+            raise ToolError(f"Unknown model: {provider_options.model}")
+
+        if provider_options.provider:
+            for model in config.models:
+                if model.provider == provider_options.provider:
+                    return model
+            raise ToolError(f"Unknown provider: {provider_options.provider}")
+
+        return config.get_active_model()
+
+    @staticmethod
+    def _build_execution_plan(
+        config: VibeConfig, provider_options: TaskProviderOptions | None
+    ) -> TaskExecutionPlan:
+        options = provider_options or TaskProviderOptions()
+        model = Task._resolve_model(config, options)
+        provider = config.get_provider_for_model(model)
+        warnings: list[str] = []
+        extra_body: dict[str, Any] = {}
+        thinking_requested = bool(options.thinking_enabled)
+        thinking_enabled: bool | None = None
+        thinking_type = options.thinking_type
+
+        if options.provider and options.provider != provider.name:
+            raise ToolError(
+                f"Requested provider '{options.provider}' does not match resolved model provider '{provider.name}'."
+            )
+
+        if thinking_requested:
+            if provider.name != "deepseek":
+                warnings.append(
+                    f"Thinking mode requested for unsupported provider '{provider.name}'."
+                )
+            else:
+                thinking_enabled = True
+                thinking_type = thinking_type or "enabled"
+                extra_body["thinking"] = {"type": "enabled"}
+                if options.reasoning_effort:
+                    extra_body["reasoning_effort"] = options.reasoning_effort
+        elif provider.name == "deepseek" and options.reasoning_effort:
+            extra_body["reasoning_effort"] = options.reasoning_effort
+
+        if not thinking_requested and provider.name == "deepseek":
+            thinking_enabled = False
+
+        return TaskExecutionPlan(
+            provider=provider.name,
+            model=model.alias,
+            thinking_requested=thinking_requested,
+            thinking_enabled=thinking_enabled,
+            thinking_type=thinking_type,
+            reasoning_effort=options.reasoning_effort,
+            max_tokens=options.max_tokens,
+            timeout_seconds=options.timeout_seconds,
+            tool_access_policy=options.tool_access_policy,
+            result_compression_policy=options.result_compression_policy,
+            extra_body=extra_body,
+            warnings=warnings,
+        )
+
+    @staticmethod
+    def _build_task_result(
+        *, response: str, turns_used: int, completed: bool, plan: TaskExecutionPlan
+    ) -> TaskResult:
+        result = TaskResult(
+            response=response,
+            turns_used=turns_used,
+            completed=completed,
+            provider=plan.provider,
+            model=plan.model,
+            thinking_requested=plan.thinking_requested,
+            thinking_enabled=plan.thinking_enabled,
+            thinking_type=plan.thinking_type,
+            reasoning_effort=plan.reasoning_effort,
+            tool_access_policy=plan.tool_access_policy,
+            result_compression_policy=plan.result_compression_policy,
+            timeout_seconds=plan.timeout_seconds,
+            warnings=plan.warnings,
+        )
+        result.task_result_sha256 = Task._task_result_sha256(result)
+        return result
+
     def resolve_permission(self, args: TaskArgs) -> PermissionContext | None:
         agent_name = args.agent
 
@@ -116,6 +261,12 @@ class Task(
             raise ToolError("Task tool requires agent_manager in context")
 
         agent_manager = ctx.agent_manager
+        plan = self._build_execution_plan(agent_manager.config, args.provider_options)
+        if plan.warnings:
+            yield self._build_task_result(
+                response="", turns_used=0, completed=False, plan=plan
+            )
+            return
 
         try:
             agent_profile = agent_manager.get_agent(args.agent)
@@ -135,6 +286,11 @@ class Task(
             enabled=ctx.session_dir is not None,
         )
         base_config = VibeConfig.load(session_logging=session_logging)
+        if plan.model:
+            base_config.active_model = plan.model
+        if plan.extra_body:
+            provider = base_config.get_active_provider()
+            provider.extra_body = {**provider.extra_body, **plan.extra_body}
         subagent_loop = AgentLoop(
             config=base_config,
             agent_name=args.agent,
@@ -187,8 +343,9 @@ class Task(
                 msg.role == Role.assistant for msg in subagent_loop.messages
             )
 
-        yield TaskResult(
+        yield self._build_task_result(
             response="".join(accumulated_response),
             turns_used=turns_used,
             completed=completed,
+            plan=plan,
         )

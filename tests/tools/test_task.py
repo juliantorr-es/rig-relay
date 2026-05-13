@@ -8,8 +8,15 @@ from tests.conftest import build_test_vibe_config
 from tests.mock.utils import collect_result
 from vibe.core.agents.manager import AgentManager
 from vibe.core.agents.models import BUILTIN_AGENTS, AgentType
+from vibe.core.config import ProviderConfig
 from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
-from vibe.core.tools.builtins.task import Task, TaskArgs, TaskResult, TaskToolConfig
+from vibe.core.tools.builtins.task import (
+    Task,
+    TaskArgs,
+    TaskProviderOptions,
+    TaskResult,
+    TaskToolConfig,
+)
 from vibe.core.tools.permissions import PermissionContext
 from vibe.core.types import AssistantEvent, LLMMessage, Role
 
@@ -164,6 +171,112 @@ class TestTaskToolExecution:
             assert result.response == "Hello from subagent! More content."
             assert result.turns_used == 2  # 2 assistant messages in mock_messages
             assert result.completed is True
+            assert result.provider is not None
+            assert result.model is not None
+            assert result.task_result_sha256 is not None
+
+    @pytest.mark.asyncio
+    async def test_deepseek_thinking_sets_provider_extra_body(
+        self, task_tool: Task, ctx: InvokeContext
+    ) -> None:
+        mock_messages = [LLMMessage(role=Role.system, content="system")]
+
+        async def mock_act(task: str):
+            yield AssistantEvent(content="Done")
+
+        captured_provider = {}
+
+        def _capture_provider(provider: ProviderConfig) -> None:
+            captured_provider["provider"] = provider
+
+        with patch("vibe.core.tools.builtins.task.AgentLoop") as mock_agent_loop_class:
+            mock_agent_loop = MagicMock()
+            mock_agent_loop.act = mock_act
+            mock_agent_loop.messages = mock_messages
+            mock_agent_loop.set_approval_callback = MagicMock()
+            mock_agent_loop_class.side_effect = lambda **kwargs: (
+                _capture_provider(kwargs["config"].get_active_provider())
+                or mock_agent_loop
+            )
+
+            args = TaskArgs(
+                task="analyze",
+                agent="explore",
+                provider_options=TaskProviderOptions(
+                    provider="deepseek", thinking_enabled=True, reasoning_effort="high"
+                ),
+            )
+            result = await collect_result(task_tool.run(args, ctx))
+
+            assert isinstance(result, TaskResult)
+            assert result.completed is True
+            provider = captured_provider["provider"]
+            assert provider.name == "deepseek"
+            assert provider.extra_body == {
+                "thinking": {"type": "enabled"},
+                "reasoning_effort": "high",
+            }
+            assert result.thinking_requested is True
+            assert result.thinking_enabled is True
+            assert result.reasoning_effort == "high"
+            assert result.provider == "deepseek"
+
+    @pytest.mark.asyncio
+    async def test_thinking_request_against_unsupported_provider_returns_warning(
+        self, task_tool: Task, ctx: InvokeContext
+    ) -> None:
+        args = TaskArgs(
+            task="analyze",
+            agent="explore",
+            provider_options=TaskProviderOptions(
+                provider="mistral", thinking_enabled=True
+            ),
+        )
+
+        result = await collect_result(task_tool.run(args, ctx))
+
+        assert isinstance(result, TaskResult)
+        assert result.completed is False
+        assert result.turns_used == 0
+        assert result.warnings
+        assert "unsupported provider" in result.warnings[0].lower()
+        assert result.thinking_requested is True
+        assert result.thinking_enabled is None
+
+    @pytest.mark.asyncio
+    async def test_non_thinking_deepseek_path_remains_available(
+        self, task_tool: Task, ctx: InvokeContext
+    ) -> None:
+        mock_messages = [LLMMessage(role=Role.system, content="system")]
+
+        async def mock_act(task: str):
+            yield AssistantEvent(content="Answer")
+
+        with patch("vibe.core.tools.builtins.task.AgentLoop") as mock_agent_loop_class:
+            mock_agent_loop = MagicMock()
+            mock_agent_loop.act = mock_act
+            mock_agent_loop.messages = mock_messages
+            mock_agent_loop.set_approval_callback = MagicMock()
+            mock_agent_loop_class.return_value = mock_agent_loop
+
+            args = TaskArgs(
+                task="analyze",
+                agent="explore",
+                provider_options=TaskProviderOptions(provider="deepseek"),
+            )
+            result = await collect_result(task_tool.run(args, ctx))
+
+            assert isinstance(result, TaskResult)
+            assert result.completed is True
+            assert result.thinking_requested is False
+            assert result.thinking_enabled is False
+
+    def test_task_result_hash_is_deterministic(self, task_tool: Task) -> None:
+        first = TaskResult(response="x", turns_used=1, completed=True)
+        second = TaskResult(response="x", turns_used=1, completed=True)
+        assert task_tool._task_result_sha256(first) == task_tool._task_result_sha256(
+            second
+        )
 
     @pytest.mark.asyncio
     async def test_handles_stopped_by_middleware(

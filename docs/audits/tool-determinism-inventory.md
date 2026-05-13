@@ -31,7 +31,7 @@ These traces power the `rig-relay doctor tool-reasoning` report for identifying 
 | `ask_user_question` | `builtins.ask_user_question` | `nondeterministic_external_io` | `read_only` | N/A | N/A | Full |
 | `search_replace` | `builtins.search_replace` | `deterministic_repo_state` | `writes_workspace` | High | High | Full (before/after per-file SHA256, block counts, changed files) |
 | `skill` | `builtins.skill` | `deterministic_repo_state` | `read_only` | High | Medium | Full |
-| `task` | `builtins.task` | `nondeterministic_provider` | `writes_workspace` | Medium | Low | Full |
+| `task` | `builtins.task` | `nondeterministic_provider` | `writes_workspace` | Medium | Low | Full (provider/model/thinking metadata + deterministic task-result hash) |
 | `todo` | `builtins.todo` | `deterministic_pure` | `writes_temp_only` | High | High | Full |
 | `exit_plan_mode` | `builtins.exit_plan_mode` | `deterministic_pure` | `read_only` | N/A | N/A | Full |
 

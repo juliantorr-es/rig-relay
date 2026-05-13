@@ -422,9 +422,7 @@ def test_search_result_artifact_schema_validation():
 
     valid = {
         "query_sha256": "sha256:" + "a" * 64,
-        "results": [
-            {"relative_path": "foo.py", "start_line": 1, "excerpt": "bar"}
-        ],
+        "results": [{"relative_path": "foo.py", "start_line": 1, "excerpt": "bar"}],
         "truncated": False,
         "backend": "ripgrep",
         "ordering_policy": "rig_normalized_path_line_column_match",
@@ -454,10 +452,6 @@ def test_search_result_artifact_bad_sha256_rejected():
     )
     schema = json.loads(schema_path.read_text())
 
-    invalid = {
-        "query_sha256": "not-a-sha256",
-        "results": [],
-        "truncated": False,
-    }
+    invalid = {"query_sha256": "not-a-sha256", "results": [], "truncated": False}
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(invalid, schema)
