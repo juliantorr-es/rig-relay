@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.sprint_cockpit.v1.schema.json",
+  "title": "Sprint Cockpit v1",
+  "description": "Full sprint cockpit packet for the reviewer orchestrator. Contains repo state, coordination summary, dataset summary, open findings, and sprint mission. The reviewer reads this packet to decide which bounded child missions to launch.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "sprint_id",
+    "branch",
+    "head",
+    "repo_state_sha256",
+    "dirty_summary",
+    "sprint_mission",
+    "constraints",
+    "available_reviewer_tools",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.sprint_cockpit.v1"
+    },
+    "sprint_id": {
+      "type": "string",
+      "description": "Unique sprint identifier (e.g. sprint_<timestamp>)."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch at cockpit creation."
+    },
+    "head": {
+      "type": "string",
+      "description": "Git HEAD SHA at cockpit creation."
+    },
+    "repo_state_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of canonical git state (branch + head + dirty file hashes)."
+    },
+    "dirty_summary": {
+      "type": "object",
+      "required": ["tracked_modified_count", "untracked_count", "protected_dirty_count"],
+      "properties": {
+        "tracked_modified_count": { "type": "integer", "minimum": 0 },
+        "untracked_count": { "type": "integer", "minimum": 0 },
+        "protected_dirty_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "coordination_summary": {
+      "type": ["object", "null"],
+      "required": ["available"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "active_sessions": { "type": "integer", "minimum": 0 },
+        "active_tasks": { "type": "integer", "minimum": 0 },
+        "active_write_leases": { "type": "integer", "minimum": 0 },
+        "conflicts": { "type": "integer", "minimum": 0 },
+        "stale_leases": { "type": "integer", "minimum": 0 },
+        "events_jsonl_path": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "dataset_summary": {
+      "type": ["object", "null"],
+      "required": ["available"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "sessions": { "type": "integer", "minimum": 0 },
+        "observability_events": { "type": "integer", "minimum": 0 },
+        "coordination_events": { "type": "integer", "minimum": 0 },
+        "tool_calls": { "type": "integer", "minimum": 0 },
+        "open_findings": { "type": "integer", "minimum": 0 },
+        "report_path": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "open_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "finding_id": { "type": "string" },
+          "severity": { "type": "string" },
+          "title": { "type": "string" }
+        },
+        "required": ["finding_id", "severity", "title"],
+        "additionalProperties": false
+      },
+      "description": "Open out-of-scope findings (content-light: id, severity, title only)."
+    },
+    "recent_checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "commit_sha": { "type": "string" },
+          "files_committed_count": { "type": "integer", "minimum": 0 },
+          "status": { "type": "string", "enum": ["committed", "refused"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        },
+        "required": ["session_id", "commit_sha", "files_committed_count", "status", "created_at"],
+        "additionalProperties": false
+      }
+    },
+    "active_sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "agent_profile": { "type": "string" },
+          "task_id": { "type": ["string", "null"] },
+          "status": { "type": "string" },
+          "last_heartbeat": { "type": ["string", "null"], "format": "date-time" }
+        },
+        "required": ["session_id", "agent_profile", "status"],
+        "additionalProperties": false
+      }
+    },
+    "active_path_reservations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "path_hashes": { "type": "array", "items": { "type": "string" } },
+          "mode": { "type": "string", "enum": ["read", "write"] },
+          "status": { "type": "string" }
+        },
+        "required": ["session_id", "path_hashes", "mode", "status"],
+        "additionalProperties": false
+      }
+    },
+    "sprint_mission": {
+      "type": "string",
+      "description": "The sprint mission description."
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Sprint constraints (e.g. max_parallel_sessions=4, no_push, one_writer_per_path)."
+    },
+    "available_reviewer_tools": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of tool names available to the reviewer orchestrator."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of cockpit creation."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for cockpit contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about cockpit completeness."
+    }
+  },
+  "additionalProperties": false
+}

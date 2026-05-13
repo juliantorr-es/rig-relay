@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.telemetry_settings.v1.schema.json",
+  "title": "Telemetry Settings v1",
+  "description": "Rig Relay telemetry settings. Separates local operational telemetry (required for governed mode) from remote beta data sharing (optional). Supports three modes: basic_local, governed_local, beta_orchestration.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mode",
+    "local_operational_enabled",
+    "local_derived_datasets_enabled",
+    "remote_beta_sharing_enabled",
+    "share_level",
+    "onboarding_acknowledged_at",
+    "onboarding_text_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.telemetry_settings.v1"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["basic_local", "governed_local", "beta_orchestration"],
+      "description": "Current operation mode: basic_local (no remote sharing, no orchestration), governed_local (local telemetry only, no remote sharing), beta_orchestration (remote sharing enabled, advanced features)."
+    },
+    "local_operational_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Local operational telemetry: required for governed mode. Powers receipts, dirty-file guard, coordination, current_state, checkpointing, replay/debug."
+    },
+    "local_derived_datasets_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Local derived datasets: required for current_state, reports, queue planning, inspector."
+    },
+    "remote_beta_sharing_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Remote beta data sharing. During private beta, advanced orchestration features require this to be enabled."
+    },
+    "share_level": {
+      "type": "string",
+      "enum": ["off", "derived_only", "evidence_hashes", "debug_local_only", "debug_opt_in"],
+      "default": "derived_only",
+      "description": "What data may be shared remotely if remote_beta_sharing_enabled is true."
+    },
+    "participant_id": {
+      "type": ["string", "null"],
+      "description": "Anonymous participant identifier (e.g. anon_<hex>). Generated or set during onboarding."
+    },
+    "onboarding_acknowledged_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the user acknowledged onboarding."
+    },
+    "onboarding_text_version": {
+      "type": "string",
+      "description": "Version of onboarding text shown to the user."
+    },
+    "destination": {
+      "type": "string",
+      "default": "local",
+      "description": "Remote destination identifier (e.g. google_drive, local, custom)."
+    },
+    "disabled_features": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of features disabled based on current settings."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the current settings."
+    }
+  },
+  "additionalProperties": false
+}

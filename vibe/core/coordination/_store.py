@@ -17,6 +17,16 @@ from vibe.core.coordination._models import (
     CoordinationSession,
     CoordinationStateProjection,
     CoordinationTaskClaim,
+    build_artifact_published_payload,
+    build_conflict_reported_payload,
+    build_heartbeat_payload,
+    build_path_released_payload,
+    build_path_reserved_payload,
+    build_projection_read_payload,
+    build_reservation_refused_payload,
+    build_session_registered_payload,
+    build_task_claim_payload,
+    build_task_released_payload,
     normalize_path,
     now_plus,
 )
@@ -46,21 +56,20 @@ class CoordinationStore:
         temp.write_text(text, encoding="utf-8")
         temp.replace(path)
 
-    def _append_event(self, payload: dict[str, Any]) -> None:
+    def _append_event(
+        self, event_name: str, normalized_payload: dict[str, Any]
+    ) -> None:
         event = CoordinationEvent(
-            event_id=self._path_key(dump_canonical_json(payload)),
+            event_id=self._path_key(dump_canonical_json(normalized_payload)),
             sequence=self._event_sequence() + 1,
-            event_name=str(payload["event"]),
-            session_id=payload.get("payload", {}).get("session_id"),
-            task_id=payload.get("payload", {}).get("task_id"),
-            payload=payload.get("payload", {}),
+            event_name=event_name,
+            session_id=normalized_payload.get("session_id"),
+            task_id=normalized_payload.get("task_id"),
+            payload=normalized_payload,
         )
-        event.event_hash = (
-            "sha256:"
-            + self._path_key(
-                dump_canonical_json(
-                    event.model_dump(exclude_none=True, exclude={"event_hash"})
-                )
+        event.event_hash = "sha256:" + self._path_key(
+            dump_canonical_json(
+                event.model_dump(exclude_none=True, exclude={"event_hash"})
             )
         )
         self._events_path().parent.mkdir(parents=True, exist_ok=True)
@@ -71,7 +80,11 @@ class CoordinationStore:
     def _event_sequence(self) -> int:
         if not self._events_path().is_file():
             return 0
-        return sum(1 for line in self._events_path().read_text(encoding="utf-8").splitlines() if line.strip())
+        return sum(
+            1
+            for line in self._events_path().read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        )
 
     @staticmethod
     def _path_key(path: str) -> str:
@@ -90,7 +103,11 @@ class CoordinationStore:
     def _iter_reservations(self) -> list[CoordinationPathReservation]:
         reservations: list[CoordinationPathReservation] = []
         for path in sorted((self.root / "leases" / "paths").glob("*.json")):
-            reservations.append(CoordinationPathReservation.model_validate_json(path.read_text(encoding="utf-8")))
+            reservations.append(
+                CoordinationPathReservation.model_validate_json(
+                    path.read_text(encoding="utf-8")
+                )
+            )
         return reservations
 
     def _projection(self) -> CoordinationStateProjection:
@@ -101,27 +118,44 @@ class CoordinationStore:
         conflicts: list[CoordinationConflict] = []
 
         for path in sorted((self.root / "sessions").glob("*.json")):
-            session = CoordinationSession.model_validate_json(path.read_text(encoding="utf-8"))
+            session = CoordinationSession.model_validate_json(
+                path.read_text(encoding="utf-8")
+            )
             sessions[session.session_id] = session
 
         for path in sorted((self.root / "tasks").glob("*.json")):
-            claim = CoordinationTaskClaim.model_validate_json(path.read_text(encoding="utf-8"))
+            claim = CoordinationTaskClaim.model_validate_json(
+                path.read_text(encoding="utf-8")
+            )
             if self._is_expired(claim.expires_at) and claim.status == "active":
                 claim.status = "stale"
             task_claims[claim.task_id] = claim
 
         for reservation in self._iter_reservations():
-            if self._is_expired(reservation.expires_at) and reservation.status == "active":
+            if (
+                self._is_expired(reservation.expires_at)
+                and reservation.status == "active"
+            ):
                 reservation.status = "stale"
             if reservation.status == "active":
                 for path in reservation.paths:
-                    reservations[f"{reservation.session_id}:{reservation.task_id}:{path}"] = reservation
+                    reservations[
+                        f"{reservation.session_id}:{reservation.task_id}:{path}"
+                    ] = reservation
 
         for path in sorted((self.root / "artifacts").glob("*.json")):
-            artifacts.append(CoordinationArtifactRef.model_validate_json(path.read_text(encoding="utf-8")))
+            artifacts.append(
+                CoordinationArtifactRef.model_validate_json(
+                    path.read_text(encoding="utf-8")
+                )
+            )
 
         for path in sorted((self.root / "conflicts").glob("*.json")):
-            conflicts.append(CoordinationConflict.model_validate_json(path.read_text(encoding="utf-8")))
+            conflicts.append(
+                CoordinationConflict.model_validate_json(
+                    path.read_text(encoding="utf-8")
+                )
+            )
 
         return CoordinationStateProjection(
             active_sessions=sessions,
@@ -135,8 +169,12 @@ class CoordinationStore:
         payload = session.model_dump(exclude_none=True)
         payload["state_sha256"] = self._projection().projection_sha256
         session = CoordinationSession.model_validate(payload)
-        self._write_json(self.root / "sessions" / f"{session.session_id}.json", session.model_dump(exclude_none=True))
-        self._append_event({"event": "coord.session.registered", "payload": session.model_dump(exclude_none=True)})
+        self._write_json(
+            self.root / "sessions" / f"{session.session_id}.json",
+            session.model_dump(exclude_none=True),
+        )
+        normalized = build_session_registered_payload(session)
+        self._append_event("coord.session.registered", normalized)
         return session
 
     def heartbeat(
@@ -156,18 +194,20 @@ class CoordinationStore:
         payload = heartbeat.model_dump(exclude_none=True)
         payload["state_sha256"] = self._projection().projection_sha256
         heartbeat = CoordinationHeartbeat.model_validate(payload)
-        session = self.read_state_projection().active_sessions.get(session_id) or CoordinationSession(
-            session_id=session_id,
-            task_id=task_id,
-            status=status,
-        )
+        session = self.read_state_projection().active_sessions.get(
+            session_id
+        ) or CoordinationSession(session_id=session_id, task_id=task_id, status=status)
         session.status = status
         session.task_id = task_id
         session.reserved_paths = heartbeat.reserved_paths
         session.updated_at = heartbeat.created_at
         session.state_sha256 = heartbeat.state_sha256
-        self._write_json(self.root / "sessions" / f"{session_id}.json", session.model_dump(exclude_none=True))
-        self._append_event({"event": "coord.session.heartbeat", "payload": heartbeat.model_dump(exclude_none=True)})
+        self._write_json(
+            self.root / "sessions" / f"{session_id}.json",
+            session.model_dump(exclude_none=True),
+        )
+        normalized = build_heartbeat_payload(heartbeat)
+        self._append_event("coord.session.heartbeat", normalized)
         return heartbeat
 
     def claim_task(
@@ -184,14 +224,19 @@ class CoordinationStore:
             task_id=task_id,
             claim_kind=claim_kind,
             ttl_seconds=ttl_seconds,
-            scope_allowed_paths=[normalize_path(path) for path in scope.get("allowed_paths", [])],
+            scope_allowed_paths=[
+                normalize_path(path) for path in scope.get("allowed_paths", [])
+            ],
             expires_at=now_plus(ttl_seconds),
         )
         payload = claim.model_dump(exclude_none=True)
         payload["state_sha256"] = self._projection().projection_sha256
         claim = CoordinationTaskClaim.model_validate(payload)
-        self._write_json(self.root / "tasks" / f"{task_id}.json", claim.model_dump(exclude_none=True))
-        self._append_event({"event": "coord.task.claimed", "payload": claim.model_dump(exclude_none=True)})
+        self._write_json(
+            self.root / "tasks" / f"{task_id}.json", claim.model_dump(exclude_none=True)
+        )
+        normalized = build_task_claim_payload(claim)
+        self._append_event("coord.task.claimed", normalized)
         return CoordinationClaimResult(allowed=True, claim=claim)
 
     def reserve_paths(
@@ -212,7 +257,9 @@ class CoordinationStore:
                     continue
                 for existing_path in existing.paths:
                     for path in normalized:
-                        if self._is_prefix(existing_path, path) or self._is_prefix(path, existing_path):
+                        if self._is_prefix(existing_path, path) or self._is_prefix(
+                            path, existing_path
+                        ):
                             conflict = CoordinationConflict(
                                 conflict_id=self._path_key("|".join(normalized)),
                                 kind="path_write_overlap",
@@ -223,8 +270,15 @@ class CoordinationStore:
                                 recommended_resolution="serialize_or_split_scope",
                             )
                             self.report_conflict(conflict)
-                            self._append_event({"event": "coord.path.reservation_refused", "payload": conflict.model_dump(exclude_none=True)})
-                            return CoordinationReservationResult(allowed=False, conflict=conflict)
+                            refused_payload = build_reservation_refused_payload(
+                                conflict
+                            )
+                            self._append_event(
+                                "coord.path.reservation_refused", refused_payload
+                            )
+                            return CoordinationReservationResult(
+                                allowed=False, conflict=conflict
+                            )
 
         reservation = CoordinationPathReservation(
             session_id=session_id,
@@ -238,20 +292,33 @@ class CoordinationStore:
         payload["state_sha256"] = self._projection().projection_sha256
         reservation = CoordinationPathReservation.model_validate(payload)
         self._write_json(
-            self.root / "leases" / "paths" / f"{self._path_key(session_id + task_id + '|'.join(normalized))}.json",
+            self.root
+            / "leases"
+            / "paths"
+            / f"{self._path_key(session_id + task_id + '|'.join(normalized))}.json",
             reservation.model_dump(exclude_none=True),
         )
-        self._append_event({"event": "coord.path.reserved", "payload": reservation.model_dump(exclude_none=True)})
+        reserved_payload = build_path_reserved_payload(reservation)
+        self._append_event("coord.path.reserved", reserved_payload)
         return CoordinationReservationResult(allowed=True, reservation=reservation)
 
     def release_paths(self, *, session_id: str, task_id: str, paths: list[str]) -> None:
         normalized = {normalize_path(path) for path in paths}
         for path in sorted((self.root / "leases" / "paths").glob("*.json")):
-            reservation = CoordinationPathReservation.model_validate_json(path.read_text(encoding="utf-8"))
-            if reservation.session_id == session_id and reservation.task_id == task_id and normalized.intersection(reservation.paths):
+            reservation = CoordinationPathReservation.model_validate_json(
+                path.read_text(encoding="utf-8")
+            )
+            if (
+                reservation.session_id == session_id
+                and reservation.task_id == task_id
+                and normalized.intersection(reservation.paths)
+            ):
                 reservation.status = "released"
                 self._write_json(path, reservation.model_dump(exclude_none=True))
-        self._append_event({"event": "coord.path.released", "payload": {"session_id": session_id, "task_id": task_id, "paths": sorted(normalized)}})
+        released_payload = build_path_released_payload(
+            session_id, task_id, sorted(normalized)
+        )
+        self._append_event("coord.path.released", released_payload)
 
     def publish_artifact(
         self,
@@ -274,42 +341,72 @@ class CoordinationStore:
         payload = artifact.model_dump(exclude_none=True)
         payload["state_sha256"] = self._projection().projection_sha256
         artifact = CoordinationArtifactRef.model_validate(payload)
-        self._write_json(self.root / "artifacts" / f"{artifact_sha256.replace(':', '_')}.json", artifact.model_dump(exclude_none=True))
-        self._append_event({"event": "coord.artifact.published", "payload": artifact.model_dump(exclude_none=True)})
+        self._write_json(
+            self.root / "artifacts" / f"{artifact_sha256.replace(':', '_')}.json",
+            artifact.model_dump(exclude_none=True),
+        )
+        published_payload = build_artifact_published_payload(artifact)
+        self._append_event("coord.artifact.published", published_payload)
         return artifact
 
     def report_conflict(self, conflict: CoordinationConflict) -> CoordinationConflict:
         payload = conflict.model_dump(exclude_none=True)
         payload["state_sha256"] = self._projection().projection_sha256
         conflict = CoordinationConflict.model_validate(payload)
-        self._write_json(self.root / "conflicts" / f"{conflict.conflict_id}.json", conflict.model_dump(exclude_none=True))
-        self._append_event({"event": "coord.conflict.reported", "payload": conflict.model_dump(exclude_none=True)})
+        self._write_json(
+            self.root / "conflicts" / f"{conflict.conflict_id}.json",
+            conflict.model_dump(exclude_none=True),
+        )
+        reported_payload = build_conflict_reported_payload(conflict)
+        self._append_event("coord.conflict.reported", reported_payload)
         return conflict
 
-    def read_state_projection(self, *, session_id: str | None = None) -> CoordinationStateProjection:
+    def read_state_projection(
+        self, *, session_id: str | None = None
+    ) -> CoordinationStateProjection:
         projection = self._projection()
-        self._append_event({"event": "coord.projection.read", "payload": {"session_id": session_id, "projection_sha256": projection.projection_sha256}})
+        read_payload = build_projection_read_payload(
+            session_id, projection.projection_sha256
+        )
+        self._append_event("coord.projection.read", read_payload)
         return projection
 
     def release_task(self, *, session_id: str, task_id: str) -> None:
         task_path = self.root / "tasks" / f"{task_id}.json"
         if task_path.exists():
-            claim = CoordinationTaskClaim.model_validate_json(task_path.read_text(encoding="utf-8"))
+            claim = CoordinationTaskClaim.model_validate_json(
+                task_path.read_text(encoding="utf-8")
+            )
             claim.status = "released"
             self._write_json(task_path, claim.model_dump(exclude_none=True))
-        self._append_event({"event": "coord.task.released", "payload": {"session_id": session_id, "task_id": task_id}})
+        released_payload = build_task_released_payload(session_id, task_id)
+        self._append_event("coord.task.released", released_payload)
 
     def request_handoff(
-        self, *, session_id: str, target_session_id: str, task_id: str | None = None, scope: dict[str, Any] | None = None
+        self,
+        *,
+        session_id: str,
+        target_session_id: str,
+        task_id: str | None = None,
+        scope: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        payload = {"session_id": session_id, "target_session_id": target_session_id, "task_id": task_id, "scope": scope or {}}
-        self._append_event({"event": "coord.handoff.requested", "payload": payload})
-        return {"status": "requested", **payload}
+        from vibe.core.coordination._models import build_handoff_requested_payload
+
+        handoff_payload = build_handoff_requested_payload(
+            session_id, target_session_id, task_id, scope or {}
+        )
+        self._append_event("coord.handoff.requested", handoff_payload)
+        return {"status": "requested", **handoff_payload}
 
     def mark_lease_stale(self, *, session_id: str, task_id: str, reason: str) -> None:
+        from vibe.core.coordination._models import build_lease_marked_stale_payload
+
         for path in sorted((self.root / "leases" / "paths").glob("*.json")):
-            reservation = CoordinationPathReservation.model_validate_json(path.read_text(encoding="utf-8"))
+            reservation = CoordinationPathReservation.model_validate_json(
+                path.read_text(encoding="utf-8")
+            )
             if reservation.session_id == session_id and reservation.task_id == task_id:
                 reservation.status = "stale"
                 self._write_json(path, reservation.model_dump(exclude_none=True))
-        self._append_event({"event": "coord.lease.marked_stale", "payload": {"session_id": session_id, "task_id": task_id, "reason": reason}})
+        stale_payload = build_lease_marked_stale_payload(session_id, task_id, reason)
+        self._append_event("coord.lease.marked_stale", stale_payload)

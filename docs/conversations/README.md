@@ -1,0 +1,33 @@
+# Conversation Summaries
+
+Historical/reference stream for Rig Relay conversation summaries. These documents capture session-level architecture decisions, progress tracking, and operational context — distinct from audits (analysis), dogfood (self-usage proof), or how-to guides.
+
+## Canonical Filename Pattern
+
+```
+YYYY-MM-DD--project--phase-range--topic--kind.md
+```
+
+Fields (separated by double hyphens `--`):
+
+| Field | Rules | Examples |
+|---|---|---|
+| `YYYY-MM-DD` | ISO date of the conversation/session | `2026-05-13` |
+| `project` | Lowercase kebab-case project key | `rig-relay`, `rig`, `anigma`, `intake` |
+| `phase-range` | Lowercase kebab-case phase/sprint range | `phase-a-j`, `phase-k`, `sprint-001`, `adr-0010`, `no-phase` |
+| `topic` | 3–8 lowercase kebab-case words | `orchestration-dataset-control-plane` |
+| `kind` | One of: `summary`, `handoff`, `decision-log`, `incident`, `research`, `prompt-pack` | `summary` |
+
+Rules:
+- Use lowercase kebab-case throughout.
+- Use double hyphens (`--`) between fields.
+- Use single hyphens (`-`) inside each field.
+- Keep `topic` to 3–8 words.
+- Do not use spaces.
+- Do not use vague names like `summary.md`, `notes.md`, or `conversation.md`.
+
+## Index
+
+| Date | Project | Phase/Sprint | Topic | Kind | File |
+|---|---|---|---|---|---|
+| 2026-05-13 | rig-relay | phase-a-j | orchestration dataset control plane | summary | [2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md](2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md) |

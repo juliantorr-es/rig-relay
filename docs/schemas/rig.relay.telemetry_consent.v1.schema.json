@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.telemetry_consent.v1.schema.json",
+  "title": "Telemetry Consent v1",
+  "description": "Explicit telemetry consent record for Rig Relay beta telemetry sharing. Records participant opt-in, share level, destination, and consent version. Local consent and remote sharing are separate concerns.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "participant_id",
+    "share_level",
+    "destination",
+    "consent_text_version",
+    "consented_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.telemetry_consent.v1"
+    },
+    "participant_id": {
+      "type": "string",
+      "description": "Anonymous participant identifier (e.g. anon_<hex>)."
+    },
+    "project": {
+      "type": "string",
+      "default": "rig-relay",
+      "description": "Project name."
+    },
+    "share_level": {
+      "type": "string",
+      "enum": ["off", "derived_only", "evidence_hashes", "debug_local_only", "debug_opt_in"],
+      "description": "What data may be shared. 'off' means no remote sharing."
+    },
+    "destination": {
+      "type": "string",
+      "description": "Remote destination identifier (e.g. google_drive, local, custom)."
+    },
+    "consent_text_version": {
+      "type": "string",
+      "description": "Version of the consent/onboarding text the participant acknowledged."
+    },
+    "consented_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of consent."
+    },
+    "can_contact": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the participant consents to follow-up contact."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes about consent context."
+    },
+    "revoked_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp if consent was revoked."
+    }
+  },
+  "additionalProperties": false
+}

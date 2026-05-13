@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.mission_packet.v1.schema.json",
+  "title": "Mission Packet v1",
+  "description": "Bounded mission packet for a child session launched by the reviewer orchestrator. Defines allowed paths, tool policy, coordination policy, and completion criteria. The child session receives this packet and operates within its bounds.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mission_id",
+    "parent_sprint_id",
+    "parent_review_id",
+    "agent_profile",
+    "mission_title",
+    "instructions",
+    "tool_policy",
+    "coordination_policy",
+    "checkpoint_policy",
+    "done_when",
+    "max_runtime_seconds",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.mission_packet.v1"
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Unique mission identifier (e.g. mission_<timestamp>_<suffix>)."
+    },
+    "parent_sprint_id": {
+      "type": "string",
+      "description": "Sprint that launched this mission."
+    },
+    "parent_review_id": {
+      "type": ["string", "null"],
+      "description": "Review that produced the sprint decision."
+    },
+    "agent_profile": {
+      "type": "string",
+      "description": "Agent profile for this mission (implementer, tester, reviewer, documenter)."
+    },
+    "mission_title": {
+      "type": "string",
+      "description": "Short title describing the mission."
+    },
+    "instructions": {
+      "type": "string",
+      "description": "Full mission instructions for the child agent."
+    },
+    "allowed_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "File paths the child agent may read/write."
+    },
+    "forbidden_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "File paths the child agent MUST NOT touch."
+    },
+    "tool_policy": {
+      "type": "object",
+      "required": ["allow_write", "allow_bash"],
+      "properties": {
+        "allow_write": { "type": "boolean" },
+        "allow_bash": { "type": "boolean" },
+        "bash_allowlist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Allowed bash commands if allow_bash is true."
+        }
+      },
+      "additionalProperties": false
+    },
+    "coordination_policy": {
+      "type": "object",
+      "required": ["claim_task", "reserve_paths", "heartbeat"],
+      "properties": {
+        "claim_task": { "type": "boolean" },
+        "reserve_paths": { "type": "boolean" },
+        "heartbeat": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "checkpoint_policy": {
+      "type": "string",
+      "enum": ["off", "prompt", "auto"],
+      "description": "When the child agent may create checkpoints."
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Shell commands to run for validation after mission."
+    },
+    "done_when": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Completion criteria for the mission."
+    },
+    "max_runtime_seconds": {
+      "type": "integer",
+      "minimum": 60,
+      "description": "Maximum runtime in seconds."
+    },
+    "parallel_group": {
+      "type": ["string", "null"],
+      "description": "Optional parallel group label for coordination."
+    },
+    "depends_on_mission_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Mission IDs that must complete before this one starts."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of packet creation."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for mission contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

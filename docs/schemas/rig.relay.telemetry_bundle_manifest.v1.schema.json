@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json",
+  "title": "Telemetry Bundle Manifest v1",
+  "description": "Manifest for a Rig Relay telemetry bundle. Describes included files, row counts, content-light guarantee, and bundle integrity hash. The manifest is included inside the bundle zip alongside derived datasets and reports.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "participant_id",
+    "project",
+    "created_at",
+    "share_level",
+    "included_files",
+    "row_counts",
+    "bundle_sha256",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.telemetry_bundle_manifest.v1"
+    },
+    "bundle_id": {
+      "type": "string",
+      "description": "Unique bundle identifier (e.g. bundle_<timestamp>_<suffix>)."
+    },
+    "participant_id": {
+      "type": "string",
+      "description": "Anonymous participant identifier."
+    },
+    "project": {
+      "type": "string",
+      "default": "rig-relay",
+      "description": "Project name."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of bundle creation."
+    },
+    "share_level": {
+      "type": "string",
+      "enum": ["off", "derived_only", "evidence_hashes", "debug_local_only", "debug_opt_in"],
+      "description": "Share level for this bundle."
+    },
+    "source_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Source directories/files the bundle was created from."
+    },
+    "included_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "size_bytes", "sha256", "row_count"],
+        "properties": {
+          "path": { "type": "string" },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string" },
+          "row_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "description": "List of files included in the bundle."
+    },
+    "excluded_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names excluded from this bundle (content-light enforcement)."
+    },
+    "row_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 },
+      "description": "Map of dataset name to row count."
+    },
+    "bundle_sha256": {
+      "type": "string",
+      "description": "SHA256 hex digest of the bundle zip file."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "description": "True if the bundle has been validated to not contain raw content."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the bundle."
+    }
+  },
+  "additionalProperties": false
+}

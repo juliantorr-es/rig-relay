@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.review_packet.v1.schema.json",
+  "title": "Review Packet v1",
+  "description": "Local handoff artifact for human/model review of a completed agent mission. Does not depend on ChatGPT Mac app automation. Reviewer responses are not executed directly — they inform the next mission prompt.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "review_id",
+    "session_id",
+    "status",
+    "requested_review_kind",
+    "final_report_path",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.review_packet.v1"
+    },
+    "review_id": {
+      "type": "string",
+      "description": "Unique review identifier (e.g. review_<timestamp>_<suffix>)."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session that completed the mission and requests review."
+    },
+    "parent_session_id": {
+      "type": ["string", "null"],
+      "description": "Parent session if this was a delegated task."
+    },
+    "task_id": {
+      "type": ["string", "null"],
+      "description": "Delegation task identifier."
+    },
+    "branch": {
+      "type": ["string", "null"],
+      "description": "Git branch at mission end."
+    },
+    "head": {
+      "type": ["string", "null"],
+      "description": "Git HEAD SHA at mission end."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["needs_review", "in_review", "reviewed", "cancelled"],
+      "description": "Packet lifecycle status."
+    },
+    "requested_review_kind": {
+      "type": "string",
+      "enum": [
+        "next_slice",
+        "risk_review",
+        "prompt_generation",
+        "commit_review",
+        "dataset_review",
+        "architecture_review"
+      ],
+      "description": "Kind of review requested."
+    },
+    "final_report_path": {
+      "type": "string",
+      "description": "Relative or absolute path to the final mission report Markdown file."
+    },
+    "artifact_manifest_path": {
+      "type": ["string", "null"],
+      "description": "Path to artifact manifest JSON if available."
+    },
+    "coordination_summary_path": {
+      "type": ["string", "null"],
+      "description": "Path to coordination event summary if available."
+    },
+    "dataset_report_path": {
+      "type": ["string", "null"],
+      "description": "Path to dataset export report or manifest if available."
+    },
+    "checkpoint_summary_path": {
+      "type": ["string", "null"],
+      "description": "Path to checkpoint summary if available."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of packet creation."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for the packet contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear in the packet.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about packet completeness."
+    }
+  },
+  "additionalProperties": false
+}

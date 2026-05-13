@@ -141,3 +141,32 @@ When an agent discovers important debt, design gaps, or best-practice violations
 - Suggest to add new rules to AGENTS.md based on user input or PR comments, when a change request could be generalized as a rule.
 - Suggest updates to the README.md file according to feature changes or additions
 - Keep the builtin Vibe Skill (`vibe/core/skills/builtins/vibe.py`) up-to-date. It documents the CLI's features, such as args, flags, config options and persistence, commands, built-in agents, file discovery logic.
+
+## JSON Schema Validation
+
+- **Never run `ruff check` or `ruff format` on `docs/schemas/*.json`.** JSON schema files must be validated as JSON with Python's `json` module and as JSON Schema with `jsonschema` (if available), not formatted as Python code. Ruff is a Python linter/formatter; running it on JSON schema files corrupts them by injecting Python syntax.
+- Use `scripts/rig_relay_validate_schemas.py` to validate all schemas: `uv run python scripts/rig_relay_validate_schemas.py`.
+- `pyproject.toml` excludes `docs/schemas/` from Ruff's scope.
+- Schema files must always start with `{` and contain no Python syntax (no `from __future__ import annotations`, `import`, `def`, `class`, `# ruff:`, etc.).
+- The regression test `test_no_schema_contains_python_syntax` in `tests/coordination/test_schema_validation.py` automatically detects Python contamination.
+
+## Conversation Summary Naming
+
+Conversation summaries belong in `docs/conversations/`.
+Use this filename pattern:
+`YYYY-MM-DD--project--phase-range--topic--kind.md`
+Examples:
+- `2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md`
+- `2026-05-14--rig-relay--phase-k--spawn-executor-preflight--handoff.md`
+- `2026-05-14--rig-relay--no-phase--checkpoint-refusal-staged-files--incident.md`
+Rules:
+- Use lowercase kebab-case.
+- Use double hyphens between filename fields.
+- Use single hyphens inside each field.
+- Keep topic to 3–8 words.
+- Do not use spaces.
+- Do not use vague names like `summary.md`, `notes.md`, or `conversation.md`.
+- Add every saved summary to `docs/conversations/README.md`.
+- Do not store conversation summaries in `docs/audits/` unless they are converted into an audit.
+- Do not store conversation summaries in `docs/dogfood/` unless they are converted into a dogfood proof.
+- Validate filenames with the test in `tests/docs/test_conversation_summary_names.py`.

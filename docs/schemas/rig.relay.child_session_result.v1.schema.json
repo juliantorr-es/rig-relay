@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.child_session_result.v1.schema.json",
+  "title": "Child Session Result v1",
+  "description": "Result packet produced by a completed child session. Contains mission summary, files changed, validation results, and recommended next action. The reviewer orchestrator consumes these to decide the next sprint decision.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mission_id",
+    "session_id",
+    "status",
+    "final_report_path",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.child_session_result.v1"
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Mission identifier this result corresponds to."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier that executed the mission."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "failed", "cancelled", "timed_out", "refused"],
+      "description": "Child session completion status."
+    },
+    "final_report_path": {
+      "type": ["string", "null"],
+      "description": "Path to the child session's final report."
+    },
+    "artifact_manifest_path": {
+      "type": ["string", "null"],
+      "description": "Path to artifact manifest if artifacts were published."
+    },
+    "checkpoint_commit_sha": {
+      "type": ["string", "null"],
+      "description": "Commit SHA if a checkpoint was created."
+    },
+    "files_changed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of file paths changed by the child session."
+    },
+    "validation_summary": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Validation command output summaries."
+    },
+    "findings_recorded": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Finding IDs recorded by the child session."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Warnings from the child session."
+    },
+    "recommended_next_action": {
+      "type": ["string", "null"],
+      "description": "Recommended next action from the child session."
+    },
+    "runtime_seconds": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Actual runtime in seconds."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of result creation."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for result contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

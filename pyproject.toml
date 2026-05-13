@@ -68,6 +68,7 @@ dependencies = [
 
 [project.optional-dependencies]
 obs = ["duckdb>=1.5.0"]
+inspector = ["marimo>=0.10.0", "duckdb>=1.5.0", "altair>=5.5.0", "pandas>=2.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/juliantorr-es/rig-relay"
@@ -127,13 +128,13 @@ reportMissingTypeStubs = false
 reportPrivateImportUsage = false
 
 include = ["vibe/**/*.py", "tests/**/*.py"]
-exclude = ["pyinstaller/"]
+exclude = ["pyinstaller/", "docs/schemas/"]
 venvPath = "."
 venv = ".venv"
 
 [tool.ruff]
 include = ["vibe/**/*.py", "tests/**/*.py"]
-exclude = ["pyinstaller/"]
+exclude = ["pyinstaller/", "docs/schemas/"]
 line-length = 88
 target-version = "py312"
 preview = true
@@ -163,6 +164,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN", "PLR"]
+"notebooks/*" = ["ANN", "PLR", "I001", "RUF100"]
 # Textual parent classes don't use ClassVar, so we can't either without breaking pyright
 "vibe/cli/textual_ui/ansi_markdown.py" = ["RUF012"]
 "vibe/core/telemetry/send.py" = ["PLR"]

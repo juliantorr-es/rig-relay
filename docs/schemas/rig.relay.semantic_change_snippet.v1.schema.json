@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.semantic_change_snippet.v1.schema.json",
+  "title": "Semantic Change Snippet v1",
+  "description": "Content-light, anonymized representation of a code change that preserves change intent and structure without exporting raw source code, identifiers, literals, comments, secrets, or file contents. Designed for evals, reports, and orchestration analysis.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "snippet_id",
+    "created_at",
+    "language",
+    "change_kind",
+    "operation",
+    "snippet_lines",
+    "semantic_labels",
+    "added_line_count",
+    "removed_line_count",
+    "privacy_class",
+    "redaction_level",
+    "forbidden_content_detected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.semantic_change_snippet.v1",
+      "description": "Schema version string."
+    },
+    "snippet_id": {
+      "type": "string",
+      "description": "Unique snippet identifier (e.g. snippet_<timestamp>_<suffix>)."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of snippet creation."
+    },
+    "source_event_id": {
+      "type": ["string", "null"],
+      "description": "Optional source coordination event ID that triggered this snippet."
+    },
+    "source_artifact_sha256": {
+      "type": ["string", "null"],
+      "description": "SHA256 hash of the source artifact (write_file, search_replace, checkpoint) if available."
+    },
+    "language": {
+      "type": "string",
+      "description": "Programming language of the changed code (python, json, markdown, shell, etc.).",
+      "examples": ["python", "json", "markdown", "shell", "unknown"]
+    },
+    "repo_area_hash": {
+      "type": ["string", "null"],
+      "description": "SHA256 hash of the coarse repo area (e.g. scripts/, tests/, vibe/core/tools/). Content-light — no raw path."
+    },
+    "path_hash": {
+      "type": ["string", "null"],
+      "description": "SHA256 hash of the file path. Content-light — no raw path."
+    },
+    "change_kind": {
+      "type": "string",
+      "enum": [
+        "guard_added",
+        "refusal_branch_added",
+        "schema_added",
+        "schema_validation_added",
+        "helper_extracted",
+        "function_split",
+        "test_added",
+        "artifact_emission_added",
+        "coordination_event_added",
+        "checkpoint_added",
+        "docs_updated",
+        "payload_restructured",
+        "config_updated",
+        "import_added",
+        "type_signature_changed",
+        "unknown"
+      ],
+      "description": "High-level classification of the change intent."
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "insert",
+        "delete",
+        "replace",
+        "move",
+        "split",
+        "rename",
+        "test_added",
+        "schema_added",
+        "docs_updated",
+        "unknown"
+      ],
+      "description": "Structural operation that produced the change."
+    },
+    "symbol_kind": {
+      "type": "string",
+      "enum": [
+        "function",
+        "class",
+        "module",
+        "test",
+        "schema",
+        "doc_section",
+        "script",
+        "config",
+        "unknown"
+      ],
+      "description": "Kind of symbol that was changed."
+    },
+    "symbol_hash": {
+      "type": ["string", "null"],
+      "description": "Stable SHA256 hash of the anonymized symbol name (e.g. hash of FN_001)."
+    },
+    "before_shape_hash": {
+      "type": ["string", "null"],
+      "description": "SHA256 hash of the shape before the change (anonymized-only structure)."
+    },
+    "after_shape_hash": {
+      "type": ["string", "null"],
+      "description": "SHA256 hash of the shape after the change (anonymized-only structure)."
+    },
+    "snippet_lines": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "maxItems": 100,
+      "description": "Anonymized snippet lines showing the change shape. Identifiers replaced with stable placeholders, literals stripped, comments removed."
+    },
+    "semantic_labels": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Semantic tags for the change (e.g. dirty_file_guard, fail_closed, mutation_safety, schema_validation, content_light)."
+    },
+    "safety_labels": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Safety classification tags (e.g. mutation_class, determinism_class, privacy_class)."
+    },
+    "added_line_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of lines added in the change."
+    },
+    "removed_line_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of lines removed in the change."
+    },
+    "privacy_class": {
+      "type": "string",
+      "enum": ["content_light"],
+      "description": "Privacy classification — always content_light for exported snippets."
+    },
+    "redaction_level": {
+      "type": "string",
+      "enum": ["identifier_anonymized", "literal_stripped", "structure_only"],
+      "description": "Level of redaction applied to the snippet."
+    },
+    "forbidden_content_detected": {
+      "type": "boolean",
+      "description": "True if the source contained forbidden content (secrets, raw diffs, etc.) and was excluded."
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about snippet completeness or redaction quality."
+    }
+  },
+  "additionalProperties": false
+}

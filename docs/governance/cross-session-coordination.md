@@ -28,6 +28,17 @@ This is the shared coordination layer that future delegate/fleet orchestration w
 Every coordination primitive emits a canonical event row into the session's `observability.jsonl` stream.
 These events are the structured source for delegate/fleet evaluation datasets — they turn runtime orchestration into measurable behavioral evidence.
 
+### Normalized Payload Contracts
+
+As of the Coordination Dataset Row Normalization milestone, every `coord.*` and checkpoint event uses a normalized payload contract designed for reliable transformation into derived evaluation rows. Payloads are:
+
+- **Hash-heavy, content-light**: file paths are replaced with salted SHA256 hashes (`sha256:<hex>`). No raw file contents, raw prompts, or model outputs appear in normalized payloads.
+- **Canonical field names**: all payloads use consistent field names (`session_id`, `task_id`, `event_kind`, `status`, `path_hashes`, `path_count`, `artifact_sha256`, `conflict_kind`, etc.).
+- **Null-omission consistent**: unavailable fields are omitted (or set to `null`) rather than populated with placeholder values.
+- **Schema-backed**: four new evaluation schemas define the row contracts — see `docs/schemas/` for `rig.relay.cross_session_coordination.v1`, `rig.relay.coordination_conflict.v1`, `rig.relay.artifact_reuse.v1`, and `rig.relay.checkpoint_eval.v1`.
+
+This normalization is what enables future exporters to produce clean derived datasets without ad-hoc field mapping.
+
 ### Session Lifecycle Events
 
 | Event Name | Description |
@@ -188,6 +199,8 @@ The coordination event stream feeds these derived datasets (defined in [Usage Da
 | `artifact_reuse_dataset.jsonl` | `coord.artifact.published`, `coord.projection.read` |
 | `fleet_decomposition_dataset.jsonl` | `coord.task.claimed`, `coord.task.released`, `coord.handoff.*` |
 
+An exporter (`scripts/rig_relay_export_coordination_datasets.py`) reads the coordination event stream and writes these datasets as schema-validated JSONL. See the [Usage Data Doctrine](usage-data-doctrine.md) for usage and mapping details.
+
 ## Local-First Design
 
 The coordination plane is local-first by default. It operates within a single Rig Relay home directory and does not require a network connection, a running daemon, or an external service.
@@ -246,6 +259,16 @@ Validation:
 - <command>
 ```
 
+### Checkpoint Event Emission
+
+The checkpoint tool now emits `rig.relay.checkpoint.committed` and `rig.relay.checkpoint.refused` events via `log_local_event` into the session's `observability.jsonl` stream. These events use the normalized payload contracts defined in `docs/schemas/rig.relay.checkpoint_eval.v1.schema.json`.
+
+Payloads are hash-heavy and content-light:
+- **Committed**: `session_id`, `task_id`, `branch`, `pre_commit_head`, `post_commit_head`, `commit_sha`, `files_committed_count`, `validation_summary_hash`, `checkpoint_artifact_sha256`, `status` (`"committed"`).
+- **Refused**: `session_id`, `task_id`, `refusal_code`, `status` (`"refused"`), `warnings`.
+
+No raw file contents, validation logs, or diff bodies are included.
+
 ### Checkpoint Artifact
 
 ```json
@@ -266,6 +289,82 @@ Validation:
 }
 ```
 
-### Governance Principle
+### Dataset Reports
+
+Coordination events can be inspected via the dataset report generator
+(`scripts/rig_relay_dataset_report.py`). The report includes a dedicated
+Coordination section showing:
+
+- Event counts by coordination event name
+- Breakdown: task claims, path reservations, reservation refusals, conflicts, heartbeats
+
+Reports are generated locally and are content-light, never including raw payload
+contents from coordination events.
+
+```bash
+uv run python scripts/rig_relay_dataset_report.py
+```
+
+See the [Usage Data Doctrine](usage-data-doctrine.md#dataset-reports) for the
+full report specification and privacy safeguards.
+
+
+## Review Packet Protocol
+
+Rig Relay provides a local review packet protocol for human/model review of completed missions.
+Review packets bridge the gap between a completed mission (with its final report, artifacts, datasets,
+and coordination state) and the next mission prompt (refined by a human or model reviewer).
+
+Review packets are the continuation mechanism for coordination sessions:
+- A session's coordination state (active claims, reservations, artifacts, conflicts) can be summarized
+  and included in the review packet as an optional manifest.
+- The reviewer's response becomes the seed for the next mission prompt, which may continue the same
+  session or start a new child session.
+- Review packets do not embed raw transcripts or raw coordination state — they reference the
+  coordination summary by path, keeping the packet content-light.
+
+See the [Review Packet Protocol section in the Usage Data Doctrine](usage-data-doctrine.md#review-packet-protocol)
+for the full specification, including:
+- Packet layout (5 files per packet)
+- 6 review kinds (next_slice, risk_review, prompt_generation, commit_review, dataset_review, architecture_review)
+- Schema fields and validation
+- Content-light safeguards
+- Reviewer response format and flow
+
+Review packets are created with:
+
+```bash
+uv run python scripts/rig_relay_create_review_packet.py \
+    --session-id session_20250101_000000 \
+    --final-report .build/rig-relay/reviews/latest/final_report.md \
+    --review-kind next_slice \
+    --coordination-summary .build/rig-relay/coordination/projection.json
+```
+
+The review packet protocol is ChatGPT-Mac-app-independent and works with any text editor or model
+that can write a Markdown file.
+
+
+## Reviewer Orchestrator Protocol
+
+Rig Relay defines a reviewer orchestrator protocol for multi-mission sprint execution.
+The reviewer reads a [sprint cockpit](reviewer-orchestrator.md) packet, launches up to 4 bounded
+child sessions through specialized tools, monitors coordination state, aggregates child reports,
+and decides the next sprint action.
+
+See the [Reviewer Orchestrator Doctrine](reviewer-orchestrator.md) for the full protocol specification,
+packet schemas, security boundaries, and bootstrap implementation status.
+The dry-run spawn planner (`scripts/rig_relay_spawn_session.py`) validates mission packets against
+coordination constraints before any child session is launched.
+The live current-state pulse (`scripts/rig_relay_current_state.py`) provides the reviewer with
+a compact, content-light snapshot of active children, reservations, conflicts, stale leases,
+and deterministic recommendations — enabling the reviewer to decide when to launch, wait,
+inspect, or mark sessions stale without reading raw coordination state.
+The pending work queue (see [Delegate/Fleet Orchestration Doctrine](delegate-fleet-orchestration.md))
+provides the durable backlog that completes the autonomous loop: the reviewer pulls ready work
+from the queue, dispatches children, monitors state, aggregates results, and updates the queue.
+packet schemas, security boundaries, and bootstrap implementation status.
+
+## Governance Principle
 
 **Agents can checkpoint. Only you publish.**

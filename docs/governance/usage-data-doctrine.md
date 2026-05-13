@@ -221,6 +221,83 @@ Coordination data follows the same three-class retention model.
 | Provider/model/task profile metadata | Exportable |
 | Outcome labels | Exportable |
 
+### Derived Coordination Dataset Exporter
+
+The script `scripts/rig_relay_export_coordination_datasets.py` transforms normalized coordination/checkpoint event envelopes into schema-validated derived dataset JSONL rows.
+
+Usage:
+```
+uv run python scripts/rig_relay_export_coordination_datasets.py \
+    --events .build/rig-relay/coordination/events.jsonl \
+    --output-dir .build/rig-relay/derived \
+    --schemas-dir docs/schemas
+```
+
+Output (all in `--output-dir`):
+- `cross_session_coordination_dataset.jsonl`
+- `coordination_conflict_dataset.jsonl`
+- `artifact_reuse_dataset.jsonl`
+- `checkpoint_eval_dataset.jsonl`
+- `export_manifest.json`
+
+Mapping:
+- Every `coord.*` event → `cross_session_coordination` row
+- `coord.conflict.reported` / `coord.path.reservation_refused` → `coordination_conflict` row
+- `coord.artifact.published` → `artifact_reuse` row
+- `rig.relay.checkpoint.committed` / `rig.relay.checkpoint.refused` (from observability) → `checkpoint_eval` row
+
+Features:
+- Content-light enforcement: rejects payloads containing raw prompts, model outputs, file contents, stdout/stderr, diff bodies
+- Schema validation via `jsonschema` (optional dependency, graceful fallback)
+- `--strict` mode: fail on first validation error or missing input
+- Tolerates missing input files with clear warnings
+- Writes `export_manifest.json` with row counts, schema versions, warnings
+
+### Normalized Coordination Event Payload Contracts
+
+Every `coord.*` and checkpoint event now uses a normalized payload contract designed for reliable transformation into derived evaluation rows. Payloads are hash-heavy and content-light: no raw file contents, no raw prompts, no model outputs. Raw paths are replaced with salted SHA256 path hashes for exportability.
+
+**Canonical payload fields (where applicable):**
+
+- `session_id`, `parent_session_id`, `task_id`, `fleet_id`
+- `agent_profile_name`, `event_kind`, `status`, `outcome`
+- `provider`, `model`, `thinking_enabled`
+- `reservation_mode`, `reservation_status`
+- `path_hashes` (salted), `path_count`
+- `artifact_kind`, `artifact_sha256`
+- `conflict_kind`, `conflict_id`, `resolution_kind`
+- `handoff_from_session_id`, `handoff_to_session_id`
+- `latency_ms` / `duration_ms`
+- `warnings`
+
+**Checkpoint committed payload fields:**
+
+- `session_id`, `task_id`, `branch`
+- `pre_commit_head`, `post_commit_head`
+- `commit_sha`
+- `files_committed_count`
+- `validation_summary_hash`
+- `checkpoint_artifact_sha256`
+- `status`: `"committed"`
+
+**Checkpoint refused payload fields:**
+
+- `session_id`, `task_id`
+- `refusal_code`
+- `status`: `"refused"`
+- `warnings`
+
+**Artifact reuse hooks (`coord.artifact.published`):**
+
+- `producer_session_id` (defaults to `session_id` of the publishing session)
+- `consumer_session_id` — null/future; available when cross-session artifact discovery is implemented
+- `artifact_kind`, `artifact_sha256`
+- `task_id`
+- `reuse_kind` — null/future; populated when the coordination layer tracks consumption
+- `avoided_tool_call` — null/future
+
+For detailed payload field contracts, see the coordination event schemas in `docs/schemas/`.
+
 ### Fleet/Delegate Derived Metrics
 
 From cross-session coordination events, these fleet-level metrics can be derived for evaluation:
@@ -297,6 +374,10 @@ Current evaluation schemas:
 | `rig.relay.workflow_event.v1.schema.json` | Canonical event stream row |
 | `rig.relay.mission_outcome.v1.schema.json` | Flattened mission eval row |
 | `rig.relay.tool_call_eval.v1.schema.json` | Tool-call-level eval row |
+| `rig.relay.cross_session_coordination.v1.schema.json` | Normalized coordination event row for delegate/fleet analysis |
+| `rig.relay.coordination_conflict.v1.schema.json` | Normalized conflict/refusal event row |
+| `rig.relay.artifact_reuse.v1.schema.json` | Normalized artifact publication/reuse event row |
+| `rig.relay.checkpoint_eval.v1.schema.json` | Normalized checkpoint commit/refusal event row |
 
 Existing observability schemas (not modified by this doctrine):
 
@@ -308,6 +389,373 @@ Existing observability schemas (not modified by this doctrine):
 | `rig.relay.evidence.receipt.v1` | Merkle receipt |
 | `rig.relay.result.v1` | Session result |
 
+## Dataset Reports
+
+Rig Relay has a local report generator (`scripts/rig_relay_dataset_report.py`) that
+reads event streams and findings registries and emits a human-readable Markdown
+summary to `.build/rig-relay/reports/dataset-summary.md`.
+
+Dataset reports are **local, content-light Markdown summaries** generated from
+event streams and findings. They are for human inspection and do not export raw
+private data.
+
+**Report sections:**
+- Executive Summary (session counts, event counts, mutations, checkpoints, findings)
+- Event Volume (table by event_name)
+- Tool Behavior (table by tool_name, status)
+- Guard and Safety (dirty-file snapshots, write refusals)
+- Coordination (claims, reservations, refusals, conflicts, heartbeats)
+- Checkpoints (committed/refused counts, refusal reasons)
+- Provider / Model Use (model distribution from request accounting events)
+- Findings (out-of-scope findings grouped by severity)
+- Warnings / Missing Inputs (when data sources are unavailable)
+- Recommended Next Slices (derived from findings and checkpoint refusals)
+- Data Sources Used (paths and status of each input source)
+
+**Privacy safeguards:**
+- Never includes raw prompt text, model output, file contents, stdout/stderr bodies
+- Never includes raw private code paths beyond what the local doctrine permits
+- Uses event names, counts, statuses, hashes, finding IDs/titles/severity only
+- SHA256 hashes for all content-derived references
+
+**Usage:**
+
+```bash
+uv run python scripts/rig_relay_dataset_report.py
+uv run python scripts/rig_relay_dataset_report.py --output path/to/report.md
+uv run python scripts/rig_relay_dataset_report.py --export-csv path/to/counts.csv
+```
+
+### Dataset Exports
+
+Rig Relay also has a local dataset exporter (`scripts/rig_relay_dataset_export.py`)
+that transforms event streams and findings into clean derived JSONL/CSV files
+for machine consumption.
+
+Dataset export is **local, content-light, schema-validated** where schemas exist,
+and intended as the machine-readable input to reports, interactive inspectors,
+and evaluation pipelines.
+
+**Output datasets** (written to `.build/rig-relay/derived/`):
+
+| Dataset | Source Events | Schema |
+|---------|---------------|--------|
+| `cross_session_coordination_dataset.jsonl` | All `coord.*` events | `rig.relay.cross_session_coordination.v1` |
+| `coordination_conflict_dataset.jsonl` | `coord.conflict.reported`, `coord.path.reservation_refused` | `rig.relay.coordination_conflict.v1` |
+| `artifact_reuse_dataset.jsonl` | `coord.artifact.published` | `rig.relay.artifact_reuse.v1` |
+| `checkpoint_eval_dataset.jsonl` | `rig.relay.checkpoint.committed`, `rig.relay.checkpoint.refused` | `rig.relay.checkpoint_eval.v1` |
+| `tool_failure_patterns_dataset.jsonl` | `rig.relay.tool.call_completed` with non-success status | — |
+| `provider_task_performance_dataset.jsonl` | `rig.relay.context.request_accounted` | — |
+| `findings_dataset.jsonl` | `docs/findings/out-of-scope-findings.jsonl` | — |
+| `export_manifest.json` | Generated manifest with row counts, validation results, warnings | — |
+
+**Private safeguards:**
+- Never includes raw prompt text, model output, file contents, stdout/stderr bodies
+- Uses event names, counts, statuses, hashes, finding IDs/titles/severity only
+- SHA256 hashes for all content-derived references
+- Transformers strip raw payload fields not mapped to the schema
+- `content_light_guarantee: true` recorded in every manifest
+
+**Schema validation:**
+- The four coordination/checkpoint datasets are validated against their schemas
+  when `jsonschema` is available (stdlib dependency)
+- Validation results are recorded in the manifest (valid/total/errors per dataset)
+- Non-blocking by default; `--strict` mode fails on missing inputs
+
+**Usage:**
+
+```bash
+uv run python scripts/rig_relay_dataset_export.py
+uv run python scripts/rig_relay_dataset_export.py --output-dir .build/rig-relay/derived
+uv run python scripts/rig_relay_dataset_export.py --format csv
+uv run python scripts/rig_relay_dataset_export.py --strict
+```
+
+**Requirements:**
+- `jsonschema` is optional (used for schema validation when available).
+- DuckDB is optional (used when available via the `obs` extra). Falls back to
+  stdlib JSONL parsing.
+- No large dashboard or web dependencies.
+
+### Interactive Inspector
+
+Rig Relay provides an interactive marimo notebook inspector
+(`notebooks/rig_relay_dataset_inspector.py`) that loads derived datasets and
+renders filterable tables, charts, and completeness overviews.
+
+The inspector is **reactive** — changing a filter dropdown re-renders the
+relevant tables without recomputing the full load.
+
+**Architecture:**
+- `scripts/rig_relay_dataset_inspector_lib.py` — reusable data-loading/summary
+  logic (loads derived JSONL files, computes aggregates, filter/aggregation
+  helpers). Testable and importable without marimo.
+- `notebooks/rig_relay_dataset_inspector.py` — marimo notebook UI wrapping the
+  lib. One cell per view section.
+
+**Views (13 cells):**
+| View | What it shows |
+|------|---------------|
+| `init_state()` | Loads all datasets, computes summary |
+| `overview()` | 8 stat cards: sessions, coordination, conflicts, artifacts, checkpoints, tool failures, provider perf, findings |
+| `export_info()` | Export timestamp, manifest warnings, missing files, empty datasets, schema validation |
+| `filters()` | Dropdowns: session_id, event_name, tool_name, model, severity, kind, checkpoint status, artifact kind |
+| `coordination_view()` | Event name counts, session breakdown, status distribution |
+| `conflicts_view()` | Conflict table or neutral message when empty |
+| `artifact_view()` | Artifact kind counts, completeness gap analysis |
+| `tool_failure_view()` | Tool × status counts, warnings table |
+| `provider_view()` | Model counts, token stats (min/max/avg) |
+| `checkpoint_view()` | Committed/refused counts, refusal codes, files committed stats |
+| `findings_view()` | By severity, kind, repo area, suggested slices |
+| `completeness_view()` | File present/missing status, schema validation results |
+| `about()` | Metadata footer |
+
+**Chart helpers** (6, content-light list-of-dicts for Altair/marimo tables):
+- `event_counts_for_chart` — coordination event rows → `{event_name, count}`
+- `tool_status_counts_for_chart` — tool failures → `{tool_name, status, count}`
+- `model_counts_for_chart` — provider perf → `{model, requests}`
+- `findings_severity_counts_for_chart` — findings → `{severity, count}`
+- `artifact_kind_counts_for_chart` — artifact reuse → `{artifact_kind, count}`
+- `checkpoint_status_counts_for_chart` — checkpoints → `{status, count}`
+
+**Altair charts** (6 cells, one per chart helper, graceful degradation on empty data):
+- Coordination events bar chart (`mo.ui.altair_chart`)
+- Tool failures bar chart (color-coded by status)
+- Model request counts bar chart
+- Findings severity bar chart
+- Artifact kind bar chart
+- Checkpoint outcomes bar chart
+
+**DuckDB helper** (optional, degrades gracefully):
+- `HAS_DUCKDB` module-level flag
+- `_find_derived_jsonl_files()` — maps view names to existing JSONL paths
+- `create_derived_connection()` — in-memory DuckDB connection with `read_json_auto` views
+- `CANNED_QUERIES` dict with 6 canned SQL queries
+- `run_canned_query()` — executes a named query and returns list-of-dicts
+
+**SQL Workbench** (marimo cell, shown only when DuckDB is available):
+- Lists available views
+- Dropdown selector for 6 canned queries
+- Results displayed as tables
+- "Run exporter first" warning when no derived datasets found
+
+**Filter helpers** (5, reusable outside notebook):
+- `filter_by_session_id`, `filter_by_task_id`, `filter_by_event_name`,
+  `filter_by_tool_name`, `filter_by_model`
+
+**Aggregation helpers** (3):
+- `count_by_field` — grouped counts, sorted descending
+- `count_by_field_pair` — two-field cross counts
+- `unique_values` — sorted unique field values
+
+**Privacy safeguards:**
+- Content-light: loads only derived datasets (never reads raw events or
+  observability files)
+- All forbidden raw-content fields filtered by the export pipeline before
+  the inspector sees data
+- Inspector tests verify no raw fields surface in loaded datasets
+
+**Dependencies** (optional `inspector` extra):
+- `marimo>=0.10.0` — reactive notebook runtime
+- `duckdb>=1.5.0` — embedded query engine (shared with `obs` extra)
+- `altair>=5.5.0` — declarative charts (Vega-Lite)
+- `pandas>=2.0.0` — data manipulation for altair and summary tables
+
+**Usage:**
+
+```bash
+uv sync --extra inspector
+uv run marimo run notebooks/rig_relay_dataset_inspector.py
+```
+
+**Run tests:**
+```bash
+uv run pytest tests/scripts/test_rig_relay_dataset_inspector_lib.py -v
+```
+
+
+### Coordination Dataset Exporter (Current)
+
+The current coordination dataset exporter (`scripts/rig_relay_export_coordination_datasets.py`) is a
+standalone script that reads coordination `events.jsonl` (and optional `observability.jsonl`) and writes
+the four coordination/checkpoint datasets:
+
+```bash
+uv run python scripts/rig_relay_export_coordination_datasets.py \
+    --events .build/rig-relay/coordination/events.jsonl \
+    --output-dir .build/rig-relay/derived
+
+uv run python scripts/rig_relay_export_coordination_datasets.py \
+    --events .build/rig-relay/coordination/events.jsonl \
+    --observability .build/rig-relay/sessions/s-1/observability.jsonl \
+    --output-dir .build/rig-relay/derived \
+    --schemas-dir docs/schemas \
+    --strict
+```
+
+**Flags:**
+- `--events`: Path to coordination `events.jsonl` (required)
+- `--observability`: Path to session `observability.jsonl` (optional, needed for checkpoint events)
+- `--output-dir`: Output directory (default: `.build/rig-relay/derived`)
+- `--schemas-dir`: Schema directory (default: `docs/schemas`)
+- `--strict`: Fail on missing input files (default: warn and continue)
+
+**Event-to-dataset mapping:**
+| Dataset | Source Events |
+|---------|---------------|
+| `cross_session_coordination_dataset.jsonl` | All `coord.*` events |
+| `coordination_conflict_dataset.jsonl` | `coord.conflict.reported`, `coord.path.reservation_refused` |
+| `artifact_reuse_dataset.jsonl` | `coord.artifact.published` |
+| `checkpoint_eval_dataset.jsonl` | `rig.relay.checkpoint.committed`, `rig.relay.checkpoint.refused` (from observability) |
+
+The exporter uses the normalized payload builders from `vibe/core/coordination/_models.py` to
+construct safe-field-only rows and applies three-layer content-light enforcement:
+event payload scan, safe-field-only row construction, and row-level forbidden-field check.
+
+## Review Packet Protocol
+
+Rig Relay provides a local review packet protocol for human/model review of completed missions.
+The protocol is ChatGPT-Mac-app-independent — reviewer responses are not executed directly,
+they inform the next mission prompt.
+
+### Purpose
+
+Review packets bridge the gap between:
+- A completed mission (with its final report, artifacts, datasets, and coordination state)
+- The next mission prompt (refined by a human or model reviewer)
+
+This enables:
+- **Iterative development**: Each mission produces a review packet; the reviewer's response
+  becomes the seed for the next mission prompt.
+- **Human oversight**: A human can review changes, datasets, risks, or architecture decisions
+  before authorizing continuation.
+- **Model review loops**: A second model (e.g., a stronger model or a risk-review specialist)
+  can review a mission's output and recommend improvements.
+- **Dataset quality review**: Exported datasets can be reviewed for schema compliance and
+  content-light guarantees before they enter an eval pipeline.
+
+### Packet Layout
+
+The `create_review_packet` function (`scripts/rig_relay_create_review_packet.py`) produces
+five files in the output directory:
+
+| File | Purpose |
+|------|---------|
+| `review_packet.json` | Schema-validated packet metadata (20 fields, 7 required) |
+| `final_report.md` | Copy of the mission's final report |
+| `README.md` | Manual review instructions with review-kind-specific guidance |
+| `reviewer_response.md` | Empty placeholder — reviewer writes their response here |
+| `resume_prompt.md` | Empty placeholder — reviewer moves/soft-links their response here |
+
+### Review Kinds
+
+| Kind | Description |
+|------|-------------|
+| `next_slice` | Review the completed mission and recommend the next implementation slice |
+| `risk_review` | Review the mission for safety, privacy, or architectural risks |
+| `prompt_generation` | Review the mission and generate a refined prompt for continuation |
+| `commit_review` | Review changes before a governed checkpoint commit |
+| `dataset_review` | Review exported dataset quality and schema compliance |
+| `architecture_review` | Review architectural decisions and design trade-offs |
+
+### Packet Schema
+
+The packet validates against `docs/schemas/rig.relay.review_packet.v1.schema.json` (draft-07).
+Key fields:
+
+- **schema_version**: `const: rig.relay.review_packet.v1`
+- **review_id**: Auto-generated (`review_<YYYYMMDD_HHMMSS>`)
+- **session_id**: The mission session being reviewed
+- **parent_session_id**: Optional parent session for review chains
+- **task_id**: Optional task within the session
+- **status**: `needs_review` / `in_review` / `reviewed` / `cancelled`
+- **requested_review_kind**: One of the six kinds above
+- **final_report_path**: Resolved path to the copied final report
+- **artifact_manifest_path**, **coordination_summary_path**, **dataset_report_path**, **checkpoint_summary_path**: Optional resolved paths to copied manifests
+- **content_policy**: `"content_light"` (default)
+- **forbidden_fields**: Default list of field names that must not appear in payloads
+
+**Required fields**: schema_version, review_id, session_id, status, requested_review_kind,
+final_report_path, created_at
+
+### Content-Light Safeguards
+
+- **Review packet JSON does not embed raw file contents.** Referenced files are COPIED
+  to the output directory but their content never appears inside `review_packet.json`.
+- **Default forbidden fields**: `raw_file_contents`, `secrets`, `raw_private_code`,
+  `raw_prompt_text`, `model_output_text`, `stdout_bodies`, `stderr_bodies`
+- **Schema validation**: Uses `jsonschema` if available, falls back to required-field checks.
+  Validation errors are recorded as warnings in the packet.
+
+### Usage
+
+```bash
+# Basic: create a review packet for next-slice review
+uv run python scripts/rig_relay_create_review_packet.py \
+    --session-id session_20250101_000000 \
+    --task-id call_00_example \
+    --final-report .build/rig-relay/reviews/latest/final_report.md \
+    --review-kind next_slice \
+    --output-dir .build/rig-relay/reviews/review_20250101
+
+# With optional manifests
+uv run python scripts/rig_relay_create_review_packet.py \
+    --session-id s-1 --task-id t-1 \
+    --final-report docs/output.md \
+    --artifact-manifest .build/rig-relay/artifacts/manifest.json \
+    --dataset-report .build/rig-relay/derived/export_manifest.json \
+    --review-kind risk_review
+
+# With git state
+uv run python scripts/rig_relay_create_review_packet.py \
+    --session-id s-1 --final-report docs/output.md \
+    --review-kind commit_review \
+    --branch main --head 40a2d04
+```
+
+### Reviewer Response Flow
+
+1. **Create**: Run the script to produce the 5-file packet in the output directory.
+2. **Review**: The human or model reads `final_report.md` and any optional manifests.
+3. **Respond**: The reviewer writes their structured response in `reviewer_response.md`
+   (summary, findings, next-slice recommendation, optional rejection).
+4. **Resume**: The response is moved or soft-linked to `resume_prompt.md`.
+5. **Validate**: Rig Relay validates the response before any agent executes a new mission
+   based on it — responses are never executed directly.
+
+### Reviewer Response Format
+
+```markdown
+## Summary
+
+One-paragraph assessment of the mission.
+
+## Findings
+
+- What worked well
+- What to improve
+- Risks identified
+
+## Next slice recommendation
+
+A compact prompt for the next mission. Be specific about files, goals, and
+non-goals. Do not include raw private code or unredacted transcripts.
+
+## Rejected? (optional)
+
+If the work should not continue, state why and close the review.
+```
+
+### Safety Constraints
+
+- **Reviewer responses are not executed directly.** They inform the next mission prompt.
+  Rig Relay validates the response before any agent executes a new mission.
+- **No ChatGPT Mac app automation.** The protocol works with any text editor or model
+  that can write a Markdown file.
+- **No raw content in packet JSON.** All referenced content stays in separate files.
+- **Non-execution guarantee.** Even if `resume_prompt.md` contains code, it is not executed
+  by the review packet tool — it's consumed by the next mission's agent prompt assembly.
+
 ## Autoimprovement
 
 This doctrine SHALL be reviewed when:
@@ -318,6 +766,8 @@ This doctrine SHALL be reviewed when:
 - A PR adds or changes a telemetry field.
 
 ## References
+
+- [Delegate/Fleet Orchestration Doctrine](delegate-fleet-orchestration.md) : Pending work queue, ready work planner, parent convergence report
 
 - OpenTelemetry: traces, metrics, and logs for understanding system behavior.
 - LangSmith: tracing agent decisions, tool calls, retrieved context, costs, latency, failures.

@@ -1,0 +1,230 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.work_item.v1.schema.json",
+  "title": "Work Item v1",
+  "description": "A durable pending work item in the reviewer orchestrator's work queue. Defines a schedulable unit of work with dependency, safety, and validation semantics. Progresses through pending → ready → claimed → dispatched → running → completed/failed/refused/cancelled/superseded.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "work_item_id",
+    "sprint_id",
+    "title",
+    "description",
+    "status",
+    "agent_profile",
+    "execution_mode",
+    "allowed_paths",
+    "forbidden_paths",
+    "tool_policy",
+    "coordination_policy",
+    "checkpoint_policy",
+    "validation_commands",
+    "done_when",
+    "created_at",
+    "updated_at",
+    "attempt_count",
+    "max_attempts"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.work_item.v1"
+    },
+    "work_item_id": {
+      "type": "string",
+      "description": "Unique work item identifier (e.g. wi_<timestamp>_<suffix>)."
+    },
+    "sprint_id": {
+      "type": "string",
+      "description": "Owning sprint identifier."
+    },
+    "parent_work_item_id": {
+      "type": ["string", "null"],
+      "description": "Parent work item ID if this is a sub-item."
+    },
+    "title": {
+      "type": "string",
+      "description": "Short title describing the work item."
+    },
+    "description": {
+      "type": "string",
+      "description": "Full description of the work to be done."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "ready",
+        "claimed",
+        "dispatched",
+        "running",
+        "blocked",
+        "waiting_dependency",
+        "waiting_lease",
+        "waiting_validation_stage",
+        "completed",
+        "failed",
+        "refused",
+        "cancelled",
+        "superseded"
+      ],
+      "description": "Current lifecycle status of the work item."
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50,
+      "description": "Priority (lower is higher priority, default 50)."
+    },
+    "agent_profile": {
+      "type": "string",
+      "enum": ["implementer", "tester", "reviewer", "documenter"],
+      "description": "Agent profile for this work item."
+    },
+    "execution_mode": {
+      "type": "string",
+      "enum": ["delegate", "fleet", "sequential", "validation", "documentation", "review"],
+      "description": "Execution mode for this work item."
+    },
+    "parallelism_group": {
+      "type": ["string", "null"],
+      "description": "Optional group label for parallelism coordination."
+    },
+    "parallelism_policy": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["sequential", "parallel_if_safe", "read_only_parallel", "single_writer_parallel_readers", "worktree_required_multi_writer"]
+        },
+        "max_parallel_children": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4
+        },
+        "exclusive_group": {
+          "type": ["string", "null"]
+        },
+        "requires_worktree_for_multi_writer": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["work_item_id", "type"],
+        "properties": {
+          "work_item_id": { "type": "string" },
+          "type": { "type": "string", "enum": ["must_complete"] }
+        },
+        "additionalProperties": false
+      },
+      "description": "Dependencies that must be satisfied before this item can become ready."
+    },
+    "blocked_by": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Reasons why this item is blocked."
+    },
+    "allowed_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "File paths the child agent may read/write."
+    },
+    "forbidden_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "File paths the child agent MUST NOT touch."
+    },
+    "tool_policy": {
+      "type": "object",
+      "required": ["allow_write", "allow_bash"],
+      "properties": {
+        "allow_write": { "type": "boolean" },
+        "allow_bash": { "type": "boolean" },
+        "bash_allowlist": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "coordination_policy": {
+      "type": "object",
+      "required": ["claim_task", "reserve_paths", "heartbeat"],
+      "properties": {
+        "claim_task": { "type": "boolean" },
+        "reserve_paths": { "type": "boolean" },
+        "heartbeat": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "checkpoint_policy": {
+      "type": "string",
+      "enum": ["off", "prompt", "auto"],
+      "description": "When the child agent may create checkpoints."
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Shell commands to run for validation after mission."
+    },
+    "done_when": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Completion criteria."
+    },
+    "attempt_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of attempts so far."
+    },
+    "max_attempts": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 3,
+      "description": "Maximum retries before permanent failure."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of creation."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of last update."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for work item contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.google_drive_upload_receipt.v1.schema.json",
+  "title": "Google Drive Upload Receipt v1",
+  "description": "Receipt produced by the Google Drive upload script. Records upload metadata, bundle integrity, and status. In dry-run mode, status is 'dry_run' and no real upload occurs.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "participant_id",
+    "destination",
+    "uploaded_at",
+    "upload_method",
+    "bundle_sha256",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.google_drive_upload_receipt.v1"
+    },
+    "bundle_id": {
+      "type": "string",
+      "description": "Bundle identifier being uploaded."
+    },
+    "participant_id": {
+      "type": "string",
+      "description": "Anonymous participant identifier."
+    },
+    "share_level": {
+      "type": "string",
+      "enum": ["off", "derived_only", "evidence_hashes", "debug_local_only", "debug_opt_in"],
+      "description": "Share level for this upload."
+    },
+    "destination": {
+      "type": "string",
+      "description": "Upload destination (e.g. google_drive, local)."
+    },
+    "drive_file_id": {
+      "type": ["string", "null"],
+      "description": "Google Drive file ID if uploaded."
+    },
+    "drive_folder_id": {
+      "type": ["string", "null"],
+      "description": "Google Drive folder ID if uploaded."
+    },
+    "uploaded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of upload (or dry-run)."
+    },
+    "upload_method": {
+      "type": "string",
+      "enum": ["resumable", "simple", "dry_run"],
+      "description": "Upload method used."
+    },
+    "bundle_sha256": {
+      "type": "string",
+      "description": "SHA256 hex digest of the uploaded bundle."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["uploaded", "dry_run", "failed", "skipped"],
+      "description": "Upload status."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the upload."
+    }
+  },
+  "additionalProperties": false
+}

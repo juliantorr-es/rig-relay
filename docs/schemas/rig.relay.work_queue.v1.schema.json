@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.work_queue.v1.schema.json",
+  "title": "Work Queue v1",
+  "description": "A durable work queue for the reviewer orchestrator. Encodes a backlog of work items with dependency, safety, and validation semantics. Survives agent crashes and session restarts.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "sprint_id",
+    "queue_id",
+    "created_at",
+    "updated_at",
+    "max_parallel_children",
+    "work_items",
+    "active_work_item_ids",
+    "completed_work_item_ids"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.work_queue.v1"
+    },
+    "sprint_id": {
+      "type": "string",
+      "description": "Owning sprint identifier."
+    },
+    "queue_id": {
+      "type": "string",
+      "description": "Unique queue identifier."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of queue creation."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of last update."
+    },
+    "max_parallel_children": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 4,
+      "description": "Maximum concurrent child sessions."
+    },
+    "work_items": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "All work items in the queue."
+    },
+    "active_work_item_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of currently active (dispatched/running) work items."
+    },
+    "completed_work_item_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of completed/failed/refused/cancelled/superseded work items."
+    },
+    "blocked_work_item_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of blocked/waiting work items."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the queue state."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for queue contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

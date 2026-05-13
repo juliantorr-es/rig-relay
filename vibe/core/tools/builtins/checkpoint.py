@@ -44,14 +44,18 @@ class CheckpointResult(BaseModel):
 
 class CheckpointToolConfig(BaseToolConfig):
     permission: ToolPermission = ToolPermission.ASK
-    store_root: Path = Field(default_factory=lambda: Path.cwd() / ".build" / "rig-relay" / "coordination")
+    store_root: Path = Field(
+        default_factory=lambda: Path.cwd() / ".build" / "rig-relay" / "coordination"
+    )
 
 
 class Checkpoint(
     BaseTool[CheckpointArgs, CheckpointResult, CheckpointToolConfig, BaseToolState],
     ToolUIData[CheckpointArgs, CheckpointResult],
 ):
-    description: ClassVar[str] = "Create a governed local checkpoint commit for session-owned files."
+    description: ClassVar[str] = (
+        "Create a governed local checkpoint commit for session-owned files."
+    )
 
     _STATUS_LINE_LENGTH: ClassVar[int] = 3
 
@@ -67,8 +71,12 @@ class Checkpoint(
         result = event.result
         if isinstance(result, CheckpointResult):
             if result.ok and result.commit_sha:
-                return ToolResultDisplay(success=True, message=f"Committed {result.commit_sha[:8]}")
-            return ToolResultDisplay(success=False, message=result.refusal_reason or result.message)
+                return ToolResultDisplay(
+                    success=True, message=f"Committed {result.commit_sha[:8]}"
+                )
+            return ToolResultDisplay(
+                success=False, message=result.refusal_reason or result.message
+            )
         return ToolResultDisplay(success=True, message="Checkpoint complete")
 
     @classmethod
@@ -78,6 +86,9 @@ class Checkpoint(
     async def run(
         self, args: CheckpointArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | CheckpointResult, None]:
+        from vibe.core.coordination._models import build_checkpoint_committed_payload
+        from vibe.core.telemetry.local import log_local_event
+
         store = CoordinationStore(self.config.store_root)
         repo_root = Path.cwd().resolve()
         guard = get_guard()
@@ -85,14 +96,19 @@ class Checkpoint(
         # 1. Capture git state
         porcelain_out = self._git("status", "--porcelain=v1", "-z", cwd=repo_root)
         if isinstance(porcelain_out, CheckpointResult):
-            yield porcelain_out
+            refusal_result = porcelain_out
+            self._emit_checkpoint_refused(args, refusal_result)
+            yield refusal_result
             return
 
         # 2. Parse and validate
         dirty_files = self._parse_porcelain_z(porcelain_out)
         requested = set(self._normalize_paths(args.include_paths))
-        refusal = self._validate_preconditions(args, requested, dirty_files, store, guard, repo_root)
+        refusal = self._validate_preconditions(
+            args, requested, dirty_files, store, guard, repo_root
+        )
         if refusal:
+            self._emit_checkpoint_refused(args, refusal)
             yield refusal
             return
 
@@ -102,13 +118,14 @@ class Checkpoint(
 
         # 4. Stage and commit
         if refusal := self._stage_and_commit(requested, args, repo_root):
+            self._emit_checkpoint_refused(args, refusal)
             yield refusal
             return
 
         # 5. Capture post-commit state
         post_commit_head = self._git_rev_parse("HEAD", repo_root)
 
-        # 6. Build result
+        # 6. Build result and artifact
         artifact = self._build_artifact(
             session_id=args.session_id or "",
             task_id=args.task_id or "",
@@ -119,12 +136,54 @@ class Checkpoint(
             files_committed=sorted(requested),
             validation_summary=args.validation_summary,
         )
-        yield CheckpointResult(
+        result = CheckpointResult(
             ok=True,
             commit_sha=post_commit_head,
             message=args.message,
             files_committed=sorted(requested),
             artifact_sha256=artifact["artifact_sha256"],
+        )
+
+        # 7. Emit checkpoint committed event
+        payload = build_checkpoint_committed_payload(
+            session_id=args.session_id or "",
+            task_id=args.task_id or "",
+            branch=branch,
+            pre_commit_head=pre_commit_head,
+            post_commit_head=post_commit_head,
+            commit_sha=post_commit_head,
+            files_committed=sorted(requested),
+            validation_summary=args.validation_summary,
+            artifact_sha256=artifact["artifact_sha256"],
+        )
+        log_local_event(
+            session_id=args.session_id or "unknown",
+            event_name="rig.relay.checkpoint.committed",
+            payload=payload,
+            parent_session_id=None,
+            receipt_candidate=True,
+        )
+
+        yield result
+
+    def _emit_checkpoint_refused(
+        self, args: CheckpointArgs, result: CheckpointResult
+    ) -> None:
+        from vibe.core.coordination._models import build_checkpoint_refused_payload
+        from vibe.core.telemetry.local import log_local_event
+
+        payload = build_checkpoint_refused_payload(
+            session_id=args.session_id or "unknown",
+            task_id=args.task_id or "unknown",
+            refusal_code=result.refusal_reason or result.message,
+            warnings=result.warnings,
+        )
+        log_local_event(
+            session_id=args.session_id or "unknown",
+            event_name="rig.relay.checkpoint.refused",
+            payload=payload,
+            parent_session_id=None,
+            receipt_candidate=True,
         )
 
     def _validate_preconditions(
@@ -138,27 +197,33 @@ class Checkpoint(
     ) -> CheckpointResult | None:
         if not requested and not args.allow_partial:
             return CheckpointResult(
-                ok=False, message="No files specified for checkpoint",
+                ok=False,
+                message="No files specified for checkpoint",
                 refusal_reason="include_paths is empty and allow_partial is false",
             )
         for rel_path, status in dirty_files.items():
             if "U" in status:
                 return CheckpointResult(
-                    ok=False, message="Unresolved conflicts in working tree",
+                    ok=False,
+                    message="Unresolved conflicts in working tree",
                     refusal_reason=f"Unresolved conflict: {rel_path}",
                 )
-        staged_files = {p for p, s in dirty_files.items() if s[0] not in {" ", "?", "!"}}
+        staged_files = {
+            p for p, s in dirty_files.items() if s[0] not in {" ", "?", "!"}
+        }
         unrelated_staged = staged_files - requested
         if unrelated_staged and not args.allow_partial:
             return CheckpointResult(
-                ok=False, message="Unrelated staged files exist",
+                ok=False,
+                message="Unrelated staged files exist",
                 refusal_reason=f"Files staged by another session: {sorted(unrelated_staged)}",
             )
         for rel_path in sorted(requested):
             reason = self._check_path(rel_path, args, store, guard, repo_root)
             if reason:
                 return CheckpointResult(
-                    ok=False, message=f"Checkpoint refused: {rel_path}",
+                    ok=False,
+                    message=f"Checkpoint refused: {rel_path}",
                     refusal_reason=reason,
                 )
         return None
@@ -170,7 +235,11 @@ class Checkpoint(
         if isinstance(add_result, CheckpointResult):
             return add_result
 
-        subject = args.message if args.message.startswith("checkpoint(") else f"checkpoint({args.task_id or 'unknown'}): {args.message}"
+        subject = (
+            args.message
+            if args.message.startswith("checkpoint(")
+            else f"checkpoint({args.task_id or 'unknown'}): {args.message}"
+        )
         body_lines = [""]
         if args.session_id:
             body_lines.append(f"Session: {args.session_id}")
@@ -194,14 +263,19 @@ class Checkpoint(
         try:
             proc = subprocess.run(
                 ["git", "--no-optional-locks", *args],
-                capture_output=True, check=True, cwd=cwd,
-                stdin=subprocess.DEVNULL, text=True, timeout=15,
+                capture_output=True,
+                check=True,
+                cwd=cwd,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                timeout=15,
             )
             return proc.stdout.strip()
         except subprocess.CalledProcessError as exc:
             err = exc.stderr.strip() if exc.stderr else f"exit code {exc.returncode}"
             return CheckpointResult(
-                ok=False, message="Git command failed",
+                ok=False,
+                message="Git command failed",
                 refusal_reason=f"git {' '.join(args[:2])} failed: {err}",
             )
 
@@ -231,7 +305,10 @@ class Checkpoint(
                 continue
             if reservation.mode != "write":
                 continue
-            if reservation.session_id == args.session_id and reservation.task_id == args.task_id:
+            if (
+                reservation.session_id == args.session_id
+                and reservation.task_id == args.task_id
+            ):
                 continue
             for reserved_path in reservation.paths:
                 if self._paths_overlap(rel_path, reserved_path):
@@ -246,7 +323,11 @@ class Checkpoint(
 
     @staticmethod
     def _paths_overlap(a: str, b: str) -> bool:
-        return a == b or a.startswith(b.rstrip("/") + "/") or b.startswith(a.rstrip("/") + "/")
+        return (
+            a == b
+            or a.startswith(b.rstrip("/") + "/")
+            or b.startswith(a.rstrip("/") + "/")
+        )
 
     @staticmethod
     def _parse_porcelain_z(output: str) -> dict[str, str]:
@@ -292,7 +373,10 @@ class Checkpoint(
             "commit_sha": commit_sha,
             "files_committed": files_committed,
             "validation_summary_hash": (
-                "sha256:" + hashlib.sha256(dump_canonical_json(validation_summary).encode("utf-8")).hexdigest()
+                "sha256:"
+                + hashlib.sha256(
+                    dump_canonical_json(validation_summary).encode("utf-8")
+                ).hexdigest()
                 if validation_summary
                 else None
             ),
@@ -300,7 +384,10 @@ class Checkpoint(
             "warnings": [],
             "created_at": datetime.now(UTC).isoformat(),
         }
-        payload_sha256 = "sha256:" + hashlib.sha256(dump_canonical_json(payload).encode("utf-8")).hexdigest()
+        payload_sha256 = (
+            "sha256:"
+            + hashlib.sha256(dump_canonical_json(payload).encode("utf-8")).hexdigest()
+        )
         payload["artifact_sha256"] = payload_sha256
         return payload
 

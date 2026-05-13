@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.coordination_conflict.v1.schema.json",
+  "title": "Coordination Conflict v1",
+  "description": "Normalized evaluation row for a coordination conflict event. Derived from coord.conflict.reported, coord.path.reservation_refused, coord.lease.expired, and coord.lease.marked_stale events.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "conflict_id",
+    "session_id",
+    "conflict_kind",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.coordination_conflict.v1"
+    },
+    "conflict_id": {
+      "type": "string",
+      "description": "Unique conflict identifier."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session that reported the conflict."
+    },
+    "other_session_id": {
+      "type": ["string", "null"],
+      "description": "Other session involved in the conflict."
+    },
+    "task_id": {
+      "type": ["string", "null"],
+      "description": "Task identifier if task-scoped."
+    },
+    "conflict_kind": {
+      "type": "string",
+      "enum": ["path_write_overlap", "stale_lease", "dirty_file_protected", "dependency_unsatisfied"],
+      "description": "Kind of coordination conflict."
+    },
+    "event_name": {
+      "type": "string",
+      "description": "Source event name (coord.conflict.reported, coord.path.reservation_refused, etc.)."
+    },
+    "event_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the source coordination event."
+    },
+    "path_hashes": {
+      "type": ["array", "null"],
+      "items": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+      "description": "Salted SHA256 hashes of paths involved in the conflict."
+    },
+    "path_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of paths involved."
+    },
+    "resolution_kind": {
+      "type": ["string", "null"],
+      "description": "Recommended or actual resolution (serialized, scope_split, abandoned, takeover, manual_review)."
+    },
+    "outcome": {
+      "type": ["string", "null"],
+      "enum": ["resolved", "unresolved", "false_positive", null],
+      "description": "Conflict resolution outcome."
+    },
+    "prevented_write": {
+      "type": ["boolean", "null"],
+      "description": "Whether the conflict prevented a file mutation."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp."
+    },
+    "latency_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Wall-clock latency in milliseconds."
+    }
+  },
+  "additionalProperties": false
+}

@@ -6,6 +6,8 @@ See also the [bash replacement opportunity map](bash-replacement-opportunity-map
 See [Cross-Session Coordination](../governance/cross-session-coordination.md) for how tool determinism data feeds fleet/delegate evaluation datasets.
 Out-of-scope findings discovered during determinism audits are recorded in the [findings registry](../findings/out-of-scope-findings.md).
 
+**2025-05-17**: Coordination dataset row normalization milestone — `coord.*` and checkpoint events now emit normalized payload contracts with salted path hashes, content-light fields, and four new evaluation schemas. See `docs/schemas/` for `rig.relay.cross_session_coordination.v1`, `rig.relay.coordination_conflict.v1`, `rig.relay.artifact_reuse.v1`, and `rig.relay.checkpoint_eval.v1`.
+
 ## Reasoning Traces
 
 Rig Relay records **observable reasoning traces** for every tool call, not raw hidden chain-of-thought. See `docs/schemas/rig.relay.artifact.tool_reasoning_trace.v1.schema.json`.

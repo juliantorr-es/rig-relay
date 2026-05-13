@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.checkpoint_eval.v1.schema.json",
+  "title": "Checkpoint Evaluation v1",
+  "description": "Normalized evaluation row for checkpoint commit events. Derived from rig.relay.checkpoint.committed and rig.relay.checkpoint.refused events.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "session_id",
+    "event_name",
+    "status",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.checkpoint_eval.v1"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session that created the checkpoint."
+    },
+    "task_id": {
+      "type": ["string", "null"],
+      "description": "Task identifier."
+    },
+    "event_name": {
+      "type": "string",
+      "description": "Event name (rig.relay.checkpoint.committed or rig.relay.checkpoint.refused)."
+    },
+    "event_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the source event."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["committed", "refused"],
+      "description": "Checkpoint outcome."
+    },
+    "branch": {
+      "type": ["string", "null"],
+      "description": "Git branch at checkpoint time."
+    },
+    "pre_commit_head": {
+      "type": ["string", "null"],
+      "description": "Git HEAD SHA before the checkpoint commit."
+    },
+    "post_commit_head": {
+      "type": ["string", "null"],
+      "description": "Git HEAD SHA after the checkpoint commit (null if refused)."
+    },
+    "commit_sha": {
+      "type": ["string", "null"],
+      "description": "Commit SHA of the checkpoint (null if refused)."
+    },
+    "files_committed_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of files committed."
+    },
+    "validation_summary_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the validation summary JSON."
+    },
+    "checkpoint_artifact_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the checkpoint artifact."
+    },
+    "refusal_code": {
+      "type": ["string", "null"],
+      "description": "Machine-readable refusal code (only present when refused)."
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp."
+    },
+    "latency_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Wall-clock latency in milliseconds."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.spawn_plan.v1.schema.json",
+  "title": "Spawn Plan v1",
+  "description": "Dry-run spawn plan produced by the reviewer orchestrator's spawn_session planner. Validates a mission packet against coordination constraints and returns whether the mission could safely be launched. Real subprocess spawning is deferred to the executer slice.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mission_id",
+    "parent_sprint_id",
+    "agent_profile",
+    "can_spawn",
+    "active_child_count",
+    "max_parallel_sessions",
+    "available_child_slots",
+    "would_claim_task",
+    "would_reserve_paths",
+    "allowed_path_count",
+    "checkpoint_policy",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.spawn_plan.v1"
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Mission identifier from the validated mission packet."
+    },
+    "parent_sprint_id": {
+      "type": "string",
+      "description": "Sprint that would launch this mission."
+    },
+    "parent_review_id": {
+      "type": ["string", "null"],
+      "description": "Review that produced the sprint decision."
+    },
+    "agent_profile": {
+      "type": "string",
+      "description": "Agent profile for this mission."
+    },
+    "can_spawn": {
+      "type": "boolean",
+      "description": "Whether the mission can be spawned."
+    },
+    "refusal_code": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "max_children_exceeded",
+        "write_overlap_detected",
+        "empty_allowed_paths_for_writer",
+        "read_only_profile_requests_write",
+        "invalid_mission_packet",
+        "coordination_unavailable",
+        "forbidden_touches_allowed",
+        "no_validation_commands_for_writer"
+      ],
+      "description": "Canonical refusal code when can_spawn is false."
+    },
+    "refusal_reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable refusal explanation."
+    },
+    "active_child_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Current active child sessions from coordination state."
+    },
+    "max_parallel_sessions": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum allowed parallel sessions."
+    },
+    "available_child_slots": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Available child session slots."
+    },
+    "would_claim_task": {
+      "type": "boolean",
+      "description": "Whether this mission would claim a coordination task."
+    },
+    "would_reserve_paths": {
+      "type": "boolean",
+      "description": "Whether this mission would reserve paths."
+    },
+    "reservation_mode": {
+      "type": ["string", "null"],
+      "enum": ["read", "write", null],
+      "description": "Reservation mode if would_reserve_paths is true."
+    },
+    "allowed_path_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of allowed paths."
+    },
+    "forbidden_path_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of forbidden paths."
+    },
+    "validation_command_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of validation commands."
+    },
+    "checkpoint_policy": {
+      "type": "string",
+      "enum": ["off", "prompt", "auto"],
+      "description": "Checkpoint policy from the mission packet."
+    },
+    "coordination_policy_summary": {
+      "type": ["string", "null"],
+      "description": "Human-readable summary of the coordination policy."
+    },
+    "overlapping_path_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Salted hashes of overlapping paths if write overlap detected."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the spawn plan."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of plan creation."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for plan contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

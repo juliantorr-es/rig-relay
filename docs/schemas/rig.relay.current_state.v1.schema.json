@@ -1,0 +1,185 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.current_state.v1.schema.json",
+  "title": "Current State v1",
+  "description": "Compact orchestration pulse for parent/reviewer agents. Consumes live coordination projection and derived datasets to produce a real-time snapshot of child sessions, reservations, artifacts, conflicts, checkpoints, and deterministic recommendations.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "scope",
+    "summary",
+    "children",
+    "recommendations",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.current_state.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of state generation."
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["sprint", "session", "task", "fleet"],
+      "description": "Scope of the current state analysis."
+    },
+    "sprint_id": {
+      "type": ["string", "null"],
+      "description": "Sprint identifier if scoped to a sprint."
+    },
+    "parent_session_id": {
+      "type": ["string", "null"],
+      "description": "Parent/reviewer session identifier."
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "active_children",
+        "max_children",
+        "available_child_slots",
+        "active_writers",
+        "active_readers",
+        "conflicts",
+        "stale_leases",
+        "checkpoint_commits",
+        "checkpoint_refusals"
+      ],
+      "properties": {
+        "active_children": { "type": "integer", "minimum": 0 },
+        "max_children": { "type": "integer", "minimum": 1 },
+        "available_child_slots": { "type": "integer", "minimum": 0 },
+        "active_writers": { "type": "integer", "minimum": 0 },
+        "active_readers": { "type": "integer", "minimum": 0 },
+        "conflicts": { "type": "integer", "minimum": 0 },
+        "stale_leases": { "type": "integer", "minimum": 0 },
+        "checkpoint_commits": { "type": "integer", "minimum": 0 },
+        "checkpoint_refusals": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["session_id", "agent_profile_name", "status", "recommended_parent_action"],
+        "properties": {
+          "session_id": { "type": "string" },
+          "task_id": { "type": ["string", "null"] },
+          "agent_profile_name": { "type": "string" },
+          "status": { "type": "string" },
+          "current_step": { "type": ["string", "null"] },
+          "last_heartbeat_age_seconds": { "type": ["number", "null"], "minimum": 0 },
+          "reservation_count": { "type": "integer", "minimum": 0 },
+          "recent_artifact_hashes": { "type": "array", "items": { "type": "string" } },
+          "risk": { "type": "string", "enum": ["normal", "needs_attention", "critical"] },
+          "recommended_parent_action": {
+            "type": "string",
+            "enum": ["wait", "inspect_conflict", "launch_tester", "request_status", "mark_stale", "cancel"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "active_reservations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "mode": { "type": "string", "enum": ["read", "write"] },
+          "path_count": { "type": "integer", "minimum": 0 },
+          "status": { "type": "string" }
+        },
+        "required": ["session_id", "mode", "status"],
+        "additionalProperties": false
+      }
+    },
+    "recent_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "artifact_kind": { "type": "string" },
+          "artifact_sha256": { "type": "string" }
+        },
+        "required": ["session_id", "artifact_kind"],
+        "additionalProperties": false
+      }
+    },
+    "recent_conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "conflict_id": { "type": "string" },
+          "kind": { "type": "string" },
+          "other_session_id": { "type": ["string", "null"] }
+        },
+        "required": ["conflict_id", "kind"],
+        "additionalProperties": false
+      }
+    },
+    "stale_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "kind": { "type": "string" },
+          "age_seconds": { "type": ["number", "null"], "minimum": 0 }
+        },
+        "required": ["session_id", "kind"],
+        "additionalProperties": false
+      }
+    },
+    "dataset_completeness": {
+      "type": "object",
+      "properties": {
+        "coordination_rows": { "type": "integer", "minimum": 0 },
+        "artifact_reuse_rows": { "type": "integer", "minimum": 0 },
+        "conflict_rows": { "type": "integer", "minimum": 0 },
+        "checkpoint_rows": { "type": "integer", "minimum": 0 },
+        "tool_failure_rows": { "type": "integer", "minimum": 0 },
+        "provider_perf_rows": { "type": "integer", "minimum": 0 },
+        "findings_rows": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "recommendations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Deterministic recommendations for the reviewer orchestrator."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about state completeness."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for state contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

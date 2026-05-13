@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.parent_convergence_report.v1.schema.json",
+  "title": "Parent Convergence Report v1",
+  "description": "Fan-in artifact produced by the reviewer/orchestrator after collecting child session results. Summarizes completed work, blocked work, artifacts, checkpoints, findings, and the recommended next action. Content-light: references artifacts by hash, never embeds raw content.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "sprint_id",
+    "generated_at",
+    "overall_status",
+    "child_results",
+    "completed_work_items",
+    "blocked_work_items",
+    "recommended_next_action",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.parent_convergence_report.v1"
+    },
+    "sprint_id": {
+      "type": "string",
+      "description": "Owning sprint identifier."
+    },
+    "parent_review_id": {
+      "type": ["string", "null"],
+      "description": "Review that produced this convergence report."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of report generation."
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["continue", "blocked", "ready_for_human_review", "ready_to_push", "completed"],
+      "description": "Overall status of the current orchestration cycle."
+    },
+    "child_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["session_id", "work_item_id", "agent_profile", "status"],
+        "properties": {
+          "session_id": { "type": "string" },
+          "work_item_id": { "type": "string" },
+          "agent_profile": { "type": "string" },
+          "status": { "type": "string" },
+          "validation_summary": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "files_changed_count": { "type": "integer", "minimum": 0 },
+          "checkpoint_commit_sha": { "type": ["string", "null"] },
+          "artifact_sha256": { "type": ["string", "null"] },
+          "runtime_seconds": { "type": ["number", "null"], "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "description": "Results from all child sessions in this cycle."
+    },
+    "completed_work_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["work_item_id", "title", "status"],
+        "properties": {
+          "work_item_id": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Work items that completed in this cycle."
+    },
+    "blocked_work_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["work_item_id", "title", "blocked_reason"],
+        "properties": {
+          "work_item_id": { "type": "string" },
+          "title": { "type": "string" },
+          "blocked_reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Work items that are blocked, with reasons."
+    },
+    "new_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "finding_id": { "type": "string" },
+          "severity": { "type": "string" },
+          "title": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Out-of-scope findings recorded by children (content-light)."
+    },
+    "recent_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "artifact_kind": { "type": "string" },
+          "artifact_sha256": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Artifacts produced by children (content-light, by hash)."
+    },
+    "recent_checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "commit_sha": { "type": "string" },
+          "status": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Checkpoints created by children."
+    },
+    "pending_work_item_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of work items still pending (not yet processed)."
+    },
+    "recommended_next_action": {
+      "type": "string",
+      "description": "What the reviewer should do next."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for report contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

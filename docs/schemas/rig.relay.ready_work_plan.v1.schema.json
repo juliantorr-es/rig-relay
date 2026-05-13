@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.ready_work_plan.v1.schema.json",
+  "title": "Ready Work Plan v1",
+  "description": "A ready work plan computed from the pending work queue. Separates items into ready (dispatchable now), blocked (with reasons), and waiting (for dependencies/leases). Includes active child counts, available slots, and deterministic recommendations for the reviewer orchestrator.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "sprint_id",
+    "generated_at",
+    "max_items",
+    "ready_items",
+    "blocked_items",
+    "waiting_items",
+    "active_count",
+    "available_slots",
+    "recommendations",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.ready_work_plan.v1"
+    },
+    "sprint_id": {
+      "type": "string",
+      "description": "Owning sprint identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of plan generation."
+    },
+    "max_items": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum items requested in this plan."
+    },
+    "ready_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["work_item_id", "title", "agent_profile", "execution_mode", "allowed_paths", "forbidden_paths", "tool_policy", "coordination_policy", "checkpoint_policy", "validation_commands", "done_when", "priority"],
+        "properties": {
+          "work_item_id": { "type": "string" },
+          "title": { "type": "string" },
+          "agent_profile": { "type": "string" },
+          "execution_mode": { "type": "string" },
+          "allowed_paths": { "type": "array", "items": { "type": "string" } },
+          "forbidden_paths": { "type": "array", "items": { "type": "string" } },
+          "tool_policy": {
+            "type": "object",
+            "properties": {
+              "allow_write": { "type": "boolean" },
+              "allow_bash": { "type": "boolean" },
+              "bash_allowlist": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "coordination_policy": {
+            "type": "object",
+            "properties": {
+              "claim_task": { "type": "boolean" },
+              "reserve_paths": { "type": "boolean" },
+              "heartbeat": { "type": "boolean" }
+            }
+          },
+          "checkpoint_policy": { "type": "string" },
+          "validation_commands": { "type": "array", "items": { "type": "string" } },
+          "done_when": { "type": "array", "items": { "type": "string" } },
+          "priority": { "type": "integer" },
+          "parallelism_policy": {
+            "type": "object",
+            "properties": {
+              "mode": { "type": "string" },
+              "max_parallel_children": { "type": "integer" },
+              "exclusive_group": { "type": ["string", "null"] },
+              "requires_worktree_for_multi_writer": { "type": "boolean" }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Work items that are ready to dispatch now."
+    },
+    "blocked_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["work_item_id", "title", "blocked_reason"],
+        "properties": {
+          "work_item_id": { "type": "string" },
+          "title": { "type": "string" },
+          "blocked_reason": { "type": "string" },
+          "blocked_by_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Work items that are blocked, with reasons."
+    },
+    "waiting_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["work_item_id", "title", "waiting_reason"],
+        "properties": {
+          "work_item_id": { "type": "string" },
+          "title": { "type": "string" },
+          "waiting_reason": { "type": "string" },
+          "waiting_on_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Work items waiting for dependencies or leases."
+    },
+    "active_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Currently active child sessions."
+    },
+    "available_slots": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Available child session slots."
+    },
+    "recommendations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Deterministic recommendations for the reviewer orchestrator."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the queue or coordination state."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for plan contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

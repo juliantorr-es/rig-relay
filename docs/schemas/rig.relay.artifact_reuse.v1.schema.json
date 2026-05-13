@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact_reuse.v1.schema.json",
+  "title": "Artifact Reuse v1",
+  "description": "Normalized evaluation row for artifact publication and reuse. Derived from coord.artifact.published and coord.projection.read events.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "session_id",
+    "artifact_kind",
+    "artifact_sha256",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.artifact_reuse.v1"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session consuming or producing the artifact."
+    },
+    "task_id": {
+      "type": ["string", "null"],
+      "description": "Task identifier if task-scoped."
+    },
+    "artifact_kind": {
+      "type": "string",
+      "description": "Kind of artifact (search_results, git_state, task_session_link, tool_reasoning_trace, checkpoint_commit, etc.)."
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the artifact."
+    },
+    "producer_session_id": {
+      "type": ["string", "null"],
+      "description": "Session that produced the artifact."
+    },
+    "consumer_session_id": {
+      "type": ["string", "null"],
+      "description": "Session that consumed/reused the artifact."
+    },
+    "reuse_kind": {
+      "type": ["string", "null"],
+      "enum": ["read", "referenced", "validated", "superseded", null],
+      "description": "How the artifact was reused."
+    },
+    "avoided_tool_call": {
+      "type": ["boolean", "null"],
+      "description": "Whether reusing the artifact avoided a duplicate tool call."
+    },
+    "outcome": {
+      "type": ["string", "null"],
+      "enum": ["useful", "stale", "irrelevant", null],
+      "description": "Whether the artifact was useful for the consumer."
+    },
+    "event_name": {
+      "type": "string",
+      "description": "Source event name."
+    },
+    "event_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the source coordination event."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp."
+    },
+    "latency_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Wall-clock latency in milliseconds."
+    }
+  },
+  "additionalProperties": false
+}

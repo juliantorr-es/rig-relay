@@ -443,3 +443,4 @@ Ranked by composite score of risk, frequency, token waste, and wrong-edit potent
 - Tool contracts: [`vibe/core/telemetry/tool_contract.py`](../../vibe/core/telemetry/tool_contract.py)
 - Artifact schemas: [`docs/audits/artifact-schema-doctrine.md`](./artifact-schema-doctrine.md)
 - Governance: [Cross-Session Coordination](../governance/cross-session-coordination.md), [Usage Data Doctrine](../governance/usage-data-doctrine.md)
+- **2025-05-17**: Coordination dataset row normalization milestone — `coord.*` and checkpoint events now use normalized payload contracts. Paths salted-hashed, content-light, schema-backed. See `docs/schemas/` for four new evaluation schemas (`rig.relay.cross_session_coordination.v1`, `rig.relay.coordination_conflict.v1`, `rig.relay.artifact_reuse.v1`, `rig.relay.checkpoint_eval.v1`).

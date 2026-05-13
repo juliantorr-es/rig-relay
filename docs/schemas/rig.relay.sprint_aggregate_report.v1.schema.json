@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.sprint_aggregate_report.v1.schema.json",
+  "title": "Sprint Aggregate Report v1",
+  "description": "Aggregate report produced by the reviewer orchestrator after collecting all child session results. Summarizes what was done, what remains, and recommends the next sprint decision.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "sprint_id",
+    "parent_review_id",
+    "child_results",
+    "overall_status",
+    "recommended_next_action",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.sprint_aggregate_report.v1"
+    },
+    "sprint_id": {
+      "type": "string",
+      "description": "Sprint identifier."
+    },
+    "parent_review_id": {
+      "type": ["string", "null"],
+      "description": "Review that produced the sprint decision."
+    },
+    "child_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mission_id": { "type": "string" },
+          "session_id": { "type": "string" },
+          "agent_profile": { "type": "string" },
+          "status": { "type": "string" },
+          "files_changed_count": { "type": "integer", "minimum": 0 },
+          "validation_passed": { "type": "boolean" },
+          "checkpoint_sha": { "type": ["string", "null"] },
+          "warnings": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["mission_id", "session_id", "agent_profile", "status"],
+        "additionalProperties": false
+      },
+      "description": "Summaries of all child session results."
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["clean", "blocked", "partial", "failed"],
+      "description": "Overall sprint status."
+    },
+    "recommended_next_action": {
+      "type": "string",
+      "description": "Recommended next action for the sprint orchestrator."
+    },
+    "new_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "finding_id": { "type": "string" },
+          "severity": { "type": "string" },
+          "title": { "type": "string" }
+        },
+        "required": ["finding_id", "severity", "title"],
+        "additionalProperties": false
+      },
+      "description": "New findings recorded during the sprint."
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Blockers that prevented full completion."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the sprint."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of report creation."
+    },
+    "content_policy": {
+      "type": "string",
+      "default": "content_light",
+      "description": "Privacy policy for report contents."
+    },
+    "forbidden_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field names that MUST NOT appear.",
+      "default": [
+        "raw_file_contents",
+        "secrets",
+        "raw_private_code",
+        "raw_prompt_text",
+        "model_output_text",
+        "stdout_bodies",
+        "stderr_bodies"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

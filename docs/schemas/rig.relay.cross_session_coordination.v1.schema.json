@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.cross_session_coordination.v1.schema.json",
+  "title": "Cross-Session Coordination Event v1",
+  "description": "Normalized evaluation row for a single coordination event. Derived from coord.* events in the coordination event stream. Designed for delegate/fleet orchestration analysis.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "session_id",
+    "sequence",
+    "created_at",
+    "event_name",
+    "event_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.cross_session_coordination.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier (SHA256 of payload)."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session emitting the coordination event."
+    },
+    "parent_session_id": {
+      "type": ["string", "null"],
+      "description": "Parent session if delegated."
+    },
+    "task_id": {
+      "type": ["string", "null"],
+      "description": "Delegation task identifier."
+    },
+    "fleet_id": {
+      "type": ["string", "null"],
+      "description": "Fleet identifier for grouped sessions."
+    },
+    "agent_profile_name": {
+      "type": ["string", "null"],
+      "description": "Agent profile active when the event was emitted."
+    },
+    "event_name": {
+      "type": "string",
+      "description": "Coordination event name (e.g. coord.path.reserved)."
+    },
+    "event_kind": {
+      "type": "string",
+      "description": "Normalized event kind (e.g. path_reserved, handoff_requested)."
+    },
+    "event_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the canonical coordination event envelope."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic sequence within the coordination event stream."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp."
+    },
+    "status": {
+      "type": ["string", "null"],
+      "description": "Outcome status (active, released, refused, completed, etc.)."
+    },
+    "outcome": {
+      "type": ["string", "null"],
+      "description": "High-level outcome (completed, blocked, refused, failed)."
+    },
+    "provider": {
+      "type": ["string", "null"],
+      "description": "LLM provider (e.g. anthropic, openai)."
+    },
+    "model": {
+      "type": ["string", "null"],
+      "description": "Model identifier string."
+    },
+    "thinking_enabled": {
+      "type": ["boolean", "null"],
+      "description": "Whether extended thinking was active."
+    },
+    "reservation_mode": {
+      "type": ["string", "null"],
+      "description": "read or write, if a path reservation event."
+    },
+    "reservation_status": {
+      "type": ["string", "null"],
+      "description": "granted, refused, stale, or released."
+    },
+    "path_hashes": {
+      "type": ["array", "null"],
+      "items": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+      "description": "Salted SHA256 hashes of reserved/released paths."
+    },
+    "path_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of paths in this event."
+    },
+    "artifact_kind": {
+      "type": ["string", "null"],
+      "description": "Kind of artifact published."
+    },
+    "artifact_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the artifact."
+    },
+    "conflict_kind": {
+      "type": ["string", "null"],
+      "description": "Kind of conflict (path_write_overlap, stale_lease, etc.)."
+    },
+    "conflict_id": {
+      "type": ["string", "null"],
+      "description": "Unique conflict identifier."
+    },
+    "other_session_id": {
+      "type": ["string", "null"],
+      "description": "Other session involved in a conflict or handoff."
+    },
+    "resolution_kind": {
+      "type": ["string", "null"],
+      "description": "Recommended or actual resolution strategy."
+    },
+    "handoff_from_session_id": {
+      "type": ["string", "null"],
+      "description": "Session initiating a handoff."
+    },
+    "handoff_to_session_id": {
+      "type": ["string", "null"],
+      "description": "Target session of a handoff."
+    },
+    "claim_kind": {
+      "type": ["string", "null"],
+      "description": "Kind of task claim (implementation, review, etc.)."
+    },
+    "ttl_seconds": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Time-to-live for the lease in seconds."
+    },
+    "expires_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the lease expires."
+    },
+    "current_step": {
+      "type": ["string", "null"],
+      "description": "Current workflow step reported in a heartbeat."
+    },
+    "projection_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the state projection at event time."
+    },
+    "latency_ms": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Wall-clock latency in milliseconds."
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings."
+    }
+  },
+  "additionalProperties": false
+}
