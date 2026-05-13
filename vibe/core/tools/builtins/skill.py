@@ -5,10 +5,7 @@ from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
-from vibe.core.telemetry.tool_contract import (
-    ToolDeterminismClass,
-    ToolMutationClass,
-)
+from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -44,6 +41,8 @@ class Skill(
     BaseTool[SkillArgs, SkillResult, SkillToolConfig, BaseToolState],
     ToolUIData[SkillArgs, SkillResult],
 ):
+    description: ClassVar[str] = (
+        "Activate a Rig skill by name. Skills are modular capability bundles. "
         "The skill will inject detailed instructions, workflows, and access to bundled resources "
         "(scripts, references, templates) into the conversation context."
     )

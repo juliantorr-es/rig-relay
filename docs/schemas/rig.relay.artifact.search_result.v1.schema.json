@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.search_result.v1.schema.json",
+  "title": "Search Result Artifact",
+  "type": "object",
+  "required": [
+    "query_sha256",
+    "results"
+  ],
+  "properties": {
+    "query_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relative_path"],
+        "properties": {
+          "relative_path": { "type": "string" },
+          "start_line": { "type": "integer" },
+          "end_line": { "type": "integer" },
+          "start_column": { "type": "integer" },
+          "end_column": { "type": "integer" },
+          "excerpt": { "type": "string" },
+          "excerpt_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "symbol_context": { "type": "string" },
+          "score": { "type": "number" },
+          "rank": { "type": "integer" },
+          "tie_breakers": { "type": "object" }
+        }
+      }
+    },
+    "truncated": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

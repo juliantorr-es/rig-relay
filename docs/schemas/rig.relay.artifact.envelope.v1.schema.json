@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.envelope.v1.schema.json",
+  "title": "Rig Relay Artifact Envelope",
+  "description": "Common metadata envelope for all Rig Relay artifacts.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_kind",
+    "session_id",
+    "created_at",
+    "payload_sha256",
+    "artifact_record_sha256",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.artifact.envelope.v1"
+    },
+    "artifact_kind": {
+      "type": "string",
+      "description": "Short name for the artifact type (e.g., tool_result, search_query)."
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tool_call_id": {
+      "type": "string",
+      "description": "Optional identifier linking this artifact to a specific tool call."
+    },
+    "event_name": {
+      "type": "string",
+      "description": "The telemetry event name associated with this artifact."
+    },
+    "evidence_relative_path": {
+      "type": "string",
+      "description": "Path to this artifact relative to the session evidence root."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "artifact_record_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "payload": {
+      "type": "object",
+      "description": "The artifact-specific data payload."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional additional metadata (producer, version, etc.)."
+    }
+  },
+  "additionalProperties": false
+}

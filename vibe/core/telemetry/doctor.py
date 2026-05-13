@@ -9,9 +9,9 @@ from rich import print as rprint
 from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
     ToolDeterminismSummary,
     ToolDogfoodContract,
-    ToolDeterminismClass,
     ToolMutationClass,
 )
 from vibe.core.telemetry.validation import (
@@ -141,14 +141,12 @@ def summarize_tool_determinism(
         "determinism_breakdown": {},
         "mutation_breakdown": {},
         "unclassified_tools": sorted(
-            list(
-                {
-                    c.tool_name
-                    for c in tool_calls
-                    if c.determinism_class == ToolDeterminismClass.UNKNOWN
-                    or c.mutation_class == ToolMutationClass.UNKNOWN
-                }
-            )
+            list({
+                c.tool_name
+                for c in tool_calls
+                if c.determinism_class == ToolDeterminismClass.UNKNOWN
+                or c.mutation_class == ToolMutationClass.UNKNOWN
+            })
         ),
         "missing_hashes": [
             f"{c.tool_name} ({c.tool_call_id})"

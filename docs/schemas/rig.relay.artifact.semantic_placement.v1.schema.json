@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.semantic_placement.v1.schema.json",
+  "title": "Semantic Placement Artifact",
+  "type": "object",
+  "required": [
+    "file_sha256",
+    "selected_region",
+    "placement_reason"
+  ],
+  "properties": {
+    "language": { "type": "string" },
+    "parser_kind": { "type": "string" },
+    "parser_version": { "type": "string" },
+    "file_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "symbols": { "type": "array", "items": { "type": "string" } },
+    "candidate_regions": { "type": "array", "items": { "type": "object" } },
+    "selected_region": { "type": "object" },
+    "placement_reason": { "type": "string" },
+    "rejected_regions": { "type": "array", "items": { "type": "object" } },
+    "syntax_before": { "type": "string" },
+    "syntax_after": { "type": "string" },
+    "diagnostics_before": { "type": "array", "items": { "type": "string" } },
+    "diagnostics_after": { "type": "array", "items": { "type": "string" } },
+    "confidence_class": { "enum": ["high", "medium", "low"] }
+  },
+  "additionalProperties": false
+}

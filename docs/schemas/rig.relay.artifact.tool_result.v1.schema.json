@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.tool_result.v1.schema.json",
+  "title": "Tool Result Artifact",
+  "type": "object",
+  "required": [
+    "tool_name",
+    "tool_call_id",
+    "status",
+    "output_kind",
+    "output_sha256",
+    "determinism_class",
+    "mutation_class"
+  ],
+  "properties": {
+    "tool_name": { "type": "string" },
+    "tool_call_id": { "type": "string" },
+    "status": { "enum": ["success", "failure", "skipped"] },
+    "output_kind": { "type": "string" },
+    "output_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "determinism_class": { "type": "string" },
+    "mutation_class": { "type": "string" },
+    "artifact_reference": { "type": "string" },
+    "duration_ms": { "type": "number" },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

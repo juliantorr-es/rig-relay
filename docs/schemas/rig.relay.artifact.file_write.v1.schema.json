@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.file_write.v1.schema.json",
+  "title": "File Write Artifact",
+  "type": "object",
+  "required": [
+    "relative_path",
+    "old_sha256",
+    "new_sha256"
+  ],
+  "properties": {
+    "relative_path": { "type": "string" },
+    "expected_old_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "old_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "new_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "write_mode": { "enum": ["overwrite", "append", "patch"] },
+    "changed_line_ranges": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "diff_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "preconditions_met": { "type": "boolean" },
+    "post_write_validation": { "type": "string" }
+  },
+  "additionalProperties": false
+}

@@ -10,10 +10,7 @@ from typing import ClassVar, Literal, final
 from pydantic import BaseModel, Field
 
 from vibe.core.scratchpad import is_scratchpad_path
-from vibe.core.telemetry.tool_contract import (
-    ToolDeterminismClass,
-    ToolMutationClass,
-)
+from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.arity import build_session_pattern
 from vibe.core.tools.base import (
     BaseTool,

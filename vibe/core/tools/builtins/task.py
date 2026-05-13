@@ -9,10 +9,7 @@ from pydantic import BaseModel, Field
 
 from vibe.core.agent_loop import AgentLoop
 from vibe.core.config import SessionLoggingConfig, VibeConfig
-from vibe.core.telemetry.tool_contract import (
-    ToolDeterminismClass,
-    ToolMutationClass,
-)
+from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -29,7 +26,9 @@ from vibe.core.tools.ui import (
     ToolUIDataAdapter,
 )
 from vibe.core.types import (
+    AgentType,
     AssistantEvent,
+    BuiltinAgentName,
     Role,
     ToolCallEvent,
     ToolResultEvent,

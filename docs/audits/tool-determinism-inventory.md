@@ -1,6 +1,6 @@
 # Tool Determinism Inventory
 
-This document tracks the determinism and mutation characteristics of Rig Relay built-in tools.
+This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).
 
 ## Inventory
 

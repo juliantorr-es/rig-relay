@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.evidence.receipt.v1.schema.json",
+  "title": "Evidence Receipt",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "sequence",
+    "session_id",
+    "event_index",
+    "event_name",
+    "evidence_kind",
+    "evidence_relative_path",
+    "evidence_sha256",
+    "receipt_payload_sha256",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.evidence.receipt.v1" },
+    "sequence": { "type": "integer" },
+    "session_id": { "type": "string", "format": "uuid" },
+    "event_index": { "type": "integer" },
+    "event_name": { "type": "string" },
+    "evidence_kind": { "type": "string" },
+    "evidence_relative_path": { "type": "string" },
+    "evidence_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "previous_receipt_sha256": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" },
+    "receipt_payload_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "receipt_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  },
+  "additionalProperties": false
+}

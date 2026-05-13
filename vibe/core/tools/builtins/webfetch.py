@@ -8,10 +8,7 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel, Field
 
-from vibe.core.telemetry.tool_contract import (
-    ToolDeterminismClass,
-    ToolMutationClass,
-)
+from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,

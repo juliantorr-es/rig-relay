@@ -9,7 +9,7 @@ from typing import Any
 from vibe.core.telemetry.local import dump_canonical_json
 
 _RECEIPTS_FILENAME = "receipts.jsonl"
-_RECEIPT_SCHEMA_VERSION = "rig.relay.receipt.v1"
+_RECEIPT_SCHEMA_VERSION = "rig.relay.evidence.receipt.v1"
 
 
 @dataclass(frozen=True, slots=True)

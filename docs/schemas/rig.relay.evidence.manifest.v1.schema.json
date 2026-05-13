@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.evidence.manifest.v1.schema.json",
+  "title": "Evidence Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "session_id",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.evidence.manifest.v1" },
+    "session_id": { "type": "string", "format": "uuid" },
+    "root_mode": { "type": "string" },
+    "root_source": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relative_path", "sha256"],
+        "properties": {
+          "relative_path": { "type": "string" },
+          "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "event_name": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

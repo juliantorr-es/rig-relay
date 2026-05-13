@@ -35,6 +35,7 @@ rig-relay "Audit the grep tool for determinism"
 - Mutating `.rig/relay` home directory (unless testing migration).
 - Overwriting existing evidence in a way that breaks validation.
 - Implementing autonomous merging without human review.
+- Creating unstructured artifacts that do not adhere to [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).
 
 ### 5. Post-Session Validation
 
@@ -78,3 +79,9 @@ Based on initial evidence collection, the following areas are prioritized for to
 3.  **Git State Capture (Medium)**: Extend `git` tool evidence to include the current HEAD commit hash to differentiate repo-state dependent outputs.
 4.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
 5.  **Subagent Isolation (Low)**: Harden `task` tool to strictly sandbox subagent workspace mutations and capture their evidence shards.
+
+## Future Hardening Tracks
+
+1.  **Search Normalization**: Use `search_query` and `search_result` artifacts to evaluate fuzzy-search effectiveness.
+2.  **Semantic Placement**: Audit `semantic_placement` artifacts to ensure edits land in the correct symbols.
+3.  **Token Optimization**: Analyze artifact kind density to identify candidates for summarization or deduplication based on [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).

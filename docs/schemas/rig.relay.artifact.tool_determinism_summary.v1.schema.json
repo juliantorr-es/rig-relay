@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.tool_determinism_summary.v1.schema.json",
+  "title": "Tool Determinism Summary Artifact",
+  "type": "object",
+  "required": [
+    "session_id",
+    "total_calls",
+    "determinism_breakdown",
+    "mutation_breakdown"
+  ],
+  "properties": {
+    "session_id": { "type": "string", "format": "uuid" },
+    "total_calls": { "type": "integer" },
+    "classified_calls": { "type": "integer" },
+    "determinism_breakdown": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "mutation_breakdown": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "unclassified_tools": { "type": "array", "items": { "type": "string" } },
+    "missing_hashes": { "type": "array", "items": { "type": "string" } },
+    "top_tools": { "type": "array", "items": { "type": "string" } },
+    "hardening_candidates": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.tool_call.v1.schema.json",
+  "title": "Tool Call Artifact",
+  "type": "object",
+  "required": [
+    "tool_name",
+    "tool_call_id",
+    "normalized_input",
+    "input_sha256"
+  ],
+  "properties": {
+    "tool_name": { "type": "string" },
+    "tool_call_id": { "type": "string" },
+    "normalized_input": { "type": "object" },
+    "input_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "agent_profile_name": { "type": "string" },
+    "model": { "type": "string" }
+  },
+  "additionalProperties": false
+}
