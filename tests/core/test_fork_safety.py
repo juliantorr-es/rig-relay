@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import pytest
+
+from vibe.cli.update_notifier.update import do_update, get_update_if_available
 from vibe.core.config import VibeConfig
-from vibe.cli.update_notifier.update import get_update_if_available, do_update
 
 
 def test_update_config_defaults():

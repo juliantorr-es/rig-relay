@@ -22,8 +22,7 @@ LOW_CACHEABILITY_THRESHOLD = 0.8
 
 
 def plan_context_layout(
-    report: ContextAssemblyReport,
-    previous_layout: ContextLayoutPlan | None = None,
+    report: ContextAssemblyReport, previous_layout: ContextLayoutPlan | None = None
 ) -> ContextLayoutPlan:
     """Produce a deterministic layout plan from a context assembly report."""
 
@@ -31,21 +30,22 @@ def plan_context_layout(
     # 1. stable/semi-stable cacheable blocks go first (the stable prefix)
     # 2. dynamic blocks go after stable prefix (the dynamic suffix)
     # 3. ephemeral blocks go last (not cacheable)
-    # Tie-breakers: block stability, kind, fingerprint, source_index, block_id
-    def block_key(b: ContextBlock) -> tuple[int, str, str, int, str]:
-        # Numeric priority for stability
+    # Tie-breakers: stability, kind, source_index, fingerprint, byte_size
+    def block_key(b: ContextBlock) -> tuple[int, str, int, str, int]:
         stability_map = {
             ContextBlockStability.STABLE: 0,
             ContextBlockStability.SEMI_STABLE: 1,
             ContextBlockStability.DYNAMIC: 2,
             ContextBlockStability.EPHEMERAL: 3,
         }
+        # Use a high sentinel for missing source_index to keep them at the end of their group
+        source_idx = b.source_index if b.source_index is not None else 1_000_000
         return (
             stability_map.get(b.stability, 99),
-            b.kind,
+            str(b.kind),
+            source_idx,
             b.fingerprint,
-            b.source_index or 0,
-            b.block_id,
+            b.byte_size,
         )
 
     sorted_blocks = sorted(report.blocks, key=block_key)
@@ -53,7 +53,8 @@ def plan_context_layout(
     stable_prefix_blocks = [
         b
         for b in sorted_blocks
-        if b.stability in {ContextBlockStability.STABLE, ContextBlockStability.SEMI_STABLE}
+        if b.stability
+        in {ContextBlockStability.STABLE, ContextBlockStability.SEMI_STABLE}
         and b.cacheable
     ]
     dynamic_suffix_blocks = [
@@ -61,7 +62,8 @@ def plan_context_layout(
         for b in sorted_blocks
         if b.stability == ContextBlockStability.DYNAMIC
         or (
-            b.stability in {ContextBlockStability.STABLE, ContextBlockStability.SEMI_STABLE}
+            b.stability
+            in {ContextBlockStability.STABLE, ContextBlockStability.SEMI_STABLE}
             and not b.cacheable
         )
     ]
@@ -74,8 +76,12 @@ def plan_context_layout(
     ephemeral_ids = [b.block_id for b in ephemeral_blocks]
 
     # Fingerprints must be computed from ordered block fingerprints
-    stable_prefix_fp = fingerprint_text("".join(b.fingerprint for b in stable_prefix_blocks))
-    dynamic_suffix_fp = fingerprint_text("".join(b.fingerprint for b in dynamic_suffix_blocks))
+    stable_prefix_fp = fingerprint_text(
+        "".join(b.fingerprint for b in stable_prefix_blocks)
+    )
+    dynamic_suffix_fp = fingerprint_text(
+        "".join(b.fingerprint for b in dynamic_suffix_blocks)
+    )
 
     stable_prefix_bytes = sum(b.byte_size for b in stable_prefix_blocks)
     dynamic_suffix_bytes = sum(b.byte_size for b in dynamic_suffix_blocks)
@@ -185,7 +191,9 @@ def build_context_assembly_report(
             kind = ContextBlockKind.SYSTEM_PROMPT
             stability, cacheable = classify_block_stability(kind)
             content = msg.content or ""
-            blocks.append(_make_block(kind, stability, cacheable, content, source_index=i))
+            blocks.append(
+                _make_block(kind, stability, cacheable, content, source_index=i)
+            )
 
     if tool_manager_info:
         # If we have tool schema info, record it as a stable block
@@ -222,12 +230,8 @@ def build_context_assembly_report(
     total_tokens = sum(b.estimated_tokens for b in blocks)
 
     cache_candidate_bytes = sum(b.byte_size for b in blocks if b.cacheable)
-    stable_blocks = [
-        b for b in blocks if b.stability in {"stable", "semi_stable"}
-    ]
-    dynamic_blocks = [
-        b for b in blocks if b.stability not in {"stable", "semi_stable"}
-    ]
+    stable_blocks = [b for b in blocks if b.stability in {"stable", "semi_stable"}]
+    dynamic_blocks = [b for b in blocks if b.stability not in {"stable", "semi_stable"}]
 
     stable_prefix_bytes = sum(b.byte_size for b in stable_blocks)
     dynamic_suffix_bytes = sum(b.byte_size for b in dynamic_blocks)

@@ -117,7 +117,6 @@ from vibe.cli.update_notifier import (
     mark_version_as_seen,
     should_show_whats_new,
 )
-from vibe.cli.update_notifier.update import do_update
 from vibe.cli.voice_manager import VoiceManager, VoiceManagerPort
 from vibe.cli.voice_manager.voice_manager_port import TranscribeState
 from vibe.core.agent_loop import AgentLoop, TeleportError
@@ -3040,7 +3039,7 @@ class VibeApp(App):  # noqa: PLR0904
                 current_version=self._current_version,
                 update_cache_repository=self._update_cache_repository,
             )
-        except UpdateError as error:
+        except UpdateError:
             # We don't notify on errors in the fork usually, but if enabled we stay silent
             return
         except RuntimeError as e:

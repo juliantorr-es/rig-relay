@@ -77,14 +77,13 @@ def test_run_programmatic_preload_streaming_is_batched(
             Role.assistant,
         ]
 
-        new_session = [
-            e for e in telemetry_events if e.get("event_name") == "rig.relay.session.started"
-        ]
         # In programmatic mode, session started might not be emitted if it's reused or handled differently
         # But let's check for session closed which we saw in the previous run's failure
-        
+
         session_closed = [
-            e for e in telemetry_events if e.get("event_name") == "rig.relay.session.closed"
+            e
+            for e in telemetry_events
+            if e.get("event_name") == "rig.relay.session.closed"
         ]
         assert len(session_closed) == 1
         assert session_closed[0]["properties"]["agent_entrypoint"] == "programmatic"

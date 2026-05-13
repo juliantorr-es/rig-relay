@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import hashlib
-import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
+import hashlib
 from typing import Any, Literal
+import uuid
 
 from pydantic import BaseModel, Field
 
@@ -97,7 +97,9 @@ def fingerprint_text(text: str) -> str:
     return f"sha256:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
 
 
-def classify_block_stability(kind: ContextBlockKind) -> tuple[ContextBlockStability, bool]:
+def classify_block_stability(
+    kind: ContextBlockKind,
+) -> tuple[ContextBlockStability, bool]:
     """Return default (stability, cacheable) for a given block kind."""
     match kind:
         case ContextBlockKind.SYSTEM_PROMPT | ContextBlockKind.TOOL_SCHEMA:
@@ -106,7 +108,11 @@ def classify_block_stability(kind: ContextBlockKind) -> tuple[ContextBlockStabil
             return ContextBlockStability.SEMI_STABLE, True
         case ContextBlockKind.TASK_BRIEF | ContextBlockKind.ARTIFACT_REFERENCE:
             return ContextBlockStability.DYNAMIC, True
-        case ContextBlockKind.CONVERSATION_TAIL | ContextBlockKind.REPO_STATE | ContextBlockKind.FILE_SUMMARY:
+        case (
+            ContextBlockKind.CONVERSATION_TAIL
+            | ContextBlockKind.REPO_STATE
+            | ContextBlockKind.FILE_SUMMARY
+        ):
             return ContextBlockStability.DYNAMIC, False
         case ContextBlockKind.TOOL_EXCERPT | ContextBlockKind.ERROR_STATE:
             return ContextBlockStability.EPHEMERAL, False

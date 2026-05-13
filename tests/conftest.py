@@ -16,7 +16,7 @@ from tests.update_notifier.adapters.fake_update_cache_repository import (
 )
 from tests.update_notifier.adapters.fake_update_gateway import FakeUpdateGateway
 from vibe.cli.plan_offer.ports.whoami_gateway import WhoAmIPlanType, WhoAmIResponse
-from vibe.cli.textual_ui.app import CORE_VERSION, StartupOptions, VibeApp
+from vibe.cli.textual_ui.app import StartupOptions, VibeApp
 from vibe.core.agent_loop import AgentLoop
 from vibe.core.agents.models import BuiltinAgentName
 from vibe.core.config import (
@@ -75,10 +75,17 @@ def config_dir(
     config_file = config_dir / "config.toml"
     config_file.write_text(tomli_w.dumps(get_base_config()), encoding="utf-8")
 
-    monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", config_dir)
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", config_dir
+    )
     # Isolate legacy paths to prevent any leakage from real home
-    monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path / ".rig-relay-mock")
-    monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path / ".vibe-mock")
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME",
+        tmp_path / ".rig-relay-mock",
+    )
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path / ".vibe-mock"
+    )
 
     init_harness_files_manager(config_dir)
 
@@ -108,7 +115,9 @@ def _reset_trusted_folders_manager(config_dir: Path) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _mock_scratchpad(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[Path, None, None]:
+def _mock_scratchpad(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Generator[Path, None, None]:
     import vibe.core.scratchpad as scratchpad_mod
 
     scratchpad_root = tmp_path / "scratchpads"
@@ -245,15 +254,12 @@ def build_test_vibe_app(
     resolved_config = config or build_test_vibe_config()
 
     app = VibeApp(
-        options=StartupOptions(
-            model=resolved_config.active_model,
-        ),
+        options=StartupOptions(model=resolved_config.active_model),
         config=resolved_config,
         agent_loop=agent_loop or build_test_agent_loop(config=resolved_config),
         whoami_gateway=FakeWhoAmIGateway(
             response=WhoAmIResponse(
-                plan_type=WhoAmIPlanType.FREE,
-                email="test@example.com",
+                plan_type=WhoAmIPlanType.FREE, email="test@example.com"
             )
         ),
         update_cache_repository=FakeUpdateCacheRepository(),
