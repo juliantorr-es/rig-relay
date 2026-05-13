@@ -15,7 +15,7 @@
 ██████████████████░░
 ```
 
-**Rig Relay is a governed local coding harness for Rig.**
+**Rig Relay v0.1.0-alpha.1 — a governed local coding harness for Rig.**
 
 Rig Relay is a command-line coding assistant harness. It provides a conversational interface to your codebase, allowing you to use natural language to explore, modify, and inspect projects through a controlled set of tools and durable local evidence.
 

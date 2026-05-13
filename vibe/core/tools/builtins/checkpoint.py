@@ -1,8 +1,10 @@
+# ruff: noqa: PLR0911
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 import hashlib
+import json
 from pathlib import Path
 import subprocess
 from typing import Any, ClassVar
@@ -30,6 +32,10 @@ class CheckpointArgs(BaseModel):
     include_paths: list[str] = Field(default_factory=list)
     validation_summary: list[str] = Field(default_factory=list)
     allow_partial: bool = False
+    authorization_receipt: str | None = Field(
+        default=None,
+        description="JSON string of a signed authorization receipt for checkpoint commit.",
+    )
 
 
 class CheckpointResult(BaseModel):
@@ -113,8 +119,8 @@ class Checkpoint(
             return
 
         # 3. Capture pre-commit state
-        pre_commit_head = self._git_rev_parse("HEAD", repo_root)
-        branch = self._git_rev_parse("--abbrev-ref", "HEAD", repo_root)
+        pre_commit_head = self._git_rev_parse("HEAD", cwd=repo_root)
+        branch = self._git_rev_parse("--abbrev-ref", "HEAD", cwd=repo_root)
 
         # 4. Stage and commit
         if refusal := self._stage_and_commit(requested, args, repo_root):
@@ -123,7 +129,7 @@ class Checkpoint(
             return
 
         # 5. Capture post-commit state
-        post_commit_head = self._git_rev_parse("HEAD", repo_root)
+        post_commit_head = self._git_rev_parse("HEAD", cwd=repo_root)
 
         # 6. Build result and artifact
         artifact = self._build_artifact(
@@ -195,6 +201,29 @@ class Checkpoint(
         guard: DirtyFileGuard,
         repo_root: Path,
     ) -> CheckpointResult | None:
+        # Authorization gate for checkpoint commits
+        action = "checkpoint.commit"
+        if args.authorization_receipt:
+            valid, reason = self._validate_receipt(args.authorization_receipt, action)
+            if not valid:
+                return CheckpointResult(
+                    ok=False,
+                    message=f"Checkpoint refused: {reason}",
+                    refusal_reason=reason,
+                )
+        else:
+            # Dev bypass: generate dev receipt internally
+            from vibe.core.auth.receipt import generate_dev_receipt
+
+            dev_receipt = generate_dev_receipt(action, ttl_seconds=60)
+            valid, reason = self._validate_receipt(json.dumps(dev_receipt), action)
+            if not valid:
+                return CheckpointResult(
+                    ok=False,
+                    message=f"Checkpoint refused (dev bypass failed): {reason}",
+                    refusal_reason=reason,
+                )
+
         if not requested and not args.allow_partial:
             return CheckpointResult(
                 ok=False,
@@ -390,6 +419,47 @@ class Checkpoint(
         )
         payload["artifact_sha256"] = payload_sha256
         return payload
+
+    @staticmethod
+    def _validate_receipt(receipt_json: str, action: str) -> tuple[bool, str]:
+        from datetime import UTC, datetime
+
+        try:
+            receipt = json.loads(receipt_json)
+        except json.JSONDecodeError:
+            return False, "Invalid receipt JSON"
+
+        if not isinstance(receipt, dict):
+            return False, "Receipt must be a JSON object"
+
+        if (
+            receipt.get("schema_version")
+            != "rig.relay.step_up_authorization_receipt.v1"
+        ):
+            return False, "Invalid receipt schema version"
+
+        receipt_action = receipt.get("action")
+        if receipt_action != action:
+            return (
+                False,
+                f"Action mismatch: receipt for '{receipt_action}', expected '{action}'",
+            )
+
+        if receipt.get("user_verified") is not True:
+            return False, "User not verified in receipt"
+
+        expires_at_str = receipt.get("expires_at", "")
+        if not expires_at_str:
+            return False, "Missing expires_at in receipt"
+
+        try:
+            expires_dt = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
+            if expires_dt < datetime.now(UTC):
+                return False, "Receipt expired"
+        except (ValueError, TypeError):
+            return False, "Invalid expires_at format"
+
+        return True, "Receipt valid"
 
     def resolve_permission(self, args: CheckpointArgs) -> None:
         return None

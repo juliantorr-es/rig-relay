@@ -378,6 +378,10 @@ Current evaluation schemas:
 | `rig.relay.coordination_conflict.v1.schema.json` | Normalized conflict/refusal event row |
 | `rig.relay.artifact_reuse.v1.schema.json` | Normalized artifact publication/reuse event row |
 | `rig.relay.checkpoint_eval.v1.schema.json` | Normalized checkpoint commit/refusal event row |
+| `rig.relay.telemetry_consent.v1.schema.json` | Explicit opt-in consent record with share_level |
+| `rig.relay.telemetry_bundle_manifest.v1.schema.json` | Content-light bundle manifest with content hash |
+| `rig.relay.google_drive_upload_receipt.v1.schema.json` | Upload receipt for beta artifact lake |
+| `rig.relay.telemetry_settings.v1.schema.json` | Telemetry mode and feature gate settings |
 
 Existing observability schemas (not modified by this doctrine):
 
@@ -764,6 +768,227 @@ This doctrine SHALL be reviewed when:
 - A tool begins tracking a new metric (files_read, tests_run, etc.).
 - A user requests export or sharing of usage data.
 - A PR adds or changes a telemetry field.
+
+## Semantic Change Snippets
+
+Semantic change snippets are content-light, anonymized representations of code
+changes that preserve change intent and structure without exporting raw source
+code, identifiers, literals, comments, secrets, file paths, or diffs.
+
+### Design
+
+```
+actual diff → syntax-aware anonymized snippet → content-light dataset row → evals/reports
+```
+
+### Anonymization Pipeline
+
+1. **Secret scan**: Reject snippet if it contains token-like material (API keys,
+   private keys, raw diffs, prompt markers, file content markers, stdout/stderr
+   blocks).
+2. **Identifier anonymization**: Replace function names (FN_001), class names
+   (CLASS_001), variable names (VAR_001), and attribute names (ATTR_001) with
+   stable local placeholders.
+3. **Literal stripping**: Replace string literals with `<STR>`, numeric literals
+   with `<NUM>`, booleans with `<BOOL>`, None with `<NONE>`.
+4. **Comment removal**: Strip Python comments and docstrings.
+5. **Path hashing**: Use content-light SHA256 path hashes, not raw paths.
+6. **Length cap**: Maximum 20 snippet lines.
+7. **Content-light assertion**: Final row scan for forbidden raw fields.
+
+### Fields
+
+| Field | Description |
+|---|---|
+| snippet_id | Unique snippet identifier |
+| language | Programming language (python, json, markdown, etc.) |
+| change_kind | High-level classification (guard_added, test_added, schema_added, etc.) |
+| operation | Structural operation (insert, replace, delete, split, etc.) |
+| symbol_kind | What was changed (function, class, test, schema, etc.) |
+| snippet_lines | Anonymized snippet lines with placeholders |
+| semantic_labels | Tags for downstream evals |
+| privacy_class | Always content_light |
+| redaction_level | identifier_anonymized, literal_stripped, or structure_only |
+| forbidden_content_detected | True if source was excluded |
+
+### Privacy Guarantee
+
+Semantic change snippets are **not source-code exports**. They are syntax-aware
+summaries of code changes that preserve operation shape and safety/evaluation
+labels while removing identifiers, literals, comments, raw paths, secrets, and
+file contents. Raw code stays private; the dataset still learns what agents are
+doing.
+
+### Current Implementation
+
+- **Python**: stdlib `ast` for structure analysis + line-level replacement.
+- **Other languages**: basic anonymization (JSON, Markdown, shell fallback).
+- **Tree-sitter**: Deferred for multi-language support in a future version.
+
+### Script
+
+`scripts/rig_relay_export_semantic_change_snippets.py` reads write_file,
+search_replace, and checkpoint artifacts plus coordination events, then writes
+anonymized snippets to `.build/rig-relay/derived/semantic_change_snippets.jsonl`.
+
+### Schema
+
+`docs/schemas/rig.relay.semantic_change_snippet.v1.schema.json`
+
+## External Tester Telemetry Sharing
+
+Rig Relay supports an optional remote beta sharing system for external testers.
+This is strictly separate from the local operational usage data described above.
+
+### Three Telemetry Layers
+
+| Layer | Required? | Purpose |
+|-------|-----------|---------|
+| Local operational (observability.jsonl) | Required for governed mode | Tool calls, events, session lifecycle — never leaves the machine |
+| Local derived datasets | Required for orchestration | Flattened eval rows from coord.* events — never leaves the machine |
+| Remote beta sharing | Optional, opt-in | Content-light bundles uploaded to Google Drive artifact lake |
+
+### What Is Never Uploaded
+
+- Raw source code, file contents, or private keys
+- Raw prompts or model outputs
+- stdout/stderr bodies or diffs
+- Secrets, tokens, API keys
+- Participant identity beyond an anonymous ID
+
+### What Remote Sharing Includes (content-light only)
+
+- Schema-validated derived datasets (cross-session coordination, conflicts, tool failures, etc.)
+- Row counts, statuses, durations
+- SHA256 hashes (no reversible raw content)
+- An anonymous participant ID (self-assigned)
+- A consent record with share level
+
+### Feature Gating
+
+When remote beta sharing is disabled:
+- `remote_upload`, `maintainer_debugging`, `shared_benchmarks`, `cross_user_reports` are all disabled
+- Advanced orchestration features remain available (governed mode, delegate/fleet)
+
+When local operational telemetry is disabled:
+- Governed mode is disabled entirely
+- All advanced features (delegate/fleet, checkpoint, coordination, etc.) are disabled
+
+### Telemetry Budget
+
+Telemetry collection is capped to prevent unbounded storage growth and protect privacy.
+
+#### Schema: `rig.relay.telemetry_budget.v1`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `schema_version` | string | `"rig.relay.telemetry_budget.v1"` |
+| `max_bundle_mb` | integer (1–1000) | Maximum export bundle size in MB. Default: 100. |
+| `max_rows_per_dataset` | integer (1–10,000,000) | Maximum rows per derived dataset. Default: 100,000. |
+| `max_semantic_snippets_per_session` | integer (0–10,000) | Maximum semantic change snippets per session. Default: 200. 0 disables snippet collection. |
+| `raw_retention_days` | integer (1–365) | Days to retain raw event files locally. Default: 14. |
+| `derived_retention_days` | integer (1–730) | Days to retain derived dataset files locally. Default: 180. |
+| `upload_mode` | string | `"local_only"`, `"rollup_only"`, `"rollup_plus_samples"`, or `"full"`. Default: `"rollup_only"`. |
+
+Upload modes:
+
+| Mode | Behavior |
+|------|----------|
+| `local_only` | No remote upload. All data stays local. |
+| `rollup_only` | Upload aggregate counts only. No content payloads. |
+| `rollup_plus_samples` | Upload rollup + representative samples (max 10 per dataset). |
+| `full` | Upload all bounded datasets (within budget caps). |
+
+Content-light guarantee applies to all modes: raw file contents, prompts, model outputs, and diffs are never exported. Only anonymized semantic snippets (see [Semantic Change Snippets](#semantic-change-snippets)) may be included.
+
+#### Default Budget
+
+```json
+{
+    "schema_version": "rig.relay.telemetry_budget.v1",
+    "max_bundle_mb": 100,
+    "max_rows_per_dataset": 100000,
+    "max_semantic_snippets_per_session": 200,
+    "raw_retention_days": 14,
+    "derived_retention_days": 180,
+    "upload_mode": "rollup_only"
+}
+```
+
+#### Enforcing the Budget
+
+- Bundle creation rejects payloads exceeding `max_bundle_mb`.
+- Dataset export truncates at `max_rows_per_dataset` (oldest rows dropped first).
+- Snippet generation stops per-session at `max_semantic_snippets_per_session`.
+- Retention pruning runs on session close and at daily intervals.
+- The `upload_mode` is enforced at bundle-creation time; no raw event files are ever included in bundles.
+
+
+#### Step-Up Authorization
+
+High-authority actions (real upload, telemetry share level change, checkpoint commit, lease cleanup, credential changes) require step-up authorization. See [`docs/governance/step-up-authorization.md`](step-up-authorization.md).
+
+Uploads require a valid authorization receipt before execution. See the authorization policy at `scripts/rig_relay_authorization_policy.py` and `docs/schemas/rig.relay.step_up_authorization_receipt.v1.schema.json`.
+
+
+#### Google Drive Core Dependency
+
+Google Drive upload libraries (`google-api-python-client`, `google-auth-oauthlib`, `google-auth-httplib2`) are **core beta dependencies** of Rig Relay.
+
+This does not mean uploads are automatic:
+- Upload is always gated by remote sharing settings (consent mode).
+- Bundle validation must pass before upload.
+- Credentials must be configured (`~/.rig/relay/drive_credentials.json`).
+- A folder ID must be provided.
+- `--confirm` is required for real upload.
+- Dry-run mode is the default and performs no network calls.
+
+The Google Drive upload path uses OAuth 2.0 (desktop app flow) with resumable upload. Credentials are never stored in the repository. Tokens are cached in `~/.rig/relay/drive_token.json`.
+
+Google's OAuth 2.0 desktop authentication obtains credentials from the Google Cloud Console, requests access tokens, then sends those tokens to the Drive API. This design keeps credentials out of the repo and provides user-visible consent on first authentication.
+
+See:
+- `scripts/rig_relay_upload_google_drive.py` — upload client with dry-run and resumable modes.
+- `docs/schemas/rig.relay.google_drive_upload_receipt.v1.schema.json` — structured receipt.
+
+#### Stale Lease Cleanup
+
+Coordination leases (path reservations and task claims) accumulate under `.build/rig-relay/coordination/leases/paths/` and `tasks/`. Stale leases can cause conservative/noisy decisions in the reviewer orchestrator.
+
+Cleanup is governed through a dedicated script:
+
+```
+uv run python scripts/rig_relay_cleanup_coordination_leases.py --dry-run
+uv run python scripts/rig_relay_cleanup_coordination_leases.py --archive --confirm
+```
+
+- Dry-run is the default.
+- Active leases are never touched.
+- Archive mode moves stale/expired files to `.build/rig-relay/coordination/archived/`.
+- Deletion requires explicit `--confirm` and `--remove`.
+
+
+### Consent and Privacy
+
+- Explicit opt-in with written consent record (`rig.relay.telemetry_consent.v1`)
+- Bundle manifest with content-light guarantee (`rig.relay.telemetry_bundle_manifest.v1`)
+- Redaction validator scans all bundle content before creation
+- Google Drive upload is resumable, with local receipt (`rig.relay.google_drive_upload_receipt.v1`)
+- Settings schema (`rig.relay.telemetry_settings.v1`) controls feature gating
+
+### Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/rig_relay_create_telemetry_bundle.py` | Creates content-light zip bundles from derived datasets + reports |
+| `scripts/rig_relay_validate_telemetry_bundle.py` | Validates bundle content-light guarantee and schema conformance |
+| `scripts/rig_relay_upload_google_drive.py` | Dry-run or resumable upload to Google Drive artifact lake |
+| `vibe/core/config/telemetry_modes.py` | Feature gate helpers: `can_use_*()` and `disabled_features_for_settings()` |
+
+### Onboarding
+
+See [Beta Telemetry Onboarding](beta-telemetry-onboarding.md) for the plain-language
+guide given to external testers.
 
 ## References
 

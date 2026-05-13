@@ -22,6 +22,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import tokenize
 from typing import Any
 import uuid
 
@@ -54,6 +55,27 @@ FORBIDDEN_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ),
     ("file_content_marker", re.compile(r"^# File: .+$", re.MULTILINE)),
     ("stdout_stderr_block", re.compile(r"```\s*(stdout|stderr)\s*\n")),
+    (
+        "jwt_token",
+        re.compile(
+            r"(?i)(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})"
+        ),
+    ),
+    ("bearer_token_header", re.compile(r"(?i)(Bearer\s+[A-Za-z0-9_\-]{20,})")),
+    (
+        "ghp_token",
+        re.compile(r"(?i)(ghp_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9]{36,})"),
+    ),
+    ("sk_token", re.compile(r"(?i)(sk-[A-Za-z0-9]{20,})")),
+    ("unredacted_docstring", re.compile(r'"""[\s\S]{200,}"""')),
+    ("unredacted_comment_block", re.compile(r"#[^\n]{200,}")),
+    (
+        "raw_path_rooted",
+        re.compile(
+            r"['\"/](?:home|Users|tmp|var|etc|opt|usr|private)/[A-Za-z0-9_\-./]{5,}"
+        ),
+    ),
+    ("env_var_value", re.compile(r"(?i)(export\s+[A-Z_]+=|set\s+[A-Z_]+=).{10,}")),
 ]
 
 # ── Identifiers for stable placeholder mapping ────────────────────────────
@@ -76,106 +98,84 @@ def _placeholder_for(prefix: str, original: str) -> str:
     return _placeholder_map[original]
 
 
-# ── Python anonymizer ────────────────────────────────────────────────────
+# ── Python anonymizer (tokenizer/AST hybrid) ─────────────────────────────
+
+
+def _collect_ast_symbols(tree: ast.AST) -> dict[str, str]:
+    """Walk an AST and return a mapping of symbol name → placeholder."""
+    _reset_placeholders()
+    symbols: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            symbols[node.name] = _placeholder_for("FN", node.name)
+        elif isinstance(node, ast.AsyncFunctionDef):
+            symbols[node.name] = _placeholder_for("FN", node.name)
+        elif isinstance(node, ast.ClassDef):
+            symbols[node.name] = _placeholder_for("CLASS", node.name)
+        elif isinstance(node, ast.Name):
+            symbols[node.id] = _placeholder_for("VAR", node.id)
+        elif isinstance(node, ast.Attribute):
+            symbols[node.attr] = _placeholder_for("ATTR", node.attr)
+        elif isinstance(node, ast.arg):
+            symbols[node.arg] = _placeholder_for("VAR", node.arg)
+        elif isinstance(node, ast.alias):
+            actual_name = node.asname or node.name
+            symbols[actual_name] = _placeholder_for("VAR", actual_name)
+    return symbols
 
 
 def _anonymize_python_source(source: str) -> str:
-    """Anonymize Python source: strip comments, replace identifiers and
-    literals with stable placeholders, preserve control-flow shape.
+    """Anonymize Python source using tokenizer/AST hybrid approach.
 
-    Uses stdlib ast for structure analysis plus line-level replacement.
-    Tree-sitter deferred for multi-language support in a later version.
+    Uses stdlib tokenize to iterate all tokens, replacing NAME tokens that
+    correspond to AST-identified symbols, and STRING/NUMBER/COMMENT tokens
+    with placeholders. Preserves keywords, operators, delimiters, and layout.
+
+    AST identifies symbol roles (function names, class names, parameter names,
+    variable names, attribute names, import aliases). The tokenizer handles
+    all position tracking — no manual col_offset + N arithmetic.
+
+    Tree-sitter deferred for multi-language support.
     """
-    _reset_placeholders()
-
     try:
         tree = ast.parse(source)
     except SyntaxError:
         return _basic_anonymize(source, "python")
 
-    # Step 1: collect all identifier positions from AST
-    replacements: list[tuple[int, int, int, str]] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            p = _placeholder_for("FN", node.name)
-            replacements.append((
-                node.lineno,
-                node.col_offset,
-                node.col_offset + len(node.name),
-                p,
-            ))
-        elif isinstance(node, ast.AsyncFunctionDef):
-            p = _placeholder_for("FN", node.name)
-            replacements.append((
-                node.lineno,
-                node.col_offset,
-                node.col_offset + len(node.name),
-                p,
-            ))
-        elif isinstance(node, ast.ClassDef):
-            p = _placeholder_for("CLASS", node.name)
-            replacements.append((
-                node.lineno,
-                node.col_offset,
-                node.col_offset + len(node.name),
-                p,
-            ))
-        elif isinstance(node, ast.Name):
-            p = _placeholder_for("VAR", node.id)
-            replacements.append((
-                node.lineno,
-                node.col_offset,
-                node.col_offset + len(node.id),
-                p,
-            ))
-        elif isinstance(node, ast.Attribute):
-            p = _placeholder_for("ATTR", node.attr)
-            val_end = getattr(node.value, "end_col_offset", node.col_offset)
-            attr_start = val_end + 1  # skip the dot
-            replacements.append((
-                node.lineno,
-                attr_start,
-                attr_start + len(node.attr),
-                p,
-            ))
+    ast_names = _collect_ast_symbols(tree)
 
-    # Step 2: apply replacements in reverse order (right to left, bottom to top)
-    lines = list(source.splitlines())
-    replacements.sort(key=lambda r: (r[0], -r[1]))
+    # Tokenize and rebuild with replacements
+    lines_iter = iter(source.splitlines(keepends=True))
+    tokens = list(tokenize.generate_tokens(lambda: next(lines_iter)))  # type: ignore[arg-type]
+    output_parts: list[str] = []
 
-    for lineno, col_start, col_end, placeholder in replacements:
-        idx = lineno - 1
-        if 0 <= idx < len(lines):
-            line = lines[idx]
-            if 0 <= col_start < col_end <= len(line):
-                lines[idx] = line[:col_start] + placeholder + line[col_end:]
+    for tok in tokens:
+        ttype = tok.type
+        tstring = tok.string
 
-    # Step 3: strip comment-only lines
-    lines = [l for l in lines if not l.lstrip().startswith("#")]
+        if ttype == tokenize.NAME:
+            output_parts.append(ast_names.get(tstring, tstring))
+        elif ttype in {
+            tokenize.STRING,
+            tokenize.FSTRING_START,
+            tokenize.FSTRING_MIDDLE,
+            tokenize.FSTRING_END,
+        }:
+            output_parts.append("<STR>")
+        elif ttype == tokenize.NUMBER:
+            output_parts.append("<NUM>")
+        elif ttype == tokenize.COMMENT:
+            pass
+        elif ttype in {tokenize.NL, tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT}:
+            output_parts.append(tstring)
+        elif ttype == tokenize.ENDMARKER:
+            pass
+        else:
+            output_parts.append(tstring)
 
-    # Step 4: strip string/number literals
-    combined = "\n".join(lines)
-    combined = _strip_literals([combined])[0]
-
-    # Step 5: remove empty lines
-    final_lines = [l for l in combined.split("\n") if l.strip()]
-    return "\n".join(final_lines)
-
-
-def _strip_literals(lines: list[str]) -> list[str]:
-    """Replace string and numeric literals with placeholders."""
-    result: list[str] = []
-    for line in lines:
-        line = re.sub(r'""".*?"""', "<STR>", line, flags=re.DOTALL)
-        line = re.sub(r"'''.*?'''", "<STR>", line, flags=re.DOTALL)
-        line = re.sub(r'"[^"]*"', "<STR>", line)
-        line = re.sub(r"'[^']*'", "<STR>", line)
-        line = re.sub(r"\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b", "<NUM>", line)
-        line = re.sub(r"\bTrue\b", "<BOOL>", line)
-        line = re.sub(r"\bFalse\b", "<BOOL>", line)
-        line = re.sub(r"\bNone\b", "<NONE>", line)
-        result.append(line)
-    return result
+    result = "".join(output_parts)
+    lines = [l for l in result.split("\n") if l.strip()]
+    return "\n".join(lines)
 
 
 def _basic_anonymize(text: str, language: str) -> str:
@@ -304,12 +304,23 @@ def _anonymize_snippet(
     source_artifact_sha256: str | None = None,
     strict: bool = False,
 ) -> dict[str, Any] | None:
-    """Produce a single anonymized snippet row, or None if forbidden content in strict mode."""
+    """Produce a single anonymized snippet row.
+
+    Returns a snippet dict, or None if empty/unparseable.
+    In strict mode, forbidden content causes the whole snippet to be refused
+    (caller handles the system-level fail-closed behavior).
+
+    In non-strict mode, forbidden snippets are still emitted with
+    forbidden_content_detected=True and empty snippet_lines.
+    """
     forbidden = _detect_forbidden_content(source_text)
     if forbidden:
         if strict:
             return None
-        snippet_id = f"snippet_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        snippet_id = (
+            f"snippet_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
+            f"_{uuid.uuid4().hex[:8]}"
+        )
         return {
             "schema_version": "rig.relay.semantic_change_snippet.v1",
             "snippet_id": snippet_id,
@@ -423,11 +434,16 @@ def export_snippets(
 ) -> tuple[int, int, list[str]]:
     """Export semantic change snippets from available sources.
 
+    In strict mode, any forbidden content detected across all input sources
+    causes the entire export to fail closed — no snippets are written and
+    the manifest records remote_sharing_safe=false.
+
     Returns (snippet_count, skipped_count, warnings).
     """
     snippets: list[dict[str, Any]] = []
     warnings: list[str] = []
     skipped = 0
+    forbidden_count = 0
 
     if artifacts_dir and artifacts_dir.is_dir():
         for af in sorted(artifacts_dir.glob("*.json")):
@@ -445,6 +461,9 @@ def export_snippets(
             )
             if row is None:
                 skipped += 1
+            elif row.get("forbidden_content_detected"):
+                forbidden_count += 1
+                snippets.append(row)
             else:
                 snippets.append(row)
 
@@ -463,8 +482,21 @@ def export_snippets(
             )
             if row is None:
                 skipped += 1
+            elif row.get("forbidden_content_detected"):
+                forbidden_count += 1
+                snippets.append(row)
             else:
                 snippets.append(row)
+
+    remote_sharing_safe = forbidden_count == 0 and not strict
+
+    # In strict mode, fail closed if any forbidden content was detected
+    if strict and (forbidden_count > 0 or skipped > 0):
+        snippets.clear()
+        remote_sharing_safe = False
+        warnings.append(
+            "Strict mode: forbidden content detected, export failed closed."
+        )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
@@ -482,8 +514,11 @@ def export_snippets(
         "output_path": str(output_path),
         "snippet_count": len(snippets),
         "skipped_count": skipped,
-        "warnings": warnings,
+        "forbidden_count": forbidden_count,
+        "strict_mode": strict,
+        "remote_sharing_safe": remote_sharing_safe,
         "content_light_guarantee": True,
+        "warnings": warnings,
         "schema_path": str(SCHEMA_PATH),
     }
     MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -565,6 +600,12 @@ def main(argv: list[str] | None = None) -> int:
         print("  Warnings:")
         for w in warnings:
             print(f"    - {w}")
+
+    # In strict mode, nonzero exit if export failed closed
+    if args.strict and snippet_count == 0 and skipped_count > 0:
+        print("ERROR: Strict mode — forbidden content detected, export failed closed.")
+        return 1
+
     return 0
 
 

@@ -10,7 +10,6 @@ stdout/stderr bodies, or raw private code paths.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import importlib.util
 import json
 from pathlib import Path
 from typing import Any
@@ -21,8 +20,7 @@ DERIVED_DIR = Path.home() / ".build" / "rig-relay" / "derived"
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 REPO_DERIVED_DIR = _REPO_ROOT / ".build" / "rig-relay" / "derived"
 
-HAS_DUCKDB = importlib.util.find_spec("duckdb") is not None
-
+import duckdb
 
 # ── Dataclasses ──────────────────────────────────────────────────────────
 
@@ -364,9 +362,6 @@ def _find_derived_jsonl_files(derived_dir: Path | None = None) -> dict[str, Path
 
 
 def create_derived_connection(derived_dir: Path | None = None) -> tuple[Any, list[str]]:
-    if not HAS_DUCKDB:
-        return None, []
-    import duckdb
 
     con = duckdb.connect(":memory:")
     created_views: list[str] = []

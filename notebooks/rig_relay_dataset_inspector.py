@@ -16,7 +16,7 @@ interactive filters, tables, and charts for inspecting Rig Relay usage data.
 
 Usage:
     uv run --with-editable . --with marimo --with altair marimo run notebooks/rig_relay_dataset_inspector.py
-    uv sync --extra inspector && uv run marimo run notebooks/rig_relay_dataset_inspector.py
+    uv sync --extra workbench && uv run marimo run notebooks/rig_relay_dataset_inspector.py
 """
 
 from __future__ import annotations
@@ -691,7 +691,7 @@ def sql_workbench(datasets):
 
     if not lib.HAS_DUCKDB:
         mo.md(
-            "*DuckDB not available. Install with `uv sync --extra inspector`.*"
+            "*DuckDB not available. Install with `uv sync --extra workbench`.*"
         ).callout(kind="warn")
         return
 

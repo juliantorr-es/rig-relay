@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Relay Cockpit</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Rig Relay Cockpit</h1>
+    <span id="version-badge" class="subtitle">Loading...</span>
+    <span id="connection-status" class="source-status">—</span>
+    <span id="source-status" class="source-status">—</span>
+    <button id="refresh-btn" onclick="refreshAll()">Refresh</button>
+  </header>
+
+  <div id="warning-banner" class="warning-banner" style="display:none"></div>
+
+  <main id="dashboard">
+    <section id="card-current_state" class="card">
+      <h2>Current State</h2>
+      <div id="content-current_state" class="card-content"><span class="missing">Not generated yet. Run: coord status</span></div>
+    </section>
+
+    <section id="card-queue" class="card">
+      <h2>Queue Plan</h2>
+      <div id="content-queue" class="card-content"><span class="missing">Not generated yet. Run: queue plan</span></div>
+    </section>
+
+    <section id="card-dataset" class="card">
+      <h2>Dataset Summary</h2>
+      <div id="content-dataset" class="card-content">Loading...</div>
+    </section>
+
+    <section id="card-semantic_snippets" class="card">
+      <h2>Semantic Snippets</h2>
+      <div id="content-semantic_snippets" class="card-content">Loading...</div>
+    </section>
+
+    <section id="card-telemetry_bundle" class="card">
+      <h2>Telemetry Bundle</h2>
+      <div id="content-telemetry_bundle" class="card-content"><span class="missing">Not generated yet. Run: telemetry bundle</span></div>
+    </section>
+
+    <section id="card-update" class="card">
+      <h2>Update Status</h2>
+      <div id="content-update" class="card-content">Loading...</div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Rig Relay — Read-only cockpit. No mutation authority.</p>
+  </footer>
+
+  <script src="websocket.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

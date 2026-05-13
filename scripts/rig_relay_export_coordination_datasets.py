@@ -33,16 +33,7 @@ import sys
 from typing import Any
 
 # ── Optional jsonschema dependency ──────────────────────────────────────
-
-_HAS_JSONSCHEMA: bool = False
-_js: Any = None
-try:
-    import jsonschema as _js
-
-    _HAS_JSONSCHEMA = True
-except ImportError:
-    _js = None
-
+import jsonschema
 
 # ── Constants ────────────────────────────────────────────────────────────
 
@@ -141,23 +132,10 @@ def _validate_row(
     Returns True if valid. Appends to warnings on failure (non-strict) or
     raises SystemExit (strict).
     """
-    if not _HAS_JSONSCHEMA:
-        # Basic required-field check when jsonschema is unavailable.
-        required = schema.get("required", [])
-        for field in required:
-            if field not in row or row[field] is None:
-                msg = f"Missing required field '{field}' in row"
-                if strict:
-                    print(f"ERROR: {msg}", file=sys.stderr)
-                    sys.exit(1)
-                warnings.append(msg)
-                return False
-        return True
-
     try:
-        _js.validate(instance=row, schema=schema)
+        jsonschema.validate(instance=row, schema=schema)
         return True
-    except _js.ValidationError as exc:
+    except jsonschema.ValidationError as exc:
         msg = f"Schema validation failed: {exc.message}"
         if strict:
             print(f"ERROR: {msg}", file=sys.stderr)

@@ -6,6 +6,9 @@ from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
 
+from rig_relay.coordination.current_state import (
+    generate_current_state as relay_generate_current_state,
+)
 from scripts.rig_relay_current_state import generate_current_state
 
 SCHEMAS_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "schemas"
@@ -503,3 +506,20 @@ def test_stable_path_key_different_from_salted():
     assert key.startswith("coord:")
     assert salted.startswith("sha256:")
     assert key != salted
+
+
+# ── Relay-native import tests ────────────────────────────────────────────
+
+
+def test_relay_generate_current_state_returns_same_structure(tmp_path):
+    """Both script and Relay-native import produce identical results."""
+    p1 = generate_current_state(
+        coordination_root=tmp_path, derived_dir=tmp_path / "derived"
+    )
+    p2 = relay_generate_current_state(
+        coordination_root=tmp_path, derived_dir=tmp_path / "derived"
+    )
+    # Compare non-temporal fields (generated_at differs between calls)
+    for key in ("schema_version", "scope", "content_policy", "forbidden_fields"):
+        assert p1[key] == p2[key], f"Mismatch in key: {key}"
+    assert p2["schema_version"] == "rig.relay.current_state.v1"

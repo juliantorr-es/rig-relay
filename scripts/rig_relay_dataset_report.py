@@ -17,13 +17,9 @@ from __future__ import annotations
 import argparse
 import csv
 from datetime import UTC, datetime
-import importlib.util
 import json
 from pathlib import Path
 from typing import Any
-
-HAS_DUCKDB = importlib.util.find_spec("duckdb") is not None
-
 
 # ── Paths ────────────────────────────────────────────────────────────────
 
@@ -549,7 +545,7 @@ class ReportGenerator:
             "Findings registry",
             str(ds.findings_path) if ds.findings_present else "Not found",
         ])
-        rows.append(["DuckDB available", _fmt_bool(HAS_DUCKDB)])
+        rows.append(["DuckDB available", _fmt_bool(True)])
         return "## Data Sources Used\n\n" + _fmt_table(
             ["Source", "Path / Status"], rows
         )

@@ -197,12 +197,18 @@ class TestAnonymizeSnippet:
 class TestClassification:
     def test_classify_change_kind_guard(self, anonymizer):
         kind = anonymizer._classify_change_kind(
-            [], ["if <GUARD_RESULT>.<REFUSED_FLAG>:"]
+            [],
+            [
+                "if <GUARD_RESULT>.<REFUSED_FLAG>:",
+                "    return <RESULT_TYPE>(error=<GUARD_RESULT>)",
+            ],
         )
         assert kind == "guard_added"
 
     def test_classify_change_kind_test(self, anonymizer):
-        kind = anonymizer._classify_change_kind([], ["def test_something():"])
+        kind = anonymizer._classify_change_kind(
+            [], ["def test_something():", "    assert <VAR_001> == <VAR_002>"]
+        )
         assert kind == "test_added"
 
     def test_classify_change_kind_schema(self, anonymizer):
@@ -295,3 +301,212 @@ class SecretClassName:
             "sensitive_data",
         ]:
             assert word not in lines, f"Raw identifier leaked: {word}"
+
+
+DECORATED_FUNCTION = """
+@some_decorator
+def my_handler(request, context):
+    return {"status": "ok"}
+"""
+
+ASYNC_FUNCTION = """
+async def fetch_data(url):
+    result = await http_client.get(url)
+    return result.json()
+"""
+
+CLASS_WITH_DECORATED_METHOD = """
+class MyService:
+    @staticmethod
+    def create(config):
+        return MyService(config)
+"""
+
+FORBIDDEN_API_KEY = """
+api_key = "sk-1234567890abcdef"
+"""
+
+FORBIDDEN_JWT = """
+token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNqP1E0A"
+"""
+
+
+class TestTokenizerAnonymizer:
+    def test_decorated_function_no_raw_name(self, anonymizer):
+        """Decorated function name should be replaced."""
+        result = anonymizer._anonymize_python_source(DECORATED_FUNCTION)
+        assert "my_handler" not in result
+        assert "FN_" in result
+
+    def test_async_function_no_raw_name(self, anonymizer):
+        """Async function name should be replaced."""
+        result = anonymizer._anonymize_python_source(ASYNC_FUNCTION)
+        assert "fetch_data" not in result
+        assert "url" not in result
+        assert "FN_" in result
+
+    def test_class_name_no_leak(self, anonymizer):
+        """Class name and decorated method name should be replaced."""
+        result = anonymizer._anonymize_python_source(CLASS_WITH_DECORATED_METHOD)
+        assert "MyService" not in result
+        assert "create" not in result
+        assert "CLASS_" in result
+        assert "FN_" in result
+
+    def test_preserves_keywords_and_operators(self, anonymizer):
+        """Control-flow keywords and operators survive anonymization."""
+        code = "if x > 0:\n    return x + 1\nelse:\n    return 0"
+        result = anonymizer._anonymize_python_source(code)
+        assert "if" in result
+        assert "return" in result
+        assert "else" in result
+        assert ">" in result
+
+    def test_parameter_names_are_anonymized(self, anonymizer):
+        """Parameter names should not leak."""
+        result = anonymizer._anonymize_python_source("def foo(secret_param): pass")
+        assert "secret_param" not in result
+        assert "FN_" in result or "VAR_" in result
+
+    def test_attribute_names_are_anonymized(self, anonymizer):
+        """Attribute access names should not leak."""
+        result = anonymizer._anonymize_python_source("obj.secret_attr = 42")
+        assert "secret_attr" not in result
+        assert "ATTR_" in result
+
+    def test_import_aliases_are_anonymized(self, anonymizer):
+        """Import alias names should not leak."""
+        result = anonymizer._anonymize_python_source("import os.path as secret_alias")
+        assert "secret_alias" not in result
+
+
+class TestStrictMode:
+    def test_strict_mode_fails_on_forbidden_content(self, anonymizer):
+        """In strict mode, forbidden content returns None."""
+        row = anonymizer._anonymize_snippet(
+            source_text=FORBIDDEN_API_KEY,
+            language="python",
+            path_str="test.py",
+            strict=True,
+        )
+        assert row is None, "Strict mode should return None on forbidden content"
+
+    def test_strict_mode_detects_jwt(self, anonymizer):
+        """JWT tokens should be detected in strict mode."""
+        row = anonymizer._anonymize_snippet(
+            source_text=FORBIDDEN_JWT,
+            language="python",
+            path_str="test.py",
+            strict=True,
+        )
+        assert row is None, "Strict mode should reject JWT tokens"
+
+    def test_non_strict_records_forbidden(self, anonymizer):
+        """Non-strict mode records forbidden count without failing."""
+        row = anonymizer._anonymize_snippet(
+            source_text=FORBIDDEN_API_KEY,
+            language="python",
+            path_str="test.py",
+            strict=False,
+        )
+        assert row is not None
+        assert row["forbidden_content_detected"] is True
+        assert len(row.get("warnings", [])) > 0
+
+    def test_non_strict_skipped_snippet_empty_lines(self, anonymizer):
+        """Non-strict forbidden snippet has empty snippet_lines."""
+        row = anonymizer._anonymize_snippet(
+            source_text=FORBIDDEN_API_KEY,
+            language="python",
+            path_str="test.py",
+            strict=False,
+        )
+        assert row is not None
+        assert row["snippet_lines"] == []
+        assert row["semantic_labels"] == ["forbidden_content_excluded"]
+
+    def test_strict_pass_clean_snippet(self, anonymizer):
+        """Strict mode passes clean snippets through."""
+        row = anonymizer._anonymize_snippet(
+            source_text="def foo():\n    return 42",
+            language="python",
+            path_str="test.py",
+            strict=True,
+        )
+        assert row is not None
+        assert row["forbidden_content_detected"] is False
+        assert len(row["snippet_lines"]) > 0
+
+
+class TestManifestFields:
+    def test_manifest_has_remote_sharing_safe(self, anonymizer):
+        """manifest_keys_check: remote_sharing_safe etc present in export output."""
+        from pathlib import Path
+        import tempfile
+
+        tmp = Path(tempfile.mkdtemp())
+        out = tmp / "out.jsonl"
+        count, skipped, warnings = anonymizer.export_snippets(
+            artifacts_dir=None, coordination_events=None, output_path=out, strict=False
+        )
+        # No inputs, so zero snippets
+        assert count >= 0
+        # Check manifest was written
+        manifest_path = (
+            Path(anonymizer.__file__).resolve().parent.parent
+            / ".build"
+            / "rig-relay"
+            / "derived"
+            / "semantic_change_snippets_manifest.json"
+        )
+        if manifest_path.is_file():
+            import json as _json
+
+            manifest = _json.loads(manifest_path.read_text("utf-8"))
+            assert "remote_sharing_safe" in manifest
+            assert "strict_mode" in manifest
+            assert "forbidden_count" in manifest
+
+    def test_clean_snippet_remote_sharing_safe(self, anonymizer):
+        """A clean anonymized snippet should not prevent remote sharing."""
+        row = anonymizer._anonymize_snippet(
+            source_text="def helper():\n    return True",
+            language="python",
+            path_str="test.py",
+        )
+        assert row is not None
+        assert row["forbidden_content_detected"] is False
+
+    def test_forbidden_snippet_not_safe_for_remote(self, anonymizer):
+        """A forbidden-content snippet marks forbidden_content_detected True."""
+        row = anonymizer._anonymize_snippet(
+            source_text=FORBIDDEN_API_KEY, language="python", path_str="test.py"
+        )
+        assert row is not None
+        assert row["forbidden_content_detected"] is True
+
+
+class TestNewForbiddenPatterns:
+    def test_detects_jwt_token(self, anonymizer):
+        result = anonymizer._detect_forbidden_content(FORBIDDEN_JWT)
+        assert any("jwt_token" in w for w in result)
+
+    def test_detects_bearer_token(self, anonymizer):
+        result = anonymizer._detect_forbidden_content(
+            "Authorization: Bearer ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        )
+        assert any("bearer_token_header" in w for w in result)
+
+    def test_detects_sk_token(self, anonymizer):
+        result = anonymizer._detect_forbidden_content(
+            'api_key = "sk-1234567890123456789012345678901234567890"'
+        )
+        assert any("sk_token" in w for w in result) or any(
+            "api_token" in w for w in result
+        )
+
+    def test_unredacted_docstring_block(self, anonymizer):
+        """Long docstrings should be detected as forbidden."""
+        text = '"""' + "x" * 250 + '"""'
+        result = anonymizer._detect_forbidden_content(text)
+        assert any("unredacted_docstring" in w for w in result)

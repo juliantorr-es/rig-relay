@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.telemetry_budget.v1.schema.json",
+  "title": "Telemetry Budget v1",
+  "description": "Bounded telemetry budget policy for Rig Relay. Defines caps on remote data exports so shared datasets remain analyzable on local hardware without unbounded growth.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "max_bundle_mb",
+    "max_rows_per_dataset",
+    "max_semantic_snippets_per_session",
+    "raw_retention_days",
+    "derived_retention_days",
+    "upload_mode"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.telemetry_budget.v1"
+    },
+    "max_bundle_mb": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "Maximum upload bundle size in megabytes. Default: 100."
+    },
+    "max_rows_per_dataset": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000000,
+      "description": "Maximum rows per exported dataset file. Default: 100000."
+    },
+    "max_semantic_snippets_per_session": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000,
+      "description": "Maximum semantic change snippets per session. Default: 200."
+    },
+    "raw_retention_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365,
+      "description": "Local retention period for raw observability logs. Default: 14."
+    },
+    "derived_retention_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 730,
+      "description": "Local retention period for derived datasets. Default: 180."
+    },
+    "upload_mode": {
+      "type": "string",
+      "enum": ["rollup_plus_samples", "rollup_only", "full_derived", "disabled"],
+      "description": "Upload strategy: rollup counts + representative samples, rollup only, full derived datasets, or disabled."
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about budget configuration."
+    }
+  },
+  "additionalProperties": false
+}

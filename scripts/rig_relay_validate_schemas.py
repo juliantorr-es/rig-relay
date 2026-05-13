@@ -16,7 +16,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 from pathlib import Path
 from typing import Any
@@ -32,8 +31,6 @@ FORBIDDEN_PYTHON_TOKENS: list[str] = [
     "# ruff:",
     "__annotations__",
 ]
-
-HAS_JSONSCHEMA = importlib.util.find_spec("jsonschema") is not None
 
 
 def check_forbidden_tokens(text: str, filename: str) -> list[str]:
@@ -92,7 +89,7 @@ def validate_schema(path: Path, strict: bool = False) -> tuple[bool, list[str]]:
             )
 
     # Optional: self-validate as JSON Schema Draft 7
-    if HAS_JSONSCHEMA and strict:
+    if strict:
         try:
             import jsonschema
 
@@ -175,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Total: {total}")
     print(f"  Passed: {total - failed}")
     print(f"  Failed: {failed}")
-    print(f"  jsonschema: {'available' if HAS_JSONSCHEMA else 'fallback (stdlib)'}")
+    print("  jsonschema: available (core dependency)")
 
     if all_errors:
         print("\nErrors:")

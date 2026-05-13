@@ -333,6 +333,8 @@ The reviewer repeats this loop until the queue is empty, the sprint is blocked, 
 review is requested.
 
 ## References
+- [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md)
+- [Rig-to-Relay Pattern Inventory](rig-to-relay-pattern-inventory.md)
 
 - [Reviewer Orchestrator Doctrine](reviewer-orchestrator.md)
 - [Cross-Session Coordination Doctrine](cross-session-coordination.md)

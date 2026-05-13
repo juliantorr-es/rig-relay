@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.update_status.v1.schema.json",
+  "title": "Update Status v1",
+  "description": "Structured update availability and restart status for Rig Relay sessions. Embedded in current_state to give agents and users visibility into pending updates without workflow disruption.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "current_version",
+    "latest_version",
+    "update_available",
+    "install_source",
+    "recommended_update_command",
+    "restart_required",
+    "restart_safe",
+    "blocked_by_active_sessions",
+    "update_state",
+    "checked_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.update_status.v1"
+    },
+    "current_version": {
+      "type": "string",
+      "description": "Currently installed Rig Relay version (PEP 440 format)."
+    },
+    "latest_version": {
+      "type": "string",
+      "description": "Latest available version (PEP 440 format)."
+    },
+    "update_available": {
+      "type": "boolean",
+      "description": "True if latest_version > current_version."
+    },
+    "install_source": {
+      "type": "string",
+      "enum": ["uv_tool", "pipx", "pip", "homebrew", "npm", "source", "unknown"],
+      "description": "How Rig Relay was installed, to determine the recommended update command."
+    },
+    "recommended_update_command": {
+      "type": "string",
+      "description": "Shell command the user should run to update."
+    },
+    "restart_required": {
+      "type": "boolean",
+      "description": "True if the update requires a restart."
+    },
+    "restart_safe": {
+      "type": "boolean",
+      "description": "True if no active sessions block restart."
+    },
+    "blocked_by_active_sessions": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of active sessions blocking restart."
+    },
+    "update_state": {
+      "type": "string",
+      "enum": [
+        "up_to_date",
+        "update_available",
+        "update_downloaded",
+        "restart_pending",
+        "restart_blocked_active_sessions",
+        "restart_ready",
+        "restart_completed"
+      ],
+      "description": "Current state in the update lifecycle."
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of the last update check."
+    },
+    "warnings": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about the update check."
+    }
+  },
+  "additionalProperties": false
+}

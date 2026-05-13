@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.authorization_policy.v1.schema.json",
+  "title": "Authorization Policy v1",
+  "description": "Defines which Rig Relay actions require step-up authorization and which methods are allowed for each.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "protected_actions",
+    "receipt_ttl_seconds",
+    "default_method",
+    "allow_dev_bypass"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.authorization_policy.v1"
+    },
+    "protected_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "remote_upload.confirm",
+          "telemetry.share_level.change",
+          "checkpoint.commit",
+          "spawn.execute",
+          "fleet.execute",
+          "lease_cleanup.archive",
+          "lease_cleanup.remove",
+          "credentials.configure",
+          "update.restart_now"
+        ]
+      },
+      "minItems": 1,
+      "description": "Actions that require step-up authorization."
+    },
+    "action_methods": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z_.]+$": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["none_dev_only", "local_system_auth", "passkey_webauthn", "remote_passkey"]
+          },
+          "minItems": 1
+        }
+      },
+      "description": "Per-action allowed authorization methods. Keys match protected action names."
+    },
+    "receipt_ttl_seconds": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 86400,
+      "default": 300,
+      "description": "Default TTL for authorization receipts in seconds (5 min default, max 24h)."
+    },
+    "default_method": {
+      "type": "string",
+      "enum": ["none_dev_only", "local_system_auth", "passkey_webauthn", "remote_passkey"],
+      "default": "local_system_auth",
+      "description": "Default authorization method when not overridden per-action."
+    },
+    "allow_dev_bypass": {
+      "type": "boolean",
+      "default": true,
+      "description": "If true, dev/test environments can bypass step-up using none_dev_only method."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

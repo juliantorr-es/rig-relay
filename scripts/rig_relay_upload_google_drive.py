@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ruff: noqa: PLR0914
+# ruff: noqa: PLR0911, PLR0914
 """Rig Relay Google Drive Upload Client.
 
 Dry-run and real upload client for telemetry bundles. Real upload uses Google
@@ -36,18 +36,16 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from google.auth.transport.requests import Request as GoogleAuthRequest
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+
+from vibe.core.auth.receipt import validate_receipt
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_RECEIPT_DIR = REPO_ROOT / ".build" / "rig-relay" / "drive-uploads"
-
-# Google Drive API library detection
-try:
-    import google.auth  # noqa: F401
-    import google_auth_oauthlib  # noqa: F401
-    import googleapiclient  # noqa: F401
-
-    HAS_DRIVE_DEPS = True
-except ImportError:
-    HAS_DRIVE_DEPS = False
 
 
 def _sha256_file(path: Path) -> str:
@@ -86,12 +84,6 @@ def _upload_dry_run(
         "warnings": [],
     }
 
-    if not HAS_DRIVE_DEPS:
-        receipt["warnings"].append(
-            "Google Drive API libraries not installed. "
-            "Install with: uv add google-api-python-client google-auth-oauthlib"
-        )
-
     if not folder_id:
         receipt["warnings"].append(
             "No folder ID provided. Upload would go to default location."
@@ -117,20 +109,9 @@ def _upload_real(
         Upload receipt dict.
 
     Raises:
-        ImportError: If Drive API dependencies are not installed.
         RuntimeError: If upload fails.
     """
-    if not HAS_DRIVE_DEPS:
-        raise ImportError(
-            "Google Drive API libraries not installed. "
-            "Install with: uv add google-api-python-client google-auth-oauthlib"
-        )
-
-    from google.auth.transport.requests import Request as GoogleAuthRequest
-    from google.oauth2.credentials import Credentials
-    from google_auth_oauthlib.flow import InstalledAppFlow
-    from googleapiclient.discovery import build
-    from googleapiclient.http import MediaFileUpload
+    from typing import cast
 
     SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
@@ -143,7 +124,9 @@ def _upload_real(
     token_path = Path.home() / ".rig" / "relay" / "drive_token.json"
 
     if token_path.is_file():
-        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+        creds = cast(
+            Credentials, Credentials.from_authorized_user_file(str(token_path), SCOPES)
+        )
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -156,10 +139,11 @@ def _upload_real(
                     "Download from Google Cloud Console and save to that path."
                 )
             flow = InstalledAppFlow.from_client_secrets_file(str(creds_path), SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = cast(Credentials, flow.run_local_server(port=0))
 
         # Save token
         token_path.parent.mkdir(parents=True, exist_ok=True)
+        assert creds is not None
         with token_path.open("w") as f:
             f.write(creds.to_json())
 
@@ -286,7 +270,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--dry-run",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=True,
         help="Dry-run mode: create local receipt without network (default).",
     )
@@ -295,6 +279,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         default=False,
         help="Confirm and proceed with real upload (requires --no-dry-run).",
+    )
+    parser.add_argument(
+        "--authorization-receipt",
+        type=Path,
+        default=None,
+        help="Path to a signed authorization receipt for real uploads.",
+    )
+    parser.add_argument(
+        "--dev-bypass",
+        action="store_true",
+        default=False,
+        help="Skip authorization check (dev mode only).",
     )
     return parser.parse_args(argv)
 
@@ -313,6 +309,35 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    # Authorization gate for real uploads
+    if not args.dry_run and args.confirm:
+        if args.authorization_receipt:
+            try:
+                receipt_data = json.loads(
+                    args.authorization_receipt.read_text(encoding="utf-8")
+                )
+            except (json.JSONDecodeError, OSError) as e:
+                print(
+                    f"Error: Failed to read authorization receipt: {e}", file=sys.stderr
+                )
+                return 1
+            scope = {"target_sha256": _sha256_file(args.bundle)}
+            valid, reason = validate_receipt(
+                receipt_data, "remote_upload.confirm", action_scope=scope
+            )
+            if not valid:
+                print(f"Error: Authorization refused — {reason}", file=sys.stderr)
+                return 1
+        elif args.dev_bypass:
+            print("Warning: Dev bypass enabled — no real authorization performed.")
+        else:
+            print(
+                "Error: Real upload requires --authorization-receipt or --dev-bypass. "
+                "Use --dry-run for safe preview.",
+                file=sys.stderr,
+            )
+            return 1
+
     try:
         receipt = upload_bundle(
             bundle_path=args.bundle,
@@ -322,7 +347,7 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             confirm=args.confirm,
         )
-    except (ImportError, RuntimeError) as e:
+    except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 

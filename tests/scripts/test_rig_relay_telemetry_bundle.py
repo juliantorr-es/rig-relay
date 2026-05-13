@@ -11,6 +11,7 @@ import zipfile
 
 import pytest
 
+from rig_relay.evidence.telemetry_bundle import validate_bundle as relay_validate_bundle
 from scripts.rig_relay_create_telemetry_bundle import (
     _forbidden_content_in_json,
     _forbidden_content_in_text,
@@ -563,3 +564,16 @@ def test_basic_local_preserves_local_safety():
     # Local safety features like individual tool use should still work
     # Remote features should be disabled
     assert "remote_upload" in disabled
+
+
+# ── Relay-native import tests ────────────────────────────────────────────
+
+
+def test_relay_validate_bundle_same_behavior(tmp_path):
+    """Both script and Relay-native import produce identical results."""
+    bundle_path = tmp_path / "nonexistent.zip"
+    valid1, msgs1 = validate_bundle(bundle_path)
+    valid2, msgs2 = relay_validate_bundle(bundle_path)
+    assert valid1 == valid2
+    assert msgs1 == msgs2
+    assert not valid1  # nonexistent file

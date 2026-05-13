@@ -1,0 +1,16 @@
+{
+  "schema_version": "rig.relay.google_drive_upload_receipt.v1",
+  "bundle_id": "bundle_20260513T171604_upload-test",
+  "participant_id": "anon_unknown",
+  "share_level": "derived_only",
+  "destination": "google_drive",
+  "drive_file_id": null,
+  "drive_folder_id": "fake-folder",
+  "uploaded_at": "2026-05-13T17:16:08.122085+00:00",
+  "upload_method": "dry_run",
+  "bundle_sha256": "sha256:b7a4f5dd7e99c7077539e5c980acb2d2ab8260d83ddaa187326bb609dc45ab0f",
+  "status": "dry_run",
+  "warnings": [
+    "Google Drive API libraries not installed. Install with: uv add google-api-python-client google-auth-oauthlib"
+  ]
+}

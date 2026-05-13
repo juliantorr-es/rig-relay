@@ -21,18 +21,9 @@ import csv
 from datetime import UTC, datetime
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-try:
-    import jsonschema as _jsonschema_mod
-
-    HAS_JSONSCHEMA = True
-except ImportError:
-    HAS_JSONSCHEMA = False
-    _jsonschema_mod = cast(Any, None)
-
-jsonschema = _jsonschema_mod
-
+import jsonschema
 
 # ── Paths ────────────────────────────────────────────────────────────────
 
@@ -100,13 +91,10 @@ def _load_schema(schema_id: str, schemas_dir: Path) -> dict[str, Any] | None:
 
 def _validate_row(row: dict[str, Any], schema: dict[str, Any]) -> list[str]:
     """Validate a single row against a JSON Schema. Returns list of error messages."""
-    if not HAS_JSONSCHEMA:
-        return ["jsonschema not available; skipping validation"]
-    _jsonschema = jsonschema
     errors: list[str] = []
     try:
-        _jsonschema.validate(instance=row, schema=schema)
-    except _jsonschema.ValidationError as e:
+        jsonschema.validate(instance=row, schema=schema)
+    except jsonschema.ValidationError as e:
         errors.append(str(e))
     return errors
 
@@ -377,8 +365,7 @@ def validate_dataset(
     schema = _load_schema(schema_id, schemas_dir)
     if schema is None:
         return len(rows), [f"Schema not found: {schema_id}"]
-    if not HAS_JSONSCHEMA:
-        return len(rows), ["jsonschema not available; skipping validation"]
+
     valid = 0
     errors: list[str] = []
     for i, row in enumerate(rows):

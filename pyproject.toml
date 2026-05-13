@@ -1,6 +1,6 @@
 [project]
 name = "rig-relay"
-version = "2.9.6"
+version = "0.1.0a1"
 description = "Rig Relay coding-agent harness"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -15,7 +15,7 @@ keywords = [
     "developer-tools",
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
@@ -35,7 +35,10 @@ dependencies = [
     "cryptography>=44.0.0",
     "gitpython>=3.1.46",
     "giturlparse>=0.14.0",
+    "google-api-python-client>=2.0.0",
     "google-auth>=2.0.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.0.0",
     "httpx>=0.28.1",
     "jsonpatch>=1.33",
     "keyring>=25.6.0",
@@ -63,12 +66,14 @@ dependencies = [
     "tree-sitter-bash>=0.25.1",
     "watchfiles>=1.1.1",
     "websockets>=13.0",
+    "duckdb>=1.5.0",
+    "jsonschema>=4.23.0",
+    "pywebview>=4.10",
     "zstandard>=0.25.0",
 ]
 
 [project.optional-dependencies]
-obs = ["duckdb>=1.5.0"]
-inspector = ["marimo>=0.10.0", "duckdb>=1.5.0", "altair>=5.5.0", "pandas>=2.0.0"]
+workbench = ["marimo>=0.10.0", "altair>=5.5.0", "pandas>=2.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/juliantorr-es/rig-relay"
@@ -127,13 +132,13 @@ pythonVersion = "3.12"
 reportMissingTypeStubs = false
 reportPrivateImportUsage = false
 
-include = ["vibe/**/*.py", "tests/**/*.py"]
+include = ["vibe/**/*.py", "rig_relay/**/*.py", "tests/**/*.py"]
 exclude = ["pyinstaller/", "docs/schemas/"]
 venvPath = "."
 venv = ".venv"
 
 [tool.ruff]
-include = ["vibe/**/*.py", "tests/**/*.py"]
+include = ["vibe/**/*.py", "rig_relay/**/*.py", "tests/**/*.py"]
 exclude = ["pyinstaller/", "docs/schemas/"]
 line-length = 88
 target-version = "py312"

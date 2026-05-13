@@ -632,17 +632,7 @@ class TestCheckpointStatusCountsForChart:
 # ── DuckDB helper tests ─────────────────────────────────────────────────
 
 
-def test_create_derived_connection_no_duckdb(monkeypatch):
-    monkeypatch.setattr("scripts.rig_relay_dataset_inspector_lib.HAS_DUCKDB", False)
-    from scripts.rig_relay_dataset_inspector_lib import create_derived_connection
-
-    con, views = create_derived_connection()
-    assert con is None
-    assert views == []
-
-
-def test_create_derived_connection_missing_dir(tmp_path, monkeypatch):
-    monkeypatch.setattr("scripts.rig_relay_dataset_inspector_lib.HAS_DUCKDB", True)
+def test_create_derived_connection_missing_dir(tmp_path):
     from scripts.rig_relay_dataset_inspector_lib import create_derived_connection
 
     con, views = create_derived_connection(tmp_path / "nope")
@@ -650,8 +640,7 @@ def test_create_derived_connection_missing_dir(tmp_path, monkeypatch):
     assert views == []
 
 
-def test_create_derived_connection_with_fixtures(tmp_path, monkeypatch):
-    monkeypatch.setattr("scripts.rig_relay_dataset_inspector_lib.HAS_DUCKDB", True)
+def test_create_derived_connection_with_fixtures(tmp_path):
     from scripts.rig_relay_dataset_inspector_lib import create_derived_connection
 
     d = tmp_path / "derived"
@@ -669,8 +658,7 @@ def test_create_derived_connection_with_fixtures(tmp_path, monkeypatch):
     con.close()
 
 
-def test_run_canned_query_with_fixtures(tmp_path, monkeypatch):
-    monkeypatch.setattr("scripts.rig_relay_dataset_inspector_lib.HAS_DUCKDB", True)
+def test_run_canned_query_with_fixtures(tmp_path):
     from scripts.rig_relay_dataset_inspector_lib import (
         create_derived_connection,
         run_canned_query,

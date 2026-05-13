@@ -187,6 +187,8 @@ The following components exist:
 - [ ] Full autonomous reviewer loop (deferred — requires tool implementation above)
 
 ## References
+- [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md)
+- [Rig-to-Relay Pattern Inventory](rig-to-relay-pattern-inventory.md)
 
 - [Delegate/Fleet Orchestration Doctrine](delegate-fleet-orchestration.md)
 - [Cross-Session Coordination Doctrine](cross-session-coordination.md)

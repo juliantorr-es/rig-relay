@@ -31,3 +31,5 @@ Rules:
 | Date | Project | Phase/Sprint | Topic | Kind | File |
 |---|---|---|---|---|---|
 | 2026-05-13 | rig-relay | phase-a-j | orchestration dataset control plane | summary | [2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md](2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md) |
+| 2026-05-14 | rig-relay | phase-n | drive-dep-isolation-stale-lease-cleanup | handoff | [2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md](2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md) |
+| 2026-05-13 | rig-relay | phase-3 | desktop-projection-shell-pattern-port | summary | [2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md](2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md) |

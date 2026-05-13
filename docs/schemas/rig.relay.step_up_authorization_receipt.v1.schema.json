@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.step_up_authorization_receipt.v1.schema.json",
+  "title": "Step-Up Authorization Receipt v1",
+  "description": "An authorization receipt produced when the user successfully verifies a step-up action. Short-lived and action-scoped. Contains no private keys, raw biometric data, or secrets.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "created_at",
+    "action",
+    "method",
+    "user_verified",
+    "expires_at",
+    "challenge_sha256",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.step_up_authorization_receipt.v1"
+    },
+    "authorization_id": {
+      "type": "string",
+      "description": "Unique authorization receipt identifier."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of receipt creation."
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "remote_upload.confirm",
+        "telemetry.share_level.change",
+        "checkpoint.commit",
+        "spawn.execute",
+        "fleet.execute",
+        "lease_cleanup.archive",
+        "lease_cleanup.remove",
+        "credentials.configure",
+        "update.restart_now"
+      ],
+      "description": "The authorized action."
+    },
+    "action_scope": {
+      "type": "object",
+      "properties": {
+        "target_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "target_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "method": {
+      "type": "string",
+      "enum": [
+        "none_dev_only",
+        "local_system_auth",
+        "passkey_webauthn",
+        "remote_passkey"
+      ],
+      "description": "The authorization method used."
+    },
+    "user_verified": {
+      "type": "boolean",
+      "description": "Whether the user was cryptographically/biometrically verified."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which the receipt is invalid."
+    },
+    "challenge_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the challenge presented to the user."
+    },
+    "credential_id_hash": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "SHA256 of the credential ID used (optional, null for local_system_auth)."
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the receipt payload for integrity verification."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
