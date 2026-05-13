@@ -9,11 +9,13 @@ import pytest
 from tests.conftest import build_test_vibe_config
 from tests.stubs.fake_tool import FakeTool, FakeToolArgs
 from vibe.core.agent_loop import ToolDecision, ToolExecutionResponse
+from vibe.core.config import DEFAULT_MISTRAL_API_ENV_KEY
 from vibe.core.llm.format import ResolvedToolCall
 from vibe.core.telemetry.build_metadata import (
     build_base_metadata,
     build_request_metadata,
 )
+from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.send import TelemetryClient
 from vibe.core.telemetry.types import EntrypointMetadata, TelemetryRequestMetadata
 from vibe.core.tools.base import BaseTool, ToolPermission
@@ -59,9 +61,15 @@ class TestTelemetryClient:
     def test_send_telemetry_event_does_nothing_when_api_key_is_none(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        config = build_test_vibe_config(enable_telemetry=True)
-        env_key = config.get_active_provider().api_key_env_var
-        monkeypatch.delenv(env_key, raising=False)
+        config = build_test_vibe_config(
+            enable_telemetry=True,
+            providers=[
+                provider.model_copy(update={"backend": Backend.GENERIC})
+                for provider in build_test_vibe_config().providers
+                if provider.backend == Backend.MISTRAL
+            ],
+        )
+        monkeypatch.delenv(DEFAULT_MISTRAL_API_ENV_KEY, raising=False)
         client = TelemetryClient(config_getter=lambda: config)
         assert client._get_mistral_api_key() is None
         client._client = MagicMock()
@@ -98,8 +106,7 @@ class TestTelemetryClient:
             TelemetryClient, "send_telemetry_event", _original_send_telemetry_event
         )
         config = build_test_vibe_config(enable_telemetry=True)
-        env_key = config.get_active_provider().api_key_env_var
-        monkeypatch.setenv(env_key, "sk-test")
+        monkeypatch.setenv(DEFAULT_MISTRAL_API_ENV_KEY, "sk-test")
         client = TelemetryClient(config_getter=lambda: config)
         mock_post = AsyncMock(return_value=MagicMock(status_code=204))
         client._client = MagicMock()
@@ -139,7 +146,7 @@ class TestTelemetryClient:
 
         assert len(telemetry_events) == 1
         event_name = telemetry_events[0]["event_name"]
-        assert event_name == "vibe.tool_call_finished"
+        assert event_name == EventName.TOOL_CALL_COMPLETED
         properties = telemetry_events[0]["properties"]
         assert properties["tool_name"] == "todo"
         assert properties["status"] == "success"
@@ -234,7 +241,7 @@ class TestTelemetryClient:
         client.send_user_copied_text("hello world")
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.user_copied_text"
+        assert telemetry_events[0]["event_name"] == EventName.USER_COPIED_TEXT
         assert telemetry_events[0]["properties"]["text_length"] == 11
 
     def test_send_user_cancelled_action_payload(
@@ -246,7 +253,7 @@ class TestTelemetryClient:
         client.send_user_cancelled_action("interrupt_agent")
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.user_cancelled_action"
+        assert telemetry_events[0]["event_name"] == EventName.USER_CANCELLED_ACTION
         assert telemetry_events[0]["properties"]["action"] == "interrupt_agent"
 
     def test_send_at_mention_inserted_payload(
@@ -263,7 +270,7 @@ class TestTelemetryClient:
         )
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.at_mention_inserted"
+        assert telemetry_events[0]["event_name"] == EventName.AT_MENTION_INSERTED
         assert telemetry_events[0]["properties"] == {
             "nb_mentions": 2,
             "context_types": {"file": 1, "folder": 1},
@@ -338,12 +345,13 @@ class TestTelemetryClient:
         )
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.auto_compact_triggered"
+        assert telemetry_events[0]["event_name"] == EventName.AUTO_COMPACT_TRIGGERED
         assert telemetry_events[0]["properties"] == {
             "nb_context_tokens_before": 123,
             "nb_context_tokens_after": 45,
             "auto_compact_threshold": 100,
             "status": "success",
+            "compact_type": "auto",
         }
 
     def test_send_slash_command_used_payload(
@@ -356,7 +364,7 @@ class TestTelemetryClient:
         client.send_slash_command_used("my_skill", "skill")
 
         assert len(telemetry_events) == 2
-        assert telemetry_events[0]["event_name"] == "vibe.slash_command_used"
+        assert telemetry_events[0]["event_name"] == EventName.SLASH_COMMAND_USED
         assert telemetry_events[0]["properties"]["command"] == "help"
         assert telemetry_events[0]["properties"]["command_type"] == "builtin"
         assert telemetry_events[1]["properties"]["command"] == "my_skill"
@@ -373,7 +381,7 @@ class TestTelemetryClient:
         )
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.teleport_completed"
+        assert telemetry_events[0]["event_name"] == EventName.TELEPORT_COMPLETED
         assert telemetry_events[0]["properties"] == {
             "push_required": True,
             "github_auth_required": False,
@@ -395,7 +403,7 @@ class TestTelemetryClient:
         )
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.teleport_failed"
+        assert telemetry_events[0]["event_name"] == EventName.TELEPORT_FAILED
         assert telemetry_events[0]["properties"] == {
             "stage": "push",
             "error_class": "ServiceTeleportError",
@@ -461,8 +469,7 @@ class TestTelemetryClient:
             TelemetryClient, "send_telemetry_event", _original_send_telemetry_event
         )
         config = build_test_vibe_config(enable_telemetry=True)
-        env_key = config.get_active_provider().api_key_env_var
-        monkeypatch.setenv(env_key, "sk-test")
+        monkeypatch.setenv(DEFAULT_MISTRAL_API_ENV_KEY, "sk-test")
         client = TelemetryClient(
             config_getter=lambda: config,
             session_id_getter=lambda: "current-session",
@@ -485,7 +492,7 @@ class TestTelemetryClient:
         mock_post.assert_called_once_with(
             "https://api.mistral.ai/v1/datalake/events",
             json={
-                "event": "vibe.session_closed",
+                "event": EventName.SESSION_CLOSED,
                 "properties": {
                     "agent_entrypoint": "cli",
                     "agent_version": "1.0.0",
@@ -557,10 +564,7 @@ class TestTelemetryClient:
             TelemetryClient, "send_telemetry_event", _original_send_telemetry_event
         )
         config = build_test_vibe_config(enable_telemetry=True)
-        env_key = config.get_provider_for_model(
-            config.get_active_model()
-        ).api_key_env_var
-        monkeypatch.setenv(env_key, "sk-test")
+        monkeypatch.setenv(DEFAULT_MISTRAL_API_ENV_KEY, "sk-test")
         client = TelemetryClient(
             config_getter=lambda: config,
             session_id_getter=lambda: "session-123",
@@ -599,8 +603,7 @@ class TestTelemetryClient:
             TelemetryClient, "send_telemetry_event", _original_send_telemetry_event
         )
         config = build_test_vibe_config(enable_telemetry=True)
-        env_key = config.get_active_provider().api_key_env_var
-        monkeypatch.setenv(env_key, "sk-test")
+        monkeypatch.setenv(DEFAULT_MISTRAL_API_ENV_KEY, "sk-test")
         session_id = "test-session-uuid"
         client = TelemetryClient(
             config_getter=lambda: config, session_id_getter=lambda: session_id
@@ -634,8 +637,7 @@ class TestTelemetryClient:
             TelemetryClient, "send_telemetry_event", _original_send_telemetry_event
         )
         config = build_test_vibe_config(enable_telemetry=True)
-        env_key = config.get_active_provider().api_key_env_var
-        monkeypatch.setenv(env_key, "sk-test")
+        monkeypatch.setenv(DEFAULT_MISTRAL_API_ENV_KEY, "sk-test")
         client = TelemetryClient(config_getter=lambda: config)
         mock_post = AsyncMock(return_value=MagicMock(status_code=204))
         client._client = MagicMock()
@@ -716,7 +718,7 @@ class TestTelemetryClient:
         client.send_ready(init_duration_ms=1240)
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.ready"
+        assert telemetry_events[0]["event_name"] == EventName.READY
         assert telemetry_events[0]["properties"]["init_duration_ms"] == 1240
 
     def test_send_request_sent_payload(
@@ -734,7 +736,7 @@ class TestTelemetryClient:
         )
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.request_sent"
+        assert telemetry_events[0]["event_name"] == EventName.REQUEST_ACCOUNTED
         properties = telemetry_events[0]["properties"]
         assert properties["model"] == "codestral"
         assert properties["nb_context_chars"] == 1234
@@ -753,7 +755,7 @@ class TestTelemetryClient:
         client.send_user_rating_feedback(rating=2, model="mistral-large")
 
         assert len(telemetry_events) == 1
-        assert telemetry_events[0]["event_name"] == "vibe.user_rating_feedback"
+        assert telemetry_events[0]["event_name"] == EventName.USER_RATING_FEEDBACK
         properties = telemetry_events[0]["properties"]
         assert properties["rating"] == 2
         assert properties["model"] == "mistral-large"
@@ -849,15 +851,14 @@ class TestTelemetryClient:
 
         assert (
             client._get_telemetry_url("not-a-valid-url")
-            == "https://api.mistral.ai/v1/datalake/events"
+            == "https://api.deepseek.com/v1/datalake/events"
         )
 
     def test_is_active_false_when_mistral_provider_exists_but_no_api_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         config = build_test_vibe_config(enable_telemetry=True)
-        env_key = config.get_active_provider().api_key_env_var
-        monkeypatch.delenv(env_key, raising=False)
+        monkeypatch.delenv(DEFAULT_MISTRAL_API_ENV_KEY, raising=False)
         client = TelemetryClient(config_getter=lambda: config)
 
         assert client.is_active() is False
@@ -865,16 +866,15 @@ class TestTelemetryClient:
     def test_is_active_false_when_no_mistral_provider(self) -> None:
         from vibe.core.config import ProviderConfig
 
-        config = build_test_vibe_config(
-            enable_telemetry=True,
-            providers=[
-                ProviderConfig(
-                    name="llamacpp",
-                    api_base="http://127.0.0.1:8080/v1",
-                    api_key_env_var="",
-                )
-            ],
-        )
+        config = build_test_vibe_config(enable_telemetry=True)
+        config.providers = [
+            ProviderConfig(
+                name="llamacpp",
+                api_base="http://127.0.0.1:8080/v1",
+                api_key_env_var="",
+                backend=Backend.GENERIC,
+            )
+        ]
         client = TelemetryClient(config_getter=lambda: config)
 
         assert client.is_active() is False

@@ -249,6 +249,7 @@ class TelemetryClient:
             "nb_files_created": nb_files_created,
             "nb_files_modified": nb_files_modified,
             "result_keys": result_keys,
+            "message_id": message_id,
             "receipt_candidate": True,
         }
         self.send_telemetry_event(

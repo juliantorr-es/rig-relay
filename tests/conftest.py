@@ -171,11 +171,13 @@ def telemetry_events(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
         properties: dict[str, Any],
         *,
         correlation_id: str | None = None,
+        receipt_candidate: bool = False,
     ) -> None:
         merged = self.build_client_event_metadata() | properties
         event: dict[str, Any] = {"event_name": event_name, "properties": merged}
         if correlation_id is not None:
             event["correlation_id"] = correlation_id
+        event["receipt_candidate"] = receipt_candidate
         events.append(event)
 
     monkeypatch.setattr(
