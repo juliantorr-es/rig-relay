@@ -2,18 +2,148 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from vibe.core.telemetry.artifacts import get_artifact_dir
 from vibe.core.telemetry.context_blocks import (
     ContextAssemblyReport,
     ContextBlock,
     ContextBlockKind,
+    ContextBlockStability,
+    ContextLayoutPlan,
     classify_block_stability,
     estimate_tokens,
     fingerprint_text,
 )
 from vibe.core.types import LLMMessage, Role
+
+
+def plan_context_layout(
+    report: ContextAssemblyReport,
+    previous_layout: ContextLayoutPlan | None = None,
+) -> ContextLayoutPlan:
+    """Produce a deterministic layout plan from a context assembly report."""
+    # Deterministic block ordering rules:
+    # 1. stable/semi-stable cacheable blocks go first (the stable prefix)
+    # 2. dynamic blocks go after stable prefix (the dynamic suffix)
+    # 3. ephemeral blocks go last (not cacheable)
+    # Tie-breakers: block stability, kind, fingerprint, block_id
+    
+    def block_key(b: ContextBlock):
+        # Numeric priority for stability
+        stability_map = {
+            ContextBlockStability.STABLE: 0,
+            ContextBlockStability.SEMI_STABLE: 1,
+            ContextBlockStability.DYNAMIC: 2,
+            ContextBlockStability.EPHEMERAL: 3,
+        }
+        return (stability_map.get(b.stability, 99), b.kind, b.fingerprint, b.block_id)
+
+    sorted_blocks = sorted(report.blocks, key=block_key)
+    
+    stable_prefix_blocks = [
+        b for b in sorted_blocks 
+        if b.stability in (ContextBlockStability.STABLE, ContextBlockStability.SEMI_STABLE) 
+        and b.cacheable
+    ]
+    dynamic_suffix_blocks = [
+        b for b in sorted_blocks 
+        if b.stability == ContextBlockStability.DYNAMIC 
+        or (b.stability in (ContextBlockStability.STABLE, ContextBlockStability.SEMI_STABLE) and not b.cacheable)
+    ]
+    ephemeral_blocks = [
+        b for b in sorted_blocks 
+        if b.stability == ContextBlockStability.EPHEMERAL
+    ]
+    
+    stable_prefix_ids = [b.block_id for b in stable_prefix_blocks]
+    dynamic_suffix_ids = [b.block_id for b in dynamic_suffix_blocks]
+    ephemeral_ids = [b.block_id for b in ephemeral_blocks]
+    
+    # Fingerprints must be computed from ordered block fingerprints
+    stable_prefix_fp = fingerprint_text("".join(b.fingerprint for b in stable_prefix_blocks))
+    dynamic_suffix_fp = fingerprint_text("".join(b.fingerprint for b in dynamic_suffix_blocks))
+    
+    stable_prefix_bytes = sum(b.byte_size for b in stable_prefix_blocks)
+    dynamic_suffix_bytes = sum(b.byte_size for b in dynamic_suffix_blocks)
+    ephemeral_bytes = sum(b.byte_size for b in ephemeral_blocks)
+    
+    cache_candidate_bytes = sum(b.byte_size for b in sorted_blocks if b.cacheable)
+    total_bytes = sum(b.byte_size for b in sorted_blocks)
+    cacheability_ratio = cache_candidate_bytes / total_bytes if total_bytes > 0 else 0.0
+    
+    # Prefix stability comparison
+    stability_status: Literal["stable", "changed", "unknown"] = "unknown"
+    change_reasons = []
+    
+    if previous_layout:
+        if previous_layout.stable_prefix_fingerprint == stable_prefix_fp[:16]:
+            stability_status = "stable"
+        else:
+            stability_status = "changed"
+            change_reasons.append("Stable prefix fingerprint changed")
+            if len(previous_layout.stable_prefix_block_ids) != len(stable_prefix_ids):
+                change_reasons.append("Stable block count changed")
+
+    hints = []
+    if stability_status == "changed":
+        hints.append("Stable prefix changed; provider cache hit may be lost.")
+    if cacheability_ratio < 0.7:
+        hints.append("Low cacheability ratio; consider moving more content to stable blocks.")
+
+    return ContextLayoutPlan(
+        session_id=report.session_id,
+        stable_prefix_block_ids=stable_prefix_ids,
+        dynamic_suffix_block_ids=dynamic_suffix_ids,
+        ephemeral_block_ids=ephemeral_ids,
+        stable_prefix_fingerprint=stable_prefix_fp[:16],
+        dynamic_suffix_fingerprint=dynamic_suffix_fp[:16],
+        stable_prefix_bytes=stable_prefix_bytes,
+        dynamic_suffix_bytes=dynamic_suffix_bytes,
+        ephemeral_bytes=ephemeral_bytes,
+        cache_candidate_bytes=cache_candidate_bytes,
+        cacheability_ratio=cacheability_ratio,
+        prefix_stability_status=stability_status,
+        prefix_change_reasons=change_reasons,
+        optimization_hints=hints,
+    )
+
+
+async def load_latest_layout(session_id: str) -> ContextLayoutPlan | None:
+    """Read the latest previous layout JSON for the same session if one exists."""
+    report_dir = Path(".rig") / "relay" / "sessions" / session_id / "context"
+    if not report_dir.exists():
+        return None
+        
+    layouts = sorted(report_dir.glob("layout_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not layouts:
+        return None
+        
+    try:
+        content = layouts[0].read_text(encoding="utf-8")
+        return ContextLayoutPlan.model_validate_json(content)
+    except Exception:
+        return None
+
+
+async def write_layout_plan(plan: ContextLayoutPlan) -> Path:
+    """Write the layout plan to the session directory."""
+    report_dir = Path(".rig") / "relay" / "sessions" / plan.session_id / "context"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    
+    path = report_dir / f"layout_{plan.layout_id[:8]}.json"
+    
+    # Atomic write with deterministic JSON
+    temp_path = path.with_suffix(".tmp")
+    try:
+        content = plan.model_dump_json(indent=2)
+        temp_path.write_text(content, encoding="utf-8")
+        temp_path.replace(path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+            
+    return path
 
 
 def build_context_assembly_report(
@@ -93,7 +223,9 @@ def build_context_assembly_report(
     hints = []
     if dynamic_suffix_bytes > 0.5 * total_bytes:
         hints.append("High dynamic suffix volume; consider moving stable summaries to the prefix.")
-    if cache_candidate_bytes < 0.8 * total_bytes:
+        
+    cacheability_ratio = cache_candidate_bytes / total_bytes if total_bytes > 0 else 0.0
+    if cacheability_ratio < 0.8:
         hints.append("Low cacheability; check if large tool results can be artifacted or moved to semi-stable blocks.")
 
     return ContextAssemblyReport(
@@ -101,8 +233,8 @@ def build_context_assembly_report(
         entrypoint=entrypoint,
         model=model,
         blocks=blocks,
-        stable_prefix_fingerprint=stable_prefix_fingerprint,
-        dynamic_suffix_fingerprint=dynamic_suffix_fingerprint,
+        stable_prefix_fingerprint=stable_prefix_fingerprint[:16],
+        dynamic_suffix_fingerprint=dynamic_suffix_fingerprint[:16],
         total_bytes=total_bytes,
         total_estimated_tokens=total_tokens,
         stable_prefix_bytes=stable_prefix_bytes,
@@ -125,23 +257,3 @@ def _make_block(
         estimated_tokens=estimate_tokens(content),
         fingerprint=fingerprint_text(content),
     )
-
-
-async def write_assembly_report(report: ContextAssemblyReport) -> Path:
-    """Write the full context assembly report to the session directory."""
-    report_dir = Path(".rig") / "relay" / "sessions" / report.session_id / "context"
-    report_dir.mkdir(parents=True, exist_ok=True)
-    
-    path = report_dir / f"assembly_{report.report_id[:8]}.json"
-    
-    # Atomic write with deterministic JSON
-    temp_path = path.with_suffix(".tmp")
-    try:
-        content = report.model_dump_json(indent=2)
-        temp_path.write_text(content, encoding="utf-8")
-        temp_path.replace(path)
-    finally:
-        if temp_path.exists():
-            temp_path.unlink()
-            
-    return path

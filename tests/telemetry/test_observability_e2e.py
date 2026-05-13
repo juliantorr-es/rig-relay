@@ -244,6 +244,7 @@ async def test_observability_e2e_context_assembly(
     loop.messages.append(LLMMessage(role=Role.user, content="Hello"))
 
     from vibe.core.config import ModelConfig
+
     model = ModelConfig(name="test-model", alias="test", backend="api")
 
     # 1. Trigger context assembly report
@@ -257,7 +258,7 @@ async def test_observability_e2e_context_assembly(
     event = json.loads(line)
     validate(instance=event, schema=observability_schema)
     assert event["event_name"] == EventName.CONTEXT_ASSEMBLY_REPORTED
-    
+
     # Verify metadata only
     assert "blocks" not in event["payload"]
     assert "stable_prefix_bytes" in event["payload"]
@@ -278,3 +279,59 @@ async def test_observability_e2e_context_assembly(
     assert summary.context_assembly_count == 1
     assert summary.max_stable_prefix_bytes > 0
     assert summary.avg_context_estimated_tokens > 0
+
+
+@pytest.mark.asyncio
+async def test_observability_e2e_context_layout(
+    tmp_path, mock_config, monkeypatch, real_telemetry_client, observability_schema
+):
+    """Test the full chain: AgentLoop -> ContextLayoutPlan -> JSONL -> DuckDB."""
+    monkeypatch.chdir(tmp_path)
+
+    from vibe.core.agent_loop import AgentLoop
+    from vibe.core.types import LLMMessage, Role
+
+    session_id = "e2e-session-layout"
+    loop = AgentLoop(config=mock_config)
+    loop.session_id = session_id
+    loop.messages.append(LLMMessage(role=Role.system, content="System"))
+    loop.messages.append(LLMMessage(role=Role.user, content="Hello"))
+
+    from vibe.core.config import ModelConfig
+    model = ModelConfig(name="test-model", alias="test", backend="api")
+
+    # 1. Trigger context reporting (includes assembly and layout)
+    await loop._report_context_assembly(model)
+
+    # 2. Verify JSONL exists and matches schema
+    log_file = (
+        tmp_path / ".rig" / "relay" / "sessions" / session_id / "observability.jsonl"
+    )
+    lines = log_file.read_text().splitlines()
+    
+    # Assembly report
+    event1 = json.loads(lines[0])
+    assert event1["event_name"] == EventName.CONTEXT_ASSEMBLY_REPORTED
+    
+    # Layout plan
+    event2 = json.loads(lines[1])
+    validate(instance=event2, schema=observability_schema)
+    assert event2["event_name"] == EventName.CONTEXT_LAYOUT_PLANNED
+    assert event2["payload"]["prefix_stability_status"] == "unknown"
+
+    # 3. Verify layout artifact exists
+    report_dir = tmp_path / ".rig" / "relay" / "sessions" / session_id / "context"
+    layouts = list(report_dir.glob("layout_*.json"))
+    assert len(layouts) == 1
+
+    # 4. Verify DuckDB Projection
+    if not HAS_DUCKDB:
+        pytest.skip("DuckDB not installed")
+
+    session_root = tmp_path / ".rig" / "relay" / "sessions"
+    analyzer = DuckDBProjection(session_root)
+    summary = analyzer.get_summary()
+
+    assert summary.context_layout_count == 1
+    assert summary.avg_cacheability_ratio > 0
+    assert summary.max_cache_candidate_bytes > 0

@@ -1224,27 +1224,35 @@ class AgentLoop:
     async def _report_context_assembly(self, active_model: ModelConfig) -> None:
         if not self.config.enable_local_observability:
             return
-            
+
         try:
             from vibe.core.context.assembler import (
                 build_context_assembly_report,
+                load_latest_layout,
+                plan_context_layout,
                 write_assembly_report,
+                write_layout_plan,
             )
-            
+
             tool_manager_info = {
                 tool_name: tool_class.get_parameters()
                 for tool_name, tool_class in self.tool_manager.available_tools.items()
             }
-            
+
             report = build_context_assembly_report(
                 session_id=self.session_id,
                 messages=list(self.messages),
                 model=active_model.alias,
                 tool_manager_info=tool_manager_info,
             )
-            
+
             await write_assembly_report(report)
-            
+
+            # Plan layout
+            prev_layout = await load_latest_layout(self.session_id)
+            layout = plan_context_layout(report, prev_layout)
+            layout_path = await write_layout_plan(layout)
+
             self.telemetry_client.send_context_assembly_reported(
                 report_id=report.report_id,
                 total_bytes=report.total_bytes,
@@ -1256,6 +1264,26 @@ class AgentLoop:
                 dynamic_suffix_fingerprint=report.dynamic_suffix_fingerprint,
                 largest_blocks=report.largest_blocks,
                 optimization_hints=report.optimization_hints,
+            )
+
+            from vibe.core.telemetry.context_blocks import fingerprint_text
+
+            layout_hash = fingerprint_text(layout.model_dump_json())
+
+            self.telemetry_client.send_context_layout_planned(
+                layout_id=layout.layout_id,
+                stable_prefix_fingerprint=layout.stable_prefix_fingerprint,
+                dynamic_suffix_fingerprint=layout.dynamic_suffix_fingerprint,
+                stable_prefix_bytes=layout.stable_prefix_bytes,
+                dynamic_suffix_bytes=layout.dynamic_suffix_bytes,
+                ephemeral_bytes=layout.ephemeral_bytes,
+                cache_candidate_bytes=layout.cache_candidate_bytes,
+                cacheability_ratio=layout.cacheability_ratio,
+                prefix_stability_status=layout.prefix_stability_status,
+                prefix_change_reasons=layout.prefix_change_reasons,
+                optimization_hints=layout.optimization_hints,
+                layout_path=str(layout_path),
+                layout_hash=layout_hash,
             )
         except Exception as e:
             logger.warning("Failed to generate context assembly report: %s", e)
@@ -1289,7 +1317,7 @@ class AgentLoop:
             message_id=backend_metadata.message_id,
             messages=self.messages,
         )
-        
+
         await self._report_context_assembly(active_model)
 
         try:
@@ -1363,7 +1391,7 @@ class AgentLoop:
             message_id=backend_metadata.message_id,
             messages=self.messages,
         )
-        
+
         await self._report_context_assembly(active_model)
 
         try:

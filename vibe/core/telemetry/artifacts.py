@@ -71,9 +71,10 @@ def make_prompt_excerpt(content: str, max_bytes: int = 4096) -> str:
 
 import os
 
+
 class ToolOutputArtifactWriter:
     """Handles durable atomic writing of tool output artifacts and metadata.
-    
+
     Artifacts are written using an atomic replace pattern backed by fsync
     on both the data file and the parent directory to ensure durability.
     They are the authoritative source of truth for raw tool results.
@@ -126,9 +127,9 @@ class ToolOutputArtifactWriter:
                 f.write(artifact_bytes)
                 f.flush()
                 os.fsync(f.fileno())
-            
+
             temp_path.replace(artifact_path)
-            
+
             # Sync parent directory to ensure the rename is durable
             dir_fd = os.open(str(self.artifact_dir), os.O_RDONLY)
             try:

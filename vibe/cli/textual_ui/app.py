@@ -3045,12 +3045,7 @@ class VibeApp(App):  # noqa: PLR0904
             return
         except RuntimeError as e:
             # Handle the refusal from do_update if it somehow gets called
-            self.notify(
-                str(e),
-                title="Update disabled",
-                severity="warning",
-                timeout=10,
-            )
+            self.notify(str(e), title="Update disabled", severity="warning", timeout=10)
             return
         except Exception as exc:
             logger.debug("Version update check failed", exc_info=exc)

@@ -20,3 +20,4 @@ class EventName(StrEnum):
     ONBOARDING_API_KEY_ADDED = "rig.relay.onboarding_api_key_added"
     ARTIFACT_WRITTEN = "rig.relay.artifact.tool_output_written"
     CONTEXT_ASSEMBLY_REPORTED = "rig.relay.context.assembly_reported"
+    CONTEXT_LAYOUT_PLANNED = "rig.relay.context.layout_planned"

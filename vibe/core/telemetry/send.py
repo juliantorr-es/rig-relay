@@ -508,3 +508,38 @@ class TelemetryClient:
         self.log_local_event(
             EventName.CONTEXT_ASSEMBLY_REPORTED, payload, receipt_candidate=False
         )
+
+    def send_context_layout_planned(
+        self,
+        layout_id: str,
+        stable_prefix_fingerprint: str,
+        dynamic_suffix_fingerprint: str,
+        stable_prefix_bytes: int,
+        dynamic_suffix_bytes: int,
+        ephemeral_bytes: int,
+        cache_candidate_bytes: int,
+        cacheability_ratio: float,
+        prefix_stability_status: str,
+        prefix_change_reasons: list[str],
+        optimization_hints: list[str],
+        layout_path: str,
+        layout_hash: str,
+    ) -> None:
+        payload = {
+            "layout_id": layout_id,
+            "stable_prefix_fingerprint": stable_prefix_fingerprint,
+            "dynamic_suffix_fingerprint": dynamic_suffix_fingerprint,
+            "stable_prefix_bytes": stable_prefix_bytes,
+            "dynamic_suffix_bytes": dynamic_suffix_bytes,
+            "ephemeral_bytes": ephemeral_bytes,
+            "cache_candidate_bytes": cache_candidate_bytes,
+            "cacheability_ratio": cacheability_ratio,
+            "prefix_stability_status": prefix_stability_status,
+            "prefix_change_reasons": prefix_change_reasons,
+            "optimization_hints": optimization_hints,
+            "layout_path": layout_path,
+            "layout_hash": layout_hash,
+        }
+        self.log_local_event(
+            EventName.CONTEXT_LAYOUT_PLANNED, payload, receipt_candidate=False
+        )

@@ -44,6 +44,14 @@ class ObservabilitySummary:
     cache_candidate_bytes_total: int = 0
     optimization_hints_by_kind: dict[str, int] = field(default_factory=dict)
 
+    # Context Layout metrics
+    context_layout_count: int = 0
+    stable_prefix_stable_count: int = 0
+    stable_prefix_changed_count: int = 0
+    avg_cacheability_ratio: float = 0.0
+    max_cache_candidate_bytes: int = 0
+    layout_hints_by_kind: dict[str, int] = field(default_factory=dict)
+
 
 class DuckDBProjection:
     """Read-only DuckDB projection over Rig Relay observability JSONL logs."""
@@ -181,11 +189,21 @@ class DuckDBProjection:
 
             if res and res[0] > 0:
                 summary.context_assembly_count = res[0]
-                summary.max_context_estimated_tokens = int(res[1]) if res[1] is not None else 0
-                summary.avg_context_estimated_tokens = float(res[2]) if res[2] is not None else 0.0
-                summary.max_stable_prefix_bytes = int(res[3]) if res[3] is not None else 0
-                summary.max_dynamic_suffix_bytes = int(res[4]) if res[4] is not None else 0
-                summary.cache_candidate_bytes_total = int(res[5]) if res[5] is not None else 0
+                summary.max_context_estimated_tokens = (
+                    int(res[1]) if res[1] is not None else 0
+                )
+                summary.avg_context_estimated_tokens = (
+                    float(res[2]) if res[2] is not None else 0.0
+                )
+                summary.max_stable_prefix_bytes = (
+                    int(res[3]) if res[3] is not None else 0
+                )
+                summary.max_dynamic_suffix_bytes = (
+                    int(res[4]) if res[4] is not None else 0
+                )
+                summary.cache_candidate_bytes_total = (
+                    int(res[5]) if res[5] is not None else 0
+                )
 
             # Count optimization hints by flattening the list
             hints_res = ca_rel.project("payload.optimization_hints").fetchall()
@@ -195,6 +213,32 @@ class DuckDBProjection:
                     for hint in row[0]:
                         hint_counts[hint] = hint_counts.get(hint, 0) + 1
             summary.optimization_hints_by_kind = hint_counts
+
+            # 2h. Context Layout metrics
+            cl_rel = rel.filter("event_name = 'rig.relay.context.layout_planned'")
+            res = cl_rel.aggregate(
+                "count(*), "
+                "sum(CASE WHEN payload.prefix_stability_status = 'stable' THEN 1 ELSE 0 END), "
+                "sum(CASE WHEN payload.prefix_stability_status = 'changed' THEN 1 ELSE 0 END), "
+                "avg(payload.cacheability_ratio), "
+                "max(payload.cache_candidate_bytes)"
+            ).fetchone()
+
+            if res and res[0] > 0:
+                summary.context_layout_count = res[0]
+                summary.stable_prefix_stable_count = int(res[1]) if res[1] is not None else 0
+                summary.stable_prefix_changed_count = int(res[2]) if res[2] is not None else 0
+                summary.avg_cacheability_ratio = float(res[3]) if res[3] is not None else 0.0
+                summary.max_cache_candidate_bytes = int(res[4]) if res[4] is not None else 0
+
+            # Count layout optimization hints
+            l_hints_res = cl_rel.project("payload.optimization_hints").fetchall()
+            l_hint_counts: dict[str, int] = {}
+            for row in l_hints_res:
+                if row[0]:
+                    for hint in row[0]:
+                        l_hint_counts[hint] = l_hint_counts.get(hint, 0) + 1
+            summary.layout_hints_by_kind = l_hint_counts
 
         except Exception as e:
             summary.errors.append(f"DuckDB projection failed: {e}")

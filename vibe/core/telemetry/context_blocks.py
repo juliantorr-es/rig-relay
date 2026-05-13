@@ -65,6 +65,26 @@ class ContextAssemblyReport(BaseModel):
     optimization_hints: list[str]
 
 
+class ContextLayoutPlan(BaseModel):
+    schema_version: str = "rig.relay.context_layout.v1"
+    layout_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    stable_prefix_block_ids: list[str]
+    dynamic_suffix_block_ids: list[str]
+    ephemeral_block_ids: list[str]
+    stable_prefix_fingerprint: str
+    dynamic_suffix_fingerprint: str
+    stable_prefix_bytes: int
+    dynamic_suffix_bytes: int
+    ephemeral_bytes: int
+    cache_candidate_bytes: int
+    cacheability_ratio: float
+    prefix_stability_status: Literal["stable", "changed", "unknown"]
+    prefix_change_reasons: list[str] = Field(default_factory=list)
+    optimization_hints: list[str] = Field(default_factory=list)
+
+
 def estimate_tokens(text: str) -> int:
     """Estimate token count using a simple heuristic (~4 chars per token).
     
