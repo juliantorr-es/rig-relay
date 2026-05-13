@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 import os
 from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urljoin
@@ -337,7 +337,7 @@ class TelemetryClient:
         nb_prompt_chars: int,
         call_type: TelemetryCallType,
         message_id: str | None = None,
-        messages: list[LLMMessage] | None = None,
+        messages: Sequence[LLMMessage] | None = None,
     ) -> None:
         payload: dict[str, Any] = {
             "model": model,

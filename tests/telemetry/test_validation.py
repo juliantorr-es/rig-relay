@@ -11,6 +11,7 @@ from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.local import dump_canonical_json
 import vibe.core.telemetry.manifest as manifest_mod
 from vibe.core.telemetry.manifest import write_session_manifest
+from vibe.core.telemetry.receipts import write_session_receipts
 
 
 def _write_event(log_file: Path, event: dict) -> None:
@@ -200,21 +201,19 @@ def test_valid_repo_local_evidence_session_passes(tmp_path, monkeypatch):
     _write_event(
         log_file,
         _event(
-            session_id,
-            EventName.SESSION_CLOSED,
-            {
-                "session_id": session_id,
-            },
-            sequence=5,
+            session_id, EventName.SESSION_CLOSED, {"session_id": session_id}, sequence=5
         ),
     )
     write_session_manifest(session_root, session_id)
+    write_session_receipts(session_root, session_id)
 
     result = validate_evidence_session(repo_root / ".rig" / "relay", session_id)
     assert result.status == "pass"
     assert result.event_count == 6
     assert result.referenced_file_count == 4
     assert result.unreferenced_evidence_file_count == 0
+    assert result.receipt_count == 4
+    assert result.receipt_chain_status == "valid"
 
 
 def test_missing_observability_jsonl_fails(tmp_path):
@@ -426,12 +425,7 @@ def test_missing_manifest_warns_and_falls_back(tmp_path):
     )
     _write_event(
         log_file,
-        _event(
-            "s1",
-            EventName.SESSION_CLOSED,
-            {"session_id": "s1"},
-            sequence=2,
-        ),
+        _event("s1", EventName.SESSION_CLOSED, {"session_id": "s1"}, sequence=2),
     )
 
     result = validate_evidence_session(root, "s1")

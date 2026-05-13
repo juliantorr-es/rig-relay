@@ -26,6 +26,9 @@ def validation_result_to_dict(result: EvidenceValidationResult) -> dict[str, Any
         "referenced_file_count": result.referenced_file_count,
         "unreferenced_evidence_file_count": result.unreferenced_evidence_file_count,
         "malformed_event_count": result.malformed_event_count,
+        "receipt_count": result.receipt_count,
+        "receipt_chain_status": result.receipt_chain_status,
+        "final_receipt_sha256": result.final_receipt_sha256,
     }
 
 
@@ -51,6 +54,10 @@ def print_validation_result(
         f"{result.unreferenced_evidence_file_count}"
     )
     rprint(f"[bold]malformed events:[/] {result.malformed_event_count}")
+    rprint(f"[bold]receipts:[/] {result.receipt_count}")
+    rprint(f"[bold]receipt chain status:[/] {result.receipt_chain_status}")
+    if result.final_receipt_sha256:
+        rprint(f"[bold]final receipt hash:[/] {result.final_receipt_sha256}")
     if result.warnings:
         rprint("[bold yellow]warnings:[/]")
         for warning in result.warnings:

@@ -9,6 +9,7 @@ import pytest
 
 from vibe.cli import cli as cli_mod
 from vibe.core.telemetry.local import dump_canonical_json
+from vibe.core.telemetry.receipts import write_session_receipts
 
 
 def _sha256_prefix(path: Path) -> str:
@@ -129,6 +130,7 @@ def _make_valid_session(evidence_root: Path, session_id: str) -> None:
     (session_root / "manifest.json").write_text(
         dump_canonical_json(manifest) + "\n", encoding="utf-8"
     )
+    write_session_receipts(session_root, session_id)
 
 
 def _make_broken_session(evidence_root: Path, session_id: str) -> None:
@@ -277,22 +279,20 @@ def test_doctor_evidence_does_not_create_manifest_for_partial_session(
     session_root = _session_root(evidence_root, session_id)
     session_root.mkdir(parents=True)
     (session_root / "observability.jsonl").write_text(
-        dump_canonical_json(
-            {
-                "schema_version": "rig.relay.observability.v1",
-                "event_id": f"{session_id}-0",
-                "session_id": session_id,
-                "sequence": 0,
-                "created_at": "2024-01-01T00:00:00Z",
-                "event_name": "rig.relay.session.started",
-                "payload": {
-                    "evidence_root_mode": "repo_local",
-                    "evidence_root_source": "RIG_RELAY_HOME",
-                },
-                "producer": {"name": "rig-relay", "version": "2.9.6"},
-                "receipt_candidate": False,
-            }
-        )
+        dump_canonical_json({
+            "schema_version": "rig.relay.observability.v1",
+            "event_id": f"{session_id}-0",
+            "session_id": session_id,
+            "sequence": 0,
+            "created_at": "2024-01-01T00:00:00Z",
+            "event_name": "rig.relay.session.started",
+            "payload": {
+                "evidence_root_mode": "repo_local",
+                "evidence_root_source": "RIG_RELAY_HOME",
+            },
+            "producer": {"name": "rig-relay", "version": "2.9.6"},
+            "receipt_candidate": False,
+        })
         + "\n",
         encoding="utf-8",
     )
@@ -320,22 +320,20 @@ def test_doctor_evidence_json_output_for_partial_session(
     session_root = _session_root(evidence_root, session_id)
     session_root.mkdir(parents=True)
     (session_root / "observability.jsonl").write_text(
-        dump_canonical_json(
-            {
-                "schema_version": "rig.relay.observability.v1",
-                "event_id": f"{session_id}-0",
-                "session_id": session_id,
-                "sequence": 0,
-                "created_at": "2024-01-01T00:00:00Z",
-                "event_name": "rig.relay.session.started",
-                "payload": {
-                    "evidence_root_mode": "repo_local",
-                    "evidence_root_source": "RIG_RELAY_HOME",
-                },
-                "producer": {"name": "rig-relay", "version": "2.9.6"},
-                "receipt_candidate": False,
-            }
-        )
+        dump_canonical_json({
+            "schema_version": "rig.relay.observability.v1",
+            "event_id": f"{session_id}-0",
+            "session_id": session_id,
+            "sequence": 0,
+            "created_at": "2024-01-01T00:00:00Z",
+            "event_name": "rig.relay.session.started",
+            "payload": {
+                "evidence_root_mode": "repo_local",
+                "evidence_root_source": "RIG_RELAY_HOME",
+            },
+            "producer": {"name": "rig-relay", "version": "2.9.6"},
+            "receipt_candidate": False,
+        })
         + "\n",
         encoding="utf-8",
     )

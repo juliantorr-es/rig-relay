@@ -64,6 +64,7 @@ from vibe.core.skills.manager import SkillManager
 from vibe.core.system_prompt import get_universal_system_prompt
 from vibe.core.telemetry.build_metadata import build_request_metadata
 from vibe.core.telemetry.manifest import write_session_manifest
+from vibe.core.telemetry.receipts import write_session_receipts
 from vibe.core.telemetry.send import TelemetryClient
 from vibe.core.telemetry.types import (
     EntrypointMetadata,
@@ -525,12 +526,12 @@ class AgentLoop:
     def emit_session_closed_telemetry(self) -> None:
         self.telemetry_client.send_session_closed()
         try:
-            write_session_manifest(
-                SESSIONS_ROOT.path / self.session_id, self.session_id
-            )
+            session_path = SESSIONS_ROOT.path / self.session_id
+            write_session_manifest(session_path, self.session_id)
+            write_session_receipts(session_path, self.session_id)
         except Exception as e:
             logger.warning(
-                "Failed to write evidence manifest for session %s: %s",
+                "Failed to write evidence manifest/receipts for session %s: %s",
                 self.session_id,
                 e,
             )

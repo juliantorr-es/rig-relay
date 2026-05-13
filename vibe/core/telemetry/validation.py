@@ -9,6 +9,7 @@ from typing import Any
 from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.telemetry.manifest import load_manifest
+from vibe.core.telemetry.receipts import EvidenceReceipt, load_receipts, verify_receipt
 
 
 @dataclass(slots=True)
@@ -24,6 +25,11 @@ class EvidenceValidationResult:
     referenced_file_count: int = 0
     unreferenced_evidence_file_count: int = 0
     malformed_event_count: int = 0
+    receipt_count: int = 0
+    receipt_chain_status: str = (
+        "missing"  # "missing", "valid", "invalid", "legacy_missing"
+    )
+    final_receipt_sha256: str | None = None
 
     @property
     def status(self) -> str:
@@ -303,6 +309,176 @@ def _validate_manifest(
     return manifest_paths, True
 
 
+def _check_receipt_format(
+    receipts_path: Path, result: EvidenceValidationResult
+) -> None:
+    """Verify that the receipts file uses canonical JSONL format."""
+    receipt_lines = receipts_path.read_text(encoding="utf-8").splitlines()
+    for i, line in enumerate(receipt_lines):
+        if not line.strip():
+            continue
+        try:
+            data = json.loads(line)
+            if line != dump_canonical_json(data):
+                result.failed_checks.append(
+                    f"receipt line {i + 1} is not canonical JSON"
+                )
+                result.receipt_chain_status = "invalid"
+        except json.JSONDecodeError:
+            result.failed_checks.append(f"receipt line {i + 1} is malformed JSON")
+            result.receipt_chain_status = "invalid"
+
+
+def _verify_receipt_artifact(
+    session_root: Path,
+    receipt: EvidenceReceipt,
+    result: EvidenceValidationResult,
+    index: int,
+) -> bool:
+    """Verify that the artifact referenced by a receipt exists and matches its hash."""
+    if not _is_safe_relative_path(receipt.evidence_relative_path):
+        result.failed_checks.append(
+            f"receipt {index + 1} has unsafe relative path: {receipt.evidence_relative_path}"
+        )
+        return False
+
+    resolved = (session_root / receipt.evidence_relative_path).resolve()
+    if not resolved.is_relative_to(session_root.resolve()):
+        result.failed_checks.append(
+            f"receipt {index + 1} path escapes session root: {receipt.evidence_relative_path}"
+        )
+        return False
+
+    if not resolved.exists():
+        result.failed_checks.append(
+            f"receipt {index + 1} referenced file missing: {receipt.evidence_relative_path}"
+        )
+        return False
+
+    if receipt.event_name == str(EventName.ARTIFACT_WRITTEN):
+        try:
+            artifact_data = json.loads(resolved.read_text(encoding="utf-8"))
+            actual_hash = artifact_data.get("artifact_record_sha256") or _sha256_prefix(
+                resolved
+            )
+        except (OSError, json.JSONDecodeError):
+            actual_hash = "ERROR"
+    else:
+        actual_hash = _sha256_prefix(resolved)
+
+    if actual_hash != receipt.evidence_sha256:
+        result.failed_checks.append(
+            f"receipt {index + 1} evidence hash mismatch: {receipt.evidence_relative_path}"
+        )
+        return False
+
+    return True
+
+
+def _verify_receipt_event(
+    events: list[dict[str, Any]],
+    receipt: EvidenceReceipt,
+    result: EvidenceValidationResult,
+    index: int,
+) -> bool:
+    """Verify that the receipt correctly references an event in the observability log."""
+    if receipt.event_index < 0 or receipt.event_index >= len(events):
+        result.failed_checks.append(
+            f"receipt {index + 1} event_index out of range: {receipt.event_index}"
+        )
+        return False
+
+    event = events[receipt.event_index]
+    if event.get("event_name") != receipt.event_name:
+        result.failed_checks.append(
+            f"receipt {index + 1} event_name mismatch: expected {event.get('event_name')}, got {receipt.event_name}"
+        )
+        return False
+
+    # Check if event actually produced this file
+    payload = event.get("payload", {})
+    if payload.get("evidence_relative_path") != receipt.evidence_relative_path:
+        result.failed_checks.append(
+            f"receipt {index + 1} evidence_relative_path mismatch with event payload"
+        )
+        return False
+
+    return True
+
+
+def _validate_receipt_chain(
+    session_root: Path, events: list[dict[str, Any]], result: EvidenceValidationResult
+) -> None:
+    receipts_path = session_root / "receipts.jsonl"
+    if not receipts_path.is_file():
+        # Check if this is a legacy session or partial session
+        if any(event.get("event_name") == EventName.SESSION_CLOSED for event in events):
+            # If closed but no receipts, it's missing (might be old)
+            result.receipt_chain_status = "legacy_missing"
+            result.warnings.append("receipts.jsonl missing for closed session")
+        else:
+            result.receipt_chain_status = "missing"
+            result.warnings.append(
+                "receipts.jsonl missing (session might be active/partial)"
+            )
+        return
+
+    result.receipt_chain_status = "valid"
+    _check_receipt_format(receipts_path, result)
+    receipts = load_receipts(session_root)
+    result.receipt_count = len(receipts)
+    if not receipts:
+        return
+
+    previous_hash: str | None = None
+    expected_sequence = 1
+    receipt_event_indices: set[int] = set()
+
+    for i, receipt in enumerate(receipts):
+        if receipt.sequence != expected_sequence:
+            result.failed_checks.append(
+                f"receipt {i + 1} has out-of-order sequence: {receipt.sequence} (expected {expected_sequence})"
+            )
+            result.receipt_chain_status = "invalid"
+        expected_sequence += 1
+
+        if receipt.previous_receipt_sha256 != previous_hash:
+            result.failed_checks.append(
+                f"receipt {i + 1} has broken chain: previous_receipt_sha256 mismatch"
+            )
+            result.receipt_chain_status = "invalid"
+
+        if not verify_receipt(receipt):
+            result.failed_checks.append(f"receipt {i + 1} hash verification failed")
+            result.receipt_chain_status = "invalid"
+
+        if not _verify_receipt_artifact(session_root, receipt, result, i):
+            result.receipt_chain_status = "invalid"
+
+        if not _verify_receipt_event(events, receipt, result, i):
+            result.receipt_chain_status = "invalid"
+
+        receipt_event_indices.add(receipt.event_index)
+        previous_hash = receipt.receipt_sha256
+
+    result.final_receipt_sha256 = previous_hash
+
+    # Check if all file-producing events have receipts
+    kind_map = {
+        "rig.relay.artifact.tool_output_written": "tool_output_artifact",
+        "rig.relay.context.assembly_reported": "context_assembly_report",
+        "rig.relay.context.layout_planned": "context_layout_plan",
+        "rig.relay.context.shadow_request_assembled": "shadow_request_report",
+    }
+    for idx, event in enumerate(events):
+        if event.get("event_name") in kind_map:
+            if idx not in receipt_event_indices:
+                result.failed_checks.append(
+                    f"file-producing event at index {idx} ({event.get('event_name')}) is missing a receipt"
+                )
+                result.receipt_chain_status = "invalid"
+
+
 def validate_evidence_session(
     evidence_root: Path, session_id: str
 ) -> EvidenceValidationResult:
@@ -342,6 +518,7 @@ def validate_evidence_session(
     }
     manifest_paths, manifest_present = _validate_manifest(session_root, result)
     referenced_paths, _ = _collect_references(events, session_root, result)
+    _validate_receipt_chain(session_root, events, result)
     _check_file_to_event_parity(session_root, event_by_name, result)
 
     evidence_files = _collect_session_evidence_files(session_root)
