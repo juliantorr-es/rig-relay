@@ -1229,10 +1229,12 @@ class AgentLoop:
         try:
             from vibe.core.context.assembler import (
                 build_context_assembly_report,
+                build_shadow_request_report,
                 load_latest_layout,
                 plan_context_layout,
                 write_assembly_report,
                 write_layout_plan,
+                write_shadow_request_report,
             )
 
             tool_manager_info = {
@@ -1290,6 +1292,31 @@ class AgentLoop:
                 layout_path=str(layout_path),
                 layout_hash=layout_hash,
             )
+            try:
+                shadow_report = build_shadow_request_report(
+                    session_id=self.session_id,
+                    messages=list(self.messages),
+                    report=report,
+                    layout=layout,
+                )
+                await write_shadow_request_report(shadow_report)
+                self.telemetry_client.send_shadow_request_assembled(
+                    actual_message_count=shadow_report.actual_message_count,
+                    shadow_message_count=shadow_report.shadow_message_count,
+                    actual_estimated_tokens=shadow_report.actual_estimated_tokens,
+                    shadow_estimated_tokens=shadow_report.shadow_estimated_tokens,
+                    stable_prefix_bytes=shadow_report.stable_prefix_bytes,
+                    dynamic_suffix_bytes=shadow_report.dynamic_suffix_bytes,
+                    cache_candidate_bytes=shadow_report.cache_candidate_bytes,
+                    estimated_token_delta=shadow_report.estimated_token_delta,
+                    byte_delta=shadow_report.byte_delta,
+                    unchanged_stable_prefix=shadow_report.unchanged_stable_prefix,
+                    shadow_diff_summary=shadow_report.shadow_diff_summary,
+                    stable_prefix_fingerprint=shadow_report.stable_prefix_fingerprint,
+                    dynamic_suffix_fingerprint=shadow_report.dynamic_suffix_fingerprint,
+                )
+            except Exception:
+                pass
         except Exception as e:
             from vibe.core.logger import logger
 

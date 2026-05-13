@@ -557,3 +557,43 @@ class TelemetryClient:
         self.send_telemetry_event(
             EventName.CONTEXT_LAYOUT_PLANNED, payload, receipt_candidate=False
         )
+
+    def send_shadow_request_assembled(
+        self,
+        *,
+        actual_message_count: int,
+        shadow_message_count: int,
+        actual_estimated_tokens: int,
+        shadow_estimated_tokens: int,
+        stable_prefix_bytes: int,
+        dynamic_suffix_bytes: int,
+        cache_candidate_bytes: int,
+        estimated_token_delta: int,
+        byte_delta: int,
+        unchanged_stable_prefix: bool,
+        shadow_diff_summary: str,
+        reason_not_applied: str = "shadow_mode_only",
+        stable_prefix_fingerprint: str | None = None,
+        dynamic_suffix_fingerprint: str | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "actual_message_count": actual_message_count,
+            "shadow_message_count": shadow_message_count,
+            "actual_estimated_tokens": actual_estimated_tokens,
+            "shadow_estimated_tokens": shadow_estimated_tokens,
+            "stable_prefix_bytes": stable_prefix_bytes,
+            "dynamic_suffix_bytes": dynamic_suffix_bytes,
+            "cache_candidate_bytes": cache_candidate_bytes,
+            "estimated_token_delta": estimated_token_delta,
+            "byte_delta": byte_delta,
+            "unchanged_stable_prefix": unchanged_stable_prefix,
+            "shadow_diff_summary": shadow_diff_summary,
+            "reason_not_applied": reason_not_applied,
+        }
+        if stable_prefix_fingerprint is not None:
+            payload["stable_prefix_fingerprint"] = stable_prefix_fingerprint
+        if dynamic_suffix_fingerprint is not None:
+            payload["dynamic_suffix_fingerprint"] = dynamic_suffix_fingerprint
+        self.send_telemetry_event(
+            EventName.SHADOW_REQUEST_ASSEMBLED, payload, receipt_candidate=False
+        )

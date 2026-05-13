@@ -87,6 +87,29 @@ class ContextLayoutPlan(BaseModel):
     optimization_hints: list[str] = Field(default_factory=list)
 
 
+class ShadowRequestReport(BaseModel):
+    schema_version: str = "rig.relay.context.shadow_request.v1"
+    shadow_request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    actual_message_count: int
+    shadow_message_count: int
+    actual_estimated_tokens: int
+    shadow_estimated_tokens: int
+    stable_prefix_bytes: int
+    dynamic_suffix_bytes: int
+    cache_candidate_bytes: int
+    estimated_token_delta: int
+    byte_delta: int
+    unchanged_stable_prefix: bool
+    shadow_diff_summary: str
+    reason_not_applied: Literal["shadow_mode_only"] = "shadow_mode_only"
+    actual_message_roles: list[str] = Field(default_factory=list)
+    shadow_message_roles: list[str] = Field(default_factory=list)
+    stable_prefix_fingerprint: str | None = None
+    dynamic_suffix_fingerprint: str | None = None
+
+
 def estimate_tokens(text: str) -> int:
     """Estimate token count using a simple heuristic (~4 chars per token)."""
     return len(text) // 4

@@ -370,3 +370,88 @@ async def test_observability_e2e_context_layout(
     assert summary.context_layout_count == 1
     assert summary.avg_cacheability_ratio > 0
     assert summary.max_cache_candidate_bytes > 0
+
+
+@pytest.mark.asyncio
+async def test_observability_e2e_shadow_request_assembly(
+    tmp_path, mock_config, monkeypatch, real_telemetry_client, observability_schema
+):
+    monkeypatch.chdir(tmp_path)
+
+    from vibe.core.agent_loop import AgentLoop
+    from vibe.core.types import LLMMessage, Role
+
+    session_id = "e2e-session-shadow"
+    loop = AgentLoop(config=mock_config)
+    loop.session_id = session_id
+    loop.messages.append(LLMMessage(role=Role.system, content="System instruction"))
+    loop.messages.append(LLMMessage(role=Role.user, content="Dynamic question"))
+
+    original_messages = list(loop.messages)
+    original_snapshot = [message.model_dump() for message in original_messages]
+
+    from tests.mock.utils import mock_llm_chunk
+    from tests.stubs.fake_backend import FakeBackend
+    backend = FakeBackend([mock_llm_chunk(content="assistant reply")])
+    loop.backend = backend
+    model = mock_config.get_active_model()
+
+    result = await loop._chat(model_override=model)
+
+    assert result.message.content == "assistant reply"
+    assert [
+        message.model_dump() for message in loop.messages[: len(original_messages)]
+    ] == original_snapshot
+    assert backend.requests_messages
+    assert [
+        message.model_dump() for message in backend.requests_messages[0]
+    ] == original_snapshot
+
+    log_file = SESSIONS_ROOT.path / session_id / "observability.jsonl"
+    events = [json.loads(line) for line in log_file.read_text().splitlines()]
+    shadow_event = next(
+        event
+        for event in events
+        if event["event_name"] == EventName.SHADOW_REQUEST_ASSEMBLED
+    )
+    validate(instance=shadow_event, schema=observability_schema)
+    assert shadow_event["payload"]["reason_not_applied"] == "shadow_mode_only"
+    assert "raw_output" not in shadow_event["payload"]
+    assert "prompt_excerpt" not in shadow_event["payload"]
+    assert shadow_event["payload"]["actual_message_count"] == len(original_messages)
+    assert shadow_event["payload"]["shadow_message_count"] >= len(original_messages)
+
+
+@pytest.mark.asyncio
+async def test_shadow_request_assembly_failure_does_not_fail_model_request(
+    tmp_path, mock_config, monkeypatch, real_telemetry_client
+):
+    monkeypatch.chdir(tmp_path)
+
+    from vibe.core.agent_loop import AgentLoop
+    from vibe.core.context import assembler as assembler_mod
+    from vibe.core.types import LLMMessage, Role
+
+    session_id = "e2e-session-shadow-failure"
+    loop = AgentLoop(config=mock_config)
+    loop.session_id = session_id
+    loop.messages.append(LLMMessage(role=Role.system, content="System instruction"))
+    loop.messages.append(LLMMessage(role=Role.user, content="Dynamic question"))
+
+    from tests.mock.utils import mock_llm_chunk
+    from tests.stubs.fake_backend import FakeBackend
+    backend = FakeBackend([mock_llm_chunk(content="assistant reply")])
+    loop.backend = backend
+    model = mock_config.get_active_model()
+
+    def _raise_shadow_failure(*_args, **_kwargs):
+        raise RuntimeError("shadow failed")
+
+    monkeypatch.setattr(
+        assembler_mod, "build_shadow_request_report", _raise_shadow_failure
+    )
+
+    result = await loop._chat(model_override=model)
+
+    assert result.message.content == "assistant reply"
+    assert backend.requests_messages

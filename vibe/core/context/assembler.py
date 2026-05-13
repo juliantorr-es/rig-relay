@@ -10,6 +10,7 @@ from vibe.core.telemetry.context_blocks import (
     ContextBlockKind,
     ContextBlockStability,
     ContextLayoutPlan,
+    ShadowRequestReport,
     classify_block_stability,
     estimate_tokens,
     fingerprint_text,
@@ -171,6 +172,22 @@ async def write_layout_plan(plan: ContextLayoutPlan) -> Path:
     return path
 
 
+async def write_shadow_request_report(report: ShadowRequestReport) -> Path:
+    report_dir = SESSIONS_ROOT.path / report.session_id / "context"
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    path = report_dir / f"shadow_request_{report.shadow_request_id[:8]}.json"
+    temp_path = path.with_suffix(".tmp")
+    try:
+        temp_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+        temp_path.replace(path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+    return path
+
+
 def build_context_assembly_report(
     session_id: str,
     messages: list[LLMMessage],
@@ -277,6 +294,46 @@ def build_context_assembly_report(
         cache_candidate_bytes=cache_candidate_bytes,
         largest_blocks=largest_blocks,
         optimization_hints=hints,
+    )
+
+
+def build_shadow_request_report(
+    session_id: str,
+    messages: list[LLMMessage],
+    report: ContextAssemblyReport,
+    layout: ContextLayoutPlan,
+) -> ShadowRequestReport:
+    actual_message_roles = [message.role.value for message in messages]
+    shadow_message_roles = [block.kind.value for block in report.blocks]
+    actual_estimated_tokens = sum(
+        estimate_tokens(message.content or "") for message in messages
+    )
+    shadow_estimated_tokens = report.total_estimated_tokens
+    actual_bytes = sum(
+        len((message.content or "").encode("utf-8")) for message in messages
+    )
+    shadow_bytes = report.total_bytes
+    return ShadowRequestReport(
+        session_id=session_id,
+        actual_message_count=len(messages),
+        shadow_message_count=len(report.blocks),
+        actual_estimated_tokens=actual_estimated_tokens,
+        shadow_estimated_tokens=shadow_estimated_tokens,
+        stable_prefix_bytes=layout.stable_prefix_bytes,
+        dynamic_suffix_bytes=layout.dynamic_suffix_bytes,
+        cache_candidate_bytes=layout.cache_candidate_bytes,
+        estimated_token_delta=shadow_estimated_tokens - actual_estimated_tokens,
+        byte_delta=shadow_bytes - actual_bytes,
+        unchanged_stable_prefix=layout.prefix_stability_status == "stable",
+        shadow_diff_summary=(
+            f"actual_messages={len(messages)} shadow_blocks={len(report.blocks)} "
+            f"actual_tokens={actual_estimated_tokens} shadow_tokens={shadow_estimated_tokens} "
+            f"actual_bytes={actual_bytes} shadow_bytes={shadow_bytes}"
+        ),
+        actual_message_roles=actual_message_roles,
+        shadow_message_roles=shadow_message_roles,
+        stable_prefix_fingerprint=layout.stable_prefix_fingerprint,
+        dynamic_suffix_fingerprint=layout.dynamic_suffix_fingerprint,
     )
 
 

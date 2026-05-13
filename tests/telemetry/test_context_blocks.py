@@ -4,6 +4,7 @@ import json
 
 from vibe.core.context.assembler import (
     build_context_assembly_report,
+    build_shadow_request_report,
     plan_context_layout,
     write_assembly_report,
 )
@@ -237,3 +238,46 @@ def test_observability_event_privacy():
     assert "SECRET_KEY_12345" not in dumped
     # Fingerprint should be present but not the content
     assert plan.stable_prefix_fingerprint.startswith("sha256:")
+
+
+def test_build_shadow_request_report_uses_layout_fingerprints_for_stable_prefix():
+    session_id = "shadow-fingerprint-test"
+    report1 = build_context_assembly_report(
+        session_id=session_id,
+        messages=[
+            LLMMessage(role=Role.system, content="System instruction"),
+            LLMMessage(role=Role.user, content="First dynamic question"),
+        ],
+    )
+    layout1 = plan_context_layout(report1)
+    shadow1 = build_shadow_request_report(
+        session_id=session_id,
+        messages=[
+            LLMMessage(role=Role.system, content="System instruction"),
+            LLMMessage(role=Role.user, content="First dynamic question"),
+        ],
+        report=report1,
+        layout=layout1,
+    )
+
+    report2 = build_context_assembly_report(
+        session_id=session_id,
+        messages=[
+            LLMMessage(role=Role.system, content="System instruction"),
+            LLMMessage(role=Role.user, content="Second dynamic question"),
+        ],
+    )
+    layout2 = plan_context_layout(report2, previous_layout=layout1)
+    shadow2 = build_shadow_request_report(
+        session_id=session_id,
+        messages=[
+            LLMMessage(role=Role.system, content="System instruction"),
+            LLMMessage(role=Role.user, content="Second dynamic question"),
+        ],
+        report=report2,
+        layout=layout2,
+    )
+
+    assert shadow1.stable_prefix_fingerprint == shadow2.stable_prefix_fingerprint
+    assert shadow2.unchanged_stable_prefix is True
+    assert shadow2.reason_not_applied == "shadow_mode_only"

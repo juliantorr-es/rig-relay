@@ -21,3 +21,4 @@ class EventName(StrEnum):
     ARTIFACT_WRITTEN = "rig.relay.artifact.tool_output_written"
     CONTEXT_ASSEMBLY_REPORTED = "rig.relay.context.assembly_reported"
     CONTEXT_LAYOUT_PLANNED = "rig.relay.context.layout_planned"
+    SHADOW_REQUEST_ASSEMBLED = "rig.relay.context.shadow_request_assembled"
