@@ -66,6 +66,7 @@ from vibe.core.telemetry.build_metadata import build_request_metadata
 from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.telemetry.manifest import write_session_manifest
 from vibe.core.telemetry.receipts import write_session_receipts
+from vibe.core.telemetry.runtime import collect_startup_provenance
 from vibe.core.telemetry.send import TelemetryClient
 from vibe.core.telemetry.tool_contract import (
     ToolDeterminismClass,
@@ -524,6 +525,17 @@ class AgentLoop:
             terminal_emulator=terminal_emulator,
             evidence_root_mode=resolve_evidence_root_resolution().mode.value,
             evidence_root_source=resolve_evidence_root_resolution().source,
+        )
+
+        # Log runtime provenance at startup for debugging stale installs
+        provenance = collect_startup_provenance()
+        logger.info(
+            "session_id=%s package_path=%s python=%s git_head=%s version=%s",
+            self.session_id,
+            provenance.get("package_path"),
+            provenance.get("python_executable"),
+            provenance.get("git_head"),
+            provenance.get("installed_version"),
         )
 
     def emit_ready_telemetry(self, init_duration_ms: int) -> None:

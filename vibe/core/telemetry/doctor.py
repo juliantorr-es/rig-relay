@@ -8,6 +8,11 @@ from rich import print as rprint
 
 from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.local import dump_canonical_json
+from vibe.core.telemetry.runtime import (
+    check_runtime_provenance,
+    format_provenance_report,
+    provenance_to_dict,
+)
 from vibe.core.telemetry.tool_contract import (
     ToolDeterminismClass,
     ToolDeterminismSummary,
@@ -228,9 +233,7 @@ def run_tool_determinism_report(
     return 0
 
 
-def summarize_tool_reasoning(
-    evidence_root: Path, session_id: str
-) -> dict[str, Any]:
+def summarize_tool_reasoning(evidence_root: Path, session_id: str) -> dict[str, Any]:
     """Read reasoning-trace events from the observability log and build latency/pressure stats."""
     session_dir = evidence_root / "sessions" / session_id
     obs_path = session_dir / "observability.jsonl"
@@ -254,7 +257,10 @@ def summarize_tool_reasoning(
                 warnings.append(f"Error parsing reasoning trace event: {e}")
 
     if not traces:
-        return {"traces": [], "warnings": warnings + ["No reasoning trace events found"]}
+        return {
+            "traces": [],
+            "warnings": warnings + ["No reasoning trace events found"],
+        }
 
     # Compute aggregate metrics
     total_latency = sum(t.get("latency_ms", 0) for t in traces)
@@ -263,9 +269,15 @@ def summarize_tool_reasoning(
     total_artifacted_bytes = sum(t.get("artifacted_output_bytes", 0) for t in traces)
 
     # Find slowest and largest calls
-    sorted_by_latency = sorted(traces, key=lambda t: t.get("latency_ms", 0), reverse=True)
-    sorted_by_inline = sorted(traces, key=lambda t: t.get("inline_output_bytes", 0), reverse=True)
-    sorted_by_artifacted = sorted(traces, key=lambda t: t.get("artifacted_output_bytes", 0), reverse=True)
+    sorted_by_latency = sorted(
+        traces, key=lambda t: t.get("latency_ms", 0), reverse=True
+    )
+    sorted_by_inline = sorted(
+        traces, key=lambda t: t.get("inline_output_bytes", 0), reverse=True
+    )
+    sorted_by_artifacted = sorted(
+        traces, key=lambda t: t.get("artifacted_output_bytes", 0), reverse=True
+    )
 
     calls_missing_rationale = [
         t
@@ -317,7 +329,7 @@ def run_tool_reasoning_report(
     if not result.get("traces"):
         return 0
 
-    rprint(f"\n[bold]Aggregate Metrics:[/]")
+    rprint("\n[bold]Aggregate Metrics:[/]")
     rprint(f"  Total Latency: {result['total_latency_ms']:.1f} ms")
     rprint(f"  Total Output Bytes: {result['total_output_bytes']:,}")
     rprint(f"  Inline Output Bytes: {result['total_inline_output_bytes']:,}")
@@ -325,7 +337,7 @@ def run_tool_reasoning_report(
 
     slowest = result.get("slowest_tool_calls", [])
     if slowest:
-        rprint(f"\n[bold red]Slowest Tool Calls:[/]")
+        rprint("\n[bold red]Slowest Tool Calls:[/]")
         for t in slowest:
             rprint(
                 f"  {t.get('tool_name', '?')} "
@@ -335,7 +347,7 @@ def run_tool_reasoning_report(
 
     large_inline = result.get("largest_inline_outputs", [])
     if large_inline:
-        rprint(f"\n[bold yellow]Largest Inline Outputs (token-pressure candidates):[/]")
+        rprint("\n[bold yellow]Largest Inline Outputs (token-pressure candidates):[/]")
         for t in large_inline:
             rprint(
                 f"  {t.get('tool_name', '?')} "
@@ -345,20 +357,22 @@ def run_tool_reasoning_report(
 
     missing = result.get("calls_missing_rationale", [])
     if missing:
-        rprint(f"\n[bold yellow]Calls Missing Rationale Summary:[/]")
+        rprint("\n[bold yellow]Calls Missing Rationale Summary:[/]")
         for t in missing:
             rprint(f"  {t.get('tool_name', '?')} ({t.get('tool_call_id', '?')})")
 
     retries = result.get("retry_groups", {})
     if retries:
-        rprint(f"\n[bold yellow]Retried Tool Calls:[/]")
+        rprint("\n[bold yellow]Retried Tool Calls:[/]")
         for orig_id, retries_list in retries.items():
             rprint(f"  Original: {orig_id}")
             for rt in retries_list:
-                rprint(f"    Retry: {rt.get('tool_name', '?')} ({rt.get('tool_call_id', '?')})")
+                rprint(
+                    f"    Retry: {rt.get('tool_name', '?')} ({rt.get('tool_call_id', '?')})"
+                )
 
     # Latency optimization candidates
-    rprint(f"\n[bold]Latency Optimization Candidates:[/]")
+    rprint("\n[bold]Latency Optimization Candidates:[/]")
     candidates = []
     for t in slowest:
         if t.get("latency_ms", 0) > 1000:
@@ -372,3 +386,28 @@ def run_tool_reasoning_report(
         rprint("  None (all calls under 1s threshold)")
 
     return 0
+
+
+def run_runtime_provenance_check(*, json_output: bool = False) -> int:
+    """Check and report runtime provenance for the current process.
+
+    Read-only. Reports Python executable, command path, module paths,
+    git HEAD, critical symbol presence, and coherence status.
+    """
+    result = check_runtime_provenance()
+
+    if json_output:
+        print(dump_canonical_json(provenance_to_dict(result)))
+        return 0
+
+    report = format_provenance_report(result)
+
+    if report:
+        parts = report.split("\n")
+        for line in parts:
+            if line.startswith("[") and line.endswith("[/]"):
+                rprint(line)
+            elif line.strip():
+                rprint(line)
+
+    return 0 if result.coherent else 1

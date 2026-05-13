@@ -78,6 +78,13 @@ def parse_arguments() -> argparse.Namespace:
         "--json", action="store_true", help="Emit machine-readable JSON output."
     )
 
+    runtime_parser = doctor_subparsers.add_parser(
+        "runtime", help="Check runtime provenance: command path, Python, module paths, symbols"
+    )
+    runtime_parser.add_argument(
+        "--json", action="store_true", help="Emit machine-readable JSON output."
+    )
+
     parser.add_argument(
         "--show-config-paths",
         action="store_true",
