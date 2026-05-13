@@ -298,6 +298,7 @@ async def test_observability_e2e_context_layout(
     loop.messages.append(LLMMessage(role=Role.user, content="Hello"))
 
     from vibe.core.config import ModelConfig
+
     model = ModelConfig(name="test-model", alias="test", backend="api")
 
     # 1. Trigger context reporting (includes assembly and layout)
@@ -308,11 +309,11 @@ async def test_observability_e2e_context_layout(
         tmp_path / ".rig" / "relay" / "sessions" / session_id / "observability.jsonl"
     )
     lines = log_file.read_text().splitlines()
-    
+
     # Assembly report
     event1 = json.loads(lines[0])
     assert event1["event_name"] == EventName.CONTEXT_ASSEMBLY_REPORTED
-    
+
     # Layout plan
     event2 = json.loads(lines[1])
     validate(instance=event2, schema=observability_schema)

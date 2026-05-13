@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -41,6 +40,7 @@ class ContextBlock(BaseModel):
     byte_size: int
     estimated_tokens: int
     fingerprint: str
+    source_index: int | None = None
     source_event_ids: list[str] = Field(default_factory=list)
     source_artifact_ids: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -75,6 +75,8 @@ class ContextLayoutPlan(BaseModel):
     ephemeral_block_ids: list[str]
     stable_prefix_fingerprint: str
     dynamic_suffix_fingerprint: str
+    stable_prefix_fingerprint_short: str | None = None
+    dynamic_suffix_fingerprint_short: str | None = None
     stable_prefix_bytes: int
     dynamic_suffix_bytes: int
     ephemeral_bytes: int
@@ -86,10 +88,7 @@ class ContextLayoutPlan(BaseModel):
 
 
 def estimate_tokens(text: str) -> int:
-    """Estimate token count using a simple heuristic (~4 chars per token).
-    
-    This is approximate and used for observational reporting only.
-    """
+    """Estimate token count using a simple heuristic (~4 chars per token)."""
     return len(text) // 4
 
 

@@ -226,10 +226,18 @@ class DuckDBProjection:
 
             if res and res[0] > 0:
                 summary.context_layout_count = res[0]
-                summary.stable_prefix_stable_count = int(res[1]) if res[1] is not None else 0
-                summary.stable_prefix_changed_count = int(res[2]) if res[2] is not None else 0
-                summary.avg_cacheability_ratio = float(res[3]) if res[3] is not None else 0.0
-                summary.max_cache_candidate_bytes = int(res[4]) if res[4] is not None else 0
+                summary.stable_prefix_stable_count = (
+                    int(res[1]) if res[1] is not None else 0
+                )
+                summary.stable_prefix_changed_count = (
+                    int(res[2]) if res[2] is not None else 0
+                )
+                summary.avg_cacheability_ratio = (
+                    float(res[3]) if res[3] is not None else 0.0
+                )
+                summary.max_cache_candidate_bytes = (
+                    int(res[4]) if res[4] is not None else 0
+                )
 
             # Count layout optimization hints
             l_hints_res = cl_rel.project("payload.optimization_hints").fetchall()

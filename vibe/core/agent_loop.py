@@ -1274,6 +1274,8 @@ class AgentLoop:
                 layout_id=layout.layout_id,
                 stable_prefix_fingerprint=layout.stable_prefix_fingerprint,
                 dynamic_suffix_fingerprint=layout.dynamic_suffix_fingerprint,
+                stable_prefix_fingerprint_short=layout.stable_prefix_fingerprint_short or "",
+                dynamic_suffix_fingerprint_short=layout.dynamic_suffix_fingerprint_short or "",
                 stable_prefix_bytes=layout.stable_prefix_bytes,
                 dynamic_suffix_bytes=layout.dynamic_suffix_bytes,
                 ephemeral_bytes=layout.ephemeral_bytes,
@@ -1286,6 +1288,7 @@ class AgentLoop:
                 layout_hash=layout_hash,
             )
         except Exception as e:
+            from vibe.core.logger import logger
             logger.warning("Failed to generate context assembly report: %s", e)
 
     async def _chat(
