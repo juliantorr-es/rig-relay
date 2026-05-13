@@ -563,6 +563,43 @@ async def test_provider_independent_repo_local_evidence_smoke(
     artifact_event = next(
         event for event in events if event["event_name"] == EventName.ARTIFACT_WRITTEN
     )
+    assembly_event = next(
+        event
+        for event in events
+        if event["event_name"] == EventName.CONTEXT_ASSEMBLY_REPORTED
+    )
+    layout_event = next(
+        event
+        for event in events
+        if event["event_name"] == EventName.CONTEXT_LAYOUT_PLANNED
+    )
+
+    artifact_data = [
+        json.loads(path.read_text(encoding="utf-8")) for path in artifact_files
+    ]
+    shadow_data = [
+        json.loads(path.read_text(encoding="utf-8")) for path in shadow_reports
+    ]
+    layout_data = [
+        json.loads(path.read_text(encoding="utf-8")) for path in layout_reports
+    ]
+    assembly_data = [
+        json.loads(path.read_text(encoding="utf-8")) for path in assembly_reports
+    ]
+
+    assert any(
+        item["artifact_id"] == artifact_event["payload"]["artifact_id"]
+        for item in artifact_data
+    )
+    assert any(item["shadow_request_id"] for item in shadow_data)
+    assert any(
+        item["report_id"] == assembly_event["payload"]["report_id"]
+        for item in assembly_data
+    )
+    assert any(
+        item["layout_id"] == layout_event["payload"]["layout_id"]
+        for item in layout_data
+    )
     assert (
         artifact_event["payload"]["schema_version"]
         == "rig.relay.tool_output_artifact.v1"
@@ -570,6 +607,11 @@ async def test_provider_independent_repo_local_evidence_smoke(
     assert artifact_event["payload"]["raw_byte_size"] > 16_384
     assert artifact_event["payload"]["payload_sha256"].startswith("sha256:")
     assert "raw_output" not in artifact_event["payload"]
+
+    assert len(artifact_files) == 1
+    assert len(shadow_reports) == 1
+    assert len(layout_reports) == 1
+    assert len(assembly_reports) == 1
 
 
 @pytest.mark.asyncio

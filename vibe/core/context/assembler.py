@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Literal
 
@@ -15,6 +14,7 @@ from vibe.core.telemetry.context_blocks import (
     estimate_tokens,
     fingerprint_text,
 )
+from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.types import LLMMessage, Role
 
 # Constants for optimization thresholds
@@ -164,7 +164,7 @@ async def write_layout_plan(plan: ContextLayoutPlan) -> Path:
     # Atomic write with deterministic JSON
     temp_path = path.with_suffix(".tmp")
     try:
-        content = plan.model_dump_json(indent=2)
+        content = dump_canonical_json(plan.model_dump(mode="json"))
         temp_path.write_text(content, encoding="utf-8")
         temp_path.replace(path)
     finally:
@@ -181,7 +181,9 @@ async def write_shadow_request_report(report: ShadowRequestReport) -> Path:
     path = report_dir / f"shadow_request_{report.shadow_request_id[:8]}.json"
     temp_path = path.with_suffix(".tmp")
     try:
-        temp_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+        temp_path.write_text(
+            dump_canonical_json(report.model_dump(mode="json")), encoding="utf-8"
+        )
         temp_path.replace(path)
     finally:
         if temp_path.exists():
@@ -216,7 +218,7 @@ def build_context_assembly_report(
 
     if tool_manager_info:
         # If we have tool schema info, record it as a stable block
-        schemas = json.dumps(tool_manager_info, sort_keys=True)
+        schemas = dump_canonical_json(tool_manager_info)
         kind = ContextBlockKind.TOOL_SCHEMA
         stability, cacheable = classify_block_stability(kind)
         blocks.append(_make_block(kind, stability, cacheable, schemas, source_index=-1))
@@ -238,9 +240,9 @@ def build_context_assembly_report(
 
         # Add tool calls info if present (from assistant role)
         if msg.tool_calls:
-            content += "\n" + json.dumps(
-                [tc.model_dump() for tc in msg.tool_calls], sort_keys=True
-            )
+            content += "\n" + dump_canonical_json([
+                tc.model_dump(mode="json") for tc in msg.tool_calls
+            ])
 
         blocks.append(_make_block(kind, stability, cacheable, content, source_index=i))
 
@@ -354,7 +356,7 @@ async def write_assembly_report(report: ContextAssemblyReport) -> Path:
     # Atomic write with deterministic JSON
     temp_path = path.with_suffix(".tmp")
     try:
-        content = report.model_dump_json(indent=2)
+        content = dump_canonical_json(report.model_dump(mode="json"))
         temp_path.write_text(content, encoding="utf-8")
         temp_path.replace(path)
     finally:

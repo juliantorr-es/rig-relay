@@ -7,6 +7,8 @@ from vibe.core.context.assembler import (
     build_shadow_request_report,
     plan_context_layout,
     write_assembly_report,
+    write_layout_plan,
+    write_shadow_request_report,
 )
 from vibe.core.telemetry.context_blocks import (
     ContextAssemblyReport,
@@ -16,6 +18,7 @@ from vibe.core.telemetry.context_blocks import (
     estimate_tokens,
     fingerprint_text,
 )
+from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.types import LLMMessage, Role
 
 
@@ -90,9 +93,53 @@ def test_write_assembly_report(tmp_path, monkeypatch):
     path = asyncio.run(write_assembly_report(report))
 
     assert path.exists()
-    content = json.loads(path.read_text())
+    raw = path.read_text(encoding="utf-8")
+    assert raw == dump_canonical_json(json.loads(raw))
+    content = json.loads(raw)
     assert content["report_id"] == report.report_id
     assert len(content["blocks"]) == 1
+
+
+def test_write_layout_plan_is_canonical(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    report = build_context_assembly_report(
+        session_id="session-1", messages=[LLMMessage(role=Role.system, content="test")]
+    )
+    plan = plan_context_layout(report)
+
+    import asyncio
+
+    path = asyncio.run(write_layout_plan(plan))
+
+    raw = path.read_text(encoding="utf-8")
+    assert raw == dump_canonical_json(json.loads(raw))
+    content = json.loads(raw)
+    assert content["layout_id"] == plan.layout_id
+
+
+def test_write_shadow_request_report_is_canonical(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    report = build_context_assembly_report(
+        session_id="session-1", messages=[LLMMessage(role=Role.system, content="test")]
+    )
+    plan = plan_context_layout(report)
+    shadow = build_shadow_request_report(
+        session_id="session-1",
+        messages=[LLMMessage(role=Role.system, content="test")],
+        report=report,
+        layout=plan,
+    )
+
+    import asyncio
+
+    path = asyncio.run(write_shadow_request_report(shadow))
+
+    raw = path.read_text(encoding="utf-8")
+    assert raw == dump_canonical_json(json.loads(raw))
+    content = json.loads(raw)
+    assert content["shadow_request_id"] == shadow.shadow_request_id
 
 
 def test_plan_context_layout_prefix_stability():

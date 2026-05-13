@@ -32,6 +32,10 @@ class ContextAccounting(BaseModel):
 from vibe.core.paths._vibe_home import SESSIONS_ROOT
 
 
+def dump_canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
 def get_observability_log_path(session_id: str) -> Path:
     """Return the path to the local observability JSONL log for a session."""
     base = SESSIONS_ROOT.path / session_id
@@ -82,13 +86,13 @@ def log_local_event(
 
     # 4. Hash the event contents (excluding the hash itself)
     # We use a deterministic compact JSON representation for the hash.
-    event_str = json.dumps(event, sort_keys=True, separators=(",", ":"))
+    event_str = dump_canonical_json(event)
     event["event_hash"] = (
         f"sha256:{hashlib.sha256(event_str.encode('utf-8')).hexdigest()}"
     )
 
     with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(event) + "\n")
+        f.write(dump_canonical_json(event) + "\n")
 
 
 def compute_fingerprint(content: str) -> str:

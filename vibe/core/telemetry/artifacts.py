@@ -9,6 +9,8 @@ import uuid
 
 from pydantic import BaseModel, Field
 
+from vibe.core.telemetry.local import dump_canonical_json
+
 
 class ToolOutputArtifact(BaseModel):
     schema_version: str = "rig.relay.tool_output_artifact.v1"
@@ -117,9 +119,7 @@ class ToolOutputArtifactWriter:
             "raw_payload_kind": raw_kind,
         }
 
-        payload_bytes = json.dumps(
-            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
+        payload_bytes = dump_canonical_json(payload).encode("utf-8")
         payload_sha256 = f"sha256:{hashlib.sha256(payload_bytes).hexdigest()}"
 
         excerpt = make_prompt_excerpt(raw_output)
@@ -145,14 +145,10 @@ class ToolOutputArtifactWriter:
                 "path": str(artifact_path),
             },
         }
-        envelope_bytes = json.dumps(
-            envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
+        envelope_bytes = dump_canonical_json(envelope).encode("utf-8")
         artifact_record_sha256 = f"sha256:{hashlib.sha256(envelope_bytes).hexdigest()}"
         envelope["artifact_record_sha256"] = artifact_record_sha256
-        artifact_bytes = json.dumps(
-            envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
+        artifact_bytes = dump_canonical_json(envelope).encode("utf-8")
 
         temp_path = artifact_path.with_suffix(".tmp")
         try:

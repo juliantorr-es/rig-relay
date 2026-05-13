@@ -11,6 +11,7 @@ from vibe.core.telemetry.artifacts import (
     make_prompt_excerpt,
     should_artifact_tool_result,
 )
+from vibe.core.telemetry.local import dump_canonical_json
 
 
 def test_should_artifact_tool_result():
@@ -72,6 +73,25 @@ def test_write_artifact(tmp_path, monkeypatch):
     ).encode("utf-8")
     assert (
         artifact.payload_sha256 == f"sha256:{hashlib.sha256(payload_bytes).hexdigest()}"
+    )
+
+
+def test_write_artifact_is_canonical_for_equivalent_inputs(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    writer = ToolOutputArtifactWriter("session-1")
+
+    first = writer.write_artifact("read_file", "Hello, artifact!", sequence=1)
+    second = writer.write_artifact("read_file", "Hello, artifact!", sequence=1)
+
+    first_content = Path(first.path).read_text(encoding="utf-8")
+    second_content = Path(second.path).read_text(encoding="utf-8")
+
+    assert first_content == dump_canonical_json(json.loads(first_content))
+    assert second_content == dump_canonical_json(json.loads(second_content))
+    assert json.loads(first_content)["payload"] == json.loads(second_content)["payload"]
+    assert (
+        json.loads(first_content)["payload_sha256"]
+        == json.loads(second_content)["payload_sha256"]
     )
 
 
