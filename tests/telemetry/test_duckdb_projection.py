@@ -23,16 +23,17 @@ def write_event(
 ):
     # Ensure payload has a stable-ish schema for DuckDB inference
     full_payload = {
-        "context_accounting": None,
-        "tool_name": None,
-        "status": None,
+        "context_accounting": {"model": "", "estimated_tokens": 0},
+        "tool_name": "",
+        "status": "",
         "raw_byte_size": 0,
+        "prompt_visible_byte_size": 0,
         "total_estimated_tokens": 0,
         "stable_prefix_bytes": 0,
         "dynamic_suffix_bytes": 0,
         "cache_candidate_bytes": 0,
         "cacheability_ratio": 0.0,
-        "prefix_stability_status": None,
+        "prefix_stability_status": "",
         "optimization_hints": [],
     }
     full_payload.update(payload)

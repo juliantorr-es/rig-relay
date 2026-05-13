@@ -29,9 +29,12 @@ class ContextAccounting(BaseModel):
     dynamic_suffix_fingerprint: str
 
 
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
+
+
 def get_observability_log_path(session_id: str) -> Path:
     """Return the path to the local observability JSONL log for a session."""
-    base = Path(".rig") / "relay" / "sessions" / session_id
+    base = SESSIONS_ROOT.path / session_id
     base.mkdir(parents=True, exist_ok=True)
     return base / "observability.jsonl"
 

@@ -53,13 +53,16 @@ class ObservabilitySummary:
     layout_hints_by_kind: dict[str, int] = field(default_factory=dict)
 
 
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
+
+
 class DuckDBProjection:
     """Read-only DuckDB projection over Rig Relay observability JSONL logs."""
 
     def __init__(self, session_root: Path | None = None) -> None:
         if session_root is None:
-            # Default to ~/.rig/relay/sessions
-            session_root = Path.home() / ".rig" / "relay" / "sessions"
+            # Default to canonical sessions root (~/.rig/relay/sessions)
+            session_root = SESSIONS_ROOT.path
         self.session_root = session_root
 
     def get_summary(self) -> ObservabilitySummary:
@@ -106,147 +109,168 @@ class DuckDBProjection:
 
             # 2c. Context accounting metrics
             # Filter for specific events to avoid schema noise in non-accounting payloads
-            acc_rel = rel.filter("event_name = 'rig.relay.context.request_accounted'")
-            res = acc_rel.aggregate(
-                "count(*), "
-                "max(payload.context_accounting.estimated_tokens), "
-                "avg(payload.context_accounting.estimated_tokens)"
-            ).fetchone()
+            if "payload" in rel.columns:
+                acc_rel = rel.filter(f"event_name = '{EventName.REQUEST_ACCOUNTED}'")
+                try:
+                    # Check if the nested struct has the key
+                    res = acc_rel.aggregate(
+                        "count(*), "
+                        "max(CAST(payload.context_accounting.estimated_tokens AS BIGINT)), "
+                        "avg(CAST(payload.context_accounting.estimated_tokens AS BIGINT))"
+                    ).fetchone()
 
-            if res and res[0] > 0:
-                summary.request_count = res[0]
-                summary.max_estimated_tokens = int(res[1]) if res[1] is not None else 0
-                summary.avg_estimated_tokens = (
-                    float(res[2]) if res[2] is not None else 0.0
-                )
+                    if res and res[0] > 0:
+                        summary.request_count = res[0]
+                        summary.max_estimated_tokens = int(res[1]) if res[1] is not None else 0
+                        summary.avg_estimated_tokens = (
+                            float(res[2]) if res[2] is not None else 0.0
+                        )
 
-            # 2d. Largest requests
-            # We use project() to pick specific nested fields
-            res = (
-                acc_rel
-                .project(
-                    "payload.context_accounting.model as model, "
-                    "payload.context_accounting.estimated_tokens as tokens, "
-                    "session_id, created_at"
-                )
-                .order("tokens DESC")
-                .limit(5)
-                .fetchall()
-            )
+                        # 2d. Largest requests
+                        # We use project() to pick specific nested fields
+                        l_res = (
+                            acc_rel
+                            .project(
+                                "payload.context_accounting.model as model, "
+                                "CAST(payload.context_accounting.estimated_tokens AS BIGINT) as tokens, "
+                                "session_id, created_at"
+                            )
+                            .order("tokens DESC")
+                            .limit(5)
+                            .fetchall()
+                        )
 
-            for r in res:
-                summary.largest_requests.append({
-                    "model": r[0],
-                    "tokens": r[1],
-                    "session_id": r[2],
-                    "timestamp": r[3],
-                })
+                        for r in l_res:
+                            summary.largest_requests.append({
+                                "model": r[0],
+                                "tokens": r[1],
+                                "session_id": r[2],
+                                "timestamp": r[3],
+                            })
+                except Exception:
+                    pass
 
             # 2e. Tool calls
-            tool_rel = rel.filter("event_name = 'rig.relay.tool.call_completed'")
-            res = tool_rel.aggregate("payload.tool_name, count(*)").fetchall()
-            summary.tool_calls_by_name = dict(res)
+            if "payload" in rel.columns:
+                tool_rel = rel.filter(f"event_name = '{EventName.TOOL_CALL_COMPLETED}'")
+                try:
+                    res = tool_rel.aggregate("payload.tool_name, count(*)").fetchall()
+                    summary.tool_calls_by_name = dict(res)
 
-            res = tool_rel.aggregate("payload.status, count(*)").fetchall()
-            summary.tool_calls_by_status = dict(res)
+                    res = tool_rel.aggregate("payload.status, count(*)").fetchall()
+                    summary.tool_calls_by_status = dict(res)
+                except Exception as e:
+                    summary.errors.append(f"Tool call projection failed: {e}")
 
             # 2f. Artifact metrics
-            art_rel = rel.filter(
-                "event_name = 'rig.relay.artifact.tool_output_written'"
-            )
-            res = art_rel.aggregate(
-                "count(*), "
-                "sum(payload.raw_byte_size), "
-                "sum(payload.prompt_visible_byte_size)"
-            ).fetchone()
+            if "payload" in rel.columns:
+                art_rel = rel.filter(
+                    f"event_name = '{EventName.ARTIFACT_WRITTEN}'"
+                )
+                try:
+                    res = art_rel.aggregate(
+                        "count(*), "
+                        "sum(CAST(payload.raw_byte_size AS BIGINT)), "
+                        "sum(CAST(payload.prompt_visible_byte_size AS BIGINT))"
+                    ).fetchone()
 
-            if res and res[0] > 0:
-                summary.artifact_count = res[0]
-                summary.artifact_raw_bytes_total = (
-                    int(res[1]) if res[1] is not None else 0
-                )
-                summary.artifact_prompt_visible_bytes_total = (
-                    int(res[2]) if res[2] is not None else 0
-                )
-                summary.artifact_bytes_saved_estimate = (
-                    summary.artifact_raw_bytes_total
-                    - summary.artifact_prompt_visible_bytes_total
-                )
+                    if res and res[0] > 0:
+                        summary.artifact_count = res[0]
+                        summary.artifact_raw_bytes_total = (
+                            int(res[1]) if res[1] is not None else 0
+                        )
+                        summary.artifact_prompt_visible_bytes_total = (
+                            int(res[2]) if res[2] is not None else 0
+                        )
+                        summary.artifact_bytes_saved_estimate = (
+                            summary.artifact_raw_bytes_total
+                            - summary.artifact_prompt_visible_bytes_total
+                        )
 
-            res = art_rel.aggregate("payload.tool_name, count(*)").fetchall()
-            summary.artifacts_by_tool = dict(res)
+                    res = art_rel.aggregate("payload.tool_name, count(*)").fetchall()
+                    summary.artifacts_by_tool = dict(res)
+                except Exception as e:
+                    summary.errors.append(f"Artifact projection failed: {e}")
 
             # 2g. Context Assembly metrics
-            ca_rel = rel.filter("event_name = 'rig.relay.context.assembly_reported'")
-            res = ca_rel.aggregate(
-                "count(*), "
-                "max(payload.total_estimated_tokens), "
-                "avg(payload.total_estimated_tokens), "
-                "max(payload.stable_prefix_bytes), "
-                "max(payload.dynamic_suffix_bytes), "
-                "sum(payload.cache_candidate_bytes)"
-            ).fetchone()
+            if "payload" in rel.columns:
+                ca_rel = rel.filter(f"event_name = '{EventName.CONTEXT_ASSEMBLY_REPORTED}'")
+                try:
+                    res = ca_rel.aggregate(
+                        "count(*), "
+                        "max(CAST(payload.total_estimated_tokens AS BIGINT)), "
+                        "avg(CAST(payload.total_estimated_tokens AS BIGINT)), "
+                        "max(CAST(payload.stable_prefix_bytes AS BIGINT)), "
+                        "max(CAST(payload.dynamic_suffix_bytes AS BIGINT)), "
+                        "sum(CAST(payload.cache_candidate_bytes AS BIGINT))"
+                    ).fetchone()
 
-            if res and res[0] > 0:
-                summary.context_assembly_count = res[0]
-                summary.max_context_estimated_tokens = (
-                    int(res[1]) if res[1] is not None else 0
-                )
-                summary.avg_context_estimated_tokens = (
-                    float(res[2]) if res[2] is not None else 0.0
-                )
-                summary.max_stable_prefix_bytes = (
-                    int(res[3]) if res[3] is not None else 0
-                )
-                summary.max_dynamic_suffix_bytes = (
-                    int(res[4]) if res[4] is not None else 0
-                )
-                summary.cache_candidate_bytes_total = (
-                    int(res[5]) if res[5] is not None else 0
-                )
+                    if res and res[0] > 0:
+                        summary.context_assembly_count = res[0]
+                        summary.max_context_estimated_tokens = (
+                            int(res[1]) if res[1] is not None else 0
+                        )
+                        summary.avg_context_estimated_tokens = (
+                            float(res[2]) if res[2] is not None else 0.0
+                        )
+                        summary.max_stable_prefix_bytes = (
+                            int(res[3]) if res[3] is not None else 0
+                        )
+                        summary.max_dynamic_suffix_bytes = (
+                            int(res[4]) if res[4] is not None else 0
+                        )
+                        summary.cache_candidate_bytes_total = (
+                            int(res[5]) if res[5] is not None else 0
+                        )
 
-            # Count optimization hints by flattening the list
-            hints_res = ca_rel.project("payload.optimization_hints").fetchall()
-            hint_counts: dict[str, int] = {}
-            for row in hints_res:
-                if row[0]:
-                    for hint in row[0]:
-                        hint_counts[hint] = hint_counts.get(hint, 0) + 1
-            summary.optimization_hints_by_kind = hint_counts
+                    # Count optimization hints by flattening the list
+                    hints_res = ca_rel.project("payload.optimization_hints").fetchall()
+                    hint_counts: dict[str, int] = {}
+                    for row in hints_res:
+                        if row[0]:
+                            for hint in row[0]:
+                                hint_counts[hint] = hint_counts.get(hint, 0) + 1
+                    summary.optimization_hints_by_kind = hint_counts
+                except Exception as e:
+                    summary.errors.append(f"Context assembly projection failed: {e}")
 
             # 2h. Context Layout metrics
-            cl_rel = rel.filter("event_name = 'rig.relay.context.layout_planned'")
-            res = cl_rel.aggregate(
-                "count(*), "
-                "sum(CASE WHEN payload.prefix_stability_status = 'stable' THEN 1 ELSE 0 END), "
-                "sum(CASE WHEN payload.prefix_stability_status = 'changed' THEN 1 ELSE 0 END), "
-                "avg(payload.cacheability_ratio), "
-                "max(payload.cache_candidate_bytes)"
-            ).fetchone()
+            if "payload" in rel.columns:
+                cl_rel = rel.filter(f"event_name = '{EventName.CONTEXT_LAYOUT_PLANNED}'")
+                try:
+                    res = cl_rel.aggregate(
+                        "count(*), "
+                        "sum(CASE WHEN payload.prefix_stability_status = 'stable' THEN 1 ELSE 0 END), "
+                        "sum(CASE WHEN payload.prefix_stability_status = 'changed' THEN 1 ELSE 0 END), "
+                        "avg(CAST(payload.cacheability_ratio AS DOUBLE)), "
+                        "max(CAST(payload.cache_candidate_bytes AS BIGINT))"
+                    ).fetchone()
 
-            if res and res[0] > 0:
-                summary.context_layout_count = res[0]
-                summary.stable_prefix_stable_count = (
-                    int(res[1]) if res[1] is not None else 0
-                )
-                summary.stable_prefix_changed_count = (
-                    int(res[2]) if res[2] is not None else 0
-                )
-                summary.avg_cacheability_ratio = (
-                    float(res[3]) if res[3] is not None else 0.0
-                )
-                summary.max_cache_candidate_bytes = (
-                    int(res[4]) if res[4] is not None else 0
-                )
+                    if res and res[0] > 0:
+                        summary.context_layout_count = res[0]
+                        summary.stable_prefix_stable_count = (
+                            int(res[1]) if res[1] is not None else 0
+                        )
+                        summary.stable_prefix_changed_count = (
+                            int(res[2]) if res[2] is not None else 0
+                        )
+                        summary.avg_cacheability_ratio = (
+                            float(res[3]) if res[3] is not None else 0.0
+                        )
+                        summary.max_cache_candidate_bytes = (
+                            int(res[4]) if res[4] is not None else 0
+                        )
 
-            # Count layout optimization hints
-            l_hints_res = cl_rel.project("payload.optimization_hints").fetchall()
-            l_hint_counts: dict[str, int] = {}
-            for row in l_hints_res:
-                if row[0]:
-                    for hint in row[0]:
-                        l_hint_counts[hint] = l_hint_counts.get(hint, 0) + 1
-            summary.layout_hints_by_kind = l_hint_counts
+                    # Count layout optimization hints
+                    l_hints_res = cl_rel.project("payload.optimization_hints").fetchall()
+                    l_hint_counts: dict[str, int] = {}
+                    for row in l_hints_res:
+                        if row[0]:
+                            for hint in row[0]:
+                                l_hint_counts[hint] = l_hint_counts.get(hint, 0) + 1
+                    summary.layout_hints_by_kind = l_hint_counts
+                except Exception as e:
+                    summary.errors.append(f"Context layout projection failed: {e}")
 
         except Exception as e:
             summary.errors.append(f"DuckDB projection failed: {e}")

@@ -8,6 +8,7 @@ from unittest.mock import patch
 from jsonschema import validate
 import pytest
 
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.config import VibeConfig
 from vibe.core.telemetry.constants import EventName
 import vibe.core.telemetry.send
@@ -20,6 +21,12 @@ SCHEMA_PATH = (
     / "schemas"
     / "rig.relay.observability.v1.schema.json"
 )
+
+
+@pytest.fixture(autouse=True)
+def rig_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("RIG_RELAY_HOME", str(tmp_path))
+    return tmp_path
 
 
 @pytest.fixture
@@ -36,9 +43,23 @@ def mock_config():
 
 
 @pytest.fixture
-def real_telemetry_client():
-    # Force reload to get the real send_telemetry_event (not the conftest mock)
+def real_telemetry_client(monkeypatch):
+    """Force reload of telemetry modules to ensure we use the real implementation."""
+    import vibe.core.paths._vibe_home
+    import vibe.core.telemetry.local
+    import vibe.core.telemetry.send
+
+    importlib.reload(vibe.core.paths._vibe_home)
+    importlib.reload(vibe.core.telemetry.local)
     importlib.reload(vibe.core.telemetry.send)
+
+    # Re-apply the real method to the class just in case the reload didn't fully clean it
+    from vibe.core.telemetry.send import TelemetryClient as RealClient
+    monkeypatch.setattr(
+        "vibe.core.telemetry.send.TelemetryClient.send_telemetry_event",
+        RealClient.send_telemetry_event
+    )
+
     return vibe.core.telemetry.send.TelemetryClient
 
 
@@ -67,7 +88,7 @@ async def test_local_observability_writes_formal_envelope(
         messages=messages,
     )
 
-    log_file = tmp_path / ".rig" / "relay" / "sessions" / sid / "observability.jsonl"
+    log_file = SESSIONS_ROOT.path / sid / "observability.jsonl"
     assert log_file.exists()
 
     lines = log_file.read_text().splitlines()
@@ -100,7 +121,7 @@ async def test_local_observability_sequencing(
     client.send_telemetry_event("event.two", {"idx": 2})
     client.send_telemetry_event("event.three", {"idx": 3})
 
-    log_file = tmp_path / ".rig" / "relay" / "sessions" / sid / "observability.jsonl"
+    log_file = SESSIONS_ROOT.path / sid / "observability.jsonl"
     lines = log_file.read_text().splitlines()
     assert len(lines) == 3
 
@@ -122,7 +143,7 @@ async def test_local_observability_hash_stability(
     )
 
     # Send identical event twice (wiping file in between to keep sequence=0)
-    log_file = tmp_path / ".rig" / "relay" / "sessions" / sid / "observability.jsonl"
+    log_file = SESSIONS_ROOT.path / sid / "observability.jsonl"
 
     with patch("vibe.core.telemetry.local.datetime") as mock_datetime:
         fixed_now = "2024-01-01T00:00:00+00:00"
@@ -159,7 +180,7 @@ async def test_local_observability_receipt_candidate(
         EventName.TOOL_CALL_COMPLETED, {"tool": "test"}, receipt_candidate=True
     )
 
-    log_file = tmp_path / ".rig" / "relay" / "sessions" / sid / "observability.jsonl"
+    log_file = SESSIONS_ROOT.path / sid / "observability.jsonl"
     line = log_file.read_text().splitlines()[0]
     event = json.loads(line)
     assert event["event_name"] == EventName.TOOL_CALL_COMPLETED

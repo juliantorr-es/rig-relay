@@ -7,6 +7,7 @@ from pathlib import Path
 from jsonschema import validate
 import pytest
 
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.config import VibeConfig
 from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
@@ -20,6 +21,18 @@ SCHEMA_PATH = (
     / "schemas"
     / "rig.relay.observability.v1.schema.json"
 )
+
+
+@pytest.fixture(autouse=True)
+def rig_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("RIG_RELAY_HOME", str(tmp_path))
+    return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def telemetry_events():
+    """Override the autouse mock from conftest to allow real telemetry to flow."""
+    return []
 
 
 @pytest.fixture
@@ -36,9 +49,27 @@ def mock_config():
 
 
 @pytest.fixture
-def real_telemetry_client():
-    # Force reload to get the real send_telemetry_event (not the conftest mock)
+def real_telemetry_client(monkeypatch):
+    """Force reload of telemetry modules to ensure we use the real implementation."""
+    import vibe.core.paths._vibe_home
+    import vibe.core.telemetry.local
+    import vibe.core.telemetry.send
+    import vibe.core.telemetry.duckdb_projection
+    import vibe.core.agent_loop
+
+    importlib.reload(vibe.core.paths._vibe_home)
+    importlib.reload(vibe.core.telemetry.local)
     importlib.reload(vibe.core.telemetry.send)
+    importlib.reload(vibe.core.telemetry.duckdb_projection)
+    importlib.reload(vibe.core.agent_loop)
+
+    # Re-apply the real method to the class just in case the reload didn't fully clean it
+    from vibe.core.telemetry.send import TelemetryClient as RealClient
+    monkeypatch.setattr(
+        "vibe.core.telemetry.send.TelemetryClient.send_telemetry_event",
+        RealClient.send_telemetry_event
+    )
+
     return vibe.core.telemetry.send.TelemetryClient
 
 
@@ -79,7 +110,7 @@ async def test_observability_e2e_request_accounting(
 
     # 2. Verify JSONL exists and matches schema
     log_file = (
-        tmp_path / ".rig" / "relay" / "sessions" / session_id / "observability.jsonl"
+        SESSIONS_ROOT.path / session_id / "observability.jsonl"
     )
     assert log_file.exists()
 
@@ -92,7 +123,7 @@ async def test_observability_e2e_request_accounting(
     if not HAS_DUCKDB:
         pytest.skip("DuckDB not installed, skipping projection phase")
 
-    session_root = tmp_path / ".rig" / "relay" / "sessions"
+    session_root = SESSIONS_ROOT.path
     analyzer = DuckDBProjection(session_root)
     summary = analyzer.get_summary()
 
@@ -142,9 +173,7 @@ async def test_observability_e2e_tool_completion(
     )
 
     # 2. Verify JSONL envelope has receipt_candidate: True
-    log_file = (
-        tmp_path / ".rig" / "relay" / "sessions" / session_id / "observability.jsonl"
-    )
+    log_file = SESSIONS_ROOT.path / session_id / "observability.jsonl"
     line = log_file.read_text().splitlines()[0]
     event = json.loads(line)
     validate(instance=event, schema=observability_schema)
@@ -155,7 +184,7 @@ async def test_observability_e2e_tool_completion(
     if not HAS_DUCKDB:
         pytest.skip("DuckDB not installed, skipping projection phase")
 
-    session_root = tmp_path / ".rig" / "relay" / "sessions"
+    session_root = SESSIONS_ROOT.path
     analyzer = DuckDBProjection(session_root)
     summary = analyzer.get_summary()
 
@@ -205,10 +234,7 @@ async def test_observability_e2e_artifacting(
 
     # 2. Verify artifact exists
     artifact_dir = (
-        tmp_path
-        / ".rig"
-        / "relay"
-        / "sessions"
+        SESSIONS_ROOT.path
         / session_id
         / "artifacts"
         / "tool-results"
@@ -217,9 +243,7 @@ async def test_observability_e2e_artifacting(
     assert len(artifacts) == 1
 
     # 3. Verify observability event
-    log_file = (
-        tmp_path / ".rig" / "relay" / "sessions" / session_id / "observability.jsonl"
-    )
+    log_file = SESSIONS_ROOT.path / session_id / "observability.jsonl"
     events = [json.loads(line) for line in log_file.read_text().splitlines()]
     artifact_event = next(
         e for e in events if e["event_name"] == EventName.ARTIFACT_WRITTEN
@@ -234,7 +258,7 @@ async def test_observability_e2e_artifacting(
     if not HAS_DUCKDB:
         pytest.skip("DuckDB not installed")
 
-    session_root = tmp_path / ".rig" / "relay" / "sessions"
+    session_root = SESSIONS_ROOT.path
     analyzer = DuckDBProjection(session_root)
     summary = analyzer.get_summary()
 
@@ -269,7 +293,7 @@ async def test_observability_e2e_context_assembly(
 
     # 2. Verify JSONL exists and matches schema
     log_file = (
-        tmp_path / ".rig" / "relay" / "sessions" / session_id / "observability.jsonl"
+        SESSIONS_ROOT.path / session_id / "observability.jsonl"
     )
     line = log_file.read_text().splitlines()[0]
     event = json.loads(line)
@@ -280,16 +304,16 @@ async def test_observability_e2e_context_assembly(
     assert "blocks" not in event["payload"]
     assert "stable_prefix_bytes" in event["payload"]
 
-    # 3. Verify report artifact exists
-    report_dir = tmp_path / ".rig" / "relay" / "sessions" / session_id / "context"
+    # 3. Verify report artifact exists (assembly and layout)
+    report_dir = SESSIONS_ROOT.path / session_id / "context"
     reports = list(report_dir.glob("*.json"))
-    assert len(reports) == 1
+    assert len(reports) >= 1
 
     # 4. Verify DuckDB Projection
     if not HAS_DUCKDB:
         pytest.skip("DuckDB not installed")
 
-    session_root = tmp_path / ".rig" / "relay" / "sessions"
+    session_root = SESSIONS_ROOT.path
     analyzer = DuckDBProjection(session_root)
     summary = analyzer.get_summary()
 
@@ -323,7 +347,7 @@ async def test_observability_e2e_context_layout(
 
     # 2. Verify JSONL exists and matches schema
     log_file = (
-        tmp_path / ".rig" / "relay" / "sessions" / session_id / "observability.jsonl"
+        SESSIONS_ROOT.path / session_id / "observability.jsonl"
     )
     lines = log_file.read_text().splitlines()
 
@@ -338,7 +362,7 @@ async def test_observability_e2e_context_layout(
     assert event2["payload"]["prefix_stability_status"] == "unknown"
 
     # 3. Verify layout artifact exists
-    report_dir = tmp_path / ".rig" / "relay" / "sessions" / session_id / "context"
+    report_dir = SESSIONS_ROOT.path / session_id / "context"
     layouts = list(report_dir.glob("layout_*.json"))
     assert len(layouts) == 1
 
@@ -346,7 +370,7 @@ async def test_observability_e2e_context_layout(
     if not HAS_DUCKDB:
         pytest.skip("DuckDB not installed")
 
-    session_root = tmp_path / ".rig" / "relay" / "sessions"
+    session_root = SESSIONS_ROOT.path
     analyzer = DuckDBProjection(session_root)
     summary = analyzer.get_summary()
 

@@ -38,11 +38,12 @@ class PromptVisibleToolResult(BaseModel):
     summary: str
 
 
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
+
+
 def get_artifact_dir(session_id: str) -> Path:
     """Return the base directory for session artifacts."""
-    return (
-        Path(".rig") / "relay" / "sessions" / session_id / "artifacts" / "tool-results"
-    )
+    return SESSIONS_ROOT.path / session_id / "artifacts" / "tool-results"
 
 
 def should_artifact_tool_result(content: str, threshold_bytes: int = 16384) -> bool:

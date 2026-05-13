@@ -134,7 +134,7 @@ def plan_context_layout(
 
 async def load_latest_layout(session_id: str) -> ContextLayoutPlan | None:
     """Read the latest previous layout JSON for the same session if one exists."""
-    report_dir = Path(".rig") / "relay" / "sessions" / session_id / "context"
+    report_dir = SESSIONS_ROOT.path / session_id / "context"
     if not report_dir.exists():
         return None
 
@@ -153,7 +153,7 @@ async def load_latest_layout(session_id: str) -> ContextLayoutPlan | None:
 
 async def write_layout_plan(plan: ContextLayoutPlan) -> Path:
     """Write the layout plan to the session directory."""
-    report_dir = Path(".rig") / "relay" / "sessions" / plan.session_id / "context"
+    report_dir = SESSIONS_ROOT.path / plan.session_id / "context"
     report_dir.mkdir(parents=True, exist_ok=True)
 
     path = report_dir / f"layout_{plan.layout_id[:8]}.json"
@@ -280,9 +280,12 @@ def build_context_assembly_report(
     )
 
 
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
+
+
 async def write_assembly_report(report: ContextAssemblyReport) -> Path:
     """Write the full context assembly report to the session directory."""
-    report_dir = Path(".rig") / "relay" / "sessions" / report.session_id / "context"
+    report_dir = SESSIONS_ROOT.path / report.session_id / "context"
     report_dir.mkdir(parents=True, exist_ok=True)
 
     path = report_dir / f"assembly_{report.report_id[:8]}.json"
