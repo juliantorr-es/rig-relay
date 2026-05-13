@@ -63,6 +63,9 @@ no prompt text, and no file contents.
 | schema_version | all artifacts |
 | thinking_enabled, thinking_type, reasoning_effort | `TaskSessionLinkArtifact` |
 | provider | `TaskSessionLinkArtifact` |
+| authorization_receipt_sha256 | `desktop.intent.completed`, `desktop.intent.refused` |
+| authorization_action | `desktop.intent.completed`, `desktop.intent.refused` |
+| authorization_status | `desktop.intent.completed`, `desktop.intent.refused` |
 
 ### Locally Retained (kept on disk, never exported)
 

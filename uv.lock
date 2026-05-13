@@ -14,7 +14,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-06T18:48:59.186223Z"
+exclude-newer = "2026-05-06T20:24:05.205222Z"
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
@@ -1838,6 +1838,24 @@ wheels = [
 ]
 
 [[package]]
+name = "pyobjc-framework-localauthentication"
+version = "12.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyobjc-core", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-security", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8d/0e/7e5d9a58bb3d5b79a75d925557ef68084171526191b1c0929a887a553d4f/pyobjc_framework_localauthentication-12.1.tar.gz", hash = "sha256:2284f587d8e1206166e4495b33f420c1de486c36c28c4921d09eec858a699d05", size = 29947, upload-time = "2025-11-14T10:16:54.923Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/93/91761ad4e5fa1c3ec25819865d1ccfbee033987147087bff4fcce67a4dc4/pyobjc_framework_localauthentication-12.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:3af1acd287d830cc7f912f46cde0dab054952bde0adaf66c8e8524311a68d279", size = 10773, upload-time = "2025-11-14T09:53:34.074Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/f5/a12c76525e4839c7fc902c6b0f0c441414a4dd9bc9a2d89ae697f6cd8850/pyobjc_framework_localauthentication-12.1-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:e26e746717f4774cce0568debec711f1d8effc430559ad634ff6b06fefd0a0bf", size = 10792, upload-time = "2025-11-14T09:53:35.876Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/ed/2714934b027afc6a99d0d817e42bf482d08c711422795fe777e3cd9ad8be/pyobjc_framework_localauthentication-12.1-cp313-cp313t-macosx_10_13_universal2.whl", hash = "sha256:02357cddc979aa169782bf09f380aab1c3af475c9eb6ffb07c77084ed10f6a6a", size = 10931, upload-time = "2025-11-14T09:53:37.672Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/58/6dfb304103b4cdaee44acd7f5093c07f3053df0cc9648c87876f1e5fc690/pyobjc_framework_localauthentication-12.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:f8d525ed2ad5cd56e420436187b534454d1f7d1fae6e585df82397d6d92c6e54", size = 10841, upload-time = "2025-11-14T09:53:39.337Z" },
+    { url = "https://files.pythonhosted.org/packages/17/af/1c7ce26b46cc978852895017212cf3637d5334274213265234149e0937d4/pyobjc_framework_localauthentication-12.1-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:93c5470a9d60b53afa0faf31d95dc8d6fc3a7ff85c425ab157ea491b6dc3af39", size = 10975, upload-time = "2025-11-14T09:53:41.177Z" },
+]
+
+[[package]]
 name = "pyobjc-framework-quartz"
 version = "12.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2428,6 +2446,7 @@ dependencies = [
     { name = "pexpect" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'" },
     { name = "pyperclip" },
     { name = "python-dotenv" },
     { name = "pywebview" },
@@ -2508,6 +2527,7 @@ requires-dist = [
     { name = "pexpect", specifier = ">=4.9.0" },
     { name = "pydantic", specifier = ">=2.12.4" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
+    { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'" },
     { name = "pyperclip", specifier = ">=1.11.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pywebview", specifier = ">=4.10" },

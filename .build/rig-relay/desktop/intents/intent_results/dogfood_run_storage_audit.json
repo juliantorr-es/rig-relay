@@ -1,0 +1,16 @@
+{
+  "authorization_required": false,
+  "created_at": "2026-05-13T20:22:07.921034+00:00",
+  "dry_run": true,
+  "intent_id": "dogfood_run_storage_audit",
+  "intent_name": "run_storage_audit",
+  "output_refs": [],
+  "projection_refresh_recommended": false,
+  "result_kind": "storage_audit",
+  "schema_version": "rig.relay.desktop_intent_result.v1",
+  "status": "completed",
+  "summary": "Storage audit: 4.9 MB, budget=ok, stale_leases=0, rollup_candidates=9, prune_candidates=0, 1 recommendations.",
+  "warnings": [
+    "Run compaction: 9 JSONL dataset(s) without Parquet"
+  ]
+}

@@ -129,6 +129,18 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
             "reason": {"type": "string", "default": ""},
         },
     },
+    "mint_authorization_receipt_local": {
+        "description": "Mint a local system auth authorization receipt for a Phase 1 protected intent.",
+        "affects_projection": False,
+        "parameters": {
+            "action": {
+                "type": "string",
+                "enum": ["checkpoint.commit", "lease_cleanup.archive"],
+            },
+            "ttl_seconds": {"type": "integer", "default": 300},
+            "reason": {"type": "string", "default": ""},
+        },
+    },
     "inspect_authorization_receipt": {
         "description": "Inspect a local authorization receipt without exposing raw body in audit.",
         "affects_projection": False,
@@ -312,6 +324,8 @@ def validate_protected_intent_authorization(
         "authorization_receipt_sha256": receipt.get("receipt_sha256", ""),
         "authorization_action": receipt.get("action", ""),
         "authorization_status": "valid",
+        "expires_at": receipt.get("expires_at", ""),
+        "method": receipt.get("method", ""),
     }
     return True, "", receipt_meta
 
@@ -430,6 +444,9 @@ def _execute_allowed_intent(
         ),
         "mint_authorization_receipt_dev": lambda: (
             _execute_mint_authorization_receipt_dev(intent_id, params)
+        ),
+        "mint_authorization_receipt_local": lambda: (
+            _execute_mint_authorization_receipt_local(intent_id, params)
         ),
         "inspect_authorization_receipt": lambda: _execute_inspect_authorization_receipt(
             intent_id, params
@@ -939,6 +956,41 @@ def _execute_mint_authorization_receipt_dev(
             "failed",
             error_code="execution_error",
             summary=f"Dev receipt mint failed: {e}",
+        )
+
+
+def _execute_mint_authorization_receipt_local(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        from rig_relay.desktop.authorization_receipts import mint_local_auth_receipt
+
+        action = str(params.get("action", ""))
+        ttl_seconds = int(params.get("ttl_seconds", 300))
+        reason = str(params.get("reason", ""))
+        result = mint_local_auth_receipt(action, ttl_seconds=ttl_seconds, reason=reason)
+        status = "completed" if result.get("valid") else "refused"
+        return _build_result(
+            "mint_authorization_receipt_local",
+            intent_id,
+            status,
+            result_kind="authorization_receipt",
+            summary=(
+                f"Local auth receipt mint {status}: {action or 'unknown'} "
+                f"({str(result.get('receipt_sha256', ''))[:16]})"
+            ),
+            output_refs=[str(result["receipt_ref"])]
+            if result.get("receipt_ref")
+            else [],
+            warnings=list(result.get("warnings", [])),
+        )
+    except Exception as e:
+        return _build_result(
+            "mint_authorization_receipt_local",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Local auth receipt mint failed: {e}",
         )
 
 

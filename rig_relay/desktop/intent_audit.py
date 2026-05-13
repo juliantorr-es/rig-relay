@@ -112,6 +112,8 @@ def build_event(
         "authorization_receipt_sha256": extra.get("authorization_receipt_sha256", ""),
         "authorization_action": extra.get("authorization_action", ""),
         "authorization_status": extra.get("authorization_status", ""),
+        "authorization_expires_at": extra.get("expires_at", ""),
+        "authorization_method": extra.get("method", ""),
         "warnings": extra.get("warnings", []),
     }
 
@@ -166,6 +168,8 @@ def emit_result(result: dict[str, Any], build_root: Path | None = None) -> str:
         authorization_receipt_sha256=result.get("authorization_receipt_sha256", ""),
         authorization_action=result.get("authorization_action", ""),
         authorization_status=result.get("authorization_status", ""),
+        expires_at=result.get("expires_at", ""),
+        method=result.get("method", ""),
         warnings=warnings,
     )
 

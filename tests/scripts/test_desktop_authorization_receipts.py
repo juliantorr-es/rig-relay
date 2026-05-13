@@ -4,8 +4,17 @@ import json
 from pathlib import Path
 from typing import Any
 
-from rig_relay.desktop.authorization_receipts import inspect_receipt, mint_dev_receipt
+from rig_relay.desktop.authorization_receipts import (
+    inspect_receipt,
+    mint_dev_receipt,
+    mint_local_auth_receipt,
+)
 from rig_relay.desktop.intents import execute_desktop_intent
+from rig_relay.desktop.local_system_auth import (
+    LocalAuthResult,
+    authenticate_local_user,
+    local_system_auth_available,
+)
 
 
 def _request(
@@ -39,6 +48,19 @@ def test_mint_dev_receipt_refuses_bash(tmp_path: Path) -> None:
     result = mint_dev_receipt("bash", receipts_dir=tmp_path)
     assert result["valid"] is False
     assert result["status"] == "refused"
+
+
+def test_local_system_auth_available_returns_bool() -> None:
+    assert isinstance(local_system_auth_available(), bool)
+
+
+def test_authenticate_local_user_unavailable(monkeypatch: Any) -> None:
+    monkeypatch.setattr(
+        "rig_relay.desktop.local_system_auth.platform.system", lambda: "Linux"
+    )
+    result = authenticate_local_user("Reason")
+    assert result.status == "unavailable"
+    assert result.available is False
 
 
 def test_inspect_receipt_returns_metadata(tmp_path: Path) -> None:
@@ -103,3 +125,121 @@ def test_execute_intent_inspect_receipt_is_content_light(tmp_path: Path) -> None
     )
     assert result["status"] == "completed"
     assert result["result_kind"] == "authorization_receipt"
+
+
+def test_execute_intent_mint_local_auth_receipt_succeeds(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        "rig_relay.desktop.local_system_auth.platform.system", lambda: "Darwin"
+    )
+    monkeypatch.setattr(
+        "rig_relay.desktop.local_system_auth.authenticate_local_user",
+        lambda reason, timeout_seconds=None: LocalAuthResult(
+            status="authorized", available=True, reason="ok", warnings=[]
+        ),
+    )
+    result = execute_desktop_intent(
+        _request(
+            "mint_authorization_receipt_local",
+            {"action": "checkpoint.commit", "reason": "step-up"},
+        )
+    )
+    assert result["status"] == "completed"
+    assert result["result_kind"] == "authorization_receipt"
+    assert result["output_refs"]
+
+
+def test_mint_local_auth_receipt_succeeds_with_mocked_auth(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        "rig_relay.desktop.local_system_auth.platform.system", lambda: "Darwin"
+    )
+    monkeypatch.setattr(
+        "rig_relay.desktop.local_system_auth.authenticate_local_user",
+        lambda reason, timeout_seconds=None: LocalAuthResult(
+            status="authorized", available=True, reason="ok", warnings=[]
+        ),
+    )
+    result = mint_local_auth_receipt("checkpoint.commit", receipts_dir=tmp_path)
+    assert result["valid"] is True
+    assert result["action"] == "checkpoint.commit"
+    assert result["receipt_sha256"].startswith("sha256:")
+    receipt = json.loads(Path(result["receipt_ref"]).read_text(encoding="utf-8"))
+    assert receipt["method"] == "local_system_auth"
+
+
+def test_mint_local_auth_receipt_refuses_when_policy_unavailable(
+    monkeypatch: Any,
+) -> None:
+    # Mock PyObjC structures
+    class MockError:
+        def __str__(self):
+            return "Touch ID not enrolled"
+
+    class MockLAContext:
+        def canEvaluatePolicy_error_(self, policy, error):
+            return False, MockError()
+
+        @classmethod
+        def alloc(cls):
+            return cls()
+
+        def init(self):
+            return self
+
+    mock_la = type(
+        "MockLA",
+        (),
+        {"LAContext": MockLAContext, "LAPolicyDeviceOwnerAuthentication": 1},
+    )
+
+    monkeypatch.setattr(
+        "rig_relay.desktop.local_system_auth.platform.system", lambda: "Darwin"
+    )
+    monkeypatch.setattr(
+        "importlib.import_module",
+        lambda name: mock_la if name == "LocalAuthentication" else None,
+    )
+
+    result = mint_local_auth_receipt("checkpoint.commit")
+    assert result["valid"] is False
+    assert result["status"] == "unavailable"
+    assert "Touch ID not enrolled" in result["warnings"][-1]
+
+
+def test_authenticate_local_user_timeout(monkeypatch: Any) -> None:
+    class MockLAContext:
+        def canEvaluatePolicy_error_(self, policy, error):
+            return True, None
+
+        def evaluatePolicy_localizedReason_reply_(self, policy, reason, reply):
+            # Don't call reply, simulate timeout
+            pass
+
+        @classmethod
+        def alloc(cls):
+            return cls()
+
+        def init(self):
+            return self
+
+    mock_la = type(
+        "MockLA",
+        (),
+        {"LAContext": MockLAContext, "LAPolicyDeviceOwnerAuthentication": 1},
+    )
+
+    monkeypatch.setattr(
+        "rig_relay.desktop.local_system_auth.platform.system", lambda: "Darwin"
+    )
+    monkeypatch.setattr(
+        "importlib.import_module",
+        lambda name: mock_la if name == "LocalAuthentication" else None,
+    )
+
+    # Use short timeout for test
+    result = authenticate_local_user("Reason", timeout_seconds=1)
+    assert result.status == "cancelled"
+    assert "timed out" in result.reason

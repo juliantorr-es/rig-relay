@@ -127,20 +127,21 @@
           </div>
         </div>
 
-        <div class="card" id="card-dev-receipts">
+        <div class="card" id="card-auth-receipts">
           <div class="card-header">
-            <span class="card-title">Dev Receipts</span>
-            <div class="source-status warning">Dev / Local Only</div>
+            <span class="card-title">Authorization Receipts</span>
+            <div class="source-status info">Step-up Auth</div>
           </div>
-          <div class="card-content" id="content-dev-receipts">
-            <p class="small-note">Mint and inspect local authorization receipts for Phase 1 protected intents.</p>
+          <div class="card-content" id="content-auth-receipts">
+            <p class="small-note">Mint and inspect authorization receipts for Phase 1 protected intents.</p>
             <div class="action-buttons">
               <select id="receipt-action">
                 <option value="checkpoint.commit">checkpoint.commit</option>
                 <option value="lease_cleanup.archive">lease_cleanup.archive</option>
               </select>
               <input id="receipt-ttl" type="number" min="30" max="3600" value="300" />
-              <button class="intent-btn" onclick="mintDevReceipt()">Mint Dev Receipt</button>
+              <button class="intent-btn" onclick="mintLocalAuthReceipt()">Mint Local Auth Receipt</button>
+              <button class="intent-btn secondary-btn" onclick="mintDevReceipt()">Mint Dev Receipt (Bypass)</button>
             </div>
             <div class="action-buttons" style="margin-top: 0.5rem;">
               <textarea id="receipt-json" placeholder="Paste receipt JSON to inspect" rows="4"></textarea>

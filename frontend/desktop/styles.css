@@ -307,6 +307,45 @@ table.kv td.k {
   padding-top: 4px;
 }
 
+/* Intent Result */
+.intent-result {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.intent-result.ok {
+  border-left: 3px solid var(--ok-color);
+}
+
+.intent-result.warning {
+  border-left: 3px solid var(--warning-color);
+}
+
+.intent-result.error {
+  border-left: 3px solid var(--error-color);
+}
+
+.intent-result.pending {
+  border-left: 3px solid var(--accent);
+  opacity: 0.7;
+}
+
+.intent-result .status-line {
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.intent-result .detail-line {
+  margin: 2px 0;
+  color: var(--text-secondary);
+}
+
 footer {
   background-color: var(--header-bg);
   padding: 4px 20px;

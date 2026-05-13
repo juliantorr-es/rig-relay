@@ -1,0 +1,14 @@
+{
+  "authorization_required": false,
+  "created_at": "2026-05-13T20:22:08.239916+00:00",
+  "dry_run": true,
+  "intent_id": "dogfood_refresh_projection",
+  "intent_name": "refresh_projection",
+  "output_refs": [],
+  "projection_refresh_recommended": false,
+  "result_kind": "projection",
+  "schema_version": "rig.relay.desktop_intent_result.v1",
+  "status": "completed",
+  "summary": "Projection rebuilt: 4/7 sources available.",
+  "warnings": []
+}

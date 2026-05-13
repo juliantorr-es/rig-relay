@@ -306,17 +306,131 @@ function displayIntentResult(result) {
     return;
   }
   const status = result.status || 'unknown';
+  const kind = result.result_kind || 'summary';
   const summary = result.summary || 'No summary.';
   const warnings = result.warnings || [];
-  let html = '<strong>' + status.toUpperCase() + '</strong>: ' + escapeHtml(summary);
+  const outputRefs = result.output_refs || [];
+  let html = '<div class="status-line">' + escapeHtml(status.toUpperCase()) + '</div>';
+  // Structured card per result kind
+  html += renderStructuredCard(kind, summary, result);
   if (warnings.length > 0) {
     html += '<div class="small-note">Warnings: ' + escapeHtml(warnings.join('; ')) + '</div>';
+  }
+  if (outputRefs.length > 0) {
+    html += '<div class="small-note">Artifacts: ' + escapeHtml(outputRefs.join(', ')) + '</div>';
   }
   if (result.projection_refresh_recommended) {
     html += '<div class="small-note">Projection refresh recommended.</div>';
   }
   resultEl.innerHTML = html;
   resultEl.className = 'intent-result ' + (status === 'completed' ? 'ok' : status === 'refused' ? 'warning' : 'error');
+}
+
+function renderStructuredCard(kind, summary, result) {
+  switch (kind) {
+    case 'validation_suite':
+      return renderValidationSuiteCard(summary);
+    case 'storage_audit':
+      return renderStorageAuditCard(summary);
+    case 'report':
+      return renderReportCard(summary);
+    case 'packets':
+      return renderPacketsCard(summary);
+    case 'projection':
+      return renderProjectionCard(summary);
+    case 'checkpoint':
+      return renderCheckpointCard(summary);
+    case 'lease_cleanup':
+      return renderLeaseCleanupCard(summary);
+    case 'bundle_dry_run':
+    case 'plan_dry_run':
+    case 'validation':
+    case 'chat_state':
+    case 'authorization_receipt':
+    case 'summary':
+    default:
+      return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  }
+}
+
+function renderValidationSuiteCard(summary) {
+  // Format: "Validation suite 'name': status. N executed, M skipped. Steps: [kind:status; ...]. sha256: hash"
+  const m = summary.match(/Validation suite '(.+?)':\s*(\w+)\.\s*(\d+)\s+executed,\s*(\d+)\s+skipped\.\s*Steps:\s*\[(.+?)\]\s*\.\s*sha256:\s*(\S+)/);
+  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  return '<table class="kv">' +
+    row('Suite', m[1]) +
+    row('Status', m[2]) +
+    row('Executed', m[3]) +
+    row('Skipped', m[4]) +
+    row('Steps', m[5]) +
+    row('SHA256', m[6]) +
+    '</table>';
+}
+
+function renderStorageAuditCard(summary) {
+  // Format: "Storage audit: X.X MB, budget=status, stale_leases=N, rollup_candidates=M, prune_candidates=P, R recommendations."
+  var m = summary.match(/Storage audit:\s*([\d.]+)\s*MB,\s*budget=(\w+),\s*stale_leases=(\d+),\s*rollup_candidates=(\d+),\s*prune_candidates=(\d+),\s*(\d+)\s*recommendations/);
+  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  var budgetCls = m[2] === 'ok' ? 'ok' : 'warning';
+  return '<table class="kv">' +
+    row('Total', m[1] + ' MB') +
+    row('Budget', m[2], budgetCls) +
+    row('Stale Leases', m[3]) +
+    row('Rollup Candidates', m[4]) +
+    row('Prune Candidates', m[5]) +
+    row('Recommendations', m[6]) +
+    '</table>';
+}
+
+function renderReportCard(summary) {
+  // Format: "Refinement report generated: N backlog items."
+  var m = summary.match(/(\d+)\s+backlog items/);
+  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  return '<table class="kv">' +
+    row('Backlog Items', m[1]) +
+    row('Summary', summary) +
+    '</table>';
+}
+
+function renderPacketsCard(summary) {
+  // Format: "Refinement packets: N packets (dry-run)."
+  var m = summary.match(/(\d+)\s+packets/);
+  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  return '<table class="kv">' +
+    row('Packets Created', m[1]) +
+    row('Mode', 'dry-run') +
+    '</table>';
+}
+
+function renderProjectionCard(summary) {
+  // Format: "Projection rebuilt: N/M sources available."
+  var m = summary.match(/(\d+)\/(\d+)\s+sources/);
+  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  return '<table class="kv">' +
+    row('Sources', m[1] + ' / ' + m[2] + ' available') +
+    '</table>';
+}
+
+function renderCheckpointCard(summary) {
+  // Format: "Checkpoint committed: SHA. N files. sha256: HASH"
+  var m = summary.match(/committed:\s*(\S+)\.\s*(\d+)\s+files/);
+  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  var shaM = summary.match(/sha256:\s*(\S+)/);
+  return '<table class="kv">' +
+    row('Commit', m[1]) +
+    row('Files', m[2]) +
+    row('SHA256', shaM ? shaM[1] : '—') +
+    '</table>';
+}
+
+function renderLeaseCleanupCard(summary) {
+  // Format: "Lease cleanup archive: action. N entries processed."
+  var m = summary.match(/archive:\s*(\w+)\.\s*(\d+)\s+entries/);
+  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  return '<table class="kv">' +
+    row('Action', m[1]) +
+    row('Entries', m[2]) +
+    '</table>';
 }
 
 async function mintDevReceipt() {
@@ -328,6 +442,30 @@ async function mintDevReceipt() {
   try {
     if (window.pywebview && window.pywebview.api) {
       const result = await window.pywebview.api.mint_authorization_receipt_dev(action, ttl, '');
+      displayReceiptResult(result);
+    } else {
+      resultEl.textContent = 'Bridge unavailable.';
+      resultEl.className = 'intent-result error';
+    }
+  } catch (e) {
+    resultEl.textContent = 'Error: ' + e.message;
+    resultEl.className = 'intent-result error';
+  }
+}
+
+async function mintLocalAuthReceipt() {
+  const resultEl = document.getElementById('receipt-result');
+  const action = document.getElementById('receipt-action').value;
+  const ttl = Number(document.getElementById('receipt-ttl').value || 300);
+  resultEl.textContent = 'Authenticating local user...';
+  resultEl.className = 'intent-result pending';
+  try {
+    if (window.pywebview && window.pywebview.api) {
+      const result = await window.pywebview.api.mint_authorization_receipt_local(
+        action,
+        ttl,
+        ''
+      );
       displayReceiptResult(result);
     } else {
       resultEl.textContent = 'Bridge unavailable.';
@@ -369,6 +507,7 @@ function displayReceiptResult(result) {
   const summary = [
     '<strong>' + escapeHtml(result.status || 'unknown').toUpperCase() + '</strong>',
     escapeHtml(result.action || 'unknown'),
+    'Method: ' + escapeHtml(result.method || 'unknown'),
     escapeHtml(result.receipt_sha256 || ''),
     escapeHtml(result.expires_at || ''),
   ].join('<br>');

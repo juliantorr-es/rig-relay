@@ -1,0 +1,19 @@
+{
+  "authorization_action": "lease_cleanup.archive",
+  "authorization_receipt_sha256": "sha256:3ab488df6e1c496ac28aaf91ae44f3cc6f92d291a30fe0bf7f1b5c3fc53799bf",
+  "authorization_required": false,
+  "authorization_status": "valid",
+  "created_at": "2026-05-13T20:24:13.155767+00:00",
+  "dry_run": true,
+  "expires_at": "2026-05-13T20:29:13.155335+00:00",
+  "intent_id": "test_bfdbd0b8111d",
+  "intent_name": "lease_cleanup.archive",
+  "method": "none_dev_only",
+  "output_refs": [],
+  "projection_refresh_recommended": false,
+  "result_kind": "summary",
+  "schema_version": "rig.relay.desktop_intent_result.v1",
+  "status": "completed",
+  "summary": "Mock cleanup success",
+  "warnings": []
+}

@@ -292,6 +292,13 @@ class CockpitAPI:
 
         return mint_dev_receipt(action, ttl_seconds=ttl_seconds, reason=reason)
 
+    def mint_authorization_receipt_local(
+        self, action: str, ttl_seconds: int = 300, reason: str = ""
+    ) -> dict:
+        from rig_relay.desktop.authorization_receipts import mint_local_auth_receipt
+
+        return mint_local_auth_receipt(action, ttl_seconds=ttl_seconds, reason=reason)
+
     def inspect_authorization_receipt(self, authorization_receipt: dict) -> dict:
         from rig_relay.desktop.authorization_receipts import inspect_receipt
 

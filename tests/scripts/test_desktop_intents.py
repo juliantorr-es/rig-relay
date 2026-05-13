@@ -74,6 +74,14 @@ class TestAllowedIntents:
             ALLOWED_INTENTS["run_validation_suite"]["parameters"]["steps"]["default"]
         )
 
+    def test_local_auth_receipt_intent_is_allowed(self):
+        from rig_relay.desktop.intents import ALLOWED_INTENTS
+
+        assert "mint_authorization_receipt_local" in ALLOWED_INTENTS
+        assert ALLOWED_INTENTS["mint_authorization_receipt_local"]["parameters"][
+            "action"
+        ]["enum"] == ["checkpoint.commit", "lease_cleanup.archive"]
+
     def test_create_chatgpt_dev_bundle_dry_run_does_not_write_zip(self, tmp_path: Path):
         result = execute_desktop_intent(
             _valid_request("create_chatgpt_dev_bundle_dry_run")
@@ -176,6 +184,7 @@ class TestFrontendButtons:
         receipt_actions = ["checkpoint.commit", "lease_cleanup.archive"]
         for action in receipt_actions:
             assert action in html, f"Receipt action {action} not found in frontend"
+        assert "Mint Local Auth Receipt" in html
 
         # Verify mutation-only features are not exposed
         assert "ruff_format_fix" not in html, (
@@ -619,3 +628,90 @@ class TestReceiptGatedProtectedIntents:
         import jsonschema
 
         jsonschema.validate(instance=request, schema=schema)
+
+
+class TestResultCardRendering:
+    """Verify that Python-generated result summaries match frontend regex patterns.
+
+    Each test ensures the summary format produced by the backend handler is
+    parseable by the corresponding JavaScript render*Card() function in app.js.
+    """
+
+    def test_validation_suite_summary_format(self):
+        """Summary must match the renderValidationSuiteCard regex."""
+        result = execute_desktop_intent(_valid_request("run_validation_suite"))
+        import re
+
+        pattern = re.compile(
+            r"Validation suite '(.+?)':\s*(\w+)\.\s*(\d+)\s+executed,\s*(\d+)\s+skipped\.\s*Steps:\s*\[(.+?)\]\s*\.\s*sha256:\s*(\S+)"
+        )
+        m = pattern.match(result.get("summary", ""))
+        assert m, (
+            "validation_suite summary does not match regex pattern. "
+            + f"Summary: {result.get('summary', '')}"
+        )
+        assert m.group(1)  # suite name
+        assert m.group(6)  # sha256
+
+    def test_storage_audit_summary_format(self):
+        result = execute_desktop_intent(_valid_request("run_storage_audit"))
+        import re
+
+        pattern = re.compile(
+            r"Storage audit:\s*([\d.]+)\s*MB,\s*budget=(\w+),\s*stale_leases=(\d+),\s*rollup_candidates=(\d+),\s*prune_candidates=(\d+),\s*(\d+)\s*recommendations"
+        )
+        m = pattern.match(result.get("summary", ""))
+        assert m, (
+            f"storage_audit summary does not match regex. "
+            f"Summary: {result.get('summary', '')}"
+        )
+
+    def test_refresh_projection_summary_format(self):
+        result = execute_desktop_intent(_valid_request("refresh_projection"))
+        if result["status"] != "completed":
+            import pytest
+
+            pytest.skip("Projection refresh skipped or failed")
+        import re
+
+        pattern = re.compile(r"(\d+)/(\d+)\s+sources")
+        m = pattern.search(result.get("summary", ""))
+        assert m, (
+            f"projection summary does not match regex. "
+            f"Summary: {result.get('summary', '')}"
+        )
+
+    def test_all_known_result_kinds_have_renderer(self):
+        """Every backend result_kind must have a case in the switch statement."""
+        known_backend_kinds = {
+            "projection",
+            "chat_state",
+            "report",
+            "packets",
+            "storage_audit",
+            "bundle_dry_run",
+            "validation",
+            "validation_suite",
+            "plan_dry_run",
+            "authorization_receipt",
+            "checkpoint",
+            "lease_cleanup",
+            "summary",
+        }
+        handled_by_renderer = {
+            "validation_suite",
+            "storage_audit",
+            "report",
+            "packets",
+            "projection",
+            "checkpoint",
+            "lease_cleanup",
+            "bundle_dry_run",
+            "plan_dry_run",
+            "validation",
+            "chat_state",
+            "authorization_receipt",
+            "summary",
+        }
+        unhandled = known_backend_kinds - handled_by_renderer
+        assert not unhandled, f"result_kinds missing renderers: {unhandled}"

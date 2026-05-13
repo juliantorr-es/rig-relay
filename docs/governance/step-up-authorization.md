@@ -18,10 +18,10 @@ receipts and policy enforcement.
    changes, and telemetry share level changes must not execute without explicit
    user verification.
 
-   In the desktop cockpit dev/local phase, `mint_authorization_receipt_dev`
-   and `inspect_authorization_receipt` exist as control-plane aids for
-   `checkpoint.commit` and `lease_cleanup.archive`. They do not expose
-   protected execution buttons.
+   In the desktop cockpit dev/local phase, `mint_authorization_receipt_dev`,
+   `mint_authorization_receipt_local`, and `inspect_authorization_receipt`
+   exist as control-plane aids for `checkpoint.commit` and
+   `lease_cleanup.archive`. They do not expose protected execution buttons.
 
 3. **Authorization receipts are short-lived and action-scoped** — a receipt
    authorizes exactly one action on exactly one resource for a limited time.
@@ -50,8 +50,8 @@ receipts and policy enforcement.
 
 | Method | Description | Alpha Status |
 |--------|-------------|-------------|
-| `none_dev_only` | Dev/test bypass (no real verification) | Implemented |
-| `local_system_auth` | Platform-native auth (macOS Touch ID, Windows Hello) | Schema/doctrine only |
+| `none_dev_only` | Dev/test bypass (no real verification) | Verified |
+| `local_system_auth` | Platform-native auth (macOS Touch ID, Face ID, Passcode) | Implemented / Verified |
 | `passkey_webauthn` | WebAuthn passkey (origin-scoped FIDO2 credential) | Schema/doctrine only |
 | `remote_passkey` | Remote relying-party passkey service | Schema/doctrine only |
 

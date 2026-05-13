@@ -60,6 +60,7 @@ fallback paths for capabilities that are part of the product.
 | `duckdb` | Dataset analytics, current_state aggregation, reports, snippets |
 | `jsonschema` | Schema validation boundary (bundles, receipts, projections) |
 | `pywebview` | Desktop cockpit shell |
+| `LocalAuthentication` via PyObjC | macOS step-up receipt minting POC (graceful-unavailable outside macOS) |
 | `google-api-python-client` | Google Drive upload |
 | `google-auth` | Google OAuth flow |
 | `google-auth-oauthlib` | Google OAuth flow (app-side) |

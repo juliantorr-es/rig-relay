@@ -123,9 +123,21 @@ Prefer: counts, statuses, hashes, titles, warnings.
 - [Rig-to-Relay Pattern Inventory](rig-to-relay-pattern-inventory.md)
 
 ### Step-Up Authorization
-
+ 
 The desktop cockpit may prompt for step-up authorization for high-authority actions (real upload, lease cleanup). See `docs/governance/step-up-authorization.md`.
-Dev/local receipt minting exists for Phase 1 protected intents only. Protected execution buttons remain deferred until a real step-up provider is wired in.
+Dev/local receipt minting exists for Phase 1 protected intents (`checkpoint.commit`, `lease_cleanup.archive`) and is verified. Protected execution buttons remain deferred until a real step-up provider is wired in.
+The next step-up path is macOS LocalAuthentication via a Python bridge (implemented and verified), not WebAuthn/passkeys yet.
+ 
+### Authorization Metadata
+ 
+Audit events and result artifacts for protected intents include non-sensitive authorization metadata:
+- `authorization_receipt_sha256`: Hash of the receipt used.
+- `authorization_action`: The authorized action.
+- `authorization_status`: Final verification status (`valid`, `expired`, etc.).
+- `authorization_expires_at`: Expiry timestamp from the receipt.
+- `authorization_method`: The method used (`none_dev_only`, `local_system_auth`).
+ 
+Raw receipt bodies are strictly stripped from all audit trails.
 
 ## Chat Interface (Current)
 
@@ -185,6 +197,7 @@ The chat interface follows strict content-light constraints:
  - `cancel_chat_response()` — requests cancellation of a pending assistant response
  - `run_desktop_intent(request)` — executes a governed, read-only/dry-run intent (e.g., `refresh_projection`, `run_validation_suite`)
  - `mint_authorization_receipt_dev(action, ttl_seconds, reason)` — mints a dev/local receipt for `checkpoint.commit` or `lease_cleanup.archive`
+ - `mint_authorization_receipt_local(action, ttl_seconds, reason)` — mints the same receipt shape after macOS local auth succeeds
  - `inspect_authorization_receipt(receipt)` — returns content-light receipt metadata without exposing the raw body in audit logs
 
 ### Auth and Receipts
@@ -392,10 +405,10 @@ Frontend (HTML button / WS message)
 
 ### Phase 1 Protected Intents (Receipt-Gated)
 
-| Intent | Description |
-|--------|-------------|
-| `checkpoint.commit` | Create a governed local checkpoint commit for session-owned files. Requires valid authorization receipt. |
-| `lease_cleanup.archive` | Archive stale coordination leases and task claims. Requires valid authorization receipt. |
+| Intent | Description | Authorization |
+|--------|-------------|---------------|
+| `checkpoint.commit` | Create a governed local checkpoint commit for session-owned files. | Required (`step-up`) |
+| `lease_cleanup.archive` | Archive stale coordination leases and task claims. | Required (`step-up`) |
 
 ### Still-Refused Intents (Not Yet Enabled)
 
@@ -404,7 +417,7 @@ Frontend (HTML button / WS message)
 `spawn.execute`, `fleet.execute`, `delegate.execute`
 
 Refusal returns `status: refused`, `authorization_required: true`, and
-error code `protected_intent_requires_future_receipt_gate` even with a valid
+error code `protected_intent_not_enabled` even with a valid
 receipt. These will be unlocked in future phases.
 
 ### Schemas
@@ -422,9 +435,11 @@ receipt. These will be unlocked in future phases.
 | `rig_relay/desktop/websocket_server.py` | Handles `desktop_intent` WS message type |
 | `scripts/rig_relay_desktop_cockpit.py` | Exposes `run_desktop_intent()` via pywebview bridge |
 | `frontend/desktop/index.html` | Actions card with safe intent buttons |
-| `frontend/desktop/app.js` | `runIntent()` + `displayIntentResult()` |
+| `frontend/desktop/app.js` | `runIntent()` + `displayIntentResult()` with result_kind-based structured card rendering |
+| `frontend/desktop/styles.css` | `.intent-result` card styles (ok/warning/error/pending) |
+| `tests/frontend/test_intent_result_rendering.mjs` | 21 JS rendering tests (Node.js) |
 | `frontend/desktop/websocket.js` | Routes `desktop_intent_result` messages |
-| `tests/scripts/test_desktop_intents.py` | 53 tests |
+| `tests/scripts/test_desktop_intents.py` | 63 tests + 21 JS rendering tests |
 | `rig_relay/desktop/intent_audit.py` | Audit trail module: build_event, emit_received, emit_result |
 | `docs/schemas/rig.relay.desktop_intent_event.v1.schema.json` | Event schema |
 

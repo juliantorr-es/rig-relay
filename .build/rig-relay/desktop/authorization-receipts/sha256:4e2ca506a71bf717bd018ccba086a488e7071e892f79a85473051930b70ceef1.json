@@ -1,0 +1,16 @@
+{
+  "action": "checkpoint.commit",
+  "action_scope": {},
+  "authorization_id": "authz_c980ffcbc78a3ca666f3027a376ba2af",
+  "challenge_sha256": "sha256:47cc3be99fca752dacfef08709d9e423cf2c5417b369ef3579cbc55dad448f05",
+  "created_at": "2026-05-13T20:25:11.827077+00:00",
+  "credential_id_hash": null,
+  "expires_at": "2026-05-13T20:30:11.827077+00:00",
+  "method": "local_system_auth",
+  "receipt_sha256": "sha256:4e2ca506a71bf717bd018ccba086a488e7071e892f79a85473051930b70ceef1",
+  "schema_version": "rig.relay.step_up_authorization_receipt.v1",
+  "user_verified": true,
+  "warnings": [
+    "Dev receipt \u2014 no real user verification performed"
+  ]
+}
