@@ -101,17 +101,15 @@
 - Backend auto-detection (rg vs grep) differs by machine
 - No sorted output means same repo + same pattern ≠ same result text
 
-**Evidence currently available**: This is the only tool with typed artifacts today. SearchQueryArtifact and SearchResultArtifact are written to session artifacts directory.
+**Evidence currently available**: Typed `search_query` and `search_result` artifacts are written to the session artifacts directory, with deterministic ordering and backend/count metadata in the search-result payload.
 
 **Missing evidence**:
-- Sorted result order guarantee
-- Backend used (rg vs grep) in evidence
-- Match count in structured form
+- Query-side include/exclude globs still come from tool defaults rather than explicit user args
+- `absolute_offset`/`submatch_*` remain unavailable from the current line-oriented grep backend
 
 **Recommended hardening**:
-- Sort results by path + line number before returning (P0)
-- Include backend identifier in evidence
-- Emit result count as structured field
+- Keep path/line ordering normalized in artifact evidence and preserve it across backend fallbacks (P0)
+- Add richer offsets/submatch spans if/when the grep backend exposes them without changing command behavior
 
 ---
 

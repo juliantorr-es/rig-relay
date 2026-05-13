@@ -55,8 +55,9 @@ Every artifact envelope MUST include:
 | `rig.relay.artifact.tool_reasoning_trace.v1.schema.json` | tool_reasoning_trace | **New** |
 | `rig.relay.artifact.search_query.v1.schema.json` | search_query | Active |
 | `rig.relay.artifact.search_result.v1.schema.json` | search_result | Active |
+| `rig.relay.artifact.search_results.v1.schema.json` | search_result | Active |
 | `rig.relay.artifact.file_read.v1.schema.json` | file_read | Draft |
-| `rig.relay.artifact.file_write.v1.schema.json` | file_write | Draft |
+| `rig.relay.artifact.file_write.v1.schema.json` | file_write | Active |
 | `rig.relay.artifact.semantic_placement.v1.schema.json` | semantic_placement | Draft |
 | `rig.relay.artifact.tool_determinism_summary.v1.schema.json` | tool_determinism_summary | Active |
 | `rig.relay.evidence.manifest.v1.schema.json` | evidence_manifest | Active |
@@ -70,7 +71,7 @@ The `tool_reasoning_trace` artifact records observable metadata around tool use 
 
 1.  **Consistent Envelope Versioning**: Update the `ToolOutputArtifactWriter` to emit `rig.relay.artifact.envelope.v1` consistently.
 2.  **Tool-Result Validation**: Implement runtime validation of tool-result artifacts against their respective schemas.
-3.  **Search Telemetry**: Update search tools (`grep`, `bash` when used for search) to emit typed `search_query` and `search_result` artifacts.
+3.  **Search Telemetry**: Update search tools (`grep`, `bash` when used for search) to emit typed `search_query` and `search_result` artifacts with backend/count/order evidence.
 4.  **File I/O Telemetry**: Implement `file_read` and `file_write` artifact emission for all built-in file tools.
 5.  **Semantic Placement Reports**: Add artifacts for `search_replace` and other edit tools documenting why a specific placement was selected.
 6.  **Token Usage Analysis**: Build tools to analyze token waste based on artifact types and content density. The reasoning trace event (`TOOL_REASONING_TRACE`) now provides per-call inline vs artifacted byte counts and latency for this analysis.

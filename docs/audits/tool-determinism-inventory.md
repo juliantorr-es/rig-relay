@@ -23,7 +23,7 @@ These traces power the `rig-relay doctor tool-reasoning` report for identifying 
 |-----------|--------|-------------------|----------------|---------------------|----------------------|-------------------|
 | `read_file` | `builtins.read_file` | `deterministic_repo_state` | `read_only` | High (Path normalization) | High (UTF-8, line range) | Full |
 | `write_file` | `builtins.write_file` | `deterministic_repo_state` | `writes_workspace` | High | High | Full (before/after SHA256, creation/overwrite flags, parent dirs) |
-| `grep` | `builtins.grep` | `deterministic_repo_state` | `read_only` | High | Medium (Recursive order) | Full |
+| `grep` | `builtins.grep` | `deterministic_repo_state` | `read_only` | High | Medium (Recursive order) | Full (typed search_query/search_result with backend/count/order evidence) |
 | `bash` | `builtins.bash` | `nondeterministic_external_io` | `writes_workspace` | Low | Low | Full |
 | `git` | `builtins.git` | `deterministic_repo_state` | `read_only` | Medium | Medium | Full |
 | `websearch` | `builtins.websearch` | `nondeterministic_external_io` | `read_only` | High | Low (Provider dependent) | Full |

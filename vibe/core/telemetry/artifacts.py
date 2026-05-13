@@ -46,27 +46,36 @@ class ToolOutputArtifact(BaseModel):
 
 
 class SearchQueryArtifact(BaseModel):
-    query_text: str
-    query_kind: Literal["literal", "regex", "fuzzy", "symbol", "semantic"]
-    root_scope: str | None = None
+    tool_name: str = "grep"
+    query: str
+    backend: str
+    root: str
     include_globs: list[str] = Field(default_factory=list)
     exclude_globs: list[str] = Field(default_factory=list)
-    case_mode: Literal["sensitive", "insensitive", "smart"] | None = None
-    ignore_mode: bool | None = None
-    max_results: int | None = None
-    ranking_strategy: str | None = None
-    ranking_version: str | None = None
+    case_sensitive: bool | None = None
+    fixed_strings: bool | None = None
+    regex: bool | None = None
+    context_before: int | None = None
+    context_after: int | None = None
     normalized_query_sha256: str
 
 
 class SearchResultItem(BaseModel):
     relative_path: str
+    line_number: int | None = None
+    absolute_offset: int | None = None
+    submatch_start: int | None = None
+    submatch_end: int | None = None
     start_line: int | None = None
     end_line: int | None = None
     start_column: int | None = None
     end_column: int | None = None
     excerpt: str | None = None
     excerpt_sha256: str | None = None
+    line_text: str | None = None
+    match_text: str | None = None
+    before_context: str | None = None
+    after_context: str | None = None
     symbol_context: str | None = None
     score: float | None = None
     rank: int | None = None
@@ -77,6 +86,27 @@ class SearchResultArtifact(BaseModel):
     query_sha256: str
     results: list[SearchResultItem] = Field(default_factory=list)
     truncated: bool = False
+    tool_name: str = "grep"
+    query: str = ""
+    backend: str = ""
+    root: str = ""
+    include_globs: list[str] = Field(default_factory=list)
+    exclude_globs: list[str] = Field(default_factory=list)
+    case_sensitive: bool | None = None
+    fixed_strings: bool | None = None
+    regex: bool | None = None
+    context_before: int | None = None
+    context_after: int | None = None
+    ordering_policy: str = ""
+    total_match_count: int = 0
+    returned_match_count: int = 0
+    matched_file_count: int = 0
+    returned_file_count: int = 0
+    truncation_reason: str | None = None
+    result_set_sha256: str = ""
+    stdout_sha256: str | None = None
+    stderr_sha256: str | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class PromptVisibleToolResult(BaseModel):
@@ -249,6 +279,7 @@ class ToolOutputArtifactWriter:
         Returns:
             tuple[Path, Path]: (query_artifact_path, result_artifact_path)
         """
+        self.artifact_dir.mkdir(parents=True, exist_ok=True)
         # 1. Write Query Artifact
         query_payload = query_artifact.model_dump()
         query_payload_bytes = dump_canonical_json(query_payload).encode("utf-8")

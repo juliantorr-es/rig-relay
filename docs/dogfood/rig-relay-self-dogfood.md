@@ -106,11 +106,12 @@ Based on initial evidence collection, the following areas are prioritized for to
 
 1.  **Mutation Evidence Hashes (Completed 2025-05-17)**: `write_file` and `search_replace` now emit before/after SHA256 content hashes, creation/overwrite flags, block counts, and changed file lists. See `WriteFileResult` and `SearchReplaceResult`.
 2.  **Typed File Write/Diff Artifacts (Completed 2025-05-13)**: `write_file` and `search_replace` now emit structured `file_write` artifact envelopes with unified diff evidence, byte/line counts, and changed-line ranges. Rollback and semantic placement remain deferred.
-3.  **Path Normalization (High)**: Ensure all file-based tools (`read_file`, `write_file`, `grep`, `search_replace`) use absolute, canonicalized paths in evidence, even if models pass relative paths.
-4.  **Bash Output Filtering (Medium)**: Scrub environment-specific details (paths, usernames) from `bash` tool output to improve cache hit rates.
-5.  **Git State Capture (Medium)**: Extend `git` tool evidence to include the current HEAD commit hash to differentiate repo-state dependent outputs.
-6.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
-7.  **Subagent Isolation (Low)**: Harden `task` tool to strictly sandbox subagent workspace mutations and capture their evidence shards.
+3.  **Typed Search Results (Completed 2026-05-13)**: `grep` now emits typed search query and search result artifacts with deterministic ordering, backend, counts, truncation flags, and result-set hashes.
+4.  **Path Normalization (High)**: Ensure all file-based tools (`read_file`, `write_file`, `grep`, `search_replace`) use absolute, canonicalized paths in evidence, even if models pass relative paths.
+5.  **Bash Output Filtering (Medium)**: Scrub environment-specific details (paths, usernames) from `bash` tool output to improve cache hit rates.
+6.  **Git State Capture (Medium)**: Extend `git` tool evidence to include the current HEAD commit hash to differentiate repo-state dependent outputs.
+7.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
+8.  **Subagent Isolation (Low)**: Harden `task` tool to strictly sandbox subagent workspace mutations and capture their evidence shards.
 
 See the [bash replacement opportunity map](../audits/bash-replacement-opportunity-map.md) for the parallel shell-to-typed-tool migration audit.
 

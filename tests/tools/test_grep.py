@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 import shutil
 
+import jsonschema
 import pytest
 
 from tests.mock.utils import collect_result
@@ -339,3 +342,122 @@ class TestRipgrepBackend:
         )
         assert "included.py" in result_without_ignore.matches
         assert "ignored_by_rg/file.py" in result_without_ignore.matches
+
+
+# ── search evidence: artifact fields ──────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_grep_parsed_matches_have_line_content(grep, tmp_path):
+    (tmp_path / "test.py").write_text("def hello():\n    pass\n")
+
+    result = await collect_result(grep.run(GrepArgs(pattern="hello")))
+
+    parsed = result.parsed_matches
+    assert len(parsed) == 1
+    assert parsed[0].line_content == "def hello():"
+    assert parsed[0].match_text == "def hello():"
+
+
+@pytest.mark.asyncio
+async def test_grep_parsed_matches_have_paths(grep, tmp_path):
+    (tmp_path / "a.py").write_text("x\n")
+    (tmp_path / "b.py").write_text("x\n")
+
+    result = await collect_result(grep.run(GrepArgs(pattern="x")))
+
+    parsed = result.parsed_matches
+    paths = {Path(m.path).name for m in parsed}
+    assert paths == {"a.py", "b.py"}
+
+
+@pytest.mark.asyncio
+async def test_grep_result_set_sha256_stable_for_same_output(grep, tmp_path):
+    (tmp_path / "test.py").write_text("match\n")
+
+    result1 = await collect_result(grep.run(GrepArgs(pattern="match")))
+    result2 = await collect_result(grep.run(GrepArgs(pattern="match")))
+
+    assert result1.match_count == result2.match_count
+    assert result1.matches == result2.matches
+
+
+@pytest.mark.asyncio
+async def test_grep_no_match_does_not_crash_artifact_emission(grep, tmp_path):
+    (tmp_path / "test.py").write_text("nothing here\n")
+
+    result = await collect_result(grep.run(GrepArgs(pattern="xyzzy")))
+
+    assert result.match_count == 0
+    assert result.parsed_matches == []
+
+
+@pytest.mark.asyncio
+async def test_grep_truncation_preserves_counts(grep, tmp_path):
+    (tmp_path / "test.py").write_text("\n".join(f"line {i}" for i in range(200)))
+
+    result = await collect_result(grep.run(GrepArgs(pattern="line", max_matches=10)))
+
+    assert result.match_count == 10
+    assert result.was_truncated
+
+
+@pytest.mark.asyncio
+async def test_grep_backend_field_present(grep, tmp_path):
+    (tmp_path / "test.py").write_text("match\n")
+
+    result = await collect_result(grep.run(GrepArgs(pattern="match")))
+
+    assert result is not None
+
+
+def test_search_result_artifact_schema_validation():
+    schema_path = (
+        Path(__file__).parent.parent.parent
+        / "docs"
+        / "schemas"
+        / "rig.relay.artifact.search_result.v1.schema.json"
+    )
+    schema = json.loads(schema_path.read_text())
+
+    valid = {
+        "query_sha256": "sha256:" + "a" * 64,
+        "results": [
+            {"relative_path": "foo.py", "start_line": 1, "excerpt": "bar"}
+        ],
+        "truncated": False,
+        "backend": "ripgrep",
+        "ordering_policy": "rig_normalized_path_line_column_match",
+        "total_match_count": 10,
+        "returned_match_count": 1,
+        "matched_file_count": 5,
+        "returned_file_count": 1,
+        "truncation_reason": "",
+        "result_set_sha256": "sha256:" + "b" * 64,
+        "stdout_sha256": "",
+        "stderr_sha256": "",
+        "warnings": [],
+    }
+    jsonschema.validate(valid, schema)
+
+    missing_required = {"query_sha256": "sha256:" + "c" * 64}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(missing_required, schema)
+
+
+def test_search_result_artifact_bad_sha256_rejected():
+    schema_path = (
+        Path(__file__).parent.parent.parent
+        / "docs"
+        / "schemas"
+        / "rig.relay.artifact.search_result.v1.schema.json"
+    )
+    schema = json.loads(schema_path.read_text())
+
+    invalid = {
+        "query_sha256": "not-a-sha256",
+        "results": [],
+        "truncated": False,
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(invalid, schema)

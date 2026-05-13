@@ -120,3 +120,36 @@ def test_search_result_schema_validates_minimal_example():
     }
 
     validate(instance=instance, schema=schema)
+
+
+def test_search_results_schema_validates_minimal_example():
+    schema_path = SCHEMA_DIR / "rig.relay.artifact.search_results.v1.schema.json"
+    with schema_path.open("r", encoding="utf-8") as f:
+        schema = json.load(f)
+
+    instance = {
+        "query_sha256": "sha256:" + "a" * 64,
+        "results": [{"relative_path": "src/main.py"}],
+        "truncated": False,
+        "tool_name": "grep",
+        "query": "hello",
+        "backend": "ripgrep",
+        "root": ".",
+        "include_globs": [],
+        "exclude_globs": [],
+        "case_sensitive": False,
+        "fixed_strings": False,
+        "regex": True,
+        "context_before": 0,
+        "context_after": 0,
+        "ordering_policy": "rig_normalized_path_line_offset",
+        "total_match_count": 1,
+        "returned_match_count": 1,
+        "matched_file_count": 1,
+        "returned_file_count": 1,
+        "truncation_reason": None,
+        "result_set_sha256": "sha256:" + "b" * 64,
+        "warnings": [],
+    }
+
+    validate(instance=instance, schema=schema)

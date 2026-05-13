@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.search_results.v1.schema.json",
+  "title": "Search Results Artifact",
+  "type": "object",
+  "required": ["query_sha256", "results"],
+  "properties": {
+    "query_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relative_path"],
+        "properties": {
+          "relative_path": { "type": "string" },
+          "line_number": { "type": ["integer", "null"] },
+          "absolute_offset": { "type": ["integer", "null"] },
+          "submatch_start": { "type": ["integer", "null"] },
+          "submatch_end": { "type": ["integer", "null"] },
+          "start_line": { "type": ["integer", "null"] },
+          "end_line": { "type": ["integer", "null"] },
+          "start_column": { "type": ["integer", "null"] },
+          "end_column": { "type": ["integer", "null"] },
+          "excerpt": { "type": ["string", "null"] },
+          "line_text": { "type": ["string", "null"] },
+          "match_text": { "type": ["string", "null"] },
+          "excerpt_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "before_context": { "type": ["string", "null"] },
+          "after_context": { "type": ["string", "null"] },
+          "symbol_context": { "type": ["string", "null"] },
+          "score": { "type": ["number", "null"] },
+          "rank": { "type": ["integer", "null"] },
+          "tie_breakers": { "type": ["object", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "truncated": { "type": "boolean" },
+    "tool_name": { "type": "string" },
+    "query": { "type": "string" },
+    "backend": { "type": "string" },
+    "root": { "type": "string" },
+    "include_globs": { "type": "array", "items": { "type": "string" } },
+    "exclude_globs": { "type": "array", "items": { "type": "string" } },
+    "case_sensitive": { "type": ["boolean", "null"] },
+    "fixed_strings": { "type": ["boolean", "null"] },
+    "regex": { "type": ["boolean", "null"] },
+    "context_before": { "type": ["integer", "null"] },
+    "context_after": { "type": ["integer", "null"] },
+    "ordering_policy": { "type": "string" },
+    "total_match_count": { "type": "integer", "minimum": 0 },
+    "returned_match_count": { "type": "integer", "minimum": 0 },
+    "matched_file_count": { "type": "integer", "minimum": 0 },
+    "returned_file_count": { "type": "integer", "minimum": 0 },
+    "truncation_reason": { "type": ["string", "null"] },
+    "result_set_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "stdout_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "stderr_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

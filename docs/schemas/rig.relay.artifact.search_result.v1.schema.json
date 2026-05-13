@@ -29,7 +29,18 @@
         }
       }
     },
-    "truncated": { "type": "boolean" }
+    "truncated": { "type": "boolean" },
+    "backend": { "type": "string" },
+    "ordering_policy": { "type": "string" },
+    "total_match_count": { "type": "integer" },
+    "returned_match_count": { "type": "integer" },
+    "matched_file_count": { "type": "integer" },
+    "returned_file_count": { "type": "integer" },
+    "truncation_reason": { "type": "string" },
+    "result_set_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "stdout_sha256": { "type": "string" },
+    "stderr_sha256": { "type": "string" },
+    "warnings": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": false
 }
