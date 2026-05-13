@@ -66,4 +66,5 @@ class ToolDogfoodContract(BaseModel):
 class ToolDeterminismSummary(BaseModel):
     session_id: str
     tool_calls: list[ToolDogfoodContract]
+    coverage_stats: dict[str, Any] = {}
     warnings: list[str] = []

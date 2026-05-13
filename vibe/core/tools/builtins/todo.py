@@ -6,6 +6,10 @@ from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -67,6 +71,10 @@ class Todo(
     description: ClassVar[str] = (
         "Manage todos. Use action='read' to view, action='write' with complete list to update."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.DETERMINISTIC_PURE
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.WRITES_TEMP_ONLY
 
     @classmethod
     def format_call_display(cls, args: TodoArgs) -> ToolCallDisplay:

@@ -69,4 +69,12 @@ Tool execution should become deterministic given:
 - Same normalized input.
 - Same repository snapshot.
 - Same environment contract.
-- Same tool version.
+## Tool Hardening Backlog (Prioritized)
+
+Based on initial evidence collection, the following areas are prioritized for tool hardening:
+
+1.  **Path Normalization (High)**: Ensure all file-based tools (`read_file`, `write_file`, `grep`, `search_replace`) use absolute, canonicalized paths in evidence, even if models pass relative paths.
+2.  **Bash Output Filtering (Medium)**: Scrub environment-specific details (paths, usernames) from `bash` tool output to improve cache hit rates.
+3.  **Git State Capture (Medium)**: Extend `git` tool evidence to include the current HEAD commit hash to differentiate repo-state dependent outputs.
+4.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
+5.  **Subagent Isolation (Low)**: Harden `task` tool to strictly sandbox subagent workspace mutations and capture their evidence shards.

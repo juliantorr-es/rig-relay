@@ -6,6 +6,10 @@ from typing import ClassVar, cast
 from pydantic import BaseModel
 
 from vibe.core.agents.models import BuiltinAgentName
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -47,6 +51,10 @@ class ExitPlanMode(
         "Only use this tool when you have finished writing your plan to the plan file "
         "and are ready for user approval to begin implementation."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.DETERMINISTIC_PURE
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
 
     @classmethod
     def format_call_display(cls, args: ExitPlanModeArgs) -> ToolCallDisplay:

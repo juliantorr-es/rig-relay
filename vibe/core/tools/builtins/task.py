@@ -8,8 +8,11 @@ from typing import ClassVar
 from pydantic import BaseModel, Field
 
 from vibe.core.agent_loop import AgentLoop
-from vibe.core.agents.models import AgentType, BuiltinAgentName
 from vibe.core.config import SessionLoggingConfig, VibeConfig
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -63,6 +66,10 @@ class Task(
         "require user interaction. The subagent runs in-memory and "
         "saves interaction logs."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.NONDETERMINISTIC_PROVIDER
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.WRITES_WORKSPACE
 
     @classmethod
     def get_call_display(cls, event: ToolCallEvent) -> ToolCallDisplay:

@@ -9,6 +9,11 @@ from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel, Field
 
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
+
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -156,6 +161,10 @@ class Grep(
         "Recursively search files for a regex pattern using ripgrep (rg) or grep. "
         "Respects .gitignore and .codeignore files by default when using ripgrep."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.DETERMINISTIC_REPO_STATE
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
 
     def resolve_permission(self, args: GrepArgs) -> PermissionContext | None:
         return resolve_file_tool_permission(

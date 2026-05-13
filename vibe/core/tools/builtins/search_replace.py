@@ -10,6 +10,10 @@ from typing import ClassVar, NamedTuple, final
 import anyio
 from pydantic import BaseModel, Field
 
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from vibe.core.rewind.manager import FileSnapshot
 from vibe.core.scratchpad import is_scratchpad_path
 from vibe.core.tools.base import (
@@ -89,6 +93,10 @@ class SearchReplace(
         "Supports fuzzy matching and detailed error reporting. "
         "Format: <<<<<<< SEARCH\\n[text]\\n=======\\n[replacement]\\n>>>>>>> REPLACE"
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.DETERMINISTIC_REPO_STATE
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.WRITES_WORKSPACE
 
     @classmethod
     def format_call_display(cls, args: SearchReplaceArgs) -> ToolCallDisplay:

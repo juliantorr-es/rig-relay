@@ -11,6 +11,8 @@ from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.telemetry.tool_contract import (
     ToolDeterminismSummary,
     ToolDogfoodContract,
+    ToolDeterminismClass,
+    ToolMutationClass,
 )
 from vibe.core.telemetry.validation import (
     EvidenceValidationResult,
@@ -128,8 +130,48 @@ def summarize_tool_determinism(
             except Exception as e:
                 warnings.append(f"Error parsing event: {e}")
 
+    coverage_stats = {
+        "total_calls": len(tool_calls),
+        "classified_calls": sum(
+            1
+            for c in tool_calls
+            if c.determinism_class != ToolDeterminismClass.UNKNOWN
+            and c.mutation_class != ToolMutationClass.UNKNOWN
+        ),
+        "determinism_breakdown": {},
+        "mutation_breakdown": {},
+        "unclassified_tools": sorted(
+            list(
+                {
+                    c.tool_name
+                    for c in tool_calls
+                    if c.determinism_class == ToolDeterminismClass.UNKNOWN
+                    or c.mutation_class == ToolMutationClass.UNKNOWN
+                }
+            )
+        ),
+        "missing_hashes": [
+            f"{c.tool_name} ({c.tool_call_id})"
+            for c in tool_calls
+            if not c.input_sha256 or not c.output_sha256
+        ],
+    }
+
+    for c in tool_calls:
+        det_key = str(c.determinism_class)
+        mut_key = str(c.mutation_class)
+        coverage_stats["determinism_breakdown"][det_key] = (
+            coverage_stats["determinism_breakdown"].get(det_key, 0) + 1
+        )
+        coverage_stats["mutation_breakdown"][mut_key] = (
+            coverage_stats["mutation_breakdown"].get(mut_key, 0) + 1
+        )
+
     return ToolDeterminismSummary(
-        session_id=session_id, tool_calls=tool_calls, warnings=warnings
+        session_id=session_id,
+        tool_calls=tool_calls,
+        coverage_stats=coverage_stats,
+        warnings=warnings,
     )
 
 
@@ -144,6 +186,32 @@ def run_tool_determinism_report(
 
     rprint(f"[bold]Session ID:[/] {summary.session_id}")
     rprint(f"[bold]Tool Calls Found:[/] {len(summary.tool_calls)}")
+
+    stats = summary.coverage_stats
+    rprint(
+        f"[bold]Classified Calls:[/] {stats.get('classified_calls', 0)}/{stats.get('total_calls', 0)}"
+    )
+
+    if summary.tool_calls:
+        rprint("\n[bold]Determinism Breakdown:[/]")
+        for cat, count in sorted(stats.get("determinism_breakdown", {}).items()):
+            rprint(f"  - {cat}: {count}")
+
+        rprint("\n[bold]Mutation Breakdown:[/]")
+        for cat, count in sorted(stats.get("mutation_breakdown", {}).items()):
+            rprint(f"  - {cat}: {count}")
+
+    unclassified_tools = stats.get("unclassified_tools", [])
+    if unclassified_tools:
+        rprint("\n[bold yellow]Unclassified Tools Found in Session:[/]")
+        for tool in unclassified_tools:
+            rprint(f"  - {tool}")
+
+    missing_hashes = stats.get("missing_hashes", [])
+    if missing_hashes:
+        rprint("\n[bold yellow]Calls Missing Hashes:[/]")
+        for item in missing_hashes:
+            rprint(f"  - {item}")
 
     for i, call in enumerate(summary.tool_calls):
         rprint(f"\n[bold cyan]Tool Call {i + 1}: {call.tool_name}[/]")

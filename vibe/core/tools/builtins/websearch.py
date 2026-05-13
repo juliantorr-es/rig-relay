@@ -15,6 +15,10 @@ from mistralai.client.models import (
 )
 from pydantic import BaseModel, Field
 
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -59,6 +63,10 @@ class WebSearch(
     ToolUIData[WebSearchArgs, WebSearchResult],
 ):
     description: ClassVar[str] = "Search the web for current information."
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.NONDETERMINISTIC_EXTERNAL_IO
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
 
     @classmethod
     def is_available(cls) -> bool:

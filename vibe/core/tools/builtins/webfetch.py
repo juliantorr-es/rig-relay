@@ -8,6 +8,10 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel, Field
 
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -84,6 +88,10 @@ class WebFetch(
     description: ClassVar[str] = (
         "Fetch content from a URL. Converts HTML to markdown for readability."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.NONDETERMINISTIC_EXTERNAL_IO
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
 
     @staticmethod
     def _normalize_url(url: str) -> str:

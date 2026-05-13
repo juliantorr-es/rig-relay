@@ -13,6 +13,10 @@ from vibe.core.tools.base import (
     ToolError,
     ToolPermission,
 )
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from vibe.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from vibe.core.types import ToolResultEvent
 
@@ -82,10 +86,13 @@ class AskUserQuestion(
     ToolUIData[AskUserQuestionArgs, AskUserQuestionResult],
 ):
     description: ClassVar[str] = (
-        "Ask the user one or more questions and wait for their responses. "
         "Each question has 2-4 choices plus an automatic 'Other' option for free text. "
         "Use this to gather preferences, clarify requirements, or get decisions."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.NONDETERMINISTIC_EXTERNAL_IO
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
 
     @classmethod
     def format_call_display(cls, args: AskUserQuestionArgs) -> ToolCallDisplay:

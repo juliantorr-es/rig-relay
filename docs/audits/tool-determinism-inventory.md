@@ -6,14 +6,19 @@ This document tracks the determinism and mutation characteristics of Rig Relay b
 
 | Tool Name | Module | Determinism Class | Mutation Class | Input Normalization | Output Normalization | Evidence Coverage |
 |-----------|--------|-------------------|----------------|---------------------|----------------------|-------------------|
-| `read_file` | `builtins.read_file` | `deterministic_repo_state` | `read_only` | High (Path normalization) | High (UTF-8, line range) | Partial |
-| `write_file` | `builtins.write_file` | `deterministic_repo_state` | `writes_workspace` | High | High | Partial |
-| `grep` | `builtins.grep` | `deterministic_repo_state` | `read_only` | High | Medium (Recursive order) | Partial |
-| `bash` | `builtins.bash` | `nondeterministic_external_io` | `writes_workspace` | Low | Low | Low |
-| `git` | `builtins.git` | `deterministic_repo_state` | `mutates_git_state` | Medium | Medium | Low |
-| `websearch` | `builtins.websearch` | `nondeterministic_external_io` | `read_only` | High | Low (Provider dependent) | Low |
-| `webfetch` | `builtins.webfetch` | `nondeterministic_external_io` | `read_only` | High | Low | Low |
-| `ask_user_question` | `builtins.ask_user_question` | `nondeterministic_external_io` | `read_only` | N/A | N/A | Low |
+| `read_file` | `builtins.read_file` | `deterministic_repo_state` | `read_only` | High (Path normalization) | High (UTF-8, line range) | Full |
+| `write_file` | `builtins.write_file` | `deterministic_repo_state` | `writes_workspace` | High | High | Full |
+| `grep` | `builtins.grep` | `deterministic_repo_state` | `read_only` | High | Medium (Recursive order) | Full |
+| `bash` | `builtins.bash` | `nondeterministic_external_io` | `writes_workspace` | Low | Low | Full |
+| `git` | `builtins.git` | `deterministic_repo_state` | `read_only` | Medium | Medium | Full |
+| `websearch` | `builtins.websearch` | `nondeterministic_external_io` | `read_only` | High | Low (Provider dependent) | Full |
+| `webfetch` | `builtins.webfetch` | `nondeterministic_external_io` | `read_only` | High | Low | Full |
+| `ask_user_question` | `builtins.ask_user_question` | `nondeterministic_external_io` | `read_only` | N/A | N/A | Full |
+| `search_replace` | `builtins.search_replace` | `deterministic_repo_state` | `writes_workspace` | High | High | Full |
+| `skill` | `builtins.skill` | `deterministic_repo_state` | `read_only` | High | Medium | Full |
+| `task` | `builtins.task` | `nondeterministic_provider` | `writes_workspace` | Medium | Low | Full |
+| `todo` | `builtins.todo` | `deterministic_pure` | `writes_temp_only` | High | High | Full |
+| `exit_plan_mode` | `builtins.exit_plan_mode` | `deterministic_pure` | `read_only` | N/A | N/A | Full |
 
 ## Determinism Classes
 
