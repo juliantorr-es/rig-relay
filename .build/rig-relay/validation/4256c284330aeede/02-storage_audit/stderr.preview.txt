@@ -1,1 +1,0 @@
-/Users/user/Developer/GitHub/rig-relay/.venv/bin/python3: can't open file '/private/var/folders/72/cyz7gwcd5jsg_71j09s7pnmm0000gn/T/pytest-of-user/pytest-927/test_cwd12/scripts/rig_relay_storage_audit.py': [Errno 2] No such file or directory

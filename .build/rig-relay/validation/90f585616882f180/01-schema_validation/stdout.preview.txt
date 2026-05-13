@@ -1,8 +1,0 @@
-
-Schema validation summary:
-  Total: 53
-  Passed: 53
-  Failed: 0
-  jsonschema: available (core dependency)
-
-All schemas valid.

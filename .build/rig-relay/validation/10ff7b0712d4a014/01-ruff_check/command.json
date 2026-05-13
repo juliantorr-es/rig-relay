@@ -1,1 +1,0 @@
-{"command":["uv","run","ruff","check","vibe/core/tools/builtins/validation_suite.py"]}

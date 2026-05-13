@@ -1,1 +1,0 @@
-error: Failed to format vibe/core/tools/builtins/validation_suite.py: No such file or directory (os error 2)
