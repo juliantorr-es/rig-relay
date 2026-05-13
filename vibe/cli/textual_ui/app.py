@@ -130,7 +130,7 @@ from vibe.core.data_retention import DATA_RETENTION_MESSAGE
 from vibe.core.hooks.models import HookStartEvent
 from vibe.core.log_reader import LogReader
 from vibe.core.logger import logger
-from vibe.core.paths import HISTORY_FILE
+from vibe.core.paths import resolve_history_path
 from vibe.core.rewind import RewindError
 from vibe.core.session.resume_sessions import (
     ResumeSessionInfo,
@@ -367,7 +367,7 @@ class VibeApp(App):  # noqa: PLR0904
         self._chat_input_container: ChatInputContainer | None = None
         self._current_bottom_app: BottomApp = BottomApp.Input
 
-        self.history_file = HISTORY_FILE.path
+        self.history_file = resolve_history_path()
 
         self._tools_collapsed = True
         self._windowing = SessionWindowing(load_more_batch_size=LOAD_MORE_BATCH_SIZE)

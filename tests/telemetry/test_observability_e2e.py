@@ -7,12 +7,11 @@ from pathlib import Path
 from jsonschema import validate
 import pytest
 
-from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.config import VibeConfig
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.telemetry.constants import EventName
 from vibe.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
 from vibe.core.telemetry.local import log_local_event
-import vibe.core.telemetry.send
 
 SCHEMA_PATH = (
     Path(__file__).parent.parent.parent
@@ -51,11 +50,11 @@ def mock_config():
 @pytest.fixture
 def real_telemetry_client(monkeypatch):
     """Force reload of telemetry modules to ensure we use the real implementation."""
+    import vibe.core.agent_loop
     import vibe.core.paths._vibe_home
+    import vibe.core.telemetry.duckdb_projection
     import vibe.core.telemetry.local
     import vibe.core.telemetry.send
-    import vibe.core.telemetry.duckdb_projection
-    import vibe.core.agent_loop
 
     importlib.reload(vibe.core.paths._vibe_home)
     importlib.reload(vibe.core.telemetry.local)
@@ -65,9 +64,10 @@ def real_telemetry_client(monkeypatch):
 
     # Re-apply the real method to the class just in case the reload didn't fully clean it
     from vibe.core.telemetry.send import TelemetryClient as RealClient
+
     monkeypatch.setattr(
         "vibe.core.telemetry.send.TelemetryClient.send_telemetry_event",
-        RealClient.send_telemetry_event
+        RealClient.send_telemetry_event,
     )
 
     return vibe.core.telemetry.send.TelemetryClient
@@ -109,9 +109,7 @@ async def test_observability_e2e_request_accounting(
     )
 
     # 2. Verify JSONL exists and matches schema
-    log_file = (
-        SESSIONS_ROOT.path / session_id / "observability.jsonl"
-    )
+    log_file = SESSIONS_ROOT.path / session_id / "observability.jsonl"
     assert log_file.exists()
 
     line = log_file.read_text().splitlines()[0]
@@ -148,18 +146,16 @@ async def test_observability_e2e_tool_completion(
         config_getter=lambda: mock_config, session_id_getter=lambda: session_id
     )
 
+    from pydantic import BaseModel
+
     from vibe.core.llm.format import ResolvedToolCall
     from vibe.core.tools.base import BaseTool
-    from pydantic import BaseModel
 
     class MockArgs(BaseModel):
         pass
 
     tool_call = ResolvedToolCall(
-        call_id="call-1",
-        tool_name="ls",
-        tool_class=BaseTool,
-        validated_args=MockArgs(),
+        call_id="call-1", tool_name="ls", tool_class=BaseTool, validated_args=MockArgs()
     )
 
     # 1. Emit tool completion via TelemetryClient
@@ -209,9 +205,10 @@ async def test_observability_e2e_artifacting(
     loop = AgentLoop(config=mock_config)
     loop.session_id = session_id
 
+    from pydantic import BaseModel
+
     from vibe.core.llm.format import ResolvedToolCall
     from vibe.core.tools.base import BaseTool
-    from pydantic import BaseModel
 
     class MockArgs(BaseModel):
         command: str
@@ -233,12 +230,7 @@ async def test_observability_e2e_artifacting(
     assert "[TRUNCATED]" in loop.messages[-1].content
 
     # 2. Verify artifact exists
-    artifact_dir = (
-        SESSIONS_ROOT.path
-        / session_id
-        / "artifacts"
-        / "tool-results"
-    )
+    artifact_dir = SESSIONS_ROOT.path / session_id / "artifacts" / "tool-results"
     artifacts = list(artifact_dir.glob("*.json"))
     assert len(artifacts) == 1
 
@@ -253,6 +245,11 @@ async def test_observability_e2e_artifacting(
     # Verify metadata only, not raw output
     assert "raw_output" not in artifact_event["payload"]
     assert "prompt_excerpt" not in artifact_event["payload"]
+    assert (
+        artifact_event["payload"]["schema_version"]
+        == "rig.relay.tool_output_artifact.v1"
+    )
+    assert artifact_event["payload"]["payload_sha256"].startswith("sha256:")
 
     # 4. Verify DuckDB Projection
     if not HAS_DUCKDB:
@@ -292,9 +289,7 @@ async def test_observability_e2e_context_assembly(
     await loop._report_context_assembly(model)
 
     # 2. Verify JSONL exists and matches schema
-    log_file = (
-        SESSIONS_ROOT.path / session_id / "observability.jsonl"
-    )
+    log_file = SESSIONS_ROOT.path / session_id / "observability.jsonl"
     line = log_file.read_text().splitlines()[0]
     event = json.loads(line)
     validate(instance=event, schema=observability_schema)
@@ -346,9 +341,7 @@ async def test_observability_e2e_context_layout(
     await loop._report_context_assembly(model)
 
     # 2. Verify JSONL exists and matches schema
-    log_file = (
-        SESSIONS_ROOT.path / session_id / "observability.jsonl"
-    )
+    log_file = SESSIONS_ROOT.path / session_id / "observability.jsonl"
     lines = log_file.read_text().splitlines()
 
     # Assembly report

@@ -55,6 +55,30 @@ def write_event(
         f.write(json.dumps(event) + "\n")
 
 
+def write_legacy_artifact_event(session_dir: Path) -> None:
+    log_file = session_dir / "observability.jsonl"
+    event = {
+        "schema_version": "rig.relay.observability.v1",
+        "event_id": str(uuid.uuid4()),
+        "session_id": session_dir.name,
+        "sequence": 0,
+        "created_at": "2024-01-01T00:00:00Z",
+        "event_name": EventName.ARTIFACT_WRITTEN,
+        "payload": {
+            "artifact_id": "artifact-1",
+            "tool_name": "read_file",
+            "raw_byte_size": 10,
+            "prompt_visible_byte_size": 5,
+            "sha256": "sha256:abc",
+        },
+        "producer": {"name": "rig-relay", "version": "1.0.0"},
+        "receipt_candidate": True,
+        "event_hash": "sha256:abc",
+    }
+    with log_file.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(event) + "\n")
+
+
 @pytest.mark.skipif(not HAS_DUCKDB, reason="DuckDB not installed")
 def test_analyzer_summarizes_correctly(session_root):
     s1 = session_root / "session-1"
@@ -136,3 +160,16 @@ def test_analyzer_handles_missing_duckdb_gracefully(session_root, monkeypatch):
     analyzer = DuckDBProjection(session_root)
     with pytest.raises(ImportError, match="DuckDB is required"):
         analyzer.get_summary()
+
+
+@pytest.mark.skipif(not HAS_DUCKDB, reason="DuckDB not installed")
+def test_analyzer_handles_legacy_artifact_shape(session_root):
+    s1 = session_root / "session-legacy"
+    s1.mkdir()
+    write_legacy_artifact_event(s1)
+
+    analyzer = DuckDBProjection(session_root)
+    summary = analyzer.get_summary()
+
+    assert summary.artifact_count == 1
+    assert summary.artifact_payload_hashes == ["sha256:abc"]

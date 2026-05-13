@@ -15,7 +15,7 @@ from vibe.core.config.harness_files import (
     init_harness_files_manager,
 )
 from vibe.core.logger import logger
-from vibe.core.paths import HISTORY_FILE
+from vibe.core.paths import resolve_history_path
 from vibe.core.telemetry.build_metadata import build_entrypoint_metadata
 
 # Configure line buffering for subprocess communication
@@ -51,11 +51,11 @@ def bootstrap_config_files() -> None:
             logger.error(f"Could not create default config file: {e}")
             raise
 
-    history_file = HISTORY_FILE.path
+    history_file = resolve_history_path()
     if not history_file.exists():
         try:
             history_file.parent.mkdir(parents=True, exist_ok=True)
-            history_file.write_text("Hello Vibe!\n", "utf-8")
+            history_file.write_text("", "utf-8")
         except Exception as e:
             logger.error(f"Could not create history file: {e}")
             raise

@@ -165,6 +165,8 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "tests/*" = ["ANN", "PLR"]
 # Textual parent classes don't use ClassVar, so we can't either without breaking pyright
 "vibe/cli/textual_ui/ansi_markdown.py" = ["RUF012"]
+"vibe/core/telemetry/send.py" = ["PLR"]
+"vibe/core/telemetry/duckdb_projection.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

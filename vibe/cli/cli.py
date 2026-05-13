@@ -21,7 +21,7 @@ from vibe.core.config import (
 from vibe.core.config.harness_files import get_harness_files_manager
 from vibe.core.hooks.config import load_hooks_from_fs
 from vibe.core.logger import logger
-from vibe.core.paths import HISTORY_FILE
+from vibe.core.paths import resolve_history_path
 from vibe.core.programmatic import run_programmatic
 from vibe.core.session.session_loader import SessionLoader
 from vibe.core.telemetry.build_metadata import build_entrypoint_metadata
@@ -115,7 +115,7 @@ def bootstrap_config_files() -> None:
         except Exception as e:
             rprint(f"[yellow]Could not create default config file: {e}[/]")
 
-    history_file = HISTORY_FILE.path
+    history_file = resolve_history_path()
     if not history_file.exists():
         try:
             history_file.parent.mkdir(parents=True, exist_ok=True)

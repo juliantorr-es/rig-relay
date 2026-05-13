@@ -1179,7 +1179,9 @@ class AgentLoop:
                 tool_name=artifact.tool_name,
                 raw_byte_size=artifact.byte_size,
                 prompt_visible_byte_size=len(display_text.encode("utf-8")),
-                sha256=artifact.sha256,
+                payload_sha256=artifact.payload_sha256,
+                artifact_record_sha256=artifact.artifact_record_sha256,
+                truncated=artifact.truncated_for_prompt,
             )
 
         self.messages.append(

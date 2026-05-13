@@ -25,6 +25,8 @@ class ToolOutputArtifact(BaseModel):
     truncated_for_prompt: bool
     prompt_excerpt: str
     raw_payload_kind: Literal["text", "json"]
+    payload_sha256: str
+    artifact_record_sha256: str | None = None
 
 
 class PromptVisibleToolResult(BaseModel):
@@ -92,7 +94,7 @@ class ToolOutputArtifactWriter:
         sequence: int = 0,
         source_event_id: str | None = None,
     ) -> ToolOutputArtifact:
-        """Write raw tool output to a deterministic JSON artifact file."""
+        """Write a self-describing JSON artifact file."""
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
 
         artifact_id = str(uuid.uuid4())
@@ -104,7 +106,6 @@ class ToolOutputArtifactWriter:
         # Prepare payload
         raw_kind: Literal["text", "json"] = "text"
         try:
-            # Try to see if it's already JSON
             json.loads(raw_output)
             raw_kind = "json"
         except json.JSONDecodeError:
@@ -116,12 +117,43 @@ class ToolOutputArtifactWriter:
             "raw_payload_kind": raw_kind,
         }
 
-        # Deterministic JSON serialization
-        artifact_bytes = json.dumps(
+        payload_bytes = json.dumps(
             payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
+        payload_sha256 = f"sha256:{hashlib.sha256(payload_bytes).hexdigest()}"
 
-        # Durable Atomic write
+        excerpt = make_prompt_excerpt(raw_output)
+        envelope = {
+            "schema_version": "rig.relay.tool_output_artifact.v1",
+            "artifact_id": artifact_id,
+            "session_id": self.session_id,
+            "source_event_id": source_event_id,
+            "tool_name": tool_name,
+            "created_at": datetime.now(UTC).isoformat(),
+            "payload_sha256": payload_sha256,
+            "byte_size": len(payload_bytes),
+            "mime_type": "application/json",
+            "encoding": "utf-8",
+            "raw_payload_kind": raw_kind,
+            "truncated_for_prompt": True,
+            "prompt_visible_byte_size": len(excerpt.encode("utf-8")),
+            "prompt_excerpt": excerpt,
+            "payload": payload,
+            "metadata": {
+                "producer": "rig-relay",
+                "producer_version": "2.9.6",
+                "path": str(artifact_path),
+            },
+        }
+        envelope_bytes = json.dumps(
+            envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+        artifact_record_sha256 = f"sha256:{hashlib.sha256(envelope_bytes).hexdigest()}"
+        envelope["artifact_record_sha256"] = artifact_record_sha256
+        artifact_bytes = json.dumps(
+            envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+
         temp_path = artifact_path.with_suffix(".tmp")
         try:
             with temp_path.open("wb") as f:
@@ -141,20 +173,17 @@ class ToolOutputArtifactWriter:
             if temp_path.exists():
                 temp_path.unlink()
 
-        sha256 = f"sha256:{hashlib.sha256(artifact_bytes).hexdigest()}"
-        byte_size = len(artifact_bytes)
-
-        excerpt = make_prompt_excerpt(raw_output)
-
         return ToolOutputArtifact(
             session_id=self.session_id,
             source_event_id=source_event_id,
             tool_name=tool_name,
             path=str(artifact_path),
-            sha256=sha256,
-            byte_size=byte_size,
+            sha256=payload_sha256,
+            byte_size=len(payload_bytes),
             truncated_for_prompt=True,
             prompt_excerpt=excerpt,
             raw_payload_kind=raw_kind,
             artifact_id=artifact_id,
+            payload_sha256=payload_sha256,
+            artifact_record_sha256=artifact_record_sha256,
         )

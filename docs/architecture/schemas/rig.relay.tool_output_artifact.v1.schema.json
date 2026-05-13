@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.local/schemas/rig.relay.tool_output_artifact.v1.schema.json",
+  "title": "Rig Relay Tool Output Artifact",
+  "type": "object",
+  "description": "Self-describing artifact envelope for durable tool output analysis.",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "session_id",
+    "tool_name",
+    "created_at",
+    "payload_sha256",
+    "byte_size",
+    "raw_payload_kind",
+    "truncated_for_prompt",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.tool_output_artifact.v1",
+      "description": "Schema version identifier for the artifact envelope."
+    },
+    "artifact_id": {
+      "type": "string",
+      "description": "Unique identifier for the artifact record."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier associated with the artifact."
+    },
+    "source_event_id": {
+      "type": ["string", "null"],
+      "description": "Optional source event identifier that produced the artifact."
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Tool name that generated the artifact."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the artifact envelope was written."
+    },
+    "payload_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of the canonical serialized payload object."
+    },
+    "artifact_record_sha256": {
+      "type": ["string", "null"],
+      "description": "Optional SHA256 hash of the full envelope excluding this field."
+    },
+    "byte_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Byte size of the canonical payload bytes."
+    },
+    "mime_type": {
+      "type": "string",
+      "description": "MIME type for the embedded payload."
+    },
+    "encoding": {
+      "type": "string",
+      "description": "Text encoding used for the serialized artifact."
+    },
+    "raw_payload_kind": {
+      "type": "string",
+      "enum": ["text", "json"],
+      "description": "Kind of raw payload embedded in the artifact."
+    },
+    "truncated_for_prompt": {
+      "type": "boolean",
+      "description": "Whether the prompt-visible excerpt was truncated."
+    },
+    "prompt_visible_byte_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Byte size of the prompt-visible excerpt."
+    },
+    "prompt_excerpt": {
+      "type": "string",
+      "description": "Prompt-visible excerpt derived from the raw payload."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Embedded raw payload object that remains portable and analyzable.",
+      "required": ["tool_name", "raw_output", "raw_payload_kind"],
+      "properties": {
+        "tool_name": {"type": "string"},
+        "raw_output": {"type": "string"},
+        "raw_payload_kind": {"type": "string", "enum": ["text", "json"]}
+      },
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Producer metadata describing provenance of the artifact file.",
+      "required": ["producer", "producer_version", "path"],
+      "properties": {
+        "producer": {"type": "string"},
+        "producer_version": {"type": "string"},
+        "path": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+
+from jsonschema import validate
 
 from vibe.core.telemetry.artifacts import (
     ToolOutputArtifactWriter,
@@ -45,19 +48,31 @@ def test_write_artifact(tmp_path, monkeypatch):
     assert Path(artifact.path).exists()
     assert artifact.byte_size > 0
     assert artifact.sha256.startswith("sha256:")
+    assert artifact.payload_sha256.startswith("sha256:")
 
     # Verify file content
     content = json.loads(Path(artifact.path).read_text())
+    schema_path = (
+        Path(__file__).parent.parent.parent
+        / "docs"
+        / "architecture"
+        / "schemas"
+        / "rig.relay.tool_output_artifact.v1.schema.json"
+    )
+    validate(instance=content, schema=json.loads(schema_path.read_text()))
+    assert content["schema_version"] == "rig.relay.tool_output_artifact.v1"
     assert content["tool_name"] == tool_name
-    assert content["raw_output"] == raw_output
-    assert content["raw_payload_kind"] == "text"
+    assert content["payload"]["raw_output"] == raw_output
+    assert content["payload"]["raw_payload_kind"] == "text"
+    assert content["payload_sha256"] == artifact.payload_sha256
+    assert content["artifact_record_sha256"] == artifact.artifact_record_sha256
 
-    # Verify SHA256 matches bytes on disk
-    import hashlib
-
-    file_bytes = Path(artifact.path).read_bytes()
-    expected_hash = f"sha256:{hashlib.sha256(file_bytes).hexdigest()}"
-    assert artifact.sha256 == expected_hash
+    payload_bytes = json.dumps(
+        content["payload"], sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    assert (
+        artifact.payload_sha256 == f"sha256:{hashlib.sha256(payload_bytes).hexdigest()}"
+    )
 
 
 def test_artifact_filename_determinism(tmp_path, monkeypatch):

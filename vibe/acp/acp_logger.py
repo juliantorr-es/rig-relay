@@ -14,7 +14,7 @@ from cachetools import TTLCache
 if TYPE_CHECKING:
     from acp.connection import StreamEvent
 
-ACP_LOG_DIR = Path.home() / ".vibe" / "logs" / "acp"
+ACP_LOG_DIR = Path.home() / ".rig" / "relay" / "logs" / "acp"
 ACP_LOG_FILE = ACP_LOG_DIR / "messages.jsonl"
 MAX_LOG_SIZE_BYTES = 1_000_000
 BACKUP_COUNT = 3

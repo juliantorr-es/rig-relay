@@ -71,14 +71,42 @@ def get_vibe_home_diagnostics() -> dict[str, object]:
     }
 
 
+def get_legacy_history_path() -> Path:
+    return VIBE_HOME.path / "vibehistory"
+
+
+def get_legacy_log_path() -> Path:
+    return VIBE_HOME.path / "logs" / "vibe.log"
+
+
+def resolve_history_path() -> Path:
+    canonical = HISTORY_FILE.path
+    legacy = get_legacy_history_path()
+    if canonical.exists() or _disable_legacy_config():
+        return canonical
+    if legacy.exists():
+        return legacy
+    return canonical
+
+
+def resolve_log_path() -> Path:
+    canonical = LOG_FILE.path
+    legacy = get_legacy_log_path()
+    if canonical.exists() or _disable_legacy_config():
+        return canonical
+    if legacy.exists():
+        return legacy
+    return canonical
+
+
 VIBE_HOME = GlobalPath(_get_vibe_home)
 GLOBAL_ENV_FILE = GlobalPath(lambda: VIBE_HOME.path / ".env")
 SESSION_LOG_DIR = GlobalPath(lambda: VIBE_HOME.path / "logs" / "session")
 TRUSTED_FOLDERS_FILE = GlobalPath(lambda: VIBE_HOME.path / "trusted_folders.toml")
 LOG_DIR = GlobalPath(lambda: VIBE_HOME.path / "logs")
-LOG_FILE = GlobalPath(lambda: VIBE_HOME.path / "logs" / "vibe.log")
+LOG_FILE = GlobalPath(lambda: VIBE_HOME.path / "logs" / "rig-relay.log")
 CACHE_FILE = GlobalPath(lambda: VIBE_HOME.path / "cache.toml")
-HISTORY_FILE = GlobalPath(lambda: VIBE_HOME.path / "vibehistory")
+HISTORY_FILE = GlobalPath(lambda: VIBE_HOME.path / "history.jsonl")
 PLANS_DIR = GlobalPath(lambda: VIBE_HOME.path / "plans")
 SESSIONS_ROOT = GlobalPath(lambda: VIBE_HOME.path / "sessions")
 

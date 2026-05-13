@@ -8,7 +8,7 @@ import re
 import threading
 
 from vibe.core.logger import logger
-from vibe.core.paths import LOG_FILE
+from vibe.core.paths import resolve_log_path
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +51,7 @@ class LogReader:
         log_pattern: re.Pattern[str] = DEFAULT_LOG_PATTERN,
         poll_interval: float = LOG_POLL_INTERVAL,
     ) -> None:
-        self._log_file = log_file if log_file is not None else LOG_FILE.path
+        self._log_file = log_file if log_file is not None else resolve_log_path()
         self._consumer = consumer
         self._log_pattern = log_pattern
         self._lock = threading.Lock()

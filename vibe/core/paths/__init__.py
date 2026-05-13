@@ -18,8 +18,12 @@ from vibe.core.paths._vibe_home import (
     TRUSTED_FOLDERS_FILE,
     VIBE_HOME,
     GlobalPath,
+    get_legacy_history_path,
+    get_legacy_log_path,
     get_vibe_home_diagnostics,
     is_legacy_vibe_home,
+    resolve_history_path,
+    resolve_log_path,
 )
 from vibe.core.paths.conventions import AGENTS_MD_FILENAME
 
@@ -39,7 +43,11 @@ __all__ = [
     "WALK_MAX_DEPTH",
     "ConfigWalkResult",
     "GlobalPath",
+    "get_legacy_history_path",
+    "get_legacy_log_path",
     "get_vibe_home_diagnostics",
     "is_legacy_vibe_home",
+    "resolve_history_path",
+    "resolve_log_path",
     "walk_local_config_dirs",
 ]

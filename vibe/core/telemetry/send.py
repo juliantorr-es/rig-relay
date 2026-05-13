@@ -467,15 +467,25 @@ class TelemetryClient:
         tool_name: str,
         raw_byte_size: int,
         prompt_visible_byte_size: int,
-        sha256: str,
+        payload_sha256: str,
+        artifact_record_sha256: str | None = None,
+        truncated: bool = True,
+        source_event_id: str | None = None,
+        schema_version: str = "rig.relay.tool_output_artifact.v1",
     ) -> None:
         payload = {
             "artifact_id": artifact_id,
+            "artifact_path": artifact_path,
             "tool_name": tool_name,
             "raw_byte_size": raw_byte_size,
-            "path": artifact_path,
-            "sha256": sha256,
+            "prompt_visible_byte_size": prompt_visible_byte_size,
+            "payload_sha256": payload_sha256,
+            "truncated": truncated,
+            "source_event_id": source_event_id,
+            "schema_version": schema_version,
         }
+        if artifact_record_sha256 is not None:
+            payload["artifact_record_sha256"] = artifact_record_sha256
         self.send_telemetry_event(
             EventName.ARTIFACT_WRITTEN, payload, receipt_candidate=True
         )

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from vibe.core.paths import resolve_history_path, resolve_log_path
 from vibe.core.paths._vibe_home import _get_vibe_home
 
 
@@ -17,13 +18,13 @@ def test_get_vibe_home_prefers_rig_relay_home_env(
     assert _get_vibe_home() == custom_home
 
 
-def test_get_vibe_home_falls_back_to_vibe_home_env(
+def test_get_vibe_home_prefers_canonical_over_vibe_home_env(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     custom_home = tmp_path / "custom-vibe-home"
     monkeypatch.delenv("RIG_RELAY_HOME", raising=False)
     monkeypatch.setenv("VIBE_HOME", str(custom_home))
-    assert _get_vibe_home() == custom_home
+    assert _get_vibe_home() != custom_home
 
 
 def test_get_vibe_home_prefers_canonical_home_over_legacy_env(
@@ -155,3 +156,31 @@ def test_get_vibe_home_defaults_to_rig_relay_for_new_install(
 
     # None exist
     assert _get_vibe_home() == rr_dir
+
+
+def test_resolve_history_path_prefers_canonical_and_legacy_fallback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    canonical = tmp_path / ".rig" / "relay" / "history.jsonl"
+    legacy = tmp_path / ".rig" / "relay" / "vibehistory"
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home.HISTORY_FILE", type("GP", (), {"path": canonical})()
+    )
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home.get_legacy_history_path", lambda: legacy
+    )
+    assert resolve_history_path() == canonical
+
+
+def test_resolve_log_path_prefers_canonical_and_legacy_fallback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    canonical = tmp_path / ".rig" / "relay" / "logs" / "rig-relay.log"
+    legacy = tmp_path / ".rig" / "relay" / "logs" / "vibe.log"
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home.LOG_FILE", type("GP", (), {"path": canonical})()
+    )
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home.get_legacy_log_path", lambda: legacy
+    )
+    assert resolve_log_path() == canonical

@@ -6,7 +6,7 @@ from logging.handlers import RotatingFileHandler
 import os
 import re
 
-from vibe.core.paths import LOG_DIR, LOG_FILE
+from vibe.core.paths import LOG_DIR, resolve_log_path
 
 LOG_DIR.path.mkdir(parents=True, exist_ok=True)
 
@@ -56,7 +56,7 @@ def apply_logging_config(target_logger: logging.Logger) -> None:
             log_level_str = "WARNING"
 
     handler = RotatingFileHandler(
-        LOG_FILE.path, maxBytes=max_bytes, backupCount=0, encoding="utf-8"
+        resolve_log_path(), maxBytes=max_bytes, backupCount=0, encoding="utf-8"
     )
     handler.setFormatter(StructuredLogFormatter())
     log_level = getattr(logging, log_level_str, logging.WARNING)

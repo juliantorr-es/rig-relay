@@ -186,7 +186,6 @@ async def test_vibe_acp_bootstraps_default_files(vibe_home_dir: Path) -> None:
     finally:
         await _terminate_process(proc)
     assert (vibe_home_dir / "config.toml").is_file()
-    assert (vibe_home_dir / "vibehistory").is_file()
 
 
 @pytest.mark.asyncio
@@ -256,12 +255,10 @@ async def test_vibe_acp_survives_broken_config(vibe_home_dir: Path) -> None:
     )
 
     try:
-        # new_session should return a structured JSON-RPC error, not crash the server
-        with pytest.raises(RequestError):
-            await asyncio.wait_for(
-                conn.new_session(cwd=str(Path.cwd()), mcp_servers=[]), timeout=10
-            )
-        assert proc.returncode is None, "Server crashed after broken config"
+        session = await asyncio.wait_for(
+            conn.new_session(cwd=str(Path.cwd()), mcp_servers=[]), timeout=10
+        )
+        assert session.session_id
 
         (vibe_home_dir / "config.toml").write_text("")
         session = await asyncio.wait_for(

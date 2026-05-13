@@ -7,6 +7,7 @@ from typing import Any
 
 try:
     import duckdb
+
     from vibe.core.telemetry.constants import EventName
 
     HAS_DUCKDB = True
@@ -35,6 +36,8 @@ class ObservabilitySummary:
     artifact_prompt_visible_bytes_total: int = 0
     artifact_bytes_saved_estimate: int = 0
     artifacts_by_tool: dict[str, int] = field(default_factory=dict)
+    artifact_schema_versions: dict[str, int] = field(default_factory=dict)
+    artifact_payload_hashes: list[str] = field(default_factory=list)
 
     # Context Assembly metrics
     context_assembly_count: int = 0
@@ -122,7 +125,9 @@ class DuckDBProjection:
 
                     if res and res[0] > 0:
                         summary.request_count = res[0]
-                        summary.max_estimated_tokens = int(res[1]) if res[1] is not None else 0
+                        summary.max_estimated_tokens = (
+                            int(res[1]) if res[1] is not None else 0
+                        )
                         summary.avg_estimated_tokens = (
                             float(res[2]) if res[2] is not None else 0.0
                         )
@@ -154,19 +159,23 @@ class DuckDBProjection:
             if "payload" in rel.columns:
                 tool_rel = rel.filter(f"event_name = '{EventName.TOOL_CALL_COMPLETED}'")
                 try:
-                    res = tool_rel.aggregate("payload->>'tool_name', count(*)").fetchall()
-                    summary.tool_calls_by_name = {str(k): v for k, v in res if k is not None}
+                    res = tool_rel.aggregate(
+                        "payload->>'tool_name', count(*)"
+                    ).fetchall()
+                    summary.tool_calls_by_name = {
+                        str(k): v for k, v in res if k is not None
+                    }
 
                     res = tool_rel.aggregate("payload->>'status', count(*)").fetchall()
-                    summary.tool_calls_by_status = {str(k): v for k, v in res if k is not None}
+                    summary.tool_calls_by_status = {
+                        str(k): v for k, v in res if k is not None
+                    }
                 except Exception as e:
                     summary.errors.append(f"Tool call projection failed: {e}")
 
             # 2f. Artifact metrics
             if "payload" in rel.columns:
-                art_rel = rel.filter(
-                    f"event_name = '{EventName.ARTIFACT_WRITTEN}'"
-                )
+                art_rel = rel.filter(f"event_name = '{EventName.ARTIFACT_WRITTEN}'")
                 try:
                     res = art_rel.aggregate(
                         "count(*), "
@@ -187,14 +196,35 @@ class DuckDBProjection:
                             - summary.artifact_prompt_visible_bytes_total
                         )
 
-                    res = art_rel.aggregate("payload->>'tool_name', count(*)").fetchall()
-                    summary.artifacts_by_tool = {str(k): v for k, v in res if k is not None}
+                    res = art_rel.aggregate(
+                        "payload->>'tool_name', count(*)"
+                    ).fetchall()
+                    summary.artifacts_by_tool = {
+                        str(k): v for k, v in res if k is not None
+                    }
+
+                    schema_res = art_rel.aggregate(
+                        "coalesce(payload->>'schema_version', 'legacy'), count(*)"
+                    ).fetchall()
+                    summary.artifact_schema_versions = {
+                        str(k): v for k, v in schema_res if k is not None
+                    }
+
+                    hash_field = (
+                        "coalesce(payload->>'payload_sha256', payload->>'sha256')"
+                    )
+                    hash_res = art_rel.project(hash_field).fetchall()
+                    summary.artifact_payload_hashes = [
+                        str(row[0]) for row in hash_res if row and row[0] is not None
+                    ]
                 except Exception as e:
                     summary.errors.append(f"Artifact projection failed: {e}")
 
             # 2g. Context Assembly metrics
             if "payload" in rel.columns:
-                ca_rel = rel.filter(f"event_name = '{EventName.CONTEXT_ASSEMBLY_REPORTED}'")
+                ca_rel = rel.filter(
+                    f"event_name = '{EventName.CONTEXT_ASSEMBLY_REPORTED}'"
+                )
                 try:
                     res = ca_rel.aggregate(
                         "count(*), "
@@ -224,7 +254,9 @@ class DuckDBProjection:
                         )
 
                     # Count optimization hints by flattening the list
-                    hints_res = ca_rel.project("payload->'optimization_hints'").fetchall()
+                    hints_res = ca_rel.project(
+                        "payload->'optimization_hints'"
+                    ).fetchall()
                     hint_counts: dict[str, int] = {}
                     for row in hints_res:
                         if row[0]:
@@ -236,7 +268,9 @@ class DuckDBProjection:
 
             # 2h. Context Layout metrics
             if "payload" in rel.columns:
-                cl_rel = rel.filter(f"event_name = '{EventName.CONTEXT_LAYOUT_PLANNED}'")
+                cl_rel = rel.filter(
+                    f"event_name = '{EventName.CONTEXT_LAYOUT_PLANNED}'"
+                )
                 try:
                     res = cl_rel.aggregate(
                         "count(*), "
@@ -262,7 +296,9 @@ class DuckDBProjection:
                         )
 
                     # Count layout optimization hints
-                    l_hints_res = cl_rel.project("payload->'optimization_hints'").fetchall()
+                    l_hints_res = cl_rel.project(
+                        "payload->'optimization_hints'"
+                    ).fetchall()
                     l_hint_counts: dict[str, int] = {}
                     for row in l_hints_res:
                         if row[0]:
@@ -297,5 +333,3 @@ class DuckDBProjection:
             except Exception as e:
                 summary.errors.append(f"Failed to read {path.name}: {e}")
         return malformed
-
-
