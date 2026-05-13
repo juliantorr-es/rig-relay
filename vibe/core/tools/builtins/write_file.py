@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from vibe.core.rewind.manager import FileSnapshot
 from vibe.core.scratchpad import is_scratchpad_path
+from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -56,6 +57,10 @@ class WriteFile(
     description: ClassVar[str] = (
         "Create or overwrite a UTF-8 file. Fails if file exists unless 'overwrite=True'."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.DETERMINISTIC_REPO_STATE
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.WRITES_WORKSPACE
 
     @classmethod
     def format_call_display(cls, args: WriteFileArgs) -> ToolCallDisplay:

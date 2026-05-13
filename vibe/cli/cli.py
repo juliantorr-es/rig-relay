@@ -188,17 +188,30 @@ def _resume_previous_session(
 
 
 def _run_doctor_command(args: argparse.Namespace) -> None:
-    if getattr(args, "doctor_command", None) != "evidence":
+    doctor_command = getattr(args, "doctor_command", None)
+    if doctor_command == "evidence":
+        from vibe.core.telemetry.doctor import run_evidence_validation
+
+        sys.exit(
+            run_evidence_validation(
+                args.evidence_root,
+                args.session,
+                json_output=getattr(args, "json", False),
+            )
+        )
+    elif doctor_command == "tool-determinism":
+        from vibe.core.telemetry.doctor import run_tool_determinism_report
+
+        sys.exit(
+            run_tool_determinism_report(
+                args.evidence_root,
+                args.session,
+                json_output=getattr(args, "json", False),
+            )
+        )
+    else:
         rprint("[red]Error: unknown doctor command[/]")
         sys.exit(2)
-
-    from vibe.core.telemetry.doctor import run_evidence_validation
-
-    sys.exit(
-        run_evidence_validation(
-            args.evidence_root, args.session, json_output=getattr(args, "json", False)
-        )
-    )
 
 
 def _run_standard_cli(args: argparse.Namespace) -> None:

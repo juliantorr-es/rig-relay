@@ -13,6 +13,11 @@ from vibe.core.config import ProviderConfig, VibeConfig
 from vibe.core.llm.format import ResolvedToolCall
 from vibe.core.telemetry.build_metadata import build_base_metadata
 from vibe.core.telemetry.constants import EventName
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+    ToolOutputKind,
+)
 from vibe.core.telemetry.types import (
     AgentEntrypoint,
     EntrypointMetadata,
@@ -223,6 +228,11 @@ class TelemetryClient:
         model: str,
         result: dict[str, Any] | None = None,
         message_id: str | None = None,
+        input_sha256: str | None = None,
+        output_sha256: str | None = None,
+        output_kind: ToolOutputKind = ToolOutputKind.UNKNOWN,
+        mutation_class: ToolMutationClass = ToolMutationClass.UNKNOWN,
+        determinism_class: ToolDeterminismClass = ToolDeterminismClass.UNKNOWN,
     ) -> None:
         verdict_value = decision.verdict.value if decision else None
         approval_type_value = decision.approval_type.value if decision else None
@@ -250,6 +260,11 @@ class TelemetryClient:
             "nb_files_modified": nb_files_modified,
             "result_keys": result_keys,
             "message_id": message_id,
+            "tool_input_sha256": input_sha256,
+            "tool_output_sha256": output_sha256,
+            "tool_output_kind": output_kind,
+            "tool_mutation_class": mutation_class,
+            "tool_determinism_class": determinism_class,
             "receipt_candidate": True,
         }
         self.send_telemetry_event(

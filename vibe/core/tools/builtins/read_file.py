@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from vibe.core.config.harness_files import get_harness_files_manager
 from vibe.core.scratchpad import is_scratchpad_path
+from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -80,6 +81,10 @@ class ReadFile(
         "Read a text file (encoding detected safely), returning content from a "
         "specific line range. Reading is capped by a byte limit for safety."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.DETERMINISTIC_REPO_STATE
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
 
     @final
     async def run(

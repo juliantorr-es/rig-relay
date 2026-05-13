@@ -61,6 +61,22 @@ def parse_arguments() -> argparse.Namespace:
     evidence_parser.add_argument(
         "--json", action="store_true", help="Emit machine-readable JSON output."
     )
+    tool_determinism_parser = doctor_subparsers.add_parser(
+        "tool-determinism", help="Report tool determinism evidence for one session"
+    )
+    tool_determinism_parser.add_argument(
+        "--evidence-root",
+        type=Path,
+        required=True,
+        metavar="PATH",
+        help="Evidence root that owns the selected session.",
+    )
+    tool_determinism_parser.add_argument(
+        "--session", required=True, metavar="SESSION_ID", help="Session id to inspect."
+    )
+    tool_determinism_parser.add_argument(
+        "--json", action="store_true", help="Emit machine-readable JSON output."
+    )
 
     parser.add_argument(
         "--show-config-paths",

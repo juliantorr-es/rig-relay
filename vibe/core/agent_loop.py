@@ -63,9 +63,15 @@ from vibe.core.session.session_migration import migrate_sessions_entrypoint
 from vibe.core.skills.manager import SkillManager
 from vibe.core.system_prompt import get_universal_system_prompt
 from vibe.core.telemetry.build_metadata import build_request_metadata
+from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.telemetry.manifest import write_session_manifest
 from vibe.core.telemetry.receipts import write_session_receipts
 from vibe.core.telemetry.send import TelemetryClient
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+    ToolOutputKind,
+)
 from vibe.core.telemetry.types import (
     EntrypointMetadata,
     TelemetryCallType,
@@ -1180,6 +1186,19 @@ class AgentLoop:
             should_artifact_tool_result,
         )
 
+        # Self-Dogfood Tool Evidence calculation
+        input_json = dump_canonical_json(tool_call.args_dict)
+        input_sha256 = hashlib.sha256(input_json.encode("utf-8")).hexdigest()
+        output_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+        output_kind = ToolOutputKind.INLINE
+        if status == "failure":
+            output_kind = ToolOutputKind.ERROR
+        elif not text:
+            output_kind = ToolOutputKind.EMPTY
+        elif should_artifact_tool_result(text):
+            output_kind = ToolOutputKind.ARTIFACTED
+
         display_text = text
         if should_artifact_tool_result(text):
             writer = ToolOutputArtifactWriter(self.session_id)
@@ -1227,6 +1246,15 @@ class AgentLoop:
             decision=decision,
             result=result,
             message_id=self._current_user_message_id,
+            input_sha256=input_sha256,
+            output_sha256=output_sha256,
+            output_kind=output_kind,
+            mutation_class=getattr(
+                tool_call.tool_class, "mutation_class", ToolMutationClass.UNKNOWN
+            ),
+            determinism_class=getattr(
+                tool_call.tool_class, "determinism_class", ToolDeterminismClass.UNKNOWN
+            ),
         )
 
     def _tool_failure_event(

@@ -25,6 +25,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from vibe.core.logger import logger
 from vibe.core.rewind.manager import FileSnapshot
+from vibe.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from vibe.core.types import ToolStreamEvent
 from vibe.core.utils.io import read_safe
 
@@ -130,6 +134,8 @@ class BaseTool[
     )
 
     prompt_path: ClassVar[Path] | None = None
+    determinism_class: ClassVar[ToolDeterminismClass] = ToolDeterminismClass.UNKNOWN
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.UNKNOWN
 
     def __init__(
         self, config_getter: Callable[[], ToolConfig], state: ToolState
