@@ -77,12 +77,16 @@ def config_dir(
 
     monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", config_dir)
 
+    init_harness_files_manager(config_dir)
+
     # Re-evaluate PLAN agent overrides so the allowlist uses the monkeypatched path
     from vibe.core.agents.models import PLAN, _plan_overrides
 
     object.__setattr__(PLAN, "overrides", _plan_overrides())
 
-    return config_dir
+    yield config_dir
+
+    reset_harness_files_manager()
 
 
 @pytest.fixture(autouse=True)
@@ -98,37 +102,23 @@ def _reset_trusted_folders_manager(config_dir: Path) -> None:
 
     trusted_folders_manager._file_path = config_dir / "trusted_folders.toml"
     trusted_folders_manager._trusted = []
-    trusted_folders_manager._untrusted = []
-    trusted_folders_manager._session_trusted = []
 
 
 @pytest.fixture(autouse=True)
-def _init_harness_files_manager():
-    reset_harness_files_manager()
-    init_harness_files_manager("user", "project")
-    yield
-    reset_harness_files_manager()
-
-
-@pytest.fixture(autouse=True)
-def _scratchpad_dir(
-    monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
-) -> Generator[Path]:
+def _mock_scratchpad(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[Path, None, None]:
     import vibe.core.scratchpad as scratchpad_mod
 
-    scratchpad_mod._active_scratchpads.clear()
+    scratchpad_root = tmp_path / "scratchpads"
+    scratchpad_root.mkdir()
 
-    scratchpad_root = tmp_path_factory.mktemp("scratchpad")
-    _counter = 0
+    def _fake_mkdtemp(prefix=None, dir=None):
+        dirname = f"{prefix or ''}{Path(dir or scratchpad_root).name}_tmp"
+        path = Path(dir or scratchpad_root) / dirname
+        path.mkdir(parents=True, exist_ok=True)
+        return str(path)
 
-    def _fake_mkdtemp(prefix: str = "") -> str:
-        nonlocal _counter
-        _counter += 1
-        d = scratchpad_root / f"{prefix}{_counter}"
-        d.mkdir(parents=True, exist_ok=True)
-        return str(d)
-
-    monkeypatch.setattr("vibe.core.scratchpad.tempfile.mkdtemp", _fake_mkdtemp)
+    # Mock tempfile.mkdtemp globally for tests
+    monkeypatch.setattr("tempfile.mkdtemp", _fake_mkdtemp)
 
     yield scratchpad_root
 
@@ -150,11 +140,6 @@ def _mock_platform(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setenv("SHELL", "/bin/sh")
-
-
-@pytest.fixture(autouse=True)
-def _mock_update_commands(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("vibe.cli.update_notifier.update.UPDATE_COMMANDS", ["true"])
 
 
 @pytest.fixture(autouse=True)
@@ -253,45 +238,24 @@ def build_test_agent_loop(
 def build_test_vibe_app(
     *, config: VibeConfig | None = None, agent_loop: AgentLoop | None = None, **kwargs
 ) -> VibeApp:
-    app_config = config or build_test_vibe_config()
 
-    resolved_agent_loop = agent_loop or build_test_agent_loop(config=app_config)
+    resolved_config = config or build_test_vibe_config()
 
-    update_notifier = kwargs.pop("update_notifier", None)
-    resolved_update_notifier = (
-        FakeUpdateGateway() if update_notifier is None else update_notifier
-    )
-    update_cache_repository = kwargs.pop("update_cache_repository", None)
-    resolved_update_cache_repository = (
-        FakeUpdateCacheRepository()
-        if update_cache_repository is None
-        else update_cache_repository
-    )
-    plan_offer_gateway = kwargs.pop("plan_offer_gateway", None)
-    resolved_plan_offer_gateway = (
-        FakeWhoAmIGateway(
-            WhoAmIResponse(
-                plan_type=WhoAmIPlanType.CHAT,
-                plan_name="INDIVIDUAL",
-                prompt_switching_to_pro_plan=False,
+    app = VibeApp(
+        options=StartupOptions(
+            model=resolved_config.active_model,
+        ),
+        config=resolved_config,
+        agent_loop=agent_loop or build_test_agent_loop(config=resolved_config),
+        whoami_gateway=FakeWhoAmIGateway(
+            response=WhoAmIResponse(
+                plan_type=WhoAmIPlanType.FREE,
+                email="test@example.com",
             )
-        )
-        if plan_offer_gateway is None
-        else plan_offer_gateway
-    )
-    current_version = kwargs.pop("current_version", None)
-    resolved_current_version = (
-        CORE_VERSION if current_version is None else current_version
-    )
-    voice_manager = kwargs.pop("voice_manager", FakeVoiceManager())
-
-    return VibeApp(
-        agent_loop=resolved_agent_loop,
-        startup=StartupOptions(initial_prompt=kwargs.pop("initial_prompt", None)),
-        current_version=resolved_current_version,
-        update_notifier=resolved_update_notifier,
-        update_cache_repository=resolved_update_cache_repository,
-        plan_offer_gateway=resolved_plan_offer_gateway,
-        voice_manager=voice_manager,
+        ),
+        update_cache_repository=FakeUpdateCacheRepository(),
+        update_gateway=FakeUpdateGateway(),
+        voice_manager=FakeVoiceManager(),
         **kwargs,
     )
+    return app

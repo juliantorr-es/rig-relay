@@ -108,8 +108,9 @@ def _build_env(vibe_home_dir: Path, *, include_api_key: bool) -> dict[str, str]:
         config_file.write_text("enable_telemetry = false\n")
 
     if include_api_key:
-        env["MISTRAL_API_KEY"] = "mock"
+        env["DEEPSEEK_API_KEY"] = "mock"
     else:
+        env.pop("DEEPSEEK_API_KEY", None)
         env.pop("MISTRAL_API_KEY", None)
 
     return env
