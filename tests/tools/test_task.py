@@ -18,6 +18,8 @@ from vibe.core.tools.builtins.task import (
     TaskArgs,
     TaskProviderOptions,
     TaskResult,
+    TaskScope,
+    TaskSpec,
     TaskToolConfig,
 )
 from vibe.core.tools.permissions import PermissionContext
@@ -33,11 +35,18 @@ class TestTaskArgs:
     def test_default_agent_is_explore(self) -> None:
         args = TaskArgs(task="do something")
         assert args.agent == "explore"
+        assert args.task_text == "do something"
 
     def test_custom_values(self) -> None:
         args = TaskArgs(task="do something", agent="explore")
         assert args.task == "do something"
         assert args.agent == "explore"
+
+    def test_structured_task_spec_sets_task_text(self) -> None:
+        spec = TaskSpec(task_id="task-1", task="inspect", agent_profile="explore")
+        args = TaskArgs(task_spec=spec)
+        assert args.task_text == "inspect"
+        assert args.task_spec is spec
 
 
 class TestTaskToolValidation:
@@ -317,8 +326,7 @@ class TestTaskToolExecution:
             yield AssistantEvent(content="Answer")
 
         with patch(
-            "vibe.core.tools.builtins.task.VibeConfig.load",
-            return_value=manager.config,
+            "vibe.core.tools.builtins.task.VibeConfig.load", return_value=manager.config
         ):
             with patch(
                 "vibe.core.tools.builtins.task.AgentLoop"
@@ -353,6 +361,46 @@ class TestTaskToolExecution:
         assert payload["payload"]["parent_turn_id"] == "parent-turn-1"
         assert payload["payload"]["child_session_id"] == "child-session"
         assert payload["payload"]["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_structured_task_spec_uses_agent_profile_and_scope(
+        self, task_tool: Task, ctx: InvokeContext
+    ) -> None:
+        mock_messages = [LLMMessage(role=Role.system, content="system")]
+
+        async def mock_act(task: str):
+            yield AssistantEvent(content="Answer")
+
+        captured = {}
+
+        def _capture_provider(provider: ProviderConfig) -> None:
+            captured["provider"] = provider
+
+        with patch("vibe.core.tools.builtins.task.AgentLoop") as mock_agent_loop_class:
+            mock_agent_loop = MagicMock()
+            mock_agent_loop.act = mock_act
+            mock_agent_loop.messages = mock_messages
+            mock_agent_loop.set_approval_callback = MagicMock()
+            mock_agent_loop_class.side_effect = lambda **kwargs: (
+                _capture_provider(kwargs["config"].get_active_provider())
+                or mock_agent_loop
+            )
+
+            spec = TaskSpec(
+                task_id="audit-1",
+                task="inspect repo",
+                agent_profile="explore",
+                intent="audit",
+                scope=TaskScope(
+                    allowed_paths=["vibe/core/tools/builtins/task.py"],
+                    allow_write=False,
+                    allow_bash=False,
+                ),
+            )
+            result = await collect_result(task_tool.run(TaskArgs(task_spec=spec), ctx))
+
+        assert isinstance(result, TaskResult)
+        assert captured["provider"].extra_body == {}
 
     @pytest.mark.asyncio
     async def test_non_thinking_deepseek_path_remains_available(

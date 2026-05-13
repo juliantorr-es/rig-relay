@@ -224,7 +224,7 @@
 - `NONDETERMINISTIC_PROVIDER` — subagent uses an LLM, outputs are inherently non-deterministic
 - But the lack of subagent call evidence means we can't even measure how non-deterministic
 
-**Evidence currently available**: Task results now record provider, model, thinking request state, tool-access/result-compression policy, a deterministic task-result hash, and a typed `task_session_link` artifact with parent/child IDs plus manifest hashes when available.
+**Evidence currently available**: Task results now record provider, model, thinking request state, tool-access/result-compression policy, a deterministic task-result hash, and a typed `task_session_link` artifact with parent/child IDs, scope metadata, and manifest hashes when available.
 
 **Missing evidence**:
 - Subagent tool call evidence shard references
@@ -232,6 +232,7 @@
 - Subagent message count and completion status
 - Explicit attachment of task metadata to the parent evidence stream
 - Child artifact manifest rollup for parent audit summaries
+- Typed task packets for scope/policy validation
 
 **Recommended hardening**:
 - Link subagent session UUID in parent evidence

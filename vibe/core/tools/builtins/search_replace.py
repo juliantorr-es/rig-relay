@@ -151,6 +151,17 @@ class SearchReplace(
         file_path, search_replace_blocks = self._prepare_and_validate_args(args)
 
         total_block_count = len(search_replace_blocks)
+
+        guard = get_guard()
+        check = guard.check_search_replace(
+            file_path, expected_before_sha256=args.expected_before_sha256
+        )
+        if not check.allowed:
+            guard.record_refusal(file_path, check.reason)
+            raise ToolError(f"search_replace refused: {check.detail}")
+
+        guard.mark_touched(file_path)
+
         before_snapshot = self.get_file_snapshot_for_path(str(file_path))
         before_hash = sha256_file_bytes(before_snapshot.content)
         assert before_hash is not None  # file must exist at this point

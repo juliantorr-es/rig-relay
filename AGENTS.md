@@ -90,6 +90,21 @@ Always go through `uv` — never invoke bare `python` or `pip`.
 - Always create new commits and push with a plain `git push`.
 - If a push is rejected due to upstream changes, rebase onto the updated remote branch — never merge and never force-push.
 
+## Dirty-file preservation
+
+- Any modified, staged, or untracked file that exists before the current mission is PROTECTED. These files contain user-owned or prior-agent-owned changes.
+- Before editing, inspect repository state with `git_status`. Dirty files are not yours to freely rewrite.
+- When a mission requires editing a protected file:
+  - Read it first. Identify existing modified regions.
+  - Apply only the mission-required delta. Preserve unrelated edits exactly.
+  - Prefer `search_replace` with targeted SEARCH/REPLACE blocks over `write_file`.
+  - For `write_file` on a protected file, set `allow_overwrite_protected=true` and provide `expected_before_sha256`.
+  - For `search_replace` on a protected file, provide `expected_before_sha256`.
+  - Never run formatters over the whole file unless the mission explicitly requires it.
+- Never use `git restore`, `git checkout` (for undo), `git reset`, `git clean`, or `git stash` to discard changes to protected files.
+- If a required edit overlaps unknown existing edits, stop and report a structured conflict.
+- The final report must distinguish: pre-existing dirty files, files changed by this mission, files skipped, and files with conflicts.
+
 ## Editor tip
 
 In Cursor / Pyright, the "Add import" quick fix is missing — use the workspace snippets `acpschema`, `acphelpers`, `vibetypes`, `vibeconfig` to insert the import line, then rename the symbol.

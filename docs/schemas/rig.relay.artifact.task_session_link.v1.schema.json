@@ -13,6 +13,9 @@
       "type": "string",
       "const": "task_session_link"
     },
+    "task_mode": {
+      "type": "string"
+    },
     "parent_session_id": {
       "type": ["string", "null"]
     },
@@ -23,6 +26,9 @@
       "type": ["string", "null"]
     },
     "task_id": {
+      "type": ["string", "null"]
+    },
+    "agent_profile": {
       "type": ["string", "null"]
     },
     "child_session_id": {
@@ -51,6 +57,23 @@
     },
     "result_compression_policy": {
       "type": ["string", "null"]
+    },
+    "scope_allowed_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "scope_dirty_file_policy": {
+      "type": ["string", "null"]
+    },
+    "scope_allow_write": {
+      "type": ["boolean", "null"]
+    },
+    "scope_allow_bash": {
+      "type": ["boolean", "null"]
+    },
+    "expected_outputs": {
+      "type": "array",
+      "items": { "type": "string" }
     },
     "timeout_seconds": {
       "type": ["number", "null"],

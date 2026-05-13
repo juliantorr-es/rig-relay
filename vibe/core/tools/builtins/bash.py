@@ -9,6 +9,7 @@ from typing import ClassVar, Literal, final
 
 from pydantic import BaseModel, Field
 
+from vibe.core.guard import get_guard
 from vibe.core.scratchpad import is_scratchpad_path
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.arity import build_session_pattern
@@ -467,6 +468,11 @@ class Bash(
     async def run(
         self, args: BashArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | BashResult, None]:
+        guard = get_guard()
+        is_destructive, reason = guard.is_destructive_git_command(args.command)
+        if is_destructive:
+            raise ToolError(f"bash refused: {reason}")
+
         timeout = args.timeout or self.config.default_timeout
         max_bytes = self.config.max_output_bytes
 

@@ -43,16 +43,48 @@ from vibe.core.types import (
 )
 
 
+class TaskScope(BaseModel):
+    allowed_paths: list[str] = Field(default_factory=list)
+    dirty_file_policy: Literal["preserve_existing", "allow"] = "preserve_existing"
+    allow_write: bool = False
+    allow_bash: bool = False
+
+
+class TaskSpec(BaseModel):
+    mode: Literal["delegate"] = "delegate"
+    task_id: str
+    task: str
+    agent_profile: str = "explore"
+    intent: str = "explore"
+    scope: TaskScope = Field(default_factory=TaskScope)
+    provider_options: TaskProviderOptions | None = None
+    expected_outputs: list[str] = Field(default_factory=list)
+
+
 class TaskArgs(BaseModel):
-    task: str = Field(description="The task to delegate to the subagent")
+    task: str | None = Field(
+        default=None, description="The task to delegate to the subagent"
+    )
     agent: str = Field(
         default="explore",
         description="Name of the agent profile to use (must be a subagent)",
+    )
+    task_spec: TaskSpec | None = Field(
+        default=None,
+        description="Structured delegation packet with mode, scope, and provider policy.",
     )
     provider_options: TaskProviderOptions | None = Field(
         default=None,
         description="Explicit provider/model options for the delegated subagent.",
     )
+
+    @property
+    def task_text(self) -> str:
+        if self.task_spec is not None:
+            return self.task_spec.task
+        if self.task is not None:
+            return self.task
+        raise ToolError("Task text is required")
 
 
 class TaskResult(BaseModel):
@@ -123,7 +155,9 @@ class Task(
     def get_call_display(cls, event: ToolCallEvent) -> ToolCallDisplay:
         args = event.args
         if isinstance(args, TaskArgs):
-            return ToolCallDisplay(summary=f"Running {args.agent} agent: {args.task}")
+            task_text = args.task_text
+            agent_name = args.task_spec.agent_profile if args.task_spec else args.agent
+            return ToolCallDisplay(summary=f"Running {agent_name} agent: {task_text}")
         return ToolCallDisplay(summary="Running subagent")
 
     @classmethod
@@ -183,6 +217,59 @@ class Task(
         return call_config
 
     @staticmethod
+    def _build_task_spec(args: TaskArgs) -> TaskSpec | None:
+        if args.task_spec is None:
+            return None
+        if args.task is not None and args.task != args.task_spec.task:
+            raise ToolError("task and task_spec.task must match when both are provided")
+        return args.task_spec
+
+    @staticmethod
+    def _resolve_delegate_inputs(
+        args: TaskArgs,
+    ) -> tuple[TaskSpec | None, TaskProviderOptions | None, str]:
+        task_spec = Task._build_task_spec(args)
+        provider_options = (
+            task_spec.provider_options
+            if task_spec is not None
+            else args.provider_options
+        )
+        agent_profile_name = task_spec.agent_profile if task_spec else args.agent
+        return task_spec, provider_options, agent_profile_name
+
+    @staticmethod
+    def _build_subagent_loop(
+        *,
+        ctx: InvokeContext,
+        args: TaskArgs,
+        agent_manager: Any,
+        plan: TaskExecutionPlan,
+        agent_profile_name: str,
+    ) -> AgentLoop:
+        call_config = Task._build_call_config(
+            VibeConfig.load(
+                session_logging=SessionLoggingConfig(
+                    save_dir=str(ctx.session_dir / "agents") if ctx.session_dir else "",
+                    session_prefix=agent_profile_name,
+                    enabled=ctx.session_dir is not None,
+                )
+            ),
+            plan,
+        )
+        subagent_loop = AgentLoop(
+            config=call_config,
+            agent_name=agent_profile_name,
+            entrypoint_metadata=ctx.entrypoint_metadata,
+            is_subagent=True,
+            defer_heavy_init=True,
+        )
+
+        if ctx.approval_callback:
+            subagent_loop.set_approval_callback(ctx.approval_callback)
+
+        return subagent_loop
+
+    @staticmethod
     def _derive_task_session_status(*, plan: TaskExecutionPlan, completed: bool) -> str:
         if plan.warnings:
             return "refused"
@@ -197,6 +284,7 @@ class Task(
         args: TaskArgs,
         plan: TaskExecutionPlan,
         result: TaskResult,
+        task_spec: TaskSpec | None,
         child_session_dir: Path | None,
         started_at: datetime,
         completed_at: datetime,
@@ -213,10 +301,14 @@ class Task(
             )
 
         linkage = TaskSessionLinkArtifact(
+            task_mode=task_spec.mode if task_spec is not None else "delegate",
             parent_session_id=ctx.session_dir.name,
             parent_turn_id=ctx.parent_turn_id,
             parent_tool_call_id=ctx.tool_call_id,
-            task_id=ctx.tool_call_id,
+            task_id=task_spec.task_id if task_spec is not None else ctx.tool_call_id,
+            agent_profile=task_spec.agent_profile
+            if task_spec is not None
+            else args.agent,
             child_session_id=child_session_id,
             provider=result.provider,
             model=result.model,
@@ -226,8 +318,23 @@ class Task(
             reasoning_effort=result.reasoning_effort,
             tool_access_policy=result.tool_access_policy,
             result_compression_policy=result.result_compression_policy,
+            scope_allowed_paths=(
+                task_spec.scope.allowed_paths if task_spec is not None else []
+            ),
+            scope_dirty_file_policy=(
+                task_spec.scope.dirty_file_policy if task_spec is not None else None
+            ),
+            scope_allow_write=(
+                task_spec.scope.allow_write if task_spec is not None else None
+            ),
+            scope_allow_bash=(
+                task_spec.scope.allow_bash if task_spec is not None else None
+            ),
+            expected_outputs=(
+                task_spec.expected_outputs if task_spec is not None else []
+            ),
             timeout_seconds=result.timeout_seconds,
-            input_prompt_sha256=self._prompt_sha256(args.task),
+            input_prompt_sha256=self._prompt_sha256(args.task_text),
             output_result_sha256=result.task_result_sha256,
             child_artifact_manifest_sha256=child_manifest_sha256,
             linkage_sha256="",
@@ -357,7 +464,10 @@ class Task(
             raise ToolError("Task tool requires agent_manager in context")
 
         agent_manager = ctx.agent_manager
-        plan = self._build_execution_plan(agent_manager.config, args.provider_options)
+        task_spec, provider_options, agent_profile_name = self._resolve_delegate_inputs(
+            args
+        )
+        plan = self._build_execution_plan(agent_manager.config, provider_options)
         if plan.warnings:
             yield self._build_task_result(
                 response="", turns_used=0, completed=False, plan=plan
@@ -365,39 +475,28 @@ class Task(
             return
 
         try:
-            agent_profile = agent_manager.get_agent(args.agent)
-        except ValueError as e:
-            raise ToolError(f"Unknown agent: {args.agent}") from e
-
-        if agent_profile.agent_type != AgentType.SUBAGENT:
-            raise ToolError(
-                f"Agent '{args.agent}' is a {agent_profile.agent_type.value} agent. "
-                f"Only subagents can be used with the task tool. "
-                f"This is a security constraint to prevent recursive spawning."
-            )
-
-        call_config = self._build_call_config(
-            VibeConfig.load(
-                session_logging=SessionLoggingConfig(
-                    save_dir=str(ctx.session_dir / "agents") if ctx.session_dir else "",
-                    session_prefix=args.agent,
-                    enabled=ctx.session_dir is not None,
+            if (
+                agent_manager.get_agent(agent_profile_name).agent_type
+                != AgentType.SUBAGENT
+            ):
+                raise ToolError(
+                    f"Agent '{agent_profile_name}' is a "
+                    f"{agent_manager.get_agent(agent_profile_name).agent_type.value} agent. "
+                    "Only subagents can be used with the task tool. "
+                    "This is a security constraint to prevent recursive spawning."
                 )
-            ),
-            plan,
-        )
-        subagent_loop = AgentLoop(
-            config=call_config,
-            agent_name=args.agent,
-            entrypoint_metadata=ctx.entrypoint_metadata,
-            is_subagent=True,
-            defer_heavy_init=True,
+        except ValueError as e:
+            raise ToolError(f"Unknown agent: {agent_profile_name}") from e
+
+        subagent_loop = self._build_subagent_loop(
+            ctx=ctx,
+            args=args,
+            agent_manager=agent_manager,
+            plan=plan,
+            agent_profile_name=agent_profile_name,
         )
 
-        if ctx and ctx.approval_callback:
-            subagent_loop.set_approval_callback(ctx.approval_callback)
-
-        task_text = args.task
+        task_text = args.task_text
         if ctx.scratchpad_dir:
             task_text = (
                 f"Scratchpad directory: {ctx.scratchpad_dir}\n"
@@ -450,6 +549,7 @@ class Task(
             args=args,
             plan=plan,
             result=result,
+            task_spec=task_spec,
             child_session_dir=subagent_loop.session_logger.session_dir,
             started_at=started_at,
             completed_at=datetime.now(UTC),

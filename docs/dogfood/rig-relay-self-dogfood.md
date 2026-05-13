@@ -110,7 +110,7 @@ Based on initial evidence collection, the following areas are prioritized for to
 4.  **Path Normalization (High)**: Ensure all file-based tools (`read_file`, `write_file`, `grep`, `search_replace`) use absolute, canonicalized paths in evidence, even if models pass relative paths.
 5.  **Bash Output Filtering (Medium)**: Scrub environment-specific details (paths, usernames) from `bash` tool output to improve cache hit rates.
 6.  **Git State Capture (Medium)**: `git_status` now emits typed repo-state evidence. Extend the remaining git tools with comparable structured artifacts.
-7.  **Task Session Linkage (Low)**: `task` now emits a typed `task_session_link` artifact with parent/child IDs, provider/options metadata, and child manifest hashes when available. The remaining gap is child-artifact rollup.
+7.  **Task Session Linkage (Low)**: `task` now emits a typed `task_session_link` artifact with parent/child IDs, provider/options metadata, scope metadata, and child manifest hashes when available. The remaining gap is child-artifact rollup.
 8.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
 9.  **Thinking Delegation Boundary (Low)**: Keep thinking-mode delegation opt-in and provider-scoped; default task runs should remain non-thinking.
 

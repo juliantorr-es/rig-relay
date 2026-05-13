@@ -127,7 +127,10 @@ class WriteFile(
             expected_before_sha256=args.expected_before_sha256,
         )
         if not check.allowed:
+            guard.record_refusal(file_path, check.reason)
             raise ToolError(f"write_file refused: {check.detail}")
+
+        guard.mark_touched(file_path)
 
         snapshot = self.get_file_snapshot_for_path(str(file_path))
         before_sha256 = sha256_file_bytes(snapshot.content)

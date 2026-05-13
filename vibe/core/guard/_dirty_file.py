@@ -34,6 +34,12 @@ class DirtyFileGuard:
     _captured: bool = False
     _repo_root: Path | None = None
 
+    # ── mission tracking ────────────────────────────────────────
+
+    touched_files: set[str] = field(default_factory=set)
+    skipped_files: dict[str, str] = field(default_factory=dict)
+    refused_writes: list[dict[str, str]] = field(default_factory=list)
+
     _STATUS_LINE_PATH_OFFSET: ClassVar[int] = 3
 
     # ── public API ──────────────────────────────────────────────
@@ -218,6 +224,35 @@ class DirtyFileGuard:
                     "user to perform this operation manually."
                 )
         return False, None
+
+    def mark_touched(self, path: str | Path) -> None:
+        key = self._normalize_path(path)
+        self.touched_files.add(key)
+        self.skipped_files.pop(key, None)
+
+    def mark_skipped(self, path: str | Path, reason: str) -> None:
+        key = self._normalize_path(path)
+        if key not in self.touched_files:
+            self.skipped_files[key] = reason
+
+    def record_refusal(self, path: str | Path, reason: str) -> None:
+        key = self._normalize_path(path)
+        self.refused_writes.append({"path": key, "reason": reason})
+
+    def report(self) -> dict:
+        """Return a structured summary of dirty-file guard activity."""
+        self.capture()
+        pre_existing = sorted(self.dirty_snapshots.keys())
+        touched = sorted(self.touched_files)
+        skipped = sorted(self.skipped_files.keys())
+        return {
+            "dirty_files_before_mission": pre_existing,
+            "dirty_file_count": len(pre_existing),
+            "files_touched_by_mission": touched,
+            "protected_files_skipped": skipped,
+            "skipped_reasons": {k: self.skipped_files[k] for k in skipped},
+            "refused_write_attempts": list(self.refused_writes),
+        }
 
     # ── internal helpers ─────────────────────────────────────────
 

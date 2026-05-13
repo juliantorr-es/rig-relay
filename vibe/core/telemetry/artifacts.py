@@ -147,10 +147,12 @@ class GitStateArtifact(BaseModel):
 
 class TaskSessionLinkArtifact(BaseModel):
     artifact_kind: str = "task_session_link"
+    task_mode: str = "delegate"
     parent_session_id: str | None = None
     parent_turn_id: str | None = None
     parent_tool_call_id: str | None = None
     task_id: str | None = None
+    agent_profile: str | None = None
     child_session_id: str | None = None
     provider: str | None = None
     model: str | None = None
@@ -160,6 +162,11 @@ class TaskSessionLinkArtifact(BaseModel):
     reasoning_effort: str | None = None
     tool_access_policy: str | None = None
     result_compression_policy: str | None = None
+    scope_allowed_paths: list[str] = Field(default_factory=list)
+    scope_dirty_file_policy: str | None = None
+    scope_allow_write: bool | None = None
+    scope_allow_bash: bool | None = None
+    expected_outputs: list[str] = Field(default_factory=list)
     timeout_seconds: float | None = None
     input_prompt_sha256: str | None = None
     output_result_sha256: str | None = None
