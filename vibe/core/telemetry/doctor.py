@@ -226,3 +226,149 @@ def run_tool_determinism_report(
             rprint(f"  - {warning}")
 
     return 0
+
+
+def summarize_tool_reasoning(
+    evidence_root: Path, session_id: str
+) -> dict[str, Any]:
+    """Read reasoning-trace events from the observability log and build latency/pressure stats."""
+    session_dir = evidence_root / "sessions" / session_id
+    obs_path = session_dir / "observability.jsonl"
+
+    traces: list[dict[str, Any]] = []
+    warnings: list[str] = []
+
+    if not obs_path.exists():
+        warnings.append(f"Observability log missing: {obs_path}")
+        return {"traces": [], "warnings": warnings}
+
+    with obs_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                event = json.loads(line)
+                if event.get("event_name") == EventName.TOOL_REASONING_TRACE:
+                    traces.append(event.get("payload", {}))
+            except Exception as e:
+                warnings.append(f"Error parsing reasoning trace event: {e}")
+
+    if not traces:
+        return {"traces": [], "warnings": warnings + ["No reasoning trace events found"]}
+
+    # Compute aggregate metrics
+    total_latency = sum(t.get("latency_ms", 0) for t in traces)
+    total_output_bytes = sum(t.get("output_bytes", 0) for t in traces)
+    total_inline_bytes = sum(t.get("inline_output_bytes", 0) for t in traces)
+    total_artifacted_bytes = sum(t.get("artifacted_output_bytes", 0) for t in traces)
+
+    # Find slowest and largest calls
+    sorted_by_latency = sorted(traces, key=lambda t: t.get("latency_ms", 0), reverse=True)
+    sorted_by_inline = sorted(traces, key=lambda t: t.get("inline_output_bytes", 0), reverse=True)
+    sorted_by_artifacted = sorted(traces, key=lambda t: t.get("artifacted_output_bytes", 0), reverse=True)
+
+    calls_missing_rationale = [
+        t
+        for t in traces
+        if not t.get("tool_selection_rationale_summary")
+        and t.get("tool_output_kind") != "error"
+    ]
+
+    # Check for retry patterns
+    retry_groups: dict[str, list[dict[str, Any]]] = {}
+    for t in traces:
+        retry_of = t.get("retry_of_tool_call_id")
+        if retry_of:
+            retry_groups.setdefault(retry_of, []).append(t)
+
+    return {
+        "traces": traces,
+        "warnings": warnings,
+        "total_traces": len(traces),
+        "total_latency_ms": total_latency,
+        "total_output_bytes": total_output_bytes,
+        "total_inline_output_bytes": total_inline_bytes,
+        "total_artifacted_output_bytes": total_artifacted_bytes,
+        "slowest_tool_calls": sorted_by_latency[:5],
+        "largest_inline_outputs": sorted_by_inline[:5],
+        "largest_artifacted_outputs": sorted_by_artifacted[:5],
+        "calls_missing_rationale": calls_missing_rationale[:10],
+        "retry_groups": retry_groups,
+    }
+
+
+def run_tool_reasoning_report(
+    evidence_root: Path, session_id: str, *, json_output: bool = False
+) -> int:
+    """Print a tool reasoning and latency report for the given session."""
+    result = summarize_tool_reasoning(evidence_root, session_id)
+
+    if json_output:
+        print(dump_canonical_json(result))
+        return 0
+
+    rprint(f"[bold]Session ID:[/] {session_id}")
+    rprint(f"[bold]Reasoning Traces Found:[/] {result.get('total_traces', 0)}")
+
+    if result.get("warnings"):
+        for w in result["warnings"]:
+            rprint(f"  [bold yellow]- {w}[/]")
+
+    if not result.get("traces"):
+        return 0
+
+    rprint(f"\n[bold]Aggregate Metrics:[/]")
+    rprint(f"  Total Latency: {result['total_latency_ms']:.1f} ms")
+    rprint(f"  Total Output Bytes: {result['total_output_bytes']:,}")
+    rprint(f"  Inline Output Bytes: {result['total_inline_output_bytes']:,}")
+    rprint(f"  Artifacted Output Bytes: {result['total_artifacted_output_bytes']:,}")
+
+    slowest = result.get("slowest_tool_calls", [])
+    if slowest:
+        rprint(f"\n[bold red]Slowest Tool Calls:[/]")
+        for t in slowest:
+            rprint(
+                f"  {t.get('tool_name', '?')} "
+                f"({t.get('latency_ms', 0):.1f} ms, "
+                f"{t.get('output_bytes', 0):,} bytes)"
+            )
+
+    large_inline = result.get("largest_inline_outputs", [])
+    if large_inline:
+        rprint(f"\n[bold yellow]Largest Inline Outputs (token-pressure candidates):[/]")
+        for t in large_inline:
+            rprint(
+                f"  {t.get('tool_name', '?')} "
+                f"({t.get('inline_output_bytes', 0):,} inline bytes, "
+                f"kind={t.get('tool_output_kind', '?')})"
+            )
+
+    missing = result.get("calls_missing_rationale", [])
+    if missing:
+        rprint(f"\n[bold yellow]Calls Missing Rationale Summary:[/]")
+        for t in missing:
+            rprint(f"  {t.get('tool_name', '?')} ({t.get('tool_call_id', '?')})")
+
+    retries = result.get("retry_groups", {})
+    if retries:
+        rprint(f"\n[bold yellow]Retried Tool Calls:[/]")
+        for orig_id, retries_list in retries.items():
+            rprint(f"  Original: {orig_id}")
+            for rt in retries_list:
+                rprint(f"    Retry: {rt.get('tool_name', '?')} ({rt.get('tool_call_id', '?')})")
+
+    # Latency optimization candidates
+    rprint(f"\n[bold]Latency Optimization Candidates:[/]")
+    candidates = []
+    for t in slowest:
+        if t.get("latency_ms", 0) > 1000:
+            candidates.append(
+                f"  {t.get('tool_name')}: {t.get('latency_ms', 0):.1f} ms"
+            )
+    if candidates:
+        for c in candidates:
+            rprint(f"  [cyan]Slow:[/] {c}")
+    if not candidates:
+        rprint("  None (all calls under 1s threshold)")
+
+    return 0

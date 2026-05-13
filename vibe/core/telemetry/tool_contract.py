@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from enum import StrEnum, auto
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ToolDeterminismClass(StrEnum):
@@ -69,3 +70,61 @@ class ToolDeterminismSummary(BaseModel):
     tool_calls: list[ToolDogfoodContract]
     coverage_stats: dict[str, Any] = {}
     warnings: list[str] = []
+
+
+class ToolReasoningTrace(BaseModel):
+    """Observable reasoning trace around a single tool call.
+
+    Records what the model chose, what it received, and what followed —
+    without capturing hidden chain-of-thought. All rationale fields are
+    optional and should be left empty when the provider does not expose them.
+    """
+
+    schema_version: str = "rig.relay.artifact.tool_reasoning_trace.v1"
+    artifact_kind: str = "tool_reasoning_trace"
+
+    session_id: str
+    message_id: str | None = None
+    tool_call_id: str
+    tool_name: str
+    step_index: int = 0
+
+    # Observable rationale (empty if provider does not expose)
+    user_goal_summary: str = ""
+    active_plan_summary: str = ""
+    tool_selection_rationale_summary: str = ""
+
+    # Input evidence
+    normalized_input_sha256: str
+    input_summary: str = ""
+
+    # Output evidence
+    tool_output_kind: ToolOutputKind = ToolOutputKind.UNKNOWN
+    tool_output_sha256: str = ""
+    tool_output_artifact_path: str | None = None
+
+    # Observation / decision (populated after tool result)
+    observation_summary: str = ""
+    decision_after_observation: str = ""
+    next_action_kind: str = "unknown"
+    retry_of_tool_call_id: str | None = None
+
+    # Latency + byte metrics
+    latency_ms: float = 0.0
+    input_bytes: int = 0
+    output_bytes: int = 0
+    inline_output_bytes: int = 0
+    artifacted_output_bytes: int = 0
+    estimated_prompt_pressure_bytes: int = 0
+    truncated: bool = False
+
+    # Classification
+    determinism_class: str = "unknown"
+    mutation_class: str = "unknown"
+
+    # Findings
+    warnings: list[str] = Field(default_factory=list)
+
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )

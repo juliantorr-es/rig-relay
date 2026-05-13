@@ -2,6 +2,19 @@
 
 This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).
 
+## Reasoning Traces
+
+Rig Relay records **observable reasoning traces** for every tool call, not raw hidden chain-of-thought. See `docs/schemas/rig.relay.artifact.tool_reasoning_trace.v1.schema.json`.
+
+Trace records include:
+- Latency (ms) per tool call
+- Input/output byte sizes
+- Output kind (inline vs artifacted vs error)
+- Determinism and mutation class
+- Observable rationale summaries (empty when provider does not expose them)
+
+These traces power the `rig-relay doctor tool-reasoning` report for identifying latency bottlenecks and token-pressure candidates.
+
 ## Inventory
 
 | Tool Name | Module | Determinism Class | Mutation Class | Input Normalization | Output Normalization | Evidence Coverage |

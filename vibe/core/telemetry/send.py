@@ -271,6 +271,57 @@ class TelemetryClient:
             EventName.TOOL_CALL_COMPLETED, payload, receipt_candidate=True
         )
 
+    def send_tool_reasoning_trace(
+        self,
+        *,
+        session_id: str,
+        tool_name: str,
+        tool_call_id: str,
+        message_id: str | None = None,
+        normalized_input_sha256: str = "",
+        tool_output_sha256: str = "",
+        tool_output_kind: str = "unknown",
+        output_kind_enum: ToolOutputKind = ToolOutputKind.UNKNOWN,
+        tool_output_artifact_path: str | None = None,
+        latency_ms: float = 0.0,
+        input_bytes: int = 0,
+        output_bytes: int = 0,
+        inline_output_bytes: int = 0,
+        artifacted_output_bytes: int = 0,
+        truncated: bool = False,
+        determinism_class: str = "unknown",
+        mutation_class: str = "unknown",
+        warnings: list[str] | None = None,
+    ) -> None:
+        """Emit a structured reasoning-trace event for a tool call.
+
+        This records observable metadata around tool use — latency, byte sizes,
+        determinism classification — without capturing hidden chain-of-thought.
+        """
+        payload = {
+            "session_id": session_id,
+            "tool_name": tool_name,
+            "tool_call_id": tool_call_id,
+            "message_id": message_id,
+            "normalized_input_sha256": normalized_input_sha256,
+            "tool_output_sha256": tool_output_sha256,
+            "tool_output_kind": tool_output_kind,
+            "tool_output_kind_enum": str(output_kind_enum),
+            "tool_output_artifact_path": tool_output_artifact_path,
+            "latency_ms": latency_ms,
+            "input_bytes": input_bytes,
+            "output_bytes": output_bytes,
+            "inline_output_bytes": inline_output_bytes,
+            "artifacted_output_bytes": artifacted_output_bytes,
+            "truncated": truncated,
+            "determinism_class": determinism_class,
+            "mutation_class": mutation_class,
+            "warnings": warnings or [],
+        }
+        self.send_telemetry_event(
+            EventName.TOOL_REASONING_TRACE, payload, receipt_candidate=False
+        )
+
     def send_user_copied_text(self, text: str) -> None:
         payload = {"text_length": len(text)}
         self.send_telemetry_event(EventName.USER_COPIED_TEXT, payload)

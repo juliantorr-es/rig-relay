@@ -45,6 +45,27 @@ Every artifact envelope MUST include:
 - `payload_sha256`: SHA256 hash of the payload section.
 - `artifact_record_sha256`: SHA256 hash of the entire envelope (calculated after other fields are populated).
 
+## Registered Schemas
+
+| Schema File | Kind | Status |
+|---|---|---|
+| `rig.relay.artifact.envelope.v1.schema.json` | envelope | Active |
+| `rig.relay.artifact.tool_call.v1.schema.json` | tool_call | Active |
+| `rig.relay.artifact.tool_result.v1.schema.json` | tool_result | Active |
+| `rig.relay.artifact.tool_reasoning_trace.v1.schema.json` | tool_reasoning_trace | **New** |
+| `rig.relay.artifact.search_query.v1.schema.json` | search_query | Active |
+| `rig.relay.artifact.search_result.v1.schema.json` | search_result | Active |
+| `rig.relay.artifact.file_read.v1.schema.json` | file_read | Draft |
+| `rig.relay.artifact.file_write.v1.schema.json` | file_write | Draft |
+| `rig.relay.artifact.semantic_placement.v1.schema.json` | semantic_placement | Draft |
+| `rig.relay.artifact.tool_determinism_summary.v1.schema.json` | tool_determinism_summary | Active |
+| `rig.relay.evidence.manifest.v1.schema.json` | evidence_manifest | Active |
+| `rig.relay.evidence.receipt.v1.schema.json` | evidence_receipt | Active |
+
+## Tool Reasoning Traces
+
+The `tool_reasoning_trace` artifact records observable metadata around tool use (latency, byte sizes, determinism class) without capturing hidden chain-of-thought. Rationale fields are left empty when the provider does not expose them. This is a non-envelope artifact — it is emitted as an observability event, not a standalone file in the artifacts directory.
+
 ## Implementation Backlog
 
 1.  **Consistent Envelope Versioning**: Update the `ToolOutputArtifactWriter` to emit `rig.relay.artifact.envelope.v1` consistently.
@@ -52,5 +73,5 @@ Every artifact envelope MUST include:
 3.  **Search Telemetry**: Update search tools (`grep`, `bash` when used for search) to emit typed `search_query` and `search_result` artifacts.
 4.  **File I/O Telemetry**: Implement `file_read` and `file_write` artifact emission for all built-in file tools.
 5.  **Semantic Placement Reports**: Add artifacts for `search_replace` and other edit tools documenting why a specific placement was selected.
-6.  **Token Usage Analysis**: Build tools to analyze token waste based on artifact types and content density.
+6.  **Token Usage Analysis**: Build tools to analyze token waste based on artifact types and content density. The reasoning trace event (`TOOL_REASONING_TRACE`) now provides per-call inline vs artifacted byte counts and latency for this analysis.
 7.  **Dataset Export Tooling**: Create a `rig-relay doctor export` command that merges typed artifacts into structured evaluation datasets.

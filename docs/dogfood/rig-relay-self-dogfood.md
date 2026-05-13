@@ -55,6 +55,34 @@ Use the specialized reporter to see how tools behaved:
 rig-relay doctor tool-determinism --evidence-root ./.dogfood --session <SESSION_ID>
 ```
 
+### 7. Inspecting Tool Reasoning and Latency
+
+Rig Relay records structured reasoning traces for every tool call — latency, byte sizes, determinism class, and observable rationale — without capturing hidden chain-of-thought.
+
+Report with the reasoning tracer:
+
+```bash
+rig-relay doctor tool-reasoning --evidence-root ./.dogfood --session <SESSION_ID>
+```
+
+JSON output is supported:
+
+```bash
+rig-relay doctor tool-reasoning --evidence-root ./.dogfood --session <SESSION_ID> --json
+```
+
+The report shows:
+- Slowest tool calls (latency candidates)
+- Largest inline outputs (token-pressure candidates)
+- Largest artifacted outputs
+- Calls missing observable rationale
+- Retry/error patterns
+- Aggregate latency and byte metrics
+
+## Latency-First Design Principle
+
+Tool-output latency takes priority over model magic. The fastest latency wins come from making tools produce compact, typed, reusable artifacts so the model sees handles + summaries instead of huge raw outputs. Tool content should stay in the dynamic suffix (later in the prompt) so stable prefixes remain cacheable.
+
 ## Classification Guidelines
 
 When you find a tool determinism issue:

@@ -1069,7 +1069,13 @@ class AgentLoop:
             if extra:
                 text += "\n\n" + extra
             self._handle_tool_response(
-                tool_call, text, "success", decision, result_dict, span=span
+                tool_call,
+                text,
+                "success",
+                decision,
+                result_dict,
+                span=span,
+                duration_ms=duration * 1000,
             )
             yield ToolResultEvent(
                 tool_name=tool_call.tool_name,
@@ -1180,6 +1186,7 @@ class AgentLoop:
         decision: ToolDecision | None = None,
         result: dict[str, Any] | None = None,
         span: trace.Span | None = None,
+        duration_ms: float | None = None,
     ) -> None:
         from vibe.core.telemetry.artifacts import (
             ToolOutputArtifactWriter,
@@ -1257,6 +1264,33 @@ class AgentLoop:
             ),
         )
 
+        # Emit reasoning trace (latency + byte metrics, no hidden CoT)
+        determinism_class_str = getattr(
+            tool_call.tool_class, "determinism_class", ToolDeterminismClass.UNKNOWN
+        )
+        mutation_class_str = getattr(
+            tool_call.tool_class, "mutation_class", ToolMutationClass.UNKNOWN
+        )
+        text_bytes = len(text.encode("utf-8"))
+        self.telemetry_client.send_tool_reasoning_trace(
+            session_id=self.session_id,
+            tool_name=tool_call.tool_name,
+            tool_call_id=tool_call.call_id,
+            message_id=self._current_user_message_id,
+            normalized_input_sha256=input_sha256,
+            tool_output_sha256=f"sha256:{output_sha256}",
+            tool_output_kind=output_kind.value,
+            output_kind_enum=output_kind,
+            latency_ms=duration_ms or 0.0,
+            input_bytes=len(input_json.encode("utf-8")),
+            output_bytes=text_bytes,
+            inline_output_bytes=text_bytes if output_kind == ToolOutputKind.INLINE else 0,
+            artifacted_output_bytes=text_bytes if output_kind == ToolOutputKind.ARTIFACTED else 0,
+            truncated=text_bytes > 64_000,
+            determinism_class=str(determinism_class_str),
+            mutation_class=str(mutation_class_str),
+        )
+
     def _tool_failure_event(
         self,
         tool_call: ResolvedToolCall,
@@ -1266,7 +1300,9 @@ class AgentLoop:
         span: trace.Span | None = None,
     ) -> ToolResultEvent:
         """Create a ToolResultEvent for a failed tool and record the failure."""
-        self._handle_tool_response(tool_call, error_msg, "failure", decision, span=span)
+        self._handle_tool_response(
+            tool_call, error_msg, "failure", decision, span=span
+        )
         return ToolResultEvent(
             tool_name=tool_call.tool_name,
             tool_class=tool_call.tool_class,

@@ -6,6 +6,7 @@ from enum import StrEnum
 class EventName(StrEnum):
     REQUEST_ACCOUNTED = "rig.relay.context.request_accounted"
     TOOL_CALL_COMPLETED = "rig.relay.tool.call_completed"
+    TOOL_REASONING_TRACE = "rig.relay.tool.reasoning_trace"
     SESSION_STARTED = "rig.relay.session.started"
     SESSION_CLOSED = "rig.relay.session.closed"
     AUTO_COMPACT_TRIGGERED = "rig.relay.context.auto_compact_triggered"

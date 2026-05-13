@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.artifact.tool_reasoning_trace.v1.schema.json",
+  "title": "Tool Reasoning Trace",
+  "description": "Observable reasoning trace around a single tool call. Records what the model chose, what it received, and what followed — without capturing hidden chain-of-thought.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_kind",
+    "session_id",
+    "message_id",
+    "tool_call_id",
+    "tool_name",
+    "step_index",
+    "normalized_input_sha256",
+    "tool_output_kind",
+    "tool_output_sha256",
+    "latency_ms",
+    "input_bytes",
+    "output_bytes",
+    "determinism_class",
+    "mutation_class"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.artifact.tool_reasoning_trace.v1"
+    },
+    "artifact_kind": {
+      "type": "string",
+      "const": "tool_reasoning_trace"
+    },
+    "session_id": { "type": "string" },
+    "message_id": { "type": "string" },
+    "tool_call_id": { "type": "string" },
+    "tool_name": { "type": "string" },
+    "step_index": { "type": "integer", "minimum": 0 },
+
+    "user_goal_summary": {
+      "type": "string",
+      "description": "Short summary of the user goal at this step, if available."
+    },
+    "active_plan_summary": {
+      "type": "string",
+      "description": "Summary of the active plan or sub-task, if available."
+    },
+    "tool_selection_rationale_summary": {
+      "type": "string",
+      "description": "Brief model-visible rationale for choosing this tool. Empty if not exposed."
+    },
+    "normalized_input_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 of the canonical input JSON to the tool."
+    },
+    "input_summary": {
+      "type": "string",
+      "description": "Short human-readable summary of input (e.g. 'path=src/main.py, limit=50')."
+    },
+    "tool_output_kind": {
+      "type": "string",
+      "enum": ["inline", "artifacted", "empty", "error", "mixed", "unknown"]
+    },
+    "tool_output_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the complete tool output text."
+    },
+    "tool_output_artifact_path": {
+      "type": "string",
+      "description": "Relative path to the artifact file, if output was artifacted."
+    },
+
+    "observation_summary": {
+      "type": "string",
+      "description": "What the model observed from the result, if available."
+    },
+    "decision_after_observation": {
+      "type": "string",
+      "description": "Decision made after seeing the result, if available."
+    },
+    "next_action_kind": {
+      "type": "string",
+      "enum": ["another_tool", "assistant_response", "user_input", "plan_update", "stop", "unknown"]
+    },
+    "retry_of_tool_call_id": {
+      "type": "string",
+      "description": "If this call is a retry, the tool_call_id of the original attempt."
+    },
+
+    "latency_ms": { "type": "number", "minimum": 0 },
+    "input_bytes": { "type": "integer", "minimum": 0 },
+    "output_bytes": { "type": "integer", "minimum": 0 },
+    "inline_output_bytes": { "type": "integer", "minimum": 0 },
+    "artifacted_output_bytes": { "type": "integer", "minimum": 0 },
+    "estimated_prompt_pressure_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Estimated bytes this call contributed to prompt growth."
+    },
+    "truncated": { "type": "boolean" },
+
+    "determinism_class": { "type": "string" },
+    "mutation_class": { "type": "string" },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}
