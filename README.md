@@ -15,18 +15,20 @@
 ██████████████████░░
 ```
 
-**Rig Relay is an agent harness intended to become part of Rig’s governed control plane.**
+**Rig Relay is a governed local coding harness for Rig.**
 
-Rig Relay is a command-line coding assistant harness. It provides a conversational interface to your codebase, allowing you to use natural language to explore, modify, and interact with your projects through a powerful set of tools.
+Rig Relay is a command-line coding assistant harness. It provides a conversational interface to your codebase, allowing you to use natural language to explore, modify, and inspect projects through a controlled set of tools and durable local evidence.
 
 > [!WARNING]
 > Rig Relay works on Windows, but we officially support and target UNIX environments.
 
 ## Current Status
 
-Rig Relay is currently in active development as a standalone derivative of Mistral Vibe. It is being transitioned into a neutral, provider-agnostic harness suitable for governed agentic workflows.
+Rig Relay is a standalone fork of Mistral Vibe with a different runtime home, primary executable names, and default operational posture. It is being shaped into a neutral, governed harness suitable for Rig workflows.
 
-## Install from Source
+## Install
+
+### From source
 
 1. Clone the repository:
    ```bash
@@ -43,6 +45,29 @@ Rig Relay is currently in active development as a standalone derivative of Mistr
    ```bash
    uv run rig-relay
    ```
+
+### Global install
+
+Preferred:
+
+```bash
+uv tool install git+https://github.com/juliantorr-es/rig-relay.git --force
+```
+
+Local checkout:
+
+```bash
+cd ~/Developer/GitHub/rig-relay
+uv tool install . --force
+```
+
+Confirm:
+
+```bash
+which rig-relay
+rig-relay --version
+rig-relay --help
+```
 
 4. (Optional) Install as a global tool:
    ```bash
@@ -64,7 +89,7 @@ Rig Relay prefers DeepSeek for its high-performance reasoning capabilities.
 
 ### Interactive Mode
 
-Simply run the command to start a session in your current directory:
+Run the primary executable to start a session in your current directory:
 ```bash
 rig-relay
 ```
@@ -78,15 +103,11 @@ rig-relay --prompt "Analyze the project structure and summarize the core modules
 
 ## Features
 
-- **Interactive Chat**: A conversational AI agent that understands your requests and breaks down complex tasks.
-- **Powerful Toolset**: A suite of tools for file manipulation, code searching, version control, and command execution.
-  - Read, write, and patch files (`read_file`, `write_file`, `search_replace`).
-  - Execute shell commands in a stateful terminal (`bash`).
-  - Recursively search code with `grep`.
-  - Manage a `todo` list to track progress.
-- **Project-Aware Context**: Automatically scans your project's file structure and Git status to provide relevant context.
-- **Highly Configurable**: Customize models, providers, and tool permissions through a simple `config.toml` file.
-- **Safety First**: Features tool execution approval and a trust-based folder system.
+- **Interactive Chat**: Conversational agent loop for codebase exploration and controlled edits.
+- **Powerful Toolset**: File, search, git, and shell tools with explicit permissions and evidence capture.
+- **Project-Aware Context**: Scans trusted project structure and git state for relevant context.
+- **Highly Configurable**: Customize models, providers, and tool permissions through `config.toml`.
+- **Safety First**: Tool execution approval and a trust-based folder system.
 
 ### Built-in Agents
 
@@ -95,7 +116,7 @@ Rig Relay includes several built-in agent profiles:
 - **`default`**: Standard agent requiring approval for tool executions.
 - **`plan`**: Read-only agent for exploration and planning.
 - **`accept-edits`**: Auto-approves file edits only.
-- **`auto-approve`**: Auto-approves all tool executions. Use with caution.
+- **`auto-approve`**: Legacy compatibility profile that auto-approves tool executions. Use with caution.
 
 Select an agent with the `--agent` flag:
 ```bash
@@ -120,29 +141,6 @@ By default, Rig Relay stores its configuration, logs, and history in `~/.rig/rel
 
 ```bash
 export RIG_RELAY_HOME="/path/to/custom/home"
-```
-
-### Global Install
-
-Preferred install from fork:
-
-```bash
-uv tool install git+https://github.com/juliantorr-es/rig-relay.git --force
-```
-
-Local checkout:
-
-```bash
-cd ~/Developer/GitHub/rig-relay
-uv tool install . --force
-```
-
-Confirm install:
-
-```bash
-which rig-relay
-rig-relay --version
-rig-relay --help
 ```
 
 Recommended env:

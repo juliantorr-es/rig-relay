@@ -26,14 +26,14 @@ agents, prompts, logs, and session data live here.
   config.toml          # Main configuration file (TOML format)
   hooks.toml           # User-level hook definitions (experimental)
   .env                 # API keys and credentials (dotenv format)
-  vibehistory          # Command history
+  history.jsonl        # Command history
   trusted_folders.toml # Trust database for project folders
   agents/              # Custom agent profiles (*.toml)
   prompts/             # Custom system prompts (*.md)
   skills/              # User-level skills (each skill is a subdirectory with SKILL.md)
   tools/               # Custom tool definitions
   logs/
-    vibe.log           # Main log file
+    rig-relay.log      # Main log file
     session/           # Session log files
   plans/               # Session plans
 ```
@@ -187,7 +187,7 @@ permissions in this order (first match wins):
 
 The **denylist** is checked before the allowlist — a path matching both lists
 is denied. Both are checked before the outside-workdir boundary, so the
-allowlist can still auto-approve access to directories outside the project.
+allowlist can still grant access to directories outside the project.
 
 ### Skill Configuration
 
@@ -220,7 +220,7 @@ installed_agents = ["lean"]
 # "auto-approve", "lean" (only when listed in installed_agents), or any
 # custom agent name from ~/.rig/relay/agents/ or .rig/relay/agents/. Subagents
 # (e.g. "explore") are rejected. Ignored in programmatic mode
-# (-p/--prompt), which falls back to "auto-approve" when --agent is not
+# (-p/--prompt), which falls back to the legacy "auto-approve" profile when --agent is not
 # provided.
 default_agent = "plan"
 ```
@@ -349,7 +349,7 @@ Tool, skill, and agent names support three matching modes:
 
 ```
 rig-relay [PROMPT]                 # Start interactive session with optional prompt
-rig-relay -p TEXT / --prompt TEXT   # Programmatic mode (auto-approve, one-shot, exit)
+rig-relay -p TEXT / --prompt TEXT   # Programmatic mode (legacy auto-approve, one-shot, exit)
 rig-relay --agent NAME             # Select agent profile (falls back to `default_agent` config)
 rig-relay --workdir DIR            # Change working directory
 rig-relay --trust                  # Trust cwd for this invocation only (not persisted)
@@ -376,13 +376,13 @@ There are two kinds of agents:
 - **default**: Standard interactive agent
 - **plan**: Planning-focused agent
 - **accept-edits**: Auto-approves file edits but asks for other tools
-- **auto-approve**: Auto-approves all tool calls
+- **auto-approve**: Legacy profile that auto-approves all tool calls
 - **lean**: Specialized Lean 4 proof assistant. Not available by default — must be
   installed with `/leanstall` (removed with `/unleanstall`)
 
 ### Subagents
 
-- **explore**: Read-only codebase exploration subagent (grep + read_file only).
+- **explore**: Read-only codebase exploration helper (grep + read_file only).
   Spawned by the model, not selectable by the user.
 
 Custom agents are TOML files in `~/.rig/relay/agents/NAME.toml`.
@@ -454,10 +454,10 @@ Detailed instructions for the model...
 - `MISTRAL_API_KEY` - API key for Mistral provider
 - `RIG_RELAY_ACTIVE_MODEL` - Override active model
 - `RIG_RELAY_*` - Any config field can be overridden with the `RIG_RELAY_` prefix
-- `LOG_LEVEL` - Logging level for `$RIG_RELAY_HOME/logs/vibe.log`. One of `DEBUG`,
+- `LOG_LEVEL` - Logging level for `$RIG_RELAY_HOME/logs/rig-relay.log`. One of `DEBUG`,
   `INFO`, `WARNING` (default), `ERROR`, `CRITICAL`. Invalid values fall back
   to `WARNING`.
-- `LOG_MAX_BYTES` - Max size in bytes of `vibe.log` before rotation
+- `LOG_MAX_BYTES` - Max size in bytes of `rig-relay.log` before rotation
   (default: `10485760`, i.e. 10 MiB).
 - `DEBUG_MODE` - When `true`, forces `DEBUG`-level logging. Under `rig-relay-acp`
   it also attaches `debugpy` on `localhost:5678`.
