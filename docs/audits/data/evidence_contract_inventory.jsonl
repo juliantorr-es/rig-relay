@@ -1,0 +1,3 @@
+{"id":"EVIDENCE-CONTRACT-001","area":"shadow-request","priority":"P1","file":"vibe/core/agent_loop.py","risk":"shadow report may not be generated outside _chat path","recommendation":"trigger assembly reporting at the start of every turn"}
+{"id":"EVIDENCE-CONTRACT-002","area":"artifacting","priority":"P2","file":"vibe/core/telemetry/artifacts.py","risk":"UUID-based filenames prevent easy deduplication","recommendation":"use content-addressed naming (SHA256)"}
+{"id":"EVIDENCE-CONTRACT-003","area":"sequencing","priority":"P1","file":"vibe/core/telemetry/local.py","risk":"lack of monotonic sequence IDs in JSONL prevents gap detection","recommendation":"implement session-local monotonic counters"}

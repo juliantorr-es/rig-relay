@@ -6,6 +6,7 @@ import contextlib
 import copy
 from enum import StrEnum, auto
 from functools import wraps
+import hashlib
 from http import HTTPStatus
 import inspect
 import os
@@ -50,6 +51,7 @@ from vibe.core.middleware import (
     TurnLimitMiddleware,
     make_plan_agent_reminder,
 )
+from vibe.core.paths._vibe_home import SESSIONS_ROOT
 from vibe.core.plan_session import PlanSession
 from vibe.core.prompts import UtilityPrompt
 from vibe.core.rewind import RewindManager
@@ -1172,16 +1174,24 @@ class AgentLoop:
                 sequence=len(self.messages),
             )
             display_text = artifact.prompt_excerpt
+            session_root = SESSIONS_ROOT.path / self.session_id
+            artifact_relative_path = (
+                Path(artifact.path).relative_to(session_root).as_posix()
+            )
 
             self.telemetry_client.send_artifact_written(
+                session_id=self.session_id,
                 artifact_id=artifact.artifact_id,
-                artifact_path=artifact.path,
+                artifact_path=artifact_relative_path,
                 tool_name=artifact.tool_name,
                 raw_byte_size=artifact.byte_size,
                 prompt_visible_byte_size=len(display_text.encode("utf-8")),
                 payload_sha256=artifact.payload_sha256,
                 artifact_record_sha256=artifact.artifact_record_sha256,
                 truncated=artifact.truncated_for_prompt,
+                evidence_relative_path=artifact_relative_path,
+                evidence_sha256=artifact.artifact_record_sha256
+                or artifact.payload_sha256,
             )
 
         self.messages.append(
@@ -1249,14 +1259,24 @@ class AgentLoop:
                 tool_manager_info=tool_manager_info,
             )
 
-            await write_assembly_report(report)
+            assembly_path = await write_assembly_report(report)
 
             # Plan layout
             prev_layout = await load_latest_layout(self.session_id)
             layout = plan_context_layout(report, prev_layout)
             layout_path = await write_layout_plan(layout)
+            session_root = SESSIONS_ROOT.path / self.session_id
+            assembly_relative_path = assembly_path.relative_to(session_root).as_posix()
+            layout_relative_path = layout_path.relative_to(session_root).as_posix()
+            assembly_hash = (
+                f"sha256:{hashlib.sha256(assembly_path.read_bytes()).hexdigest()}"
+            )
+            layout_hash = (
+                f"sha256:{hashlib.sha256(layout_path.read_bytes()).hexdigest()}"
+            )
 
             self.telemetry_client.send_context_assembly_reported(
+                session_id=self.session_id,
                 report_id=report.report_id,
                 total_bytes=report.total_bytes,
                 total_estimated_tokens=report.total_estimated_tokens,
@@ -1267,13 +1287,12 @@ class AgentLoop:
                 dynamic_suffix_fingerprint=report.dynamic_suffix_fingerprint,
                 largest_blocks=report.largest_blocks,
                 optimization_hints=report.optimization_hints,
+                evidence_relative_path=assembly_relative_path,
+                evidence_sha256=assembly_hash,
             )
 
-            from vibe.core.telemetry.context_blocks import fingerprint_text
-
-            layout_hash = fingerprint_text(layout.model_dump_json())
-
             self.telemetry_client.send_context_layout_planned(
+                session_id=self.session_id,
                 layout_id=layout.layout_id,
                 stable_prefix_fingerprint=layout.stable_prefix_fingerprint,
                 dynamic_suffix_fingerprint=layout.dynamic_suffix_fingerprint,
@@ -1289,8 +1308,10 @@ class AgentLoop:
                 prefix_stability_status=layout.prefix_stability_status,
                 prefix_change_reasons=layout.prefix_change_reasons,
                 optimization_hints=layout.optimization_hints,
-                layout_path=str(layout_path),
+                layout_path=layout_relative_path,
                 layout_hash=layout_hash,
+                evidence_relative_path=layout_relative_path,
+                evidence_sha256=layout_hash,
             )
             try:
                 shadow_report = build_shadow_request_report(
@@ -1299,8 +1320,13 @@ class AgentLoop:
                     report=report,
                     layout=layout,
                 )
-                await write_shadow_request_report(shadow_report)
+                shadow_path = await write_shadow_request_report(shadow_report)
+                shadow_relative_path = shadow_path.relative_to(session_root).as_posix()
+                shadow_hash = (
+                    f"sha256:{hashlib.sha256(shadow_path.read_bytes()).hexdigest()}"
+                )
                 self.telemetry_client.send_shadow_request_assembled(
+                    session_id=self.session_id,
                     actual_message_count=shadow_report.actual_message_count,
                     shadow_message_count=shadow_report.shadow_message_count,
                     actual_estimated_tokens=shadow_report.actual_estimated_tokens,
@@ -1314,6 +1340,8 @@ class AgentLoop:
                     shadow_diff_summary=shadow_report.shadow_diff_summary,
                     stable_prefix_fingerprint=shadow_report.stable_prefix_fingerprint,
                     dynamic_suffix_fingerprint=shadow_report.dynamic_suffix_fingerprint,
+                    evidence_relative_path=shadow_relative_path,
+                    evidence_sha256=shadow_hash,
                 )
             except Exception:
                 pass

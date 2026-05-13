@@ -574,6 +574,17 @@ async def test_provider_independent_repo_local_evidence_smoke(
         if event["event_name"] == EventName.CONTEXT_LAYOUT_PLANNED
     )
 
+    assert artifact_event["payload"]["evidence_kind"] == "tool_output_artifact"
+    assert shadow_event["payload"]["evidence_kind"] == "shadow_request_report"
+    assert assembly_event["payload"]["evidence_kind"] == "context_assembly_report"
+    assert layout_event["payload"]["evidence_kind"] == "context_layout_plan"
+    assert not Path(artifact_event["payload"]["evidence_relative_path"]).is_absolute()
+    assert not Path(shadow_event["payload"]["evidence_relative_path"]).is_absolute()
+    assert not Path(assembly_event["payload"]["evidence_relative_path"]).is_absolute()
+    assert not Path(layout_event["payload"]["evidence_relative_path"]).is_absolute()
+    assert not Path(artifact_event["payload"]["artifact_path"]).is_absolute()
+    assert not Path(layout_event["payload"]["layout_path"]).is_absolute()
+
     artifact_data = [
         json.loads(path.read_text(encoding="utf-8")) for path in artifact_files
     ]
@@ -600,6 +611,10 @@ async def test_provider_independent_repo_local_evidence_smoke(
         item["layout_id"] == layout_event["payload"]["layout_id"]
         for item in layout_data
     )
+    assert (session_root / artifact_event["payload"]["evidence_relative_path"]).exists()
+    assert (session_root / shadow_event["payload"]["evidence_relative_path"]).exists()
+    assert (session_root / assembly_event["payload"]["evidence_relative_path"]).exists()
+    assert (session_root / layout_event["payload"]["evidence_relative_path"]).exists()
     assert (
         artifact_event["payload"]["schema_version"]
         == "rig.relay.tool_output_artifact.v1"

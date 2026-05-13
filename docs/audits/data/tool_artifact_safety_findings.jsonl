@@ -1,0 +1,3 @@
+{"id":"TOOL-SAFE-001","area":"binary","priority":"P1","file":"vibe/core/telemetry/artifacts.py","risk":"non-UTF8 tool output can cause serialization failures in JSON artifacts","recommendation":"base64 encode or safely escape non-textual tool outputs"}
+{"id":"TOOL-SAFE-002","area":"paths","priority":"P2","file":"vibe/core/telemetry/artifacts.py","risk":"relative paths in artifacts may break if read from a different CWD","recommendation":"enforce absolute or project-root-relative path normalization"}
+{"id":"TOOL-SAFE-003","area":"threshold","priority":"P2","file":"vibe/core/agent_loop.py","risk":"hardcoded 16KB threshold is not configurable per model/provider","recommendation":"move artifact threshold to ModelConfig"}

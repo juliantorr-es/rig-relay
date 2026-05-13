@@ -462,6 +462,7 @@ class TelemetryClient:
     def send_artifact_written(
         self,
         *,
+        session_id: str,
         artifact_id: str,
         artifact_path: str,
         tool_name: str,
@@ -472,8 +473,15 @@ class TelemetryClient:
         truncated: bool = True,
         source_event_id: str | None = None,
         schema_version: str = "rig.relay.tool_output_artifact.v1",
+        evidence_kind: str = "tool_output_artifact",
+        evidence_relative_path: str | None = None,
+        evidence_sha256: str | None = None,
     ) -> None:
         payload = {
+            "session_id": session_id,
+            "evidence_kind": evidence_kind,
+            "evidence_relative_path": evidence_relative_path or artifact_path,
+            "evidence_sha256": evidence_sha256,
             "artifact_id": artifact_id,
             "artifact_path": artifact_path,
             "tool_name": tool_name,
@@ -492,6 +500,7 @@ class TelemetryClient:
 
     def send_context_assembly_reported(
         self,
+        session_id: str,
         report_id: str,
         total_bytes: int,
         total_estimated_tokens: int,
@@ -502,8 +511,15 @@ class TelemetryClient:
         dynamic_suffix_fingerprint: str,
         largest_blocks: list[dict[str, Any]],
         optimization_hints: list[str],
+        evidence_kind: str = "context_assembly_report",
+        evidence_relative_path: str | None = None,
+        evidence_sha256: str | None = None,
     ) -> None:
         payload = {
+            "session_id": session_id,
+            "evidence_kind": evidence_kind,
+            "evidence_relative_path": evidence_relative_path,
+            "evidence_sha256": evidence_sha256,
             "report_id": report_id,
             "total_bytes": total_bytes,
             "total_estimated_tokens": total_estimated_tokens,
@@ -521,6 +537,7 @@ class TelemetryClient:
 
     def send_context_layout_planned(
         self,
+        session_id: str,
         layout_id: str,
         stable_prefix_fingerprint: str,
         dynamic_suffix_fingerprint: str,
@@ -536,8 +553,15 @@ class TelemetryClient:
         optimization_hints: list[str],
         layout_path: str,
         layout_hash: str,
+        evidence_kind: str = "context_layout_plan",
+        evidence_relative_path: str | None = None,
+        evidence_sha256: str | None = None,
     ) -> None:
         payload = {
+            "session_id": session_id,
+            "evidence_kind": evidence_kind,
+            "evidence_relative_path": evidence_relative_path or layout_path,
+            "evidence_sha256": evidence_sha256 or layout_hash,
             "layout_id": layout_id,
             "stable_prefix_fingerprint": stable_prefix_fingerprint,
             "dynamic_suffix_fingerprint": dynamic_suffix_fingerprint,
@@ -561,6 +585,7 @@ class TelemetryClient:
     def send_shadow_request_assembled(
         self,
         *,
+        session_id: str,
         actual_message_count: int,
         shadow_message_count: int,
         actual_estimated_tokens: int,
@@ -575,8 +600,15 @@ class TelemetryClient:
         reason_not_applied: str = "shadow_mode_only",
         stable_prefix_fingerprint: str | None = None,
         dynamic_suffix_fingerprint: str | None = None,
+        evidence_kind: str = "shadow_request_report",
+        evidence_relative_path: str | None = None,
+        evidence_sha256: str | None = None,
     ) -> None:
         payload: dict[str, Any] = {
+            "session_id": session_id,
+            "evidence_kind": evidence_kind,
+            "evidence_relative_path": evidence_relative_path,
+            "evidence_sha256": evidence_sha256,
             "actual_message_count": actual_message_count,
             "shadow_message_count": shadow_message_count,
             "actual_estimated_tokens": actual_estimated_tokens,

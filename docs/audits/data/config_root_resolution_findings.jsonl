@@ -1,0 +1,3 @@
+{"id":"CONF-001","area":"resolution","priority":"P0","file":"vibe/core/paths/_vibe_home.py","risk":"global home defaults cause evidence bleed across projects","recommendation":"implement local-first git-root resolution"}
+{"id":"CONF-002","area":"legacy","priority":"P1","file":"vibe/core/paths/_vibe_home.py","risk":"silent legacy fallback makes troubleshooting configuration difficult","recommendation":"require explicit opt-in for legacy ~/.vibe paths"}
+{"id":"CONF-003","area":"env","priority":"P2","file":"vibe/core/config/_settings.py","risk":"prefix collision between VIBE_ and RIG_RELAY_ env vars","recommendation":"strictly prefer RIG_RELAY_ prefix"}

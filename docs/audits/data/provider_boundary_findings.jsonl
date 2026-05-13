@@ -1,0 +1,3 @@
+{"id":"PROVIDER-LEAK-001","area":"naming","priority":"P2","file":"vibe/core/config/_settings.py","risk":"is_active_model_mistral method reinforces provider bias","recommendation":"replace with capability-based checks"}
+{"id":"PROVIDER-LEAK-002","area":"telemetry","priority":"P1","file":"vibe/core/telemetry/send.py","risk":"Mistral-specific correlation ID handling leaks into generic client","recommendation":"move header extraction to provider adapters"}
+{"id":"PROVIDER-LEAK-003","area":"auth","priority":"P1","file":"vibe/core/telemetry/send.py","risk":"telemetry API key resolution is hardcoded for Mistral","recommendation":"abstract telemetry auth into a generic backend config"}
