@@ -7,6 +7,7 @@ from typing import Any
 
 try:
     import duckdb
+    from vibe.core.telemetry.constants import EventName
 
     HAS_DUCKDB = True
 except ImportError:
@@ -112,11 +113,11 @@ class DuckDBProjection:
             if "payload" in rel.columns:
                 acc_rel = rel.filter(f"event_name = '{EventName.REQUEST_ACCOUNTED}'")
                 try:
-                    # Check if the nested struct has the key
+                    # Using -> and ->> is more resilient to missing keys than dot-notation
                     res = acc_rel.aggregate(
                         "count(*), "
-                        "max(CAST(payload.context_accounting.estimated_tokens AS BIGINT)), "
-                        "avg(CAST(payload.context_accounting.estimated_tokens AS BIGINT))"
+                        "max(CAST(payload->'context_accounting'->>'estimated_tokens' AS BIGINT)), "
+                        "avg(CAST(payload->'context_accounting'->>'estimated_tokens' AS BIGINT))"
                     ).fetchone()
 
                     if res and res[0] > 0:
@@ -127,12 +128,11 @@ class DuckDBProjection:
                         )
 
                         # 2d. Largest requests
-                        # We use project() to pick specific nested fields
                         l_res = (
                             acc_rel
                             .project(
-                                "payload.context_accounting.model as model, "
-                                "CAST(payload.context_accounting.estimated_tokens AS BIGINT) as tokens, "
+                                "payload->'context_accounting'->>'model' as model, "
+                                "CAST(payload->'context_accounting'->>'estimated_tokens' AS BIGINT) as tokens, "
                                 "session_id, created_at"
                             )
                             .order("tokens DESC")
@@ -147,18 +147,18 @@ class DuckDBProjection:
                                 "session_id": r[2],
                                 "timestamp": r[3],
                             })
-                except Exception:
-                    pass
+                except Exception as e:
+                    summary.errors.append(f"Context accounting projection failed: {e}")
 
             # 2e. Tool calls
             if "payload" in rel.columns:
                 tool_rel = rel.filter(f"event_name = '{EventName.TOOL_CALL_COMPLETED}'")
                 try:
-                    res = tool_rel.aggregate("payload.tool_name, count(*)").fetchall()
-                    summary.tool_calls_by_name = dict(res)
+                    res = tool_rel.aggregate("payload->>'tool_name', count(*)").fetchall()
+                    summary.tool_calls_by_name = {str(k): v for k, v in res if k is not None}
 
-                    res = tool_rel.aggregate("payload.status, count(*)").fetchall()
-                    summary.tool_calls_by_status = dict(res)
+                    res = tool_rel.aggregate("payload->>'status', count(*)").fetchall()
+                    summary.tool_calls_by_status = {str(k): v for k, v in res if k is not None}
                 except Exception as e:
                     summary.errors.append(f"Tool call projection failed: {e}")
 
@@ -170,8 +170,8 @@ class DuckDBProjection:
                 try:
                     res = art_rel.aggregate(
                         "count(*), "
-                        "sum(CAST(payload.raw_byte_size AS BIGINT)), "
-                        "sum(CAST(payload.prompt_visible_byte_size AS BIGINT))"
+                        "sum(CAST(payload->>'raw_byte_size' AS BIGINT)), "
+                        "sum(CAST(payload->>'prompt_visible_byte_size' AS BIGINT))"
                     ).fetchone()
 
                     if res and res[0] > 0:
@@ -187,8 +187,8 @@ class DuckDBProjection:
                             - summary.artifact_prompt_visible_bytes_total
                         )
 
-                    res = art_rel.aggregate("payload.tool_name, count(*)").fetchall()
-                    summary.artifacts_by_tool = dict(res)
+                    res = art_rel.aggregate("payload->>'tool_name', count(*)").fetchall()
+                    summary.artifacts_by_tool = {str(k): v for k, v in res if k is not None}
                 except Exception as e:
                     summary.errors.append(f"Artifact projection failed: {e}")
 
@@ -198,11 +198,11 @@ class DuckDBProjection:
                 try:
                     res = ca_rel.aggregate(
                         "count(*), "
-                        "max(CAST(payload.total_estimated_tokens AS BIGINT)), "
-                        "avg(CAST(payload.total_estimated_tokens AS BIGINT)), "
-                        "max(CAST(payload.stable_prefix_bytes AS BIGINT)), "
-                        "max(CAST(payload.dynamic_suffix_bytes AS BIGINT)), "
-                        "sum(CAST(payload.cache_candidate_bytes AS BIGINT))"
+                        "max(CAST(payload->>'total_estimated_tokens' AS BIGINT)), "
+                        "avg(CAST(payload->>'total_estimated_tokens' AS BIGINT)), "
+                        "max(CAST(payload->>'stable_prefix_bytes' AS BIGINT)), "
+                        "max(CAST(payload->>'dynamic_suffix_bytes' AS BIGINT)), "
+                        "sum(CAST(payload->>'cache_candidate_bytes' AS BIGINT))"
                     ).fetchone()
 
                     if res and res[0] > 0:
@@ -224,7 +224,7 @@ class DuckDBProjection:
                         )
 
                     # Count optimization hints by flattening the list
-                    hints_res = ca_rel.project("payload.optimization_hints").fetchall()
+                    hints_res = ca_rel.project("payload->'optimization_hints'").fetchall()
                     hint_counts: dict[str, int] = {}
                     for row in hints_res:
                         if row[0]:
@@ -240,10 +240,10 @@ class DuckDBProjection:
                 try:
                     res = cl_rel.aggregate(
                         "count(*), "
-                        "sum(CASE WHEN payload.prefix_stability_status = 'stable' THEN 1 ELSE 0 END), "
-                        "sum(CASE WHEN payload.prefix_stability_status = 'changed' THEN 1 ELSE 0 END), "
-                        "avg(CAST(payload.cacheability_ratio AS DOUBLE)), "
-                        "max(CAST(payload.cache_candidate_bytes AS BIGINT))"
+                        "sum(CASE WHEN payload->>'prefix_stability_status' = 'stable' THEN 1 ELSE 0 END), "
+                        "sum(CASE WHEN payload->>'prefix_stability_status' = 'changed' THEN 1 ELSE 0 END), "
+                        "avg(CAST(payload->>'cacheability_ratio' AS DOUBLE)), "
+                        "max(CAST(payload->>'cache_candidate_bytes' AS BIGINT))"
                     ).fetchone()
 
                     if res and res[0] > 0:
@@ -262,7 +262,7 @@ class DuckDBProjection:
                         )
 
                     # Count layout optimization hints
-                    l_hints_res = cl_rel.project("payload.optimization_hints").fetchall()
+                    l_hints_res = cl_rel.project("payload->'optimization_hints'").fetchall()
                     l_hint_counts: dict[str, int] = {}
                     for row in l_hints_res:
                         if row[0]:
@@ -299,4 +299,3 @@ class DuckDBProjection:
         return malformed
 
 
-# Forced refresh
