@@ -465,7 +465,7 @@ def _validate_receipt_chain(
 
     # Check if all file-producing events have receipts
     kind_map = {
-        "rig.relay.artifact.tool_output_written": "tool_output_artifact",
+        "rig.relay.artifact.tool_output_written": "tool_result",
         "rig.relay.context.assembly_reported": "context_assembly_report",
         "rig.relay.context.layout_planned": "context_layout_plan",
         "rig.relay.context.shadow_request_assembled": "shadow_request_report",

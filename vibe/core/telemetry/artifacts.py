@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 import hashlib
 import json
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 import uuid
 
 from pydantic import BaseModel, Field
@@ -12,23 +12,71 @@ from pydantic import BaseModel, Field
 from vibe.core.telemetry.local import dump_canonical_json
 
 
-class ToolOutputArtifact(BaseModel):
-    schema_version: str = "rig.relay.tool_output_artifact.v1"
-    artifact_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+class ArtifactEnvelope(BaseModel):
+    schema_version: str = "rig.relay.artifact.envelope.v1"
+    artifact_kind: str
     session_id: str
-    source_event_id: str | None = None
-    tool_name: str
+    tool_call_id: str | None = None
+    event_name: str | None = None
+    evidence_relative_path: str | None = None
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-    path: str
-    sha256: str
-    byte_size: int
-    mime_type: str = "application/json"
-    encoding: str = "utf-8"
-    truncated_for_prompt: bool
-    prompt_excerpt: str
-    raw_payload_kind: Literal["text", "json"]
     payload_sha256: str
     artifact_record_sha256: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolOutputArtifact(BaseModel):
+    schema_version: str = "rig.relay.artifact.envelope.v1"
+    artifact_kind: str = "tool_result"
+    session_id: str
+    tool_call_id: str | None = None
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    payload_sha256: str
+    artifact_record_sha256: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+    # Metadata for telemetry and internal use
+    artifact_id: str
+    tool_name: str
+    path: str
+    byte_size: int
+    truncated_for_prompt: bool = True
+    prompt_excerpt: str | None = None
+
+
+class SearchQueryArtifact(BaseModel):
+    query_text: str
+    query_kind: Literal["literal", "regex", "fuzzy", "symbol", "semantic"]
+    root_scope: str | None = None
+    include_globs: list[str] = Field(default_factory=list)
+    exclude_globs: list[str] = Field(default_factory=list)
+    case_mode: Literal["sensitive", "insensitive", "smart"] | None = None
+    ignore_mode: bool | None = None
+    max_results: int | None = None
+    ranking_strategy: str | None = None
+    ranking_version: str | None = None
+    normalized_query_sha256: str
+
+
+class SearchResultItem(BaseModel):
+    relative_path: str
+    start_line: int | None = None
+    end_line: int | None = None
+    start_column: int | None = None
+    end_column: int | None = None
+    excerpt: str | None = None
+    excerpt_sha256: str | None = None
+    symbol_context: str | None = None
+    score: float | None = None
+    rank: int | None = None
+    tie_breakers: dict[str, Any] | None = None
+
+
+class SearchResultArtifact(BaseModel):
+    query_sha256: str
+    results: list[SearchResultItem] = Field(default_factory=list)
+    truncated: bool = False
 
 
 class PromptVisibleToolResult(BaseModel):
@@ -123,31 +171,37 @@ class ToolOutputArtifactWriter:
         payload_sha256 = f"sha256:{hashlib.sha256(payload_bytes).hexdigest()}"
 
         excerpt = make_prompt_excerpt(raw_output)
+
+        # New Envelope v1 structure
         envelope = {
-            "schema_version": "rig.relay.tool_output_artifact.v1",
-            "artifact_id": artifact_id,
+            "schema_version": "rig.relay.artifact.envelope.v1",
+            "artifact_kind": "tool_result",
             "session_id": self.session_id,
-            "source_event_id": source_event_id,
-            "tool_name": tool_name,
+            "tool_call_id": source_event_id,
             "created_at": datetime.now(UTC).isoformat(),
             "payload_sha256": payload_sha256,
-            "byte_size": len(payload_bytes),
-            "mime_type": "application/json",
-            "encoding": "utf-8",
-            "raw_payload_kind": raw_kind,
-            "truncated_for_prompt": True,
-            "prompt_visible_byte_size": len(excerpt.encode("utf-8")),
-            "prompt_excerpt": excerpt,
             "payload": payload,
             "metadata": {
+                "artifact_id": artifact_id,
+                "tool_name": tool_name,
                 "producer": "rig-relay",
                 "producer_version": "2.9.6",
-                "path": str(artifact_path),
+                "evidence_relative_path": str(
+                    artifact_path.relative_to(self.artifact_dir.parent.parent.parent)
+                ),
+                "mime_type": "application/json",
+                "encoding": "utf-8",
+                "truncated_for_prompt": True,
+                "prompt_visible_byte_size": len(excerpt.encode("utf-8")),
+                "prompt_excerpt": excerpt,
             },
         }
+
+        # Calculate artifact_record_sha256 over the envelope (excluding itself)
         envelope_bytes = dump_canonical_json(envelope).encode("utf-8")
         artifact_record_sha256 = f"sha256:{hashlib.sha256(envelope_bytes).hexdigest()}"
         envelope["artifact_record_sha256"] = artifact_record_sha256
+
         artifact_bytes = dump_canonical_json(envelope).encode("utf-8")
 
         temp_path = artifact_path.with_suffix(".tmp")
@@ -171,15 +225,90 @@ class ToolOutputArtifactWriter:
 
         return ToolOutputArtifact(
             session_id=self.session_id,
-            source_event_id=source_event_id,
+            tool_call_id=source_event_id,
+            payload_sha256=payload_sha256,
+            artifact_record_sha256=artifact_record_sha256,
+            payload=payload,
+            artifact_id=artifact_id,
             tool_name=tool_name,
             path=str(artifact_path),
-            sha256=payload_sha256,
             byte_size=len(payload_bytes),
             truncated_for_prompt=True,
             prompt_excerpt=excerpt,
-            raw_payload_kind=raw_kind,
-            artifact_id=artifact_id,
-            payload_sha256=payload_sha256,
-            artifact_record_sha256=artifact_record_sha256,
         )
+
+    def write_search_artifacts(
+        self,
+        *,
+        query_artifact: SearchQueryArtifact,
+        result_artifact: SearchResultArtifact,
+        tool_call_id: str,
+    ) -> tuple[Path, Path]:
+        """Write search query and result artifacts.
+
+        Returns:
+            tuple[Path, Path]: (query_artifact_path, result_artifact_path)
+        """
+        # 1. Write Query Artifact
+        query_payload = query_artifact.model_dump()
+        query_payload_bytes = dump_canonical_json(query_payload).encode("utf-8")
+        query_payload_sha256 = (
+            f"sha256:{hashlib.sha256(query_payload_bytes).hexdigest()}"
+        )
+
+        query_path = self.artifact_dir / f"search_query_{tool_call_id}.json"
+        query_envelope = {
+            "schema_version": "rig.relay.artifact.envelope.v1",
+            "artifact_kind": "search_query",
+            "session_id": self.session_id,
+            "tool_call_id": tool_call_id,
+            "created_at": datetime.now(UTC).isoformat(),
+            "payload_sha256": query_payload_sha256,
+            "payload": query_payload,
+            "metadata": {
+                "producer": "rig-relay",
+                "producer_version": "2.9.6",
+                "evidence_relative_path": str(
+                    query_path.relative_to(self.artifact_dir.parent.parent.parent)
+                ),
+            },
+        }
+        query_envelope_bytes = dump_canonical_json(query_envelope).encode("utf-8")
+        query_envelope["artifact_record_sha256"] = (
+            f"sha256:{hashlib.sha256(query_envelope_bytes).hexdigest()}"
+        )
+
+        query_path.write_text(dump_canonical_json(query_envelope), encoding="utf-8")
+
+        # 2. Write Result Artifact
+        result_payload = result_artifact.model_dump()
+        result_payload_bytes = dump_canonical_json(result_payload).encode("utf-8")
+        result_payload_sha256 = (
+            f"sha256:{hashlib.sha256(result_payload_bytes).hexdigest()}"
+        )
+
+        result_path = self.artifact_dir / f"search_result_{tool_call_id}.json"
+        result_envelope = {
+            "schema_version": "rig.relay.artifact.envelope.v1",
+            "artifact_kind": "search_result",
+            "session_id": self.session_id,
+            "tool_call_id": tool_call_id,
+            "created_at": datetime.now(UTC).isoformat(),
+            "payload_sha256": result_payload_sha256,
+            "payload": result_payload,
+            "metadata": {
+                "producer": "rig-relay",
+                "producer_version": "2.9.6",
+                "evidence_relative_path": str(
+                    result_path.relative_to(self.artifact_dir.parent.parent.parent)
+                ),
+            },
+        }
+        result_envelope_bytes = dump_canonical_json(result_envelope).encode("utf-8")
+        result_envelope["artifact_record_sha256"] = (
+            f"sha256:{hashlib.sha256(result_envelope_bytes).hexdigest()}"
+        )
+
+        result_path.write_text(dump_canonical_json(result_envelope), encoding="utf-8")
+
+        return query_path, result_path

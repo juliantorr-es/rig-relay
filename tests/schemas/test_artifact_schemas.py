@@ -87,3 +87,36 @@ def test_schema_version_matches_filename():
             # e.g. rig.relay.artifact.envelope.v1
             # filename: rig.relay.artifact.envelope.v1.schema.json
             assert const_version in schema_path.name
+
+
+def test_search_query_schema_validates_minimal_example():
+    schema_path = SCHEMA_DIR / "rig.relay.artifact.search_query.v1.schema.json"
+    with schema_path.open("r", encoding="utf-8") as f:
+        schema = json.load(f)
+
+    instance = {
+        "query_text": "pattern",
+        "query_kind": "literal",
+        "normalized_query_sha256": "sha256:" + "d" * 64,
+    }
+
+    validate(instance=instance, schema=schema)
+
+
+def test_search_result_schema_validates_minimal_example():
+    schema_path = SCHEMA_DIR / "rig.relay.artifact.search_result.v1.schema.json"
+    with schema_path.open("r", encoding="utf-8") as f:
+        schema = json.load(f)
+
+    instance = {
+        "query_sha256": "sha256:" + "d" * 64,
+        "results": [
+            {
+                "relative_path": "src/main.py",
+                "start_line": 10,
+                "excerpt": "print('hello')",
+            }
+        ],
+    }
+
+    validate(instance=instance, schema=schema)

@@ -492,8 +492,8 @@ class TelemetryClient:
         artifact_record_sha256: str | None = None,
         truncated: bool = True,
         source_event_id: str | None = None,
-        schema_version: str = "rig.relay.tool_output_artifact.v1",
-        evidence_kind: str = "tool_output_artifact",
+        schema_version: str = "rig.relay.artifact.envelope.v1",
+        evidence_kind: str = "tool_result",
         evidence_relative_path: str | None = None,
         evidence_sha256: str | None = None,
     ) -> None:

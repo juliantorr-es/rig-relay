@@ -3,12 +3,21 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncGenerator
 from enum import StrEnum, auto
+import hashlib
 from pathlib import Path
 import shutil
 from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel, Field
 
+from vibe.core.logger import logger
+from vibe.core.telemetry.artifacts import (
+    SearchQueryArtifact,
+    SearchResultArtifact,
+    SearchResultItem,
+    ToolOutputArtifactWriter,
+)
+from vibe.core.telemetry.local import dump_canonical_json
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import (
     BaseTool,
@@ -192,8 +201,60 @@ class Grep(
         cmd = self._build_command(args, exclude_patterns, backend)
         stdout = await self._execute_search(cmd)
 
-        yield self._parse_output(
-            stdout, args.max_matches or self.config.default_max_matches
+        max_matches = args.max_matches or self.config.default_max_matches
+        result = self._parse_output(stdout, max_matches)
+
+        if ctx and ctx.session_dir and ctx.tool_call_id:
+            try:
+                self._emit_search_artifacts(args, result, ctx)
+            except Exception as e:
+                logger.warning("Failed to emit search artifacts: %s", e)
+
+        yield result
+
+    def _emit_search_artifacts(
+        self, args: GrepArgs, result: GrepResult, ctx: InvokeContext
+    ) -> None:
+        """Emit typed search query and result artifacts."""
+        # 1. Build Query Artifact
+        query_payload = args.model_dump()
+        normalized_query_json = dump_canonical_json(query_payload)
+        query_sha256 = f"sha256:{hashlib.sha256(normalized_query_json.encode('utf-8')).hexdigest()}"
+
+        query_artifact = SearchQueryArtifact(
+            query_text=args.pattern,
+            query_kind="regex",  # grep/ripgrep use regex by default
+            root_scope=str(args.path),
+            include_globs=[],  # Not directly exposed in GrepArgs currently
+            exclude_globs=self._collect_exclude_patterns(),
+            case_mode="smart",  # ripgrep uses smart-case in our cmd
+            ignore_mode=args.use_default_ignore,
+            max_results=args.max_matches or self.config.default_max_matches,
+            normalized_query_sha256=query_sha256,
+        )
+
+        # 2. Build Result Artifact
+        items = []
+        for match in sorted(result.matches, key=lambda m: (m.path, m.line_number)):
+            items.append(
+                SearchResultItem(
+                    relative_path=match.path,
+                    start_line=match.line_number,
+                    excerpt=match.line_content,
+                    excerpt_sha256=f"sha256:{hashlib.sha256(match.line_content.encode('utf-8')).hexdigest()}",
+                )
+            )
+
+        result_artifact = SearchResultArtifact(
+            query_sha256=query_sha256, results=items, truncated=result.truncated
+        )
+
+        # 3. Write Artifacts
+        writer = ToolOutputArtifactWriter(str(ctx.session_dir.name))
+        writer.write_search_artifacts(
+            query_artifact=query_artifact,
+            result_artifact=result_artifact,
+            tool_call_id=ctx.tool_call_id,
         )
 
     def _validate_args(self, args: GrepArgs) -> None:

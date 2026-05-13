@@ -27,15 +27,15 @@
       "format": "uuid"
     },
     "tool_call_id": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Optional identifier linking this artifact to a specific tool call."
     },
     "event_name": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "The telemetry event name associated with this artifact."
     },
     "evidence_relative_path": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Path to this artifact relative to the session evidence root."
     },
     "created_at": {

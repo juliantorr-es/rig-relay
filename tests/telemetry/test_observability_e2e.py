@@ -247,8 +247,7 @@ async def test_observability_e2e_artifacting(
     assert "raw_output" not in artifact_event["payload"]
     assert "prompt_excerpt" not in artifact_event["payload"]
     assert (
-        artifact_event["payload"]["schema_version"]
-        == "rig.relay.tool_output_artifact.v1"
+        artifact_event["payload"]["schema_version"] == "rig.relay.artifact.envelope.v1"
     )
     assert artifact_event["payload"]["payload_sha256"].startswith("sha256:")
 
@@ -576,7 +575,7 @@ async def test_provider_independent_repo_local_evidence_smoke(
         if event["event_name"] == EventName.CONTEXT_LAYOUT_PLANNED
     )
 
-    assert artifact_event["payload"]["evidence_kind"] == "tool_output_artifact"
+    assert artifact_event["payload"]["evidence_kind"] == "tool_result"
     assert shadow_event["payload"]["evidence_kind"] == "shadow_request_report"
     assert assembly_event["payload"]["evidence_kind"] == "context_assembly_report"
     assert layout_event["payload"]["evidence_kind"] == "context_layout_plan"
@@ -601,7 +600,8 @@ async def test_provider_independent_repo_local_evidence_smoke(
     ]
 
     assert any(
-        item["artifact_id"] == artifact_event["payload"]["artifact_id"]
+        item.get("metadata", {}).get("artifact_id")
+        == artifact_event["payload"]["artifact_id"]
         for item in artifact_data
     )
     assert any(item["shadow_request_id"] for item in shadow_data)
@@ -618,8 +618,7 @@ async def test_provider_independent_repo_local_evidence_smoke(
     assert (session_root / assembly_event["payload"]["evidence_relative_path"]).exists()
     assert (session_root / layout_event["payload"]["evidence_relative_path"]).exists()
     assert (
-        artifact_event["payload"]["schema_version"]
-        == "rig.relay.tool_output_artifact.v1"
+        artifact_event["payload"]["schema_version"] == "rig.relay.artifact.envelope.v1"
     )
     assert artifact_event["payload"]["raw_byte_size"] > 16_384
     assert artifact_event["payload"]["payload_sha256"].startswith("sha256:")
