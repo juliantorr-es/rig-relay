@@ -57,6 +57,19 @@ Use the specialized reporter to see how tools behaved:
 rig-relay doctor tool-determinism --evidence-root ./.dogfood --session <SESSION_ID>
 ```
 
+
+
+## Cockpit UI
+
+The desktop cockpit follows three-mode progressive disclosure:
+- **Operate** — Default. Shows safety state, next action, validation, storage, and operator feed.
+- **Review** — Evidence and artifacts: receipts, refinement, validation history, snippets, datasets.
+- **System** — Advanced controls: authorization receipts, connection status, telemetry bundles, update status, projection source diagnostics.
+
+See [Desktop Cockpit UI](../governance/desktop-cockpit-ui.md) and
+[Relay Desktop Projection Contract](../governance/relay-desktop-projection-contract.md)
+for the full widget contract.
+
 ### 7. Inspecting Tool Reasoning and Latency
 
 Rig Relay records structured reasoning traces for every tool call — latency, byte sizes, determinism class, and observable rationale — without capturing hidden chain-of-thought.
@@ -254,6 +267,7 @@ See the [bash replacement opportunity map](../audits/bash-replacement-opportunit
 25. **Desktop Chat Shell Foundation (Completed 2026-05-13)**: Content-light chat state model (`rig_relay/desktop/chat_state.py`) with 5 roles and stable message IDs. Safe backend API in cockpit (`scripts/rig_relay_desktop_cockpit.py`) with 4.0 KiB message limit and bridge-based response stubs. WebSocket protocol extended with `get_chat_state` for real-time state push. Frontend UI (`frontend/desktop/`) with transcript area, chat composer, character counter, and safe `textContent` rendering. 53 unit tests in `tests/desktop/test_chat_state.py` and `tests/scripts/test_websocket_server.py`. Schema at `docs/schemas/rig.relay.desktop_chat_state.v1.schema.json` (45 total schemas). See [Desktop Cockpit UI Doctrine](../governance/desktop-cockpit-ui.md#desktop-chat-shell-current).
 26. **Desktop Chat Persistence and Event Stream (Completed 2026-05-13)**: Chat persistence module (`rig_relay/desktop/chat_store.py`) with atomic state writes and append-only event logging under `.build/rig-relay/desktop/chat/`. Events follow content-light safeguards (SHA256 + 120-char preview). Cockpit API updated to load/save state and emit events (`chat.message.created`, `chat.view.cleared`, etc.). WebSocket protocol extended with `chat_state_updated` broadcast for real-time UI refresh. 8 persistence tests in `tests/desktop/test_chat_persistence.py`. Schema at `docs/schemas/rig.relay.desktop_chat_event.v1.schema.json` (46 total schemas). See [Desktop Chat Persistence section in Desktop Cockpit UI Doctrine](../governance/desktop-cockpit-ui.md#desktop-chat-persistence-and-event-stream-current).
 27. **Desktop Chat AgentLoop Adapter Hardening (Completed 2026-05-13)**: Hardened `ChatAgentAdapter` with explicit lifecycle states (`idle`, `running`, `cancelling`), concurrent send refusal, and thread-safe bridge scheduling using `asyncio.run_coroutine_threadsafe`. Implemented strict tool summary sanitization (stripping raw stdout/stderr/diffs/secrets) to comply with content-light security policy. 12 new tests in `tests/desktop/test_chat_adapter.py` and `tests/desktop/test_cockpit_lifecycle.py`. See [Desktop Cockpit UI Doctrine](../governance/desktop-cockpit-ui.md#lifecycle-states).
+28. **Local/Remote Redaction Boundary (Completed 2026-05-13)**: Added the canonical `rig_relay.evidence.redaction` module and routed telemetry bundle creation, ChatGPT dev bundle creation, and desktop intent audit artifacts through it. Shareable outputs are now consistently content-light: raw receipts, prompts, model outputs, stdout/stderr bodies, diffs, secrets, and private paths are redacted or hashed before leaving the local cockpit.
 
 ## Future Hardening Tracks
 
@@ -289,8 +303,20 @@ Semantic change snippets are now part of the derived dataset pipeline. See `scri
 
 - **Desktop Intent API**: The Intent API provides governed, schema-validated access to safe orchestration actions from the desktop cockpit. Supported intents: `refresh_projection`, `run_validation_suite` (ruff, pyright, schemas, storage), `run_storage_audit`, `generate_refinement_report`, etc. High-authority mutation intents (`checkpoint.commit`, `lease_cleanup.archive`) are enabled in Phase 1 and are verified to require a valid authorization receipt. Other protected intents (`bash`, `write_file`, `spawn.execute`, `fleet.execute`, etc.) remain strictly refused. See `rig_relay/desktop/intents.py`, `rig_relay/desktop/intent_audit.py`, `docs/schemas/rig.relay.desktop_intent_request.v1.schema.json`, `docs/schemas/rig.relay.desktop_intent_event.v1.schema.json`, and `docs/governance/desktop-cockpit-ui.md`.
 
+- **Identity Provider Scaffold**: Rig Relay now includes an identity provider scaffold for GitHub and Google sign-in. Identity is separate from authority — signing in does not grant mutation, telemetry consent, or Drive/repo access. The `rig_relay/identity/` package provides models, providers, token storage (`DevFileTokenStore` with a dev-warning), OAuth loopback server (RFC 8252), and safe desktop intents (`identity_status`, `sign_in_github_start`, `sign_in_google_start`, `sign_out_provider`). Tokens never enter audit logs, telemetry bundles, or frontend storage. See `rig_relay/identity/`, `docs/governance/identity-provider-policy.md`, `docs/schemas/rig.relay.identity_provider.v1.schema.json`, `docs/schemas/rig.relay.identity_session.v1.schema.json`, `docs/schemas/rig.relay.oauth_callback_receipt.v1.schema.json`.
+
 - **Built-in Tool Refinement**: The built-in tool refinement report reads derived datasets and produces a ranked implementation backlog based on observed failure, refusal, truncation, fallback, storage, and coordination pressure. See `scripts/rig_relay_builtin_tool_refinement.py`, `docs/schemas/rig.relay.builtin_tool_refinement_item.v1.schema.json`, and the [current built-in tools audit](../audits/current-built-in-tools.md).
+
+- **ProgressEvent Stream**: Intent execution now emits content-light progress events over the existing WebSocket transport. Progress events carry operation_id, phase, status, percent/progress bar, and content_light_guarantee. The Review mode includes a Progress Timeline widget. No second transport — reuses the existing token-gated WebSocket. See `rig_relay/desktop/progress_events.py`, `docs/schemas/rig.relay.progress_event.v1.schema.json`, and `docs/governance/desktop-cockpit-ui.md`.
 
 - **Step-Up Authorization**: High-authority actions (real upload, checkpoint commit, lease cleanup) require step-up authorization. Passkeys are the target method; alpha uses authorization receipts. macOS LocalAuthentication is the implemented step-up provider for the desktop cockpit. See [`docs/governance/step-up-authorization.md`](../governance/step-up-authorization.md).
 
 - **Rig-to-Relay Porting**: Rig Relay ports proven architecture patterns from the Rig project through Relay-native interfaces. See [Rig-to-Relay Porting Doctrine](../governance/rig-to-relay-porting-doctrine.md) and [Pattern Inventory](../governance/rig-to-relay-pattern-inventory.md).
+
+## Local Action Envelope
+
+The local action envelope model (`rig_relay/governance/local_action_envelope.py`)
+defines a signed cryptographic container for protected intent requests. In this
+slice, the envelope is schema and model only — it is not wired to execution.
+
+See [Local Action Envelope Schema](../docs/schemas/rig.relay.local_action_envelope.v1.schema.json).

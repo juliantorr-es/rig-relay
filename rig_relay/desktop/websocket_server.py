@@ -9,6 +9,7 @@ Protocol:
     {"type": "get_projection"}              — request full projection
     {"type": "get_available_actions"}        — request available actions list
     {"type": "get_chat_state"}              — request current chat state
+    {"type": "get_progress_events"}         — request recent progress events (up to N)
     {"type": "desktop_intent", ...}         — execute a governed intent (read-only/dry-run only)
     {"type": "subscribe", "interval": 30}   — periodic projection push (N seconds)
     {"type": "unsubscribe"}                 — stop periodic push
@@ -21,6 +22,8 @@ Protocol:
     {"type": "projection", "data": {...}, "seq": N}
     {"type": "available_actions", "actions": [...], "seq": N}
     {"type": "chat_state", "data": {...}, "seq": N}
+    {"type": "progress_events", "events": [...], "seq": N}  — recent progress events
+    {"type": "progress_event", "data": {...}, "seq": N}      — single live progress event
     {"type": "desktop_intent_result", "data": {...}, "seq": N}
     {"type": "error", "message": "..."}
     {"type": "pong"}
@@ -45,6 +48,7 @@ import secrets
 from typing import Any
 
 from rig_relay.desktop.intents import execute_desktop_intent, validate_intent_request
+from rig_relay.desktop.progress_events import ProgressEventBuffer
 from rig_relay.desktop.projection import READ_ONLY_ACTIONS, build_projection
 
 DEFAULT_HOST = "127.0.0.1"
@@ -58,6 +62,7 @@ ALLOWED_MESSAGE_TYPES = frozenset({
     "get_projection",
     "get_available_actions",
     "get_chat_state",
+    "get_progress_events",
     "desktop_intent",
     "subscribe",
     "unsubscribe",
@@ -117,6 +122,7 @@ class ProjectionWebSocketServer:
         self._max_message_bytes = max_message_bytes
         self._rate_limit_per_minute = rate_limit_per_minute
         self._chat_state_provider = chat_state_provider
+        self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
         self._server: Any = None
         self._connections: set[Any] = set()
@@ -375,6 +381,20 @@ class ProjectionWebSocketServer:
                         {"type": "error", "message": "Chat state not available"},
                     )
 
+            case "get_progress_events":
+                count = message.get("count", 20)
+                if not isinstance(count, int):
+                    count = 20
+                events = self._progress_buffer.recent(max(1, min(count, 100)))
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "progress_events",
+                        "events": events,
+                        "seq": self._next_seq(),
+                    },
+                )
+
             case "subscribe":
                 if subscribe_task is not None:
                     subscribe_task.cancel()
@@ -404,47 +424,9 @@ class ProjectionWebSocketServer:
                 await _send_json(websocket, {"type": "pong"})
 
             case "desktop_intent":
-                # Strip WS envelope fields before schema validation
-                intent_msg = {k: v for k, v in message.items() if k != "type"}
-                validation_errors = validate_intent_request(intent_msg)
-                if validation_errors:
-                    await _send_json(
-                        websocket,
-                        {
-                            "type": "desktop_intent_result",
-                            "data": {
-                                "schema_version": "rig.relay.desktop_intent_result.v1",
-                                "intent_id": intent_msg.get("intent_id", "unknown"),
-                                "created_at": __import__("datetime")
-                                .datetime.now(__import__("datetime").timezone.utc)
-                                .isoformat(),
-                                "intent_name": intent_msg.get("intent_name", "unknown"),
-                                "status": "refused",
-                                "dry_run": True,
-                                "result_kind": "validation_error",
-                                "summary": f"Intent request validation failed: {'; '.join(validation_errors)}",
-                                "output_refs": [],
-                                "projection_refresh_recommended": False,
-                                "authorization_required": False,
-                                "warnings": [],
-                                "error_code": "validation_failed",
-                            },
-                            "seq": self._next_seq(),
-                        },
-                    )
-                else:
-                    result = execute_desktop_intent(
-                        request=intent_msg,
-                        chat_state_provider=self._chat_state_provider,
-                    )
-                    await _send_json(
-                        websocket,
-                        {
-                            "type": "desktop_intent_result",
-                            "data": result,
-                            "seq": self._next_seq(),
-                        },
-                    )
+                subscribe_task = await self._handle_desktop_intent(
+                    websocket, message, subscribe_task
+                )
 
             case _:
                 await _send_json(
@@ -452,6 +434,60 @@ class ProjectionWebSocketServer:
                     {"type": "error", "message": f"Unknown message type: {msg_type}"},
                 )
 
+        return subscribe_task
+
+    async def _handle_desktop_intent(
+        self,
+        websocket: Any,
+        message: dict[str, Any],
+        subscribe_task: asyncio.Task[None] | None,
+    ) -> asyncio.Task[None] | None:
+        """Handle a desktop_intent message. Returns updated subscribe_task."""
+        intent_msg = {k: v for k, v in message.items() if k != "type"}
+        validation_errors = validate_intent_request(intent_msg)
+        if validation_errors:
+            await _send_json(
+                websocket,
+                {
+                    "type": "desktop_intent_result",
+                    "data": {
+                        "schema_version": "rig.relay.desktop_intent_result.v1",
+                        "intent_id": intent_msg.get("intent_id", "unknown"),
+                        "created_at": __import__("datetime")
+                        .datetime.now(__import__("datetime").timezone.utc)
+                        .isoformat(),
+                        "intent_name": intent_msg.get("intent_name", "unknown"),
+                        "status": "refused",
+                        "dry_run": True,
+                        "result_kind": "validation_error",
+                        "summary": f"Intent request validation failed: {'; '.join(validation_errors)}",
+                        "output_refs": [],
+                        "projection_refresh_recommended": False,
+                        "authorization_required": False,
+                        "warnings": [],
+                        "error_code": "validation_failed",
+                    },
+                    "seq": self._next_seq(),
+                },
+            )
+        else:
+
+            async def _progress_emitter(event_data: dict[str, Any]) -> None:
+                await self.broadcast_progress_event(event_data)
+
+            result = execute_desktop_intent(
+                request=intent_msg,
+                chat_state_provider=self._chat_state_provider,
+                progress_emitter=_progress_emitter,
+            )
+            await _send_json(
+                websocket,
+                {
+                    "type": "desktop_intent_result",
+                    "data": result,
+                    "seq": self._next_seq(),
+                },
+            )
         return subscribe_task
 
     async def broadcast_chat_state_updated(self) -> None:
@@ -464,6 +500,30 @@ class ProjectionWebSocketServer:
 
             # Send to all active connections
             # We use list() to avoid mutation during iteration
+            for ws in list(self._connections):
+                try:
+                    await _send_json(ws, message)
+                except Exception:
+                    self._connections.discard(ws)
+
+    async def broadcast_progress_event(self, event_data: dict[str, Any]) -> None:
+        """Broadcast a progress_event to all authenticated clients.
+
+        Stores the event in the bounded buffer and sends to all active connections.
+        Content-light only: callers must ensure no raw tokens or secrets.
+        """
+        self._progress_buffer.push_dict(event_data)
+
+        async with self._lock:
+            if not self._connections:
+                return
+
+            message = {
+                "type": "progress_event",
+                "data": event_data,
+                "seq": self._next_seq(),
+            }
+
             for ws in list(self._connections):
                 try:
                     await _send_json(ws, message)

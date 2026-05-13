@@ -78,7 +78,40 @@ Three implementation paths exist:
    The local app requests a challenge, performs WebAuthn, and receives an
    authorization token.
 
-### Implementation Order
+#
+## Local Action Envelope (Schema Only)
+
+The [Local Action Envelope Schema](../schemas/rig.relay.local_action_envelope.v1.schema.json)
+defines a signed cryptographic container for future protected intent requests
+and local-to-remote authority mutations.
+
+**Current slice status:** Schema and model only. Not wired to protected execution.
+Not yet used by intent dispatch or authorization receipt flows.
+
+The envelope wraps:
+- A canonicalized action payload (deterministic JSON key ordering)
+- Replay prevention fields (action_id, nonce, issued_at, expires_at)
+- An Ed25519 signature over the envelope body (excluding the signature field)
+
+The model is defined in ``rig_relay/governance/local_action_envelope.py`` and
+includes deterministic canonicalization, payload hashing, signing bytes
+computation, and structural shape verification.
+
+### Key design decisions
+- **No raw secrets in the envelope.** The canonical payload does not include
+  authorization receipt bodies — only the receipt hash.
+- **``local_only`` defaults true** in the current slice. Remote mutations (future)
+  will require additional review.
+- **Replay window defaults to 300 seconds** (5 minutes), max 3600 (1 hour).
+- **Ed25519** is the only supported signature algorithm.
+- **Signing is optional** in this slice. The model supports it but does not
+  enforce it for shape validation.
+
+See ``tests/governance/test_local_action_envelope.py`` for 49 validated tests
+covering schema, canonicalization, shape validation, replay policy, and content
+safety.
+
+## Implementation Order
 
 1. Receipt validator enforced by upload/cleanup/checkpoint/spawn gates
 2. macOS `local_system_auth` proof of concept

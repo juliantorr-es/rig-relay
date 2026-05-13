@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.progress_event.v1.schema.json",
+  "title": "Progress Event",
+  "description": "Content-light progress event streamed over the existing WebSocket transport. Telemetry, not authority. No second transport.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier."
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier."
+    },
+    "operation_id": {
+      "type": "string",
+      "description": "Operation or intent identifier this event belongs to."
+    },
+    "intent_id": {
+      "type": "string",
+      "description": "Optional intent identifier for correlation."
+    },
+    "source": {
+      "type": "string",
+      "description": "Source component emitting the event (e.g. intents, validation, projection)."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "operation.started",
+        "operation.progress",
+        "operation.warning",
+        "operation.completed",
+        "operation.failed",
+        "operation.refused",
+        "projection.refreshed",
+        "validation.step.started",
+        "validation.step.completed"
+      ],
+      "description": "Type of progress event."
+    },
+    "phase": {
+      "type": "string",
+      "description": "Current phase description (e.g. ruff_check, schema_validation, storage_audit)."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["running", "completed", "failed", "refused", "warning", "skipped"],
+      "description": "Current status of the operation or phase."
+    },
+    "sequence": {
+      "type": "integer",
+      "description": "Monotonic sequence number for ordering within an operation."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp."
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable status message."
+    },
+    "progress_current": {
+      "type": "integer",
+      "description": "Current progress unit."
+    },
+    "progress_total": {
+      "type": "integer",
+      "description": "Total progress units."
+    },
+    "percent": {
+      "type": "number",
+      "description": "Completion percentage (0-100)."
+    },
+    "result_kind": {
+      "type": "string",
+      "description": "Kind of result data (e.g. validation_suite, storage_audit)."
+    },
+    "output_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Output reference paths."
+    },
+    "receipt_candidate": {
+      "type": "object",
+      "description": "Optional receipt-like metadata for the operation outcome.",
+      "properties": {
+        "sha256": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+    "projection_refresh_recommended": {
+      "type": "boolean",
+      "description": "Whether the projection should be refreshed after this event."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-blocking warnings."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "description": "True if this event is guaranteed content-light (no raw prompts, outputs, code, secrets)."
+    }
+  },
+  "required": [
+    "schema_version", "event_id", "operation_id", "source", "event_type",
+    "phase", "status", "sequence", "created_at", "message",
+    "projection_refresh_recommended", "content_light_guarantee"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.oauth_callback_receipt.v1.schema.json",
+  "title": "OAuth Callback Receipt",
+  "description": "Content-light receipt for an OAuth callback exchange. No raw authorization codes, tokens, or client secrets.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier."
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["github", "google"],
+      "description": "Identity provider."
+    },
+    "state_hash": {
+      "type": "string",
+      "description": "SHA256 of the OAuth state parameter."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["signed_out", "pending", "signed_in", "error"],
+      "description": "Session status after callback."
+    },
+    "account_id_hash": {
+      "type": "string",
+      "description": "SHA256 of the provider account ID."
+    },
+    "email_hash": {
+      "type": "string",
+      "description": "SHA256 of the user email."
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Display name from provider."
+    },
+    "scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Authorized scopes."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Token expiration time (ISO 8601)."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-blocking warnings."
+    }
+  },
+  "required": ["provider", "state_hash", "status"],
+  "additionalProperties": false
+}

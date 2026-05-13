@@ -15,6 +15,7 @@ Package structure::
         governance/         -- Dirty guard, auth, telemetry modes, update policy
         coordination/       -- Store, leases, current_state, queue, spawn
         evidence/           -- Artifacts, receipts, semantic snippets, telemetry bundles
+        identity/           -- Identity providers, token storage, OAuth flow
         desktop/            -- Projection, pywebview shell, WebSocket stream, intent API
         cli/                -- Product CLI commands, doctor, install helpers
 """

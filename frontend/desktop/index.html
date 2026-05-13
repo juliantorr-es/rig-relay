@@ -10,152 +10,347 @@
   <header>
     <h1>Rig Relay Cockpit</h1>
     <span id="version-badge" class="subtitle">Loading...</span>
-    <span id="connection-status" class="source-status">—</span>
-    <button id="refresh-btn" onclick="refreshAll()">Refresh</button>
+    <nav id="mode-nav">
+      <button id="mode-operate" class="mode-btn active" onclick="switchMode('operate')">Operate</button>
+      <button id="mode-review" class="mode-btn" onclick="switchMode('review')">Review</button>
+      <button id="mode-system" class="mode-btn" onclick="switchMode('system')">System</button>
+    </nav>
+    <span id="connection-status">—</span>
   </header>
 
   <div id="warning-banner" class="warning-banner" style="display:none"></div>
 
   <div id="main-container">
-    <div id="chat-section">
-      <div id="chat-header">
-        <span class="chat-title">Chat</span>
-        <div id="chat-status-badge" class="source-status warning">Backend Offline</div>
-      </div>
-      <div id="chat-transcript">
-        <div class="message system">
-          Welcome to Rig Relay Cockpit. The chat backend is initialized in stub mode.
+
+    <!-- ═══ Operate Mode ═══ -->
+    <div id="operate-view" class="mode-view active">
+      <!-- Chat / Operator Feed -->
+      <div id="operate-chat">
+        <div id="operate-chat-header">
+          <span class="chat-title">Operator Feed</span>
+          <div id="chat-status-badge" class="source-status warning">Backend Offline</div>
+        </div>
+        <div id="chat-transcript">
+          <div class="message system">
+            Welcome to Rig Relay Cockpit. The chat backend is initialized in stub mode.
+          </div>
+        </div>
+        <div id="chat-composer-container">
+          <div id="chat-composer">
+            <textarea id="chat-input" placeholder="Type a message..." maxlength="4000"></textarea>
+            <button id="send-btn" disabled>Send</button>
+          </div>
+          <div id="composer-footer">
+            <span id="char-count">0/4000</span>
+            <button id="clear-chat-btn" class="secondary-btn">Clear</button>
+          </div>
         </div>
       </div>
-      <div id="chat-composer-container">
-        <div id="chat-composer">
-          <textarea id="chat-input" placeholder="Type a message..." maxlength="4000"></textarea>
-          <button id="send-btn" disabled>Send</button>
+
+      <!-- Operate Panel: projection widgets -->
+      <div id="operate-panel">
+        <!-- OperatorHeader -->
+        <div class="widget-card" id="widget-operator-header">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Session</span>
+          </div>
+          <div class="widget-card-body">
+            <span class="operator-pill"><span class="label">Mode</span> <span id="op-mode">desktop</span></span>
+            <span class="operator-pill"><span class="label">Version</span> <span id="op-version">—</span></span>
+            <span class="operator-pill"><span class="label">Session</span> <span id="op-session">—</span></span>
+          </div>
         </div>
-        <div id="composer-footer">
-          <span id="char-count">0/4000</span>
-          <button id="clear-chat-btn" class="secondary-btn">Clear Chat</button>
+
+        <!-- SafetyState -->
+        <div class="widget-card" id="widget-safety-state">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Safety</span>
+            <div id="safety-status-pill" class="safety-indicator ok"><span class="dot"></span> Safe</div>
+          </div>
+          <div class="widget-card-body">
+            <div class="safety-indicators" id="safety-indicators">
+              <span class="safety-indicator ok"><span class="dot"></span> <span id="safety-dirty">0</span> dirty</span>
+              <span class="safety-indicator ok"><span class="dot"></span> <span id="safety-leases">0</span> leases</span>
+              <span class="safety-indicator ok"><span class="dot"></span> <span id="safety-stale">0</span> stale</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NextAction -->
+        <div class="widget-card" id="widget-next-action">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Next Action</span>
+          </div>
+          <div class="widget-card-body">
+            <div class="next-action-area">
+              <span class="next-action-label">Recommended</span>
+              <span class="next-action-name" id="next-action-name">Refresh Projection</span>
+            </div>
+            <div class="next-action-detail" id="next-action-detail">No pending actions.</div>
+            <div class="next-action-ready" id="next-action-ready" style="display:none"></div>
+            <div class="next-action-blocked" id="next-action-blocked" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- ValidationSummary -->
+        <div class="widget-card" id="widget-validation-summary">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Validation</span>
+            <div id="validation-status-pill" class="safety-indicator ok"><span class="dot"></span> Passed</div>
+          </div>
+          <div class="widget-card-body">
+            <div class="validation-status-line">
+              <span class="dot ok"></span> <span id="validation-passed">0</span> passed
+              <span style="margin-left:12px;"><span id="validation-failed" class="warning">0</span> failed</span>
+            </div>
+            <div class="action-buttons compact">
+              <button onclick="runIntent('run_validation_suite')">Run Validation Suite</button>
+              <button onclick="runIntent('run_storage_audit')" class="secondary-btn">Storage Audit</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- StorageBudget -->
+        <div class="widget-card" id="widget-storage-budget">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Storage</span>
+            <div id="storage-status-pill" class="safety-indicator ok"><span class="dot"></span> OK</div>
+          </div>
+          <div class="widget-card-body">
+            <table class="kv">
+              <tr><td class="k">Size</td><td id="storage-size">—</td></tr>
+              <tr><td class="k">Budget</td><td id="storage-budget">—</td></tr>
+              <tr><td class="k">Prune candidates</td><td id="storage-prune">—</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- LatestIntentResult -->
+        <div class="widget-card" id="widget-intent-result">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Latest Result</span>
+          </div>
+          <div class="widget-card-body" id="latest-intent-body">
+            <span class="missing">No intents executed yet.</span>
+          </div>
+        </div>
+
+        <!-- Actions (safe, read-only, dry-run) -->
+        <div class="widget-card" id="widget-actions">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Actions</span>
+            <div class="safety-indicator ok" style="font-size:0.7rem;padding:2px 10px"><span class="dot"></span> Dry-run</div>
+          </div>
+          <div class="widget-card-body">
+            <div class="action-buttons compact">
+              <button onclick="runIntent('refresh_projection')">Refresh</button>
+              <button onclick="runIntent('generate_refinement_report')" class="secondary-btn">Refinement Report</button>
+              <button onclick="runIntent('create_refinement_packets')" class="secondary-btn">Refinement Packets</button>
+            </div>
+            <div id="operate-intent-result" class="intent-result-card" style="display:none"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div id="right-rail">
-      <div class="section-title">Projection</div>
-      <div id="cards-container">
-        <!-- current_state -->
-        <div class="card" id="card-current_state">
-          <div class="card-header">
-            <span class="card-title">Current State</span>
-            <div id="status-current_state" class="source-status warning">Wait</div>
+    <!-- ═══ Review Mode ═══ -->
+    <div id="review-view" class="mode-view">
+      <div class="section-title">Evidence &amp; Artifacts</div>
+      <div class="review-grid">
+        <!-- Progress Timeline -->
+        <div class="widget-card" id="widget-progress-timeline">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Progress Timeline</span>
+            <div id="progress-timeline-count" class="source-status ok">0</div>
           </div>
-          <div class="card-content" id="content-current_state">
-            <span class="missing">Loading...</span>
-          </div>
-        </div>
-
-        <!-- queue -->
-        <div class="card" id="card-queue">
-          <div class="card-header">
-            <span class="card-title">Queue Plan</span>
-            <div id="status-queue" class="source-status warning">Wait</div>
-          </div>
-          <div class="card-content" id="content-queue">
-            <span class="missing">Loading...</span>
-          </div>
-        </div>
-
-        <!-- dataset -->
-        <div class="card" id="card-dataset">
-          <div class="card-header">
-            <span class="card-title">Dataset Summary</span>
-            <div id="status-dataset" class="source-status warning">Wait</div>
-          </div>
-          <div class="card-content" id="content-dataset">
-            <span class="missing">Loading...</span>
-          </div>
-        </div>
-
-        <!-- semantic_snippets -->
-        <div class="card" id="card-semantic_snippets">
-          <div class="card-header">
-            <span class="card-title">Semantic Snippets</span>
-            <div id="status-semantic_snippets" class="source-status warning">Wait</div>
-          </div>
-          <div class="card-content" id="content-semantic_snippets">
-            <span class="missing">Loading...</span>
-          </div>
-        </div>
-
-        <!-- telemetry_bundle -->
-        <div class="card" id="card-telemetry_bundle">
-          <div class="card-header">
-            <span class="card-title">Telemetry Bundle</span>
-            <div id="status-telemetry_bundle" class="source-status warning">Wait</div>
-          </div>
-          <div class="card-content" id="content-telemetry_bundle">
-            <span class="missing">Loading...</span>
-          </div>
-        </div>
-
-        <!-- update -->
-        <div class="card" id="card-update">
-          <div class="card-header">
-            <span class="card-title">Update Status</span>
-            <div id="status-update" class="source-status warning">Wait</div>
-          </div>
-          <div class="card-content" id="content-update">
-            <span class="missing">Loading...</span>
-          </div>
-        </div>
-
-        <!-- actions -->
-        <div class="card" id="card-actions">
-          <div class="card-header">
-            <span class="card-title">Actions</span>
-            <div class="source-status info">Dry-run</div>
-          </div>
-          <div class="card-content" id="content-actions">
-            <p class="small-note">Safe, read-only and dry-run actions only.</p>
-            <div class="action-buttons">
-              <button class="intent-btn" onclick="runIntent('refresh_projection')">Refresh Projection</button>
-              <button class="intent-btn" onclick="runIntent('run_validation_suite')">Run Validation Suite</button>
-              <button class="intent-btn" onclick="runIntent('run_storage_audit')">Run Storage Audit</button>
-              <button class="intent-btn" onclick="runIntent('generate_refinement_report')">Generate Refinement Report</button>
-              <button class="intent-btn" onclick="runIntent('create_chatgpt_dev_bundle_dry_run')">Create Dev Bundle Dry-Run</button>
+          <div class="widget-card-body" id="progress-timeline-body">
+            <div class="progress-timeline-list" id="progress-timeline-list">
+              <span class="missing">No progress events yet. Execute an intent to see progress.</span>
             </div>
-            <div id="intent-result" class="intent-result"></div>
           </div>
         </div>
 
-        <div class="card" id="card-auth-receipts">
-          <div class="card-header">
-            <span class="card-title">Authorization Receipts</span>
-            <div class="source-status info">Step-up Auth</div>
+        <!-- ReceiptTimeline -->
+        <div class="widget-card" id="widget-receipt-timeline">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Receipt Timeline</span>
           </div>
-          <div class="card-content" id="content-auth-receipts">
-            <p class="small-note">Mint and inspect authorization receipts for Phase 1 protected intents.</p>
-            <div class="action-buttons">
+          <div class="widget-card-body" id="receipt-timeline-body">
+            <span class="missing">No receipts available.</span>
+          </div>
+        </div>
+
+        <!-- RefinementBacklog -->
+        <div class="widget-card" id="widget-refinement-backlog">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Refinement</span>
+          </div>
+          <div class="widget-card-body" id="refinement-backlog-body">
+            <span class="missing">No refinement data available.</span>
+          </div>
+        </div>
+
+        <!-- Validation Artifacts -->
+        <div class="widget-card" id="widget-review-validation">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Validation History</span>
+          </div>
+          <div class="widget-card-body" id="review-validation-body">
+            <span class="missing">No validation history available.</span>
+          </div>
+        </div>
+
+        <!-- Storage Audit Details -->
+        <div class="widget-card" id="widget-review-storage">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Storage Audit</span>
+          </div>
+          <div class="widget-card-body" id="review-storage-body">
+            <span class="missing">No storage audit data available.</span>
+          </div>
+        </div>
+
+        <!-- Semantic Snippets -->
+        <div class="widget-card" id="widget-review-snippets">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Semantic Snippets</span>
+            <div id="snippet-status" class="source-status warning">—</div>
+          </div>
+          <div class="widget-card-body" id="review-snippets-body">
+            <span class="missing">No snippet data available.</span>
+          </div>
+        </div>
+
+        <!-- Dataset Summary -->
+        <div class="widget-card" id="widget-review-dataset">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Dataset Summary</span>
+            <div id="dataset-status" class="source-status warning">—</div>
+          </div>
+          <div class="widget-card-body" id="review-dataset-body">
+            <span class="missing">No dataset data available.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ System Mode ═══ -->
+    <div id="system-view" class="mode-view">
+      <div class="section-title">Advanced &amp; Diagnostics</div>
+      <div class="system-grid">
+        <!-- Identity -->
+        <div class="widget-card" id="widget-identity">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Identity</span>
+            <div id="identity-status-pill" class="safety-indicator warn"><span class="dot"></span> Signed Out</div>
+          </div>
+          <div class="widget-card-body">
+            <div id="identity-body">
+              <span class="missing">No identity provider connected. Sign in to associate telemetry bundles with an account.</span>
+            </div>
+            <div class="action-buttons compact" style="margin-top:8px">
+              <button onclick="runIntent('sign_in_github_start')">Sign in with GitHub</button>
+              <button onclick="runIntent('sign_in_google_start')">Sign in with Google</button>
+              <button id="sign-out-btn" onclick="signOutProvider()" class="secondary-btn" style="display:none">Sign Out</button>
+            </div>
+            <div id="identity-intent-result" class="intent-result-card" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Authorization Receipts -->
+        <div class="widget-card" id="widget-auth-receipts">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Authorization Receipts</span>
+            <div class="safety-indicator warn" style="font-size:0.7rem;padding:2px 10px"><span class="dot"></span> Step-up Auth</div>
+          </div>
+          <div class="widget-card-body">
+            <p class="small-note" style="margin-top:0">Mint and inspect authorization receipts.</p>
+            <div class="action-buttons compact">
               <select id="receipt-action">
                 <option value="checkpoint.commit">checkpoint.commit</option>
                 <option value="lease_cleanup.archive">lease_cleanup.archive</option>
               </select>
-              <input id="receipt-ttl" type="number" min="30" max="3600" value="300" />
-              <button class="intent-btn" onclick="mintLocalAuthReceipt()">Mint Local Auth Receipt</button>
-              <button class="intent-btn secondary-btn" onclick="mintDevReceipt()">Mint Dev Receipt (Bypass)</button>
+              <input id="receipt-ttl" type="number" min="30" max="3600" value="300" style="width:60px" />
+              <button onclick="mintLocalAuthReceipt()">Mint Local Auth Receipt</button>
+              <button onclick="mintDevReceipt()" class="secondary-btn">Mint Dev</button>
             </div>
-            <div class="action-buttons" style="margin-top: 0.5rem;">
-              <textarea id="receipt-json" placeholder="Paste receipt JSON to inspect" rows="4"></textarea>
-              <button class="intent-btn" onclick="inspectDevReceipt()">Inspect Receipt</button>
+            <div class="action-buttons compact" style="margin-top:8px">
+              <textarea id="receipt-json" placeholder="Paste receipt JSON to inspect" rows="2" style="flex:1;background:var(--bg-color);color:var(--text-primary);border:1px solid var(--border-color);border-radius:4px;padding:6px;font-size:0.75rem;font-family:var(--font-mono)"></textarea>
+              <button onclick="inspectDevReceipt()">Inspect</button>
             </div>
-            <div id="receipt-result" class="intent-result"></div>
+            <div id="receipt-result" class="intent-result-card" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- WebSocket / Bridge Status -->
+        <div class="widget-card" id="widget-ws-status">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Connection</span>
+            <div id="ws-status-pill" class="safety-indicator warn"><span class="dot"></span> Offline</div>
+          </div>
+          <div class="widget-card-body">
+            <table class="kv">
+              <tr><td class="k">Transport</td><td id="sys-transport">—</td></tr>
+              <tr><td class="k">WebSocket</td><td id="sys-ws-status">—</td></tr>
+              <tr><td class="k">Bridge</td><td id="sys-bridge-status">—</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Telemetry / Dev Bundle -->
+        <div class="widget-card" id="widget-telemetry-bundle">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Telemetry Bundle</span>
+            <div id="telemetry-bundle-status" class="source-status warning">—</div>
+          </div>
+          <div class="widget-card-body" id="sys-telemetry-body">
+            <span class="missing">No telemetry bundle available.</span>
+          </div>
+          <div class="widget-card-body">
+            <div class="action-buttons compact">
+              <button onclick="runIntent('create_chatgpt_dev_bundle_dry_run')" class="secondary-btn">Create Dev Bundle Dry-Run</button>
+              <button onclick="runIntent('create_telemetry_bundle_dry_run')" class="secondary-btn">Create Telemetry Bundle Dry-Run</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Update Status -->
+        <div class="widget-card" id="widget-update-status">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Update</span>
+            <div id="update-status-pill" class="source-status warning">—</div>
+          </div>
+          <div class="widget-card-body" id="sys-update-body">
+            <span class="missing">No update data available.</span>
+          </div>
+        </div>
+
+        <!-- Projection Source Diagnostics -->
+        <div class="widget-card" id="widget-projection-sources">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Projection Sources</span>
+          </div>
+          <div class="widget-card-body" id="sys-projection-sources-body">
+            <span class="missing">No projection source data.</span>
+          </div>
+        </div>
+
+        <!-- Advanced Storage Diagnostics -->
+        <div class="widget-card" id="widget-storage-diag">
+          <div class="widget-card-header">
+            <span class="widget-card-title">Storage Diagnostics</span>
+          </div>
+          <div class="widget-card-body" id="sys-storage-diag-body">
+            <span class="missing">No diagnostics available.</span>
           </div>
         </div>
       </div>
     </div>
+
   </div>
 
   <footer>
-    <p>Rig Relay — pywebview desktop chat shell.</p>
+    <p>Rig Relay — Local authority. Content-light sharing. Remote has no mutation authority.</p>
   </footer>
 
   <script src="websocket.js"></script>

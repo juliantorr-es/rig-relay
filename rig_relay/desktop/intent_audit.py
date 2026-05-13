@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any
 import uuid
 
+from rig_relay.evidence.redaction import assert_remote_safe
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_INTENTS_DIR = REPO_ROOT / ".build" / "rig-relay" / "desktop" / "intents"
 
@@ -61,6 +63,7 @@ def _write_result_artifact(
 ) -> None:
     """Write a result artifact as an atomic JSON file."""
     d = _results_dir(build_root)
+    result = assert_remote_safe(result)
     intent_id = str(result.get("intent_id", "unknown"))
     path = d / f"{intent_id}.json"
     tmp = path.with_suffix(".tmp")

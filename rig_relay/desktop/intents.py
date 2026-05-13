@@ -23,7 +23,9 @@ Refused intents (still receipt-gated, not yet enabled):
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
+import inspect
 import json
 from pathlib import Path
 from typing import Any
@@ -146,6 +148,33 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
         "affects_projection": False,
         "parameters": {"authorization_receipt": {"type": "object", "default": {}}},
     },
+    # ── Identity Intents ──
+    "identity_status": {
+        "description": "Return identity provider statuses. Content-light — no raw tokens or secrets.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "sign_in_github_start": {
+        "description": "Start GitHub OAuth sign-in flow. Returns auth_url, loopback_port, state_hash. Does not exchange code unless credentials are configured.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "sign_in_google_start": {
+        "description": "Start Google OAuth sign-in flow. Returns auth_url, loopback_port, state_hash. Does not exchange code unless credentials are configured.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "sign_out_provider": {
+        "description": "Sign out of an identity provider. Removes local provider metadata/token if present.",
+        "affects_projection": False,
+        "parameters": {
+            "provider": {
+                "type": "string",
+                "enum": ["github", "google"],
+                "description": "Provider to sign out of.",
+            }
+        },
+    },
 }
 
 # Phase 1 protected intents — receipt-gated execution enabled
@@ -230,22 +259,36 @@ def _build_result(
     inspection = extra.get("inspection")
     if inspection:
         result["inspection"] = inspection
+    extra_fields = extra.get("extra_fields")
+    if extra_fields:
+        result["extra_fields"] = extra_fields
     return result
 
 
 def execute_desktop_intent(
-    request: dict[str, Any], chat_state_provider: Any | None = None
+    request: dict[str, Any],
+    chat_state_provider: Any | None = None,
+    progress_emitter: Any | None = None,
 ) -> dict[str, Any]:
     """Execute a desktop intent request and return a content-light result.
 
     Args:
         request: The validated intent request dict.
         chat_state_provider: Optional callable returning dict of chat state.
+        progress_emitter: Optional callable accepting a dict to broadcast
+            progress events over WebSocket. Content-light only.
 
     Returns:
         Intent result dict (schema-validated, content-light).
     """
     from rig_relay.desktop.intent_audit import emit_received, emit_result
+    from rig_relay.desktop.progress_events import (
+        EVENT_OPERATION_COMPLETED,
+        EVENT_OPERATION_FAILED,
+        EVENT_OPERATION_REFUSED,
+        EVENT_OPERATION_STARTED,
+        build_progress_event,
+    )
 
     intent_name = str(request.get("intent_name", ""))
     intent_id = str(request.get("intent_id", f"intent_{uuid.uuid4().hex[:12]}"))
@@ -253,14 +296,50 @@ def execute_desktop_intent(
     # Emit received event
     emit_received(request)
 
+    # Helper to emit progress event if emitter is available
+    def _emit_progress(
+        event_type: str, phase: str, status: str = "running", **extra: Any
+    ) -> None:
+        if progress_emitter is None:
+            return
+        event = build_progress_event(
+            operation_id=intent_id or intent_name,
+            event_type=event_type,
+            phase=phase,
+            status=status,
+            source="intents",
+            intent_id=intent_id,
+            sequence=1,
+            message=extra.get("message", phase),
+            result_kind=extra.get("result_kind", ""),
+            projection_refresh_recommended=extra.get(
+                "projection_refresh_recommended", False
+            ),
+            warnings=extra.get("warnings", []),
+        )
+        result = progress_emitter(event.model_dump(mode="json", exclude_none=True))
+        if inspect.iscoroutine(result):
+            asyncio.create_task(result)
+
     # Check Phase 1 protected intents (receipt-gated)
     if intent_name in PHASE_1_ENABLED:
-        return _handle_phase_1_protected_intent(
+        result = _handle_phase_1_protected_intent(
             intent_name,
             intent_id,
             request.get("parameters", {}),
             request.get("authorization_receipt"),
         )
+        status = result.get("status", "failed")
+        _emit_progress(
+            EVENT_OPERATION_COMPLETED
+            if status == "completed"
+            else EVENT_OPERATION_FAILED,
+            phase="phase_1_protected",
+            status=status,
+            message=f"Phase 1 protected intent '{intent_name}': {status}",
+        )
+        emit_result(result)
+        return result
 
     # Check remaining protected intents (always refused)
     if intent_name in PROTECTED_INTENTS:
@@ -271,6 +350,12 @@ def execute_desktop_intent(
             authorization_required=True,
             error_code=PROTECTED_INTENTS[intent_name],
             summary=f"Protected intent '{intent_name}' refused. Not enabled for receipt-gated execution.",
+        )
+        _emit_progress(
+            EVENT_OPERATION_REFUSED,
+            phase="protected_check",
+            status="refused",
+            message=f"Protected intent '{intent_name}' refused",
         )
         emit_result(result)
         return result
@@ -284,11 +369,44 @@ def execute_desktop_intent(
             error_code="unsupported_intent",
             summary=f"Unknown intent '{intent_name}'. Allowed: {', '.join(sorted(ALLOWED_INTENTS))}",
         )
+        _emit_progress(
+            EVENT_OPERATION_REFUSED,
+            phase="intent_check",
+            status="refused",
+            message=f"Unknown intent '{intent_name}'",
+        )
         emit_result(result)
         return result
 
+    # Execute allowed intent
+    _emit_progress(
+        EVENT_OPERATION_STARTED,
+        phase=intent_name,
+        status="running",
+        message=f"Starting intent '{intent_name}'",
+        result_kind=ALLOWED_INTENTS[intent_name].get("description", "").split(".")[0],
+    )
+
     result = _execute_allowed_intent(
         intent_name, intent_id, request.get("parameters", {}), chat_state_provider
+    )
+
+    result_status = result.get("status", "failed")
+    result_event_type = (
+        EVENT_OPERATION_COMPLETED
+        if result_status == "completed"
+        else EVENT_OPERATION_FAILED
+    )
+    _emit_progress(
+        result_event_type,
+        phase=intent_name,
+        status=result_status,
+        message=result.get("summary", f"Intent '{intent_name}': {result_status}"),
+        result_kind=result.get("result_kind", ""),
+        projection_refresh_recommended=result.get(
+            "projection_refresh_recommended", False
+        ),
+        warnings=result.get("warnings", []),
     )
 
     emit_result(result)
@@ -451,6 +569,15 @@ def _execute_allowed_intent(
         "inspect_authorization_receipt": lambda: _execute_inspect_authorization_receipt(
             intent_id, params
         ),
+        # ── Identity Handlers ──
+        "identity_status": lambda: _execute_identity_status(intent_id),
+        "sign_in_github_start": lambda: _execute_sign_in_start(
+            intent_id, "github", params
+        ),
+        "sign_in_google_start": lambda: _execute_sign_in_start(
+            intent_id, "google", params
+        ),
+        "sign_out_provider": lambda: _execute_sign_out_provider(intent_id, params),
     }
     handler = handlers.get(intent_name)
     if handler is None:
@@ -1175,4 +1302,178 @@ def _execute_lease_cleanup_archive(
             "failed",
             error_code="execution_error",
             summary=f"Lease cleanup archive failed: {e}",
+        )
+
+
+# ── Identity Intent Handlers ────────────────────────────────────────────
+
+
+def _execute_identity_status(intent_id: str) -> dict[str, Any]:
+    """Return identity provider statuses. Content-light — no raw tokens."""
+    try:
+        from rig_relay.identity.token_store import DevFileTokenStore
+
+        store = DevFileTokenStore()
+        statuses = store.all_statuses()
+        any_signed_in = any(s.get("status") == "signed_in" for s in statuses.values())
+
+        providers_summary = ", ".join(
+            f"{k}={v.get('status', 'unknown')}" for k, v in statuses.items()
+        )
+
+        return _build_result(
+            "identity_status",
+            intent_id,
+            "completed",
+            result_kind="identity_status",
+            summary=f"Identity: {providers_summary}.",
+            extra_fields={"providers": statuses, "any_signed_in": any_signed_in},
+        )
+    except Exception as e:
+        return _build_result(
+            "identity_status",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Identity status failed: {e}",
+        )
+
+
+def _execute_sign_in_start(
+    intent_id: str, provider_name: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Start OAuth sign-in flow for a provider.
+
+    Returns auth_url, loopback_port, state_hash. Does not exchange code
+    unless credentials are configured. Returns pending result if not configured.
+    """
+    try:
+        import hashlib
+        import secrets
+
+        from rig_relay.identity.oauth_loopback import (
+            build_loopback_redirect_uri,
+            find_free_loopback_port,
+        )
+
+        if provider_name == "github":
+            from rig_relay.identity.github import GitHubIdentityProvider
+
+            provider = GitHubIdentityProvider()
+        elif provider_name == "google":
+            from rig_relay.identity.google import GoogleIdentityProvider
+
+            provider = GoogleIdentityProvider()
+        else:
+            return _build_result(
+                f"sign_in_{provider_name}_start",
+                intent_id,
+                "failed",
+                error_code="invalid_provider",
+                summary=f"Unknown provider: {provider_name}",
+            )
+
+        port = find_free_loopback_port()
+        redirect_uri = build_loopback_redirect_uri(port)
+        state = secrets.token_hex(32)
+        state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
+
+        if not provider.is_configured():
+            return _build_result(
+                f"sign_in_{provider_name}_start",
+                intent_id,
+                "completed",
+                result_kind="identity_status",
+                summary=f"Sign in with {provider_name}: not configured. "
+                f"Set credentials and retry.",
+                extra_fields={
+                    "auth_url": "",
+                    "loopback_port": port,
+                    "state_hash": state_hash,
+                    "provider": provider_name,
+                    "status": "pending",
+                    "configured": False,
+                    "warning": f"{provider_name} credentials not configured",
+                },
+            )
+
+        scopes = provider.default_scopes()
+        auth_url = provider.build_auth_url(
+            redirect_uri=redirect_uri, state=state, scopes=scopes
+        )
+
+        return _build_result(
+            f"sign_in_{provider_name}_start",
+            intent_id,
+            "completed",
+            result_kind="identity_status",
+            summary=f"Sign in with {provider_name}: auth URL generated. "
+            f"Scopes: {', '.join(scopes)}.",
+            extra_fields={
+                "auth_url": auth_url,
+                "loopback_port": port,
+                "redirect_uri": redirect_uri,
+                "state_hash": state_hash,
+                "provider": provider_name,
+                "status": "pending",
+                "configured": True,
+                "scopes": scopes,
+            },
+        )
+    except Exception as e:
+        return _build_result(
+            f"sign_in_{provider_name}_start",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Sign in with {provider_name} failed: {e}",
+        )
+
+
+def _execute_sign_out_provider(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Sign out of an identity provider. Removes local metadata/token."""
+    try:
+        from rig_relay.identity.models import IdentityProviderKind
+        from rig_relay.identity.token_store import DevFileTokenStore
+
+        provider_name = str(params.get("provider", ""))
+        if not provider_name:
+            return _build_result(
+                "sign_out_provider",
+                intent_id,
+                "failed",
+                error_code="missing_parameter",
+                summary="sign_out_provider requires 'provider' parameter (github or google).",
+            )
+
+        provider_kind = IdentityProviderKind(provider_name)
+        store = DevFileTokenStore()
+        existed = store.delete(provider_kind)
+
+        if existed:
+            return _build_result(
+                "sign_out_provider",
+                intent_id,
+                "completed",
+                result_kind="identity_status",
+                summary=f"Signed out of {provider_name}. Local metadata removed.",
+                extra_fields={"provider": provider_name, "signed_out": True},
+            )
+        return _build_result(
+            "sign_out_provider",
+            intent_id,
+            "completed",
+            result_kind="identity_status",
+            summary=f"Already signed out of {provider_name}.",
+            extra_fields={"provider": provider_name, "signed_out": False},
+        )
+    except Exception as e:
+        return _build_result(
+            "sign_out_provider",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Sign out failed: {e}",
         )

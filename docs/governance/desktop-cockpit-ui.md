@@ -519,3 +519,96 @@ Key differences from Rig:
 - Missing sources → `"available": false` (never crashes on missing data)
 - Schema-validated output (jsonschema Draft 7)
 - No Rig-specific domain fields
+
+
+## Cockpit IA: Operate / Review / System
+
+The desktop cockpit is organized into three progressive-disclosure modes,
+adopted from the [Relay Desktop Projection Contract](relay-desktop-projection-contract.md).
+
+| Mode | Purpose | Shows |
+|---|---|---|
+| **Operate** | Primary human interface (default) | OperatorHeader, SafetyState, NextAction, ValidationSummary, StorageBudget, LatestIntentResult, Action buttons, Operator Feed (chat) |
+| **Review** | Evidence and artifacts | ReceiptTimeline, RefinementBacklog, Validation History, Storage Audit, Semantic Snippets, Dataset Summary |
+| **System** | Advanced and diagnostics | Authorization Receipts, Connection/WebSocket status, Telemetry Bundle, Update Status, Projection Source Diagnostics, Storage Diagnostics |
+
+### Operate (default)
+
+Answers three questions:
+- **What is happening?** — Session info, safety posture, active child sessions
+- **Is it safe?** — Dirty file count, active leases, stale leases, validation status
+- **What should I do next?** — Backend-recommended next action with rationale
+
+Operate shows these projection widgets:
+- **OperatorHeader** — Mode, version, session ID
+- **SafetyState** — Dirty files, active leases, stale leases
+- **NextAction** — Backend-recommended action, rationale, blockers
+- **ValidationSummary** — Last validation run: passed/failed counts, run button
+- **StorageBudget** — Build artifact size, budget status, prune candidates
+- **LatestIntentResult** — Result of the last intent execution
+- **Action buttons** — Refresh Projection, Run Validation Suite, Storage Audit, Refinement Report, Refinement Packets
+- **Operator Feed** — Chat transcript for agent communication
+
+### Review
+
+Shows evidence and artifacts for operator inspection:
+- **ReceiptTimeline** — Bounded list of durable evidence (checkpoints, authorizations, validations)
+- **RefinementBacklog** — Pending and refined built-in tool refinement items
+- **Validation History** — Full validation run details
+- **Storage Audit** — Detailed storage breakdown with recommendations
+- **Semantic Snippets** — Code change snippet manifest
+- **Dataset Summary** — Coordination, tool failure, artifact reuse rows
+
+### System
+
+Shows advanced and diagnostic controls:
+- **Identity** — Sign in with GitHub / Google, view provider status, sign out. System mode only; not in Operate.
+- **Authorization Receipts** — Mint/inspect controls for Phase 1 protected intents (checkpoint.commit, lease_cleanup.archive)
+- **Connection** — WebSocket/bridge transport status
+- **Telemetry Bundle** — Bundle manifest and dry-run creation buttons
+- **Update Status** — Current/latest version, restart requirements
+- **Projection Sources** — Per-source availability diagnostics
+- **Storage Diagnostics** — Rollup candidates, prune candidates, stale leases, GC button
+
+### Progressive Disclosure Policy
+
+1. **Operate** is the default mode. New sessions always start in Operate.
+2. **Review** is one click away for evidence inspection. Receipts and artifacts are never in Operate.
+3. **System** is two clicks away for diagnostics. Authorization receipt controls and mutation-adjacent features are deferred to System.
+4. Protected execution buttons (checkpoint.commit, lease_cleanup.archive, bash, write_file, search_replace, spawn.execute, fleet.execute, delegate.execute) are **absent from all modes** in this slice.
+5. The frontend state machine is mode + mode only. No nested submodes.
+
+### Widget Mapping
+
+The projection builder (`rig_relay/desktop/projection.py`) produces a flat
+projection dict. The frontend (`frontend/desktop/app.js`) maps projection fields
+to widget cards depending on the active mode:
+
+| Projection field | Operate widget | Review widget | System widget |
+|---|---|---|---|
+| app_version | OperatorHeader | --- | --- |
+| current_state | SafetyState | --- | --- |
+| storage | StorageBudget | Storage Audit details | Storage Diagnostics |
+| _last_validation | ValidationSummary | Validation History | --- |
+| warnings + _receipts | NextAction | ReceiptTimeline | --- |
+| _refinement | --- | RefinementBacklog | --- |
+| semantic_snippets | --- | Semantic Snippets | --- |
+| dataset | --- | Dataset Summary | --- |
+| telemetry_bundle | --- | --- | Telemetry Bundle |
+| update | --- | --- | Update Status |
+| source_status | --- | --- | Projection Sources |
+| read_only_actions | Action buttons | --- | --- |
+| --- | --- | --- | Identity |
+| --- | --- | --- | Authorization Receipts |
+| progress_events | --- | Progress Timeline | --- |
+| --- | --- | --- | Connection Status |
+
+### Frontend Safety
+
+The cockpit follows the [Frontend Rendering Safety Doctrine](frontend-rendering-safety.md):
+- `textContent` for untrusted content (model outputs, user text, file contents)
+- `escapeHtml()` for all dynamic content in structured cards
+- `innerHTML` only for trusted backend widget HTML via `setWidgetHTML()`
+- No eval, no dynamic code execution
+- No raw session tokens in storage
+- No frontend mutation authority — all mutations go through backend intent API

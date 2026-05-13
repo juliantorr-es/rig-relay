@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.identity_provider.v1.schema.json",
+  "title": "Identity Provider Status",
+  "description": "Content-light identity provider status for a single provider (GitHub or Google). No raw tokens, codes, or secrets.",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": ["github", "google"],
+      "description": "Identity provider name."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["signed_out", "pending", "signed_in", "error"],
+      "description": "Current session status."
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Display name from the provider (login for GitHub, name for Google)."
+    },
+    "scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Authorized scopes."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Token expiration time (ISO 8601)."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-blocking warnings (e.g., dev-only storage)."
+    }
+  },
+  "required": ["provider", "status"],
+  "additionalProperties": false
+}

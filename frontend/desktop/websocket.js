@@ -134,6 +134,14 @@ class ProjectionWebSocketClient {
           this.onMessage(message);
           break;
 
+        case 'progress_event':
+          this.onMessage(message);
+          break;
+
+        case 'progress_events':
+          this.onMessage(message);
+          break;
+
         case 'pong':
           // Keepalive acknowledged
           break;

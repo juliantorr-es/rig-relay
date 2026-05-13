@@ -30,6 +30,12 @@ import duckdb
 import jsonschema
 import tiktoken
 
+from rig_relay.evidence.redaction import (
+    assert_remote_safe,
+    classify_shareable_field,
+    redact_for_remote,
+)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
 DEFAULT_DOCS_ROOT = REPO_ROOT / "docs"
@@ -47,7 +53,9 @@ DEFAULT_TARGET_MB = 100
 # ── Forbidden content patterns ──────────────────────────────────────────
 
 FORBIDDEN_TEXT_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"(?i)(-----BEGIN\s+(?:RSA\s+PRIVATE|EC\s+PRIVATE|OPENSSH\s+PRIVATE|PRIVATE)\s+KEY-----)"),
+    re.compile(
+        r"(?i)(-----BEGIN\s+(?:RSA\s+PRIVATE|EC\s+PRIVATE|OPENSSH\s+PRIVATE|PRIVATE)\s+KEY-----)"
+    ),
     re.compile(r"(?i)(sk-[A-Za-z0-9_-]{20,})"),
     re.compile(r"(?i)(ghp_[A-Za-z0-9]{36,})"),
     re.compile(r"(?i)(gho_[A-Za-z0-9]{36,})"),
@@ -65,17 +73,6 @@ FORBIDDEN_TEXT_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^diff --git a/", re.MULTILINE),
     re.compile(r"```\s*(stdout|stderr)\s*\n"),
 ]
-
-FORBIDDEN_FIELD_KEYS: set[str] = {
-    "raw_file_contents",
-    "secrets",
-    "raw_private_code",
-    "raw_prompt_text",
-    "model_output_text",
-    "stdout_bodies",
-    "stderr_bodies",
-    "raw_diff",
-}
 
 # ── Token estimation ──────────────────────────────────────────────
 
@@ -168,7 +165,7 @@ def _has_forbidden_content(text: str) -> bool:
 def _has_forbidden_field_keys(data: dict[str, Any]) -> bool:
     """Check parsed JSON dict for forbidden field keys at any level."""
     for key in data:
-        if key in FORBIDDEN_FIELD_KEYS:
+        if classify_shareable_field(str(key), data[key]) == "forbid":
             return True
         if isinstance(data[key], dict):
             if _has_forbidden_field_keys(data[key]):
@@ -178,8 +175,9 @@ def _has_forbidden_field_keys(data: dict[str, Any]) -> bool:
 
 def _check_content_light(data: dict[str, Any]) -> list[str]:
     """Check a dict and its string-serialized form for forbidden content."""
-    issues: list[str] = []
-    serialized = json.dumps(data, sort_keys=True)
+    redacted = redact_for_remote(data)
+    issues: list[str] = list(redacted.warnings)
+    serialized = json.dumps(redacted.payload, sort_keys=True)
     if _has_forbidden_content(serialized):
         issues.append("forbidden text pattern detected")
     if _has_forbidden_field_keys(data):
@@ -655,6 +653,7 @@ def _build_bundle(
         "warnings": warnings,
         "content_light_guarantee": True,
     }
+    assert_remote_safe(manifest)
 
     return manifest
 
@@ -793,6 +792,7 @@ def _write_zip(manifest: dict[str, Any], output_dir: Path, dry_run: bool) -> Pat
         # Manifest
         manifest_copy = dict(manifest)
         manifest_copy["output_zip"] = str(zip_path.resolve())
+        manifest_copy = assert_remote_safe(manifest_copy)
         zf.writestr(
             "manifest.json",
             json.dumps(manifest_copy, indent=2, sort_keys=True, ensure_ascii=False),

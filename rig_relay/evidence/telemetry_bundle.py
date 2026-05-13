@@ -15,6 +15,8 @@ Provenance (Rig-to-Relay porting doctrine):
   See docs/governance/rig-to-relay-pattern-inventory.md for pattern map.
 """
 
+# ruff: noqa: PLR0912, PLR0914, PLR0915, PLR1702
+
 from __future__ import annotations
 
 import argparse
@@ -22,18 +24,10 @@ import json
 from pathlib import Path
 import zipfile
 
+from rig_relay.evidence.redaction import classify_shareable_field
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCHEMAS_DIR = REPO_ROOT / "docs" / "schemas"
-
-FORBIDDEN_FIELD_KEYS = {
-    "raw_file_contents",
-    "secrets",
-    "raw_private_code",
-    "raw_prompt_text",
-    "model_output_text",
-    "stdout_bodies",
-    "stderr_bodies",
-}
 
 
 def _try_validate_schema(instance: dict, schema_path: Path) -> list[str]:
@@ -58,11 +52,32 @@ def _forbidden_in_text(text: str, filename: str) -> list[str]:
     try:
         data = json.loads(text)
         if isinstance(data, dict):
-            for key in data:
-                if key in FORBIDDEN_FIELD_KEYS:
+            for key, value in data.items():
+                if classify_shareable_field(str(key), value) == "forbid":
                     issues.append(f"{filename}: contains forbidden field key {key!r}")
     except json.JSONDecodeError:
         pass
+    return issues
+
+
+def _forbidden_in_json(data: dict[str, object], filename: str) -> list[str]:
+    issues: list[str] = []
+    for key, value in data.items():
+        if classify_shareable_field(str(key), value) != "allow":
+            issues.append(f"{filename}: contains forbidden field key {key!r}")
+            continue
+        if isinstance(value, dict):
+            issues.extend(_forbidden_in_json(value, f"{filename}.{key}"))
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                if isinstance(item, dict):
+                    issues.extend(
+                        _forbidden_in_json(item, f"{filename}.{key}[{index}]")
+                    )
+                elif classify_shareable_field(str(key), item) != "allow":
+                    issues.append(
+                        f"{filename}.{key}[{index}]: contains forbidden list item"
+                    )
     return issues
 
 
@@ -140,6 +155,16 @@ def validate_bundle(bundle_path: Path) -> tuple[bool, list[str]]:
                     forbidden_found = True
                     for issue in issues:
                         messages.append(f"  FORBIDDEN: {issue}")
+                try:
+                    parsed = json.loads(text)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(parsed, dict):
+                    json_issues = _forbidden_in_json(parsed, name)
+                    if json_issues:
+                        forbidden_found = True
+                        for issue in json_issues:
+                            messages.append(f"  FORBIDDEN: {issue}")
 
             if forbidden_found:
                 messages.append("  RESULT: FAILED (forbidden content detected)")

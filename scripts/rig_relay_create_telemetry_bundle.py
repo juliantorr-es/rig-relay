@@ -36,6 +36,8 @@ import sys
 from typing import Any
 import zipfile
 
+from rig_relay.evidence.redaction import assert_remote_safe, classify_shareable_field
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DERIVED_DIR = REPO_ROOT / ".build" / "rig-relay" / "derived"
 DEFAULT_REPORTS_DIR = REPO_ROOT / ".build" / "rig-relay" / "reports"
@@ -63,11 +65,21 @@ ALLOWED_SHARE_LEVELS = {
 def _forbidden_content_in_json(data: dict[str, Any], path: str) -> list[str]:
     """Check a parsed JSON dict for forbidden field keys at any level."""
     issues: list[str] = []
-    for key in data:
-        if key in FORBIDDEN_FIELD_KEYS:
+    for key, value in data.items():
+        if classify_shareable_field(str(key), value) != "allow":
             issues.append(f"{path}: contains forbidden field key {key!r}")
-        if isinstance(data[key], dict):
-            issues.extend(_forbidden_content_in_json(data[key], f"{path}.{key}"))
+        if isinstance(value, dict):
+            issues.extend(_forbidden_content_in_json(value, f"{path}.{key}"))
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                if isinstance(item, dict):
+                    issues.extend(
+                        _forbidden_content_in_json(item, f"{path}.{key}[{index}]")
+                    )
+                elif classify_shareable_field(str(key), item) != "allow":
+                    issues.append(
+                        f"{path}.{key}[{index}]: contains forbidden list item"
+                    )
     return issues
 
 
@@ -246,6 +258,7 @@ def create_bundle(
         "content_light_guarantee": len(forbidden_issues) == 0,
         "warnings": [],
     }
+    manifest = assert_remote_safe(manifest)
 
     if dry_run:
         print("=== Telemetry Bundle Dry Run ===")

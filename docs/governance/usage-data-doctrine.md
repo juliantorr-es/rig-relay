@@ -29,6 +29,11 @@ Usage data flows through four layers:
 - Datasets are learning material.
 - Evals are product feedback.
 
+The canonical redaction boundary for shareable and remote-facing artifacts is
+`rig_relay.evidence.redaction`. Bundle writers, export helpers, and audit
+artifact builders must route through that shared module so content-light
+behavior remains consistent.
+
 ## Retention Classes
 
 ### Evidence-Retained (always kept locally)

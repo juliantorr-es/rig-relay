@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.local_action_envelope.v1.schema.json",
+  "title": "Local Action Envelope v1",
+  "description": "A signed local action envelope for protected intent requests and local-to-remote authority mutations. Cryptographic container with canonicalized payload, replay prevention, and Ed25519 signature. Not yet wired to protected execution.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "envelope_id",
+    "action_id",
+    "action_name",
+    "action_payload_sha256",
+    "canonical_payload",
+    "nonce",
+    "issued_at",
+    "expires_at",
+    "signer_key_id",
+    "signature_algorithm",
+    "signature",
+    "local_only",
+    "replay_window_seconds"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.local_action_envelope.v1"
+    },
+    "envelope_id": {
+      "type": "string",
+      "description": "Unique envelope identifier (e.g. 'env_<hex>')."
+    },
+    "action_id": {
+      "type": "string",
+      "description": "Action identifier for idempotency and deduplication."
+    },
+    "action_name": {
+      "type": "string",
+      "description": "Name of the action this envelope authorizes (e.g. 'checkpoint.commit')."
+    },
+    "action_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the canonical payload JSON bytes."
+    },
+    "canonical_payload": {
+      "type": "object",
+      "description": "Canonicalized action payload. Deterministic JSON key ordering.",
+      "additionalProperties": true
+    },
+    "nonce": {
+      "type": "string",
+      "description": "Unique nonce for replay prevention."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of envelope creation."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which the envelope is invalid."
+    },
+    "signer_key_id": {
+      "type": "string",
+      "description": "Identifier for the signing key used."
+    },
+    "signature_algorithm": {
+      "type": "string",
+      "enum": [
+        "ed25519"
+      ],
+      "description": "Signature algorithm used."
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^$|^[A-Za-z0-9+/=]+$",
+      "description": "Base64-encoded cryptographic signature over the signing bytes."
+    },
+    "public_key_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional public key identifier for key lookup."
+    },
+    "authorization_receipt_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "SHA256 of the authorization receipt authorizing this action. Does not include the receipt body."
+    },
+    "local_only": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this envelope is for local-only use. Must be true in current slice."
+    },
+    "replay_window_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3600,
+      "description": "Time window in seconds during which the envelope is valid from issued_at."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Non-authoritative warnings about the envelope."
+    }
+  },
+  "additionalProperties": false
+}

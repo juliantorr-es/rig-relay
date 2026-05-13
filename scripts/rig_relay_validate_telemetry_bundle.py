@@ -13,7 +13,6 @@ Usage:
 from __future__ import annotations
 
 from rig_relay.evidence.telemetry_bundle import (  # noqa: F401
-    FORBIDDEN_FIELD_KEYS,
     REPO_ROOT,
     SCHEMAS_DIR,
     _forbidden_in_text,
