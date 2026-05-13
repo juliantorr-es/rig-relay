@@ -25,15 +25,24 @@ def parse_arguments() -> argparse.Namespace:
             "Environment variables:\n"
             "  RIG_RELAY_HOME  Override the Rig Relay home directory (default: ~/.rig/relay)\n"
             "  VIBE_HOME       Legacy override for the Rig Relay home directory\n"
+            "  RIG_RELAY_DISABLE_LEGACY_CONFIG=1  Strictly isolate from legacy Vibe config\n"
             "  LOG_LEVEL       Logging level: DEBUG, INFO, WARNING (default), ERROR, CRITICAL.\n"
             "                  Logs are written to $RIG_RELAY_HOME/logs/vibe.log.\n"
             "  LOG_MAX_BYTES   Max size of vibe.log before rotation (default: 10485760).\n"
             "  RIG_RELAY_*     Override any config field (e.g. RIG_RELAY_ACTIVE_MODEL=local).\n"
-            "  VIBE_*          Legacy override for config fields."
+            "  VIBE_*          Legacy override for config fields.\n\n"
+            "Legacy support:\n"
+            "  rig-relay is the primary command. vibe is a legacy alias.\n"
+            "  If upstream Mistral Vibe is also installed, use rig-relay to avoid ambiguity."
         ),
     )
     parser.add_argument(
         "-v", "--version", action="version", version=f"%(prog)s {__version__}"
+    )
+    parser.add_argument(
+        "--show-config-paths",
+        action="store_true",
+        help="Show active configuration paths and isolation status, then exit.",
     )
     parser.add_argument(
         "initial_prompt",
@@ -157,6 +166,31 @@ def check_and_resolve_trusted_folder(cwd: Path) -> None:
         trusted_folders_manager.add_untrusted(cwd)
 
 
+def _show_diagnostics() -> None:
+    from vibe.core.config import VibeConfig
+    from vibe.core.config.harness_files import get_harness_files_manager
+    from vibe.core.paths import VIBE_HOME, get_vibe_home_diagnostics
+
+    init_harness_files_manager("user", "project")
+    cfg = VibeConfig.load()
+    mgr = get_harness_files_manager()
+    home_diag = get_vibe_home_diagnostics()
+
+    rprint("[bold blue]Rig Relay Diagnostics[/]")
+    rprint(f"  Version:        {__version__}")
+    rprint(f"  Home Path:      {VIBE_HOME.path}")
+    rprint(f"  Legacy Home:    {home_diag['legacy_home'] or 'None'}")
+    rprint(f"  Is Legacy:      {home_diag['is_legacy']}")
+    rprint(f"  Legacy Disabled: {home_diag['legacy_disabled']}")
+    rprint(f"  Config Source:  {mgr.config_source}")
+    rprint(f"  Config File:    {mgr.config_file or 'None (using defaults)'}")
+    rprint(f"  Active Model:   {cfg.active_model}")
+    rprint(f"  Model Alias:    {cfg.get_active_model().alias}")
+    rprint(f"  Provider:       {cfg.get_active_provider().name}")
+    rprint(f"  All Providers:  {', '.join(p.name for p in cfg.providers)}")
+    rprint(f"  All Models:     {', '.join(m.alias for m in cfg.models)}")
+
+
 def main() -> None:
     # Legacy alias warning
     cmd_name = Path(sys.argv[0]).name
@@ -166,6 +200,10 @@ def main() -> None:
         )
 
     args = parse_arguments()
+
+    if args.show_config_paths:
+        _show_diagnostics()
+        sys.exit(0)
 
     if args.workdir:
         workdir = args.workdir.expanduser().resolve()

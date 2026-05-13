@@ -8,6 +8,43 @@ from vibe.core.config.harness_files import HarnessFilesManager
 from vibe.core.trusted_folders import trusted_folders_manager
 
 
+class TestHarnessConfigFilePriority:
+    def test_rig_relay_home_wins_over_legacy_paths(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        canonical = tmp_path / ".rig" / "relay"
+        canonical.mkdir(parents=True)
+        (canonical / "config.toml").write_text("active_model = 'deepseek-v4-flash'")
+        legacy = tmp_path / ".vibe"
+        legacy.mkdir()
+        (legacy / "config.toml").write_text("active_model = 'mistral-medium-3.5'")
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", canonical
+        )
+        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", legacy)
+        mgr = HarnessFilesManager(sources=("user", "project"), cwd=tmp_path)
+        assert mgr.config_file == canonical / "config.toml"
+        assert mgr.config_source == "rig-relay"
+
+    def test_legacy_vibe_used_only_when_canonical_absent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        legacy = tmp_path / ".vibe"
+        legacy.mkdir()
+        (legacy / "config.toml").write_text("active_model = 'mistral-medium-3.5'")
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME",
+            tmp_path / ".rig" / "relay",
+        )
+        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", legacy)
+        mgr = HarnessFilesManager(sources=("user", "project"), cwd=tmp_path)
+        assert mgr.config_file == legacy / "config.toml"
+        assert mgr.config_source == "legacy"
+        assert mgr.is_legacy_config is True
+
+
 class TestTrustedWorkdir:
     def test_returns_none_when_project_not_in_sources(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -179,8 +216,12 @@ class TestUserToolsDirs:
     def test_returns_empty_when_dir_does_not_exist(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         mgr = HarnessFilesManager(sources=("user",))
         assert mgr.user_tools_dirs == []
@@ -188,8 +229,12 @@ class TestUserToolsDirs:
     def test_returns_path_when_user_in_sources_and_dir_exists(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         tools_dir = tmp_path / "tools"
         tools_dir.mkdir()
@@ -205,8 +250,12 @@ class TestUserSkillsDirs:
     def test_returns_empty_when_dir_does_not_exist(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         mgr = HarnessFilesManager(sources=("user",))
         assert mgr.user_skills_dirs == []
@@ -214,8 +263,12 @@ class TestUserSkillsDirs:
     def test_returns_path_when_user_in_sources_and_dir_exists(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
@@ -231,8 +284,12 @@ class TestUserAgentsDirs:
     def test_returns_empty_when_dir_does_not_exist(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         mgr = HarnessFilesManager(sources=("user",))
         assert mgr.user_agents_dirs == []
@@ -240,8 +297,12 @@ class TestUserAgentsDirs:
     def test_returns_path_when_user_in_sources_and_dir_exists(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         agents_dir = tmp_path / "agents"
         agents_dir.mkdir()
@@ -518,7 +579,7 @@ class TestProjectSkillsDirs:
         vibe_skills.mkdir(parents=True)
         agents_skills.mkdir(parents=True)
         mgr = HarnessFilesManager(sources=("user", "project"))
-        assert mgr.project_skills_dirs == [vibe_skills, agents_skills]
+        assert mgr.project_skills_dirs == [agents_skills, vibe_skills]
 
     def test_ignores_vibe_skills_when_file_not_dir(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -584,8 +645,12 @@ class TestLoadUserDoc:
     def test_returns_empty_when_file_does_not_exist(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         mgr = HarnessFilesManager(sources=("user",))
         assert mgr.load_user_doc() == ""
@@ -593,8 +658,12 @@ class TestLoadUserDoc:
     def test_returns_file_content_when_file_exists(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         (tmp_path / "AGENTS.md").write_text("# User instructions", encoding="utf-8")
         mgr = HarnessFilesManager(sources=("user",))
@@ -604,8 +673,12 @@ class TestLoadUserDoc:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # load_user_doc strips — consistent with _collect_agents_md
-        monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path)
-        monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path)
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", tmp_path
+        )
+        monkeypatch.setattr(
+            "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path
+        )
         monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path)
         (tmp_path / "AGENTS.md").write_text("   \n  ", encoding="utf-8")
         mgr = HarnessFilesManager(sources=("user",))

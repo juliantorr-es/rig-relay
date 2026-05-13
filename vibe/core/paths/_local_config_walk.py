@@ -35,6 +35,7 @@ _AGENTS_SKILLS_SUBDIR = Path(_AGENTS_DIR) / "skills"
 
 WALK_MAX_DEPTH = 4
 _MAX_DIRS = 2000
+_DISABLE_LEGACY_CONFIG_ENV = "RIG_RELAY_DISABLE_LEGACY_CONFIG"
 
 
 @dataclass(frozen=True)
@@ -68,28 +69,52 @@ class _ConfigWalkCollector:
 def _collect_at(
     path: Path, entry_names: set[str], collector: _ConfigWalkCollector
 ) -> None:
-    """Check a single directory for .rig-relay/, .vibe/ and .agents/ config subdirs."""
-    # 1. Primary Rig Relay Check (.rig/relay/)
-    rr_dir = path / _RIG_RELAY_DIR
-    if rr_dir.is_dir():
-        has_content = False
-        if (candidate := path / _TOOLS_SUBDIR).is_dir():
-            collector.tools.append(candidate)
-            has_content = True
-        if (candidate := path / _SKILLS_SUBDIR).is_dir():
-            collector.skills.append(candidate)
-            has_content = True
-        if (candidate := path / _AGENTS_SUBDIR).is_dir():
-            collector.agents.append(candidate)
-            has_content = True
-        if (
-            has_content
-            or (rr_dir / "prompts").is_dir()
-            or (rr_dir / "config.toml").is_file()
-        ):
-            collector.config_dirs.append(rr_dir)
+    disable_legacy = os.getenv(_DISABLE_LEGACY_CONFIG_ENV) == "1"
+    _collect_primary(path, collector)
+    _collect_agents(path, entry_names, collector)
+    if disable_legacy:
+        return
+    _collect_legacy(path, entry_names, collector)
 
-    # 2. Legacy Rig Relay Check (.rig-relay/)
+
+def _collect_primary(path: Path, collector: _ConfigWalkCollector) -> None:
+    rr_dir = path / _RIG_RELAY_DIR
+    if not rr_dir.is_dir():
+        return
+    has_content = False
+    if (candidate := path / _TOOLS_SUBDIR).is_dir():
+        collector.tools.append(candidate)
+        has_content = True
+    if (candidate := path / _SKILLS_SUBDIR).is_dir():
+        collector.skills.append(candidate)
+        has_content = True
+    if (candidate := path / _AGENTS_SUBDIR).is_dir():
+        collector.agents.append(candidate)
+        has_content = True
+    if (
+        has_content
+        or (rr_dir / "prompts").is_dir()
+        or (rr_dir / "config.toml").is_file()
+    ):
+        collector.config_dirs.append(rr_dir)
+
+
+def _collect_agents(
+    path: Path, entry_names: set[str], collector: _ConfigWalkCollector
+) -> None:
+    if _AGENTS_DIR not in entry_names:
+        return
+    agents_dir = path / _AGENTS_DIR
+    if not agents_dir.is_dir():
+        return
+    if (candidate := path / _AGENTS_SKILLS_SUBDIR).is_dir():
+        collector.skills.append(candidate)
+        collector.config_dirs.append(agents_dir)
+
+
+def _collect_legacy(
+    path: Path, entry_names: set[str], collector: _ConfigWalkCollector
+) -> None:
     if (
         _RIG_RELAY_LEGACY_DIR in entry_names
         and (rr_legacy_dir := path / _RIG_RELAY_LEGACY_DIR).is_dir()
@@ -111,7 +136,6 @@ def _collect_at(
         ):
             collector.config_dirs.append(rr_legacy_dir)
 
-    # 3. Legacy Vibe Check (.vibe/)
     if _VIBE_DIR in entry_names and (vibe_dir := path / _VIBE_DIR).is_dir():
         has_content = False
         if (candidate := path / _VIBE_TOOLS_SUBDIR).is_dir():
@@ -129,12 +153,6 @@ def _collect_at(
             or (vibe_dir / "config.toml").is_file()
         ):
             collector.config_dirs.append(vibe_dir)
-
-    # 3. Agent Skills Standard
-    if _AGENTS_DIR in entry_names and (agents_dir := path / _AGENTS_DIR).is_dir():
-        if (candidate := path / _AGENTS_SKILLS_SUBDIR).is_dir():
-            collector.skills.append(candidate)
-            collector.config_dirs.append(agents_dir)
 
 
 def _scandir_entries(path: Path) -> tuple[set[str], list[Path]]:

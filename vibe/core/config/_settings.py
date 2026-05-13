@@ -40,6 +40,8 @@ from vibe.core.types import Backend
 from vibe.core.utils import get_server_url_from_api_base
 from vibe.core.utils.io import read_safe
 
+_LEGACY_CONFIG_WARNING_EMITTED = False
+
 
 def _strip_bash_pattern_wildcard(pattern: str) -> str:
     if pattern.endswith(" *"):
@@ -548,6 +550,9 @@ class VibeConfig(BaseSettings):
     enable_notifications: bool = False
     api_timeout: float = 720.0
     auto_compact_threshold: int = 200_000
+    disable_legacy_config: bool = Field(
+        default=False, validation_alias="RIG_RELAY_DISABLE_LEGACY_CONFIG"
+    )
 
     vibe_code_enabled: bool = Field(default=True, exclude=True)
     vibe_code_base_url: str = Field(default="https://api.mistral.ai", exclude=True)
@@ -680,7 +685,10 @@ class VibeConfig(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
-        env_prefix="VIBE_", case_sensitive=False, extra="ignore"
+        env_prefix="VIBE_",
+        case_sensitive=False,
+        extra="ignore",
+        env_nested_delimiter="__",
     )
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
@@ -690,6 +698,11 @@ class VibeConfig(BaseSettings):
     @property
     def is_legacy_config(self) -> bool:
         return is_legacy_vibe_home(VIBE_HOME.path)
+
+    @property
+    def loaded_legacy_config(self) -> bool:
+        mgr = get_harness_files_manager()
+        return mgr.is_legacy_config
 
     @property
     def vibe_code_api_key(self) -> str:
@@ -985,6 +998,13 @@ class VibeConfig(BaseSettings):
     @model_validator(mode="after")
     def _check_system_prompt(self) -> VibeConfig:
         _ = self.system_prompt
+        global _LEGACY_CONFIG_WARNING_EMITTED
+        if self.loaded_legacy_config and not self.disable_legacy_config:
+            if not _LEGACY_CONFIG_WARNING_EMITTED:
+                logger.warning(
+                    "Loaded legacy Vibe/Rig Relay config. Rig Relay's canonical home is ~/.rig/relay. Set RIG_RELAY_DISABLE_LEGACY_CONFIG=1 to prevent legacy config loading."
+                )
+                _LEGACY_CONFIG_WARNING_EMITTED = True
         return self
 
     def set_thinking(self, level: ThinkingLevel) -> None:

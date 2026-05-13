@@ -109,8 +109,10 @@ rig-relay --agent plan
 Rig Relay looks for its configuration in the following order:
 1. `./.rig/relay/config.toml` (Project-specific)
 2. `./.rig-relay/config.toml` (Legacy project-specific)
-3. `~/.rig/relay/config.toml` (User-global)
-4. `~/.rig-relay/config.toml` (Legacy user-global)
+3. `./.vibe/config.toml` (Legacy project-specific, compatibility fallback)
+4. `~/.rig/relay/config.toml` (User-global)
+5. `~/.rig-relay/config.toml` (Legacy user-global)
+6. `~/.vibe/config.toml` (Legacy user-global, compatibility fallback)
 
 ### Rig Relay Home Directory
 
@@ -119,6 +121,39 @@ By default, Rig Relay stores its configuration, logs, and history in `~/.rig/rel
 ```bash
 export RIG_RELAY_HOME="/path/to/custom/home"
 ```
+
+### Global Install
+
+Preferred install from fork:
+
+```bash
+uv tool install git+https://github.com/juliantorr-es/rig-relay.git --force
+```
+
+Local checkout:
+
+```bash
+cd ~/Developer/GitHub/rig-relay
+uv tool install . --force
+```
+
+Confirm install:
+
+```bash
+which rig-relay
+rig-relay --version
+rig-relay --help
+```
+
+Recommended env:
+
+```bash
+export RIG_RELAY_HOME="$HOME/.rig/relay"
+export RIG_RELAY_DISABLE_LEGACY_CONFIG=1
+export DEEPSEEK_API_KEY="sk-..."
+```
+
+If upstream Mistral Vibe is also installed, use `rig-relay` instead of `vibe` to avoid command ambiguity.
 
 ## Maintenance and Updates
 
@@ -141,13 +176,16 @@ Do **not** use `uv tool upgrade mistral-vibe` or similar upstream commands, as t
 Rig Relay maintains backward compatibility for users transitioning from Mistral Vibe.
 
 ### Commands
-- `vibe` is a legacy alias for `rig-relay`.
-- `vibe-acp` is a legacy alias for `rig-relay-acp`.
+- `rig-relay` is the primary executable.
+- `rig-relay-acp` is the primary ACP executable.
+- `vibe` is a legacy compatibility alias for `rig-relay`.
+- `vibe-acp` is a legacy compatibility alias for `rig-relay-acp`.
 
 ### Paths and Environment Variables
 - `VIBE_HOME` is supported as a legacy fallback for `RIG_RELAY_HOME`.
-- `~/.rig/relay/` is the primary home; `~/.rig-relay/` and `~/.vibe/` are searched as legacy fallbacks.
-- `./.rig/relay/` is the primary project-local root; `./.rig-relay/` and `./.vibe/` are searched as legacy fallbacks.
+- `RIG_RELAY_DISABLE_LEGACY_CONFIG=1` disables fallback to `VIBE_HOME`, `~/.rig-relay/`, `~/.vibe/`, `./.rig-relay/`, and `./.vibe/`.
+- `~/.rig/relay/` is the primary home; `~/.rig-relay/` and `~/.vibe/` are searched as legacy fallbacks only when legacy config is allowed.
+- `./.rig/relay/` is the primary project-local root; `./.rig-relay/` and `./.vibe/` are searched as legacy fallbacks only when legacy config is allowed.
 
 ### Environment Prefixes
 - `VIBE_*` environment variables (e.g., `VIBE_ACTIVE_MODEL`) are supported as legacy fallbacks for `RIG_RELAY_*`.

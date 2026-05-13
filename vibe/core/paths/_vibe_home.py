@@ -22,38 +22,53 @@ _LEGACY_VIBE_HOME = Path.home() / ".vibe"
 
 
 def is_legacy_vibe_home(path: Path) -> bool:
-    """Return True if the given path is one of the legacy Vibe home directories."""
-    # We use resolve() to handle symlinks and relative path comparisons accurately
+    """Return True if the given path is one of the legacy home directories."""
     try:
         p = path.resolve()
-        return p == _LEGACY_RIG_RELAY_HOME.resolve() or p == _LEGACY_VIBE_HOME.resolve()
+        return p in {_LEGACY_RIG_RELAY_HOME.resolve(), _LEGACY_VIBE_HOME.resolve()}
     except (OSError, ValueError):
-        return path in (_LEGACY_RIG_RELAY_HOME, _LEGACY_VIBE_HOME)
+        return path in {_LEGACY_RIG_RELAY_HOME, _LEGACY_VIBE_HOME}
+
+
+def _disable_legacy_config() -> bool:
+    return os.getenv("RIG_RELAY_DISABLE_LEGACY_CONFIG") == "1"
+
+
+def _legacy_home_candidates() -> tuple[Path, ...]:
+    candidates: list[Path] = []
+    if vibe_home := os.getenv("VIBE_HOME"):
+        candidates.append(Path(vibe_home).expanduser().resolve())
+    candidates.extend(
+        path for path in (_LEGACY_RIG_RELAY_HOME, _LEGACY_VIBE_HOME) if path.exists()
+    )
+    return tuple(candidates)
 
 
 def _get_vibe_home() -> Path:
-    # 1. Check RIG_RELAY_HOME environment variable
     if rig_relay_home := os.getenv("RIG_RELAY_HOME"):
         return Path(rig_relay_home).expanduser().resolve()
 
-    # 2. Check VIBE_HOME environment variable (Legacy)
-    if vibe_home := os.getenv("VIBE_HOME"):
-        return Path(vibe_home).expanduser().resolve()
-
-    # 3. Use ~/.rig/relay if it exists
-    if _DEFAULT_RIG_RELAY_HOME.exists():
+    if _DEFAULT_RIG_RELAY_HOME.exists() or _disable_legacy_config():
         return _DEFAULT_RIG_RELAY_HOME
 
-    # 4. Use ~/.rig-relay if it exists (Legacy)
-    if _LEGACY_RIG_RELAY_HOME.exists():
-        return _LEGACY_RIG_RELAY_HOME
+    for candidate in _legacy_home_candidates():
+        return candidate
 
-    # 5. Use ~/.vibe if it exists (Legacy fallback)
-    if _LEGACY_VIBE_HOME.exists():
-        return _LEGACY_VIBE_HOME
-
-    # 6. Default to ~/.rig/relay for new installs
     return _DEFAULT_RIG_RELAY_HOME
+
+
+def get_vibe_home_diagnostics() -> dict[str, object]:
+    home = VIBE_HOME.path
+    legacy_candidates = _legacy_home_candidates()
+    legacy_home = next(
+        (candidate for candidate in legacy_candidates if candidate == home), None
+    )
+    return {
+        "active_home": home,
+        "is_legacy": is_legacy_vibe_home(home),
+        "legacy_disabled": _disable_legacy_config(),
+        "legacy_home": legacy_home,
+    }
 
 
 VIBE_HOME = GlobalPath(_get_vibe_home)

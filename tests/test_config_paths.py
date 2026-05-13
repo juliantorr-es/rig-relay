@@ -26,6 +26,28 @@ def test_get_vibe_home_falls_back_to_vibe_home_env(
     assert _get_vibe_home() == custom_home
 
 
+def test_get_vibe_home_prefers_canonical_home_over_legacy_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    rr_dir = tmp_path / ".rig" / "relay"
+    rr_dir.mkdir(parents=True)
+    monkeypatch.delenv("RIG_RELAY_HOME", raising=False)
+    monkeypatch.setenv("VIBE_HOME", str(tmp_path / "legacy"))
+    monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", rr_dir)
+    assert _get_vibe_home() == rr_dir
+
+
+def test_get_vibe_home_ignores_legacy_when_disabled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    rr_dir = tmp_path / ".rig" / "relay"
+    monkeypatch.delenv("RIG_RELAY_HOME", raising=False)
+    monkeypatch.setenv("VIBE_HOME", str(tmp_path / "legacy"))
+    monkeypatch.setenv("RIG_RELAY_DISABLE_LEGACY_CONFIG", "1")
+    monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", rr_dir)
+    assert _get_vibe_home() == rr_dir
+
+
 def test_get_vibe_home_prefers_existing_rig_relay_dir(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
@@ -48,6 +70,28 @@ def test_get_vibe_home_prefers_existing_rig_relay_dir(
 
     # Should prefer .rig/relay if all exist
     assert _get_vibe_home() == rr_dir
+
+
+def test_get_vibe_home_uses_legacy_only_when_canonical_missing_and_allowed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    monkeypatch.delenv("RIG_RELAY_HOME", raising=False)
+    monkeypatch.delenv("RIG_RELAY_DISABLE_LEGACY_CONFIG", raising=False)
+    monkeypatch.setenv("VIBE_HOME", str(tmp_path / "legacy-env"))
+
+    rr_dir = tmp_path / ".rig" / "relay"
+    rr_legacy_dir = tmp_path / ".rig-relay"
+    vibe_dir = tmp_path / ".vibe"
+    rr_legacy_dir.mkdir()
+    vibe_dir.mkdir()
+
+    monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", rr_dir)
+    monkeypatch.setattr(
+        "vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", rr_legacy_dir
+    )
+    monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", vibe_dir)
+
+    assert _get_vibe_home() == Path(tmp_path / "legacy-env").resolve()
 
 
 def test_get_vibe_home_falls_back_to_legacy_rig_relay_dir(

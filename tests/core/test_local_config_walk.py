@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from vibe.core.paths._local_config_walk import (
     _MAX_DIRS,
     WALK_MAX_DEPTH,
@@ -166,3 +168,15 @@ class TestWalkConfigDirs:
         assert resolved / ".vibe" in result.config_dirs
         assert resolved / ".agents" in result.config_dirs
         assert resolved / "sub" / ".vibe" in result.config_dirs
+
+    def test_ignores_legacy_dirs_when_disabled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RIG_RELAY_DISABLE_LEGACY_CONFIG", "1")
+        (tmp_path / ".rig-relay" / "tools").mkdir(parents=True)
+        (tmp_path / ".vibe" / "skills").mkdir(parents=True)
+        result = walk_local_config_dirs(tmp_path)
+        assert result.tools == ()
+        assert result.skills == ()
+        assert result.agents == ()
+        assert result.config_dirs == ()

@@ -14,6 +14,7 @@ from vibe.core.paths import (
     AGENTS_MD_FILENAME,
     VIBE_HOME,
     ConfigWalkResult,
+    is_legacy_vibe_home,
     walk_local_config_dirs,
 )
 from vibe.core.trusted_folders import trusted_folders_manager
@@ -45,12 +46,36 @@ class HarnessFilesManager:
     def config_file(self) -> Path | None:
         workdir = self.trusted_workdir
         if workdir is not None:
-            candidate = workdir / ".vibe" / "config.toml"
+            candidate = workdir / ".rig" / "relay" / "config.toml"
             if candidate.is_file():
                 return candidate
+            if not self.config_legacy_disabled:
+                legacy_candidate = workdir / ".vibe" / "config.toml"
+                if legacy_candidate.is_file():
+                    return legacy_candidate
         if "user" in self.sources:
             return VIBE_HOME.path / "config.toml"
         return None
+
+    @property
+    def config_legacy_disabled(self) -> bool:
+        from os import getenv
+
+        return getenv("RIG_RELAY_DISABLE_LEGACY_CONFIG") == "1"
+
+    @property
+    def is_legacy_config(self) -> bool:
+        file = self.config_file
+        return file is not None and is_legacy_vibe_home(file.parent)
+
+    @property
+    def config_source(self) -> str:
+        file = self.config_file
+        if file is None:
+            return "defaults"
+        if file.parent.name == "relay" and file.parent.parent.name == ".rig":
+            return "rig-relay"
+        return "legacy"
 
     @property
     def hook_files(self) -> list[Path]:

@@ -28,6 +28,39 @@ def test_vibe_config_defaults_for_rig_relay():
     assert deepseek.api_key_env_var == "DEEPSEEK_API_KEY"
 
 
+def test_vibe_config_legacy_mistral_config_merges_deepseek(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = VibeConfig.model_validate({
+        "active_model": "mistral-medium-3.5",
+        "providers": [
+            {
+                "name": "mistral",
+                "api_base": "https://api.mistral.ai",
+                "api_key_env_var": "MISTRAL_API_KEY",
+                "backend": "mistral",
+            }
+        ],
+        "models": [
+            {
+                "name": "mistral-vibe-cli-latest",
+                "provider": "mistral",
+                "alias": "mistral-medium-3.5",
+            }
+        ],
+    })
+
+    provider_names = [provider.name for provider in config.providers]
+    model_aliases = [model.alias for model in config.models]
+
+    assert config.active_model == "mistral-medium-3.5"
+    assert "deepseek" in provider_names
+    assert "deepseek-v4-flash" in model_aliases
+    assert "deepseek-v4-pro" in model_aliases
+    for model in config.models:
+        assert model.provider in provider_names
+
+
 def test_git_safety_policy():
     policy = GitSafetyPolicy()
     assert "git reset" in policy.forbidden_commands
