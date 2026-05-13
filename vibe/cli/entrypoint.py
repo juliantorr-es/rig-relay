@@ -89,8 +89,8 @@ def parse_arguments() -> argparse.Namespace:
         help="Agent to use (builtin: default, plan, accept-edits, auto-approve, "
         "or custom from ~/.rig/relay/agents/NAME.toml). In interactive mode, "
         "defaults to the 'default_agent' config setting. In programmatic "
-        "mode (-p/--prompt), defaults to 'auto-approve' (legacy) and "
-        "'default_agent' is ignored.",
+        "mode (-p/--prompt), defaults to 'auto-approve' (legacy compatibility "
+        "implementation detail) and 'default_agent' is ignored.",
     )
     parser.add_argument("--setup", action="store_true", help="Setup API key and exit")
     parser.add_argument(
