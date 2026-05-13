@@ -17,7 +17,9 @@
 
 **Rig Relay v0.1.0-alpha.1 — a governed local coding harness for Rig.**
 
-Rig Relay is a command-line coding assistant harness. It provides a conversational interface to your codebase, allowing you to use natural language to explore, modify, and inspect projects through a controlled set of tools and durable local evidence.
+Rig Relay is a Relay-native local agent cockpit with a CLI compatibility
+surface. It provides a governed control plane, desktop cockpit, and durable
+local evidence for safe development work.
 
 > [!WARNING]
 > Rig Relay works on Windows, but we officially support and target UNIX environments.
@@ -123,6 +125,20 @@ Select an agent with the `--agent` flag:
 rig-relay --agent plan
 ```
 
+## Desktop Cockpit
+
+The primary operator surface is the pywebview cockpit:
+
+```bash
+uv run python scripts/rig_relay_desktop_cockpit.py
+```
+
+Use `--dry-run` for a non-mutating projection dump:
+
+```bash
+uv run python scripts/rig_relay_desktop_cockpit.py --dry-run
+```
+
 ## Configuration
 
 ### Configuration File Location
@@ -179,6 +195,7 @@ Do **not** use `uv tool upgrade mistral-vibe` or similar upstream commands, as t
 ## Legacy Compatibility
 
 Rig Relay maintains backward compatibility for users transitioning from Mistral Vibe.
+`vibe` remains a legacy compatibility alias, not the product identity.
 
 ### Commands
 - `rig-relay` is the primary executable.
@@ -186,14 +203,8 @@ Rig Relay maintains backward compatibility for users transitioning from Mistral 
 - `vibe` is a legacy compatibility alias for `rig-relay`.
 - `vibe-acp` is a legacy compatibility alias for `rig-relay-acp`.
 
-### Paths and Environment Variables
-- `VIBE_HOME` is supported as a legacy fallback for `RIG_RELAY_HOME`.
-- `RIG_RELAY_DISABLE_LEGACY_CONFIG=1` disables fallback to `VIBE_HOME`, `~/.rig-relay/`, `~/.vibe/`, `./.rig-relay/`, and `./.vibe/`.
-- `~/.rig/relay/` is the primary home; `~/.rig-relay/` and `~/.vibe/` are searched as legacy fallbacks only when legacy config is allowed.
-- `./.rig/relay/` is the primary project-local root; `./.rig-relay/` and `./.vibe/` are searched as legacy fallbacks only when legacy config is allowed.
-
-### Environment Prefixes
-- `VIBE_*` environment variables (e.g., `VIBE_ACTIVE_MODEL`) are supported as legacy fallbacks for `RIG_RELAY_*`.
+> [!IMPORTANT]
+> The Textual TUI is retired. New users should prefer `uv run python scripts/rig_relay_desktop_cockpit.py` for the primary operator experience.
 
 ## Upstream and License
 

@@ -95,10 +95,12 @@ include = ["vibe/"]
 
 
 [project.scripts]
-vibe = "vibe.cli.entrypoint:main"
 rig-relay = "vibe.cli.entrypoint:main"
-vibe-acp = "vibe.acp.entrypoint:main"
 rig-relay-acp = "vibe.acp.entrypoint:main"
+vibe = "vibe.cli.entrypoint:main"  # Deprecated legacy alias
+vibe-acp = "vibe.acp.entrypoint:main"  # Deprecated legacy alias
+vibe-legacy = "vibe.cli.entrypoint:main"
+vibe-acp-legacy = "vibe.acp.entrypoint:main"
 
 
 [tool.uv]

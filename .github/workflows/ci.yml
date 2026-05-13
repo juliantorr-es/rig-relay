@@ -77,6 +77,8 @@ jobs:
 
       - name: Verify CLI can start
         run: |
+          uv run rig-relay --help
+          uv run rig-relay-acp --help
           uv run vibe --help
           uv run vibe-acp --help
 

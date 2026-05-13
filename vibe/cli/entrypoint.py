@@ -241,7 +241,8 @@ def _show_diagnostics() -> None:
 def main() -> None:
     # Legacy alias warning
     cmd_name = Path(sys.argv[0]).name
-    if cmd_name == "vibe" or cmd_name.endswith("-vibe"):
+    # print(f"DEBUG: cmd_name={cmd_name}")
+    if "vibe" in cmd_name.lower():
         rprint(
             "[dim]`vibe` is a legacy compatibility alias for Rig Relay. Prefer `rig-relay`.[/]"
         )

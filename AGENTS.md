@@ -8,7 +8,10 @@ Layout: `vibe/core` is the engine (agent loop, tools, LLM backends, config); `vi
 
 Always go through `uv` — never invoke bare `python` or `pip`.
 
-- `uv run vibe` / `uv run vibe-acp` — the two entry points.
+- `uv run rig-relay` / `uv run rig-relay-acp` — the two primary entry points.
+- `uv run rig-relay --help` — show available flags and commands.
+- `uv run rig-relay-cockpit` — start the pywebview desktop cockpit (primary surface).
+- `uv run vibe` — legacy compatibility alias (deprecated).
 - `uv run pytest` — full suite (parallel via `pytest-xdist`).
 - `uv run pyright` — strict type check.
 - `uv run ruff check --fix .` and `uv run ruff format .` — run both after every code change and report the files modified.

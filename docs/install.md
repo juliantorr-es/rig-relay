@@ -68,7 +68,10 @@ The Python package exposes these commands via `pyproject.toml` `[project.scripts
 |---|---|
 | `rig-relay` | `vibe.cli.entrypoint:main` |
 | `rig-relay-acp` | `vibe.acp.entrypoint:main` |
-| `rig-relay-cockpit` | `scripts.rig_relay_desktop_cockpit:main` |
+
+The `vibe` and `vibe-acp` commands are **deprecated legacy aliases**. New
+users should treat `rig-relay` as the primary product command and the 
+pywebview cockpit as the primary operator surface.
 
 ## Version
 

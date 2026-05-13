@@ -291,6 +291,13 @@ def _run_standard_cli(args: argparse.Namespace) -> None:
             if loaded_session:
                 _resume_previous_session(agent_loop, *loaded_session)
 
+            # Textual TUI retirement notice
+            rprint(
+                "\n[bold yellow]Notice:[/] The interactive Textual TUI is retired.\n"
+                "For the primary operator cockpit, use:\n"
+                "  [bold cyan]uv run python scripts/rig_relay_desktop_cockpit.py[/]\n"
+            )
+
             run_textual_ui(
                 agent_loop=agent_loop,
                 startup=StartupOptions(

@@ -79,7 +79,7 @@ def handle_debug_mode() -> None:
 def main() -> None:
     # Legacy alias warning
     cmd_name = Path(sys.argv[0]).name
-    if cmd_name == "vibe-acp" or cmd_name.endswith("-vibe-acp"):
+    if "vibe" in cmd_name.lower():
         print(
             "`vibe-acp` is a legacy compatibility alias for Rig Relay. Prefer `rig-relay-acp`.",
             file=sys.stderr,
