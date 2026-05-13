@@ -35,6 +35,15 @@ class ObservabilitySummary:
     artifact_bytes_saved_estimate: int = 0
     artifacts_by_tool: dict[str, int] = field(default_factory=dict)
 
+    # Context Assembly metrics
+    context_assembly_count: int = 0
+    max_context_estimated_tokens: int = 0
+    avg_context_estimated_tokens: float = 0.0
+    max_stable_prefix_bytes: int = 0
+    max_dynamic_suffix_bytes: int = 0
+    cache_candidate_bytes_total: int = 0
+    optimization_hints_by_kind: dict[str, int] = field(default_factory=dict)
+
 
 class DuckDBProjection:
     """Read-only DuckDB projection over Rig Relay observability JSONL logs."""
@@ -158,6 +167,34 @@ class DuckDBProjection:
 
             res = art_rel.aggregate("payload.tool_name, count(*)").fetchall()
             summary.artifacts_by_tool = dict(res)
+
+            # 2g. Context Assembly metrics
+            ca_rel = rel.filter("event_name = 'rig.relay.context.assembly_reported'")
+            res = ca_rel.aggregate(
+                "count(*), "
+                "max(payload.total_estimated_tokens), "
+                "avg(payload.total_estimated_tokens), "
+                "max(payload.stable_prefix_bytes), "
+                "max(payload.dynamic_suffix_bytes), "
+                "sum(payload.cache_candidate_bytes)"
+            ).fetchone()
+
+            if res and res[0] > 0:
+                summary.context_assembly_count = res[0]
+                summary.max_context_estimated_tokens = int(res[1]) if res[1] is not None else 0
+                summary.avg_context_estimated_tokens = float(res[2]) if res[2] is not None else 0.0
+                summary.max_stable_prefix_bytes = int(res[3]) if res[3] is not None else 0
+                summary.max_dynamic_suffix_bytes = int(res[4]) if res[4] is not None else 0
+                summary.cache_candidate_bytes_total = int(res[5]) if res[5] is not None else 0
+
+            # Count optimization hints by flattening the list
+            hints_res = ca_rel.project("payload.optimization_hints").fetchall()
+            hint_counts: dict[str, int] = {}
+            for row in hints_res:
+                if row[0]:
+                    for hint in row[0]:
+                        hint_counts[hint] = hint_counts.get(hint, 0) + 1
+            summary.optimization_hints_by_kind = hint_counts
 
         except Exception as e:
             summary.errors.append(f"DuckDB projection failed: {e}")

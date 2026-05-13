@@ -19,3 +19,4 @@ class EventName(StrEnum):
     SLASH_COMMAND_USED = "rig.relay.slash_command_used"
     ONBOARDING_API_KEY_ADDED = "rig.relay.onboarding_api_key_added"
     ARTIFACT_WRITTEN = "rig.relay.artifact.tool_output_written"
+    CONTEXT_ASSEMBLY_REPORTED = "rig.relay.context.assembly_reported"

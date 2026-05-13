@@ -468,19 +468,43 @@ class TelemetryClient:
         raw_byte_size: int,
         prompt_visible_byte_size: int,
         sha256: str,
-        truncated: bool,
-        source_event_id: str | None = None,
     ) -> None:
         payload = {
             "artifact_id": artifact_id,
-            "artifact_path": artifact_path,
             "tool_name": tool_name,
             "raw_byte_size": raw_byte_size,
-            "prompt_visible_byte_size": prompt_visible_byte_size,
+            "path": artifact_path,
             "sha256": sha256,
-            "truncated": truncated,
-            "source_event_id": source_event_id,
         }
-        self.send_telemetry_event(
+        self.log_local_event(
             EventName.ARTIFACT_WRITTEN, payload, receipt_candidate=True
+        )
+
+    def send_context_assembly_reported(
+        self,
+        report_id: str,
+        total_bytes: int,
+        total_estimated_tokens: int,
+        stable_prefix_bytes: int,
+        dynamic_suffix_bytes: int,
+        cache_candidate_bytes: int,
+        stable_prefix_fingerprint: str,
+        dynamic_suffix_fingerprint: str,
+        largest_blocks: list[dict[str, Any]],
+        optimization_hints: list[str],
+    ) -> None:
+        payload = {
+            "report_id": report_id,
+            "total_bytes": total_bytes,
+            "total_estimated_tokens": total_estimated_tokens,
+            "stable_prefix_bytes": stable_prefix_bytes,
+            "dynamic_suffix_bytes": dynamic_suffix_bytes,
+            "cache_candidate_bytes": cache_candidate_bytes,
+            "stable_prefix_fingerprint": stable_prefix_fingerprint,
+            "dynamic_suffix_fingerprint": dynamic_suffix_fingerprint,
+            "largest_blocks": largest_blocks,
+            "optimization_hints": optimization_hints,
+        }
+        self.log_local_event(
+            EventName.CONTEXT_ASSEMBLY_REPORTED, payload, receipt_candidate=False
         )

@@ -225,3 +225,56 @@ async def test_observability_e2e_artifacting(
     assert summary.artifact_raw_bytes_total > 20000
     assert summary.artifact_bytes_saved_estimate > 10000
     assert summary.artifacts_by_tool["bash"] == 1
+
+
+@pytest.mark.asyncio
+async def test_observability_e2e_context_assembly(
+    tmp_path, mock_config, monkeypatch, real_telemetry_client, observability_schema
+):
+    """Test the full chain: AgentLoop -> ContextAssembler -> JSONL -> DuckDB."""
+    monkeypatch.chdir(tmp_path)
+
+    from vibe.core.agent_loop import AgentLoop
+    from vibe.core.types import LLMMessage, Role
+
+    session_id = "e2e-session-context"
+    loop = AgentLoop(config=mock_config)
+    loop.session_id = session_id
+    loop.messages.append(LLMMessage(role=Role.system, content="System"))
+    loop.messages.append(LLMMessage(role=Role.user, content="Hello"))
+
+    from vibe.core.config import ModelConfig
+    model = ModelConfig(name="test-model", alias="test", backend="api")
+
+    # 1. Trigger context assembly report
+    await loop._report_context_assembly(model)
+
+    # 2. Verify JSONL exists and matches schema
+    log_file = (
+        tmp_path / ".rig" / "relay" / "sessions" / session_id / "observability.jsonl"
+    )
+    line = log_file.read_text().splitlines()[0]
+    event = json.loads(line)
+    validate(instance=event, schema=observability_schema)
+    assert event["event_name"] == EventName.CONTEXT_ASSEMBLY_REPORTED
+    
+    # Verify metadata only
+    assert "blocks" not in event["payload"]
+    assert "stable_prefix_bytes" in event["payload"]
+
+    # 3. Verify report artifact exists
+    report_dir = tmp_path / ".rig" / "relay" / "sessions" / session_id / "context"
+    reports = list(report_dir.glob("*.json"))
+    assert len(reports) == 1
+
+    # 4. Verify DuckDB Projection
+    if not HAS_DUCKDB:
+        pytest.skip("DuckDB not installed")
+
+    session_root = tmp_path / ".rig" / "relay" / "sessions"
+    analyzer = DuckDBProjection(session_root)
+    summary = analyzer.get_summary()
+
+    assert summary.context_assembly_count == 1
+    assert summary.max_stable_prefix_bytes > 0
+    assert summary.avg_context_estimated_tokens > 0

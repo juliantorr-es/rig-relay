@@ -1221,6 +1221,45 @@ class AgentLoop:
             tool_call_id=tool_call.call_id,
         )
 
+    async def _report_context_assembly(self, active_model: ModelConfig) -> None:
+        if not self.config.enable_local_observability:
+            return
+            
+        try:
+            from vibe.core.context.assembler import (
+                build_context_assembly_report,
+                write_assembly_report,
+            )
+            
+            tool_manager_info = {
+                tool_name: tool_class.get_parameters()
+                for tool_name, tool_class in self.tool_manager.available_tools.items()
+            }
+            
+            report = build_context_assembly_report(
+                session_id=self.session_id,
+                messages=list(self.messages),
+                model=active_model.alias,
+                tool_manager_info=tool_manager_info,
+            )
+            
+            await write_assembly_report(report)
+            
+            self.telemetry_client.send_context_assembly_reported(
+                report_id=report.report_id,
+                total_bytes=report.total_bytes,
+                total_estimated_tokens=report.total_estimated_tokens,
+                stable_prefix_bytes=report.stable_prefix_bytes,
+                dynamic_suffix_bytes=report.dynamic_suffix_bytes,
+                cache_candidate_bytes=report.cache_candidate_bytes,
+                stable_prefix_fingerprint=report.stable_prefix_fingerprint,
+                dynamic_suffix_fingerprint=report.dynamic_suffix_fingerprint,
+                largest_blocks=report.largest_blocks,
+                optimization_hints=report.optimization_hints,
+            )
+        except Exception as e:
+            logger.warning("Failed to generate context assembly report: %s", e)
+
     async def _chat(
         self, max_tokens: int | None = None, model_override: ModelConfig | None = None
     ) -> LLMChunk:
@@ -1250,6 +1289,8 @@ class AgentLoop:
             message_id=backend_metadata.message_id,
             messages=self.messages,
         )
+        
+        await self._report_context_assembly(active_model)
 
         try:
             start_time = time.perf_counter()
@@ -1264,6 +1305,7 @@ class AgentLoop:
                 metadata=backend_metadata.model_dump(exclude_none=True),
             )
             end_time = time.perf_counter()
+            # ...
 
             if result.usage is None:
                 raise AgentLoopLLMResponseError(
@@ -1321,6 +1363,8 @@ class AgentLoop:
             message_id=backend_metadata.message_id,
             messages=self.messages,
         )
+        
+        await self._report_context_assembly(active_model)
 
         try:
             start_time = time.perf_counter()
