@@ -105,17 +105,19 @@ Tool execution should become deterministic given:
 Based on initial evidence collection, the following areas are prioritized for tool hardening:
 
 1.  **Mutation Evidence Hashes (Completed 2025-05-17)**: `write_file` and `search_replace` now emit before/after SHA256 content hashes, creation/overwrite flags, block counts, and changed file lists. See `WriteFileResult` and `SearchReplaceResult`.
-2.  **Typed File Write/Diff Artifacts (Next)**: Add structured `file_write` artifact envelopes and diff/patch evidence for `write_file` and `search_replace` to enable autonomous promotion gates and rollback.
+2.  **Typed File Write/Diff Artifacts (Completed 2025-05-13)**: `write_file` and `search_replace` now emit structured `file_write` artifact envelopes with unified diff evidence, byte/line counts, and changed-line ranges. Rollback and semantic placement remain deferred.
 3.  **Path Normalization (High)**: Ensure all file-based tools (`read_file`, `write_file`, `grep`, `search_replace`) use absolute, canonicalized paths in evidence, even if models pass relative paths.
 4.  **Bash Output Filtering (Medium)**: Scrub environment-specific details (paths, usernames) from `bash` tool output to improve cache hit rates.
 5.  **Git State Capture (Medium)**: Extend `git` tool evidence to include the current HEAD commit hash to differentiate repo-state dependent outputs.
 6.  **Traversal Determinism (Low)**: Enforce sorted file listing in `grep` and `read_file` (when reading directories) to prevent OS-level nondeterminism.
 7.  **Subagent Isolation (Low)**: Harden `task` tool to strictly sandbox subagent workspace mutations and capture their evidence shards.
 
+See the [bash replacement opportunity map](../audits/bash-replacement-opportunity-map.md) for the parallel shell-to-typed-tool migration audit.
+
 ## Future Hardening Tracks
 
 1.  **Mutation Evidence Hashing (Completed)**: `write_file` and `search_replace` now emit before/after SHA256 hashes. See [current built-in tools audit](../audits/current-built-in-tools.md).
-2.  **Typed File Write/Diff Evidence (Next)**: Add structured `file_write` artifact envelopes and diff/patch evidence for write tools to enable autonomous promotion gates.
+2.  **Typed File Write/Diff Evidence (Completed)**: `write_file` and `search_replace` now emit structured `file_write` artifact envelopes and diff/patch evidence for write tools. Rollback and semantic placement remain future work.
 3.  **Fuzzy Search Hardening (Deferred)**: Audit fuzzy matching behavior in `search_replace` to reduce wrong-edit risk at the matching threshold boundary.
 4.  **Semantic Placement (Deferred)**: Audit `semantic_placement` artifacts to ensure edits land in the correct symbols.
 5.  **Token Optimization**: Analyze artifact kind density to identify candidates for summarization or deduplication based on [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).

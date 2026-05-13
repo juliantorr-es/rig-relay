@@ -2,6 +2,8 @@
 
 This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).
 
+See also the [bash replacement opportunity map](bash-replacement-opportunity-map.md) for shell-to-typed-tool migration priorities.
+
 ## Reasoning Traces
 
 Rig Relay records **observable reasoning traces** for every tool call, not raw hidden chain-of-thought. See `docs/schemas/rig.relay.artifact.tool_reasoning_trace.v1.schema.json`.

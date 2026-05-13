@@ -193,9 +193,10 @@ class SearchReplace(
 
             await self._write_file(file_path, modified_content, decoded.encoding)
             after_hash = sha256_file_bytes(file_path.read_bytes())
+            assert after_hash is not None  # file was just written
 
         failed_block_count = total_block_count - block_result.applied
-        changed_files = [repo_file_key] if lines_changed != 0 else []
+        changed_files = [repo_file_key] if modified_content != original_content else []
 
         yield SearchReplaceResult(
             file=str(file_path),

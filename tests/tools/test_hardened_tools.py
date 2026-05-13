@@ -26,11 +26,7 @@ def bash(tmp_path, monkeypatch):
 
 
 def test_bash_allowlist_no_longer_silently_allows_git_status_diff_log(bash):
-    # git status used to be in _get_default_allowlist()
-    # Now it should require ASK permission (resolve_permission returns None)
-
     status_perm = bash.resolve_permission(BashArgs(command="git status"))
-    # None means fall through to config.permission (ASK)
     assert status_perm is None or status_perm.permission == ToolPermission.ASK
 
     diff_perm = bash.resolve_permission(BashArgs(command="git diff"))
@@ -65,7 +61,6 @@ def test_bash_blocks_dangerous_commands(bash):
 
 
 def test_bash_malformed_command_does_not_crash(bash):
-    # Test with characters that might confuse parsers
     malformed = [
         "git status; ) ( ; rm -rf",
         'echo "unclosed quote',
@@ -74,7 +69,6 @@ def test_bash_malformed_command_does_not_crash(bash):
         "| | |",
     ]
     for cmd in malformed:
-        # Should not raise exception
         bash.resolve_permission(BashArgs(command=cmd))
 
 
@@ -131,7 +125,6 @@ async def test_search_replace_does_not_write_when_block_fails(tmp_path, monkeypa
             tool.run(SearchReplaceArgs(file_path="file.txt", content=content))
         )
 
-    # Verify file content is unchanged
     assert target.read_text(encoding="utf-8") == "Hello World"
 
 
@@ -150,7 +143,7 @@ async def test_write_file_new_file_hashes(tmp_path, monkeypatch):
 
     assert result.before_sha256 is None
     assert result.after_sha256.startswith("sha256:")
-    assert len(result.after_sha256) == 64 + len("sha256:")  # sha256: + 64 hex chars
+    assert len(result.after_sha256) == 64 + len("sha256:")
     assert result.created_file is True
     assert result.overwrote_existing_file is False
     assert result.bytes_written == 5
@@ -192,9 +185,7 @@ async def test_write_file_same_content_overwrite(tmp_path, monkeypatch):
     tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
 
     result = await collect_result(
-        tool.run(
-            WriteFileArgs(path="same.txt", content=content, overwrite=True)
-        )
+        tool.run(WriteFileArgs(path="same.txt", content=content, overwrite=True))
     )
 
     assert result.before_sha256 == result.after_sha256
@@ -202,7 +193,9 @@ async def test_write_file_same_content_overwrite(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_write_file_overwrite_false_on_existing_does_not_emit_hash(tmp_path, monkeypatch):
+async def test_write_file_overwrite_false_on_existing_does_not_emit_hash(
+    tmp_path, monkeypatch
+):
     monkeypatch.chdir(tmp_path)
     target = tmp_path / "protected.txt"
     target.write_text("do not touch", encoding="utf-8")
@@ -232,7 +225,6 @@ async def test_write_file_parent_dirs_created_flag(tmp_path, monkeypatch):
     assert result.created_file is True
     assert result.after_sha256.startswith("sha256:")
 
-    # Second write to same path should not re-create dirs
     result2 = await collect_result(
         tool.run(
             WriteFileArgs(path="a/b/c/file.txt", content="replaced", overwrite=True)
@@ -264,6 +256,10 @@ async def test_write_file_result_serializes(tmp_path, monkeypatch):
 # ── search_replace mutation evidence ──────────────────────────────────
 
 
+def _sr_block(search, replace):
+    return f"<<<<<<< SEARCH\n{search}\n=======\n{replace}\n>>>>>>> REPLACE"
+
+
 @pytest.mark.asyncio
 async def test_search_replace_successful_records_hashes(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -273,4 +269,120 @@ async def test_search_replace_successful_records_hashes(tmp_path, monkeypatch):
     config = SearchReplaceConfig()
     tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
 
-    content = "<<<<<<< SEARCH\nx = 1\n=======\nx = 99\n
+    content = _sr_block("x = 1", "x = 99")
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="code.py", content=content))
+    )
+
+    assert "code.py" in result.before_file_sha256
+    assert "code.py" in result.after_file_sha256
+    assert result.before_file_sha256["code.py"].startswith("sha256:")
+    assert result.after_file_sha256["code.py"].startswith("sha256:")
+    assert result.before_file_sha256["code.py"] != result.after_file_sha256["code.py"]
+    assert result.blocks_applied == 1
+    assert result.total_block_count == 1
+    assert result.failed_block_count == 0
+    assert result.changed_files == ["code.py"]
+
+
+@pytest.mark.asyncio
+async def test_search_replace_noop_records_block_counts(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "code.py"
+    target.write_text("x = 1\ny = 2\n", encoding="utf-8")
+
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    content = _sr_block("x = 1", "x = 1")
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="code.py", content=content))
+    )
+
+    assert result.before_file_sha256["code.py"] == result.after_file_sha256["code.py"]
+    assert result.blocks_applied == 1
+    assert result.total_block_count == 1
+    assert result.failed_block_count == 0
+    assert result.changed_files == []
+    assert result.lines_changed == 0
+
+
+@pytest.mark.asyncio
+async def test_search_replace_failed_does_not_emit_success_hash(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "code.py"
+    target.write_text("x = 1\n", encoding="utf-8")
+
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    content = _sr_block("non-existent", "replacement")
+
+    with pytest.raises(ToolError, match="SEARCH/REPLACE blocks failed"):
+        await collect_result(
+            tool.run(SearchReplaceArgs(file_path="code.py", content=content))
+        )
+
+    assert target.read_text(encoding="utf-8") == "x = 1\n"
+
+
+@pytest.mark.asyncio
+async def test_search_replace_block_counts_on_partial(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "code.py"
+    target.write_text("aaa\nbbb\nccc\n", encoding="utf-8")
+
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    content = _sr_block("aaa", "AAA") + "\n" + _sr_block("zzz", "ZZZ")
+
+    with pytest.raises(ToolError, match="SEARCH/REPLACE blocks failed"):
+        await collect_result(
+            tool.run(SearchReplaceArgs(file_path="code.py", content=content))
+        )
+
+    assert target.read_text(encoding="utf-8") == "aaa\nbbb\nccc\n"
+
+
+@pytest.mark.asyncio
+async def test_search_replace_dict_keys_relative(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "src/code.py"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("x = 1\n", encoding="utf-8")
+
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    content = _sr_block("x = 1", "x = 2")
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="src/code.py", content=content))
+    )
+
+    assert "src/code.py" in result.before_file_sha256
+    assert result.changed_files == ["src/code.py"]
+
+
+@pytest.mark.asyncio
+async def test_search_replace_result_serializes(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "code.py"
+    target.write_text("x = 1\n", encoding="utf-8")
+
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    content = _sr_block("x = 1", "x = 2")
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="code.py", content=content))
+    )
+
+    dump = result.model_dump()
+    assert "before_file_sha256" in dump
+    assert "after_file_sha256" in dump
+    assert "changed_files" in dump
+    assert "failed_block_count" in dump
+    assert "total_block_count" in dump
+    assert isinstance(dump["before_file_sha256"], dict)
+    assert dump["total_block_count"] == 1

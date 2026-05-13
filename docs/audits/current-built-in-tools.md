@@ -4,6 +4,7 @@
 > Branch: main
 > HEAD: 8986750
 > See `docs/audits/data/current_builtin_tools.jsonl` for machine-readable records.
+> See also: [bash replacement opportunity map](bash-replacement-opportunity-map.md)
 
 ## Executive Summary
 
@@ -323,14 +324,16 @@
 - `created_file` / `overwrote_existing_file` flags
 - `parent_dirs_created` flag
 - `bytes_written` count
+- Typed `file_write` envelope artifact with unified diff, byte/line counts, and changed-line ranges
 
 **Missing evidence** (deferred):
-- Typed `file_write` artifact envelope (next slice)
-- Diff/patch evidence (deferred)
 - Rollback capability (deferred)
+- Semantic placement evidence (deferred)
+- Fuzzy-match placement hardening for `search_replace` (deferred)
 
 **Implemented hardening (2025-05-17)**:
 - Added `before_sha256`, `after_sha256`, `created_file`, `overwrote_existing_file`, `parent_dirs_created` to `WriteFileResult`
+- Added typed `file_write` artifact emission for `write_file` and `search_replace`
 
 ---
 
@@ -412,14 +415,13 @@ Ranked by composite score of risk, frequency, token waste, and wrong-edit potent
 
 **Slice: Typed `file_write` artifact and diff/patch evidence**
 
-**Why this slice (after mutation hashes are complete)**:
+**Why this slice**:
 
-1. **Completes the mutation evidence chain**: Before/after hashes (implemented) tell us *that* a file changed. Typed artifacts tell us *how* — structured diff patches for search_replace, file_write envelopes for write_file.
+1. **Completes the mutation evidence chain**: Before/after hashes tell us *that* a file changed. Typed artifacts tell us *how* — structured diff patches for search_replace, file_write envelopes for write_file.
 2. **Enables autonomous promotion gates**: Diff evidence is needed to decide whether an edit is safe to auto-approve.
 3. **Prerequisite for rollback**: Before/after hashes are present now; diff patches complete the rollback story.
 
 **Deferred from this slice**:
-- Fuzzy matching placement hardening for `search_replace`
 - Semantic placement artifacts
 - Full autonomous merging
 
