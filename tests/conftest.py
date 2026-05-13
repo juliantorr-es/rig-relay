@@ -69,13 +69,16 @@ def tmp_working_directory(
 def config_dir(
     monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
 ) -> Path:
-    tmp_path = tmp_path_factory.mktemp("vibe")
-    config_dir = tmp_path / ".vibe"
+    tmp_path = tmp_path_factory.mktemp("rig")
+    config_dir = tmp_path / ".rig" / "relay"
     config_dir.mkdir(parents=True, exist_ok=True)
     config_file = config_dir / "config.toml"
     config_file.write_text(tomli_w.dumps(get_base_config()), encoding="utf-8")
 
-    monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", config_dir)
+    monkeypatch.setattr("vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", config_dir)
+    # Isolate legacy paths to prevent any leakage from real home
+    monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_RIG_RELAY_HOME", tmp_path / ".rig-relay-mock")
+    monkeypatch.setattr("vibe.core.paths._vibe_home._LEGACY_VIBE_HOME", tmp_path / ".vibe-mock")
 
     init_harness_files_manager(config_dir)
 

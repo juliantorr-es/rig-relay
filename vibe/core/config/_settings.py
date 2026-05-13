@@ -647,7 +647,7 @@ class VibeConfig(BaseSettings):
             "Agent profile to use when no --agent flag is passed in interactive "
             "mode. Builtin: default, plan, accept-edits, auto-approve. "
             "Ignored in programmatic mode (-p/--prompt), which falls back to "
-            "auto-approve when --agent is not provided."
+            "'auto-approve' (legacy) when --agent is not provided."
         ),
     )
     skill_paths: list[Path] = Field(

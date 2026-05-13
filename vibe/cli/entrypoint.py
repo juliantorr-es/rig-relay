@@ -23,7 +23,7 @@ def parse_arguments() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Environment variables:\n"
-            "  RIG_RELAY_HOME  Override the Rig Relay home directory (default: ~/.rig-relay)\n"
+            "  RIG_RELAY_HOME  Override the Rig Relay home directory (default: ~/.rig/relay)\n"
             "  VIBE_HOME       Legacy override for the Rig Relay home directory\n"
             "  LOG_LEVEL       Logging level: DEBUG, INFO, WARNING (default), ERROR, CRITICAL.\n"
             "                  Logs are written to $RIG_RELAY_HOME/logs/vibe.log.\n"
@@ -47,8 +47,8 @@ def parse_arguments() -> argparse.Namespace:
         nargs="?",
         const="",
         metavar="TEXT",
-        help="Run in programmatic mode: send prompt, auto-approve all tools, "
-        "output response, and exit.",
+        help="Run in programmatic mode: send prompt, use the configured automation "
+        "agent/policy, output response, and exit.",
     )
     parser.add_argument(
         "--max-turns",
@@ -87,10 +87,10 @@ def parse_arguments() -> argparse.Namespace:
         metavar="NAME",
         default=None,
         help="Agent to use (builtin: default, plan, accept-edits, auto-approve, "
-        "or custom from ~/.rig-relay/agents/NAME.toml). In interactive mode, "
+        "or custom from ~/.rig/relay/agents/NAME.toml). In interactive mode, "
         "defaults to the 'default_agent' config setting. In programmatic "
-        "mode (-p/--prompt), defaults to auto-approve and 'default_agent' "
-        "is ignored.",
+        "mode (-p/--prompt), defaults to 'auto-approve' (legacy) and "
+        "'default_agent' is ignored.",
     )
     parser.add_argument("--setup", action="store_true", help="Setup API key and exit")
     parser.add_argument(
