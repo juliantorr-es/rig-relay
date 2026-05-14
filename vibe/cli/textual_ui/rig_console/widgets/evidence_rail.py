@@ -48,30 +48,31 @@ class EvidenceRailWidget(Vertical):
 
     DEFAULT_CSS = """
 EvidenceRailWidget {
-    width: 1fr;
+    width: 100%;
     height: auto;
     padding: 0 1;
-    background: transparent;
-    border: none;
+    margin: 0 0 1 0;
+    background: $surface;
+    border: solid $border;
 }
 
 EvidenceRailWidget > .evidence-rail-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: #7D8590;
+    color: $text;
 }
 
 EvidenceRailWidget > .evidence-rail-counts {
     width: 100%;
     height: auto;
-    color: #7D8590;
+    color: $text-muted;
 }
 
 EvidenceRailWidget > .evidence-rail-items {
     width: 100%;
     height: auto;
-    color: #E6EDF3;
+    color: $text;
 }
 """
 

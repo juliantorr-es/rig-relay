@@ -29,22 +29,21 @@ OperatorHeaderWidget {
     height: auto;
     padding: 0 1;
     margin: 0 0 1 0;
-    background: transparent;
-    border: none;
-    border-bottom: solid #1B2129;
+    background: $surface;
+    border: solid $border;
 }
 
 OperatorHeaderWidget > .header-title {
-    width: auto;
+    width: 100%;
     height: auto;
     text-style: bold;
-    color: #E6EDF3;
+    color: $text;
 }
 
 OperatorHeaderWidget > .header-subtitle {
-    width: auto;
+    width: 100%;
     height: auto;
-    color: #7D8590;
+    color: $text-muted;
     margin: 0 0 0 1;
 }
 

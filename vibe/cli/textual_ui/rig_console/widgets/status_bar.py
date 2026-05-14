@@ -16,8 +16,8 @@ class StatusBarWidget(Horizontal):
 StatusBarWidget {
     width: 100%;
     height: 1;
-    background: #1B2129;
-    color: #7D8590;
+    background: $accent;
+    color: $text;
     padding: 0 1;
 }
 
@@ -61,15 +61,15 @@ StatusBarWidget > .status-right {
     def _render_hint(self) -> str:
         if not self._projection:
             return ""
-        
+
         hint = self._projection.footer_hint or "Ready"
-        
+
         # Add Validation Economy if available
         econ = self._projection.validation_economy
         if econ:
             skipped_sec = econ.work_skipped_ms / 1000
             hint = f"{hint}  |  [green]Cache Hits:[/] {econ.cache_hits} ([dim]saved {skipped_sec:.1f}s[/])"
-            
+
         return hint
 
     def _render_metrics(self) -> str:

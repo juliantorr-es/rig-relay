@@ -43,75 +43,36 @@ workspace, or invoke raw tool execution.
 
 ## What The Dashboard Shows
 
-The dashboard is built from content-light projections. It may show:
+The dashboard is built from content-light projections and is intentionally plain for stable dogfooding. By default, it shows a vertically stacked layout:
 
-- session or mission identity
-- runtime adapter status
-- recent execution events
-- execution progress
-- active leases or blockers
-- queue state and queue item summaries
-- evidence receipts
-- validation or test summaries
-- git branch and HEAD summary when available
-- safe footer hints and keybindings
+- **Top**: Compact header and status bar for session/queue metrics.
+- **Main**: Session activity (left) and evidence rail (right) for real-time situational awareness.
+- **Bottom**: PromptBar for input, activity log for recent history, and a persistent footer hint.
 
-## Inspector Drawer
+Experimental or high-density dashboards are hidden by default to reduce visual noise:
 
-The dashboard includes a keyboard-driven inspector drawer for the currently
-selected content-light item. It can show summaries for runtime audit events,
-recent runtime supervisor invocations, lease/blocker state, and evidence
-receipts. The drawer displays only metadata: IDs, status, tool names,
-timestamps, durations, hashes, changed path refs, and already-sanitized error
-or refusal details.
+- **Fleet Panel (`f`)**: Agent workforce monitoring.
+- **Queue Panel (`u`)**: Detailed queue orchestration state.
+- **Inspector Drawer (`i`)**: Metadata and summary inspection.
+- **Mission Router (`m`)**: Multi-step mission plan previews (Phase 0).
+- **Progress Timeline**: Execution event distribution.
 
-The inspector is read-only. It does not expose stdout, stderr, content,
-file_contents, diffs, patches, prompts, secrets, argv, or snippets. Use `i`
-to open or close the drawer, `n`/`p` to move through items, and `c` to copy a
-safe hash/reference when available.
+## Keybindings
 
-## Queue Panel
+- `Enter` — Focus prompt
+- `r` — Refresh projection
+- `v` — Run validate (async)
+- `x` — Run next queued item
+- `f` — Toggle fleet panel
+- `u` — Toggle queue panel
+- `i` — Toggle inspector drawer
+- `?` or `h` — Help overlay
+- `Esc` — Discard plan / Close overlay
+- `q` — Quit
 
-The queue panel is a read-only projection of the current fleet queue snapshot.
-It shows queue counts, the running item when present, blocked items, and recent
-completed, failed, or cancelled items. Queue items are content-light summaries:
-IDs, kind, status, title or summary, payload refs, timestamps, sanitized
-blocked reasons, and safe receipt/runtime hashes when available.
+## Design Philosophy: "Stable & Boring"
 
-The panel never mutates queue state and never executes queued actions. Use `u`
-to toggle the panel, `j`/`k` to navigate queue items, and `o` to send the
-selected queue item to the inspector when both views are present.
-
-## Fleet Panel
-
-The fleet panel is a read-only orchestration snapshot. It shows:
-
-- queue counts
-- next runnable item summary
-- replay diagnostics counts
-- active lease count
-- stale lease count
-- pending patch proposal count
-- accepted/rejected/revised counts when available
-- blocker totals and recent blocker/refusal summaries
-
-Use `f` to toggle the fleet panel, `Shift+f` to inspect the selected fleet
-summary, and `Ctrl+f` to refresh the fleet snapshot. The panel does not mutate
-queue, lease, or patch state.
-
-## Mission Router Panel
-
-The mission router panel (Phase 0) provides a read-only projection of the current mission planning state. It shows:
-
-- recent mission batch IDs and creation times
-- normalized mission node counts
-- route classification distribution (local, delegated, fleet, patch, review, blocked)
-- conflict and dependency counts
-- current plan summary
-
-The panel allows operators to inspect how a complex user request was decomposed and routed before it is compiled into the fleet queue. Like all TUI panels, it is read-only and does not trigger planning or routing directly.
-
-Use `m` to toggle the mission router panel when available.
+The TUI is designed to be a transparent, reliable command center. It uses standard Textual theme variables, avoids theatrical visual effects, and enforces a strict content-light boundary. It is optimized for keyboard-only operation during deep coding tasks.
 
 The Prompt Bar (`vibe/cli/textual_ui/rig_console/widgets/prompt_bar.py`) is the
 **primary** input surface. It uses Textual `Input` (single line).

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Static
@@ -15,8 +17,8 @@ HelpOverlayWidget {
     width: 60;
     height: auto;
     padding: 1 2;
-    background: #0A0E14;
-    border: double #3FB1CE;
+    background: $surface;
+    border: double $accent;
     display: none;
     layer: help;
 }
@@ -29,18 +31,18 @@ HelpOverlayWidget > .help-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: #3FB1CE;
+    color: $accent;
     margin-bottom: 1;
 }
 
 HelpOverlayWidget > .help-row {
     width: 100%;
     height: auto;
-    color: #E6EDF3;
+    color: $text;
 }
 """
 
-    BINDINGS_HELP = [
+    BINDINGS_HELP: ClassVar[list[tuple[str, str]]] = [
         ("q", "Quit"),
         ("r", "Refresh"),
         ("?", "Toggle Help"),

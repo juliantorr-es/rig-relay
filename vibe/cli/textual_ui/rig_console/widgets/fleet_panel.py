@@ -11,7 +11,7 @@ data is available. Shows active lease/blocker/queue counts when present.
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Vertical
 from textual.widgets import Static
 
 from rig_relay.coordination.fleet_projection import (
@@ -144,8 +144,8 @@ FleetPanelWidget {
     width: 35;
     height: 1fr;
     padding: 0 1;
-    background: transparent;
-    border: none;
+    background: $surface;
+    border-left: solid $border;
     display: none;
 }
 
@@ -157,7 +157,7 @@ FleetPanelWidget > .fleet-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: #7D8590;
+    color: $text;
     margin-bottom: 1;
 }
 
@@ -171,14 +171,14 @@ FleetPanelWidget > .fleet-metrics {
     width: 100%;
     height: auto;
     margin-top: 1;
-    border-top: solid #1B2129;
+    border-top: solid $border;
     padding-top: 1;
 }
 
 FleetPanelWidget > .metric-row {
     width: 100%;
     height: auto;
-    color: #7D8590;
+    color: $text-muted;
 }
 """
 
@@ -190,8 +190,7 @@ FleetPanelWidget > .metric-row {
         if self._projection:
             self.add_class("visible")
         yield Static("WORKFORCE", classes="fleet-header")
-        for widget in self._build_widgets():
-            yield widget
+        yield from self._build_widgets()
 
     def update_projection(self, projection: FleetProjection | None) -> None:
         """Replace the projection and re-render."""
@@ -214,7 +213,15 @@ FleetPanelWidget > .metric-row {
         # 1. Individual Agent Strip
         if proj.agent_details:
             for agent in proj.agent_details:
-                status_color = "green" if agent.status == "READY" else "cyan" if agent.status == "RUNNING" else "yellow" if agent.status == "QUEUED" else "dim"
+                status_color = (
+                    "green"
+                    if agent.status == "READY"
+                    else "cyan"
+                    if agent.status == "RUNNING"
+                    else "yellow"
+                    if agent.status == "QUEUED"
+                    else "dim"
+                )
                 row = f"{_cap(agent.agent_id, 16):18} [{status_color}]{agent.status:8}[/] "
                 meta = []
                 if agent.role:
@@ -230,7 +237,7 @@ FleetPanelWidget > .metric-row {
 
         # 2. Aggregate Metrics (Compact)
         widgets.append(FleetMetricsWidget(proj))
-            
+
         return widgets
 
 
@@ -245,11 +252,14 @@ class FleetMetricsWidget(Vertical):
         proj = self._projection
         yield Static(f"QUEUE:    {_format_queue(proj.queue)}", classes="metric-row")
         yield Static(f"LEASES:   {_format_leases(proj.leases)}", classes="metric-row")
-        yield Static(f"BLOCKERS: {_format_blockers(proj.blockers)}", classes="metric-row")
+        yield Static(
+            f"BLOCKERS: {_format_blockers(proj.blockers)}", classes="metric-row"
+        )
         yield Static(f"PATCHES:  {_format_patches(proj)}", classes="metric-row")
-        
+
         next_text = _format_next_item(proj.queue)
         if next_text:
             yield Static(f"NEXT:     {next_text}", classes="metric-row")
+
 
 __all__ = ["FleetPanelWidget"]

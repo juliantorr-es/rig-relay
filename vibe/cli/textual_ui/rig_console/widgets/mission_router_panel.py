@@ -1,5 +1,4 @@
-"""Mission router panel widget — preview and approve mission plans.
-"""
+"""Mission router panel widget — preview and approve mission plans."""
 
 from __future__ import annotations
 
@@ -8,6 +7,8 @@ from textual.containers import Vertical
 from textual.widgets import Static
 
 from vibe.cli.textual_ui.rig_console.projections import MissionRouterProjection
+
+_MISSION_NODE_DISPLAY_CAP = 10
 
 
 class MissionRouterPanelWidget(Vertical):
@@ -75,28 +76,19 @@ MissionRouterPanelWidget > .router-row {
         ]
 
         if proj.route_counts:
-            routes = "  ".join(f"{k}: {v}" for k, v in sorted(proj.route_counts.items()))
+            routes = "  ".join(
+                f"{k}: {v}" for k, v in sorted(proj.route_counts.items())
+            )
             lines.append(f"Routes: {routes}")
 
         lines.append("")
         lines.append("Proposed Nodes:")
-        for node in proj.nodes[:10]:
-            # [R] runtime, [A] delegated agent, [F] fleet, [P] patch proposal, [H] human review
-            prefix = "[R]"
-            if node.route == "delegated_agent":
-                prefix = "[A]"
-            elif node.route == "fleet":
-                prefix = "[F]"
-            elif node.route == "patch_proposal":
-                prefix = "[P]"
-            elif node.route == "human_review":
-                prefix = "[H]"
+        for node in proj.nodes[:_MISSION_NODE_DISPLAY_CAP]:
+            risk = f"[{'red' if node.risk_level in {'high', 'critical'} else 'green'}]{node.risk_level}[/]"
+            lines.append(f"• {node.title} -> [cyan]{node.route}[/] ({risk})")
 
-            risk = f"[{'red' if node.risk_level in ('high', 'critical') else 'green'}]{node.risk_level}[/]"
-            lines.append(f"• {prefix} {node.title} -> [cyan]{node.route}[/] ({risk})")
-
-        if len(proj.nodes) > 10:
-            lines.append(f"... and {len(proj.nodes) - 10} more")
+        if len(proj.nodes) > _MISSION_NODE_DISPLAY_CAP:
+            lines.append(f"... and {len(proj.nodes) - _MISSION_NODE_DISPLAY_CAP} more")
 
         lines.append("")
         lines.append("[bold]Press 'A' to approve and enqueue all nodes[/]")

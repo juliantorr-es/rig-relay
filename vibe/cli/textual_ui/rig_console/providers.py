@@ -22,10 +22,6 @@ from typing import Any, Protocol
 from git import Repo
 from pydantic import BaseModel, ConfigDict, Field
 
-from rig_relay.coordination.mission_router import (
-    MissionBatch,
-    MissionRouter,
-)
 from rig_relay.coordination.fleet_projection import (
     FleetLeaseSummary,
     FleetProjection,
@@ -35,6 +31,7 @@ from rig_relay.coordination.fleet_projection import (
 from rig_relay.coordination.fleet_queue import FleetQueue
 from rig_relay.coordination.fleet_queue_runner import FleetQueueRunnerResult
 from rig_relay.coordination.lease_manager import PathLeaseManager
+from rig_relay.coordination.mission_router import MissionBatch, MissionRouter
 from rig_relay.coordination.models import CoordinationSession
 from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
 from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord, build_receipt_index

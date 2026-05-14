@@ -54,8 +54,8 @@ QueuePanelWidget {
     width: 100%;
     height: 1fr;
     padding: 0 1;
-    background: transparent;
-    border-top: solid #1B2129;
+    background: $surface;
+    border-top: solid $border;
     display: none;
 }
 
@@ -67,21 +67,21 @@ QueuePanelWidget > .queue-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: #7D8590;
+    color: $text;
     margin-bottom: 0;
 }
 
 QueuePanelWidget > .queue-row {
     width: 100%;
     height: auto;
-    color: #E6EDF3;
+    color: $text;
 }
 
 QueuePanelWidget > .queue-section {
     width: 100%;
     height: auto;
     margin-top: 1;
-    border-top: solid $surface-lighten-1;
+    border-top: solid $border;
     padding-top: 1;
 }
 """
@@ -94,8 +94,7 @@ QueuePanelWidget > .queue-section {
         if self._projection and self._projection.visible:
             self.add_class("visible")
         yield Static("QUEUE ORCHESTRATION", classes="queue-header")
-        for widget in self._build_widgets():
-            yield widget
+        yield from self._build_widgets()
 
     def update_projection(self, projection: QueueProjection | None) -> None:
         self._projection = projection
@@ -110,17 +109,19 @@ QueuePanelWidget > .queue-section {
         header = "Queue Panel"
         if self._projection is None:
             return [header, "[dim]no queue data[/]"]
-        
+
         proj = self._projection
         lines = [header, f"Counts: {_format_counts(proj)}"]
-        
+
         running = proj.running_item
         if running is not None:
             lines.append(f"Running: {_format_item(running)}")
-            
+
         selected = proj.selected_item
         if selected is not None:
-            lines.append(f"Selected: {selected.kind} {selected.status} {_cap(selected.title)}")
+            lines.append(
+                f"Selected: {selected.kind} {selected.status} {_cap(selected.title)}"
+            )
             if selected.payload_ref:
                 lines.append(f"  Payload: {selected.payload_ref}")
             if selected.receipt_sha256:
@@ -131,15 +132,17 @@ QueuePanelWidget > .queue-section {
                 lines.append(f"Summary: {_cap(selected.summary)}")
             if selected.blocked_reason:
                 lines.append(f"Blocked: {_cap(selected.blocked_reason)}")
-        
+
         recent_terminal = [
             item
             for item in proj.items
             if item.status in {"completed", "failed", "cancelled"}
         ][:3]
         if recent_terminal:
-            lines.append("Recent: " + " | ".join(_format_item(item) for item in recent_terminal))
-                
+            lines.append(
+                "Recent: " + " | ".join(_format_item(item) for item in recent_terminal)
+            )
+
         return lines
 
     def _build_widgets(self) -> list[Static]:
@@ -151,7 +154,12 @@ QueuePanelWidget > .queue-section {
 
         running = proj.running_item
         if running is not None:
-            widgets.append(Static(f"[green]RUNNING:[/] {_format_item(running)}", classes="queue-section"))
+            widgets.append(
+                Static(
+                    f"[green]RUNNING:[/] {_format_item(running)}",
+                    classes="queue-section",
+                )
+            )
 
         selected = proj.selected_item
         if selected is not None:
@@ -163,8 +171,10 @@ QueuePanelWidget > .queue-section {
             if selected.summary:
                 details.append(f"  Summary: {_cap(selected.summary, 60)}")
             if selected.blocked_reason:
-                details.append(f"  Blocked: [red]{_cap(selected.blocked_reason, 60)}[/]")
-            
+                details.append(
+                    f"  Blocked: [red]{_cap(selected.blocked_reason, 60)}[/]"
+                )
+
             widgets.append(Static("\n".join(details), classes="queue-section"))
 
         recent_terminal = [
@@ -173,7 +183,9 @@ QueuePanelWidget > .queue-section {
             if item.status in {"completed", "failed", "cancelled"}
         ][:3]
         if recent_terminal:
-            recent_line = "RECENT: " + " | ".join(_format_item(item) for item in recent_terminal)
+            recent_line = "RECENT: " + " | ".join(
+                _format_item(item) for item in recent_terminal
+            )
             widgets.append(Static(recent_line, classes="queue-section"))
 
         if not proj.items:

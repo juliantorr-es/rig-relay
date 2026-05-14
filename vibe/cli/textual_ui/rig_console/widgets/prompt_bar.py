@@ -27,8 +27,8 @@ PromptBar {
     height: 3;
     padding: 0 1;
     margin: 1 0;
-    background: #0A0E14;
-    border: tall #3FB1CE;
+    background: $surface;
+    border: solid $accent;
 }
 
 PromptBar > .prompt-input {
@@ -36,18 +36,18 @@ PromptBar > .prompt-input {
     height: 1;
     border: none;
     background: transparent;
-    color: #E6EDF3;
+    color: $text;
 }
 
 PromptBar > .prompt-status {
     width: auto;
     height: auto;
     margin-left: 1;
-    color: #7D8590;
+    color: $text-muted;
 }
 
 PromptBar:focus-within {
-    border: tall #3FB1CE;
+    border: solid $accent-lighten-2;
 }
 """
 
@@ -84,7 +84,6 @@ PromptBar:focus-within {
             return
         if self._on_submit is not None:
             self._on_submit(text)
-            self.clear_input()
             self.set_status("Queued")
 
     def clear_input(self) -> None:

@@ -29,21 +29,21 @@ FooterStatusWidget {
     width: 100%;
     height: auto;
     padding: 0 1;
-    background: transparent;
-    border: none;
-    border-top: solid #1B2129;
+    margin: 1 0 0 0;
+    background: $surface;
+    border: solid $border;
 }
 
 FooterStatusWidget > .footer-hint {
     width: 100%;
     height: auto;
-    color: #7D8590;
+    color: $text-muted;
 }
 
 FooterStatusWidget > .footer-backlog {
     width: 100%;
     height: auto;
-    color: #E6EDF3;
+    color: $text;
 }
 """
 
@@ -62,6 +62,10 @@ FooterStatusWidget > .footer-backlog {
 
     def compose(self) -> ComposeResult:
         proj = self._projection
+        # Persistent global keybinding hint
+        hint = "Enter prompt · r refresh · v validate · q queue · f fleet · i inspector · ? help"
+        yield Static(hint, classes="footer-hint")
+
         if proj.footer_hint:
             yield Static(proj.footer_hint, classes="footer-hint")
         yield Static(self._build_backlog_text(proj), classes="footer-backlog")

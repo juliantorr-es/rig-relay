@@ -1,3 +1,4 @@
+# ruff: noqa: PLR0904
 """Dashboard screen — composes header, session pane, evidence rail, and footer."""
 
 from __future__ import annotations
@@ -8,7 +9,7 @@ from typing import Any, ClassVar, cast
 
 from textual._context import NoActiveAppError
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal
 from textual.css.query import NoMatches
 from textual.screen import Screen
 
@@ -107,59 +108,52 @@ class DashboardScreen(DashboardStatusActions, Screen):
 
     DEFAULT_CSS = """
 DashboardScreen {
-    background: #0A0E14;
-    color: #E6EDF3;
+    background: $surface;
+    color: $text;
     layers: base help;
 }
 
-DashboardScreen > .dashboard-main {
-    height: 1fr;
-    width: 100%;
-}
-
-DashboardScreen > .dashboard-main > .workforce-strip {
-    width: 35;
-    height: 1fr;
-    border-right: solid #1B2129;
-}
-
-DashboardScreen > .dashboard-main > .center-zone {
-    width: 1fr;
-    height: 1fr;
-}
-
-DashboardScreen > .dashboard-main > .inspector-zone {
-    width: 40;
-    height: 1fr;
-    border-left: solid #1B2129;
-}
-
 DashboardScreen > .dashboard-activity {
+    height: 1fr;
     width: 100%;
-    height: auto;
-    margin-bottom: 1;
 }
 
 DashboardScreen > .dashboard-activity > SessionPaneWidget {
     width: 1fr;
-    height: auto;
+    height: 1fr;
+    border-right: solid $border;
 }
 
 DashboardScreen > .dashboard-activity > EvidenceRailWidget {
-    width: 1fr;
-    height: auto;
+    width: 35;
+    height: 1fr;
 }
 
 PromptBar {
     height: 3;
-    background: #0A0E14;
-    border: solid #3FB1CE;
+    margin: 0 1;
 }
 
 StatusBarWidget {
-    background: #1B2129;
-    color: #7D8590;
-    border-bottom: solid #0A0E14;
+    height: 1;
+}
+
+ActivityLogWidget {
+    height: 5;
+    border-top: solid $border;
+}
+
+FooterStatusWidget {
+    height: auto;
+}
+
+/* Optional panels as overlays/drawers */
+FleetPanelWidget, QueuePanelWidget, InspectorDrawerWidget, MissionRouterPanelWidget, ProgressTimelineWidget {
+    display: none;
+}
+
+FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visible, MissionRouterPanelWidget.visible, ProgressTimelineWidget.visible {
+    display: block;
 }
 """
 
@@ -205,7 +199,7 @@ StatusBarWidget {
         self._last_refresh_error: str | None = None
         self._last_refresh_at: str | None = None
         self._details_visible: bool = False
-        self._fleet_visible: bool = True
+        self._fleet_visible: bool = False
         self._local_queue_payloads: dict[str, str] = {}
 
     def compose(self) -> ComposeResult:
@@ -213,21 +207,23 @@ StatusBarWidget {
 
         yield OperatorHeaderWidget(proj)
         yield StatusBarWidget(proj)
-        with Horizontal(classes="dashboard-main"):
-            yield FleetPanelWidget(proj.fleet).add_class("workforce-strip")
-            with Vertical(classes="center-zone"):
-                yield MissionRouterPanelWidget(proj.mission_router)
-                yield ProgressTimelineWidget(proj.execution_progress or None)
-                with Horizontal(classes="dashboard-activity"):
-                    yield SessionPaneWidget(proj.session)
-                    yield EvidenceRailWidget(proj.evidence)
-            with Vertical(classes="inspector-zone"):
-                yield InspectorDrawerWidget(proj.inspector)
-                yield QueuePanelWidget(proj.queue)
-        
+
+        with Horizontal(classes="dashboard-activity"):
+            yield SessionPaneWidget(proj.session)
+            yield EvidenceRailWidget(proj.evidence)
+
         yield ActivityLogWidget()
         yield PromptBar(on_submit=self._handle_queue_input)
         yield FooterStatusWidget(proj)
+
+        # Optional / Hidden by default
+        yield MissionRouterPanelWidget(proj.mission_router)
+        yield ProgressTimelineWidget(proj.execution_progress or None)
+        yield FleetPanelWidget(proj.fleet)
+        yield QueuePanelWidget(proj.queue)
+        yield InspectorDrawerWidget(proj.inspector)
+
+        # Overlays
         yield HelpOverlayWidget()
         yield NotificationPanelWidget()
 
@@ -524,7 +520,7 @@ StatusBarWidget {
             self._set_status("info", "help", "Help toggled")
         except NoMatches:
             self._set_status("error", "help", "Help overlay unavailable")
-        
+
         # Compatibility footer hint for existing tests
         # Always update this so unmounted unit tests can verify the hint string
         self._projection = self._projection.model_copy(
@@ -640,12 +636,18 @@ StatusBarWidget {
             "info", "validate", "Validate action: placeholder (read-only, not wired)"
         )
 
+    _MISSION_BATCH_THRESHOLD = 200
+
     def _handle_queue_input(self, text: str) -> None:
         """Handle input submitted via PromptBar.
 
         Routes either to single-item enqueue or batch mission routing.
         """
-        if text.startswith("/") or "\n" in text or len(text) > 200:
+        if (
+            text.startswith("/")
+            or "\n" in text
+            or len(text) > self._MISSION_BATCH_THRESHOLD
+        ):
             # Batch mission / complex instruction
             self._set_status("info", "mission_router", "Routing mission batch...")
             self.run_worker(self._route_mission_batch(text), exclusive=True)
@@ -741,7 +743,7 @@ StatusBarWidget {
         except NoMatches:
             pass
 
-        if status == "error" or status == "blocked" or status == "refused":
+        if status in {"error", "blocked", "refused"}:
             self._show_recovery_hint(action_name, message)
 
         self._render_all()
@@ -769,7 +771,7 @@ StatusBarWidget {
         """Show a recovery hint for common error patterns."""
         hint = None
         title = "RECOVERY HINT"
-        
+
         msg = (message or "").lower()
         if "coordination_root" in msg or "root missing" in msg:
             hint = "Check your coordination root configuration. Ensure the directory exists and is writable."
@@ -783,7 +785,7 @@ StatusBarWidget {
             hint = "Mission is blocked by conflicts. Inspect the Mission Router panel for dependency/path conflicts."
         elif "audit" in msg and "unavailable" in msg:
             hint = "Audit persistence failed. The action completed but history was not saved."
-        
+
         if hint:
             try:
                 self.query_one(NotificationPanelWidget).notify(title, hint)

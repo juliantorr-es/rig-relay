@@ -20,8 +20,8 @@ InspectorDrawerWidget {
     width: 100%;
     height: 1fr;
     padding: 0 1;
-    background: transparent;
-    border: none;
+    background: $surface;
+    border-left: solid $border;
     display: none;
 }
 
@@ -33,21 +33,21 @@ InspectorDrawerWidget > .inspector-title {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: #7D8590;
+    color: $text;
     margin-bottom: 0;
 }
 
 InspectorDrawerWidget > .inspector-state {
     width: 100%;
     height: auto;
-    color: #7D8590;
+    color: $text-muted;
     margin-bottom: 1;
 }
 
 InspectorDrawerWidget > .inspector-detail {
     width: 100%;
     height: auto;
-    color: #E6EDF3;
+    color: $text;
 }
 """
 
@@ -107,10 +107,7 @@ InspectorDrawerWidget > .inspector-detail {
         if item is None:
             return proj.empty_state
 
-        lines = [
-            f"[bold]Title:[/]   {item.title}",
-            f"[bold]ID:[/]      {item.item_id}",
-        ]
+        lines = [f"[bold]Title:[/]   {item.title}", f"[bold]ID:[/]      {item.item_id}"]
         if item.status:
             lines.append(f"[bold]Status:[/]  {item.status}")
         if item.tool_name:
@@ -131,7 +128,7 @@ InspectorDrawerWidget > .inspector-detail {
             lines.append(f"[bold]Refusal:[/] [red]{item.refusal_reason}[/]")
         if item.summary:
             lines.append(f"\n[bold]Summary:[/]\n{item.summary}")
-        
+
         return "\n".join(lines)
 
 
