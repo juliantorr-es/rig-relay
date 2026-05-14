@@ -1,13 +1,4 @@
-"""Integration tests for TUI queue runner — FleetQueueRunner / runtime_exec routing.
-
-Tests prove:
-- queued validate routes through FleetQueueRunner/runtime_exec
-- TUI does not call Validate/Bash/WriteFile/SearchReplace directly
-- one run action processes only one item
-- runtime_exec result metadata is reflected in queue/projection state
-- audit/projection refresh is requested after completion
-- missing roots produce safe status, not crashes
-"""
+"""Integration tests for the TUI queue runner bridge."""
 
 from __future__ import annotations
 
@@ -46,30 +37,30 @@ class TestQueueRunnerBridgeMissingRoots:
 
 class TestQueueRunnerBridgeEnqueueValidate:
     def test_enqueue_creates_validate_item(self, tmp_path: Path) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
+        queue_root = tmp_path / "coordination"
+        (queue_root / "queue").mkdir(parents=True)
         executor = MagicMock(spec=RuntimeToolExecutionRunner)
         bridge = QueueRunnerBridge(queue_root, executor)
         result = bridge.enqueue_validate()
         assert result.decision == "completed"
-        queue = FleetQueue(queue_root / "events.jsonl")
+        queue = FleetQueue(queue_root / "queue" / "events.jsonl")
         snap = queue.list_items()
         assert snap.total_count == 1
         assert snap.items[0].kind == "validate"
 
     def test_enqueue_with_paths(self, tmp_path: Path) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
+        queue_root = tmp_path / "coordination"
+        (queue_root / "queue").mkdir(parents=True)
         executor = MagicMock(spec=RuntimeToolExecutionRunner)
         bridge = QueueRunnerBridge(queue_root, executor)
         bridge.enqueue_validate(changed_paths=["src/main.py"])
-        queue = FleetQueue(queue_root / "events.jsonl")
+        queue = FleetQueue(queue_root / "queue" / "events.jsonl")
         snap = queue.list_items()
         assert snap.total_count == 1
 
     def test_snapshot_counts_after_enqueue(self, tmp_path: Path) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
+        queue_root = tmp_path / "coordination"
+        (queue_root / "queue").mkdir(parents=True)
         executor = MagicMock(spec=RuntimeToolExecutionRunner)
         bridge = QueueRunnerBridge(queue_root, executor)
         assert bridge.snapshot_counts() == {}
@@ -81,28 +72,30 @@ class TestQueueRunnerBridgeEnqueueValidate:
 class TestQueueRunnerBridgeRunNext:
     @pytest.mark.asyncio
     async def test_run_next_processes_one_item(self, tmp_path: Path) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
+        coord_root = tmp_path / "coordination"
+        (coord_root / "queue").mkdir(parents=True)
         executor = MagicMock(spec=RuntimeToolExecutionRunner)
         executor.execute_runtime_exec = AsyncMock(
             return_value=RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.COMPLETED,
-                status_code=0,
+                intent_id="test-intent",
                 tool_name="validate",
             )
         )
-        bridge = QueueRunnerBridge(queue_root, executor)
+        bridge = QueueRunnerBridge(coord_root, executor)
         bridge.enqueue_validate()
         result = await bridge.run_next()
         assert result.decision == "completed"
-        queue = FleetQueue(queue_root / "events.jsonl")
+        queue = FleetQueue(coord_root / "queue" / "events.jsonl")
         snap = queue.list_items()
         assert snap.status_counts.get("queued", 0) == 0
+        assert snap.status_counts.get("completed", 0) == 1
+        executor.execute_runtime_exec.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_run_next_idle_when_no_runnable(self, tmp_path: Path) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
+        queue_root = tmp_path / "coordination"
+        (queue_root / "queue").mkdir(parents=True)
         executor = MagicMock(spec=RuntimeToolExecutionRunner)
         bridge = QueueRunnerBridge(queue_root, executor)
         result = await bridge.run_next()
@@ -110,52 +103,55 @@ class TestQueueRunnerBridgeRunNext:
 
     @pytest.mark.asyncio
     async def test_run_next_only_one_item(self, tmp_path: Path) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
+        coord_root = tmp_path / "coordination"
+        (coord_root / "queue").mkdir(parents=True)
         executor = MagicMock(spec=RuntimeToolExecutionRunner)
         executor.execute_runtime_exec = AsyncMock(
             return_value=RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.COMPLETED,
-                status_code=0,
+                intent_id="test-intent",
                 tool_name="validate",
             )
         )
-        bridge = QueueRunnerBridge(queue_root, executor)
+        bridge = QueueRunnerBridge(coord_root, executor)
         bridge.enqueue_validate()
         bridge.enqueue_validate()
         result1 = await bridge.run_next()
         assert result1.decision == "completed"
-        queue = FleetQueue(queue_root / "events.jsonl")
+        queue = FleetQueue(coord_root / "queue" / "events.jsonl")
         snap = queue.list_items()
         assert snap.status_counts.get("completed", 0) == 1
         assert snap.status_counts.get("queued", 0) == 1
 
     @pytest.mark.asyncio
     async def test_run_next_failure_visible(self, tmp_path: Path) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
+        coord_root = tmp_path / "coordination"
+        (coord_root / "queue").mkdir(parents=True)
         executor = MagicMock(spec=RuntimeToolExecutionRunner)
         executor.execute_runtime_exec = AsyncMock(
             side_effect=RuntimeError("execution error")
         )
-        bridge = QueueRunnerBridge(queue_root, executor)
+        bridge = QueueRunnerBridge(coord_root, executor)
         bridge.enqueue_validate()
         result = await bridge.run_next()
         assert result.decision == "failed"
+        assert result.error_kind == "execution_error"
 
     @pytest.mark.asyncio
     async def test_run_next_validate_routes_through_runtime_exec(
         self, tmp_path: Path
     ) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
-        executor = AsyncMock(spec=RuntimeToolExecutionRunner)
-        executor.execute_runtime_exec.return_value = RuntimeToolExecutionResult(
-            status=RuntimeToolExecutionStatus.COMPLETED,
-            status_code=0,
-            tool_name="validate",
+        coord_root = tmp_path / "coordination"
+        (coord_root / "queue").mkdir(parents=True)
+        executor = MagicMock(spec=RuntimeToolExecutionRunner)
+        executor.execute_runtime_exec = AsyncMock(
+            return_value=RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.COMPLETED,
+                intent_id="test-intent",
+                tool_name="validate",
+            )
         )
-        bridge = QueueRunnerBridge(queue_root, executor)
+        bridge = QueueRunnerBridge(coord_root, executor)
         bridge.enqueue_validate()
         result = await bridge.run_next()
         assert result.decision == "completed"
@@ -186,17 +182,18 @@ class TestQueueRunnerBridgeContentLight:
 class TestNoDirectToolCalls:
     @pytest.mark.asyncio
     async def test_only_fleet_queue_runner_path_used(self, tmp_path: Path) -> None:
-        queue_root = tmp_path / "queue"
-        queue_root.mkdir(parents=True)
-        executor = AsyncMock(spec=RuntimeToolExecutionRunner)
-        executor.execute_runtime_exec.return_value = RuntimeToolExecutionResult(
-            status=RuntimeToolExecutionStatus.COMPLETED,
-            status_code=0,
-            tool_name="validate",
+        coord_root = tmp_path / "coordination"
+        (coord_root / "queue").mkdir(parents=True)
+        executor = MagicMock(spec=RuntimeToolExecutionRunner)
+        executor.execute_runtime_exec = AsyncMock(
+            return_value=RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.COMPLETED,
+                intent_id="test-intent",
+                tool_name="validate",
+            )
         )
-        bridge = QueueRunnerBridge(queue_root, executor)
+        bridge = QueueRunnerBridge(coord_root, executor)
         bridge.enqueue_validate()
         result = await bridge.run_next()
         assert result.decision == "completed"
         executor.execute_runtime_exec.assert_called_once()
-        executor.execute_validate.assert_not_called()

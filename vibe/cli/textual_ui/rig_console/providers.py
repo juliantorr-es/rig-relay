@@ -22,6 +22,10 @@ from typing import Any, Protocol
 from git import Repo
 from pydantic import BaseModel, ConfigDict, Field
 
+from rig_relay.coordination.mission_router import (
+    MissionBatch,
+    MissionRouter,
+)
 from rig_relay.coordination.fleet_projection import (
     FleetLeaseSummary,
     FleetProjection,
@@ -50,6 +54,8 @@ from vibe.cli.textual_ui.rig_console.actions import build_validate_runtime_exec_
 from vibe.cli.textual_ui.rig_console.projections import (
     DashboardProjection,
     EvidenceRailProjection,
+    MissionNodeProjection,
+    MissionRouterProjection,
     QueueItemProjection,
     QueueProjection,
     SessionPaneProjection,
@@ -183,6 +189,16 @@ class DashboardProjectionProvider(Protocol):
         """Enqueue a validate item (does not execute it)."""
         ...
 
+    async def route_mission_batch(self, text: str) -> MissionRouterProjection:
+        """Route a batch of missions and return a projection for preview."""
+        ...
+
+    async def approve_mission_plan(
+        self, projection: MissionRouterProjection
+    ) -> FleetQueueRunnerResult:
+        """Approve and enqueue the items from a mission plan."""
+        ...
+
 
 class FixtureDashboardProjectionProvider:
     """Fixture provider that returns a fixed DashboardProjection.
@@ -227,6 +243,32 @@ class FixtureDashboardProjectionProvider:
             reason="Cannot enqueue validate in fixture mode",
         )
 
+    async def route_mission_batch(self, text: str) -> MissionRouterProjection:
+        return MissionRouterProjection(
+            visible=True,
+            batch_id="batch-fixture",
+            plan_id="plan-fixture",
+            node_count=1,
+            nodes=[
+                MissionNodeProjection(
+                    node_id="node-1",
+                    title="Fixture Mission",
+                    summary="This is a fixture mission for testing.",
+                    route="local_runtime",
+                    risk_level="low",
+                    estimated_size="small",
+                    status="routed",
+                )
+            ],
+        )
+
+    async def approve_mission_plan(
+        self, projection: MissionRouterProjection
+    ) -> FleetQueueRunnerResult:
+        return FleetQueueRunnerResult(
+            decision="completed", reason="Fixture plan approved (mock)"
+        )
+
 
 class RuntimeDashboardProjectionProvider:
     """Read-only provider that builds DashboardProjection from local evidence.
@@ -268,6 +310,8 @@ class RuntimeDashboardProjectionProvider:
         self._runtime_events = runtime_events
         self._queue_runner_bridge: QueueRunnerBridge | None = None
         self._validate_runner: RuntimeToolExecutionRunner | None = None
+        self._mission_router = MissionRouter()
+        self._active_plans: dict[str, Any] = {}  # plan_id -> MissionPlan
 
     async def dashboard_projection(self) -> DashboardProjection:
         """Build a DashboardProjection from available local evidence.
@@ -289,8 +333,6 @@ class RuntimeDashboardProjectionProvider:
         session = self._build_session(records, evidence)
         footer = self._build_footer(errors, evidence)
         queue = self._build_queue_projection()
-        inspector = build_inspector_projection(session, evidence, queue, supervisor)
-
         execution_progress = None
         if self._runtime_events is not None:
             execution_progress = execution_progress_from_runtime_events(
@@ -298,6 +340,9 @@ class RuntimeDashboardProjectionProvider:
             )
 
         fleet = self._build_fleet_projection()
+        inspector = build_inspector_projection(
+            session, evidence, queue, supervisor, fleet
+        )
 
         return DashboardProjection(
             title="Rig Console",
@@ -553,8 +598,7 @@ class RuntimeDashboardProjectionProvider:
         if runner is None:
             return None
         self._queue_runner_bridge = QueueRunnerBridge(
-            coordination_root=self._coordination_root,
-            executor=runner,
+            coordination_root=self._coordination_root, executor=runner
         )
         return self._queue_runner_bridge
 
@@ -588,6 +632,85 @@ class RuntimeDashboardProjectionProvider:
                 reason="Queue runner bridge not configured",
             )
         return bridge.enqueue_validate(changed_paths=changed_paths)
+
+    async def route_mission_batch(self, text: str) -> MissionRouterProjection:
+        """Route a mission batch using the internal MissionRouter."""
+        # Simple split by double newline or "Mission:" marker for Phase 0
+        texts = [t.strip() for t in text.split("\n\n") if t.strip()]
+        if not texts:
+            texts = [text]
+
+        batch = MissionBatch(
+            user_request_summary="TUI submission",
+            mission_texts=texts,
+            requested_by="operator",
+        )
+        plan = self._mission_router.route_batch(batch)
+        self._active_plans[plan.plan_id] = plan
+
+        return MissionRouterProjection(
+            visible=True,
+            batch_id=plan.batch_id,
+            plan_id=plan.plan_id,
+            node_count=len(plan.nodes),
+            conflict_count=len(plan.conflicts),
+            route_counts=self._count_routes(plan),
+            nodes=[
+                MissionNodeProjection(
+                    node_id=n.node_id,
+                    title=n.title,
+                    summary=n.summary,
+                    route=str(n.route),
+                    risk_level=n.risk_level,
+                    estimated_size=n.estimated_size,
+                    status=str(n.status),
+                )
+                for n in plan.nodes
+            ],
+        )
+
+    def _count_routes(self, plan: Any) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for n in plan.nodes:
+            r = str(n.route)
+            counts[r] = counts.get(r, 0) + 1
+        return counts
+
+    async def approve_mission_plan(
+        self, projection: MissionRouterProjection
+    ) -> FleetQueueRunnerResult:
+        """Compile and enqueue the plan items into FleetQueue."""
+        if projection.plan_id not in self._active_plans:
+            return FleetQueueRunnerResult(
+                decision="failed", reason="Plan not found or expired"
+            )
+
+        plan = self._active_plans[projection.plan_id]
+        templates = self._mission_router.compile_to_queue_items(plan)
+
+        if self._coordination_root is None:
+            return FleetQueueRunnerResult(
+                decision="blocked", reason="No coordination root for queue"
+            )
+
+        queue_events = self._coordination_root / "queue" / "events.jsonl"
+        queue = FleetQueue(queue_events)
+
+        for t in templates:
+            queue.enqueue_item(
+                kind=t["kind"],
+                priority=t["priority"],
+                depends_on=t["depends_on"],
+                mission_id=t["mission_id"],
+                payload=t["payload"],
+            )
+
+        # Clear active plan after approval
+        del self._active_plans[projection.plan_id]
+
+        return FleetQueueRunnerResult(
+            decision="completed", reason=f"Enqueued {len(templates)} items"
+        )
 
 
 def _queue_title(kind: str, payload: dict[str, Any]) -> str:

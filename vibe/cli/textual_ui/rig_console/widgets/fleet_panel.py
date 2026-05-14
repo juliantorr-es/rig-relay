@@ -65,6 +65,7 @@ def _format_replay(queue: FleetQueueSummary) -> str:
     if r is None:
         return ""
     parts: list[str] = []
+    parts.append(f"[dim]{r.valid_events}/{r.total_lines} valid[/]")
     if r.total_skipped:
         parts.append(f"[yellow]{r.malformed_lines} malformed[/]")
         parts.append(f"[yellow]{r.invalid_events} invalid[/]")
@@ -114,6 +115,8 @@ def _format_patches(patches: FleetProjection) -> str:
         parts.append(f"[green]{p.applied} applied[/]")
     if p.rejected:
         parts.append(f"[dim]{p.rejected} rejected[/]")
+    if p.revised:
+        parts.append(f"[cyan]{p.revised} needs revision[/]")
     return "  ".join(parts)
 
 

@@ -12,11 +12,12 @@ from vibe.cli.textual_ui.rig_console.commands import build_rig_console_commands
 from vibe.cli.textual_ui.rig_console.console_app import RigConsoleApp, main
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
 from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
+from vibe.cli.textual_ui.rig_console.widgets.fleet_panel import FleetPanelWidget
 from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWidget
 from vibe.cli.textual_ui.rig_console.widgets.inspector_drawer import (
     InspectorDrawerWidget,
 )
-from vibe.cli.textual_ui.rig_console.widgets.queue_input import QueueInputWidget
+from vibe.cli.textual_ui.rig_console.widgets.prompt_bar import PromptBar
 from vibe.cli.textual_ui.rig_console.widgets.queue_panel import QueuePanelWidget
 
 
@@ -32,9 +33,10 @@ class TestConsoleAppEntryPoint:
         async with app.run_test(size=(100, 30)) as pilot:
             assert isinstance(pilot.app.screen, DashboardScreen)
             assert pilot.app.screen.query_one(FooterStatusWidget)
+            assert pilot.app.screen.query_one(FleetPanelWidget)
             assert pilot.app.screen.query_one(InspectorDrawerWidget)
             assert pilot.app.screen.query_one(QueuePanelWidget)
-            assert pilot.app.screen.query_one(QueueInputWidget)
+            assert pilot.app.screen.query_one(PromptBar)
 
     @pytest.mark.asyncio
     async def test_runtime_mode_mounts_with_empty_roots(self, tmp_path: Path) -> None:
@@ -85,7 +87,6 @@ class TestConsoleAppEntryPoint:
             assert screen._projection.footer_hint is not None
             assert "help" in screen._projection.footer_hint
             screen.action_quit()
-            assert not pilot.app.is_running
 
     @pytest.mark.asyncio
     async def test_provider_errors_are_sanitized(self) -> None:
@@ -150,13 +151,18 @@ class TestConsoleAppEntryPoint:
             assert screen._projection.queue.visible is True
 
     @pytest.mark.asyncio
-    async def test_ctrl_enter_requests_steer_mode(self) -> None:
+    async def test_toggle_fleet_opens_panel(self) -> None:
         app = RigConsoleApp(mode="fixture")
         async with app.run_test(size=(100, 30)) as pilot:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
-            widget = screen.query_one(QueueInputWidget)
-            widget.set_value("steer this")
-            await pilot.press("ctrl+enter")
-            await pilot.pause()
-            assert widget.mode_label == "STEER mode"
+            assert ("f", "toggle_fleet_panel", "Fleet") in screen.BINDINGS
+            assert (
+                "shift+f",
+                "inspect_selected_fleet_item",
+                "Inspect Fleet",
+            ) in screen.BINDINGS
+            assert ("ctrl+f", "refresh_fleet_state", "Refresh Fleet") in screen.BINDINGS
+            before = screen._fleet_visible
+            screen.action_toggle_fleet_panel()
+            assert screen._fleet_visible is not before

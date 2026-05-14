@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from typing import Any, ClassVar, cast
-from uuid import uuid4
 
 from textual._context import NoActiveAppError
 from textual.app import ComposeResult
@@ -17,10 +16,7 @@ from rig_relay.coordination.fleet_queue_runner import FleetQueueRunnerResult
 from rig_relay.desktop.execution_progress import ExecutionProgressProjection
 from vibe.cli.textual_ui.rig_console.actions import RigConsoleAction
 from vibe.cli.textual_ui.rig_console.intents import DashboardActionResult
-from vibe.cli.textual_ui.rig_console.projections import (
-    DashboardProjection,
-    QueueItemProjection,
-)
+from vibe.cli.textual_ui.rig_console.projections import DashboardProjection
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
 from vibe.cli.textual_ui.rig_console.widgets.fleet_panel import FleetPanelWidget
@@ -28,11 +24,14 @@ from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWi
 from vibe.cli.textual_ui.rig_console.widgets.inspector_drawer import (
     InspectorDrawerWidget,
 )
+from vibe.cli.textual_ui.rig_console.widgets.mission_router_panel import (
+    MissionRouterPanelWidget,
+)
 from vibe.cli.textual_ui.rig_console.widgets.operator_header import OperatorHeaderWidget
 from vibe.cli.textual_ui.rig_console.widgets.progress_timeline import (
     ProgressTimelineWidget,
 )
-from vibe.cli.textual_ui.rig_console.widgets.queue_input import QueueInputWidget
+from vibe.cli.textual_ui.rig_console.widgets.prompt_bar import PromptBar
 from vibe.cli.textual_ui.rig_console.widgets.queue_panel import QueuePanelWidget
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
 
@@ -143,6 +142,14 @@ DashboardScreen > InspectorDrawerWidget {
         ("p", "previous_item", "Previous Item"),
         ("c", "copy_selected_ref", "Copy Ref"),
         ("e", "focus_evidence", "Evidence"),
+        ("f", "toggle_fleet_panel", "Fleet"),
+        ("shift+f", "inspect_selected_fleet_item", "Inspect Fleet"),
+        ("ctrl+f", "refresh_fleet_state", "Refresh Fleet"),
+        ("Enter", "focus_prompt", "Focus Prompt"),
+        ("a", "approve_mission_plan", "Approve Plan"),
+        ("escape", "discard_mission_plan", "Discard Plan"),
+        ("x", "queue_run_next", "Run Next"),
+        ("ctrl+x", "queue_run_next", "Run Next"),
     ]
 
     def __init__(
@@ -160,6 +167,7 @@ DashboardScreen > InspectorDrawerWidget {
         self._last_refresh_error: str | None = None
         self._last_refresh_at: str | None = None
         self._details_visible: bool = False
+        self._fleet_visible: bool = True
         self._local_queue_payloads: dict[str, str] = {}
 
     def compose(self) -> ComposeResult:
@@ -172,9 +180,8 @@ DashboardScreen > InspectorDrawerWidget {
             classes="dashboard-activity",
         )
         yield QueuePanelWidget(proj.queue)
-        yield QueueInputWidget(
-            on_queue=self._handle_queue_input, on_steer=self._handle_steer_input
-        )
+        yield MissionRouterPanelWidget(proj.mission_router)
+        yield PromptBar(on_submit=self._handle_queue_input)
         yield FleetPanelWidget(proj.fleet)
         yield ProgressTimelineWidget(proj.execution_progress or None)
         yield InspectorDrawerWidget(proj.inspector)
@@ -264,29 +271,86 @@ DashboardScreen > InspectorDrawerWidget {
         self._projection = self._projection.model_copy(update={"queue": queue})
         self._set_status("info", "queue", "open" if queue.visible else "closed")
 
-    def action_queue_message(self) -> None:
-        widget = self._queue_input_widget()
-        if widget is None:
-            self._set_status("error", "queue_message", "Queue input unavailable")
+    def action_toggle_fleet_panel(self) -> None:
+        self._fleet_visible = not self._fleet_visible
+        self._set_status("info", "fleet", "open" if self._fleet_visible else "closed")
+
+    async def action_refresh_fleet_state(self) -> None:
+        await self.action_refresh()
+
+    def action_inspect_selected_fleet_item(self) -> None:
+        fleet = self._projection.fleet
+        inspector = self._projection.inspector
+        if fleet is None or not inspector.items:
+            self._set_status("info", "fleet", "No fleet item selected")
             return
-        widget.set_mode("QUEUE")
-        widget.queue_current()
+        for index, item in enumerate(inspector.items):
+            if item.source_kind == "fleet_summary":
+                self._projection = self._projection.model_copy(
+                    update={
+                        "inspector": inspector.model_copy(
+                            update={"selected_index": index, "visible": True}
+                        )
+                    }
+                )
+                self._set_status("info", "inspector", "open")
+                return
+        self._set_status("info", "fleet", "No fleet item selected")
+
+    def action_queue_message(self) -> None:
+        widget = self._prompt_bar_widget()
+        if widget is None:
+            self._set_status("error", "queue_message", "PromptBar unavailable")
+            return
+        # PromptBar handles its own submission via on_submit
+        self._set_status("info", "queue_message", "Use Enter in PromptBar to queue")
 
     def action_clear_input(self) -> None:
-        widget = self._queue_input_widget()
+        widget = self._prompt_bar_widget()
         if widget is None:
-            self._set_status("error", "clear_input", "Queue input unavailable")
+            self._set_status("error", "clear_input", "PromptBar unavailable")
             return
-        widget.clear()
-        self._set_status("info", "clear_input", "Queue input cleared")
+        widget.clear_input()
+        self._set_status("info", "clear_input", "PromptBar cleared")
 
     def action_steer_current_task(self) -> None:
-        widget = self._queue_input_widget()
-        if widget is not None:
-            widget.set_mode("STEER")
-            widget.request_steer()
-            return
         self._set_status("info", "steer", "STEER mode not implemented yet")
+
+    def action_focus_prompt(self) -> None:
+        """Focus the PromptBar input field."""
+        prompt = self._prompt_bar_widget()
+        if prompt is not None:
+            prompt.focus_input()
+            self._set_status("info", "focus_prompt", "Prompt focused")
+        else:
+            self._set_status("error", "focus_prompt", "PromptBar unavailable")
+
+    async def action_approve_mission_plan(self) -> None:
+        """Approve and enqueue the active mission plan."""
+        if not self._projection.mission_router.visible:
+            return
+
+        if self._provider is None:
+            self._set_status("error", "approve_mission", "No provider configured")
+            return
+
+        self._set_status("info", "approve_mission", "Approving mission plan...")
+        res = await self._provider.approve_mission_plan(self._projection.mission_router)
+        if res.decision == "completed":
+            self._set_status("ok", "approve_mission", "Mission plan enqueued")
+            await self.action_refresh()
+        else:
+            self._set_status(
+                "error", "approve_mission", f"Failed: {res.reason or 'unknown'}"
+            )
+
+    def action_discard_mission_plan(self) -> None:
+        """Discard the active mission plan."""
+        if not self._projection.mission_router.visible:
+            return
+        self._projection.mission_router.visible = False
+        self._render_all()
+        self._set_status("info", "discard_mission", "Mission plan discarded")
 
     def action_next_queue_item(self) -> None:
         queue = self._projection.queue
@@ -393,7 +457,7 @@ DashboardScreen > InspectorDrawerWidget {
         self._details_visible = True
         self._set_feedback(
             "show_help",
-            "Available: refresh, help, details, inspector, next, prev, copy, runtime, leases, audit",
+            "Available: refresh, help, details, inspector, queue, fleet, next, prev, copy, runtime, leases, audit",
         )
 
     def action_toggle_details(self) -> None:
@@ -505,50 +569,43 @@ DashboardScreen > InspectorDrawerWidget {
             "info", "validate", "Validate action: placeholder (read-only, not wired)"
         )
 
-    def _queue_input_widget(self) -> QueueInputWidget | None:
+    def _handle_queue_input(self, text: str) -> None:
+        """Handle input submitted via PromptBar.
+
+        Routes either to single-item enqueue or batch mission routing.
+        """
+        if text.startswith("/") or "\n" in text or len(text) > 200:
+            # Batch mission / complex instruction
+            self._set_status("info", "mission_router", "Routing mission batch...")
+            self.run_worker(self._route_mission_batch(text), exclusive=True)
+        else:
+            # Single instruction
+            self._set_status("info", "queue", "Enqueueing instruction...")
+            if self._provider is not None:
+                # For now, just enqueue a simple validate or similar placeholder
+                # In real use, this would call a provider method to classify/enqueue
+                self._provider.enqueue_validate()
+                self.run_worker(self.action_refresh(), exclusive=True)
+
+    async def _route_mission_batch(self, text: str) -> None:
+        """Worker to route a mission batch via provider."""
+        if self._provider is None:
+            self._set_status("error", "mission_router", "No provider configured")
+            return
+
         try:
-            return self.query_one(QueueInputWidget)
+            projection = await self._provider.route_mission_batch(text)
+            self._projection.mission_router = projection
+            self._render_all()
+            self._set_status("ok", "mission_router", "Mission plan ready")
+        except Exception as e:
+            self._set_status("error", "mission_router", f"Routing failed: {e!s}")
+
+    def _prompt_bar_widget(self) -> PromptBar | None:
+        try:
+            return self.query_one(PromptBar)
         except NoMatches:
             return None
-
-    def _handle_queue_input(self, text: str) -> None:
-        self._queue_message(text)
-
-    def _handle_steer_input(self, text: str) -> None:
-        self._set_feedback("steer", "STEER mode requested — not implemented yet")
-
-    def _queue_message(self, text: str) -> None:
-        message = text.strip()
-        if not message:
-            self._set_status("info", "queue_message", "Queue input is empty")
-            return
-        queue_input = self._queue_input_widget()
-        if queue_input is not None:
-            queue_input.set_mode("QUEUE")
-            queue_input.clear()
-        queue = self._projection.queue
-        payload_ref = f"local://queue/{uuid4().hex}"
-        self._local_queue_payloads[payload_ref] = message
-        item = QueueItemProjection(
-            queue_item_id=f"queue-{uuid4().hex[:8]}",
-            kind="message",
-            status="queued",
-            title="Queue message",
-            summary="local payload stored",
-            payload_ref=payload_ref,
-            created_at=datetime.now(UTC).isoformat(),
-        )
-        updated_items = [*queue.items, item]
-        updated_queue = queue.model_copy(
-            update={
-                "items": updated_items,
-                "queued_count": queue.queued_count + 1,
-                "selected_index": len(updated_items) - 1,
-            }
-        )
-        self._projection = self._projection.model_copy(update={"queue": updated_queue})
-        self._sync_queue_selection(updated_queue.selected_index)
-        self._set_feedback("queue_message", "Queued message")
 
     def update_projection(self, projection: DashboardProjection) -> None:
         """Replace the projection and re-render all widgets."""
@@ -569,9 +626,14 @@ DashboardScreen > InspectorDrawerWidget {
 
             queue_panel = self.query_one(QueuePanelWidget)
             queue_panel.update_projection(proj.queue)
+            queue_panel.display = proj.queue.visible
+
+            router_panel = self.query_one(MissionRouterPanelWidget)
+            router_panel.update_projection(proj.mission_router)
 
             fleet_panel = self.query_one(FleetPanelWidget)
             fleet_panel.update_projection(proj.fleet)
+            fleet_panel.display = self._fleet_visible
 
             ep = proj.execution_progress or ExecutionProgressProjection()
             timeline = self.query_one(ProgressTimelineWidget)
@@ -616,5 +678,5 @@ DashboardScreen > InspectorDrawerWidget {
         self._set_status("info", action_name, message)
         try:
             self.app.notify(message, title="Rig Console", severity="information")
-        except Exception:
+        except (AttributeError, Exception):
             pass

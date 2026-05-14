@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mission Plan v1",
+  "description": "The compiled plan for a mission batch.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "plan_id",
+    "batch_id",
+    "created_at",
+    "nodes",
+    "dependencies",
+    "conflicts",
+    "runnable_groups",
+    "assignments"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.fleet.mission_plan.v1"
+    },
+    "plan_id": {
+      "type": "string"
+    },
+    "batch_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "node_id",
+          "title",
+          "summary",
+          "inferred_domains",
+          "candidate_paths",
+          "required_capabilities",
+          "risk_level",
+          "estimated_size",
+          "status"
+        ],
+        "properties": {
+          "node_id": { "type": "string" },
+          "title": { "type": "string" },
+          "summary": { "type": "string" },
+          "payload_ref": { "type": ["string", "null"] },
+          "sanitized_text_summary": { "type": ["string", "null"] },
+          "inferred_domains": { "type": "array", "items": { "type": "string" } },
+          "candidate_paths": { "type": "array", "items": { "type": "string" } },
+          "required_capabilities": { "type": "array", "items": { "type": "string" } },
+          "risk_level": { "enum": ["low", "medium", "high", "critical"] },
+          "estimated_size": { "enum": ["small", "medium", "large", "massive"] },
+          "status": { "enum": ["pending", "routed", "failed"] },
+          "route": { "type": ["string", "null"] },
+          "refusal_reason": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "depends_on", "kind"],
+        "properties": {
+          "node_id": { "type": "string" },
+          "depends_on": { "type": "string" },
+          "kind": { "enum": ["must_complete", "affects_paths"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "other_node_id", "kind", "paths"],
+        "properties": {
+          "node_id": { "type": "string" },
+          "other_node_id": { "type": "string" },
+          "kind": { "enum": ["path_overlap", "domain_overlap"] },
+          "paths": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "runnable_groups": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "assignments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "route"],
+        "properties": {
+          "node_id": { "type": "string" },
+          "route": { "type": "string" },
+          "agent_id": { "type": ["string", "null"] },
+          "priority": { "type": "integer" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

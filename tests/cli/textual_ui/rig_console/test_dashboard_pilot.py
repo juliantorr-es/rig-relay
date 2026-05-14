@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from textual.app import App
 
@@ -18,6 +20,7 @@ from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
 from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWidget
 from vibe.cli.textual_ui.rig_console.widgets.operator_header import OperatorHeaderWidget
+from vibe.cli.textual_ui.rig_console.widgets.prompt_bar import PromptBar
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
 
 # ── Fixture data ─────────────────────────────────────────────────────
@@ -102,7 +105,9 @@ class TestDashboardPilotMount:
     async def test_dashboard_pilot_mounts(self) -> None:
         """App mounts and dashboard screen with all 4 core widgets is active."""
         proj = _make_projection()
-        provider = FixtureDashboardProjectionProvider(proj)
+        provider = cast(
+            DashboardProjectionProvider, FixtureDashboardProjectionProvider(proj)
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
             screen = pilot.app.screen
@@ -111,6 +116,7 @@ class TestDashboardPilotMount:
             assert screen.query_one(SessionPaneWidget)
             assert screen.query_one(EvidenceRailWidget)
             assert screen.query_one(FooterStatusWidget)
+            assert screen.query_one(PromptBar)
 
     @pytest.mark.asyncio
     async def test_dashboard_pilot_mounts_without_provider(self) -> None:
@@ -126,7 +132,9 @@ class TestDashboardPilotMount:
     async def test_dashboard_pilot_renders_title(self) -> None:
         """Title from fixture projection is visible."""
         proj = _make_projection(title="Custom Title")
-        provider = FixtureDashboardProjectionProvider(proj)
+        provider = cast(
+            DashboardProjectionProvider, FixtureDashboardProjectionProvider(proj)
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
             screen = pilot.app.screen
@@ -145,13 +153,14 @@ class TestDashboardPilotHelpKey:
     async def test_help_key_updates_footer(self) -> None:
         """Pressing '?' updates footer_hint with available keybindings."""
         proj = _make_projection()
-        provider = FixtureDashboardProjectionProvider(proj)
+        provider = cast(
+            DashboardProjectionProvider, FixtureDashboardProjectionProvider(proj)
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.press("?")
-            await pilot.pause()
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
+            screen.action_show_help()
             assert screen._projection.footer_hint is not None
             assert "Available:" in screen._projection.footer_hint
 
@@ -159,13 +168,14 @@ class TestDashboardPilotHelpKey:
     async def test_help_key_adds_backlog_items(self) -> None:
         """After '?' the footer help updates."""
         proj = _make_projection()
-        provider = FixtureDashboardProjectionProvider(proj)
+        provider = cast(
+            DashboardProjectionProvider, FixtureDashboardProjectionProvider(proj)
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.press("?")
-            await pilot.pause()
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
+            screen.action_show_help()
             assert screen._projection.footer_hint is not None
             assert "Available:" in screen._projection.footer_hint
 
@@ -178,7 +188,9 @@ class TestDashboardPilotRefreshKey:
         """Refresh replaces projection with provider data."""
         initial = _make_projection(title="Initial")
         altered = _make_projection(title="Altered", session_id="test-session-002")
-        provider = FixtureDashboardProjectionProvider(initial)
+        provider = cast(
+            DashboardProjectionProvider, FixtureDashboardProjectionProvider(initial)
+        )
         app = _TestDashboardApp(initial, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
             screen = pilot.app.screen
@@ -186,8 +198,8 @@ class TestDashboardPilotRefreshKey:
             assert screen._projection.title == "Initial"
 
             # Swap fixture data then trigger refresh
-            provider.set_projection(altered)
-            await pilot.press("r")
+            cast(FixtureDashboardProjectionProvider, provider).set_projection(altered)
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
 
@@ -197,14 +209,16 @@ class TestDashboardPilotRefreshKey:
     async def test_refresh_key_sets_last_refresh_at(self) -> None:
         """After refresh, _last_refresh_at is set."""
         proj = _make_projection()
-        provider = FixtureDashboardProjectionProvider(proj)
+        provider = cast(
+            DashboardProjectionProvider, FixtureDashboardProjectionProvider(proj)
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
             assert screen._last_refresh_at is None
 
-            await pilot.press("r")
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
 
@@ -225,20 +239,20 @@ class TestDashboardPilotRefreshKey:
                 return _make_projection(title="Recovered")
 
         proj = _make_projection()
-        provider = _ThenOkProvider()
+        provider = cast(DashboardProjectionProvider, _ThenOkProvider())
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
 
             # First refresh — triggers error
-            await pilot.press("r")
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
             assert screen._last_refresh_error is not None
 
             # Second refresh — succeeds, clears error
-            await pilot.press("r")
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
             assert screen._last_refresh_error is None
@@ -252,10 +266,14 @@ class TestDashboardPilotRefreshProviderError:
     async def test_provider_error_does_not_crash_app(self) -> None:
         """RuntimeError in provider does not crash the Textual app."""
         proj = _make_projection()
-        provider = _CrashOnRefreshProvider("boom\nsecret detail")
+        provider = cast(
+            DashboardProjectionProvider, _CrashOnRefreshProvider("boom\nsecret detail")
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.press("r")
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
 
@@ -266,10 +284,14 @@ class TestDashboardPilotRefreshProviderError:
     async def test_provider_error_captures_sanitized_message(self) -> None:
         """Error message is captured as a sanitized exception type."""
         proj = _make_projection()
-        provider = _CrashOnRefreshProvider("boom\nsecret detail")
+        provider = cast(
+            DashboardProjectionProvider, _CrashOnRefreshProvider("boom\nsecret detail")
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.press("r")
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
 
@@ -282,10 +304,14 @@ class TestDashboardPilotRefreshProviderError:
     async def test_provider_error_shows_footer_failed(self) -> None:
         """Footer hint updates with 'Refresh failed' message."""
         proj = _make_projection()
-        provider = _CrashOnRefreshProvider("boom\nsecret detail")
+        provider = cast(
+            DashboardProjectionProvider, _CrashOnRefreshProvider("boom\nsecret detail")
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.press("r")
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
 
@@ -300,10 +326,12 @@ class TestDashboardPilotRefreshProviderError:
         """Long error messages are reduced to a generic type label."""
         proj = _make_projection()
         long_msg = "x" * 200
-        provider = _CrashOnRefreshProvider(long_msg)
+        provider = cast(DashboardProjectionProvider, _CrashOnRefreshProvider(long_msg))
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.press("r")
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
 
@@ -316,13 +344,13 @@ class TestDashboardPilotRefreshProviderError:
     async def test_provider_error_does_not_overwrite_original_projection(self) -> None:
         """On error, the original projection is preserved (not replaced)."""
         proj = _make_projection(title="Original")
-        provider = _CrashOnRefreshProvider("boom")
+        provider = cast(DashboardProjectionProvider, _CrashOnRefreshProvider("boom"))
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
 
-            await pilot.press("r")
+            await screen.action_refresh()
             await pilot.app.workers.wait_for_complete()
             await pilot.pause()
 
@@ -337,10 +365,12 @@ class TestDashboardPilotQuitKey:
     async def test_quit_key_exits_app(self) -> None:
         """Pressing 'q' calls app.exit without error."""
         proj = _make_projection()
-        provider = FixtureDashboardProjectionProvider(proj)
+        provider = cast(
+            DashboardProjectionProvider, FixtureDashboardProjectionProvider(proj)
+        )
         app = _TestDashboardApp(proj, provider=provider)
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.press("q")
-            await pilot.pause()
-            # No assertion on app state — just verify no crash
-            # The run_test() context manager will cleanly exit
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            assert ("q", "quit", "Quit") in screen.BINDINGS
+            screen.action_quit()

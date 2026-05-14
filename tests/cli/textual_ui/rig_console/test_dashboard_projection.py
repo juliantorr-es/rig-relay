@@ -5,6 +5,13 @@ from __future__ import annotations
 from pydantic import ValidationError
 import pytest
 
+from rig_relay.coordination.fleet_projection import (
+    FleetBlockerSummary,
+    FleetLeaseSummary,
+    FleetPatchProposalSummary,
+    FleetQueueSummary,
+    build_fleet_projection,
+)
 from rig_relay.runtime.runtime_audit_event import RuntimeAuditEvent
 from rig_relay.runtime.runtime_supervisor_projection import RuntimeSupervisorProjection
 from vibe.cli.textual_ui.rig_console.projections import (
@@ -137,13 +144,24 @@ class TestDashboardProjection:
             changed_path_count=1,
             changed_path_hashes=["sha256:result"],
         )
-        inspector = build_inspector_projection(session, evidence, None, supervisor)
+        fleet = build_fleet_projection(
+            projection_id="fp-1",
+            created_at="2026-05-14T15:00:00",
+            queue=FleetQueueSummary(queued=2, running=1, blocked=1, completed=3),
+            leases=FleetLeaseSummary(total_active=4, stale=1, expired=2),
+            blockers=FleetBlockerSummary(total_blockers=1),
+            patches=FleetPatchProposalSummary(pending=5, rejected=2, total=7),
+        )
+        inspector = build_inspector_projection(
+            session, evidence, None, supervisor, fleet
+        )
 
         assert inspector.items[0].source_kind == "runtime_audit"
         assert inspector.items[0].receipt_sha256 == "sha256:receipt"
         assert inspector.items[0].runtime_result_sha256 == "sha256:result"
         assert inspector.items[1].source_kind == "lease_blocker"
         assert inspector.items[1].refusal_reason == "2 dirty_files"
+        assert any(item.source_kind == "fleet_summary" for item in inspector.items)
 
     def test_inspector_projection_rejects_unknown_fields(self) -> None:
         with pytest.raises(ValidationError):

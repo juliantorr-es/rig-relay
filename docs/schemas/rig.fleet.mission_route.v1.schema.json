@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mission Route v1",
+  "description": "Routing destinations for mission nodes.",
+  "type": "string",
+  "enum": [
+    "local_runtime",
+    "delegated_agent",
+    "fleet",
+    "patch_proposal",
+    "human_review",
+    "blocked"
+  ]
+}

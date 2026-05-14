@@ -3,8 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
+import pytest
+
+from rig_relay.coordination.fleet_projection import (
+    FleetBlockerSummary,
+    FleetLeaseSummary,
+    FleetPatchProposalSummary,
+    FleetProjection,
+    FleetQueueSummary,
+)
+from rig_relay.coordination.fleet_queue_runner import FleetQueueRunnerResult
 from rig_relay.runtime.tool_invocation_execution import (
     RuntimeToolExecutionResult,
     RuntimeToolExecutionStatus,
@@ -19,6 +29,7 @@ from vibe.cli.textual_ui.rig_console.projections import (
     EvidenceRailProjection,
     InspectorItemProjection,
     InspectorProjection,
+    MissionRouterProjection,
     QueueItemProjection,
     QueueProjection,
     SessionPaneProjection,
@@ -33,6 +44,14 @@ def _make_projection(
         title=title,
         session=SessionPaneProjection(session_id="s1"),
         evidence=EvidenceRailProjection(session_id="s1"),
+        fleet=FleetProjection(
+            projection_id="fp-1",
+            created_at="2026-05-14T15:00:00",
+            queue=FleetQueueSummary(queued=2, running=1, blocked=1, completed=3),
+            leases=FleetLeaseSummary(total_active=4, stale=1, expired=2),
+            blockers=FleetBlockerSummary(total_blockers=1),
+            patches=FleetPatchProposalSummary(pending=5, rejected=2, total=7),
+        ),
         footer_hint=footer_hint,
         inspector=InspectorProjection(
             visible=False,
@@ -109,6 +128,14 @@ class TestDashboardScreen:
         assert hasattr(screen, "action_next_item")
         assert hasattr(screen, "action_previous_item")
         assert hasattr(screen, "action_copy_selected_ref")
+
+    def test_has_fleet_actions(self) -> None:
+        screen = DashboardScreen(_make_projection())
+        assert hasattr(screen, "action_refresh_fleet_state")
+        assert hasattr(screen, "action_focus_prompt")
+        assert hasattr(screen, "action_approve_mission_plan")
+        assert hasattr(screen, "action_discard_mission_plan")
+        assert hasattr(screen, "action_queue_run_next")
 
     def test_show_help_updates_footer_hint(self) -> None:
         screen = DashboardScreen(_make_projection())
@@ -205,6 +232,36 @@ class TestDashboardScreen:
         )
         assert not any(name in footer_hint.lower() for name in forbidden)
 
+    def test_toggle_fleet_panel_flips_visibility(self) -> None:
+        screen = DashboardScreen(_make_projection())
+        with patch.object(screen, "_render_all"):
+            before = screen._fleet_visible
+            screen.action_toggle_fleet_panel()
+        assert screen._fleet_visible is not before
+        assert ("f", "toggle_fleet_panel", "Fleet") in screen.BINDINGS
+        assert (
+            "shift+f",
+            "inspect_selected_fleet_item",
+            "Inspect Fleet",
+        ) in screen.BINDINGS
+        assert ("ctrl+f", "refresh_fleet_state", "Refresh Fleet") in screen.BINDINGS
+
+    def test_inspect_selected_fleet_item_updates_inspector(self) -> None:
+        screen = DashboardScreen(_make_projection())
+        with patch.object(screen, "_render_all"):
+            screen.action_inspect_selected_fleet_item()
+        assert screen._projection.inspector.visible is True
+        assert screen._projection.inspector.selected_item is not None
+        assert screen._projection.inspector.selected_item.source_kind == "fleet_summary"
+
+    def test_refresh_fleet_state_aliases_refresh(self) -> None:
+        screen = DashboardScreen(_make_projection())
+        with patch.object(
+            screen, "action_refresh", new=AsyncMock(return_value=None)
+        ) as refresh:
+            asyncio.run(screen.action_refresh_fleet_state())
+        refresh.assert_called_once()
+
     def test_build_validate_runtime_exec_intent_uses_runtime_exec(self) -> None:
         intent = build_validate_runtime_exec_intent(
             intent_id="intent-validate-1", changed_paths=["src/main.py"]
@@ -270,6 +327,55 @@ class TestDashboardScreen:
         mock_run.assert_called_once()
         assert screen._projection.footer_hint is not None
         assert "Validate running" in screen._projection.footer_hint
+
+    def test_action_focus_prompt_calls_focus(self) -> None:
+        screen = DashboardScreen(_make_projection())
+        mock_prompt = MagicMock()
+        with patch.object(screen, "_prompt_bar_widget", return_value=mock_prompt):
+            screen.action_focus_prompt()
+        mock_prompt.focus_input.assert_called_once()
+
+    def test_route_mission_batch_dispatches_worker(self) -> None:
+        proj = _make_projection()
+        mock_provider = AsyncMock()
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "run_worker") as mock_run:
+            screen._handle_queue_input("test mission\nwith newline")
+        mock_run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_do_route_mission_batch_updates_projection(self) -> None:
+        proj = _make_projection()
+        mock_provider = AsyncMock()
+        router_proj = MissionRouterProjection(visible=True, node_count=5)
+        mock_provider.route_mission_batch.return_value = router_proj
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "_render_all"):
+            await screen._route_mission_batch("test")
+        assert screen._projection.mission_router.visible is True
+        assert screen._projection.mission_router.node_count == 5
+
+    @pytest.mark.asyncio
+    async def test_approve_mission_plan_calls_provider(self) -> None:
+        proj = _make_projection()
+        proj.mission_router.visible = True
+        proj.mission_router.plan_id = "p1"
+        mock_provider = AsyncMock()
+        mock_provider.approve_mission_plan.return_value = FleetQueueRunnerResult(
+            decision="completed"
+        )
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "action_refresh"):
+            await screen.action_approve_mission_plan()
+        mock_provider.approve_mission_plan.assert_called_once()
+
+    def test_discard_mission_plan_hides_panel(self) -> None:
+        proj = _make_projection()
+        proj.mission_router.visible = True
+        screen = DashboardScreen(proj)
+        with patch.object(screen, "_render_all"):
+            screen.action_discard_mission_plan()
+        assert screen._projection.mission_router.visible is False
 
     def test_toggle_inspector_flips_visibility(self) -> None:
         screen = DashboardScreen(_make_projection())
@@ -410,16 +516,26 @@ class TestDashboardScreen:
         screen = DashboardScreen(
             _make_projection(title="Original"), provider=mock_provider
         )
-        with patch.object(screen, "_render_all"):
-            asyncio.run(screen._do_refresh())
+        with patch.object(
+            screen,
+            "update_projection",
+            side_effect=lambda p: setattr(screen, "_projection", p),
+        ):
+            with patch.object(screen, "_render_all"):
+                asyncio.run(screen._do_refresh())
         assert screen._projection.title == "Updated"
 
     def test_refresh_worker_sets_refresh_state_on_success(self) -> None:
         mock_provider = AsyncMock()
         mock_provider.dashboard_projection.return_value = _make_projection()
         screen = DashboardScreen(_make_projection(), provider=mock_provider)
-        with patch.object(screen, "_render_all"):
-            asyncio.run(screen._do_refresh())
+        with patch.object(
+            screen,
+            "update_projection",
+            side_effect=lambda p: setattr(screen, "_projection", p),
+        ):
+            with patch.object(screen, "_render_all"):
+                asyncio.run(screen._do_refresh())
         assert screen._last_refresh_at is not None
         assert screen._last_refresh_error is None
         assert screen._refresh_in_progress is False
@@ -429,9 +545,16 @@ class TestDashboardScreen:
         mock_provider.dashboard_projection.return_value = _make_projection()
         screen = DashboardScreen(_make_projection(), provider=mock_provider)
         screen._last_refresh_error = "previous error"
-        with patch.object(screen, "_render_all"):
-            asyncio.run(screen._do_refresh())
-        assert screen._last_refresh_error is None
+        with patch.object(
+            screen,
+            "update_projection",
+            side_effect=lambda p: setattr(screen, "_projection", p),
+        ):
+            with patch.object(screen, "_render_all"):
+                asyncio.run(screen._do_refresh())
+        assert screen._last_refresh_error is None, (
+            f"Expected None, got {screen._last_refresh_error}"
+        )
 
     def test_refresh_worker_sets_error_on_exception(self) -> None:
         mock_provider = AsyncMock()

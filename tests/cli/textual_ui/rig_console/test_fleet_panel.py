@@ -31,6 +31,42 @@ from vibe.cli.textual_ui.rig_console.widgets.fleet_panel import (
 )
 
 
+def _fleet_projection() -> object:
+    return build_fleet_projection(
+        projection_id="fp-fleet",
+        created_at="2026-05-14T15:00:00",
+        queue=FleetQueueSummary(
+            queued=2,
+            running=1,
+            blocked=1,
+            completed=3,
+            failed=1,
+            cancelled=1,
+            total=9,
+            highest_priority=4,
+            next_item=FleetQueueNextItem(kind="validate", priority=4),
+            replay=FleetReplayDiagnostics(
+                total_lines=10,
+                valid_events=8,
+                malformed_lines=1,
+                invalid_events=1,
+                skipped_unknown_kind=0,
+                total_skipped=2,
+            ),
+        ),
+        leases=FleetLeaseSummary(total_active=4, stale=1, expired=2),
+        blockers=FleetBlockerSummary(
+            total_blockers=2,
+            blocker_kinds={"dirty_files": 1, "lease_conflict": 1},
+            oldest_blocked_at="2026-05-14T14:00:00",
+        ),
+        patches=FleetPatchProposalSummary(
+            pending=2, applied=1, rejected=1, revised=3, total=7
+        ),
+        recent_event_count=5,
+    )
+
+
 class TestFleetPanelWidget:
     """FleetPanelWidget structural tests."""
 
@@ -54,24 +90,10 @@ class TestFleetPanelWidget:
 
     def test_build_widgets_with_data(self) -> None:
         """_build_widgets with populated projection returns header + 5+ rows."""
-        proj = build_fleet_projection(
-            projection_id="fp-active",
-            created_at="2026-01-01T00:00:00",
-            queue=FleetQueueSummary(
-                queued=2, running=1, completed=5, total=8, highest_priority=3
-            ),
-            leases=FleetLeaseSummary(
-                total_active=3, exclusive_write=2, shared_read=1, path_count=7
-            ),
-            blockers=FleetBlockerSummary(
-                total_blockers=1,
-                blocker_kinds={"dirty_files": 2},
-                oldest_blocked_at="2026-01-01T09:00:00",
-            ),
-        )
+        proj = _fleet_projection()
         widget = FleetPanelWidget(projection=proj)
         widgets = widget._build_widgets()
-        assert len(widgets) >= 6
+        assert len(widgets) >= 7
         assert all(isinstance(w, Static) for w in widgets)
 
 
@@ -138,6 +160,25 @@ class TestFormatBlockers:
         assert "dirty_files" in result
         assert "lease_conflict" in result
 
+    def test_with_replay_diagnostics(self) -> None:
+        result = _format_replay(
+            FleetQueueSummary(
+                queued=1,
+                total=1,
+                highest_priority=1,
+                replay=FleetReplayDiagnostics(
+                    total_lines=10,
+                    valid_events=8,
+                    malformed_lines=1,
+                    invalid_events=1,
+                    skipped_unknown_kind=0,
+                    total_skipped=2,
+                ),
+            )
+        )
+        assert "malformed" in result
+        assert "invalid" in result
+
 
 class TestFormatPatches:
     """_format_patches helper."""
@@ -157,6 +198,18 @@ class TestFormatPatches:
         )
         result = _format_patches(proj)
         assert "2 pending" in result
+
+    def test_rejected_applied_revision_counts(self) -> None:
+        proj = build_fleet_projection(
+            projection_id="fp-test",
+            created_at="2026-01-01T00:00:00",
+            patches=FleetPatchProposalSummary(
+                pending=2, applied=1, rejected=1, revised=3, total=7
+            ),
+        )
+        result = _format_patches(proj)
+        assert "applied" in result
+        assert "rejected" in result
 
 
 class TestFormatAgents:
@@ -180,6 +233,17 @@ class TestFormatAgents:
         result = _format_agents(proj)
         assert "2 agents" in result
         assert "1 active" in result
+
+    def test_stale_sessions_render(self) -> None:
+        proj = build_fleet_projection(
+            projection_id="fp-test",
+            created_at="2026-01-01T00:00:00",
+            agents=FleetAgentSummary(
+                total_agents=2, active_sessions=1, recent_heartbeats=5, stale_sessions=1
+            ),
+        )
+        result = _format_agents(proj)
+        assert "stale" in result
 
 
 class TestFormatNextItem:
@@ -220,7 +284,25 @@ class TestFormatReplay:
             ),
         )
         result = _format_replay(q)
-        assert result == ""
+        assert "5/5 valid" in result
+
+    def test_with_issues(self) -> None:
+        q = FleetQueueSummary(
+            queued=1,
+            total=1,
+            highest_priority=0,
+            replay=FleetReplayDiagnostics(
+                total_lines=10,
+                valid_events=8,
+                malformed_lines=1,
+                invalid_events=1,
+                skipped_unknown_kind=0,
+                total_skipped=2,
+            ),
+        )
+        result = _format_replay(q)
+        assert "malformed" in result
+        assert "invalid" in result
 
     def test_with_skipped(self) -> None:
         q = FleetQueueSummary(
@@ -265,9 +347,7 @@ class TestMountedFleetPanel:
         """A mounted FleetPanelWidget with projection renders sections."""
         from textual.app import App, ComposeResult
 
-        proj = build_fleet_projection(
-            projection_id="fp-mounted", created_at="2026-01-01T00:00:00"
-        )
+        proj = _fleet_projection()
 
         class TestApp(App):
             def compose(self) -> ComposeResult:

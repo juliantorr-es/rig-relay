@@ -275,6 +275,35 @@ class QueueProjection(BaseModel):
         return None
 
 
+class MissionNodeProjection(BaseModel):
+    """Content-light projection for a mission node."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    node_id: str
+    title: str
+    summary: str
+    route: str
+    risk_level: str
+    estimated_size: str
+    status: str
+
+
+class MissionRouterProjection(BaseModel):
+    """Projection for the mission router panel."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    visible: bool = False
+    batch_id: str | None = None
+    plan_id: str | None = None
+    node_count: int = 0
+    conflict_count: int = 0
+    route_counts: dict[str, int] = Field(default_factory=dict)
+    nodes: list[MissionNodeProjection] = Field(default_factory=list)
+    empty_state: str = "No mission plan active"
+
+
 def _build_inspector_audit_item(event: RuntimeAuditEvent) -> InspectorItemProjection:
     summary = f"{event.status} {event.tool_name}"
     return InspectorItemProjection(
@@ -333,11 +362,35 @@ def _build_inspector_blocker_item(
     )
 
 
+def _build_inspector_fleet_item(
+    fleet: FleetProjection,
+) -> InspectorItemProjection | None:
+    if fleet is None:
+        return None
+    queue = fleet.queue
+    leases = fleet.leases
+    blockers = fleet.blockers
+    patches = fleet.patches
+    summary = (
+        f"queue {queue.total} lease {leases.total_active} "
+        f"blockers {blockers.total_blockers} patches {patches.total}"
+    )
+    return InspectorItemProjection(
+        item_id=f"{fleet.projection_id}:fleet",
+        source_kind="fleet_summary",
+        title="Fleet Summary",
+        status="read-only",
+        created_at=fleet.created_at,
+        summary=summary,
+    )
+
+
 def build_inspector_projection(
     session: SessionPaneProjection,
     evidence: EvidenceRailProjection,
     queue: QueueProjection | None = None,
     supervisor: RuntimeSupervisorProjection | None = None,
+    fleet: FleetProjection | None = None,
 ) -> InspectorProjection:
     """Build a content-light inspector projection from current dashboard state."""
     items: list[InspectorItemProjection] = []
@@ -349,6 +402,10 @@ def build_inspector_projection(
     blocker_item = _build_inspector_blocker_item(session)
     if blocker_item is not None:
         items.append(blocker_item)
+
+    fleet_item = _build_inspector_fleet_item(fleet) if fleet is not None else None
+    if fleet_item is not None:
+        items.append(fleet_item)
 
     if queue is not None:
         for item in queue.items:
@@ -395,6 +452,9 @@ class DashboardProjection(BaseModel):
     inspector: InspectorProjection = Field(default_factory=InspectorProjection)
     queue: QueueProjection = Field(default_factory=QueueProjection)
     fleet: FleetProjection | None = None
+    mission_router: MissionRouterProjection = Field(
+        default_factory=MissionRouterProjection
+    )
 
     @property
     def backlog_capped(self) -> list[str]:

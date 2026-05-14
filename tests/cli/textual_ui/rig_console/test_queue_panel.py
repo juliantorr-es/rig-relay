@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from textual.app import App, ComposeResult
 
 from vibe.cli.textual_ui.rig_console.projections import (
     QueueItemProjection,
@@ -124,3 +125,67 @@ class TestQueuePanelWidget:
         assert "local://queue/q-2" in text
         assert "sha256:receipt" in text
         assert "sha256:result" in text
+
+
+class _QueuePanelTestApp(App[None]):
+    """Minimal Textual app for headless Pilot testing of QueuePanelWidget."""
+
+    def __init__(self, projection: QueueProjection | None = None) -> None:
+        super().__init__()
+        self._projection = projection
+
+    def compose(self) -> ComposeResult:
+        yield QueuePanelWidget(self._projection)
+
+
+class TestQueuePanelPilot:
+    """Mounted Pilot tests for QueuePanelWidget using App.run_test."""
+
+    @pytest.mark.asyncio
+    async def test_queue_panel_mounts_empty(self) -> None:
+        """QueuePanel mounts with no projection (empty state)."""
+        app = _QueuePanelTestApp()
+        async with app.run_test(size=(80, 12)) as pilot:
+            panel = pilot.app.query_one(QueuePanelWidget)
+            assert panel._projection is None
+
+    @pytest.mark.asyncio
+    async def test_queue_panel_mounts_with_projection(self) -> None:
+        """QueuePanel mounts with a populated projection."""
+        projection = _queue_projection()
+        app = _QueuePanelTestApp(projection)
+        async with app.run_test(size=(80, 12)) as pilot:
+            panel = pilot.app.query_one(QueuePanelWidget)
+            assert panel._projection is not None
+            assert panel._projection.queued_count == 2
+
+    @pytest.mark.asyncio
+    async def test_queue_panel_shows_counts(self) -> None:
+        """QueuePanel renders queued/running/blocked/done counts."""
+        projection = _queue_projection()
+        app = _QueuePanelTestApp(projection)
+        async with app.run_test(size=(80, 12)) as pilot:
+            panel = pilot.app.query_one(QueuePanelWidget)
+            text = "\n".join(panel._render_lines()).lower()
+            assert "2 queued" in text
+            assert "1 running" in text
+            assert "1 blocked" in text
+            assert "1 done" in text
+
+    @pytest.mark.asyncio
+    async def test_queue_panel_update_projection(self) -> None:
+        """QueuePanel updates projection and re-renders."""
+        empty = QueueProjection(visible=True, empty_state="empty")
+        populated = _queue_projection()
+        app = _QueuePanelTestApp(empty)
+        async with app.run_test(size=(80, 12)) as pilot:
+            panel = pilot.app.query_one(QueuePanelWidget)
+
+            # Start empty
+            text = "\n".join(panel._render_lines()).lower()
+            assert "empty" in text
+
+            # Update with populated
+            panel.update_projection(populated)
+            text = "\n".join(panel._render_lines()).lower()
+            assert "2 queued" in text

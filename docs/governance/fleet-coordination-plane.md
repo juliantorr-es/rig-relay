@@ -1,6 +1,6 @@
 # Rig Fleet Coordination Plane
 
-**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05).**
+**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05). Phase 0 — Mission Router (Complete, 2026-05).**
 
 ## 1. Vision
 
@@ -212,7 +212,28 @@ All sub-models have `ConfigDict(extra="forbid")`. The `FleetProjection` JSON Sch
 
 `docs/schemas/rig.fleet.projection.v1.schema.json` — validates serialized `FleetProjection` JSON with `additionalProperties:false` on all nested objects.
 
-## 7. Storage Design
+## 7.7 Mission Router (Phase 0)
+
+The Mission Router (in `rig_relay/coordination/mission_router.py`) plans and routes mission batches into governed fleet primitives.
+
+### Key Responsibilities
+
+1.  **Normalization**: Parses raw mission text into `MissionNode` metadata.
+2.  **Classification**: Routes nodes to `local_runtime`, `delegated_agent`, `fleet`, `patch_proposal`, or `human_review` using deterministic heuristics.
+3.  **Dependency Planning**: Detects path and domain conflicts to organize nodes into sequential or parallel `runnable_groups`.
+4.  **Queue Compilation**: Transforms the plan into `FleetQueueItem` templates for the fleet queue.
+
+### Content-Light Boundary
+
+Mission plans never embed raw mission prompts. They provide `sanitized_text_summary` (first 200 chars) for UI visibility. Raw texts are retained only behind `payload_ref`.
+
+### Phase 0 Limitations
+
+- Deterministic heuristics only (no LLM-based decomposition).
+- Static planning at intake (no mid-mission re-routing).
+- No agent spawning or patch application.
+
+## 8. Storage Design
 
 - **Canonical Store**: Local files under `.rig/fleet/`.
   - `events.jsonl`: The primary event stream.
@@ -224,14 +245,14 @@ All sub-models have `ConfigDict(extra="forbid")`. The `FleetProjection` JSON Sch
   - The orchestrator or a background process maintains the index from `events.jsonl`.
 - **Concurrency**: File-system atomic replacement and optional flock are used as local-first guards.
 
-## 8. Failure Behavior
+## 9. Failure Behavior
 
 - **Heartbeat Expiry**: Agents must heartbeat. A missed heartbeat triggers lease expiry.
 - **Stale Lease Recovery**: The orchestrator may reclaim stale leases after a grace period.
 - **Idempotency**: All operations (especially `claim_paths` and `submit_patch`) must be idempotent based on `event_id` or `proposal_id`.
 - **Conflict Resolution**: The orchestrator is the final arbiter for conflicting claims.
 
-## 9. UI/Projections
+## 10. UI/Projections
 
 The Fleet Coordination Plane provides compact projections for:
 - **Fleet Pulse**: Active agents and their current tasks.
@@ -239,7 +260,7 @@ The Fleet Coordination Plane provides compact projections for:
 - **Message Board**: Recent inter-agent communications.
 - **Review Queue**: Pending patch proposals and review requests.
 
-## 10. Phase 0 — Patch Proposal Workflow
+## 11. Phase 0 — Patch Proposal Workflow
 
 **Design principle**: Agents propose; orchestrator disposes.
 

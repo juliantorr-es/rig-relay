@@ -82,7 +82,61 @@ The panel never mutates queue state and never executes queued actions. Use `u`
 to toggle the panel, `j`/`k` to navigate queue items, and `o` to send the
 selected queue item to the inspector when both views are present.
 
-## Queue Input
+## Fleet Panel
+
+The fleet panel is a read-only orchestration snapshot. It shows:
+
+- queue counts
+- next runnable item summary
+- replay diagnostics counts
+- active lease count
+- stale lease count
+- pending patch proposal count
+- accepted/rejected/revised counts when available
+- blocker totals and recent blocker/refusal summaries
+
+Use `f` to toggle the fleet panel, `Shift+f` to inspect the selected fleet
+summary, and `Ctrl+f` to refresh the fleet snapshot. The panel does not mutate
+queue, lease, or patch state.
+
+## Mission Router Panel
+
+The mission router panel (Phase 0) provides a read-only projection of the current mission planning state. It shows:
+
+- recent mission batch IDs and creation times
+- normalized mission node counts
+- route classification distribution (local, delegated, fleet, patch, review, blocked)
+- conflict and dependency counts
+- current plan summary
+
+The panel allows operators to inspect how a complex user request was decomposed and routed before it is compiled into the fleet queue. Like all TUI panels, it is read-only and does not trigger planning or routing directly.
+
+Use `m` to toggle the mission router panel when available.
+
+The Prompt Bar (`vibe/cli/textual_ui/rig_console/widgets/prompt_bar.py`) is the
+**primary** input surface. It uses Textual `Input` (single line).
+
+Behavior:
+- **Enter** queues a message. The callback routes through
+  `DashboardScreen._handle_queue_input`, creating a `QueueItemProjection` with
+  `kind="message"` and `status="queued"`.
+- **Empty/whitespace** input does nothing.
+- **Successful queue** clears the input and shows "Queued" status.
+- **Missing queue root** is safe — the bar shows disabled/refused status.
+- **Prompt body** is stored behind a `payload_ref` (`local://queue/<uuid>`).
+  The generic queue/fleet projection shows only the sanitized summary, not
+  the raw prompt body. Full prompt body persistence is deferred.
+- **Focus**: Press `f` to focus the prompt bar.
+
+The prompt bar does NOT execute anything directly. It only creates queue items.
+Executable work routes through `FleetQueueRunner` → `runtime_exec`.
+
+## Unified Prompt Input
+
+The **PromptBar** is the single active input surface for the dashboard. It handles:
+- Single-line instructions (direct enqueuing)
+- Multi-line or `/batch` missions (routed via `MissionRouter`)
+- Contextual steering (planned)
 
 The queue input bar is a local-only cockpit surface for staging the next
 message or action. It is read-only with respect to the governed runtime:
@@ -114,10 +168,10 @@ Dashboard action handler
 QueueRunnerBridge.run_next()
         │
         ▼
-FleetQueueRunner.run_once()
+QueueRunnerBridge dispatches the selected item once
         │
-        ├── VALIDATE  → RuntimeToolExecutionRunner.execute_validate()
-        └── RUNTIME_EXEC → RuntimeToolExecutionRunner.execute_runtime_exec()
+        ├── VALIDATE  → runtime_exec intent → RuntimeToolExecutionRunner.execute_runtime_exec()
+        └── RUNTIME_EXEC → runtime_exec intent → RuntimeToolExecutionRunner.execute_runtime_exec()
 ```
 
 The TUI never calls raw tools (`BaseTool`, `ToolError`, file I/O tools, bash)
@@ -128,7 +182,7 @@ directly. All executable queued actions route through the governed
 
 | Kind | Runtime Method | Notes |
 |---|---|---|
-| `VALIDATE` | `execute_validate()` | Lint/type-check the workspace |
+| `VALIDATE` | `execute_runtime_exec()` | Lint/type-check the workspace through governed runtime_exec |
 | `RUNTIME_EXEC` | `execute_runtime_exec()` | Run a named sub-tool |
 | `MESSAGE` | _(none)_ | Completes synchronously, no exec |
 | `HANDOFF_NOTE` | _(none)_ | Completes synchronously, no exec |
@@ -166,6 +220,9 @@ sub-tools.
 - `Ctrl+r` — Run next queued item (via QueueRunnerBridge)
 - `Ctrl+v` — Enqueue a validate item
 - `Ctrl+Enter` — Request steering for the current task
+- `f` — Toggle fleet panel
+- `Shift+f` — Inspect selected fleet summary
+- `Ctrl+f` — Refresh fleet snapshot
 
 ## What It Refuses To Show
 
@@ -208,23 +265,82 @@ No mutation keybindings are defined here.
 
 ## Command Palette
 
-The dashboard also exposes the same safe read-only actions through the Textual
-command palette:
+The dashboard also exposes safe actions through the Textual command palette.
+Entries are auto-generated from `SAFE_ACTIONS` in `actions.py`:
 
 - Refresh
+- Run Validate
 - Help
 - Toggle Details
 - Queue Message
 - Steer Current Task
 - Clear Input
 - Toggle Queue Panel
+- Run Next Queued Item
+- Queue Validate
+- Refresh Queue
 - Runtime Status
 - Leases
 - Audit Timeline
 - Copy Receipt Ref
 
 Command execution routes through the dashboard action registry. The palette is
-read-only in this mission and must not bypass governed runtime execution.
+read-only and must not bypass governed runtime execution.
+
+## Queue Actions
+
+Three safe queue actions are exposed through palette/keybindings:
+
+| Action | Key | Behavior |
+|---|---|---|
+| Run Next Queued Item | `action_queue_run_next` | Runs one eligible queue item through `FleetQueueRunner` via the `QueueRunnerBridge` |
+| Queue Validate | `action_queue_validate` | Enqueues a validate item; does NOT execute it |
+| Refresh Queue | `action_queue_refresh` | Rebuilds queue projection from stored events |
+
+**One item per action.** Phase 0 — no batch execution. Each call to
+`action_queue_run_next` processes exactly one item via `runner.run_once()`.
+
+**Non-blocking.** Queue actions use Textual `run_worker()` to avoid freezing
+the UI. Running state is shown in the footer status line.
+
+**State transitions.** After execution, `FleetQueueRunner` transitions items
+through event-sourced states: `queued → running → completed / failed / blocked`.
+Failures from the runner (e.g. `mark_failed`, `mark_blocked`) are reflected in
+queue projection counts.
+
+**Missing roots.** If `QueueRunnerBridge` is unavailable (no coordination root
+or runtime executor), actions return `blocked` status with a descriptive
+`error_kind`. The UI shows the status in the footer and never crashes.
+
+**No bypass.** Queue actions never call raw tools directly. All executable
+items route through `FleetQueueRunner._dispatch_runtime_exec()` which creates
+a `RuntimeToolIntent` and resolves through governed `runtime_exec` paths.
+
+## Queue Runner Integration
+
+The `QueueRunnerBridge` in `queue_runner.py` is the TUI's sole surface for
+triggering queue item execution. It:
+
+- Locates the `FleetQueue` at `<coordination_root>/queue/events.jsonl`
+- Constructs a `FleetQueueRunner` with the coordination root's executor
+- Calls `run_once()` for one item per action
+- Returns a `FleetQueueRunnerResult` with content-light metadata only
+- Never blocks — callers use Textual workers
+
+The bridge is lazily constructed by `RuntimeDashboardProjectionProvider` via
+`_queue_bridge()`, which creates a `QueueRunnerBridge` from the provider's
+`coordination_root` and `_runner()` when first needed.
+
+## Deferred Actions (Phase 0)
+
+The following are NOT implemented in Phase 0:
+
+- **Steer current task** — steering is a safe-placeholder; no live steering semantics
+- **Full prompt persistence** — prompt bodies are stored behind `payload_ref` only; no durable persistence UI
+- **Multi-item scheduler** — one item per action; no batch execution
+- **write_file/search_replace/bash dedicated controls** — not added to TUI
+- **Patch proposal review/apply** — future phase
+- **Persistent multi-agent queue orchestration** — future phase
 
 ## Related Docs
 
