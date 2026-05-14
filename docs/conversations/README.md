@@ -39,3 +39,4 @@ Rules:
 | 2025-06-13 | rig-relay | no-phase | test suite quality audit | summary | [2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md](2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md) |
 | 2026-05-13 | rig-relay | phase-p3 | audit trail adapter coordination | summary | [2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md](2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md) |
 | 2026-05-14 | rig-relay | phase-3-to-5 | fleet coordination completion | summary | [2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md](2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md) |
+| 2026-05-14 | rig-relay | phase-k | context compiler phase 3 repo index | summary | [2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md](2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md) |

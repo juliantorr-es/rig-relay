@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 from textual.app import App, ComposeResult
 
+from vibe.cli.textual_ui.rig_console.session_events import SubmitPromptResult
 from vibe.cli.textual_ui.rig_console.widgets.prompt_bar import PromptBar
 
 _FORBIDDEN = (
@@ -55,14 +56,14 @@ class TestPromptBarWidget:
         bar = PromptBar()
         bar.set_status("Queued")
         if bar._status is not None:
-            assert bar._status._renderable == "Queued"
+            assert str(bar._status.render()) == "Queued"
 
     def test_set_disabled_state(self) -> None:
         bar = PromptBar()
         bar.set_disabled(True, "Queue unavailable")
         assert bar._disabled is True
         if bar._status is not None:
-            assert "unavailable" in str(bar._status._renderable).lower()
+            assert "unavailable" in str(bar._status.render()).lower()
 
     def test_set_disabled_without_status(self) -> None:
         bar = PromptBar()
@@ -79,7 +80,9 @@ class TestPromptBarWidget:
         callback.assert_called_once_with("test message")
 
     def test_submit_clears_input(self) -> None:
-        callback = MagicMock()
+        callback = MagicMock(
+            return_value=SubmitPromptResult(accepted=True, status="Queued")
+        )
         bar = PromptBar(on_submit=callback)
         mock = MagicMock()
         bar._input = mock
@@ -89,7 +92,7 @@ class TestPromptBarWidget:
         bar.on_input_submitted(event)
         assert bar.value == ""
 
-    def test_submit_sets_queued_status(self) -> None:
+    def test_submit_sets_submitting_status(self) -> None:
         callback = MagicMock()
         bar = PromptBar(on_submit=callback)
         mock = MagicMock()
@@ -99,7 +102,7 @@ class TestPromptBarWidget:
         event.stop = MagicMock()
         bar.on_input_submitted(event)
         if bar._status is not None:
-            assert "Queued" in str(bar._status._renderable)
+            assert "Submitting" in str(bar._status.render())
 
     def test_submit_whitespace_does_nothing(self) -> None:
         callback = MagicMock()
@@ -125,7 +128,7 @@ class TestPromptBarNoForbiddenRaw:
         bar = PromptBar()
         bar.set_status("Queued")
         if bar._status is not None:
-            text = str(bar._status._renderable)
+            text = str(bar._status.render())
             assert not any(field in text.lower() for field in _FORBIDDEN)
 
 
@@ -224,15 +227,17 @@ class TestPromptBarPilot:
             await pilot.press(*"queue this")
             await pilot.press("enter")
 
-            # Status should show "Queued"
+            # Status should show "Submitting"
             assert bar._status is not None
             rendered = str(bar._status.render())
-            assert "Queued" in rendered
+            assert "Submitting" in rendered
 
     @pytest.mark.asyncio
     async def test_prompt_bar_clear_resets_value(self) -> None:
         """After submit the input is cleared."""
-        callback = MagicMock()
+        callback = MagicMock(
+            return_value=SubmitPromptResult(accepted=True, status="Queued")
+        )
         app = _PromptBarTestApp(on_submit=callback)
         async with app.run_test(size=(80, 6)) as pilot:
             bar = pilot.app.query_one(PromptBar)

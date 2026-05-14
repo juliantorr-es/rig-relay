@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Static
@@ -27,12 +29,12 @@ StatusBarWidget > .status-left {
 }
 
 StatusBarWidget > .status-center {
-    width: 60%;
+    width: 45%;
     text-align: center;
 }
 
 StatusBarWidget > .status-right {
-    width: 20%;
+    width: 35%;
     text-align: right;
 }
 """
@@ -40,6 +42,7 @@ StatusBarWidget > .status-right {
     def __init__(self, projection: DashboardProjection | None = None) -> None:
         super().__init__()
         self._projection = projection
+        self._context_envelope: Any | None = None
 
     def compose(self) -> ComposeResult:
         yield Static(self._render_mode(), classes="status-left")
@@ -51,6 +54,13 @@ StatusBarWidget > .status-right {
         self.query_one(".status-left", Static).update(self._render_mode())
         self.query_one(".status-center", Static).update(self._render_hint())
         self.query_one(".status-right", Static).update(self._render_metrics())
+
+    def set_context_envelope(self, envelope: Any | None) -> None:
+        self._context_envelope = envelope
+        try:
+            self.query_one(".status-right", Static).update(self._render_metrics())
+        except Exception:
+            pass
 
     def _render_mode(self) -> str:
         if not self._projection:
@@ -64,7 +74,6 @@ StatusBarWidget > .status-right {
 
         hint = self._projection.footer_hint or "Ready"
 
-        # Add Validation Economy if available
         econ = self._projection.validation_economy
         if econ:
             skipped_sec = econ.work_skipped_ms / 1000
@@ -73,10 +82,15 @@ StatusBarWidget > .status-right {
         return hint
 
     def _render_metrics(self) -> str:
-        if not self._projection:
-            return ""
-        q = self._projection.queue
-        return f"Q: {q.queued_count}  R: {q.running_count}  B: {q.blocked_count}"
+        parts: list[str] = []
+        if self._context_envelope:
+            env = self._context_envelope
+            cache = "hit" if env.is_cached else "miss"
+            parts.append(f"CTX: {env.section_count}s·{cache}")
+        q = self._projection.queue if self._projection else None
+        if q:
+            parts.append(f"Q: {q.queued_count} R: {q.running_count} B: {q.blocked_count}")
+        return "  ".join(parts) if parts else ""
 
 
 __all__ = ["StatusBarWidget"]

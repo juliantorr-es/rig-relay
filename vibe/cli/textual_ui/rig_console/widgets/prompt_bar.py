@@ -12,6 +12,8 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Input, Static
 
+from vibe.cli.textual_ui.rig_console.session_events import SubmitPromptResult
+
 
 class PromptBar(Horizontal):
     """Single-line prompt bar for queueing instructions.
@@ -53,7 +55,7 @@ PromptBar:focus-within {
 
     def __init__(
         self,
-        on_submit: Callable[[str], None] | None = None,
+        on_submit: Callable[[str], object | None] | None = None,
         placeholder: str = "Queue instruction…",
         disabled: bool = False,
     ) -> None:
@@ -83,8 +85,13 @@ PromptBar:focus-within {
         if not text:
             return
         if self._on_submit is not None:
-            self._on_submit(text)
-            self.set_status("Queued")
+            result = self._on_submit(text)
+            if isinstance(result, SubmitPromptResult):
+                self.set_status(result.status)
+                if result.accepted:
+                    self.clear_input()
+            else:
+                self.set_status("Submitting")
 
     def clear_input(self) -> None:
         if self._input is not None:

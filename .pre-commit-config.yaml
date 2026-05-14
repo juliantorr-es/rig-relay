@@ -33,3 +33,11 @@ repos:
       - id: typos
         args: [--write-changes]
         exclude: __snapshots__/.*\.svg$
+
+  - repo: local
+    hooks:
+      - id: textual-validator
+        name: Textual TUI lint
+        entry: uv run python scripts/rig_relay_textual_validator.py
+        language: system
+        files: ^vibe/cli/textual_ui/

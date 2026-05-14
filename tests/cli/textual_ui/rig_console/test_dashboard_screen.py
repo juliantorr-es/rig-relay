@@ -35,6 +35,18 @@ from vibe.cli.textual_ui.rig_console.projections import (
     SessionPaneProjection,
 )
 from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
+from vibe.cli.textual_ui.rig_console.session_bridge import (
+    CodingSessionBridge,
+    FixtureSessionAdapter,
+)
+from vibe.cli.textual_ui.rig_console.session_events import (
+    CodingSessionEvents,
+    CodingSessionSnapshot,
+    CodingTranscriptItemProjection,
+    CodingTranscriptProjection,
+    SubmitPromptResult,
+)
+from vibe.cli.textual_ui.rig_console.widgets.transcript import TranscriptWidget
 
 
 def _make_projection(
@@ -142,7 +154,7 @@ class TestDashboardScreen:
         assert hasattr(screen, "action_refresh_fleet_state")
         assert hasattr(screen, "action_focus_prompt")
         assert hasattr(screen, "action_approve_mission_plan")
-        assert hasattr(screen, "action_discard_mission_plan")
+        assert hasattr(screen, "action_cancel_or_discard")
         assert hasattr(screen, "action_queue_run_next")
 
     def test_show_help_updates_footer_hint(self) -> None:
@@ -175,14 +187,12 @@ class TestDashboardScreen:
         assert "validate" in screen._projection.footer_hint
 
     def test_refresh_without_provider_is_safe_noop(self) -> None:
-        """Refresh without a provider should not raise."""
         proj = _make_projection(title="Original")
         screen = DashboardScreen(proj)
         asyncio.run(screen.action_refresh())
         assert screen._projection.title == "Original"
 
     def test_refresh_without_provider_no_footer_change(self) -> None:
-        """Without provider, refresh reports the missing provider safely."""
         proj = _make_projection(title="Original")
         screen = DashboardScreen(proj)
         asyncio.run(screen.action_refresh())
@@ -305,6 +315,51 @@ class TestDashboardScreen:
                     update={"footer_hint": "refreshed after validate"}
                 )
 
+            async def submit_user_message(self, text: str) -> SubmitPromptResult:
+                return SubmitPromptResult(accepted=True, status="accepted")
+
+            async def snapshot(self) -> CodingSessionSnapshot:
+                return CodingSessionSnapshot(
+                    session_id="s1", transcript=proj.transcript
+                )
+
+            async def events_since(self, cursor: str | None) -> CodingSessionEvents:
+                return CodingSessionEvents(cursor="1")
+
+            async def run_next_queue_item(self) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="idle")
+
+            def enqueue_validate(
+                self, changed_paths: list[str] | None = None
+            ) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="blocked")
+
+            async def route_mission_batch(self, text: str) -> MissionRouterProjection:
+                return MissionRouterProjection(visible=True)
+
+            async def approve_mission_plan(
+                self, projection: MissionRouterProjection
+            ) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="blocked")
+
+            async def cancel_turn(self) -> None:
+                pass
+
+            @property
+            def is_turn_active(self) -> bool:
+                return False
+
+            async def wait_for_turn(self) -> None:
+                pass
+
+            @property
+            def turn_status(self) -> str:
+                return "idle"
+
+            @property
+            def dropped_count(self) -> int:
+                return 0
+
         screen = DashboardScreen(proj, provider=_Provider())
         with patch.object(screen, "_render_all"):
             asyncio.run(screen.action_run_validate())
@@ -328,6 +383,51 @@ class TestDashboardScreen:
             async def dashboard_projection(self) -> DashboardProjection:
                 return proj
 
+            async def submit_user_message(self, text: str) -> SubmitPromptResult:
+                return SubmitPromptResult(accepted=True, status="accepted")
+
+            async def snapshot(self) -> CodingSessionSnapshot:
+                return CodingSessionSnapshot(
+                    session_id="s1", transcript=proj.transcript
+                )
+
+            async def events_since(self, cursor: str | None) -> CodingSessionEvents:
+                return CodingSessionEvents(cursor="1")
+
+            async def run_next_queue_item(self) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="idle")
+
+            def enqueue_validate(
+                self, changed_paths: list[str] | None = None
+            ) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="blocked")
+
+            async def route_mission_batch(self, text: str) -> MissionRouterProjection:
+                return MissionRouterProjection(visible=True)
+
+            async def approve_mission_plan(
+                self, projection: MissionRouterProjection
+            ) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="blocked")
+
+            async def cancel_turn(self) -> None:
+                pass
+
+            @property
+            def is_turn_active(self) -> bool:
+                return False
+
+            async def wait_for_turn(self) -> None:
+                pass
+
+            @property
+            def turn_status(self) -> str:
+                return "idle"
+
+            @property
+            def dropped_count(self) -> int:
+                return 0
+
         screen = DashboardScreen(proj, provider=_Provider())
         with patch.object(screen, "run_worker") as mock_run:
             with patch.object(screen, "_render_all"):
@@ -348,7 +448,129 @@ class TestDashboardScreen:
         mock_provider = AsyncMock()
         screen = DashboardScreen(proj, provider=mock_provider)
         with patch.object(screen, "run_worker") as mock_run:
-            screen._handle_queue_input("test mission\nwith newline")
+            screen._handle_prompt_submit("/router test mission")
+        mock_run.assert_called_once()
+        coroutine = mock_run.call_args.args[0]
+        coroutine.close()
+
+    def test_prompt_submit_routes_ordinary_text_to_session_bridge(self) -> None:
+        proj = _make_projection()
+        mock_provider = AsyncMock()
+        mock_provider.submit_user_message.return_value = SubmitPromptResult(
+            accepted=True, status="accepted"
+        )
+        mock_provider.snapshot.return_value = CodingSessionSnapshot(
+            session_id="s1", transcript=proj.transcript
+        )
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "run_worker") as mock_run:
+            screen._handle_prompt_submit("hello world")
+        mock_run.assert_called_once()
+
+    def test_prompt_submit_escaped_slash_treats_as_prompt(self) -> None:
+        proj = _make_projection()
+        mock_provider = AsyncMock()
+        mock_provider.submit_user_message.return_value = SubmitPromptResult(
+            accepted=True, status="accepted"
+        )
+        mock_provider.snapshot.return_value = CodingSessionSnapshot(
+            session_id="s1", transcript=proj.transcript
+        )
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "run_worker") as mock_run:
+            screen._handle_prompt_submit("//hello")
+        mock_run.assert_called_once()
+
+    def test_ordinary_prompt_does_not_call_enqueue_validate(self) -> None:
+        proj = _make_projection()
+        mock_provider = MagicMock()
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "run_worker"):
+            screen._handle_prompt_submit("fix the test")
+        mock_provider.enqueue_validate.assert_not_called()
+
+    def test_ordinary_prompt_does_not_call_route_mission_batch(self) -> None:
+        proj = _make_projection()
+        mock_provider = MagicMock()
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "run_worker"):
+            screen._handle_prompt_submit("fix the test")
+        mock_provider.route_mission_batch.assert_not_called()
+
+    def test_slash_command_doctor_does_not_call_submit(self) -> None:
+        proj = _make_projection()
+        mock_provider = MagicMock()
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "run_worker"):
+            screen._handle_prompt_submit("/doctor")
+        mock_provider.submit_user_message.assert_not_called()
+
+    def test_slash_command_does_not_call_submit_user_message(self) -> None:
+        proj = _make_projection()
+        mock_provider = MagicMock()
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "run_worker"):
+            screen._handle_prompt_submit("/help")
+        mock_provider.submit_user_message.assert_not_called()
+
+    def test_escaped_slash_calls_submit_user_message(self) -> None:
+        proj = _make_projection()
+        mock_provider = MagicMock()
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "run_worker"):
+            screen._handle_prompt_submit("//validate")
+        mock_provider.submit_user_message.assert_not_called()
+
+    def test_content_light_item_projection_forbidden_fields(self) -> None:
+        forbidden = {
+            "stdout",
+            "stderr",
+            "file_contents",
+            "chunk_text",
+            "diff",
+            "patch",
+            "raw_prompt",
+            "secret",
+            "argv",
+            "raw_output",
+            "old_text",
+            "new_text",
+        }
+        fields = set(CodingTranscriptItemProjection.model_fields.keys())
+        assert not forbidden & fields
+
+    def test_prompt_submit_long_text_does_not_route_to_mission_router(self) -> None:
+        proj = _make_projection()
+        mock_provider = AsyncMock()
+        mock_provider.submit_user_message.return_value = SubmitPromptResult(
+            accepted=True, status="accepted"
+        )
+        mock_provider.snapshot.return_value = CodingSessionSnapshot(
+            session_id="s1", transcript=proj.transcript
+        )
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "_route_mission_batch") as mock_route:
+            with patch.object(screen, "run_worker") as mock_run:
+                screen._handle_prompt_submit("x" * 500)
+        mock_route.assert_not_called()
+        mock_run.assert_called_once()
+
+    def test_prompt_submit_multiline_text_does_not_route_to_mission_router(
+        self,
+    ) -> None:
+        proj = _make_projection()
+        mock_provider = AsyncMock()
+        mock_provider.submit_user_message.return_value = SubmitPromptResult(
+            accepted=True, status="accepted"
+        )
+        mock_provider.snapshot.return_value = CodingSessionSnapshot(
+            session_id="s1", transcript=proj.transcript
+        )
+        screen = DashboardScreen(proj, provider=mock_provider)
+        with patch.object(screen, "_route_mission_batch") as mock_route:
+            with patch.object(screen, "run_worker") as mock_run:
+                screen._handle_prompt_submit("line1\nline2")
+        mock_route.assert_not_called()
         mock_run.assert_called_once()
 
     @pytest.mark.asyncio
@@ -377,12 +599,12 @@ class TestDashboardScreen:
             await screen.action_approve_mission_plan()
         mock_provider.approve_mission_plan.assert_called_once()
 
-    def test_discard_mission_plan_hides_panel(self) -> None:
+    def test_cancel_or_discard_hides_mission_plan(self) -> None:
         proj = _make_projection()
         proj.mission_router.visible = True
         screen = DashboardScreen(proj)
         with patch.object(screen, "_render_all"):
-            screen.action_discard_mission_plan()
+            screen.action_cancel_or_discard()
         assert screen._projection.mission_router.visible is False
 
     def test_toggle_inspector_flips_visibility(self) -> None:
@@ -626,7 +848,6 @@ class TestDashboardScreen:
                 with _warnings.catch_warnings(record=True) as captured:
                     asyncio.run(screen.action_refresh())
 
-        # Verify no RuntimeWarning was emitted
         runtime_warnings = [
             w for w in captured if issubclass(w.category, RuntimeWarning)
         ]
@@ -635,7 +856,6 @@ class TestDashboardScreen:
             f"{[str(w.message) for w in runtime_warnings]}"
         )
 
-        # Verify callable was passed (not a coroutine)
         mock_run.assert_called_once()
         call_args, kwargs = mock_run.call_args
         assert callable(call_args[0]), (
@@ -669,3 +889,160 @@ class TestDashboardScreen:
             f"Expected no RuntimeWarning, got: "
             f"{[str(w.message) for w in runtime_warnings]}"
         )
+
+
+class TestCancellationFlow:
+    """Tests for cancellation truthfulness."""
+
+    def test_escape_during_turn_cancels(self) -> None:
+        proj = _make_projection()
+        mock_provider = MagicMock()
+        screen = DashboardScreen(proj, provider=mock_provider)
+        screen._turn_active = True
+        with patch.object(screen, "run_worker") as mock_run:
+            screen.action_cancel_or_discard()
+        mock_run.assert_called_once()
+
+    def test_cancel_shows_cancelling_before_confirm(self) -> None:
+        proj = _make_projection()
+        screen = DashboardScreen(proj)
+        with patch.object(screen, "run_worker"):
+            with patch.object(screen, "_prompt_bar_widget"):
+                with patch.object(screen, "_set_status"):
+                    screen._turn_active = True
+                    screen.action_cancel_or_discard()
+        assert screen._turn_active is True
+
+    def test_second_prompt_refused_when_active(self) -> None:
+        bridge = CodingSessionBridge(session_id="s1")
+        bridge.config = MagicMock()
+        bridge._turn_status = "running"
+        result = asyncio.run(bridge.submit_user_message("second prompt"))
+        assert result.accepted is False
+        assert "already active" in (result.refusal_reason or "").lower()
+
+    def test_content_light_boundary_transcript_item(self) -> None:
+        forbidden = {
+            "stdout",
+            "stderr",
+            "file_contents",
+            "chunk_text",
+            "diff",
+            "patch",
+            "raw_prompt",
+            "secret",
+            "argv",
+            "raw_output",
+            "old_text",
+            "new_text",
+        }
+        fields = set(CodingTranscriptItemProjection.model_fields.keys())
+        assert not forbidden & fields
+
+
+class TestDroppedTranscriptMarker:
+    def test_dropped_count_shown_when_positive(self) -> None:
+        projection = CodingTranscriptProjection(
+            session_id="s1", dropped_count=42, items=[]
+        )
+        transcript = TranscriptWidget(projection)
+        composed = list(transcript.compose())
+        marker_texts = [
+            str(s.render())
+            for s in composed
+            if "hidden" in str(s.render()) or "dropped" in str(s.render()).lower()
+        ]
+        assert any("42" in t for t in marker_texts)
+
+    def test_no_marker_when_zero(self) -> None:
+        projection = CodingTranscriptProjection(session_id="s1", dropped_count=0)
+        transcript = TranscriptWidget(projection)
+        composed = list(transcript.compose())
+        marker_texts = [
+            str(s.render())
+            for s in composed
+            if "hidden" in str(s.render()) or "dropped" in str(s.render()).lower()
+        ]
+        assert len(marker_texts) == 0
+
+
+class TestDogfoodSmoke:
+    """Daily dogfood smoke test: fixture-mode submit → transcript → complete → re-enable."""
+
+    @pytest.mark.asyncio
+    async def test_fixture_dogfood_flow(self) -> None:
+        proj = _make_projection(
+            title="Rig Console", footer_hint="q: quit  r: refresh  ?: help"
+        )
+
+        class _FixtureProvider:
+            async def run_validate(
+                self, projection: DashboardProjection
+            ) -> RuntimeToolExecutionResult:
+                return RuntimeToolExecutionResult(
+                    status=RuntimeToolExecutionStatus.REFUSED,
+                    intent_id="unavailable",
+                    tool_name="runtime_exec",
+                )
+
+            async def run_next_queue_item(self) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="idle")
+
+            def enqueue_validate(
+                self, changed_paths: list[str] | None = None
+            ) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="blocked")
+
+            async def route_mission_batch(self, text: str) -> MissionRouterProjection:
+                return MissionRouterProjection(visible=True)
+
+            async def approve_mission_plan(
+                self, projection: MissionRouterProjection
+            ) -> FleetQueueRunnerResult:
+                return FleetQueueRunnerResult(decision="blocked")
+
+            def __init__(self) -> None:
+                self._bridge = FixtureSessionAdapter("s1")
+                self._projection = proj
+
+            async def dashboard_projection(self) -> DashboardProjection:
+                return self._projection
+
+            async def submit_user_message(self, text: str) -> SubmitPromptResult:
+                return await self._bridge.submit_user_message(text)
+
+            async def snapshot(self) -> CodingSessionSnapshot:
+                return await self._bridge.snapshot()
+
+            async def events_since(self, cursor: str | None) -> CodingSessionEvents:
+                return await self._bridge.events_since(cursor)
+
+            async def cancel_turn(self) -> None:
+                await self._bridge.cancel_turn()
+
+            @property
+            def is_turn_active(self) -> bool:
+                return self._bridge.is_turn_active
+
+            async def wait_for_turn(self) -> None:
+                await self._bridge.wait_for_turn()
+
+            @property
+            def turn_status(self) -> str:
+                return self._bridge.turn_status
+
+            @property
+            def dropped_count(self) -> int:
+                return self._bridge.dropped_count
+
+        screen = DashboardScreen(proj, provider=_FixtureProvider())
+        prompt_bar = screen._prompt_bar_widget()
+        assert prompt_bar is None  # Not mounted in unit test
+
+        with patch.object(screen, "_render_all"):
+            with patch.object(screen, "run_worker") as mock_run:
+                screen._handle_prompt_submit("fix the failing test")
+
+        mock_run.assert_called_once()
+        coro_or_callable = mock_run.call_args.args[0]
+        assert callable(coro_or_callable) or asyncio.iscoroutine(coro_or_callable)

@@ -34,20 +34,19 @@ class TestFooterStatusWidget:
         proj = _make_dashboard()
         widget = FooterStatusWidget(proj)
         children = list(widget.compose())
-        # backlog static only (no hint)
-        assert len(children) == 1
+        assert len(children) == 2
 
     def test_compose_with_hint(self) -> None:
         proj = _make_dashboard(footer_hint="q: quit")
         widget = FooterStatusWidget(proj)
         children = list(widget.compose())
-        assert len(children) == 2  # hint + backlog
+        assert len(children) == 3
 
     def test_compose_with_backlog(self) -> None:
         proj = _make_dashboard(backlog_items=["Approve change", "Review report"])
         widget = FooterStatusWidget(proj)
         children = list(widget.compose())
-        assert len(children) == 1  # backlog only (no hint)
+        assert len(children) == 2
 
     def test_compose_with_hint_and_backlog(self) -> None:
         proj = _make_dashboard(
@@ -55,7 +54,7 @@ class TestFooterStatusWidget:
         )
         widget = FooterStatusWidget(proj)
         children = list(widget.compose())
-        assert len(children) == 2  # hint + backlog
+        assert len(children) == 3
 
     def test_build_backlog_text_empty(self) -> None:
         proj = _make_dashboard()

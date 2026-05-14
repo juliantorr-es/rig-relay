@@ -22,6 +22,7 @@ from typing import Any, Protocol
 from git import Repo
 from pydantic import BaseModel, ConfigDict, Field
 
+from rig_relay.context.models import ContextEnvelopeReceipt
 from rig_relay.coordination.fleet_projection import (
     FleetLeaseSummary,
     FleetProjection,
@@ -35,6 +36,7 @@ from rig_relay.coordination.mission_router import MissionBatch, MissionRouter
 from rig_relay.coordination.models import CoordinationSession
 from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
 from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord, build_receipt_index
+from rig_relay.evidence.receipt_store import FilesystemReceiptStore, ReceiptStore
 from rig_relay.runtime.context_resolver import RuntimeContextResolver
 from rig_relay.runtime.runtime_audit_event import RuntimeAuditPersistenceStore
 from rig_relay.runtime.runtime_supervisor_projection import (
@@ -60,6 +62,15 @@ from vibe.cli.textual_ui.rig_console.projections import (
     evidence_rail_from_receipt_index,
 )
 from vibe.cli.textual_ui.rig_console.queue_runner import QueueRunnerBridge
+from vibe.cli.textual_ui.rig_console.session_bridge import (
+    CodingSessionBridge,
+    FixtureSessionAdapter,
+)
+from vibe.cli.textual_ui.rig_console.session_events import (
+    CodingSessionEvents,
+    CodingSessionSnapshot,
+    SubmitPromptResult,
+)
 
 _PROVIDER_PATH_CAP = 10
 
@@ -196,6 +207,41 @@ class DashboardProjectionProvider(Protocol):
         """Approve and enqueue the items from a mission plan."""
         ...
 
+    async def submit_user_message(self, text: str) -> SubmitPromptResult:
+        """Submit a normal coding prompt into the active session bridge."""
+        ...
+
+    async def snapshot(self) -> CodingSessionSnapshot:
+        """Return a content-light coding session snapshot."""
+        ...
+
+    async def events_since(self, cursor: str | None) -> CodingSessionEvents:
+        """Return transcript events after the given cursor."""
+        ...
+
+    async def cancel_turn(self) -> None:
+        """Cancel the active turn (no-op if idle)."""
+        ...
+
+    @property
+    def is_turn_active(self) -> bool:
+        """True when a prompt turn is currently executing."""
+        ...
+
+    async def wait_for_turn(self) -> None:
+        """Wait for the active turn to finish."""
+        ...
+
+    @property
+    def turn_status(self) -> str:
+        """Current turn status: idle, running, completed, failed, cancelled."""
+        ...
+
+    @property
+    def dropped_count(self) -> int:
+        """Number of transcript items pruned from memory."""
+        ...
+
 
 class FixtureDashboardProjectionProvider:
     """Fixture provider that returns a fixed DashboardProjection.
@@ -206,6 +252,9 @@ class FixtureDashboardProjectionProvider:
 
     def __init__(self, projection: DashboardProjection) -> None:
         self._projection = projection
+        self._session_bridge = FixtureSessionAdapter(
+            session_id=projection.session.session_id, receipt_store=None
+        )
 
     async def dashboard_projection(self) -> DashboardProjection:
         """Return the fixed fixture projection."""
@@ -259,6 +308,33 @@ class FixtureDashboardProjectionProvider:
             ],
         )
 
+    async def submit_user_message(
+        self, text: str, context_envelope: ContextEnvelopeReceipt | None = None
+    ) -> SubmitPromptResult:
+        return await self._session_bridge.submit_user_message(
+            text, context_envelope=context_envelope
+        )
+
+    async def snapshot(self) -> CodingSessionSnapshot:
+        return await self._session_bridge.snapshot()
+
+    async def events_since(self, cursor: str | None) -> CodingSessionEvents:
+        return await self._session_bridge.events_since(cursor)
+
+    async def cancel_turn(self) -> None:
+        await self._session_bridge.cancel_turn()
+
+    @property
+    def is_turn_active(self) -> bool:
+        return self._session_bridge.is_turn_active
+
+    async def wait_for_turn(self) -> None:
+        await self._session_bridge.wait_for_turn()
+
+    @property
+    def turn_status(self) -> str:
+        return self._session_bridge.turn_status
+
     async def approve_mission_plan(
         self, projection: MissionRouterProjection
     ) -> FleetQueueRunnerResult:
@@ -309,6 +385,15 @@ class RuntimeDashboardProjectionProvider:
         self._validate_runner: RuntimeToolExecutionRunner | None = None
         self._mission_router = MissionRouter()
         self._active_plans: dict[str, Any] = {}  # plan_id -> MissionPlan
+        self._receipt_store: ReceiptStore | None = None
+        try:
+            receipt_root = (session_root or Path.home() / ".rig" / "relay").resolve()
+            self._receipt_store = FilesystemReceiptStore(receipt_root)
+        except Exception:
+            pass
+        self._session_bridge = CodingSessionBridge(
+            session_id=session_id, receipt_store=self._receipt_store
+        )
 
     async def dashboard_projection(self) -> DashboardProjection:
         """Build a DashboardProjection from available local evidence.
@@ -353,6 +438,7 @@ class RuntimeDashboardProjectionProvider:
             inspector=inspector,
             queue=queue or QueueProjection(),
             fleet=fleet,
+            transcript=(await self.snapshot()).transcript,
         )
 
     def _build_session(
@@ -708,6 +794,41 @@ class RuntimeDashboardProjectionProvider:
         return FleetQueueRunnerResult(
             decision="completed", reason=f"Enqueued {len(templates)} items"
         )
+
+    async def submit_user_message(
+        self, text: str, context_envelope: ContextEnvelopeReceipt | None = None
+    ) -> SubmitPromptResult:
+        return await self._session_bridge.submit_user_message(
+            text, context_envelope=context_envelope
+        )
+
+    async def snapshot(self) -> CodingSessionSnapshot:
+        return await self._session_bridge.snapshot()
+
+    async def events_since(self, cursor: str | None) -> CodingSessionEvents:
+        return await self._session_bridge.events_since(cursor)
+
+    async def cancel_turn(self) -> None:
+        await self._session_bridge.cancel_turn()
+
+    @property
+    def is_turn_active(self) -> bool:
+        return self._session_bridge.is_turn_active
+
+    async def wait_for_turn(self) -> None:
+        await self._session_bridge.wait_for_turn()
+
+    @property
+    def turn_status(self) -> str:
+        return self._session_bridge.turn_status
+
+    @property
+    def dropped_count(self) -> int:
+        return self._session_bridge.dropped_count
+
+    @property
+    def receipt_store(self) -> ReceiptStore | None:
+        return self._receipt_store
 
 
 def _queue_title(kind: str, payload: dict[str, Any]) -> str:

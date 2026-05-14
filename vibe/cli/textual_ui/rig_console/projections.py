@@ -17,6 +17,7 @@ from rig_relay.desktop.execution_progress import ExecutionProgressProjection
 from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord
 from rig_relay.runtime.runtime_audit_event import RuntimeAuditEvent
 from rig_relay.runtime.runtime_supervisor_projection import RuntimeSupervisorProjection
+from vibe.cli.textual_ui.rig_console.session_events import CodingTranscriptProjection
 
 _EVIDENCE_RAIL_CAP = 20
 _DASHBOARD_BACKLOG_CAP = 5
@@ -317,6 +318,15 @@ class MissionRouterProjection(BaseModel):
     empty_state: str = "No mission plan active"
 
 
+class TranscriptItemProjection(BaseModel):
+    """Content-light transcript item for prompt-first shell flow."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str
+    text: str
+
+
 def _build_inspector_audit_item(event: RuntimeAuditEvent) -> InspectorItemProjection:
     summary = f"{event.status} {event.tool_name}"
     return InspectorItemProjection(
@@ -469,6 +479,9 @@ class DashboardProjection(BaseModel):
         default_factory=MissionRouterProjection
     )
     validation_economy: ValidationEconomyProjection | None = None
+    transcript: CodingTranscriptProjection = Field(
+        default_factory=lambda: CodingTranscriptProjection(session_id="unknown")
+    )
 
     @property
     def backlog_capped(self) -> list[str]:

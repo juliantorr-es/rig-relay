@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, ClassVar, cast
 
 from textual._context import NoActiveAppError
@@ -13,12 +14,20 @@ from textual.containers import Horizontal
 from textual.css.query import NoMatches
 from textual.screen import Screen
 
+from rig_relay.context.compiler import ContextCompiler
+from rig_relay.context.models import ContextEnvelopeReceipt
 from rig_relay.coordination.fleet_queue_runner import FleetQueueRunnerResult
 from rig_relay.desktop.execution_progress import ExecutionProgressProjection
 from vibe.cli.textual_ui.rig_console.actions import RigConsoleAction
+from vibe.cli.textual_ui.rig_console.doctor import DoctorResult
 from vibe.cli.textual_ui.rig_console.intents import DashboardActionResult
 from vibe.cli.textual_ui.rig_console.projections import DashboardProjection
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
+from vibe.cli.textual_ui.rig_console.session_bridge import _POLL_INTERVAL
+from vibe.cli.textual_ui.rig_console.session_events import (
+    CodingTranscriptItemProjection,
+    SubmitPromptResult,
+)
 from vibe.cli.textual_ui.rig_console.widgets.activity_log import ActivityLogWidget
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
 from vibe.cli.textual_ui.rig_console.widgets.fleet_panel import FleetPanelWidget
@@ -41,6 +50,7 @@ from vibe.cli.textual_ui.rig_console.widgets.prompt_bar import PromptBar
 from vibe.cli.textual_ui.rig_console.widgets.queue_panel import QueuePanelWidget
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
 from vibe.cli.textual_ui.rig_console.widgets.status_bar import StatusBarWidget
+from vibe.cli.textual_ui.rig_console.widgets.transcript import TranscriptWidget
 
 
 class DashboardStatusActions:
@@ -179,7 +189,7 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
         ("ctrl+f", "refresh_fleet_state", "Refresh Fleet"),
         ("Enter", "focus_prompt", "Focus Prompt"),
         ("a", "approve_mission_plan", "Approve Plan"),
-        ("escape", "discard_mission_plan", "Discard Plan"),
+        ("escape", "cancel_or_discard", "Cancel / Discard"),
         ("x", "queue_run_next", "Run Next"),
         ("ctrl+x", "queue_run_next", "Run Next"),
     ]
@@ -200,6 +210,8 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
         self._last_refresh_at: str | None = None
         self._details_visible: bool = False
         self._fleet_visible: bool = False
+        self._turn_active: bool = False
+        self._context_envelope: ContextEnvelopeReceipt | None = None
         self._local_queue_payloads: dict[str, str] = {}
 
     def compose(self) -> ComposeResult:
@@ -213,7 +225,8 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
             yield EvidenceRailWidget(proj.evidence)
 
         yield ActivityLogWidget()
-        yield PromptBar(on_submit=self._handle_queue_input)
+        yield TranscriptWidget(proj.transcript)
+        yield PromptBar(on_submit=self._handle_prompt_submit)
         yield FooterStatusWidget(proj)
 
         # Optional / Hidden by default
@@ -342,8 +355,7 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
         if widget is None:
             self._set_status("error", "queue_message", "PromptBar unavailable")
             return
-        # PromptBar handles its own submission via on_submit
-        self._set_status("info", "queue_message", "Use Enter in PromptBar to queue")
+        self._set_status("info", "queue_message", "Use Enter in PromptBar to send")
 
     def action_clear_input(self) -> None:
         widget = self._prompt_bar_widget()
@@ -384,8 +396,19 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
                 "error", "approve_mission", f"Failed: {res.reason or 'unknown'}"
             )
 
-    def action_discard_mission_plan(self) -> None:
-        """Discard the active mission plan or close overlays."""
+    def action_cancel_or_discard(self) -> None:
+        """Cancel active turn or discard overlays/plan.
+
+        Priority order:
+        1. Cancel active turn
+        2. Close help overlay
+        3. Close notification
+        4. Close inspector
+        5. Discard mission plan
+        """
+        if self._turn_active:
+            self.run_worker(self._cancel_active_turn(), exclusive=True)
+            return
         try:
             help_overlay = self.query_one(HelpOverlayWidget)
             if help_overlay.has_class("visible"):
@@ -412,6 +435,22 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
         self._projection.mission_router.visible = False
         self._render_all()
         self._set_status("info", "discard_mission", "Mission plan discarded")
+
+    async def _cancel_active_turn(self) -> None:
+        if self._provider is None:
+            return
+        self._set_status("info", "session", "Cancelling turn...")
+        prompt_bar = self._prompt_bar_widget()
+        if prompt_bar:
+            prompt_bar.set_status("Cancelling")
+        await self._provider.cancel_turn()
+        self._turn_active = False
+        self._set_status("info", "session", "Turn cancelled")
+
+    async def _run_doctor(self) -> None:
+        result = DoctorResult.default()
+        summary = result.run_all()
+        self._set_status("info", "doctor", summary.to_text().replace("\n", " | ")[:200])
 
     def action_next_queue_item(self) -> None:
         queue = self._projection.queue
@@ -636,30 +675,211 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
             "info", "validate", "Validate action: placeholder (read-only, not wired)"
         )
 
-    _MISSION_BATCH_THRESHOLD = 200
+    def _handle_prompt_submit(self, text: str) -> object | None:
+        if text.startswith("//"):
+            self.run_worker(lambda: self._do_turn(text[1:]), exclusive=True)
+            return None
+        if text.startswith("/"):
+            return self._handle_slash_command(text)
+        self.run_worker(lambda: self._do_turn(text), exclusive=True)
+        return None
 
-    def _handle_queue_input(self, text: str) -> None:
-        """Handle input submitted via PromptBar.
+    def _handle_queue_input(self, text: str) -> object | None:
+        return self._handle_prompt_submit(text)
 
-        Routes either to single-item enqueue or batch mission routing.
-        """
-        if (
-            text.startswith("/")
-            or "\n" in text
-            or len(text) > self._MISSION_BATCH_THRESHOLD
-        ):
-            # Batch mission / complex instruction
-            self._set_status("info", "mission_router", "Routing mission batch...")
-            self.run_worker(self._route_mission_batch(text), exclusive=True)
+    def _handle_slash_command(self, text: str) -> object | None:
+        command, _, remainder = text.partition(" ")
+        result: object | None = None
+        match command:
+            case "/validate":
+                validate_task = self.action_run_validate()
+                self.run_worker(cast(Any, validate_task), exclusive=True)
+            case "/queue":
+                self.action_toggle_queue_panel()
+            case "/fleet":
+                self.action_toggle_fleet_panel()
+            case "/router" | "/plan" | "/mission":
+                if remainder.strip():
+                    self.run_worker(
+                        cast(Any, self._route_mission_batch(remainder.strip())),
+                        exclusive=True,
+                    )
+            case "/inspect":
+                self.action_toggle_inspector()
+            case "/doctor":
+                self.run_worker(self._run_doctor(), exclusive=True)
+            case "/help":
+                self.action_show_help()
+        return result
+
+    async def _do_turn(self, text: str) -> None:
+        provider = cast(Any, self._provider)
+        if provider is None or not hasattr(provider, "submit_user_message"):
+            return
+
+        prompt_bar = self._prompt_bar_widget()
+        self._set_turn_starting(prompt_bar)
+        turn_result: str | None = None
+
+        # Build context envelope before submitting
+        try:
+            snapshot = (
+                await provider.snapshot() if hasattr(provider, "snapshot") else None
+            )
+        except Exception:
+            snapshot = None
+        store = getattr(provider, "receipt_store", None) if provider else None
+        repo_index = getattr(self, "_repo_index", None)
+        if repo_index is None:
+            from rig_relay.context.repo_index import RepoContextIndex
+
+            try:
+                ri = RepoContextIndex(workspace_root=Path.cwd())
+                if ri.is_available:
+                    ri.populate()
+                    self._repo_index = ri
+                    repo_index = ri
+            except Exception:
+                self._repo_index = None
+        compiler = ContextCompiler(
+            session_id=self._projection.session.session_id,
+            receipt_store=store,
+            repo_index=repo_index,
+        )
+        envelope = compiler.build_envelope(user_text=text, snapshot=snapshot)
+        self._context_envelope = envelope
+        try:
+            status_bar = self.query_one(StatusBarWidget)
+            status_bar.set_context_envelope(envelope)
+        except Exception:
+            pass
+
+        try:
+            result = await provider.submit_user_message(text, context_envelope=envelope)
+            if not result.accepted:
+                self._set_turn_refused(prompt_bar, result)
+                return
+
+            self._set_turn_accepted(prompt_bar)
+            events, cursor = await self._poll_turn_events(provider)
+            turn_result = self._turn_status_from_events(events)
+            await self._finalize_turn(provider, events, cursor)
+        except asyncio.CancelledError:
+            turn_result = "cancelled"
+            await provider.cancel_turn()
+            self._set_status("info", "session", "Turn cancelled")
+        except Exception as exc:
+            turn_result = "failed"
+            self._set_status("error", "session", type(exc).__name__)
+        finally:
+            self._turn_active = False
+            if prompt_bar:
+                prompt_bar.set_disabled(False)
+                if turn_result == "cancelled":
+                    prompt_bar.set_status("Cancelled")
+                elif turn_result == "failed":
+                    prompt_bar.set_status("Failed")
+                else:
+                    prompt_bar.set_status("Ready")
+
+    def _set_turn_starting(self, prompt_bar: PromptBar | None) -> None:
+        if prompt_bar:
+            prompt_bar.set_disabled(True, "Starting")
+        self._turn_active = True
+        self._set_status("running", "session", "Turn running")
+
+    def _set_turn_refused(
+        self, prompt_bar: PromptBar | None, result: SubmitPromptResult
+    ) -> None:
+        self._turn_active = False
+        if prompt_bar:
+            prompt_bar.set_disabled(False)
+            prompt_bar.set_status(result.refusal_reason or result.status)
+        self._set_status("refused", "session", result.refusal_reason or result.status)
+        self._render_all()
+
+    def _set_turn_accepted(self, prompt_bar: PromptBar | None) -> None:
+        if prompt_bar:
+            prompt_bar.clear_input()
+            prompt_bar.set_status("Running")
+
+    async def _poll_turn_events(self, provider: object) -> tuple[list, str | None]:
+        cursor: str | None = None
+        all_items: list = []
+        turn_completed = False
+        while not turn_completed and self._turn_active:
+            events = await cast(Any, provider).events_since(cursor)
+            for item in events.items:
+                self._on_session_event(item)
+                all_items.append(item)
+                if item.kind == "turn_status":
+                    turn_completed = True
+            if events.cursor:
+                cursor = events.cursor
+            if not turn_completed and self._turn_active:
+                await asyncio.sleep(_POLL_INTERVAL)
+        return all_items, cursor
+
+    async def _finalize_turn(
+        self, provider: object, items: list, cursor: str | None
+    ) -> None:
+        snapshot = await cast(Any, provider).snapshot()
+        self._projection = self._projection.model_copy(
+            update={"transcript": snapshot.transcript}
+        )
+        self._render_all()
+
+        status = self._turn_status_from_events(items)
+        if status == "cancelled":
+            self._set_status("info", "session", "Turn cancelled")
+        elif status == "failed":
+            self._set_status("error", "session", "Turn failed")
         else:
-            # Single instruction
-            self._set_status("info", "queue", "Enqueueing instruction...")
-            if self._provider is not None:
-                # For now, just enqueue a simple validate or similar placeholder
-                # In real use, this would call a provider method to classify/enqueue
-                self._provider.enqueue_validate()
-                self.action_clear_input()
-                self.run_worker(self.action_refresh(), exclusive=True)
+            self._set_status("ok", "session", "Turn completed")
+
+    def _turn_status_from_events(self, items: list) -> str:
+        for item in items:
+            if item.kind == "turn_status":
+                return item.status or "completed"
+        return "completed"
+
+    def _on_session_event(self, item: CodingTranscriptItemProjection) -> None:
+        match item.kind:
+            case "user_message":
+                self._set_status("running", "session", "User message received")
+                self._update_transcript_incremental(item)
+            case "assistant_message":
+                self._set_status("running", "session", "Assistant responding")
+                self._update_transcript_incremental(item)
+            case "tool_activity":
+                name = item.tool_name or "?"
+                self._set_status("running", "tool", f"Running {name}")
+                self._set_status("running", "session", "Tool running")
+                self._update_transcript_incremental(item)
+            case "tool_result":
+                name = item.tool_name or "?"
+                status = item.status or "done"
+                self._set_status(status, "tool", f"{name} {status}")
+                self._update_transcript_incremental(item)
+            case "turn_status":
+                if item.status == "completed":
+                    self._set_status("ok", "session", "Turn completed")
+                elif item.status == "cancelled":
+                    self._set_status("info", "session", "Turn cancelled")
+                elif item.status == "failed":
+                    self._set_status("error", "session", "Turn failed")
+            case "error":
+                kind = item.error_kind or "Error"
+                self._set_status("error", "session", kind)
+
+    def _update_transcript_incremental(
+        self, item: CodingTranscriptItemProjection
+    ) -> None:
+        try:
+            transcript = self.query_one(TranscriptWidget)
+            transcript.append_item(item)
+        except NoMatches:
+            pass
 
     async def _route_mission_batch(self, text: str) -> None:
         """Worker to route a mission batch via provider."""
@@ -713,6 +933,9 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
             ep = proj.execution_progress or ExecutionProgressProjection()
             timeline = self.query_one(ProgressTimelineWidget)
             timeline.update_projection(ep)
+
+            transcript = self.query_one(TranscriptWidget)
+            transcript.update_projection(proj.transcript)
 
             inspector = self.query_one(InspectorDrawerWidget)
             inspector.update_projection(proj.inspector)

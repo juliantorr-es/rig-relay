@@ -5,6 +5,19 @@
 Supported. The Textual Rig Console is the terminal-native coding cockpit for
 Rig Relay. The pywebview cockpit remains the desktop cockpit.
 
+## Route 3 Compatibility Mode
+
+Rig Console now follows a prompt-first compatibility shell model:
+
+- Ordinary prompt text goes through the coding-session bridge and real
+  `AgentLoop.act(...)` runtime path when runtime mode is available.
+- Explicit slash commands own governable actions such as validate, queue,
+  fleet, router, mission, inspect, and help.
+- The UI should feel like a coding-agent terminal, not an admin dashboard.
+- Hardened Rig paths are preferred when they exist.
+- Base vibe session behavior is only used through the compatibility bridge.
+- Widgets must not import raw tools or agent-loop internals directly.
+
 ## Launch
 
 Use `rig-relay` for the default product launcher. `rig-console` remains an
@@ -67,7 +80,7 @@ Experimental or high-density dashboards are hidden by default to reduce visual n
 - `u` — Toggle queue panel
 - `i` — Toggle inspector drawer
 - `?` or `h` — Help overlay
-- `Esc` — Discard plan / Close overlay
+- `Esc` — Cancel active turn / Discard plan / Close overlay
 - `q` — Quit
 
 ## Design Philosophy: "Stable & Boring"
@@ -78,39 +91,61 @@ The Prompt Bar (`vibe/cli/textual_ui/rig_console/widgets/prompt_bar.py`) is the
 **primary** input surface. It uses Textual `Input` (single line).
 
 Behavior:
-- **Enter** queues a message. The callback routes through
-  `DashboardScreen._handle_queue_input`, creating a `QueueItemProjection` with
-  `kind="message"` and `status="queued"`.
+- **Enter** submits ordinary text to the session bridge.
+- **Slash commands** are explicit escape hatches and do not share the normal
+  prompt path.
+- **Double-slash escape** (`//hello`) submits a literal `/hello` prompt.
 - **Empty/whitespace** input does nothing.
-- **Successful queue** clears the input and shows "Queued" status.
-- **Missing queue root** is safe — the bar shows disabled/refused status.
-- **Prompt body** is stored behind a `payload_ref` (`local://queue/<uuid>`).
-  The generic queue/fleet projection shows only the sanitized summary, not
-  the raw prompt body. Full prompt body persistence is deferred.
+- **Successful submission** clears the input only after the bridge accepts it.
+- **Rejected submission** keeps the current input in place.
 - **Focus**: Press `f` to focus the prompt bar.
 
-The prompt bar does NOT execute anything directly. It only creates queue items.
-Executable work routes through `FleetQueueRunner` → `runtime_exec`.
+The prompt bar does NOT execute anything directly. It only emits text into the
+coding-session bridge or explicit slash-command handlers.
+
+### Live Turn Streaming
+
+When the user submits a normal prompt:
+
+1. PromptBar disables immediately (`disabled=True, "Starting"`).
+2. `DashboardScreen._do_turn(text)` worker starts via `run_worker`.
+3. `RuntimeSessionAdapter.submit_user_message(text)` returns immediately
+   (`accepted=True, status="running"`). A background task iterates
+   `AgentLoop.act(...)` events and stores them incrementally.
+4. Dashboard polls `provider.events_since(cursor)` every 50ms.
+5. Each new event updates the TranscriptWidget (via `append_item`), the
+   ActivityLog (via `_set_status`), and the StatusBar.
+6. When the bridge emits a `turn_status` event (completed/failed/cancelled),
+   the polling loop exits.
+7. A final `provider.snapshot()` replaces the transcript projection.
+8. PromptBar re-enables (`disabled=False, "Ready"`).
+
+Escape key calls `action_cancel_or_discard()` which invokes
+`provider.cancel_turn()`, cancelling the background `asyncio.Task` and
+propagating `CancelledError` through `AgentLoop`. Cancel is UI-safe even if
+the backend cannot fully interrupt the LLM mid-turn—the subscription stops,
+and state reverts to `turn_status="cancelled"`.
 
 ## Unified Prompt Input
 
 The **PromptBar** is the single active input surface for the dashboard. It handles:
-- Single-line instructions (direct enqueuing)
-- Multi-line or `/batch` missions (routed via `MissionRouter`)
-- Contextual steering (planned)
 
-The queue input bar is a local-only cockpit surface for staging the next
-message or action. It is read-only with respect to the governed runtime:
+- Ordinary coding prompts through the session bridge
+- Explicit slash commands for governable actions
+- Transcript-style rendering of user and assistant text
 
-- `Enter` queues the current message
-- `Shift+Enter` inserts a newline when multiline editing is supported
-- `Ctrl+Enter` requests steering for the current task
+The bridge normalizes session events into content-light projections. Generic
+panels do not render raw stdout, stderr, diffs, file contents, argv arrays,
+secrets, or raw model payloads.
 
-Queue messages are not exposed as raw prompt text in projections. The TUI keeps
-the body behind a local-only payload boundary and only surfaces a content-light
-summary plus an opaque `payload_ref` in queue projections. Steering is explicit
-and visibly labeled, but is safe-placeholder behavior in this mission and does
-not invoke live steering semantics.
+## Prompt Bridge
+
+The session bridge owns the prompt-to-session boundary:
+
+- `FixtureSessionAdapter` produces deterministic transcript items for tests.
+- `RuntimeSessionAdapter` reuses the base vibe `AgentLoop.act(...)` turn path.
+- Dashboard widgets only talk to the bridge/provider boundary.
+- Transcript projections stay content-light outside the conversation surface.
 
 ## Queue Runner Integration
 
@@ -302,6 +337,41 @@ The following are NOT implemented in Phase 0:
 - **write_file/search_replace/bash dedicated controls** — not added to TUI
 - **Patch proposal review/apply** — future phase
 - **Persistent multi-agent queue orchestration** — future phase
+
+## UI Truthfulness Audit
+
+Adapted from Intake's UI inventory pattern. Every visible surface is categorized:
+
+| Surface | Category | Status |
+|---|---|---|
+| PromptBar input | REAL | Functional, handles submit/slash/escape |
+| TranscriptWidget | REAL | Shows user/assistant/status events incrementally |
+| StatusBar (mode/hint/metrics) | REAL | Reads from projection, renders live |
+| FooterStatusWidget (hints) | REAL | Reads from projection |
+| ActivityLogWidget | REAL | Shows compact action status entries |
+| OperatorHeaderWidget | PARTIAL | Title/subtitle rendered, session details partial |
+| SessionPaneWidget | PARTIAL | Shows summary, no live turn progress |
+| EvidenceRailWidget | PARTIAL | Shows receipt metadata, no live updates |
+| QueuePanelWidget | REAL | Toggleable, reads queue projection |
+| FleetPanelWidget | REAL | Toggleable, reads fleet projection |
+| InspectorDrawerWidget | REAL | Toggleable, navigates items |
+| MissionRouterPanelWidget | REAL | Toggleable, reads mission projection |
+| ProgressTimelineWidget | PARTIAL | Reads execution_progress, no live update |
+| HelpOverlayWidget | REAL | Toggleable help text |
+| NotificationPanelWidget | REAL | Shows recovery hints |
+| /validate command | REAL | Routes to governed validate |
+| /queue, /fleet, /inspect | REAL | Toggle panels |
+| /router, /plan, /mission | REAL | Routes mission batch |
+| /doctor command | REAL | Runs diagnostics checks |
+| /help command | REAL | Shows help overlay |
+
+**Definitions:**
+- **REAL**: Backed by functioning code; does what it says.
+- **PARTIAL**: Works but surface is incomplete or lacks live updates.
+- **PLACEHOLDER**: Exists but is not wired to backend.
+- **UNWIRED**: Code present but no UI surface accessible.
+
+There are currently no PLACEHOLDER or UNWIRED surfaces. The two PARTIAL surfaces (SessionPaneWidget, EvidenceRailWidget, ProgressTimelineWidget) show static snapshot data rather than live streaming — acceptable for Phase K dogfood.
 
 ## Related Docs
 
