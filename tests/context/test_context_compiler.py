@@ -343,6 +343,88 @@ class TestContextCompiler:
         assert env.symbol_manifest is None
         assert env.rendered_prompt.count("tests/context/test_context_compiler.py") == 1
 
+    def test_authoritative_sections_are_never_compressed(self) -> None:
+        class AgentsPack(ContextPack):
+            name = "agents_md"
+
+            def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
+                return ("agents",)
+
+            def _render(self, root: Path) -> str:
+                return "AGENTS.md exact instructions"
+
+        class CommandOutputPack(ContextPack):
+            name = "recent_transcript"
+
+            def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
+                return ("output",)
+
+            def _render(self, root: Path) -> str:
+                return "pytest tests/context/test_context_compiler.py -q"
+
+        compiler = ContextCompiler(session_id="s1")
+        env = compiler.build_envelope(
+            user_text="keep prompt exact", packs=[AgentsPack(), CommandOutputPack()]
+        )
+
+        assert env.symbol_manifest is None
+        assert env.symbol_codec_receipt is None
+        assert "AGENTS.md exact instructions" in env.rendered_prompt
+        assert "pytest tests/context/test_context_compiler.py -q" in env.rendered_prompt
+        assert "§" not in env.rendered_prompt
+
+    def test_receipt_invariants_when_compression_happens(self) -> None:
+        class NavigationPack(ContextPack):
+            name = "related_files"
+
+            def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
+                return ("fingerprint",)
+
+            def _render(self, root: Path) -> str:
+                return (
+                    "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+                    "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+                    "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+                    "vibe/cli/textual_ui/rig_console/screens/dashboard.py"
+                )
+
+        compiler = ContextCompiler(session_id="s1")
+        env = compiler.build_envelope(user_text="prompt", packs=[NavigationPack()])
+
+        assert env.symbol_manifest is not None
+        assert env.symbol_codec_receipt is not None
+        assert env.symbol_codec_receipt["reversible"] is True
+        assert env.symbol_codec_receipt["lossy"] is False
+        assert env.symbol_codec_receipt["input_sha256"]
+        assert env.symbol_codec_receipt["output_sha256"]
+        assert (
+            env.symbol_codec_receipt["manifest_sha256"]
+            == env.symbol_manifest.manifest_sha256
+        )
+
+    def test_token_estimator_improves_when_replacements_happen(self) -> None:
+        class NavigationPack(ContextPack):
+            name = "related_files"
+
+            def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
+                return ("fingerprint",)
+
+            def _render(self, root: Path) -> str:
+                return (
+                    "DashboardProjectionProvider DashboardProjectionProvider "
+                    "DashboardProjectionProvider DashboardProjectionProvider"
+                )
+
+        compiler = ContextCompiler(session_id="s1")
+        env = compiler.build_envelope(user_text="prompt", packs=[NavigationPack()])
+
+        assert env.symbol_codec_receipt is not None
+        before = env.symbol_codec_receipt["estimated_tokens_before"]
+        after = env.symbol_codec_receipt["estimated_tokens_after"]
+        assert isinstance(before, int)
+        assert isinstance(after, int)
+        assert before > after
+
 
 class TestCompactionHistoryPack:
     def test_no_store_returns_none(self) -> None:

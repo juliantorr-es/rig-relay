@@ -68,6 +68,23 @@ Deterministic reversible symbol replacement. Replaces repeated long terms
 - AGENTS.md, user prompts, transcript bodies, test contents, and exact
   command output stay uncompressed in the prompt envelope.
 
+### Alias modes
+
+- `§` aliases are the human-readable debug mode.
+- PUA aliases are the dense runtime mode and are only valid inside compiled
+  runtime envelopes.
+- PUA aliases must never be written into canonical docs or passed to tools.
+- Compression is safe only when the manifest proves exact reconstruction.
+- If expansion cannot reconstruct the original section byte-for-byte, the
+  section must be left uncompressed.
+
+### Non-goals
+
+- Semantic aliasing remains out of scope.
+- Dense semantic summaries remain out of scope.
+- Chinese or other cross-language semantic compression remains out of scope
+  for authoritative context.
+
 ### Receipt fields
 
 ```json

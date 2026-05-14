@@ -1,6 +1,5 @@
-// Rig Console Frontend — WebSocket client + idempotent event reducer + renderer.
+// Rig Console Frontend — WebSocket client + idempotent reducer + reconnect.
 // Backend is authoritative. Frontend is a dumb projection renderer.
-// Every event carries seq + event_id for deduplication and ordered replay.
 
 // ── State ──
 
@@ -12,12 +11,11 @@ const store = {
   transcript: [],
 };
 
-// Set of received event_ids for idempotent delta application.
 const seenEventIds = new Set();
 let lastSeq = 0;
-
 let pendingIntentId = 0;
 let ws = null;
+let intentionalClose = false;
 
 // ── Render Scheduler ──
 
@@ -63,7 +61,6 @@ function renderStatus() {
   document.getElementById('turn-status').textContent = store.turnStatus;
   document.getElementById('sid').textContent = store.sessionId || '\u2014';
   document.getElementById('dropped').textContent = String(store.droppedCount);
-
   const badge = document.getElementById('status-badge');
   badge.textContent = store.turnStatus;
   badge.className = 'status-' + store.turnStatus;
@@ -86,13 +83,19 @@ function connect() {
   ws.onopen = () => {
     document.getElementById('connection-badge').textContent = 'Connected';
     document.getElementById('connection-badge').className = 'source-status ok';
-    ws.send(JSON.stringify({ schema: 'rig.ws.client.auth.v1', token: WS_TOKEN }));
+    ws.send(JSON.stringify({
+      schema: 'rig.ws.client.auth.v1',
+      token: WS_TOKEN,
+      last_seen_seq: lastSeq || undefined,
+    }));
   };
 
   ws.onclose = () => {
-    document.getElementById('connection-badge').textContent = 'Disconnected';
-    document.getElementById('connection-badge').className = 'source-status error';
-    setTimeout(connect, 2000);
+    if (!intentionalClose) {
+      document.getElementById('connection-badge').textContent = 'Disconnected';
+      document.getElementById('connection-badge').className = 'source-status error';
+      setTimeout(connect, 2000);
+    }
   };
 
   ws.onerror = () => {};
@@ -106,10 +109,10 @@ function connect() {
 
 function sendIntent(kind, payload) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  const intentId = 'intent_' + (++pendingIntentId);
+  pendingIntentId++;
   ws.send(JSON.stringify({
     schema: 'rig.ws.client.intent.v1',
-    intent_id: intentId,
+    intent_id: 'intent_' + pendingIntentId,
     intent_kind: kind,
     payload: payload || {},
   }));
@@ -120,13 +123,13 @@ function sendIntent(kind, payload) {
 function handleMessage(msg) {
   const schema = msg.schema || '';
 
-  // Track sequence number for ordering; skip stale events
+  // Stale seq guard
   if (msg.seq && msg.seq <= lastSeq) return;
   if (msg.seq) lastSeq = msg.seq;
 
   switch (schema) {
     case 'rig.ws.server.auth_ok.v1':
-      // Snapshot sent by server after auth
+      // Server sent auth_ok; snapshot or replay follows
       break;
 
     case 'rig.ws.server.snapshot.v1':
@@ -139,15 +142,33 @@ function handleMessage(msg) {
       break;
 
     case 'rig.ws.server.ack.v1':
-      if (msg.status === 'refused') {
-        store.transcript.push({
-          kind: 'turn_status',
-          title: 'Refused',
-          body_text: msg.reason || 'Prompt refused',
-        });
-        scheduleRender();
-      }
+      handleAck(msg);
       break;
+
+    case 'rig.ws.server.warning.v1':
+      addWarning(msg.message || 'Protocol warning');
+      scheduleRender();
+      break;
+
+    default:
+      addWarning('Unknown server message: ' + schema);
+      scheduleRender();
+  }
+}
+
+function addWarning(text) {
+  store.transcript.push({
+    kind: 'system',
+    title: 'Protocol',
+    body_text: text,
+  });
+}
+
+function handleAck(msg) {
+  if (msg.status === 'refused') {
+    const reason = msg.reason || 'Prompt refused';
+    store.transcript.push({ kind: 'turn_status', title: 'Refused', body_text: reason });
+    scheduleRender();
   }
 }
 
@@ -156,7 +177,6 @@ function applySnapshot(data) {
   store.sessionId = data.session_id || store.sessionId;
   store.turnStatus = data.turn_status || store.turnStatus;
   store.droppedCount = data.dropped_count || 0;
-  // Reset on snapshot — authoritative state
   seenEventIds.clear();
   store.transcript = [];
   if (data.transcript) {
@@ -171,12 +191,16 @@ function applySnapshot(data) {
 }
 
 function applyDelta(msg) {
-  const eventId = msg.event_id || msg.value?.item_id;
-  if (eventId && seenEventIds.has(eventId)) return false;  // idempotent
+  const eventId = msg.event_id || (msg.value && msg.value.item_id);
+  if (eventId && seenEventIds.has(eventId)) return false;
   if (eventId) seenEventIds.add(eventId);
 
   if (msg.op === 'append' && msg.path === '/transcript') {
-    const v = msg.value || {};
+    const v = msg.value;
+    if (!v || !v.kind) {
+      addWarning('Malformed delta: missing kind');
+      return true;
+    }
     store.transcript.push({
       id: v.item_id, kind: v.kind, title: v.title,
       body_text: v.body_text, tool_name: v.tool_name, status: v.status,

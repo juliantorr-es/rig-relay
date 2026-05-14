@@ -376,9 +376,7 @@ class RuntimeSessionAdapter:
                 "Context",
                 body_text=f"{context_envelope.section_count} sections · cache {'hit' if context_envelope.is_cached else 'miss'}",
             )
-        self._turn_task = asyncio.create_task(
-            self._run_turn_background(config, prompt)
-        )
+        self._turn_task = asyncio.create_task(self._run_turn_background(config, prompt))
         return SubmitPromptResult(accepted=True, status="running", cursor="0")
 
     async def stream_events(
@@ -447,11 +445,7 @@ class RuntimeSessionAdapter:
     def active_turn_id(self) -> str:
         return self._turn_state.turn_id
 
-    async def _run_turn_background(
-        self,
-        config: VibeConfig,
-        text: str,
-    ) -> None:
+    async def _run_turn_background(self, config: VibeConfig, text: str) -> None:
         try:
             agent_loop = AgentLoop(
                 config,

@@ -17,6 +17,20 @@ from __future__ import annotations
 import hashlib
 import re
 
+_SECTION_ESCAPE = "\\u00A7"
+_PUA_ESCAPE_PREFIX = "\\uP"
+_PUA_BMP_START = 0xE000
+_PUA_BMP_END = 0xF8FF
+_PUA_SUPPLEMENTARY_START = 0xF0000
+_PUA_SUPPLEMENTARY_END = 0xFFFFD
+_PUA_SUPPLEMENTARY2_START = 0x100000
+_PUA_SUPPLEMENTARY2_END = 0x10FFFD
+_PUA_RANGES = [
+    range(_PUA_BMP_START, _PUA_BMP_END + 1),
+    range(_PUA_SUPPLEMENTARY_START, _PUA_SUPPLEMENTARY_END + 1),
+    range(_PUA_SUPPLEMENTARY2_START, _PUA_SUPPLEMENTARY2_END + 1),
+]
+
 # ── Typed symbol namespace ─────────────────────────────────────────
 
 _SYMBOL_NAMESPACES: list[tuple[str, str, int]] = [
@@ -29,12 +43,23 @@ _SYMBOL_NAMESPACES: list[tuple[str, str, int]] = [
 ]
 
 
-def _typed_symbol_sequence(count: int) -> list[str]:
+def _pua_codepoints() -> list[int]:
+    points: list[int] = []
+    for rng in _PUA_RANGES:
+        points.extend(list(rng))
+    return points
+
+
+def _typed_symbol_sequence(count: int, *, alias_mode: str = "section") -> list[str]:
     """Generate deterministic typed symbol sequence: §p001, §p002, ..., §t001, ..."""
     symbols: list[str] = []
+    pua_points = _pua_codepoints()
     for ns, _kind, limit in _SYMBOL_NAMESPACES:
         for i in range(1, min(limit + 1, count - len(symbols) + 1)):
-            symbols.append(f"§{ns}{i:03d}")
+            if alias_mode == "pua":
+                symbols.append(chr(pua_points[len(symbols)]))
+            else:
+                symbols.append(f"§{ns}{i:03d}")
             if len(symbols) >= count:
                 return symbols
     return symbols
@@ -46,7 +71,9 @@ _ESCAPED_SECTION_MARKER = "\\u00A7"
 
 def _has_symbol_collision(text: str) -> bool:
     """Check if text already contains reserved typed symbols."""
-    return bool(_SYMBOL_PATTERN.search(text))
+    if _SYMBOL_PATTERN.search(text):
+        return True
+    return any(_is_pua(ch) for ch in text)
 
 
 # ── Kind classifier ────────────────────────────────────────────────
@@ -61,7 +88,9 @@ def _classify_term(term: str) -> str:
         return "schema"
     if term.startswith("docs/") or term.startswith("CONTEXT") or term.endswith(".md"):
         return "doctrine"
-    if "/" in term and ("." in term or term.startswith("vibe/") or term.startswith("rig_relay/")):
+    if "/" in term and (
+        "." in term or term.startswith("vibe/") or term.startswith("rig_relay/")
+    ):
         return "path"
     if term.endswith((".py", ".js", ".ts", ".rs", ".go", ".java")):
         return "path"
@@ -92,7 +121,9 @@ def estimate_tokens(text: str) -> int:
     """Heuristic token estimate. Always >= 1 for non-empty text."""
     if not text:
         return 0
-    dense = sum(1 for c in text if c in " \t\n(){}[]<>;:=+-*/%&|!~^,") / max(len(text), 1)
+    dense = sum(1 for c in text if c in " \t\n(){}[]<>;:=+-*/%&|!~^,") / max(
+        len(text), 1
+    )
     if dense > _CODE_RATIO_THRESHOLD:
         return max(1, len(text) // 2)
     return max(1, len(text) // 4)
@@ -230,7 +261,9 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _iter_candidates(text: str, min_occurrences: int = 3, min_chars: int = 16) -> dict[str, int]:
+def _iter_candidates(
+    text: str, min_occurrences: int = 3, min_chars: int = 16
+) -> dict[str, int]:
     counts: dict[str, int] = {}
     term_pattern = re.compile(r"[A-Za-z_][A-Za-z0-9_.\\/]{7,}")
     for match in term_pattern.finditer(text):
@@ -254,8 +287,7 @@ def _sort_by_savings(candidates: dict[str, int]) -> list[tuple[str, int, int]]:
 
 
 def compress_with_manifest(
-    text: str,
-    manifest: SymbolManifest | None = None,
+    text: str, manifest: SymbolManifest | None = None, *, alias_mode: str = "section"
 ) -> SymbolCodecResult:
     """Compress text using a pre-built symbol manifest.
 
@@ -268,13 +300,13 @@ def compress_with_manifest(
         candidates = _iter_candidates(text)
         if not candidates:
             return _refused(text, input_sha, before, "No candidates found")
-        manifest = _build_manifest(candidates, text)
+        manifest = _build_manifest(candidates, text, alias_mode=alias_mode)
 
     if not manifest.entries:
         return _refused(text, input_sha, before, "No entries with positive net savings")
 
     entries = manifest.entries
-    compressed = text.replace("§", _ESCAPED_SECTION_MARKER)
+    compressed = _escape_alias_chars(text, alias_mode)
     for entry in sorted(entries, key=lambda e: (-len(e.value), e.value)):
         compressed = compressed.replace(entry.value, entry.alias)
 
@@ -311,13 +343,14 @@ def _refused(text: str, input_sha: str, before: int, reason: str) -> SymbolCodec
 
 
 def _build_manifest(
-    candidates: dict[str, int],
-    corpus: str = "",
+    candidates: dict[str, int], corpus: str = "", *, alias_mode: str = "section"
 ) -> SymbolManifest:
     """Build a measured, typed SymbolManifest from raw candidates."""
     scored = _sort_by_savings(candidates)
     # Generate symbols across namespaces to cover all kinds
-    symbols = _typed_symbol_sequence(max(len(scored) + len(_SYMBOL_NAMESPACES), 50))
+    symbols = _typed_symbol_sequence(
+        max(len(scored) + len(_SYMBOL_NAMESPACES), 50), alias_mode=alias_mode
+    )
     entries: list[ManifestEntry] = []
 
     for i, (term, count, _saved) in enumerate(scored):
@@ -333,21 +366,25 @@ def _build_manifest(
         if net <= 0:
             continue
 
-        entries.append(ManifestEntry(
-            alias=alias,
-            kind=kind,
-            value=term,
-            occurrences=count,
-            source_token_cost=source_cost,
-            alias_token_cost=alias_cost,
-            manifest_overhead=overhead,
-            net_savings=net,
-        ))
+        entries.append(
+            ManifestEntry(
+                alias=alias,
+                kind=kind,
+                value=term,
+                occurrences=count,
+                source_token_cost=source_cost,
+                alias_token_cost=alias_cost,
+                manifest_overhead=overhead,
+                net_savings=net,
+            )
+        )
 
     return SymbolManifest(tuple(entries))
 
 
-def decompress_symbols(compressed_text: str, manifest: SymbolManifest) -> str:
+def decompress_symbols(
+    compressed_text: str, manifest: SymbolManifest, *, alias_mode: str = "section"
+) -> str:
     """Restore original text from compressed text and manifest.
 
     Sort by value length descending to avoid partial matches.
@@ -355,7 +392,7 @@ def decompress_symbols(compressed_text: str, manifest: SymbolManifest) -> str:
     result = compressed_text
     for entry in sorted(manifest.entries, key=lambda e: (-len(e.value), e.value)):
         result = result.replace(entry.alias, entry.value)
-    return result.replace(_ESCAPED_SECTION_MARKER, "§")
+    return _unescape_alias_chars(result, alias_mode)
 
 
 def expand_aliases(text: str, manifest: SymbolManifest) -> str:
@@ -367,7 +404,36 @@ def expand_aliases(text: str, manifest: SymbolManifest) -> str:
     return decompress_symbols(text, manifest)
 
 
-def find_candidates(text: str, min_occurrences: int = 3, min_chars: int = 16) -> tuple[ManifestEntry, ...]:
+def _escape_alias_chars(text: str, alias_mode: str) -> str:
+    if alias_mode == "pua":
+        return "".join(
+            f"{_PUA_ESCAPE_PREFIX}{ord(ch):04X}" if _is_pua(ch) else ch for ch in text
+        )
+    return text.replace("§", _SECTION_ESCAPE)
+
+
+def _unescape_alias_chars(text: str, alias_mode: str) -> str:
+    if alias_mode == "pua":
+
+        def repl(match: re.Match[str]) -> str:
+            return chr(int(match.group(1), 16))
+
+        return re.sub(r"\\uP([0-9A-Fa-f]{4,6})", repl, text)
+    return text.replace(_SECTION_ESCAPE, "§")
+
+
+def _is_pua(ch: str) -> bool:
+    codepoint = ord(ch)
+    return (
+        _PUA_BMP_START <= codepoint <= _PUA_BMP_END
+        or _PUA_SUPPLEMENTARY_START <= codepoint <= _PUA_SUPPLEMENTARY_END
+        or _PUA_SUPPLEMENTARY2_START <= codepoint <= _PUA_SUPPLEMENTARY2_END
+    )
+
+
+def find_candidates(
+    text: str, min_occurrences: int = 3, min_chars: int = 16
+) -> tuple[ManifestEntry, ...]:
     """Find candidate terms without modifying text. Returns measured entries."""
     candidates = _iter_candidates(text, min_occurrences, min_chars)
     if not candidates:

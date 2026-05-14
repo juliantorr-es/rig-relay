@@ -24,7 +24,12 @@ from vibe.core.tools.base import (
     InvokeContext,
     ToolPermission,
 )
+from vibe.core.tools.builtins.bash import BashArgs
+from vibe.core.tools.builtins.read_file import ReadFileArgs
+from vibe.core.tools.builtins.search_replace import SearchReplaceArgs
 from vibe.core.tools.builtins.todo import TodoItem
+from vibe.core.tools.builtins.validate_models import ValidateArgs
+from vibe.core.tools.builtins.write_file import WriteFileArgs
 from vibe.core.types import (
     ApprovalCallback,
     ApprovalResponse,
@@ -555,6 +560,84 @@ async def test_tool_call_receives_expanded_alias_arguments() -> None:
 
     assert any(isinstance(ev, ToolResultEvent) for ev in events)
     assert tool.recorded == ["vibe/cli/textual_ui/rig_console/screens/dashboard.py"]
+
+
+@pytest.mark.asyncio
+async def test_tool_call_receives_expanded_pua_alias_arguments() -> None:
+    result = compress_with_manifest(
+        "DashboardProjectionProvider DashboardProjectionProvider "
+        "DashboardProjectionProvider DashboardProjectionProvider",
+        alias_mode="pua",
+    )
+    assert result.manifest is not None
+    pua_alias = result.compressed_text.split()[0]
+    agent_loop = build_test_agent_loop(
+        config=build_test_vibe_config(enabled_tools=[]),
+        agent_name=BuiltinAgentName.AUTO_APPROVE,
+        backend=FakeBackend(mock_llm_chunk(content="ok")),
+    )
+    agent_loop._current_context_envelope = ContextEnvelopeReceipt(
+        rendered_prompt="prompt",
+        compressed_prompt=result.compressed_text,
+        symbol_manifest=result.manifest,
+    )
+    expanded = agent_loop._expand_tool_call_args({"path": pua_alias})
+    assert expanded["path"] == "DashboardProjectionProvider"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool_name", "raw_args", "assertions"),
+    [
+        ("bash", BashArgs(command="echo §p001").model_dump(), ("command",)),
+        (
+            "validate",
+            ValidateArgs(profile="quick", paths=["§p001"]).model_dump(),
+            ("paths",),
+        ),
+        ("read_file", ReadFileArgs(path="§p001").model_dump(), ("path",)),
+        (
+            "write_file",
+            WriteFileArgs(path="§p001", content="§p001").model_dump(),
+            ("path", "content"),
+        ),
+        (
+            "search_replace",
+            SearchReplaceArgs(file_path="§p001", content="§p001").model_dump(),
+            ("file_path", "content"),
+        ),
+    ],
+)
+async def test_aliases_do_not_leak_into_tool_payloads(
+    tool_name: str, raw_args: dict[str, object], assertions: tuple[str, ...]
+) -> None:
+    result = compress_with_manifest(
+        "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+        "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+        "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+        "vibe/cli/textual_ui/rig_console/screens/dashboard.py"
+    )
+    assert result.manifest is not None
+    agent_loop = build_test_agent_loop(
+        config=build_test_vibe_config(enabled_tools=[tool_name]),
+        agent_name=BuiltinAgentName.AUTO_APPROVE,
+        backend=FakeBackend(mock_llm_chunk(content="ok")),
+    )
+    envelope = ContextEnvelopeReceipt(
+        rendered_prompt="prompt",
+        compressed_prompt=result.compressed_text,
+        symbol_manifest=result.manifest,
+    )
+    agent_loop._current_context_envelope = envelope
+
+    expanded = agent_loop._expand_tool_call_args(raw_args)
+
+    for field in assertions:
+        value = expanded[field]
+        if isinstance(value, list):
+            assert all("§" not in item for item in value if isinstance(item, str))
+        elif isinstance(value, str):
+            assert "§" not in value
 
 
 @pytest.mark.asyncio

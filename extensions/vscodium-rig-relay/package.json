@@ -1,0 +1,70 @@
+{
+  "name": "vscodium-rig-relay",
+  "displayName": "Rig Relay",
+  "description": "Governed Agentic Development Workbench",
+  "version": "0.1.0-spike",
+  "publisher": "rig-relay",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:rig-relay-control"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "rig-relay",
+          "title": "Rig Relay",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "rig-relay": [
+        {
+          "id": "rig-relay-control",
+          "name": "Mission Control",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Rig Relay",
+      "properties": {
+        "rig-relay.daemon.url": {
+          "type": "string",
+          "default": "ws://127.0.0.1:5000",
+          "description": "WebSocket URL for the Rig Relay daemon."
+        },
+        "rig-relay.daemon.token": {
+          "type": "string",
+          "default": "",
+          "description": "Authentication token for the Rig Relay daemon."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^7.14.1",
+    "@typescript-eslint/parser": "^7.14.1",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5",
+    "@vscode/test-cli": "^0.0.9",
+    "@vscode/test-electron": "^2.4.0"
+  }
+}

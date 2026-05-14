@@ -26,11 +26,14 @@ class SessionService:
     def bridge(self) -> Any:
         return self._bridge
 
-    async def start_turn(self, text: str, workspace_root: Path | None = None) -> dict[str, Any]:
-        snapshot = await self._bridge.snapshot() if hasattr(self._bridge, "snapshot") else None
+    async def start_turn(
+        self, text: str, workspace_root: Path | None = None
+    ) -> dict[str, Any]:
+        snapshot = (
+            await self._bridge.snapshot() if hasattr(self._bridge, "snapshot") else None
+        )
         self._compiler = ContextCompiler(
-            session_id=self._session_id,
-            workspace_root=workspace_root,
+            session_id=self._session_id, workspace_root=workspace_root
         )
         envelope = self._compiler.build_envelope(user_text=text, snapshot=snapshot)
         result = await self._bridge.submit_user_message(text, context_envelope=envelope)
@@ -38,7 +41,9 @@ class SessionService:
             "accepted": result.accepted,
             "status": result.status,
             "refusal_reason": result.refusal_reason,
-            "turn_id": self._bridge.active_turn_id if hasattr(self._bridge, "active_turn_id") else "",
+            "turn_id": self._bridge.active_turn_id
+            if hasattr(self._bridge, "active_turn_id")
+            else "",
             "section_count": envelope.section_count if envelope else 0,
         }
 
@@ -47,15 +52,25 @@ class SessionService:
 
     @property
     def is_active(self) -> bool:
-        return self._bridge.is_turn_active if hasattr(self._bridge, "is_turn_active") else False
+        return (
+            self._bridge.is_turn_active
+            if hasattr(self._bridge, "is_turn_active")
+            else False
+        )
 
     @property
     def status(self) -> str:
-        return self._bridge.turn_status if hasattr(self._bridge, "turn_status") else "idle"
+        return (
+            self._bridge.turn_status if hasattr(self._bridge, "turn_status") else "idle"
+        )
 
     @property
     def active_turn_id(self) -> str:
-        return self._bridge.active_turn_id if hasattr(self._bridge, "active_turn_id") else ""
+        return (
+            self._bridge.active_turn_id
+            if hasattr(self._bridge, "active_turn_id")
+            else ""
+        )
 
 
 class ProjectionService:
@@ -66,7 +81,9 @@ class ProjectionService:
         self._bridge = bridge
 
     async def snapshot(self) -> dict[str, Any]:
-        snap = await self._bridge.snapshot() if hasattr(self._bridge, "snapshot") else None
+        snap = (
+            await self._bridge.snapshot() if hasattr(self._bridge, "snapshot") else None
+        )
         transcript = []
         if snap and snap.transcript:
             for item in snap.transcript.items:
@@ -82,9 +99,15 @@ class ProjectionService:
                 })
         return {
             "session_id": self._session_id,
-            "turn_status": self._bridge.turn_status if hasattr(self._bridge, "turn_status") else "idle",
-            "is_turn_active": self._bridge.is_turn_active if hasattr(self._bridge, "is_turn_active") else False,
-            "dropped_count": self._bridge.dropped_count if hasattr(self._bridge, "dropped_count") else 0,
+            "turn_status": self._bridge.turn_status
+            if hasattr(self._bridge, "turn_status")
+            else "idle",
+            "is_turn_active": self._bridge.is_turn_active
+            if hasattr(self._bridge, "is_turn_active")
+            else False,
+            "dropped_count": self._bridge.dropped_count
+            if hasattr(self._bridge, "dropped_count")
+            else 0,
             "transcript": transcript,
         }
 
@@ -106,8 +129,7 @@ class RigConsoleBackend:
         receipt_path = (receipt_root or Path.home() / ".rig" / "relay").resolve()
         self._receipt_store = FilesystemReceiptStore(receipt_path)
         self._bridge = CodingSessionBridge(
-            session_id=session_id,
-            receipt_store=self._receipt_store,
+            session_id=session_id, receipt_store=self._receipt_store
         )
         self._session = SessionService(session_id, self._bridge)
         self._projection = ProjectionService(session_id, self._bridge)
@@ -129,8 +151,4 @@ class RigConsoleBackend:
         return self._bridge
 
 
-__all__ = [
-    "ProjectionService",
-    "RigConsoleBackend",
-    "SessionService",
-]
+__all__ = ["ProjectionService", "RigConsoleBackend", "SessionService"]
