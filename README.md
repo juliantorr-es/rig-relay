@@ -127,7 +127,12 @@ rig-relay --agent plan
 
 ## Desktop Cockpit
 
-The primary operator surface is the pywebview cockpit:
+Rig Relay now supports two cockpit surfaces:
+
+- `rig-console` for the terminal-native Textual coding cockpit
+- `uv run python scripts/rig_relay_desktop_cockpit.py` for the pywebview desktop cockpit
+
+The desktop cockpit remains the primary graphical operator surface:
 
 ```bash
 uv run python scripts/rig_relay_desktop_cockpit.py
@@ -138,6 +143,36 @@ Use `--dry-run` for a non-mutating projection dump:
 ```bash
 uv run python scripts/rig_relay_desktop_cockpit.py --dry-run
 ```
+
+### Textual Rig Console
+
+Launch the terminal-native coding cockpit with:
+
+```bash
+uv run rig-console
+```
+
+Fixture mode is the safe default. It renders canned projections and is useful
+for smoke testing the layout without any runtime roots.
+
+Runtime mode reads existing projection, audit, and coordination artifacts in a
+read-only way:
+
+```bash
+uv run rig-console \
+  --mode runtime \
+  --session-id <session-id> \
+  --session-path <path> \
+  --workspace-root <path> \
+  --coordination-root <path> \
+  --audit-root <path>
+```
+
+The Textual console is read-only at startup. It shows session identity, runtime
+adapter state, recent execution events, progress, active blockers or leases,
+evidence receipts, validation summaries, and a safe footer with keybindings.
+It does not display raw stdout, stderr, prompts, diffs, patches, secrets, or
+other raw tool payloads.
 
 ## Configuration
 
@@ -202,9 +237,6 @@ Rig Relay maintains backward compatibility for users transitioning from Mistral 
 - `rig-relay-acp` is the primary ACP executable.
 - `vibe` is a legacy compatibility alias for `rig-relay`.
 - `vibe-acp` is a legacy compatibility alias for `rig-relay-acp`.
-
-> [!IMPORTANT]
-> The Textual TUI is retired. New users should prefer `uv run python scripts/rig_relay_desktop_cockpit.py` for the primary operator experience.
 
 ## Upstream and License
 

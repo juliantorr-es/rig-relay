@@ -323,8 +323,10 @@ b_result = await runner.execute_bash(b_intent, resolution)
 | Schema validation of result | ✅ Implemented | Against `rig.relay.runtime_tool_execution_result.v1` |
 | `execute_write_file()` | ✅ Implemented | Mutation, runs WriteFile through hardened interface |
 | `execute_bash()` | ✅ Implemented | Subprocess, runs Bash through hardened interface with timeout/refusal/error handling |
-| Lease acquisition | ❌ Deferred | Phase 2 |
+| Lease acquisition | ✅ Phase 3 | Acquire before mutation, release in finally, TTL crash recovery |
 | RuntimeSupervisor integration | ❌ Deferred | Phase 2 |
+| Coordination policy | ✅ Phase 3 | coordination_enabled flag, lease error => BLOCKED |
+| Lease TTL | ✅ Phase 3 | DEFAULT_LEASE_TTL_SECONDS=120, configurable per envelope |
 | Audit persistence | ❌ Deferred | Phase 2 |
 
 ## Dependencies

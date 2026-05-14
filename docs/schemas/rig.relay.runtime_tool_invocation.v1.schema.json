@@ -72,6 +72,14 @@
       "type": ["string", "null"],
       "description": "Effective working directory for the tool (worktree_path, then repo_root, then None)."
     },
+    "coordination_enabled": {
+      "type": "boolean",
+      "description": "When true, mutation tools acquire coordinated path leases before execution. When false, mutations proceed without lease. Default: true."
+    },
+    "lease_ttl_seconds": {
+      "type": ["integer", "null"],
+      "description": "Optional TTL override for path leases. When null, DEFAULT_LEASE_TTL_SECONDS (120) is used."
+    },
     "payload": {
       "type": "object",
       "description": "Tool-specific payload. May contain file content, SEARCH/REPLACE blocks, argv, etc. NOT content-light — this is the tool input, not a receipt."

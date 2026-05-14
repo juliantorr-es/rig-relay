@@ -1,13 +1,10 @@
-"""Standalone preview app for Rig Console widgets.
-
-Run with: uv run python -m vibe.cli.textual_ui.rig_console.console_app
-
-Modes:
-    single  — individual SessionPaneWidget and EvidenceRailWidget
-    dashboard — DashboardScreen with header, session, evidence, footer (default)
-"""
+"""Rig Console Textual application."""
 
 from __future__ import annotations
+
+import argparse
+from collections.abc import Sequence
+from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.screen import Screen
@@ -18,7 +15,10 @@ from vibe.cli.textual_ui.rig_console.projections import (
     EvidenceRailProjection,
     SessionPaneProjection,
 )
-from vibe.cli.textual_ui.rig_console.providers import FixtureDashboardProjectionProvider
+from vibe.cli.textual_ui.rig_console.providers import (
+    FixtureDashboardProjectionProvider,
+    RuntimeDashboardProjectionProvider,
+)
 from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
@@ -156,34 +156,119 @@ def _sample_altered_dashboard() -> DashboardProjection:
     )
 
 
-class RigConsolePreview(App):
-    """Standalone preview app — toggle between single-widget and dashboard views."""
+class RigConsoleApp(App[None]):
+    """Textual Rig Console."""
 
     CSS = """
 Screen {
     background: #06110B;
 }
 
-RigConsolePreview {
+RigConsoleApp {
     padding: 1 2;
 }
 """
 
-    MODE: str = "dashboard"
-
-    def __init__(self, mode: str = "dashboard") -> None:
+    def __init__(
+        self,
+        mode: str = "fixture",
+        session_id: str = "unknown",
+        session_path: Path | None = None,
+        workspace_root: Path | None = None,
+        coordination_root: Path | None = None,
+        audit_root: Path | None = None,
+        refresh_interval: float = 5.0,
+    ) -> None:
         super().__init__()
-        self.MODE = mode
-        self._provider = None
+        self._mode = mode
+        self._session_id = session_id
+        self._session_path = session_path
+        self._workspace_root = workspace_root
+        self._coordination_root = coordination_root
+        self._audit_root = audit_root
+        self._refresh_interval = refresh_interval
+        self._provider: (
+            FixtureDashboardProjectionProvider
+            | RuntimeDashboardProjectionProvider
+            | None
+        ) = None
+        self._projection = _sample_dashboard()
 
     def on_mount(self) -> None:
-        if self.MODE == "dashboard":
-            initial = _sample_dashboard()
-            self._provider = FixtureDashboardProjectionProvider(initial)
-            screen = DashboardScreen(initial, provider=self._provider)
-            self.push_screen(screen)
-        else:
-            self.push_screen(_SingleWidgetsScreen())
+        self._provider = self._build_provider()
+        if isinstance(self._provider, FixtureDashboardProjectionProvider):
+            self._projection = _sample_dashboard()
+        elif self._mode == "runtime":
+            self._projection = self._runtime_projection()
+        self.push_screen(DashboardScreen(self._projection, provider=self._provider))
+        if self._mode == "runtime" and self._refresh_interval > 0:
+            self.set_interval(self._refresh_interval, self._poll_refresh)
+
+    def _build_provider(
+        self,
+    ) -> FixtureDashboardProjectionProvider | RuntimeDashboardProjectionProvider:
+        if self._mode == "runtime":
+            return RuntimeDashboardProjectionProvider(
+                session_id=self._session_id,
+                session_path=self._session_path,
+                workspace_root=self._workspace_root,
+                coordination_root=self._coordination_root,
+                audit_root=self._audit_root,
+            )
+        return FixtureDashboardProjectionProvider(_sample_dashboard())
+
+    def _runtime_projection(self) -> DashboardProjection:
+        return DashboardProjection(
+            title="Rig Console",
+            subtitle="Read-only runtime mode",
+            session=_sample_projection(
+                session_id=self._session_id,
+                status="idle",
+                branch_name=None,
+                receipt_count=0,
+                changed_paths=[],
+            ),
+            evidence=EvidenceRailProjection(session_id=self._session_id),
+            safety_state="read-only",
+            footer_hint="q: quit  r: refresh  ?: help  t: details",
+            backlog_items=[],
+        )
+
+    async def _poll_refresh(self) -> None:
+        try:
+            screen = self.screen
+        except Exception:
+            return
+        if isinstance(screen, DashboardScreen):
+            await screen.action_refresh()
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="rig-console")
+    parser.add_argument("--mode", choices=("fixture", "runtime"), default="fixture")
+    parser.add_argument("--session-id", default="unknown")
+    parser.add_argument("--session-path")
+    parser.add_argument("--workspace-root")
+    parser.add_argument("--coordination-root")
+    parser.add_argument("--audit-root")
+    parser.add_argument("--refresh-interval", type=float, default=5.0)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    args = build_arg_parser().parse_args(list(argv) if argv is not None else None)
+    app = RigConsoleApp(
+        mode=args.mode,
+        session_id=args.session_id,
+        session_path=Path(args.session_path) if args.session_path else None,
+        workspace_root=Path(args.workspace_root) if args.workspace_root else None,
+        coordination_root=(
+            Path(args.coordination_root) if args.coordination_root else None
+        ),
+        audit_root=Path(args.audit_root) if args.audit_root else None,
+        refresh_interval=args.refresh_interval,
+    )
+    app.run()
 
 
 class _SingleWidgetsScreen(Screen):
@@ -239,6 +324,9 @@ class _SingleWidgetsScreen(Screen):
         yield EvidenceRailWidget(_sample_evidence("abc123-def456"))
 
 
+def run_app() -> None:
+    main()
+
+
 if __name__ == "__main__":
-    app = RigConsolePreview(mode="dashboard")
-    app.run()
+    main()

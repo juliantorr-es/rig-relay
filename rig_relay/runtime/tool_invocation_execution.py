@@ -19,9 +19,9 @@ Constraints:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import AsyncGenerator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from enum import StrEnum
 import hashlib
 import json
@@ -32,12 +32,12 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from rig_relay.coordination.lease_manager import DEFAULT_LEASE_TTL_SECONDS
 from rig_relay.runtime.context import RuntimeContextResolution
 from rig_relay.runtime.runtime_audit_event import (
     RuntimeAuditPersistenceStore,
     build_runtime_audit_event,
 )
-from rig_relay.coordination.lease_manager import DEFAULT_LEASE_TTL_SECONDS
 from rig_relay.runtime.tool_invocation_adapter import (
     RuntimeToolIntent,
     RuntimeToolInvocationAdapter,
@@ -351,77 +351,83 @@ class RuntimeToolExecutionRunner:
         # ── Lease acquisition ──────────────────────────────────────
         payload = envelope.payload or {}
         file_path = payload.get("file_path", "")
-        lease_block = self._claim_mutation_lease(envelope, file_path)
-        if lease_block is not None:
-            return lease_block
+        lease_outcome = self._claim_mutation_lease(envelope, file_path)
+        if lease_outcome.blocked is not None:
+            return lease_outcome.blocked
+        lease_info = lease_outcome.lease_info
+        coordination_root = self._resolve_coordination_root(envelope)
 
-        # ── Execute search_replace tool ────────────────────────────
+        # ── Execute search_replace tool (with lease release in finally) ─
         try:
-            result = await self._run_search_replace_tool(envelope)
-        except Exception as e:
-            _result = RuntimeToolExecutionResult(
-                status=RuntimeToolExecutionStatus.FAILED,
+            try:
+                result = await self._run_search_replace_tool(envelope)
+            except Exception as e:
+                _result = RuntimeToolExecutionResult(
+                    status=RuntimeToolExecutionStatus.FAILED,
+                    intent_id=intent.intent_id,
+                    tool_name=intent.tool_name.value,
+                    envelope_schema_valid=True,
+                    error_kind="execution_error",
+                    refusal_reason=str(e),
+                    duration_ms=(time.perf_counter() - start) * 1000,
+                )
+                self._persist_if_configured(_result, envelope)
+                return _result
+
+            # ── Build receipt hash ─────────────────────────────────
+            receipt_sha256: str | None = None
+            receipt: Any = None
+            try:
+                receipt = self._build_search_replace_receipt(result)
+                rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
+                receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
+            except Exception:
+                pass
+
+            # ── Extract receipt metadata ───────────────────────────
+            receipt_schema_version = None
+            if receipt is not None:
+                receipt_schema_version = getattr(receipt, "schema_version", None)
+
+            duration = (time.perf_counter() - start) * 1000
+
+            # ── Map search_replace status to execution status ──────
+            execution_status = RuntimeToolExecutionStatus.COMPLETED
+            tool_status = getattr(result, "status", "unknown")
+            tool_error_kind = getattr(result, "error_kind", None)
+            tool_refusal = getattr(result, "refusal_reason", None)
+
+            if tool_status in {"refused", "blocked"}:
+                execution_status = RuntimeToolExecutionStatus.REFUSED
+            elif tool_status in {"no_match", "ambiguous_match", "count_mismatch"}:
+                execution_status = RuntimeToolExecutionStatus.COMPLETED
+
+            payload = envelope.payload or {}
+            file_path = payload.get("file_path", "")
+            changed_paths: list[str] = [file_path] if file_path else []
+
+            _out = RuntimeToolExecutionResult(
+                status=execution_status,
+                invocation_id=envelope.invocation_id,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 envelope_schema_valid=True,
-                error_kind="execution_error",
-                refusal_reason=str(e),
-                duration_ms=(time.perf_counter() - start) * 1000,
+                tool_status=tool_status,
+                tool_error_kind=tool_error_kind,
+                receipt_sha256=receipt_sha256,
+                duration_ms=duration,
+                error_kind=tool_error_kind,
+                refusal_reason=tool_refusal,
+                tool_receipt_kind="search_replace",
+                tool_receipt_schema_version=receipt_schema_version,
+                changed_paths=changed_paths,
             )
-            self._persist_if_configured(_result, envelope)
-            return _result
-
-        # ── Build receipt hash ─────────────────────────────────────
-        receipt_sha256: str | None = None
-        receipt: Any = None
-        try:
-            receipt = self._build_search_replace_receipt(result)
-            rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
-            receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
-        except Exception:
-            pass
-
-        # ── Extract receipt metadata ───────────────────────────────
-        receipt_schema_version = None
-        if receipt is not None:
-            receipt_schema_version = getattr(receipt, "schema_version", None)
-
-        duration = (time.perf_counter() - start) * 1000
-
-        # ── Map search_replace status to execution status ──────────
-        execution_status = RuntimeToolExecutionStatus.COMPLETED
-        tool_status = getattr(result, "status", "unknown")
-        tool_error_kind = getattr(result, "error_kind", None)
-        tool_refusal = getattr(result, "refusal_reason", None)
-
-        if tool_status in {"refused", "blocked"}:
-            execution_status = RuntimeToolExecutionStatus.REFUSED
-        elif tool_status in {"no_match", "ambiguous_match", "count_mismatch"}:
-            execution_status = RuntimeToolExecutionStatus.COMPLETED
-
-        payload = envelope.payload or {}
-        file_path = payload.get("file_path", "")
-        changed_paths: list[str] = [file_path] if file_path else []
-
-        result = RuntimeToolExecutionResult(
-            status=execution_status,
-            invocation_id=envelope.invocation_id,
-            intent_id=intent.intent_id,
-            tool_name=intent.tool_name.value,
-            envelope_schema_valid=True,
-            tool_status=tool_status,
-            tool_error_kind=tool_error_kind,
-            receipt_sha256=receipt_sha256,
-            duration_ms=duration,
-            error_kind=tool_error_kind,
-            refusal_reason=tool_refusal,
-            tool_receipt_kind="search_replace",
-            tool_receipt_schema_version=receipt_schema_version,
-            changed_paths=changed_paths,
-        )
-        result = self._attach_receipt(result)
-        self._persist_if_configured(result, envelope)
-        return result
+            _out = self._attach_receipt(_out)
+            self._persist_if_configured(_out, envelope)
+            return _out
+        finally:
+            if lease_info is not None:
+                self._release_mutation_lease(coordination_root, lease_info)
 
     async def execute_write_file(
         self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
@@ -481,72 +487,79 @@ class RuntimeToolExecutionRunner:
         # ── Lease acquisition ──────────────────────────────────────
         payload = envelope.payload or {}
         file_path = payload.get("path", "")
-        lease_block = self._claim_mutation_lease(envelope, file_path)
-        if lease_block is not None:
-            return lease_block
+        lease_outcome = self._claim_mutation_lease(envelope, file_path)
+        if lease_outcome.blocked is not None:
+            return lease_outcome.blocked
+        lease_info = lease_outcome.lease_info
+        coordination_root = self._resolve_coordination_root(envelope)
 
+        # ── Execute write_file tool (with lease release in finally) ─
         try:
-            result = await self._run_write_file_tool(envelope)
-        except Exception as e:
-            _result = RuntimeToolExecutionResult(
-                status=RuntimeToolExecutionStatus.FAILED,
+            try:
+                result = await self._run_write_file_tool(envelope)
+            except Exception as e:
+                _result = RuntimeToolExecutionResult(
+                    status=RuntimeToolExecutionStatus.FAILED,
+                    intent_id=intent.intent_id,
+                    tool_name=intent.tool_name.value,
+                    envelope_schema_valid=True,
+                    error_kind="execution_error",
+                    refusal_reason=str(e),
+                    duration_ms=(time.perf_counter() - start) * 1000,
+                )
+                self._persist_if_configured(_result, envelope)
+                return _result
+
+            receipt_sha256: str | None = None
+            receipt: Any = None
+            try:
+                receipt = self._build_write_file_receipt(result)
+                rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
+                receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
+            except Exception:
+                pass
+
+            receipt_schema_version = None
+            if receipt is not None:
+                receipt_schema_version = getattr(receipt, "schema_version", None)
+
+            duration = (time.perf_counter() - start) * 1000
+
+            execution_status = RuntimeToolExecutionStatus.COMPLETED
+            tool_status = getattr(result, "status", "unknown")
+            tool_error_kind = getattr(result, "error_kind", None)
+            tool_refusal = getattr(result, "refusal_reason", None)
+
+            if tool_status in {"refused", "blocked"}:
+                execution_status = RuntimeToolExecutionStatus.REFUSED
+
+            payload = envelope.payload or {}
+            changed_paths: list[str] = (
+                [payload.get("path", "")] if payload.get("path") else []
+            )
+
+            _out = RuntimeToolExecutionResult(
+                status=execution_status,
+                invocation_id=envelope.invocation_id,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 envelope_schema_valid=True,
-                error_kind="execution_error",
-                refusal_reason=str(e),
-                duration_ms=(time.perf_counter() - start) * 1000,
+                tool_status=tool_status,
+                tool_error_kind=tool_error_kind,
+                receipt_sha256=receipt_sha256,
+                duration_ms=duration,
+                error_kind=tool_error_kind,
+                refusal_reason=tool_refusal,
+                tool_receipt_kind="write_file",
+                tool_receipt_schema_version=receipt_schema_version,
+                changed_paths=changed_paths,
             )
-            self._persist_if_configured(_result, envelope)
-            return _result
-
-        receipt_sha256: str | None = None
-        receipt: Any = None
-        try:
-            receipt = self._build_write_file_receipt(result)
-            rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
-            receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
-        except Exception:
-            pass
-
-        receipt_schema_version = None
-        if receipt is not None:
-            receipt_schema_version = getattr(receipt, "schema_version", None)
-
-        duration = (time.perf_counter() - start) * 1000
-
-        execution_status = RuntimeToolExecutionStatus.COMPLETED
-        tool_status = getattr(result, "status", "unknown")
-        tool_error_kind = getattr(result, "error_kind", None)
-        tool_refusal = getattr(result, "refusal_reason", None)
-
-        if tool_status in {"refused", "blocked"}:
-            execution_status = RuntimeToolExecutionStatus.REFUSED
-
-        payload = envelope.payload or {}
-        changed_paths: list[str] = (
-            [payload.get("path", "")] if payload.get("path") else []
-        )
-
-        result = RuntimeToolExecutionResult(
-            status=execution_status,
-            invocation_id=envelope.invocation_id,
-            intent_id=intent.intent_id,
-            tool_name=intent.tool_name.value,
-            envelope_schema_valid=True,
-            tool_status=tool_status,
-            tool_error_kind=tool_error_kind,
-            receipt_sha256=receipt_sha256,
-            duration_ms=duration,
-            error_kind=tool_error_kind,
-            refusal_reason=tool_refusal,
-            tool_receipt_kind="write_file",
-            tool_receipt_schema_version=receipt_schema_version,
-            changed_paths=changed_paths,
-        )
-        result = self._attach_receipt(result)
-        self._persist_if_configured(result, envelope)
-        return result
+            _out = self._attach_receipt(_out)
+            self._persist_if_configured(_out, envelope)
+            return _out
+        finally:
+            if lease_info is not None:
+                self._release_mutation_lease(coordination_root, lease_info)
 
     async def execute_bash(
         self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
@@ -964,7 +977,12 @@ class RuntimeToolExecutionRunner:
         """
         coordination_enabled = getattr(envelope, "coordination_enabled", True)
 
-        if not coordination_enabled or not envelope.session_id or not envelope.task_id or not file_path:
+        if (
+            not coordination_enabled
+            or not envelope.session_id
+            or not envelope.task_id
+            or not file_path
+        ):
             # Backward compat or coordination disabled: proceed without lease.
             lease_info: tuple[str, str, list[str]] | None = None
             return _LeaseClaimOutcome(blocked=None, lease_info=lease_info)
@@ -998,7 +1016,8 @@ class RuntimeToolExecutionRunner:
                 intent_id=getattr(envelope, "invocation_id", ""),
                 tool_name=getattr(envelope, "tool_name", "unknown"),
                 error_kind=result.error_kind or "lease_error",
-                refusal_reason=result.refusal_reason or "Lease acquisition returned unexpected status",
+                refusal_reason=result.refusal_reason
+                or "Lease acquisition returned unexpected status",
             )
             return _LeaseClaimOutcome(blocked=blocked, lease_info=None)
         except Exception:
@@ -1014,8 +1033,7 @@ class RuntimeToolExecutionRunner:
 
     @staticmethod
     def _release_mutation_lease(
-        coordination_root: str | Path,
-        lease_info: tuple[str, str, list[str]],
+        coordination_root: str | Path, lease_info: tuple[str, str, list[str]]
     ) -> None:
         """Release a previously acquired mutation lease.
 
@@ -1029,9 +1047,7 @@ class RuntimeToolExecutionRunner:
             from rig_relay.coordination.lease_manager import PathLeaseManager
 
             manager = PathLeaseManager(Path(coordination_root))
-            manager.release_paths(
-                session_id=session_id, task_id=task_id, paths=paths
-            )
+            manager.release_paths(session_id=session_id, task_id=task_id, paths=paths)
         except Exception:
             pass
 

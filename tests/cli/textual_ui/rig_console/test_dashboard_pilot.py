@@ -264,7 +264,7 @@ class TestDashboardPilotRefreshProviderError:
 
     @pytest.mark.asyncio
     async def test_provider_error_captures_sanitized_message(self) -> None:
-        """Error message is captured and sanitized (first line only, no newlines)."""
+        """Error message is captured as a sanitized exception type."""
         proj = _make_projection()
         provider = _CrashOnRefreshProvider("boom\nsecret detail")
         app = _TestDashboardApp(proj, provider=provider)
@@ -276,9 +276,7 @@ class TestDashboardPilotRefreshProviderError:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
             assert screen._last_refresh_error is not None
-            assert "boom" in screen._last_refresh_error
-            assert "\n" not in screen._last_refresh_error
-            assert "secret detail" not in screen._last_refresh_error
+            assert screen._last_refresh_error == "RuntimeError"
 
     @pytest.mark.asyncio
     async def test_provider_error_shows_footer_failed(self) -> None:
@@ -295,11 +293,11 @@ class TestDashboardPilotRefreshProviderError:
             assert isinstance(screen, DashboardScreen)
             assert screen._projection.footer_hint is not None
             assert "Refresh failed" in screen._projection.footer_hint
-            assert "boom" in screen._projection.footer_hint
+            assert "RuntimeError" in screen._projection.footer_hint
 
     @pytest.mark.asyncio
     async def test_provider_error_sanitizes_long_message(self) -> None:
-        """Long error messages are truncated to 100 chars."""
+        """Long error messages are reduced to a generic type label."""
         proj = _make_projection()
         long_msg = "x" * 200
         provider = _CrashOnRefreshProvider(long_msg)
@@ -312,7 +310,7 @@ class TestDashboardPilotRefreshProviderError:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
             assert screen._last_refresh_error is not None
-            assert len(screen._last_refresh_error) <= 100
+            assert screen._last_refresh_error == "RuntimeError"
 
     @pytest.mark.asyncio
     async def test_provider_error_does_not_overwrite_original_projection(self) -> None:

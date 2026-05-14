@@ -19,6 +19,7 @@ import json
 from pathlib import Path
 from typing import Any, Protocol
 
+from git import Repo
 from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.coordination.models import CoordinationSession
@@ -90,6 +91,24 @@ def _read_coordination_summary(
     )
 
 
+def _git_summary(workspace_root: Path | None) -> tuple[str | None, str | None]:
+    if workspace_root is None:
+        return None, None
+    try:
+        repo = Repo(workspace_root, search_parent_directories=True)
+    except Exception:
+        return None, None
+    branch_name: str | None = None
+    try:
+        branch_name = repo.active_branch.name
+    except Exception:
+        branch_name = None
+    head_sha = repo.head.commit.hexsha[:8] if repo.head.is_valid() else None
+    if branch_name and head_sha:
+        return f"{branch_name} @{head_sha}", head_sha
+    return branch_name, head_sha
+
+
 class DashboardProjectionProvider(Protocol):
     """Protocol for supplying a dashboard projection to the UI.
 
@@ -148,6 +167,7 @@ class RuntimeDashboardProjectionProvider:
         max_evidence_items: int = 20,
         coordination_root: Path | None = None,
         session_root: Path | None = None,
+        audit_root: Path | None = None,
         lane_id: str | None = None,
         task_title: str | None = None,
         runtime_events: Sequence[Any] | None = None,
@@ -158,6 +178,7 @@ class RuntimeDashboardProjectionProvider:
         self._max_evidence_items = max_evidence_items
         self._coordination_root = coordination_root
         self._session_root = session_root
+        self._audit_root = audit_root
         self._lane_id = lane_id
         self._task_title = task_title
         self._runtime_events = runtime_events
@@ -249,12 +270,13 @@ class RuntimeDashboardProjectionProvider:
         last_heartbeat_at = coord.last_heartbeat_at
         current_step = coord.current_step or "No active session data"
 
+        branch_name, _ = _git_summary(self._workspace_root)
         return SessionPaneProjection(
             session_id=self._session_id,
             lane_id=lane_id,
             task_title=task_title,
             status=status,
-            branch_name=None,
+            branch_name=branch_name,
             worktree_path=(str(self._workspace_root) if self._workspace_root else None),
             last_heartbeat_at=last_heartbeat_at,
             current_step=current_step,

@@ -117,9 +117,14 @@ class TestSessionPaneProjection:
             "content",
             "diff",
             "snippet",
+            "patch",
+            "prompt",
+            "secret",
+            "argv",
             "file_",
             "old_",
             "new_",
+            "chunk_",
         )
         for field_name in SessionPaneProjection.model_fields:
             lower = field_name.lower()

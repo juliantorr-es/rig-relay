@@ -63,6 +63,11 @@ class TestEvidenceRailItemProjection:
             "diff",
             "snippet",
             "patch",
+            "prompt",
+            "secret",
+            "argv",
+            "file_contents",
+            "chunk_text",
         )
         for field_name in EvidenceRailItemProjection.model_fields:
             lower = field_name.lower()

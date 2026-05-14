@@ -206,7 +206,7 @@ class TestDashboardScreen:
         with patch.object(screen, "_render_all"):
             asyncio.run(screen._do_refresh())
         assert screen._last_refresh_error is not None
-        assert "Disk full" in screen._last_refresh_error
+        assert screen._last_refresh_error == "ValueError"
         assert screen._refresh_in_progress is False
         assert screen._projection.footer_hint is not None
         assert "Refresh failed" in screen._projection.footer_hint
@@ -229,7 +229,7 @@ class TestDashboardScreen:
         screen = DashboardScreen(_make_projection(), provider=mock_provider)
         with patch.object(screen, "_render_all"):
             asyncio.run(screen._do_refresh())
-        assert screen._last_refresh_error == "First line"
+        assert screen._last_refresh_error == "RuntimeError"
 
     def test_refresh_worker_cancelled_error_is_graceful(self) -> None:
         mock_provider = AsyncMock()

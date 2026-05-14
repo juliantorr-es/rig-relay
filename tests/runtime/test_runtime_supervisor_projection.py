@@ -11,6 +11,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 
+from rig_relay.runtime.context import RuntimeContext, RuntimeContextResolution
 from rig_relay.runtime.runtime_audit_event import (
     RuntimeAuditEvent,
     RuntimeAuditPersistenceStore,
@@ -19,6 +20,8 @@ from rig_relay.runtime.runtime_supervisor_projection import (
     RuntimeSupervisorProjection,
     build_runtime_supervisor_projection,
 )
+from rig_relay.runtime.tool_invocation_adapter import RuntimeToolIntent, RuntimeToolName
+from rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionRunner
 
 # ── Constants ──────────────────────────────────────────────────────────
 
@@ -216,3 +219,96 @@ class TestRuntimeSupervisorProjectionSchema:
             bad[forbidden] = "some raw value"
             errors = list(validator.iter_errors(bad))
             assert errors, f"Schema should reject forbidden field '{forbidden}'"
+
+
+# ── Integration tests: runtime_exec → audit → projection ────────────
+
+
+class TestRuntimeExecAuditProjectionIntegration:
+    """Prove runtime_exec executes runtime tool, saves audit event, and builds projection."""
+
+    @pytest.mark.asyncio
+    async def test_runtime_exec_to_validate_audit_to_projection(
+        self, tmp_path: Path, projection_schema_dict: dict
+    ) -> None:
+        """Validate via runtime_exec: exactly one audit event, projection counts match."""
+        store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
+        runner = RuntimeToolExecutionRunner(audit_store=store)
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        intent = RuntimeToolIntent(
+            intent_id="intent-integ-001",
+            tool_name=RuntimeToolName.RUNTIME_EXEC,
+            payload={"tool_name": "validate", "profile": "worktree-readiness"},
+            requested_paths=[],
+        )
+        ctx = RuntimeContext(
+            session_id="sess-integ-001",
+            task_id="task-integ-001",
+            worktree_path=str(repo),
+            repo_root=str(repo),
+        )
+        resolution = RuntimeContextResolution(status="resolved", context=ctx)
+        result = await runner.execute_runtime_exec(intent, resolution)
+        assert result.status == "completed"
+
+        events = store.read_events()
+        assert len(events) == 1, "Expected exactly 1 audit event from runtime_exec"
+        event = events[0]
+        assert event.tool_name == "validate"
+        assert event.status == "completed"
+        assert event.duration_ms is not None
+
+        projection = build_runtime_supervisor_projection(store)
+        assert projection.total_invocations == 1
+        assert projection.status_counts.get("completed") == 1
+        assert len(projection.recent_invocations) == 1
+
+        dumped = json.dumps(projection.model_dump(mode="json"))
+        for forbidden in FORBIDDEN_RAW_FIELD_NAMES:
+            assert forbidden not in dumped, (
+                f"Found forbidden field '{forbidden}' in integration projection dump"
+            )
+
+        validator = jsonschema.Draft7Validator(projection_schema_dict)
+        errors = list(validator.iter_errors(projection.model_dump(mode="json")))
+        assert errors == [], f"Schema errors: {[e.message for e in errors]}"
+
+    @pytest.mark.asyncio
+    async def test_runtime_exec_to_write_file_audit_to_projection(
+        self, tmp_path: Path
+    ) -> None:
+        """Write_file via runtime_exec: audit event has changed_paths, projection counts."""
+        target = tmp_path / "test.txt"
+        store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
+        runner = RuntimeToolExecutionRunner(audit_store=store)
+        intent = RuntimeToolIntent(
+            intent_id="intent-integ-002",
+            tool_name=RuntimeToolName.RUNTIME_EXEC,
+            payload={
+                "tool_name": "write_file",
+                "path": str(target),
+                "content": "projection data\n",
+                "overwrite": False,
+            },
+            requested_paths=[],
+        )
+        ctx = RuntimeContext(
+            session_id="sess-integ-002",
+            task_id="task-integ-002",
+            worktree_path=str(tmp_path),
+            repo_root=str(tmp_path),
+        )
+        resolution = RuntimeContextResolution(status="resolved", context=ctx)
+
+        result = await runner.execute_runtime_exec(intent, resolution)
+        assert result.status == "completed"
+
+        events = store.read_events()
+        assert len(events) == 1
+        assert events[0].tool_name == "write_file"
+        assert len(events[0].changed_paths) == 1
+
+        projection = build_runtime_supervisor_projection(store)
+        assert projection.total_invocations == 1
+        assert projection.changed_path_count >= 1

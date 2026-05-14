@@ -37,7 +37,8 @@ class DashboardScreen(Screen):
     Keybindings:
         q — quit
         r — refresh projection from provider (no-op without provider)
-        ? — show available actions in footer
+        ? / h — show available actions in footer
+        t — toggle detail hints
         e — focus evidence rail (placeholder, read-only)
         v — validate current status (placeholder, read-only)
     """
@@ -67,6 +68,8 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("?", "show_help", "Help"),
+        ("h", "show_help", "Help"),
+        ("t", "toggle_details", "Details"),
         ("e", "focus_evidence", "Evidence"),
         ("v", "validate_current", "Validate"),
     ]
@@ -84,6 +87,7 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         self._refresh_in_progress: bool = False
         self._last_refresh_error: str | None = None
         self._last_refresh_at: str | None = None
+        self._details_visible: bool = False
 
     def compose(self) -> ComposeResult:
         proj = self._projection
@@ -133,8 +137,7 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         except asyncio.CancelledError:
             pass  # Exclusive worker replaced by newer refresh
         except Exception as e:
-            msg = str(e) if str(e) else "Unknown error"
-            sanitized = msg.split("\n")[0][:100]
+            sanitized = type(e).__name__
             self._last_refresh_error = sanitized
             self._set_status("error", "refresh", f"Refresh failed: {sanitized}")
         finally:
@@ -142,18 +145,26 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
 
     def action_show_help(self) -> None:
         """Show available keybindings in the footer."""
+        self._details_visible = True
         self._projection = self._projection.model_copy(
             update={
-                "footer_hint": "q: quit  r: refresh  ?: help  e: evidence  v: validate",
+                "footer_hint": "q: quit  r: refresh  ?: help  t: details  e: evidence  v: validate",
                 "backlog_items": [
                     "Refresh — fetch latest projection from provider",
                     "Help — show available actions",
+                    "Details — toggle detail hints",
                     "Evidence — focus evidence rail (placeholder)",
                     "Validate — read-only status check (placeholder)",
                 ],
             }
         )
         self._render_all()
+
+    def action_toggle_details(self) -> None:
+        """Toggle the detail hint state without mutating backend data."""
+        self._details_visible = not self._details_visible
+        footer = "details: on" if self._details_visible else "details: off"
+        self._set_status("info", "details", footer)
 
     def action_focus_evidence(self) -> None:
         """Placeholder: focus/evidence action. Read-only, no mutation."""

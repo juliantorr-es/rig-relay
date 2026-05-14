@@ -29,7 +29,32 @@
     },
     "recent_invocations": {
       "type": "array",
-      "items": { "type": "object", "required": ["audit_event_id", "invocation_id", "tool_name", "status"] },
+      "items": {
+        "type": "object",
+        "required": ["audit_event_id", "invocation_id", "tool_name", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": { "type": "string" },
+          "audit_event_id": { "type": "string" },
+          "invocation_id": { "type": "string" },
+          "tool_name": { "type": "string" },
+          "status": { "type": "string" },
+          "tool_status": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "receipt_sha256": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "runtime_result_sha256": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "changed_paths": { "type": "array", "items": { "type": "string" } },
+          "duration_ms": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+          "error_kind": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "refusal_reason": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "tool_receipt_kind": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "tool_receipt_schema_version": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "mission_id": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "agent_id": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "lease_id": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "parent_event_id": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "created_at": { "type": "string" }
+        }
+      },
       "description": "Most recent invocations (content-light audit events)"
     },
     "changed_path_count": {

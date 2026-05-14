@@ -6,6 +6,9 @@
 remains an active development compatibility surface until Relay CLI and the
 pywebview cockpit reach operational parity.
 
+For Rig Relay's supported terminal-native coding cockpit, see
+[Textual Rig Console](textual-rig-console.md).
+
 ### Lifecycle States
 
 | State | Meaning |

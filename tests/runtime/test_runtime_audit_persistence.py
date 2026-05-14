@@ -11,13 +11,16 @@ from pathlib import Path
 import jsonschema
 import pytest
 
+from rig_relay.runtime.context import RuntimeContext, RuntimeContextResolution
 from rig_relay.runtime.runtime_audit_event import (
     RuntimeAuditEvent,
     RuntimeAuditPersistenceStore,
     build_runtime_audit_event,
 )
+from rig_relay.runtime.tool_invocation_adapter import RuntimeToolIntent, RuntimeToolName
 from rig_relay.runtime.tool_invocation_execution import (
     RuntimeToolExecutionResult,
+    RuntimeToolExecutionRunner,
     RuntimeToolExecutionStatus,
 )
 
@@ -71,6 +74,44 @@ def _make_result(
 
 def _make_store(tmp_path: Path) -> RuntimeAuditPersistenceStore:
     return RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
+
+
+import subprocess
+
+
+def _make_repo(tmp_path: Path, name: str = "repo") -> Path:
+    """Create a minimal git repo with a pyproject.toml at repo root."""
+    repo = tmp_path / name
+    repo.mkdir(parents=True)
+    subprocess.run(["git", "init"], cwd=repo, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=repo,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=repo,
+        capture_output=True,
+        check=True,
+    )
+    (repo / "pyproject.toml").write_text(
+        '[project]\nname = "test"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    return repo
+
+
+def _intent(
+    tool_name: RuntimeToolName = RuntimeToolName.VALIDATE, **overrides: object
+) -> RuntimeToolIntent:
+    kwargs: dict[str, object] = {
+        "intent_id": "intent-001",
+        "tool_name": tool_name,
+        "payload": {},
+    }
+    kwargs.update(overrides)
+    return RuntimeToolIntent(**kwargs)  # type: ignore[arg-type]
 
 
 # ── Model tests ────────────────────────────────────────────────────────
@@ -395,15 +436,15 @@ class TestAuditPersistenceFromValidateExecution:
     async def test_validate_persists_one_event(self, tmp_path: Path) -> None:
         store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
         runner = RuntimeToolExecutionRunner(audit_store=store)
+        repo = _make_repo(tmp_path)
         intent = _intent(
-            RuntimeToolName.VALIDATE,
-            payload={"profile": "quick"},
+            RuntimeToolName.VALIDATE, payload={"profile": "worktree-readiness"}
         )
         ctx = RuntimeContext(
             session_id="sess-int-001",
             task_id="task-int-001",
-            worktree_path=str(tmp_path),
-            repo_root=str(tmp_path),
+            worktree_path=str(repo),
+            repo_root=str(repo),
         )
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
         result = await runner.execute_validate(intent, resolution)
@@ -422,12 +463,15 @@ class TestAuditPersistenceFromValidateExecution:
     ) -> None:
         store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
         runner = RuntimeToolExecutionRunner(audit_store=store)
-        intent = _intent(RuntimeToolName.VALIDATE, payload={"profile": "quick"})
+        repo = _make_repo(tmp_path)
+        intent = _intent(
+            RuntimeToolName.VALIDATE, payload={"profile": "worktree-readiness"}
+        )
         ctx = RuntimeContext(
             session_id="sess-int-002",
             task_id="task-int-002",
-            worktree_path=str(tmp_path),
-            repo_root=str(tmp_path),
+            worktree_path=str(repo),
+            repo_root=str(repo),
         )
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
         await runner.execute_validate(intent, resolution)
@@ -443,12 +487,15 @@ class TestAuditPersistenceFromValidateExecution:
     ) -> None:
         store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
         runner = RuntimeToolExecutionRunner(audit_store=store)
-        intent = _intent(RuntimeToolName.VALIDATE, payload={"profile": "quick"})
+        repo = _make_repo(tmp_path)
+        intent = _intent(
+            RuntimeToolName.VALIDATE, payload={"profile": "worktree-readiness"}
+        )
         ctx = RuntimeContext(
             session_id="sess-int-003",
             task_id="task-int-003",
-            worktree_path=str(tmp_path),
-            repo_root=str(tmp_path),
+            worktree_path=str(repo),
+            repo_root=str(repo),
         )
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
         await runner.execute_validate(intent, resolution)
@@ -481,21 +528,25 @@ class TestAuditPersistenceFromValidateExecution:
         assert result.status == RuntimeToolExecutionStatus.BLOCKED
         events = store.read_events()
         assert len(events) == 1
-        assert events[0].status == "refused"
+        assert events[0].status == "blocked"
 
     @pytest.mark.asyncio
     async def test_validate_no_store_does_not_persist(self, tmp_path: Path) -> None:
         runner = RuntimeToolExecutionRunner(audit_store=None)
-        intent = _intent(RuntimeToolName.VALIDATE, payload={"profile": "quick"})
+        repo = _make_repo(tmp_path)
+        intent = _intent(
+            RuntimeToolName.VALIDATE, payload={"profile": "worktree-readiness"}
+        )
         ctx = RuntimeContext(
             session_id="sess-int-005",
             task_id="task-int-005",
-            worktree_path=str(tmp_path),
-            repo_root=str(tmp_path),
+            worktree_path=str(repo),
+            repo_root=str(repo),
         )
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
         result = await runner.execute_validate(intent, resolution)
         assert result.status == RuntimeToolExecutionStatus.COMPLETED
+
 
 class TestAuditPersistenceFromSearchReplaceExecution:
     """Integration: execute_search_replace persists exactly one content-light event."""
@@ -607,7 +658,7 @@ class TestAuditPersistenceFromSearchReplaceExecution:
         assert result.status == RuntimeToolExecutionStatus.BLOCKED
         events = store.read_events()
         assert len(events) == 1
-        assert events[0].status == "refused"
+        assert events[0].status == "blocked"
 
 
 class TestAuditPersistenceFromWriteFileExecution:
@@ -708,7 +759,7 @@ class TestAuditPersistenceFromWriteFileExecution:
         assert result.status == RuntimeToolExecutionStatus.BLOCKED
         events = store.read_events()
         assert len(events) == 1
-        assert events[0].status == "refused"
+        assert events[0].status == "blocked"
 
 
 class TestBashAuditPersistence:
@@ -720,8 +771,7 @@ class TestBashAuditPersistence:
         store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
         runner = RuntimeToolExecutionRunner(audit_store=store)
         intent = _intent(
-            RuntimeToolName.BASH_LEGACY,
-            payload={"command": "echo ok", "shell": True},
+            RuntimeToolName.BASH_LEGACY, payload={"command": "echo ok", "shell": True}
         )
         ctx = RuntimeContext(
             session_id="sess-bash-001",
@@ -742,8 +792,7 @@ class TestBashAuditPersistence:
         store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
         runner = RuntimeToolExecutionRunner(audit_store=store)
         intent = _intent(
-            RuntimeToolName.BASH_LEGACY,
-            payload={"command": "echo ok", "shell": True},
+            RuntimeToolName.BASH_LEGACY, payload={"command": "echo ok", "shell": True}
         )
         ctx = RuntimeContext(
             session_id="sess-bash-002",
@@ -766,8 +815,7 @@ class TestBashAuditPersistence:
         store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
         runner = RuntimeToolExecutionRunner(audit_store=store)
         intent = _intent(
-            RuntimeToolName.BASH_LEGACY,
-            payload={"command": "echo ok", "shell": True},
+            RuntimeToolName.BASH_LEGACY, payload={"command": "echo ok", "shell": True}
         )
         ctx = RuntimeContext(
             session_id="sess-bash-003",
@@ -793,15 +841,16 @@ class TestRuntimeExecNoDoublePersist:
     ) -> None:
         store = RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")
         runner = RuntimeToolExecutionRunner(audit_store=store)
+        repo = _make_repo(tmp_path)
         intent = _intent(
             RuntimeToolName.RUNTIME_EXEC,
-            payload={"tool_name": "validate", "profile": "quick"},
+            payload={"tool_name": "validate", "profile": "worktree-readiness"},
         )
         ctx = RuntimeContext(
             session_id="sess-re-001",
             task_id="task-re-001",
-            worktree_path=str(tmp_path),
-            repo_root=str(tmp_path),
+            worktree_path=str(repo),
+            repo_root=str(repo),
         )
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
         result = await runner.execute_runtime_exec(intent, resolution)
@@ -852,6 +901,7 @@ class TestBestEffortAuditPersistence:
         self, tmp_path: Path
     ) -> None:
         """A store that raises on append should not fail the tool execution."""
+
         class _BrokenStore(RuntimeAuditPersistenceStore):
             def append(self, event: RuntimeAuditEvent) -> RuntimeAuditEvent:
                 msg = "Simulated store failure"
@@ -859,12 +909,15 @@ class TestBestEffortAuditPersistence:
 
         store = _BrokenStore(tmp_path / "audit.jsonl")
         runner = RuntimeToolExecutionRunner(audit_store=store)
-        intent = _intent(RuntimeToolName.VALIDATE, payload={"profile": "quick"})
+        repo = _make_repo(tmp_path)
+        intent = _intent(
+            RuntimeToolName.VALIDATE, payload={"profile": "worktree-readiness"}
+        )
         ctx = RuntimeContext(
             session_id="sess-bf-001",
             task_id="task-bf-001",
-            worktree_path=str(tmp_path),
-            repo_root=str(tmp_path),
+            worktree_path=str(repo),
+            repo_root=str(repo),
         )
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
         result = await runner.execute_validate(intent, resolution)
@@ -876,6 +929,7 @@ class TestBestEffortAuditPersistence:
     ) -> None:
         target = tmp_path / "test.py"
         target.write_text("old\n", encoding="utf-8")
+
         class _BrokenStore(RuntimeAuditPersistenceStore):
             def append(self, event: RuntimeAuditEvent) -> RuntimeAuditEvent:
                 msg = "Simulated store failure"
@@ -905,12 +959,15 @@ class TestBestEffortAuditPersistence:
     async def test_no_store_does_not_fail(self, tmp_path: Path) -> None:
         """Runner with audit_store=None should execute normally."""
         runner = RuntimeToolExecutionRunner(audit_store=None)
-        intent = _intent(RuntimeToolName.VALIDATE, payload={"profile": "quick"})
+        repo = _make_repo(tmp_path)
+        intent = _intent(
+            RuntimeToolName.VALIDATE, payload={"profile": "worktree-readiness"}
+        )
         ctx = RuntimeContext(
             session_id="sess-bf-003",
             task_id="task-bf-003",
-            worktree_path=str(tmp_path),
-            repo_root=str(tmp_path),
+            worktree_path=str(repo),
+            repo_root=str(repo),
         )
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
         result = await runner.execute_validate(intent, resolution)

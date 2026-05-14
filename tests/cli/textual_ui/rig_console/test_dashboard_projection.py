@@ -88,6 +88,13 @@ class TestDashboardProjection:
             "diff",
             "snippet",
             "patch",
+            "prompt",
+            "secret",
+            "argv",
+            "file_contents",
+            "chunk_text",
+            "old_text",
+            "new_text",
         )
         for field_name in DashboardProjection.model_fields:
             lower = field_name.lower()
