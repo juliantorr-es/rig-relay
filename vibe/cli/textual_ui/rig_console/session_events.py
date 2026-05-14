@@ -9,6 +9,7 @@ class CodingTranscriptItemProjection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     item_id: str
+    turn_id: str = ""
     kind: str
     title: str
     body_text: str | None = None

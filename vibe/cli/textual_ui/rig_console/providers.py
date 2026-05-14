@@ -14,7 +14,7 @@ Rules:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 import json
 from pathlib import Path
 from typing import Any, Protocol
@@ -69,6 +69,7 @@ from vibe.cli.textual_ui.rig_console.session_bridge import (
 from vibe.cli.textual_ui.rig_console.session_events import (
     CodingSessionEvents,
     CodingSessionSnapshot,
+    CodingTranscriptItemProjection,
     SubmitPromptResult,
 )
 
@@ -219,6 +220,12 @@ class DashboardProjectionProvider(Protocol):
         """Return transcript events after the given cursor."""
         ...
 
+    async def stream_events(
+        self, turn_id: str
+    ) -> AsyncIterator[CodingTranscriptItemProjection]:
+        """Stream turn events as they are produced."""
+        ...  # pragma: no cover
+
     async def cancel_turn(self) -> None:
         """Cancel the active turn (no-op if idle)."""
         ...
@@ -320,6 +327,12 @@ class FixtureDashboardProjectionProvider:
 
     async def events_since(self, cursor: str | None) -> CodingSessionEvents:
         return await self._session_bridge.events_since(cursor)
+
+    async def stream_events(
+        self, turn_id: str
+    ) -> AsyncIterator[CodingTranscriptItemProjection]:
+        async for item in self._session_bridge.stream_events(turn_id):
+            yield item
 
     async def cancel_turn(self) -> None:
         await self._session_bridge.cancel_turn()
@@ -807,6 +820,12 @@ class RuntimeDashboardProjectionProvider:
 
     async def events_since(self, cursor: str | None) -> CodingSessionEvents:
         return await self._session_bridge.events_since(cursor)
+
+    async def stream_events(
+        self, turn_id: str
+    ) -> AsyncIterator[CodingTranscriptItemProjection]:
+        async for item in self._session_bridge.stream_events(turn_id):
+            yield item
 
     async def cancel_turn(self) -> None:
         await self._session_bridge.cancel_turn()

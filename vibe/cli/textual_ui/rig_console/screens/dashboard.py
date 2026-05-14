@@ -1,4 +1,4 @@
-# ruff: noqa: PLR0904
+# ruff: noqa: PLR0904, PLR0915
 """Dashboard screen — composes header, session pane, evidence rail, and footer."""
 
 from __future__ import annotations
@@ -721,7 +721,6 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
         self._set_turn_starting(prompt_bar)
         turn_result: str | None = None
 
-        # Build context envelope before submitting
         try:
             snapshot = (
                 await provider.snapshot() if hasattr(provider, "snapshot") else None
@@ -761,9 +760,7 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
                 return
 
             self._set_turn_accepted(prompt_bar)
-            events, cursor = await self._poll_turn_events(provider)
-            turn_result = self._turn_status_from_events(events)
-            await self._finalize_turn(provider, events, cursor)
+            turn_result = await self._consume_turn_stream(provider)
         except asyncio.CancelledError:
             turn_result = "cancelled"
             await provider.cancel_turn()
@@ -781,6 +778,40 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
                     prompt_bar.set_status("Failed")
                 else:
                     prompt_bar.set_status("Ready")
+            if turn_result == "completed":
+                self._set_status("ok", "session", "Turn completed")
+
+    async def _consume_turn_stream(self, provider: Any) -> str:
+        """Consume events from the bridge event stream. Returns final status."""
+        turn_id = getattr(provider, "active_turn_id", "")
+        if not turn_id:
+            return "failed"
+        try:
+            async for item in provider.stream_events(turn_id):
+                self._on_session_event(item)
+                if item.kind == "turn_status":
+                    return item.status or "completed"
+            return "completed"
+        except AttributeError:
+            return await self._fallback_poll(provider)
+
+    async def _fallback_poll(self, provider: Any) -> str:
+        """Fallback polling path for providers without stream_events."""
+        cursor: str | None = None
+        while self._turn_active:
+            try:
+                events = await provider.events_since(cursor)
+            except AttributeError:
+                return "failed"
+            for item in events.items:
+                self._on_session_event(item)
+                if item.kind == "turn_status":
+                    return item.status or "completed"
+            if events.cursor:
+                cursor = events.cursor
+            if self._turn_active:
+                await asyncio.sleep(_POLL_INTERVAL)
+        return "completed"
 
     def _set_turn_starting(self, prompt_bar: PromptBar | None) -> None:
         if prompt_bar:
@@ -802,46 +833,6 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
         if prompt_bar:
             prompt_bar.clear_input()
             prompt_bar.set_status("Running")
-
-    async def _poll_turn_events(self, provider: object) -> tuple[list, str | None]:
-        cursor: str | None = None
-        all_items: list = []
-        turn_completed = False
-        while not turn_completed and self._turn_active:
-            events = await cast(Any, provider).events_since(cursor)
-            for item in events.items:
-                self._on_session_event(item)
-                all_items.append(item)
-                if item.kind == "turn_status":
-                    turn_completed = True
-            if events.cursor:
-                cursor = events.cursor
-            if not turn_completed and self._turn_active:
-                await asyncio.sleep(_POLL_INTERVAL)
-        return all_items, cursor
-
-    async def _finalize_turn(
-        self, provider: object, items: list, cursor: str | None
-    ) -> None:
-        snapshot = await cast(Any, provider).snapshot()
-        self._projection = self._projection.model_copy(
-            update={"transcript": snapshot.transcript}
-        )
-        self._render_all()
-
-        status = self._turn_status_from_events(items)
-        if status == "cancelled":
-            self._set_status("info", "session", "Turn cancelled")
-        elif status == "failed":
-            self._set_status("error", "session", "Turn failed")
-        else:
-            self._set_status("ok", "session", "Turn completed")
-
-    def _turn_status_from_events(self, items: list) -> str:
-        for item in items:
-            if item.kind == "turn_status":
-                return item.status or "completed"
-        return "completed"
 
     def _on_session_event(self, item: CodingTranscriptItemProjection) -> None:
         match item.kind:

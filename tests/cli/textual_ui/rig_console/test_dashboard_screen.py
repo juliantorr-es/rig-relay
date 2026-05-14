@@ -916,7 +916,7 @@ class TestCancellationFlow:
     def test_second_prompt_refused_when_active(self) -> None:
         bridge = CodingSessionBridge(session_id="s1")
         bridge.config = MagicMock()
-        bridge._turn_status = "running"
+        bridge._turn_state.status = "running"
         result = asyncio.run(bridge.submit_user_message("second prompt"))
         assert result.accepted is False
         assert "already active" in (result.refusal_reason or "").lower()

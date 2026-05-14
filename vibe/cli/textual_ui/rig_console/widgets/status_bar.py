@@ -89,7 +89,9 @@ StatusBarWidget > .status-right {
             parts.append(f"CTX: {env.section_count}s·{cache}")
         q = self._projection.queue if self._projection else None
         if q:
-            parts.append(f"Q: {q.queued_count} R: {q.running_count} B: {q.blocked_count}")
+            parts.append(
+                f"Q: {q.queued_count} R: {q.running_count} B: {q.blocked_count}"
+            )
         return "  ".join(parts) if parts else ""
 
 

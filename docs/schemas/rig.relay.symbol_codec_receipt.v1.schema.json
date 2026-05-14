@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.symbol_codec_receipt.v1.schema.json",
+  "title": "Rig Relay Symbol Codec Receipt v1",
+  "description": "Content-light receipt for a deterministic symbol replacement codec operation. Contains no raw text, only hashes, counts, and codec metadata.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.symbol_codec_receipt.v1"]
+    },
+    "codec_name": {
+      "type": "string",
+      "description": "Name of the codec used (e.g. rig.symbol_table.v1)"
+    },
+    "codec_version": {
+      "type": "string",
+      "description": "Version of the codec"
+    },
+    "input_sha256": {
+      "type": "string",
+      "description": "SHA256 hex digest of the original uncompressed text"
+    },
+    "output_sha256": {
+      "type": "string",
+      "description": "SHA256 hex digest of the compressed text"
+    },
+    "symbol_table_sha256": {
+      "type": "string",
+      "description": "SHA256 hex digest of the serialised symbol table"
+    },
+    "estimated_tokens_before": {
+      "type": "integer",
+      "description": "Estimated token count before compression"
+    },
+    "estimated_tokens_after": {
+      "type": "integer",
+      "description": "Estimated token count after compression"
+    },
+    "replacement_count": {
+      "type": "integer",
+      "description": "Total number of symbol replacements performed"
+    },
+    "reversible": {
+      "type": "boolean",
+      "description": "Whether the codec can reconstruct the exact original text",
+      "const": true
+    },
+    "lossy": {
+      "type": "boolean",
+      "description": "Whether the codec discards information",
+      "const": false
+    },
+    "refused_reason": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "If compression was refused, the reason. null if compression succeeded."
+    }
+  },
+  "required": [
+    "schema_version",
+    "codec_name",
+    "input_sha256",
+    "output_sha256",
+    "estimated_tokens_before",
+    "estimated_tokens_after",
+    "replacement_count",
+    "reversible",
+    "lossy"
+  ],
+  "additionalProperties": false
+}
