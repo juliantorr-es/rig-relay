@@ -263,6 +263,8 @@ class TestDashboardScreen:
             "Inspect Fleet",
         ) in screen.BINDINGS
         assert ("ctrl+f", "refresh_fleet_state", "Refresh Fleet") in screen.BINDINGS
+        assert ("shift+v", "queue_validate", "Enqueue Validate") in screen.BINDINGS
+        assert ("shift+r", "queue_refresh", "Refresh Queue") in screen.BINDINGS
 
     def test_inspect_selected_fleet_item_updates_inspector(self) -> None:
         screen = DashboardScreen(_make_projection())

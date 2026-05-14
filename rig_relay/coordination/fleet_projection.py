@@ -20,6 +20,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from rig_relay.coordination.current_state import generate_current_state
 from rig_relay.coordination.fleet_queue import FleetQueue, FleetQueueSnapshot
 
 # ── Constants ──────────────────────────────────────────────────────────
@@ -212,6 +213,26 @@ def build_fleet_projection(
     """
     stamp = created_at or datetime.now(UTC).isoformat()
     pid = projection_id or _generate_projection_id(stamp)
+
+    if coordination_root is not None:
+        if queue is None:
+            queue = build_queue_summary(FleetQueue(coordination_root / "events.jsonl"))
+        if leases is None:
+            leases = build_lease_summary(coordination_root)
+        if patches is None:
+            patches = build_patch_proposal_summary(coordination_root)
+        if agents is None:
+            current_state = generate_current_state(coordination_root=coordination_root)
+            summary = current_state.get("summary", {})
+            agents = FleetAgentSummary(
+                total_agents=summary.get("active_children", 0),
+                active_sessions=summary.get("active_children", 0),
+                recent_heartbeats=summary.get("active_children", 0),
+                stale_sessions=summary.get("stale_leases", 0),
+            )
+            recent_event_count = len(current_state.get("recent_artifacts", [])) + len(
+                current_state.get("recent_conflicts", [])
+            )
 
     return FleetProjection(
         schema_version=_SCHEMA_VERSION,

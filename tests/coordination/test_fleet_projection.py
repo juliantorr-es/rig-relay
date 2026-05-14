@@ -27,9 +27,11 @@ from rig_relay.coordination.fleet_projection import (
 from rig_relay.coordination.fleet_queue import (
     FleetQueue,
     FleetQueueItem,
+    FleetQueueItemKind,
     FleetQueueReplayReport,
     FleetQueueSnapshot,
 )
+from rig_relay.coordination.lease_manager import PathLeaseManager
 
 _FORBIDDEN_RAW = frozenset({
     "prompt",
@@ -292,6 +294,39 @@ class TestFleetPatchProposalSummary:
                 "latest_proposal_id": None,
                 "raw": "bad",
             })
+
+
+class TestFleetProjectionIntegration:
+    def test_build_from_coordination_root_wires_queue_lease_and_patch(
+        self, tmp_path: Path
+    ) -> None:
+        coord_root = tmp_path / "coordination"
+        queue = FleetQueue(coord_root / "events.jsonl")
+        queue.enqueue_item(FleetQueueItemKind.MESSAGE, payload={"summary": "hello"})
+
+        PathLeaseManager(coord_root).claim_paths(
+            session_id="s-1",
+            task_id="t-1",
+            mode="exclusive_write",
+            paths=["src/app.py"],
+            ttl_seconds=120,
+        )
+
+        proposals_dir = coord_root / ".fleet" / "patch-proposals"
+        proposals_dir.mkdir(parents=True, exist_ok=True)
+        proposals_dir.joinpath("proposal-1.json").write_text(
+            json.dumps({
+                "proposal_id": "pp-1",
+                "status": "pending",
+                "created_at": "2026-01-01T00:00:00Z",
+            }),
+            encoding="utf-8",
+        )
+
+        projection = build_fleet_projection(coordination_root=coord_root)
+        assert projection.queue.total == 1
+        assert projection.leases.total_active == 1
+        assert projection.patches.pending == 1
 
 
 class TestFleetProjectionSchema:

@@ -174,6 +174,8 @@ FleetPanelWidget.visible, QueuePanelWidget.visible, InspectorDrawerWidget.visibl
         ("h", "show_help", "Help"),
         ("t", "toggle_details", "Details"),
         ("v", "run_validate", "Run Validate"),
+        ("shift+v", "queue_validate", "Enqueue Validate"),
+        ("shift+r", "queue_refresh", "Refresh Queue"),
         ("i", "toggle_inspector", "Inspector"),
         ("u", "toggle_queue_panel", "Queue"),
         ("j", "next_queue_item", "Next Queue"),

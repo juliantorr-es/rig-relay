@@ -129,6 +129,21 @@
       "required": ["pending", "applied", "rejected", "revised", "total", "oldest_pending_at", "latest_proposal_id"],
       "additionalProperties": false
     },
+    "agent_details": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "agent_id": { "type": "string" },
+          "status": { "type": "string" },
+          "role": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "last_heartbeat_age": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "lease_summary": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+        },
+        "required": ["agent_id", "status", "role", "last_heartbeat_age", "lease_summary"],
+        "additionalProperties": false
+      }
+    },
     "recent_event_count": {
       "type": "integer",
       "description": "Count of recent coordination events"
