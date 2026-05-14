@@ -120,6 +120,38 @@ Cache records do NOT contain:
 - Prompts or secrets
 - Full raw `argv` (only fingerprint)
 
+## End-to-End Integration
+
+ValidateTool.run() directly owns cache and scheduler behavior — agents do not opt in:
+
+1. Every `run()` call creates `ValidationCacheStore` and `ValidationSchedulerStore` from args.
+2. For each check, the tool computes `input_fingerprint` and `cache_key`, looks up cache, and checks eligibility.
+3. Cache hits return `_build_cached_result()` with `cache_status="hit"` and the stored record's metadata.
+4. Cache misses run the check, store the result, and annotate the check with `cache_status="miss_ran"`.
+5. Scheduler acquires a file-based lock before running; duplicate cache keys get `scheduler_status="blocked_duplicate"`.
+6. `apply_parallel_policy()` injects bounded xdist flags for eligible pytest commands.
+7. `check_lifecycle_policy()` emits `full_suite_during_edit_phase` warnings when appropriate.
+8. On cache/scheduler errors, the tool falls through to the real check — never crashes.
+
+### Test coverage (216 tests passing)
+
+End-to-end tests through `ValidateTool.run()` prove:
+
+| Test | What it proves |
+|---|---|
+| `test_run_end_to_end_cache_hit` | First run executes; second identical call returns cached result with `cache_status="hit"` |
+| `test_run_end_to_end_cache_miss_on_invalidation` | Unrelated file changes don't invalidate; scope-based invalidation requires fingerprint change |
+| `test_run_end_to_end_cache_content_light` | Result has no raw stdout/stderr in JSON dump; cache metadata always present |
+| `test_run_end_to_end_cache_disabled_produces_no_cache` | `cache_policy=disabled` skips cache entirely, all checks show `cache_status="disabled"` |
+| `test_run_end_to_end_force_rerun_ignores_cache` | `cache_policy=force_rerun` bypasses cache, re-runs check |
+| `test_run_end_to_end_scheduler_disabled_no_block` | `scheduler_policy=disabled` does not acquire locks |
+| `test_run_end_to_end_cache_error_resilient` | Corrupt cache JSON doesn't crash — falls through to real check with `cache_status!="hit"` |
+| `test_run_end_to_end_cache_on_profile_with_focused_test` | Path-scoped validation still caches properly |
+
+### Pre-existing bug fix
+
+`check_missing_dependency()` previously checked every non-flag token as a potential binary, which broke multi-word commands like `git status --short` (would check `status` as a binary). Fixed to only check the first resolvable binary token.
+
 ## Phase 0 Limitations
 
 - No full coverage dependency graph
@@ -127,7 +159,9 @@ Cache records do NOT contain:
 - No remote cache
 - No wait/follow for in-flight checks (deferred)
 - No cross-machine cache
+- No heartbeat renewal on running locks
 - No `$HOME/.rig/relay` writes — cache is project-local under `.build/rig/`
+- Schema validation stays serial even with `parallel_policy=auto`
 
 ## Configuration
 

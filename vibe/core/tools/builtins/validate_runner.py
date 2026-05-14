@@ -67,11 +67,11 @@ def classify_failure(command_kind: str, exit_code: int, stderr: str) -> str:
 def check_missing_dependency(argv: Sequence[str]) -> str | None:
     """Check if required executables exist for a command.
 
-    Returns a missing dependency name, or None if all dependencies are met.
-
-    Handles ``uv run <tool>`` pattern: only checks ``uv``, not ``run``.
-    Skips path-like, flag-like, and numeric tokens.
+    Only checks the first resolvable binary token — subsequent tokens
+    are arguments/subcommands (e.g. ``git status`` only checks ``git``).
+    Handles ``uv run <tool>`` pattern: checks ``uv`` then skips ``run``.
     """
+    main_bin: str | None = None
     skip_tokens = {"run"}
     for token in argv:
         if token in skip_tokens:
@@ -80,7 +80,6 @@ def check_missing_dependency(argv: Sequence[str]) -> str | None:
             if not shutil.which("uv"):
                 return "uv"
             continue
-        # Skip numeric, flag-like, or path-like tokens
         if token.isdigit():
             continue
         if token.startswith("-"):
@@ -89,8 +88,11 @@ def check_missing_dependency(argv: Sequence[str]) -> str | None:
             continue
         if "." in token:
             continue
-        if not shutil.which(token):
-            return token
+        main_bin = token
+        break
+
+    if main_bin and not shutil.which(main_bin):
+        return main_bin
     return None
 
 
