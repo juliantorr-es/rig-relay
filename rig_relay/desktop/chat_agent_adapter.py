@@ -6,8 +6,8 @@ import hashlib
 from typing import TYPE_CHECKING, Any
 
 from rig_relay.desktop.chat_state import ChatMessage, ChatRole
-from vibe.core.logger import logger
-from vibe.core.types import (
+from rig_relay.core.logger import logger
+from rig_relay.core.types import (
     AssistantEvent,
     BaseEvent,
     ReasoningEvent,
@@ -18,8 +18,8 @@ from vibe.core.types import (
 )
 
 if TYPE_CHECKING:
+    from rig_relay.core.agent_loop import AgentLoop
     from rig_relay.desktop.chat_store import ChatStore
-    from vibe.core.agent_loop import AgentLoop
 
 
 class ChatAgentAdapter:

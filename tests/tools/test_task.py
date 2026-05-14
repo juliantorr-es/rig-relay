@@ -9,12 +9,12 @@ import pytest
 
 from tests.conftest import build_test_vibe_config
 from tests.mock.utils import collect_result
-from vibe.core.agents.manager import AgentManager
-from vibe.core.agents.models import BUILTIN_AGENTS, AgentType
-from vibe.core.config import ProviderConfig
-from vibe.core.paths._vibe_home import SESSIONS_ROOT
-from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
-from vibe.core.tools.builtins.task import (
+from rig_relay.core.agents.manager import AgentManager
+from rig_relay.core.agents.models import BUILTIN_AGENTS, AgentType
+from rig_relay.core.config import ProviderConfig
+from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
+from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
+from rig_relay.core.tools.builtins.task import (
     Task,
     TaskArgs,
     TaskFleetSpec,
@@ -24,8 +24,8 @@ from vibe.core.tools.builtins.task import (
     TaskSpec,
     TaskToolConfig,
 )
-from vibe.core.tools.permissions import PermissionContext
-from vibe.core.types import AssistantEvent, LLMMessage, Role
+from rig_relay.core.tools.permissions import PermissionContext
+from rig_relay.core.types import AssistantEvent, LLMMessage, Role
 
 
 @pytest.fixture

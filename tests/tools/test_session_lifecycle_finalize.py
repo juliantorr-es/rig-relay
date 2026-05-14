@@ -6,8 +6,8 @@ import pytest
 
 from rig_relay.governance.mission_envelope import MissionEnvelope
 from tests.mock.utils import collect_result
-from vibe.core.tools.base import BaseToolState, InvokeContext
-from vibe.core.tools.builtins.session_lifecycle import (
+from rig_relay.core.tools.base import BaseToolState, InvokeContext
+from rig_relay.core.tools.builtins.session_lifecycle import (
     SessionFinalizeArgs,
     SessionLifecycleFinalize,
     SessionLifecycleFinalizeConfig,

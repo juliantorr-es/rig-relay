@@ -10,10 +10,10 @@ import respx
 
 from tests.stubs.fake_connector_registry import FakeConnectorRegistry
 from tests.stubs.fake_mcp_registry import FakeMCPRegistry
-from vibe.core.config import ConnectorConfig, VibeConfig
-from vibe.core.tools.base import BaseToolConfig, ToolError
-from vibe.core.tools.connectors import CONNECTORS_ENV_VAR
-from vibe.core.tools.connectors.connector_registry import (
+from rig_relay.core.config import ConnectorConfig, VibeConfig
+from rig_relay.core.tools.base import BaseToolConfig, ToolError
+from rig_relay.core.tools.connectors import CONNECTORS_ENV_VAR
+from rig_relay.core.tools.connectors.connector_registry import (
     ConnectorRegistry,
     RemoteTool,
     _connector_error_message,
@@ -21,8 +21,8 @@ from vibe.core.tools.connectors.connector_registry import (
     _unwrap_http_status_error,
     create_connector_proxy_tool_class,
 )
-from vibe.core.tools.manager import ToolManager
-from vibe.core.tools.mcp.tools import MCPTool, MCPToolResult
+from rig_relay.core.tools.manager import ToolManager
+from rig_relay.core.tools.mcp.tools import MCPTool, MCPToolResult
 
 # ---------------------------------------------------------------------------
 # Unit tests for helper functions

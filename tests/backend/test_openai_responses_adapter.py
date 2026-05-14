@@ -26,10 +26,10 @@ from tests.backend.data.openai_responses import (
     STREAMED_TOOL_CONVERSATION_PARAMS,
     TOOL_CONVERSATION_PARAMS,
 )
-from vibe.core.config import ModelConfig, ProviderConfig
-from vibe.core.llm.backend.generic import GenericBackend
-from vibe.core.llm.backend.openai_responses import OpenAIResponsesAdapter
-from vibe.core.types import (
+from rig_relay.core.config import ModelConfig, ProviderConfig
+from rig_relay.core.llm.backend.generic import GenericBackend
+from rig_relay.core.llm.backend.openai_responses import OpenAIResponsesAdapter
+from rig_relay.core.types import (
     AvailableFunction,
     AvailableTool,
     FunctionCall,

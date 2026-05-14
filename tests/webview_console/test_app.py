@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from vibe.cli.webview_console import app as webview_app
+from rig_relay.cli.webview_console import app as webview_app
 
 
 def test_main_starts_websocket_server_in_background_thread(monkeypatch) -> None:

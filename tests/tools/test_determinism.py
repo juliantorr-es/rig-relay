@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.tools.base import ToolError
-from vibe.core.tools.determinism import (
+from rig_relay.core.tools.base import ToolError
+from rig_relay.core.tools.determinism import (
     normalize_tool_path,
     parse_shell_commands,
     require_path_within_workdir,
@@ -57,7 +57,7 @@ def test_require_path_within_workdir_rejects_outside_path(tmp_path):
 
 
 def test_require_path_within_workdir_allows_scratchpad(monkeypatch):
-    import vibe.core.scratchpad as scratchpad
+    import rig_relay.core.scratchpad as scratchpad
 
     scratch_path = Path("/tmp/vibe/scratch/temp.txt")
     # Mock _active_scratchpads
@@ -72,7 +72,7 @@ def test_require_path_within_workdir_allows_scratchpad(monkeypatch):
 
 
 def test_require_path_within_workdir_rejects_non_scratchpad_sibling(monkeypatch):
-    import vibe.core.scratchpad as scratchpad
+    import rig_relay.core.scratchpad as scratchpad
 
     # Mock _active_scratchpads
     monkeypatch.setattr(
@@ -113,7 +113,7 @@ def test_parse_shell_commands():
 
 
 def test_parse_shell_commands_does_not_crash_on_parser_failure(monkeypatch):
-    import vibe.core.tools.determinism as determinism
+    import rig_relay.core.tools.determinism as determinism
 
     # Monkeypatch _get_bash_parser to raise an exception
     def mock_get_parser():

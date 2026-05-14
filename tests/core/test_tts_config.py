@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from tests.conftest import build_test_vibe_config
-from vibe.core.config import (
+from rig_relay.core.config import (
     DEFAULT_TTS_MODELS,
     DEFAULT_TTS_PROVIDERS,
     TTSClient,

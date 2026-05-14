@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from vibe.core.teleport.errors import (
+from rig_relay.core.teleport.errors import (
     ServiceTeleportError,
     ServiceTeleportNotSupportedError,
 )
-from vibe.core.teleport.git import GitRepoInfo, GitRepository
+from rig_relay.core.teleport.git import GitRepoInfo, GitRepository
 
 
 def make_mock_remote(url: str) -> MagicMock:

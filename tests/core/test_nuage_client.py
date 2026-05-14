@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vibe.core.teleport.errors import ServiceTeleportError
-from vibe.core.teleport.nuage import GitHubPublicData, GitHubStatus, NuageClient
+from rig_relay.core.teleport.errors import ServiceTeleportError
+from rig_relay.core.teleport.nuage import GitHubPublicData, GitHubStatus, NuageClient
 
 
 @pytest.fixture

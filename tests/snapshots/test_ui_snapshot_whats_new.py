@@ -14,8 +14,8 @@ from tests.update_notifier.adapters.fake_update_cache_repository import (
     FakeUpdateCacheRepository,
 )
 from tests.update_notifier.adapters.fake_update_gateway import FakeUpdateGateway
-from vibe.cli.plan_offer.ports.whoami_gateway import WhoAmIPlanType, WhoAmIResponse
-from vibe.cli.update_notifier import UpdateCache
+from rig_relay.cli.plan_offer.ports.whoami_gateway import WhoAmIPlanType, WhoAmIResponse
+from rig_relay.cli.update_notifier import UpdateCache
 
 
 class SnapshotTestAppWithWhatsNew(BaseSnapshotTestApp):

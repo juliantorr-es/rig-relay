@@ -18,8 +18,9 @@
 **Rig Relay v0.1.0-alpha.1 — a governed local coding harness for Rig.**
 
 Rig Relay is a Relay-native local agent cockpit with a CLI compatibility
-surface. It provides a governed control plane, desktop cockpit, terminal
-cockpit, and durable local evidence for safe development work.
+surface. It provides a governed control plane, desktop cockpit, and durable
+local evidence for safe development work. The legacy Textual TUI remains only
+for development compatibility and is being retired.
 
 > [!WARNING]
 > Rig Relay works on Windows, but we officially support and target UNIX environments.
@@ -91,14 +92,14 @@ Rig Relay needs a provider key before it can run model turns. DeepSeek is the de
 
 ### Interactive Mode
 
-Run the primary executable to start the Textual cockpit in your current
+Run the primary executable to start the governed cockpit in your current
 directory:
 ```bash
 rig-relay
 ```
 
-`rig-relay` now opens the Textual Rig Console by default. The legacy CLI
-remains available explicitly:
+`rig-relay` now opens the primary cockpit workflow by default. Legacy
+compatibility commands remain available explicitly:
 
 ```bash
 rig-relay legacy
@@ -135,10 +136,13 @@ rig-relay --agent plan
 
 ## Desktop Cockpit
 
-Rig Relay now supports two cockpit surfaces:
+Rig Relay's primary human operator surface is the pywebview desktop cockpit.
+The legacy Textual TUI is retained only as a compatibility shim during
+migration and should not be treated as the product UI.
 
-- `rig-console` for the terminal-native Textual coding cockpit
-- `uv run python scripts/rig_relay_desktop_cockpit.py` for the pywebview desktop cockpit
+```bash
+uv run python scripts/rig_relay_desktop_cockpit.py
+```
 
 The desktop cockpit remains the primary graphical operator surface:
 
@@ -154,12 +158,8 @@ uv run python scripts/rig_relay_desktop_cockpit.py --dry-run
 
 ### Textual Rig Console
 
-Launch the terminal-native coding cockpit with `rig-relay` or the explicit
-alias:
-
-```bash
-uv run rig-console
-```
+The Textual Rig Console is deprecated and retained only for developer
+compatibility. Do not use it as the primary workflow surface.
 
 Fixture mode is the safe default. It renders canned projections and is useful
 for smoke testing the layout without any runtime roots.

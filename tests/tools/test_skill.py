@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.skills.manager import SkillManager
-from vibe.core.skills.models import SkillInfo
-from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
-from vibe.core.tools.builtins.skill import (
+from rig_relay.core.skills.manager import SkillManager
+from rig_relay.core.skills.models import SkillInfo
+from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
+from rig_relay.core.tools.builtins.skill import (
     Skill,
     SkillArgs,
     SkillResult,

@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.config import SessionLoggingConfig
-from vibe.core.session.session_migration import migrate_sessions
+from rig_relay.core.config import SessionLoggingConfig
+from rig_relay.core.session.session_migration import migrate_sessions
 
 
 @pytest.fixture

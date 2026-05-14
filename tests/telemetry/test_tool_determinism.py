@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from vibe.core.telemetry.constants import EventName
-from vibe.core.telemetry.doctor import summarize_tool_determinism
-from vibe.core.telemetry.local import dump_canonical_json
-from vibe.core.telemetry.tool_contract import (
+from rig_relay.core.telemetry.constants import EventName
+from rig_relay.core.telemetry.doctor import summarize_tool_determinism
+from rig_relay.core.telemetry.local import dump_canonical_json
+from rig_relay.core.telemetry.tool_contract import (
     ToolDeterminismClass,
     ToolMutationClass,
     ToolOutputKind,

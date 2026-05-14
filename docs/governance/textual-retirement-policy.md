@@ -27,10 +27,10 @@ Current state:
 
 ### Textual TUI Is Legacy
 
-The `vibe/cli/` Textual TUI (legacy_tui mode) is retained as a compatibility
-surface for SSH, headless diagnostics, and development environments where the
-Relay cockpit or Relay CLI are not sufficient yet. It is **not** the primary
-product UI.
+The `vibe/cli/` Textual TUI (legacy_tui mode) is retained only as a
+compatibility surface for SSH, headless diagnostics, and development
+environments where the Relay cockpit or Relay CLI are not sufficient yet. It
+is **not** the primary product UI and is on the retirement path.
 
 - **No new product features should target the Textual TUI.**
 - Compatibility fixes are allowed when they preserve current development
@@ -41,9 +41,9 @@ product UI.
 
 ### Primary Desktop Surface
 
-The **pywebview desktop cockpit** (`frontend/desktop/`) is the future primary
-local human UX. All new cockpit features, widgets, and visual refinements
-target the HTML/CSS/JS frontend rendered by pywebview.
+The **pywebview desktop cockpit** (`frontend/desktop/`) is the primary local
+human UX. All new cockpit features, widgets, and visual refinements target the
+HTML/CSS/JS frontend rendered by pywebview.
 
 ### Relay CLI Is Canonical For Scriptable Workflows
 
@@ -73,7 +73,7 @@ The Textual TUI may be removed when all of the following are true:
 6. The user confirms the Textual workflow is no longer needed for development.
 7. Removing Textual would not break packaging or compatibility entry points.
 
-Until these criteria are met, the Textual TUI remains as a compat shim.
+Until these criteria are met, the Textual TUI remains only as a compat shim.
 
 ## Migration Status
 

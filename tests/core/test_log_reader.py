@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from vibe.core.log_reader import LogEntry, LogReader
+from rig_relay.core.log_reader import LogEntry, LogReader
 
 
 def _wait_for(condition: Callable[[], bool], timeout: float = 3.0) -> bool:

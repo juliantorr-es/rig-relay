@@ -11,8 +11,8 @@ from pydantic import ValidationError
 import pytest
 
 from tests.stubs.fake_mcp_registry import FakeMCPRegistry
-from vibe.core.config import MCPHttp, MCPStdio, MCPStreamableHttp, VibeConfig
-from vibe.core.tools.mcp import (
+from rig_relay.core.config import MCPHttp, MCPStdio, MCPStreamableHttp, VibeConfig
+from rig_relay.core.tools.mcp import (
     MCPRegistry,
     MCPToolResult,
     RemoteTool,
@@ -755,7 +755,7 @@ class TestMCPBaseDisableFields:
 # ToolManager: per-MCP-server disabled / disabled_tools filtering
 # ---------------------------------------------------------------------------
 
-from vibe.core.tools.manager import ToolManager
+from rig_relay.core.tools.manager import ToolManager
 
 
 class TestMCPDisableFiltering:

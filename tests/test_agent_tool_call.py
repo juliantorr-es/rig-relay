@@ -14,23 +14,23 @@ from tests.conftest import build_test_agent_loop, build_test_vibe_config
 from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend
 from tests.stubs.fake_tool import FakeTool
-from vibe.core.agent_loop import AgentLoop
-from vibe.core.agents.models import BuiltinAgentName
-from vibe.core.config import VibeConfig
-from vibe.core.tools.base import (
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.agents.models import BuiltinAgentName
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,
     BaseToolState,
     InvokeContext,
     ToolPermission,
 )
-from vibe.core.tools.builtins.bash import BashArgs
-from vibe.core.tools.builtins.read_file import ReadFileArgs
-from vibe.core.tools.builtins.search_replace import SearchReplaceArgs
-from vibe.core.tools.builtins.todo import TodoItem
-from vibe.core.tools.builtins.validate_models import ValidateArgs
-from vibe.core.tools.builtins.write_file import WriteFileArgs
-from vibe.core.types import (
+from rig_relay.core.tools.builtins.bash import BashArgs
+from rig_relay.core.tools.builtins.read_file import ReadFileArgs
+from rig_relay.core.tools.builtins.search_replace import SearchReplaceArgs
+from rig_relay.core.tools.builtins.todo import TodoItem
+from rig_relay.core.tools.builtins.validate_models import ValidateArgs
+from rig_relay.core.tools.builtins.write_file import WriteFileArgs
+from rig_relay.core.types import (
     ApprovalCallback,
     ApprovalResponse,
     AssistantEvent,

@@ -5,8 +5,8 @@ import json
 from pydantic import ValidationError
 import pytest
 
-from vibe.core.config import VibeConfig
-from vibe.core.relay import GitSafetyPolicy, RelayReceiptMetadata, SkillManifest
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.relay import GitSafetyPolicy, RelayReceiptMetadata, SkillManifest
 
 
 def test_vibe_config_defaults_for_rig_relay():

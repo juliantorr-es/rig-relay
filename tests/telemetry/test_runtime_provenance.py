@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
 
-from vibe.core.telemetry.runtime import (
+from rig_relay.core.telemetry.runtime import (
     RuntimeProvenanceResult,
     _check_critical_symbols,
     check_runtime_provenance,

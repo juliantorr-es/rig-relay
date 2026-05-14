@@ -5,7 +5,7 @@ from textual.pilot import Pilot
 
 from tests.snapshots.base_snapshot_test_app import BaseSnapshotTestApp
 from tests.snapshots.snap_compare import SnapCompare
-from vibe.core.proxy_setup import get_current_proxy_settings, set_proxy_var
+from rig_relay.core.proxy_setup import get_current_proxy_settings, set_proxy_var
 
 
 class ProxySetupTestApp(BaseSnapshotTestApp):

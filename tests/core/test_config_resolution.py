@@ -9,21 +9,21 @@ import pytest
 import tomli_w
 
 from tests.conftest import build_test_vibe_config
-from vibe.core.config import ModelConfig, ProviderConfig, VibeConfig
-from vibe.core.config._settings import (
+from rig_relay.core.config import ModelConfig, ProviderConfig, VibeConfig
+from rig_relay.core.config._settings import (
     DEFAULT_MISTRAL_BROWSER_AUTH_API_BASE_URL,
     DEFAULT_MISTRAL_BROWSER_AUTH_BASE_URL,
     DEFAULT_PROVIDERS,
 )
-from vibe.core.config.harness_files import (
+from rig_relay.core.config.harness_files import (
     HarnessFilesManager,
     init_harness_files_manager,
     reset_harness_files_manager,
 )
-from vibe.core.paths import VIBE_HOME
-from vibe.core.trusted_folders import trusted_folders_manager
-from vibe.core.types import Backend
-from vibe.setup.onboarding.context import OnboardingContext
+from rig_relay.core.paths import VIBE_HOME
+from rig_relay.core.trusted_folders import trusted_folders_manager
+from rig_relay.core.types import Backend
+from rig_relay.setup.onboarding.context import OnboardingContext
 
 
 class _ProviderConfigOverrides(TypedDict, total=False):
@@ -98,7 +98,7 @@ class TestResolveConfigFile:
 
         reset_harness_files_manager()
         init_harness_files_manager("user", "project")
-        from vibe.core.config.harness_files import get_harness_files_manager
+        from rig_relay.core.config.harness_files import get_harness_files_manager
 
         mgr = get_harness_files_manager()
         resolved = mgr.config_file
@@ -118,7 +118,7 @@ class TestResolveConfigFile:
 
         reset_harness_files_manager()
         init_harness_files_manager("user", "project")
-        from vibe.core.config.harness_files import get_harness_files_manager
+        from rig_relay.core.config.harness_files import get_harness_files_manager
 
         mgr = get_harness_files_manager()
         assert mgr.config_file == VIBE_HOME.path / "config.toml"
@@ -132,7 +132,7 @@ class TestResolveConfigFile:
 
         reset_harness_files_manager()
         init_harness_files_manager("user", "project")
-        from vibe.core.config.harness_files import get_harness_files_manager
+        from rig_relay.core.config.harness_files import get_harness_files_manager
 
         mgr = get_harness_files_manager()
         assert mgr.config_file == VIBE_HOME.path / "config.toml"
@@ -1106,7 +1106,7 @@ class TestCompactionModel:
         assert cfg.get_compaction_model().name == "compact-model"
 
     def test_compaction_model_provider_must_match_active(self) -> None:
-        from vibe.core.config import ProviderConfig
+        from rig_relay.core.config import ProviderConfig
 
         compaction = ModelConfig(
             name="compact-model", provider="other", alias="compact"

@@ -4,7 +4,7 @@ from pathlib import Path
 import tomllib
 
 from tests.conftest import build_test_agent_loop, build_test_vibe_config
-from vibe.core.tools.permissions import PermissionScope, RequiredPermission
+from rig_relay.core.tools.permissions import PermissionScope, RequiredPermission
 
 
 def _read_persisted_config(config_dir: Path) -> dict:

@@ -5,7 +5,7 @@ from typing import cast
 
 import pytest
 
-from vibe.core.loop import (
+from rig_relay.core.loop import (
     MAX_LOOPS_PER_SESSION,
     MIN_INTERVAL_SECONDS,
     LoopError,
@@ -17,7 +17,7 @@ from vibe.core.loop import (
     format_duration,
     parse_interval,
 )
-from vibe.core.session.session_logger import SessionLogger
+from rig_relay.core.session.session_logger import SessionLogger
 
 
 class FakeMetadata:

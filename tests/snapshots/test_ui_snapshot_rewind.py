@@ -9,7 +9,7 @@ from tests.mock.utils import mock_llm_chunk
 from tests.snapshots.base_snapshot_test_app import BaseSnapshotTestApp
 from tests.snapshots.snap_compare import SnapCompare
 from tests.stubs.fake_backend import FakeBackend
-from vibe.core.rewind import RewindError
+from rig_relay.core.rewind import RewindError
 
 
 class RewindSnapshotApp(BaseSnapshotTestApp):

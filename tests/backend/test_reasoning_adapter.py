@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from vibe.core.config import ProviderConfig
-from vibe.core.llm.backend.reasoning_adapter import ReasoningAdapter
-from vibe.core.types import (
+from rig_relay.core.config import ProviderConfig
+from rig_relay.core.llm.backend.reasoning_adapter import ReasoningAdapter
+from rig_relay.core.types import (
     AvailableFunction,
     AvailableTool,
     FunctionCall,

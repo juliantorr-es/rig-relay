@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from vibe.core.rewind.manager import FileSnapshot, RewindError, RewindManager
-from vibe.core.types import LLMMessage, MessageList, Role
+from rig_relay.core.rewind.manager import FileSnapshot, RewindError, RewindManager
+from rig_relay.core.types import LLMMessage, MessageList, Role
 
 
 def _make_messages(*contents: str) -> MessageList:

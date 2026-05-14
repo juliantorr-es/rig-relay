@@ -22,9 +22,10 @@ It contains the agent loop, LLM backends, tool registry, and CLI framework.
 These modules are **legacy bones** being strangulated — not the product
 architecture.
 
-The `vibe/cli/` Textual TUI is not being deleted yet. It remains a
-development compatibility surface until Relay CLI and the pywebview cockpit
-reach operational parity.
+The `vibe/cli/` Textual TUI is now on the retirement path and should be
+considered compatibility-only. It remains in the repository only as a
+development/test compatibility surface while cleanup slices remove public
+entry points and direct user-facing references.
 
 ### Migration Follows Strangler Fig, Not Fork
 
@@ -103,7 +104,8 @@ All public-facing surfaces must use Rig Relay identity:
 
 ### Rule 6: Textual Compatibility Persists Until Parity
 
-The Textual TUI remains available during alpha for development compatibility.
+The Textual TUI remains in the repository for development compatibility
+while retirement slices remove public references and entry points.
 It is retired as the future product UI, but not removed until Relay CLI and
 pywebview parity is proven and the user no longer needs it for development.
 

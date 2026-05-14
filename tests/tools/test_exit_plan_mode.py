@@ -7,14 +7,14 @@ from pydantic import BaseModel
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.agents.models import AgentProfile, AgentSafety, BuiltinAgentName
-from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError
-from vibe.core.tools.builtins.ask_user_question import (
+from rig_relay.core.agents.models import AgentProfile, AgentSafety, BuiltinAgentName
+from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError
+from rig_relay.core.tools.builtins.ask_user_question import (
     Answer,
     AskUserQuestionArgs,
     AskUserQuestionResult,
 )
-from vibe.core.tools.builtins.exit_plan_mode import (
+from rig_relay.core.tools.builtins.exit_plan_mode import (
     ExitPlanMode,
     ExitPlanModeArgs,
     ExitPlanModeConfig,

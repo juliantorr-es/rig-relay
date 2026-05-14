@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from vibe.core.logger import (
+from rig_relay.core.logger import (
     StructuredLogFormatter,
     apply_logging_config,
     decode_log_message,

@@ -7,10 +7,10 @@ from pathlib import Path
 from jsonschema import validate
 import pytest
 
-from vibe.core.telemetry.artifacts import GitStateArtifact, ToolOutputArtifactWriter
-from vibe.core.telemetry.local import dump_canonical_json
-from vibe.core.tools.base import BaseToolState, ToolPermission
-from vibe.core.tools.builtins.git import GitResult, GitStatus, GitToolConfig
+from rig_relay.core.telemetry.artifacts import GitStateArtifact, ToolOutputArtifactWriter
+from rig_relay.core.telemetry.local import dump_canonical_json
+from rig_relay.core.tools.base import BaseToolState, ToolPermission
+from rig_relay.core.tools.builtins.git import GitResult, GitStatus, GitToolConfig
 
 
 @pytest.fixture

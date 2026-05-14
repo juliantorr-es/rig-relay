@@ -9,6 +9,6 @@ Target migration: ``rig_relay.cli.acp_orchestrator``.
 
 from __future__ import annotations
 
-from vibe.acp.entrypoint import main
+from rig_relay.acp.entrypoint import main
 
 __all__ = ["main"]

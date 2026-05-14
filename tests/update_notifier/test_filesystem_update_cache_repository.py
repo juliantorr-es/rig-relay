@@ -7,10 +7,10 @@ import tomllib
 import pytest
 import tomli_w
 
-from vibe.cli.update_notifier.adapters.filesystem_update_cache_repository import (
+from rig_relay.cli.update_notifier.adapters.filesystem_update_cache_repository import (
     FileSystemUpdateCacheRepository,
 )
-from vibe.cli.update_notifier.ports.update_cache_repository import UpdateCache
+from rig_relay.cli.update_notifier.ports.update_cache_repository import UpdateCache
 
 
 def _write_cache_toml(base: Path, data: dict) -> None:

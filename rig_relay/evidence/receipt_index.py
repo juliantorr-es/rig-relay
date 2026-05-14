@@ -16,8 +16,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from vibe.core.telemetry.constants import EventName
-from vibe.core.telemetry.local import get_observability_log_path
+from rig_relay.core.telemetry.constants import EventName
+from rig_relay.core.telemetry.local import get_observability_log_path
 
 TOOL_RECEIPT_INDEX_SCHEMA_VERSION = "rig.relay.tool_receipt_index.v1"
 

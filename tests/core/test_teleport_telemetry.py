@@ -6,10 +6,10 @@ from typing import Any, cast
 
 import pytest
 
-from vibe.core.agent_loop import AgentLoop, TeleportError
-from vibe.core.teleport.errors import ServiceTeleportError
-from vibe.core.teleport.teleport import TeleportService
-from vibe.core.teleport.types import (
+from rig_relay.core.agent_loop import AgentLoop, TeleportError
+from rig_relay.core.teleport.errors import ServiceTeleportError
+from rig_relay.core.teleport.teleport import TeleportService
+from rig_relay.core.teleport.types import (
     TeleportAuthRequiredEvent,
     TeleportCheckingGitEvent,
     TeleportCompleteEvent,
@@ -20,7 +20,7 @@ from vibe.core.teleport.types import (
     TeleportStartingWorkflowEvent,
     TeleportWaitingForGitHubEvent,
 )
-from vibe.core.types import LLMMessage, Role
+from rig_relay.core.types import LLMMessage, Role
 
 
 def _set_teleport_service(agent_loop: AgentLoop, service: object) -> None:

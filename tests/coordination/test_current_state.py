@@ -483,7 +483,7 @@ def test_current_state_reservation_count(tmp_path):
 
 def test_stable_path_key_deterministic():
     """stable_path_key returns same key for same path within same repo."""
-    from vibe.core.coordination._models import stable_path_key
+    from rig_relay.coordination._models import stable_path_key
 
     p1 = stable_path_key("tests/coordination/test_current_state.py")
     p2 = stable_path_key("tests/coordination/test_current_state.py")
@@ -493,7 +493,7 @@ def test_stable_path_key_deterministic():
 
 def test_stable_path_key_different_from_salted():
     """stable_path_key produces coord: prefix, salted_path_hash produces sha256: prefix."""
-    from vibe.core.coordination._models import (
+    from rig_relay.coordination._models import (
         reset_path_salt_for_testing,
         salted_path_hash,
         stable_path_key,

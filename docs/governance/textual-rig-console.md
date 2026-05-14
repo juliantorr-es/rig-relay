@@ -2,8 +2,8 @@
 
 ## Status
 
-Supported. The Textual Rig Console is the terminal-native coding cockpit for
-Rig Relay. The pywebview cockpit remains the desktop cockpit.
+Deprecated. The Textual Rig Console is retained only as a development
+compatibility surface while the pywebview cockpit is the primary product UI.
 
 ## Route 3 Compatibility Mode
 
@@ -20,8 +20,9 @@ Rig Console now follows a prompt-first compatibility shell model:
 
 ## Launch
 
-Use `rig-relay` for the default product launcher. `rig-console` remains an
-explicit alias.
+Use `rig-relay` for the default product launcher. `rig-console-textual` has
+been removed. The legacy Textual app remains only for compatibility and test
+coverage.
 
 ```bash
 uv run rig-relay
@@ -85,7 +86,7 @@ Experimental or high-density dashboards are hidden by default to reduce visual n
 
 ## Design Philosophy: "Stable & Boring"
 
-The TUI is designed to be a transparent, reliable command center. It uses standard Textual theme variables, avoids theatrical visual effects, and enforces a strict content-light boundary. It is optimized for keyboard-only operation during deep coding tasks.
+The legacy TUI was designed to be a transparent, reliable command center. It uses standard Textual theme variables, avoids theatrical visual effects, and enforces a strict content-light boundary. It is optimized for keyboard-only operation during deep coding tasks.
 
 The Prompt Bar (`vibe/cli/textual_ui/rig_console/widgets/prompt_bar.py`) is the
 **primary** input surface. It uses Textual `Input` (single line).

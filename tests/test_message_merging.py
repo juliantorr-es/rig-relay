@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from vibe.core.llm.message_utils import merge_consecutive_user_messages
-from vibe.core.types import LLMMessage, Role
+from rig_relay.core.llm.message_utils import merge_consecutive_user_messages
+from rig_relay.core.types import LLMMessage, Role
 
 
 def test_merge_consecutive_user_messages() -> None:

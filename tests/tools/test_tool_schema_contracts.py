@@ -22,18 +22,18 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from vibe.core.tools.builtins.bash import BashArgs, BashReceipt, BashResult
-from vibe.core.tools.builtins.search_replace import (
+from rig_relay.core.tools.builtins.bash import BashArgs, BashReceipt, BashResult
+from rig_relay.core.tools.builtins.search_replace import (
     SearchReplaceArgs,
     SearchReplaceReceipt,
     SearchReplaceResult,
 )
-from vibe.core.tools.builtins.validate_models import (
+from rig_relay.core.tools.builtins.validate_models import (
     ValidateArgs,
     ValidateReceipt,
     ValidateResult,
 )
-from vibe.core.tools.builtins.write_file import (
+from rig_relay.core.tools.builtins.write_file import (
     WriteFileArgs,
     WriteFileReceipt,
     WriteFileResult,
@@ -67,18 +67,18 @@ def test_schema_contracts_do_not_depend_on_execution_order(schemas_dir: Path) ->
     Under xdist every worker runs this test and gets the same result,
     proving there is no shared mutable state between test invocations.
     """
-    from vibe.core.tools.builtins.bash import BashArgs, BashReceipt, BashResult
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.bash import BashArgs, BashReceipt, BashResult
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplaceArgs,
         SearchReplaceReceipt,
         SearchReplaceResult,
     )
-    from vibe.core.tools.builtins.validate_models import (
+    from rig_relay.core.tools.builtins.validate_models import (
         ValidateArgs,
         ValidateReceipt,
         ValidateResult,
     )
-    from vibe.core.tools.builtins.write_file import (
+    from rig_relay.core.tools.builtins.write_file import (
         WriteFileArgs,
         WriteFileReceipt,
         WriteFileResult,

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from jsonschema import validate
 
-from vibe.core.telemetry.artifacts import (
+from rig_relay.core.telemetry.artifacts import (
     TaskSessionLinkArtifact,
     ToolOutputArtifactWriter,
 )

@@ -12,10 +12,10 @@ from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend
 from tests.stubs.fake_connector_registry import FakeConnectorRegistry
 from tests.stubs.fake_mcp_registry import FakeMCPRegistry
-from vibe.core.agent_loop import AgentLoop
-from vibe.core.config import MCPStdio
-from vibe.core.tools.manager import ToolManager
-from vibe.core.tools.mcp.tools import RemoteTool
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.config import MCPStdio
+from rig_relay.core.tools.manager import ToolManager
+from rig_relay.core.tools.mcp.tools import RemoteTool
 
 
 def _build_uninitiated_loop(**kwargs):

@@ -25,8 +25,8 @@ from typing import Any, cast
 
 import pytest
 
-from vibe.core.tools.base import ToolPermission
-from vibe.core.tools.builtins.validate import (
+from rig_relay.core.tools.base import ToolPermission
+from rig_relay.core.tools.builtins.validate import (
     MAX_CAP_BYTES,
     VALIDATE_RECEIPT_SCHEMA_VERSION,
     ValidateCheckReceipt,
@@ -467,8 +467,8 @@ def test_validate_receipt_no_raw_in_check_receipts() -> None:
 
 def test_build_receipt_from_result() -> None:
     """build_receipt creates ValidateReceipt with correct content-light fields."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import Validate, ValidateToolConfig
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import Validate, ValidateToolConfig
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -562,8 +562,8 @@ def test_build_receipt_from_result() -> None:
 
 def test_build_receipt_empty_result() -> None:
     """build_receipt handles empty ValidateResult with no checks."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import Validate, ValidateToolConfig
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import Validate, ValidateToolConfig
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -589,8 +589,8 @@ def test_build_receipt_empty_result() -> None:
 
 def test_build_receipt_preserves_refusal() -> None:
     """build_receipt preserves error_kind and refusal_reason."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import Validate, ValidateToolConfig
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import Validate, ValidateToolConfig
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -610,8 +610,8 @@ def test_build_receipt_preserves_refusal() -> None:
 
 def test_build_receipt_content_light_enforced() -> None:
     """build_receipt output contains no raw stdout/stderr fields."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import Validate, ValidateToolConfig
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import Validate, ValidateToolConfig
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -685,7 +685,7 @@ def test_max_cap_bytes_reasonable() -> None:
 
 def test_normalize_paths_empty() -> None:
     """Empty paths returns empty list with no refusal."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     normalized, refusal = _normalize_validate_paths([])
     assert normalized == []
@@ -694,7 +694,7 @@ def test_normalize_paths_empty() -> None:
 
 def test_normalize_paths_inside_workspace(tmp_path: Path) -> None:
     """Paths inside workspace are normalized to workspace-relative paths."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     (tmp_path / "sub").mkdir()
     (tmp_path / "sub" / "file.py").write_text("")
@@ -709,7 +709,7 @@ def test_normalize_paths_inside_workspace(tmp_path: Path) -> None:
 
 def test_normalize_paths_outside_workspace(tmp_path: Path) -> None:
     """Path outside workspace root is refused."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -725,7 +725,7 @@ def test_normalize_paths_outside_workspace(tmp_path: Path) -> None:
 
 def test_normalize_paths_no_workspace_root(tmp_path: Path) -> None:
     """When workspace_root is None, uses cwd as root (relative paths)."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     normalized, refusal = _normalize_validate_paths(["."])
     assert refusal is None
@@ -737,7 +737,7 @@ def test_normalize_paths_no_workspace_root(tmp_path: Path) -> None:
 
 def test_normalize_paths_dedup(tmp_path: Path) -> None:
     """Duplicate paths are de-duplicated."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     (tmp_path / "a.py").write_text("")
     normalized, refusal = _normalize_validate_paths(
@@ -749,7 +749,7 @@ def test_normalize_paths_dedup(tmp_path: Path) -> None:
 
 def test_normalize_paths_sorted(tmp_path: Path) -> None:
     """Normalized paths are sorted for stable fingerprints."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     (tmp_path / "z.py").write_text("")
     (tmp_path / "a.py").write_text("")
@@ -763,7 +763,7 @@ def test_normalize_paths_sorted(tmp_path: Path) -> None:
 
 def test_normalize_paths_nonexistent(tmp_path: Path) -> None:
     """Nonexistent path returns blocked result."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     normalized, refusal = _normalize_validate_paths(
         ["does_not_exist.py"], workspace_root=str(tmp_path)
@@ -775,7 +775,7 @@ def test_normalize_paths_nonexistent(tmp_path: Path) -> None:
 
 def test_scope_check_argv_schema_matches_schema_paths() -> None:
     """Schema check matches paths containing 'schema' or under docs/schemas/."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="schema_validation",
@@ -792,7 +792,7 @@ def test_scope_check_argv_schema_matches_schema_paths() -> None:
 
 def test_scope_check_argv_policy_matches_receipt_paths() -> None:
     """Policy check matches paths containing 'receipt'."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="receipt_policy",
@@ -811,7 +811,7 @@ def test_scope_check_argv_policy_matches_receipt_paths() -> None:
 
 def test_quick_profile_ruff_not_added_for_docs_paths() -> None:
     """Quick profile does not add scoped ruff for non-Python paths."""
-    from vibe.core.tools.builtins.validate import Profile, ProfileCheck, Validate
+    from rig_relay.core.tools.builtins.validate import Profile, ProfileCheck, Validate
 
     profile = Profile(
         name="quick",
@@ -831,7 +831,7 @@ def test_quick_profile_ruff_not_added_for_docs_paths() -> None:
 
 def test_quick_profile_ruff_added_for_python_paths() -> None:
     """Quick profile adds scoped ruff for Python paths."""
-    from vibe.core.tools.builtins.validate import Profile, ProfileCheck, Validate
+    from rig_relay.core.tools.builtins.validate import Profile, ProfileCheck, Validate
 
     profile = Profile(
         name="quick",
@@ -851,7 +851,7 @@ def test_quick_profile_ruff_added_for_python_paths() -> None:
 
 def test_scope_check_argv_ruff_appends_python_paths() -> None:
     """Ruff check appends only Python paths to argv."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="ruff_check", command_kind="ruff", argv=["uv", "run", "ruff", "check"]
@@ -863,7 +863,7 @@ def test_scope_check_argv_ruff_appends_python_paths() -> None:
 
 def test_scope_check_argv_ruff_skips_non_python_paths() -> None:
     """Ruff check is skipped when no Python paths provided."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="ruff_check", command_kind="ruff", argv=["uv", "run", "ruff", "check"]
@@ -874,7 +874,7 @@ def test_scope_check_argv_ruff_skips_non_python_paths() -> None:
 
 def test_scope_check_argv_pytest_appends_test_paths() -> None:
     """Pytest check appends only test paths to argv."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="bash_hardening",
@@ -891,7 +891,7 @@ def test_scope_check_argv_pytest_appends_test_paths() -> None:
 
 def test_scope_check_argv_pytest_skips_non_test_paths() -> None:
     """Pytest check is skipped when no test paths provided."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="bash_hardening",
@@ -906,7 +906,7 @@ def test_scope_check_argv_pytest_skips_non_test_paths() -> None:
 
 def test_scope_check_argv_schema_skips_non_schema_paths() -> None:
     """Schema check is skipped when no paths are schema-related."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="schema_validation",
@@ -921,7 +921,7 @@ def test_scope_check_argv_schema_skips_non_schema_paths() -> None:
 
 def test_scope_check_argv_schema_runs_for_schema_paths() -> None:
     """Schema check runs when paths include schema-related paths."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="schema_validation",
@@ -936,7 +936,7 @@ def test_scope_check_argv_schema_runs_for_schema_paths() -> None:
 
 def test_scope_check_argv_policy_skips_non_receipt_paths() -> None:
     """Policy check is skipped when no paths are receipt-related."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="receipt_policy",
@@ -951,7 +951,7 @@ def test_scope_check_argv_policy_skips_non_receipt_paths() -> None:
 
 def test_scope_check_argv_policy_runs_for_receipt_paths() -> None:
     """Policy check runs when paths include receipt-related paths."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="receipt_policy",
@@ -966,7 +966,7 @@ def test_scope_check_argv_policy_runs_for_receipt_paths() -> None:
 
 def test_scope_check_argv_git_unchanged() -> None:
     """Git check argv is unchanged when paths provided."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="git_status",
@@ -980,7 +980,7 @@ def test_scope_check_argv_git_unchanged() -> None:
 
 def test_scope_check_argv_pyright_unchanged() -> None:
     """Pyright check argv is unchanged when paths provided."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="pyright", command_kind="pyright", argv=["uv", "run", "pyright"]
@@ -992,7 +992,7 @@ def test_scope_check_argv_pyright_unchanged() -> None:
 
 def test_scope_check_argv_no_paths_returns_original() -> None:
     """No paths returns original argv unchanged."""
-    from vibe.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
+    from rig_relay.core.tools.builtins.validate import ProfileCheck, _scope_check_argv
 
     check = ProfileCheck(
         check_id="ruff_check", command_kind="ruff", argv=["uv", "run", "ruff", "check"]
@@ -1007,7 +1007,7 @@ def test_scope_check_argv_no_paths_returns_original() -> None:
 
 def test_quick_profile_with_paths_has_scoped_ruff() -> None:
     """Quick profile gets an additional scoped ruff check when paths provided."""
-    from vibe.core.tools.builtins.validate import get_profile
+    from rig_relay.core.tools.builtins.validate import get_profile
 
     profile = get_profile("quick")
     assert profile is not None
@@ -1023,7 +1023,7 @@ def test_quick_profile_with_paths_has_scoped_ruff() -> None:
 
 def test_normalize_paths_absolute_input_becomes_relative(tmp_path: Path) -> None:
     """Absolute input path inside workspace becomes relative output."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     (tmp_path / "sub").mkdir()
     f = tmp_path / "sub" / "file.py"
@@ -1041,7 +1041,7 @@ def test_normalize_paths_absolute_input_becomes_relative(tmp_path: Path) -> None
 
 def test_normalize_paths_absolute_and_relative_produce_same(tmp_path: Path) -> None:
     """Absolute and equivalent relative input produce same relative output."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     (tmp_path / "sub").mkdir()
     f = tmp_path / "sub" / "file.py"
@@ -1058,7 +1058,7 @@ def test_normalize_paths_absolute_and_relative_produce_same(tmp_path: Path) -> N
 
 def test_normalize_paths_outside_workspace_absolute_refused(tmp_path: Path) -> None:
     """Absolute path outside workspace root is refused."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -1075,7 +1075,7 @@ def test_normalize_paths_outside_workspace_absolute_refused(tmp_path: Path) -> N
 
 def test_normalize_paths_traversal_refused(tmp_path: Path) -> None:
     """Traversal path outside workspace is refused."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     (tmp_path / "sub").mkdir()
 
@@ -1089,7 +1089,7 @@ def test_normalize_paths_traversal_refused(tmp_path: Path) -> None:
 
 def test_normalize_paths_uses_posix_separators(tmp_path: Path) -> None:
     """Normalized paths use POSIX forward-slash separators."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     (tmp_path / "a" / "b").mkdir(parents=True)
     f = tmp_path / "a" / "b" / "f.py"
@@ -1105,7 +1105,7 @@ def test_normalize_paths_uses_posix_separators(tmp_path: Path) -> None:
 
 def test_fingerprint_stable_across_path_forms(tmp_path: Path) -> None:
     """Fingerprint is identical for absolute and equivalent relative input."""
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.builtins.validate import (
         _compute_fingerprint,
         _normalize_validate_paths,
     )
@@ -1131,7 +1131,7 @@ def test_fingerprint_stable_across_path_forms(tmp_path: Path) -> None:
 
 def test_fingerprint_independent_of_path_order(tmp_path: Path) -> None:
     """Fingerprint is stable regardless of input path order."""
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.builtins.validate import (
         _compute_fingerprint,
         _normalize_validate_paths,
     )
@@ -1156,7 +1156,7 @@ def test_fingerprint_independent_of_path_order(tmp_path: Path) -> None:
 
 def test_affected_paths_are_relative_in_result(tmp_path: Path) -> None:
     """ValidateCheckResult.affected_paths contains relative paths."""
-    from vibe.core.tools.builtins.validate import _normalize_validate_paths
+    from rig_relay.core.tools.builtins.validate import _normalize_validate_paths
 
     (tmp_path / "sub").mkdir()
     (tmp_path / "sub" / "file.py").write_text("")
@@ -1170,8 +1170,8 @@ def test_affected_paths_are_relative_in_result(tmp_path: Path) -> None:
 
 def test_receipt_affected_paths_are_relative(tmp_path: Path) -> None:
     """ValidateReceipt check_receipts contain relative affected_paths."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateCheckResult,
         ValidateResult,
@@ -1477,7 +1477,7 @@ async def test_collect_git_state_porcelain_sha256(tmp_path: Path) -> None:
     """_collect_git_state sets status_porcelain_sha256."""
     import subprocess
 
-    from vibe.core.tools.builtins.validate import _collect_git_state
+    from rig_relay.core.tools.builtins.validate import _collect_git_state
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(
@@ -1662,7 +1662,7 @@ def test_lifecycle_edit_phase_full_suite_warns() -> None:
 
 def test_validate_args_cache_fields_serialize() -> None:
     """ValidateArgs cache/scheduler fields serialize to dict."""
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     args = ValidateArgs(
         profile="quick",
@@ -1691,13 +1691,13 @@ async def test_run_end_to_end_cache_hit(tmp_path: Path) -> None:
     """First ValidateTool.run() executes check; second identical call returns cached."""
     import subprocess
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateResult,
         ValidateToolConfig,
     )
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(
@@ -1757,13 +1757,13 @@ async def test_run_end_to_end_cache_miss_on_invalidation(tmp_path: Path) -> None
     """Changing a tracked file invalidates cache and re-runs."""
     import subprocess
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateResult,
         ValidateToolConfig,
     )
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(
@@ -1822,13 +1822,13 @@ async def test_run_end_to_end_cache_content_light(tmp_path: Path) -> None:
     """ValidateTool.run() result is content-light — no raw stdout/stderr."""
     import subprocess
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateResult,
         ValidateToolConfig,
     )
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(
@@ -1882,13 +1882,13 @@ async def test_run_end_to_end_cache_on_profile_with_focused_test(
     """ValidateTool.run() with focused test path still caches properly."""
     import subprocess
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateResult,
         ValidateToolConfig,
     )
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(
@@ -1932,13 +1932,13 @@ async def test_run_end_to_end_cache_disabled_produces_no_cache(tmp_path: Path) -
     """Disabling cache via cache_policy=disabled skips cache entirely."""
     import subprocess
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateResult,
         ValidateToolConfig,
     )
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(
@@ -1982,13 +1982,13 @@ async def test_run_end_to_end_force_rerun_ignores_cache(tmp_path: Path) -> None:
     """force_rerun policy bypasses cache and re-runs."""
     import subprocess
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateResult,
         ValidateToolConfig,
     )
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(
@@ -2041,13 +2041,13 @@ async def test_run_end_to_end_scheduler_disabled_no_block(tmp_path: Path) -> Non
     """Disabling scheduler does not acquire locks."""
     import subprocess
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateResult,
         ValidateToolConfig,
     )
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(
@@ -2086,13 +2086,13 @@ async def test_run_end_to_end_cache_error_resilient(tmp_path: Path) -> None:
     """Corrupt cache does not crash validation — runs the check instead."""
     import subprocess
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateResult,
         ValidateToolConfig,
     )
-    from vibe.core.tools.builtins.validate_models import ValidateArgs
+    from rig_relay.core.tools.builtins.validate_models import ValidateArgs
 
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     subprocess.run(

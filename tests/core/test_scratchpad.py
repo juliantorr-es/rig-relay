@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from vibe.core.scratchpad import get_scratchpad_dir, init_scratchpad, is_scratchpad_path
+from rig_relay.core.scratchpad import get_scratchpad_dir, init_scratchpad, is_scratchpad_path
 
 
 class TestInitScratchpad:

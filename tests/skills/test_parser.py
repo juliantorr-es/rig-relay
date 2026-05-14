@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from vibe.core.skills.parser import SkillParseError, parse_skill_markdown
+from rig_relay.core.skills.parser import SkillParseError, parse_skill_markdown
 
 
 class TestParseSkillMarkdown:

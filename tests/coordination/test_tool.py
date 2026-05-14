@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.tools.base import BaseToolState, InvokeContext
-from vibe.core.tools.builtins.coordination import (
+from rig_relay.core.tools.base import BaseToolState, InvokeContext
+from rig_relay.core.tools.builtins.coordination import (
     Coordination,
     CoordinationArgs,
     CoordinationToolConfig,

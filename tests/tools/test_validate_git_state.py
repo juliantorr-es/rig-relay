@@ -20,8 +20,8 @@ import subprocess
 
 import pytest
 
-from vibe.core.tools.base import BaseToolState
-from vibe.core.tools.builtins.validate import (
+from rig_relay.core.tools.base import BaseToolState
+from rig_relay.core.tools.builtins.validate import (
     DIRTY_POLICY_ALLOW_DIRTY,
     DIRTY_POLICY_ALLOW_LISTED_DIRTY,
     DIRTY_POLICY_CLEAN,
@@ -232,7 +232,7 @@ def test_validate_result_accepts_git_state() -> None:
 
 def test_validate_receipt_git_summary_content_light() -> None:
     """ValidateReceipt before_git_summary contains counts only."""
-    from vibe.core.tools.builtins.validate import Validate
+    from rig_relay.core.tools.builtins.validate import Validate
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -267,7 +267,7 @@ def test_validate_receipt_git_summary_content_light() -> None:
 
 def test_validate_receipt_git_summary_none_when_no_git() -> None:
     """ValidateReceipt git summary is None when no git state captured."""
-    from vibe.core.tools.builtins.validate import Validate
+    from rig_relay.core.tools.builtins.validate import Validate
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -305,7 +305,7 @@ def temp_git_repo(tmp_path: Path) -> Path:
 @pytest.mark.asyncio
 async def test_collect_git_state_in_repo(temp_git_repo: Path) -> None:
     """_collect_git_state captures state in a real git repo."""
-    from vibe.core.tools.builtins.validate import _collect_git_state
+    from rig_relay.core.tools.builtins.validate import _collect_git_state
 
     state = await _collect_git_state(str(temp_git_repo))
     assert state.is_git_repo is True
@@ -317,7 +317,7 @@ async def test_collect_git_state_in_repo(temp_git_repo: Path) -> None:
 @pytest.mark.asyncio
 async def test_collect_git_state_dirty_in_repo(temp_git_repo: Path) -> None:
     """_collect_git_state detects dirty files."""
-    from vibe.core.tools.builtins.validate import _collect_git_state
+    from rig_relay.core.tools.builtins.validate import _collect_git_state
 
     dirty_file = temp_git_repo / "dirty.py"
     dirty_file.write_text("x = 2\n")
@@ -330,7 +330,7 @@ async def test_collect_git_state_dirty_in_repo(temp_git_repo: Path) -> None:
 @pytest.mark.asyncio
 async def test_collect_git_state_non_repo(tmp_path: Path) -> None:
     """_collect_git_state returns non-repo state for non-git dir."""
-    from vibe.core.tools.builtins.validate import _collect_git_state
+    from rig_relay.core.tools.builtins.validate import _collect_git_state
 
     state = await _collect_git_state(str(tmp_path))
     assert state.is_git_repo is False
@@ -339,7 +339,7 @@ async def test_collect_git_state_non_repo(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_collect_git_state_none_cwd() -> None:
     """_collect_git_state returns non-repo state when cwd is None."""
-    from vibe.core.tools.builtins.validate import _collect_git_state
+    from rig_relay.core.tools.builtins.validate import _collect_git_state
 
     state = await _collect_git_state(None)
     assert state.is_git_repo is False
@@ -348,7 +348,7 @@ async def test_collect_git_state_none_cwd() -> None:
 @pytest.mark.asyncio
 async def test_worktree_readiness_via_tool(temp_git_repo: Path) -> None:
     """worktree-readiness profile can be invoked in a git repo."""
-    from vibe.core.tools.builtins.validate import Validate, ValidateArgs
+    from rig_relay.core.tools.builtins.validate import Validate, ValidateArgs
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -370,7 +370,7 @@ async def test_worktree_readiness_via_tool(temp_git_repo: Path) -> None:
 @pytest.mark.asyncio
 async def test_worktree_readiness_with_dirty_policy_clean(temp_git_repo: Path) -> None:
     """worktree-readiness with clean policy blocks dirty workspace."""
-    from vibe.core.tools.builtins.validate import Validate, ValidateArgs
+    from rig_relay.core.tools.builtins.validate import Validate, ValidateArgs
 
     dirty_file = temp_git_repo / "dirty.py"
     dirty_file.write_text("x = 2\n")

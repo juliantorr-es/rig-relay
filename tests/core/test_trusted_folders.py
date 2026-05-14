@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pytest
 import tomli_w
 
-from vibe.core.paths import AGENTS_MD_FILENAME, TRUSTED_FOLDERS_FILE
-from vibe.core.trusted_folders import (
+from rig_relay.core.paths import AGENTS_MD_FILENAME, TRUSTED_FOLDERS_FILE
+from rig_relay.core.trusted_folders import (
     TrustedFoldersManager,
     find_trustable_files,
     has_agents_md_file,

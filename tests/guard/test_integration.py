@@ -7,19 +7,19 @@ import subprocess
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.guard import (
+from rig_relay.core.guard import (
     DirtyGuardFailurePolicy,
     GuardCaptureReason,
     get_guard,
     reset_guard,
 )
-from vibe.core.tools.base import BaseToolState
-from vibe.core.tools.builtins.search_replace import (
+from rig_relay.core.tools.base import BaseToolState
+from rig_relay.core.tools.builtins.search_replace import (
     SearchReplace,
     SearchReplaceArgs,
     SearchReplaceConfig,
 )
-from vibe.core.tools.builtins.write_file import (
+from rig_relay.core.tools.builtins.write_file import (
     WriteFile,
     WriteFileArgs,
     WriteFileConfig,

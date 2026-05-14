@@ -9,7 +9,7 @@ from textual.pilot import Pilot
 
 from tests.snapshots.base_snapshot_test_app import BaseSnapshotTestApp
 from tests.snapshots.snap_compare import SnapCompare
-from vibe.core.log_reader import LogReader
+from rig_relay.core.log_reader import LogReader
 
 _SAMPLE_LOGS = "\n".join([
     "2026-02-21T10:28:51.100000+00:00 1234 5678 DEBUG Initializing model registry",

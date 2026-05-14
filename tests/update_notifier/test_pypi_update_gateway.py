@@ -5,8 +5,8 @@ from collections.abc import Callable
 import httpx
 import pytest
 
-from vibe.cli.update_notifier.adapters.pypi_update_gateway import PyPIUpdateGateway
-from vibe.cli.update_notifier.ports.update_gateway import (
+from rig_relay.cli.update_notifier.adapters.pypi_update_gateway import PyPIUpdateGateway
+from rig_relay.cli.update_notifier.ports.update_gateway import (
     Update,
     UpdateGatewayCause,
     UpdateGatewayError,

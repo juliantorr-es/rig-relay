@@ -272,8 +272,8 @@ def test_non_dict_receipt_value_produces_finding() -> None:
 
 def test_validate_receipt_passes_policy() -> None:
     """A well-formed ValidateReceipt passes the content-light policy."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateCheckResult,
         ValidateResult,

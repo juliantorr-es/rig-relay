@@ -9,15 +9,15 @@ from rig_relay.coordination.models import (
     stable_path_key,
 )
 from rig_relay.coordination.store import CoordinationStore
-from vibe.core.coordination import (
+from rig_relay.coordination import (
     CoordinationStore as LegacyCoordinationStore,
     FileCoordinationStore,
 )
-from vibe.core.coordination._models import (
+from rig_relay.coordination._models import (
     CoordinationSession as LegacyCoordinationSession,
     reset_path_salt_for_testing,
 )
-from vibe.core.coordination._store import CoordinationStore as LegacyStoreModuleStore
+from rig_relay.coordination.store import CoordinationStore as LegacyStoreModuleStore
 
 
 def test_relay_native_imports_work() -> None:

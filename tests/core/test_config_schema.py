@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 import pytest
 
-from vibe.core.config import (
+from rig_relay.core.config import (
     ConfigDefinitionError,
     ConfigFragment,
     ConfigSchema,

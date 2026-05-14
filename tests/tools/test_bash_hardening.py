@@ -10,8 +10,8 @@ from __future__ import annotations
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.tools.base import BaseToolState, ToolError, ToolPermission
-from vibe.core.tools.builtins.bash import (
+from rig_relay.core.tools.base import BaseToolState, ToolError, ToolPermission
+from rig_relay.core.tools.builtins.bash import (
     Bash,
     BashArgs,
     BashReceipt,

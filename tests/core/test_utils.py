@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.utils import compact_reduction_display, get_server_url_from_api_base
-import vibe.core.utils.io as io_utils
-from vibe.core.utils.io import decode_safe, read_safe, read_safe_async
+from rig_relay.core.utils import compact_reduction_display, get_server_url_from_api_base
+import rig_relay.core.utils.io as io_utils
+from rig_relay.core.utils.io import decode_safe, read_safe, read_safe_async
 
 
 @pytest.mark.parametrize(

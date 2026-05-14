@@ -5,11 +5,11 @@ import sys
 import pytest
 
 from tests.conftest import build_test_vibe_config
-from vibe.core.agents import AgentManager
-from vibe.core.scratchpad import init_scratchpad
-from vibe.core.skills.manager import SkillManager
-from vibe.core.system_prompt import get_universal_system_prompt
-from vibe.core.tools.manager import ToolManager
+from rig_relay.core.agents import AgentManager
+from rig_relay.core.scratchpad import init_scratchpad
+from rig_relay.core.skills.manager import SkillManager
+from rig_relay.core.system_prompt import get_universal_system_prompt
+from rig_relay.core.tools.manager import ToolManager
 
 
 def test_get_universal_system_prompt_includes_windows_prompt_on_windows(

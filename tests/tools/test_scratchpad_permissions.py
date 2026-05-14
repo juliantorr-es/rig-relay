@@ -2,27 +2,27 @@ from __future__ import annotations
 
 import pytest
 
-import vibe.core.scratchpad as scratchpad_mod
-from vibe.core.scratchpad import init_scratchpad
-from vibe.core.tools.base import BaseToolState, ToolPermission
-from vibe.core.tools.builtins.bash import (
+import rig_relay.core.scratchpad as scratchpad_mod
+from rig_relay.core.scratchpad import init_scratchpad
+from rig_relay.core.tools.base import BaseToolState, ToolPermission
+from rig_relay.core.tools.builtins.bash import (
     Bash,
     BashArgs,
     BashToolConfig,
     _collect_outside_dirs,
 )
-from vibe.core.tools.builtins.read_file import (
+from rig_relay.core.tools.builtins.read_file import (
     ReadFile,
     ReadFileArgs,
     ReadFileState,
     ReadFileToolConfig,
 )
-from vibe.core.tools.builtins.write_file import (
+from rig_relay.core.tools.builtins.write_file import (
     WriteFile,
     WriteFileArgs,
     WriteFileConfig,
 )
-from vibe.core.tools.permissions import PermissionContext, PermissionScope
+from rig_relay.core.tools.permissions import PermissionContext, PermissionScope
 
 
 @pytest.fixture(autouse=True)

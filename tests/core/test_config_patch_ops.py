@@ -6,7 +6,7 @@ from typing import Any, get_args
 
 import pytest
 
-from vibe.core.config import (
+from rig_relay.core.config import (
     AppendToList,
     DeleteField,
     PatchOp,

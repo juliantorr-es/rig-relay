@@ -14,8 +14,8 @@ try:
 except OSError:
     pytest.skip("PortAudio library not available", allow_module_level=True)
 
-from vibe.core.audio_recorder.audio_recorder import AudioRecorder
-from vibe.core.audio_recorder.audio_recorder_port import (
+from rig_relay.core.audio_recorder.audio_recorder import AudioRecorder
+from rig_relay.core.audio_recorder.audio_recorder_port import (
     AlreadyRecordingError,
     AudioBackendUnavailableError,
     AudioRecording,

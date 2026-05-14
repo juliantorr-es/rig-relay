@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from vibe.core.utils.retry import _is_retryable_http_error
+from rig_relay.core.utils.retry import _is_retryable_http_error
 
 
 def _make_http_status_error(status_code: int) -> httpx.HTTPStatusError:

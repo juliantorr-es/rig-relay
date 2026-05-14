@@ -31,7 +31,7 @@ from rig_relay.evidence.receipt_index import (
     summarize_receipt_index,
     validate_index_content_light,
 )
-from vibe.core.telemetry.constants import EventName
+from rig_relay.core.telemetry.constants import EventName
 
 # ── Helpers ───────────────────────────────────────────────────────────
 

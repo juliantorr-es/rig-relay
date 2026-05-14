@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from tests.stubs.fake_audio_recorder import FakeAudioRecorder
-from vibe.cli.voice_manager import VoiceToggleResult
-from vibe.cli.voice_manager.voice_manager_port import (
+from rig_relay.cli.voice_manager import VoiceToggleResult
+from rig_relay.cli.voice_manager.voice_manager_port import (
     TranscribeState,
     VoiceManagerListener,
 )
-from vibe.core.audio_recorder import AudioRecorderPort
-from vibe.core.audio_recorder.audio_recorder_port import RecordingMode
+from rig_relay.core.audio_recorder import AudioRecorderPort
+from rig_relay.core.audio_recorder.audio_recorder_port import RecordingMode
 
 
 class FakeVoiceManager:

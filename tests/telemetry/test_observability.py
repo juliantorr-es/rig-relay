@@ -8,10 +8,10 @@ from unittest.mock import patch
 from jsonschema import validate
 import pytest
 
-from vibe.core.config import VibeConfig
-from vibe.core.paths._vibe_home import SESSIONS_ROOT
-from vibe.core.telemetry.constants import EventName
-from vibe.core.types import LLMMessage, Role
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
+from rig_relay.core.telemetry.constants import EventName
+from rig_relay.core.types import LLMMessage, Role
 
 SCHEMA_PATH = (
     Path(__file__).parent.parent.parent
@@ -44,16 +44,16 @@ def mock_config():
 @pytest.fixture
 def real_telemetry_client(monkeypatch):
     """Force reload of telemetry modules to ensure we use the real implementation."""
-    import vibe.core.paths._vibe_home
-    import vibe.core.telemetry.local
-    import vibe.core.telemetry.send
+    import rig_relay.core.paths._vibe_home
+    import rig_relay.core.telemetry.local
+    import rig_relay.core.telemetry.send
 
     importlib.reload(vibe.core.paths._vibe_home)
     importlib.reload(vibe.core.telemetry.local)
     importlib.reload(vibe.core.telemetry.send)
 
     # Re-apply the real method to the class just in case the reload didn't fully clean it
-    from vibe.core.telemetry.send import TelemetryClient as RealClient
+    from rig_relay.core.telemetry.send import TelemetryClient as RealClient
 
     monkeypatch.setattr(
         "vibe.core.telemetry.send.TelemetryClient.send_telemetry_event",

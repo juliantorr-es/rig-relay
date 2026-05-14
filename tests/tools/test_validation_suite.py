@@ -7,8 +7,8 @@ from typing import Any, cast
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError
-from vibe.core.tools.builtins.validation_suite import (
+from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError
+from rig_relay.core.tools.builtins.validation_suite import (
     ValidationStepRequest,
     ValidationSuite,
     ValidationSuiteArgs,

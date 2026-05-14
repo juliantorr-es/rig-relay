@@ -116,7 +116,7 @@ class TestActionGates:
             assert ap.action_requires_authorization(action) is True
 
     def test_read_only_actions_do_not_require_authorization(self, ap):
-        from vibe.core.auth.receipt import READ_ONLY_ACTIONS, is_read_only_action
+        from rig_relay.core.auth.receipt import READ_ONLY_ACTIONS, is_read_only_action
 
         for action in READ_ONLY_ACTIONS:
             assert ap.action_requires_authorization(action) is False

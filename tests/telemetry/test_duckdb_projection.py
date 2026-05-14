@@ -7,8 +7,8 @@ import uuid
 
 import pytest
 
-from vibe.core.telemetry.constants import EventName
-from vibe.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
+from rig_relay.core.telemetry.constants import EventName
+from rig_relay.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
 
 
 @pytest.fixture
@@ -153,7 +153,7 @@ def test_analyzer_handles_empty_root(tmp_path):
 
 
 def test_analyzer_handles_missing_duckdb_gracefully(session_root, monkeypatch):
-    import vibe.core.telemetry.duckdb_projection
+    import rig_relay.core.telemetry.duckdb_projection
 
     monkeypatch.setattr(vibe.core.telemetry.duckdb_projection, "HAS_DUCKDB", False)
 

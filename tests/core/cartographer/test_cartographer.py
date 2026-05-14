@@ -6,9 +6,9 @@ from anyio import Path
 import pytest
 import pytest_asyncio
 
-from vibe.core.cartographer.loop import CartographerLoop
-from vibe.core.cartographer.models import FindingCandidate, FindingKind, PatchPlan
-from vibe.core.cartographer.registry import JsonlCartographerRegistry
+from rig_relay.core.cartographer.loop import CartographerLoop
+from rig_relay.core.cartographer.models import FindingCandidate, FindingKind, PatchPlan
+from rig_relay.core.cartographer.registry import JsonlCartographerRegistry
 
 
 @pytest_asyncio.fixture

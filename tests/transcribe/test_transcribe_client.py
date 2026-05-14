@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from vibe.core.config import TranscribeModelConfig, TranscribeProviderConfig
-from vibe.core.transcribe import (
+from rig_relay.core.config import TranscribeModelConfig, TranscribeProviderConfig
+from rig_relay.core.transcribe import (
     MistralTranscribeClient,
     TranscribeDone,
     TranscribeError,

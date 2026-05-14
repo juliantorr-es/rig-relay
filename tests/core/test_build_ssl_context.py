@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from vibe.core.utils.http import build_ssl_context
+from rig_relay.core.utils.http import build_ssl_context
 
 
 @pytest.fixture(autouse=True)

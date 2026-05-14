@@ -7,10 +7,10 @@ import time
 
 import pytest
 
-from vibe.core.config import SessionLoggingConfig
-from vibe.core.session.session_loader import SessionLoader
-from vibe.core.types import LLMMessage, Role, SessionMetadata, ToolCall
-from vibe.core.utils.io import read_safe
+from rig_relay.core.config import SessionLoggingConfig
+from rig_relay.core.session.session_loader import SessionLoader
+from rig_relay.core.types import LLMMessage, Role, SessionMetadata, ToolCall
+from rig_relay.core.utils.io import read_safe
 
 
 @pytest.fixture

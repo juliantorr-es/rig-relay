@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from vibe.cli.narrator_manager.telemetry import ReadAloudTrackingState
+from rig_relay.cli.narrator_manager.telemetry import ReadAloudTrackingState
 
 
 class TestReadAloudTrackingState:

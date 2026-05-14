@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from vibe.core.llm.exceptions import BackendError, PayloadSummary
+from rig_relay.core.llm.exceptions import BackendError, PayloadSummary
 
 
 def _make_payload_summary() -> PayloadSummary:

@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from vibe.cli.stderr_guard import stderr_guard
+from rig_relay.cli.stderr_guard import stderr_guard
 
 _FORCE_ACTIVE = patch("vibe.cli.stderr_guard._is_stderr_a_tty", return_value=True)
 

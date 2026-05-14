@@ -11,7 +11,7 @@ from tests.update_notifier.adapters.fake_update_cache_repository import (
     FakeUpdateCacheRepository,
 )
 from tests.update_notifier.adapters.fake_update_gateway import FakeUpdateGateway
-from vibe.cli.update_notifier import Update
+from rig_relay.cli.update_notifier import Update
 
 
 class SnapshotTestAppWithUpdate(BaseSnapshotTestApp):

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
-from vibe.setup.auth import (
+from rig_relay.setup.auth import (
     BrowserSignInError,
     BrowserSignInErrorCode,
     BrowserSignInGateway,

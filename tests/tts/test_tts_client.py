@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from vibe.core.config import TTSModelConfig, TTSProviderConfig
-from vibe.core.tts import MistralTTSClient, TTSResult
+from rig_relay.core.config import TTSModelConfig, TTSProviderConfig
+from rig_relay.core.tts import MistralTTSClient, TTSResult
 
 
 def _make_provider() -> TTSProviderConfig:

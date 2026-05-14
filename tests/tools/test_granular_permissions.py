@@ -4,38 +4,38 @@ import os
 
 import pytest
 
-from vibe.core.tools.base import BaseToolState, ToolPermission
-from vibe.core.tools.builtins.bash import (
+from rig_relay.core.tools.base import BaseToolState, ToolPermission
+from rig_relay.core.tools.builtins.bash import (
     Bash,
     BashArgs,
     BashToolConfig,
     _collect_outside_dirs,
 )
-from vibe.core.tools.builtins.grep import Grep, GrepArgs, GrepToolConfig
-from vibe.core.tools.builtins.read_file import (
+from rig_relay.core.tools.builtins.grep import Grep, GrepArgs, GrepToolConfig
+from rig_relay.core.tools.builtins.read_file import (
     ReadFile,
     ReadFileArgs,
     ReadFileState,
     ReadFileToolConfig,
 )
-from vibe.core.tools.builtins.search_replace import (
+from rig_relay.core.tools.builtins.search_replace import (
     SearchReplace,
     SearchReplaceArgs,
     SearchReplaceConfig,
 )
-from vibe.core.tools.builtins.webfetch import WebFetch, WebFetchArgs, WebFetchConfig
-from vibe.core.tools.builtins.write_file import (
+from rig_relay.core.tools.builtins.webfetch import WebFetch, WebFetchArgs, WebFetchConfig
+from rig_relay.core.tools.builtins.write_file import (
     WriteFile,
     WriteFileArgs,
     WriteFileConfig,
 )
-from vibe.core.tools.permissions import (
+from rig_relay.core.tools.permissions import (
     ApprovedRule,
     PermissionContext,
     PermissionScope,
     RequiredPermission,
 )
-from vibe.core.tools.utils import wildcard_match
+from rig_relay.core.tools.utils import wildcard_match
 
 
 class TestBashGranularPermissions:

@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.tools.base import BaseToolState, ToolError, ToolPermission
-from vibe.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
-from vibe.core.tools.permissions import PermissionContext
+from rig_relay.core.tools.base import BaseToolState, ToolError, ToolPermission
+from rig_relay.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
+from rig_relay.core.tools.permissions import PermissionContext
 
 
 @pytest.fixture

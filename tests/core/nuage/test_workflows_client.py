@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from vibe.core.nuage.client import WorkflowsClient
-from vibe.core.nuage.exceptions import ErrorCode, WorkflowsException
-from vibe.core.nuage.streaming import StreamEvent, StreamEventsQueryParams
-from vibe.core.nuage.workflow import WorkflowExecutionStatus
+from rig_relay.core.nuage.client import WorkflowsClient
+from rig_relay.core.nuage.exceptions import ErrorCode, WorkflowsException
+from rig_relay.core.nuage.streaming import StreamEvent, StreamEventsQueryParams
+from rig_relay.core.nuage.workflow import WorkflowExecutionStatus
 
 
 def _make_client() -> WorkflowsClient:

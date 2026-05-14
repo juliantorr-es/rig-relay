@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from vibe.cli.commands import Command, CommandAvailabilityContext, CommandRegistry
-from vibe.cli.plan_offer.decide_plan_offer import PlanInfo
-from vibe.cli.plan_offer.ports.whoami_gateway import WhoAmIPlanType
+from rig_relay.cli.commands import Command, CommandAvailabilityContext, CommandRegistry
+from rig_relay.cli.plan_offer.decide_plan_offer import PlanInfo
+from rig_relay.cli.plan_offer.ports.whoami_gateway import WhoAmIPlanType
 
 
 def _eligible_teleport_context() -> CommandAvailabilityContext:

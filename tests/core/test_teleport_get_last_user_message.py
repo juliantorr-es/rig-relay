@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from vibe.core.teleport.nuage import TeleportSession
-from vibe.core.teleport.teleport import TeleportService
+from rig_relay.core.teleport.nuage import TeleportSession
+from rig_relay.core.teleport.teleport import TeleportService
 
 
 @pytest.fixture

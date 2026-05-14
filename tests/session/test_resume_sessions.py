@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from vibe.core.session.resume_sessions import (
+from rig_relay.core.session.resume_sessions import (
     list_remote_resume_sessions,
     short_session_id,
 )
-from vibe.core.session.session_id import shorten_session_id
+from rig_relay.core.session.session_id import shorten_session_id
 
 
 class TestShortenSessionId:
@@ -74,7 +74,7 @@ class TestListRemoteResumeSessions:
     async def test_passes_active_statuses_to_api(self) -> None:
         from datetime import datetime
 
-        from vibe.core.nuage.workflow import (
+        from rig_relay.core.nuage.workflow import (
             WorkflowExecutionListResponse,
             WorkflowExecutionStatus,
             WorkflowExecutionWithoutResultResponse,
@@ -142,7 +142,7 @@ class TestListRemoteResumeSessions:
     async def test_deduplicates_execution_ids_keeps_latest(self) -> None:
         from datetime import datetime
 
-        from vibe.core.nuage.workflow import (
+        from rig_relay.core.nuage.workflow import (
             WorkflowExecutionListResponse,
             WorkflowExecutionStatus,
             WorkflowExecutionWithoutResultResponse,
@@ -198,7 +198,7 @@ class TestListRemoteResumeSessions:
     ) -> None:
         from datetime import datetime
 
-        from vibe.core.nuage.workflow import (
+        from rig_relay.core.nuage.workflow import (
             WorkflowExecutionListResponse,
             WorkflowExecutionStatus,
             WorkflowExecutionWithoutResultResponse,

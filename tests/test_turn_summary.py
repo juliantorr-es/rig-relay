@@ -8,16 +8,16 @@ import pytest
 
 from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend
-from vibe.cli.turn_summary import (
+from rig_relay.cli.turn_summary import (
     NARRATOR_MODEL,
     NoopTurnSummary,
     TurnSummaryResult,
     TurnSummaryTracker,
     create_narrator_backend,
 )
-from vibe.core.config import ModelConfig, ProviderConfig, VibeConfig
-from vibe.core.llm.backend.mistral import MistralBackend
-from vibe.core.types import AssistantEvent, Backend, ToolStreamEvent, UserMessageEvent
+from rig_relay.core.config import ModelConfig, ProviderConfig, VibeConfig
+from rig_relay.core.llm.backend.mistral import MistralBackend
+from rig_relay.core.types import AssistantEvent, Backend, ToolStreamEvent, UserMessageEvent
 
 _TEST_MODEL = ModelConfig(name="test-model", provider="test", alias="test-model")
 

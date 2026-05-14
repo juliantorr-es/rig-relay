@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.config import SessionLoggingConfig
-from vibe.core.session.saved_sessions import update_saved_session_title
+from rig_relay.core.config import SessionLoggingConfig
+from rig_relay.core.session.saved_sessions import update_saved_session_title
 
 
 @pytest.fixture

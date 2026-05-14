@@ -12,8 +12,8 @@ try:
 except OSError:
     pytest.skip("PortAudio library not available", allow_module_level=True)
 
-from vibe.core.audio_player.audio_player import AudioPlayer
-from vibe.core.audio_player.audio_player_port import (
+from rig_relay.core.audio_player.audio_player import AudioPlayer
+from rig_relay.core.audio_player.audio_player_port import (
     AlreadyPlayingError,
     AudioBackendUnavailableError,
     AudioFormat,

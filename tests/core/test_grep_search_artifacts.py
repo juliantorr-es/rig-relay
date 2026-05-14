@@ -8,9 +8,9 @@ from jsonschema import validate
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.paths._vibe_home import SESSIONS_ROOT
-from vibe.core.tools.base import BaseToolState, InvokeContext
-from vibe.core.tools.builtins.grep import Grep, GrepArgs, GrepToolConfig
+from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
+from rig_relay.core.tools.base import BaseToolState, InvokeContext
+from rig_relay.core.tools.builtins.grep import Grep, GrepArgs, GrepToolConfig
 
 
 def _search_results_schema() -> dict:

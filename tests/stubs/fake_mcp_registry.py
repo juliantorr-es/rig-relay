@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vibe.core.tools.mcp import MCPRegistry
-from vibe.core.tools.mcp.tools import (
+from rig_relay.core.tools.mcp import MCPRegistry
+from rig_relay.core.tools.mcp.tools import (
     RemoteTool,
     create_mcp_http_proxy_tool_class,
     create_mcp_stdio_proxy_tool_class,
 )
 
 if TYPE_CHECKING:
-    from vibe.core.config import MCPServer
-    from vibe.core.tools.base import BaseTool
+    from rig_relay.core.config import MCPServer
+    from rig_relay.core.tools.base import BaseTool
 
 
 _BROKEN_SERVER_NAME = "broken-server"

@@ -7,8 +7,8 @@ import pytest
 
 from rig_relay.desktop.chat_agent_adapter import ChatAgentAdapter
 from rig_relay.desktop.chat_store import ChatStore
-from vibe.core.tools.base import BaseTool
-from vibe.core.types import (
+from rig_relay.core.tools.base import BaseTool
+from rig_relay.core.types import (
     AssistantEvent,
     ToolCallEvent,
     ToolResultEvent,

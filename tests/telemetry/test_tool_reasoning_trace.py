@@ -5,7 +5,7 @@ from pathlib import Path
 
 from jsonschema import validate
 
-from vibe.core.telemetry.tool_contract import ToolOutputKind, ToolReasoningTrace
+from rig_relay.core.telemetry.tool_contract import ToolOutputKind, ToolReasoningTrace
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 SCHEMA_DIR = REPO_ROOT / "docs" / "schemas"
@@ -152,7 +152,7 @@ def test_telemetry_send_reasoning_trace_signature():
     """Verify the send_tool_reasoning_trace method exists and accepts expected params."""
     from unittest.mock import MagicMock
 
-    from vibe.core.telemetry.send import TelemetryClient
+    from rig_relay.core.telemetry.send import TelemetryClient
 
     mock_config = MagicMock()
     mock_config.enable_local_observability = False
@@ -174,9 +174,9 @@ def test_telemetry_send_reasoning_trace_signature():
 
 def test_doctor_identifies_largest_inline_output():
     """Doctor summarize_tool_reasoning must identify largest inline outputs."""
-    from vibe.core.telemetry.constants import EventName
-    from vibe.core.telemetry.doctor import summarize_tool_reasoning
-    from vibe.core.telemetry.local import dump_canonical_json
+    from rig_relay.core.telemetry.constants import EventName
+    from rig_relay.core.telemetry.doctor import summarize_tool_reasoning
+    from rig_relay.core.telemetry.local import dump_canonical_json
 
     tmp_dir = Path("/tmp/test_doctor_trace_inline")
     session_id = "test-inline"
@@ -221,9 +221,9 @@ def test_doctor_identifies_largest_inline_output():
 
 def test_doctor_identifies_slow_tool_call():
     """Doctor summarize_tool_reasoning must identify slowest tool calls."""
-    from vibe.core.telemetry.constants import EventName
-    from vibe.core.telemetry.doctor import summarize_tool_reasoning
-    from vibe.core.telemetry.local import dump_canonical_json
+    from rig_relay.core.telemetry.constants import EventName
+    from rig_relay.core.telemetry.doctor import summarize_tool_reasoning
+    from rig_relay.core.telemetry.local import dump_canonical_json
 
     tmp_dir = Path("/tmp/test_doctor_trace_slow")
     session_id = "test-slow"
@@ -264,7 +264,7 @@ def test_doctor_identifies_slow_tool_call():
 
 def test_doctor_tool_reasoning_missing_log():
     """Doctor should handle missing observability log gracefully."""
-    from vibe.core.telemetry.doctor import summarize_tool_reasoning
+    from rig_relay.core.telemetry.doctor import summarize_tool_reasoning
 
     result = summarize_tool_reasoning(Path("/nonexistent"), "no-session")
     assert result["traces"] == []

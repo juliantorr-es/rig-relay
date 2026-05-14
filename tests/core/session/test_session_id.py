@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from vibe.core.session.session_id import extract_suffix, generate_session_id
+from rig_relay.core.session.session_id import extract_suffix, generate_session_id
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 

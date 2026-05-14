@@ -9,10 +9,10 @@ import tomli_w
 from tests.conftest import get_base_config
 from tests.stubs.fake_backend import FakeBackend
 from tests.stubs.fake_client import FakeClient
-from vibe.acp.acp_agent_loop import VibeAcpAgentLoop
-from vibe.core.agent_loop import AgentLoop
-from vibe.core.hooks.models import HookConfigResult, HookType
-from vibe.core.types import LLMChunk, LLMMessage, LLMUsage, Role, SessionMetadata
+from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.hooks.models import HookConfigResult, HookType
+from rig_relay.core.types import LLMChunk, LLMMessage, LLMUsage, Role, SessionMetadata
 
 
 @pytest.fixture

@@ -6,8 +6,8 @@ import subprocess
 
 import pytest
 
-from vibe.core.coordination import CoordinationStore
-from vibe.core.guard import get_guard, reset_guard
+from rig_relay.coordination import CoordinationStore
+from rig_relay.core.guard import get_guard, reset_guard
 
 
 @pytest.fixture(autouse=True)
@@ -60,8 +60,8 @@ def _touch(repo: Path, *paths: str) -> None:
 
 
 def _make_tool(store_path: Path):
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.checkpoint import Checkpoint, CheckpointToolConfig
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.checkpoint import Checkpoint, CheckpointToolConfig
 
     return Checkpoint(
         config_getter=lambda: CheckpointToolConfig(store_root=store_path),
@@ -70,7 +70,7 @@ def _make_tool(store_path: Path):
 
 
 def _make_args(**kwargs):
-    from vibe.core.tools.builtins.checkpoint import CheckpointArgs
+    from rig_relay.core.tools.builtins.checkpoint import CheckpointArgs
 
     return CheckpointArgs(**kwargs)
 
@@ -506,7 +506,7 @@ def test_checkpoint_allows_protected_file_after_safe_patch(tmp_path: Path) -> No
 
 
 def test_bash_denies_git_commit_and_add() -> None:
-    from vibe.core.tools.builtins.bash import BashToolConfig
+    from rig_relay.core.tools.builtins.bash import BashToolConfig
 
     config = BashToolConfig()
     denylist = config.denylist

@@ -7,29 +7,29 @@ from pathlib import Path
 from acp.schema import ToolCallProgress, ToolCallStart
 from pydantic import BaseModel
 
-from vibe.acp.tools.builtins.grep import Grep
-from vibe.acp.tools.builtins.read_file import ReadFile
-from vibe.acp.tools.builtins.skill import Skill
-from vibe.acp.tools.builtins.task import Task
-from vibe.acp.tools.builtins.web_fetch import WebFetch
-from vibe.acp.tools.builtins.web_search import WebSearch
-from vibe.acp.tools.builtins.write_file import WriteFile
-from vibe.acp.tools.session_update import (
+from rig_relay.acp.tools.builtins.grep import Grep
+from rig_relay.acp.tools.builtins.read_file import ReadFile
+from rig_relay.acp.tools.builtins.skill import Skill
+from rig_relay.acp.tools.builtins.task import Task
+from rig_relay.acp.tools.builtins.web_fetch import WebFetch
+from rig_relay.acp.tools.builtins.web_search import WebSearch
+from rig_relay.acp.tools.builtins.write_file import WriteFile
+from rig_relay.acp.tools.session_update import (
     tool_call_session_update,
     tool_result_session_update,
 )
-from vibe.core.tools.builtins.grep import GrepArgs, GrepResult
-from vibe.core.tools.builtins.read_file import ReadFileArgs, ReadFileResult
-from vibe.core.tools.builtins.skill import SkillArgs, SkillResult
-from vibe.core.tools.builtins.task import TaskArgs, TaskResult
-from vibe.core.tools.builtins.webfetch import WebFetchArgs, WebFetchResult
-from vibe.core.tools.builtins.websearch import (
+from rig_relay.core.tools.builtins.grep import GrepArgs, GrepResult
+from rig_relay.core.tools.builtins.read_file import ReadFileArgs, ReadFileResult
+from rig_relay.core.tools.builtins.skill import SkillArgs, SkillResult
+from rig_relay.core.tools.builtins.task import TaskArgs, TaskResult
+from rig_relay.core.tools.builtins.webfetch import WebFetchArgs, WebFetchResult
+from rig_relay.core.tools.builtins.websearch import (
     WebSearchArgs,
     WebSearchResult,
     WebSearchSource,
 )
-from vibe.core.tools.builtins.write_file import WriteFileArgs, WriteFileResult
-from vibe.core.types import ToolCallEvent, ToolResultEvent
+from rig_relay.core.tools.builtins.write_file import WriteFileArgs, WriteFileResult
+from rig_relay.core.types import ToolCallEvent, ToolResultEvent
 
 
 def _call_event(

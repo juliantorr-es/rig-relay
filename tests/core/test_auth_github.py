@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from vibe.core.auth.github import (
+from rig_relay.core.auth.github import (
     DeviceFlowHandle,
     DeviceFlowInfo,
     GitHubAuthError,

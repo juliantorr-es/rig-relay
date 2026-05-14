@@ -76,6 +76,8 @@ _LOCK_HEARTBEAT_SECONDS: int = 60  # heartbeat every 60s
 # ── Parallel constants ────────────────────────────────────────────────
 
 _DEFAULT_MAX_WORKERS: int = 4
+_XDIST_SHORT_FLAG_PREFIX = "-n"
+_MIN_PYTEST_ARG_COUNT = 2
 
 
 # ── Models ────────────────────────────────────────────────────────────
@@ -117,7 +119,7 @@ def _has_xdist_flag(argv: list[str]) -> bool:
     for arg in argv:
         if arg in {"-n", "--numprocesses", "--dist"}:
             return True
-        if arg.startswith("-n") and len(arg) > 2:
+        if arg.startswith(_XDIST_SHORT_FLAG_PREFIX) and len(arg) > len(_XDIST_SHORT_FLAG_PREFIX):
             return True
     return False
 
@@ -134,7 +136,7 @@ def _xdist_available() -> bool:
 
 def _is_pytest_command(argv: list[str]) -> bool:
     """Check if argv looks like a pytest invocation."""
-    return len(argv) >= 2 and any("pytest" in arg for arg in argv)
+    return len(argv) >= _MIN_PYTEST_ARG_COUNT and any("pytest" in arg for arg in argv)
 
 
 def _is_focused_test(argv: list[str]) -> bool:
@@ -166,49 +168,38 @@ def apply_parallel_policy(
     """Apply bounded parallel policy to a command.
 
     Returns (modified_argv, parallel_status, warning_or_none).
-
-    Rules:
-    - Cache hit → no injection (caller handles this)
-    - Not a pytest command → not_applicable
-    - xdist unavailable → refused, serial fallback
-    - parallel_policy="disabled" → disabled
-    - Already has -n flag → not_applicable (already has)
-    - Focused single-file test → not_applicable (stay serial)
-    - Schema validation → not_applicable
-    - ruff/pyright → not_applicable
-    - Otherwise → inject bounded -n <workers> --dist <mode>
     """
-    if not _is_pytest_command(argv):
-        return list(argv), PARALLEL_NOT_APPLICABLE, None
-
-    if _is_schema_validation(argv):
-        return list(argv), PARALLEL_NOT_APPLICABLE, "schema_validation_stays_serial"
-
-    if _is_ruff_pyright(argv):
-        return list(argv), PARALLEL_NOT_APPLICABLE, None
-
-    if _has_xdist_flag(argv):
-        return list(argv), PARALLEL_NOT_APPLICABLE, "already_has_xdist_flag"
-
-    if parallel_policy == "disabled":
-        return list(argv), PARALLEL_DISABLED, None
-
-    if parallel_policy != "force" and _is_focused_test(argv):
-        return list(argv), PARALLEL_NOT_APPLICABLE, "focused_test_stays_serial"
-
-    if not _xdist_available():
-        return list(argv), PARALLEL_REFUSED, "pytest_xdist_not_available"
-
-    effective_workers = max_workers or min(_DEFAULT_MAX_WORKERS, os.cpu_count() or 1)
     modified = list(argv)
-    # Insert after the pytest binary, before any positional args
-    insert_at = 1 if len(modified) > 1 else len(modified)
-    modified.insert(insert_at, "-n")
-    modified.insert(insert_at + 1, str(effective_workers))
-    modified.insert(insert_at + 2, "--dist")
-    modified.insert(insert_at + 3, distribution)
+    parallel_status = PARALLEL_NOT_APPLICABLE
+    warning: str | None = None
 
-    return modified, PARALLEL_ENABLED, None
+    if _is_pytest_command(argv):
+        if _is_schema_validation(argv):
+            warning = "schema_validation_stays_serial"
+        elif _is_ruff_pyright(argv):
+            pass
+        elif _has_xdist_flag(argv):
+            warning = "already_has_xdist_flag"
+        elif parallel_policy == "disabled":
+            parallel_status = PARALLEL_DISABLED
+        elif parallel_policy != "force" and _is_focused_test(argv):
+            warning = "focused_test_stays_serial"
+        elif not _xdist_available():
+            parallel_status = PARALLEL_REFUSED
+            warning = "pytest_xdist_not_available"
+        else:
+            effective_workers = max_workers or min(
+                _DEFAULT_MAX_WORKERS, os.cpu_count() or 1
+            )
+            insert_at = 1 if len(modified) > 1 else len(modified)
+            modified[insert_at:insert_at] = [
+                "-n",
+                str(effective_workers),
+                "--dist",
+                distribution,
+            ]
+            parallel_status = PARALLEL_ENABLED
+    return modified, parallel_status, warning
 
 
 # ── Lifecycle phase warnings ──────────────────────────────────────────
@@ -308,6 +299,26 @@ class ValidationSchedulerStore:
             return True
         return False
 
+    def _release_stale_locks_in_prefix(
+        self, prefix_dir: Path, max_age_seconds: int
+    ) -> int:
+        if not prefix_dir.is_dir():
+            return 0
+        count = 0
+        for f in prefix_dir.iterdir():
+            if f.suffix != ".json":
+                continue
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                lock = ValidationLock.model_validate(data)
+                if lock.is_stale(max_age_seconds=max_age_seconds):
+                    f.unlink()
+                    count += 1
+            except (json.JSONDecodeError, ValueError):
+                f.unlink()
+                count += 1
+        return count
+
     def release_stale_locks(self, max_age_seconds: int = _LOCK_STALE_SECONDS) -> int:
         """Release all stale locks. Returns count released."""
         locks_dir = self._root / "locks"
@@ -315,18 +326,23 @@ class ValidationSchedulerStore:
             return 0
         count = 0
         for prefix_dir in locks_dir.iterdir():
-            if prefix_dir.is_dir():
-                for f in prefix_dir.iterdir():
-                    if f.suffix == ".json":
-                        try:
-                            data = json.loads(f.read_text(encoding="utf-8"))
-                            lock = ValidationLock.model_validate(data)
-                            if lock.is_stale(max_age_seconds=max_age_seconds):
-                                f.unlink()
-                                count += 1
-                        except (json.JSONDecodeError, ValueError):
-                            f.unlink()
-                            count += 1
+            count += self._release_stale_locks_in_prefix(prefix_dir, max_age_seconds)
+        return count
+
+    def _count_active_locks_in_prefix(self, prefix_dir: Path) -> int:
+        if not prefix_dir.is_dir():
+            return 0
+        count = 0
+        for f in prefix_dir.iterdir():
+            if f.suffix != ".json":
+                continue
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                lock = ValidationLock.model_validate(data)
+                if not lock.is_stale():
+                    count += 1
+            except (json.JSONDecodeError, ValueError):
+                pass
         return count
 
     @property
@@ -337,16 +353,7 @@ class ValidationSchedulerStore:
             return 0
         count = 0
         for prefix_dir in locks_dir.iterdir():
-            if prefix_dir.is_dir():
-                for f in prefix_dir.iterdir():
-                    if f.suffix == ".json":
-                        try:
-                            data = json.loads(f.read_text(encoding="utf-8"))
-                            lock = ValidationLock.model_validate(data)
-                            if not lock.is_stale():
-                                count += 1
-                        except (json.JSONDecodeError, ValueError):
-                            pass
+            count += self._count_active_locks_in_prefix(prefix_dir)
         return count
 
 

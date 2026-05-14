@@ -7,12 +7,12 @@ from pathlib import Path
 from jsonschema import validate
 import pytest
 
-from vibe.core.config import VibeConfig
-from vibe.core.paths._vibe_home import SESSIONS_ROOT
-from vibe.core.telemetry.constants import EventName
-from vibe.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
-from vibe.core.telemetry.local import log_local_event
-from vibe.core.telemetry.validation import validate_evidence_session
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
+from rig_relay.core.telemetry.constants import EventName
+from rig_relay.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
+from rig_relay.core.telemetry.local import log_local_event
+from rig_relay.core.telemetry.validation import validate_evidence_session
 
 SCHEMA_PATH = (
     Path(__file__).parent.parent.parent
@@ -51,11 +51,11 @@ def mock_config():
 @pytest.fixture
 def real_telemetry_client(monkeypatch):
     """Force reload of telemetry modules to ensure we use the real implementation."""
-    import vibe.core.agent_loop
-    import vibe.core.paths._vibe_home
-    import vibe.core.telemetry.duckdb_projection
-    import vibe.core.telemetry.local
-    import vibe.core.telemetry.send
+    import rig_relay.core.agent_loop
+    import rig_relay.core.paths._vibe_home
+    import rig_relay.core.telemetry.duckdb_projection
+    import rig_relay.core.telemetry.local
+    import rig_relay.core.telemetry.send
 
     importlib.reload(vibe.core.paths._vibe_home)
     importlib.reload(vibe.core.telemetry.local)
@@ -64,7 +64,7 @@ def real_telemetry_client(monkeypatch):
     importlib.reload(vibe.core.agent_loop)
 
     # Re-apply the real method to the class just in case the reload didn't fully clean it
-    from vibe.core.telemetry.send import TelemetryClient as RealClient
+    from rig_relay.core.telemetry.send import TelemetryClient as RealClient
 
     monkeypatch.setattr(
         "vibe.core.telemetry.send.TelemetryClient.send_telemetry_event",
@@ -149,8 +149,8 @@ async def test_observability_e2e_tool_completion(
 
     from pydantic import BaseModel
 
-    from vibe.core.llm.format import ResolvedToolCall
-    from vibe.core.tools.base import BaseTool
+    from rig_relay.core.llm.format import ResolvedToolCall
+    from rig_relay.core.tools.base import BaseTool
 
     class MockArgs(BaseModel):
         pass
@@ -199,7 +199,7 @@ async def test_observability_e2e_artifacting(
     monkeypatch.chdir(tmp_path)
 
     # We need a mock AgentLoop or a real one with minimal dependencies
-    from vibe.core.agent_loop import AgentLoop
+    from rig_relay.core.agent_loop import AgentLoop
 
     session_id = "e2e-session-artifact"
     # We'll manually trigger _handle_tool_response on an AgentLoop instance
@@ -208,8 +208,8 @@ async def test_observability_e2e_artifacting(
 
     from pydantic import BaseModel
 
-    from vibe.core.llm.format import ResolvedToolCall
-    from vibe.core.tools.base import BaseTool
+    from rig_relay.core.llm.format import ResolvedToolCall
+    from rig_relay.core.tools.base import BaseTool
 
     class MockArgs(BaseModel):
         command: str
@@ -272,8 +272,8 @@ async def test_observability_e2e_context_assembly(
     """Test the full chain: AgentLoop -> ContextAssembler -> JSONL -> DuckDB."""
     monkeypatch.chdir(tmp_path)
 
-    from vibe.core.agent_loop import AgentLoop
-    from vibe.core.types import LLMMessage, Role
+    from rig_relay.core.agent_loop import AgentLoop
+    from rig_relay.core.types import LLMMessage, Role
 
     session_id = "e2e-session-context"
     loop = AgentLoop(config=mock_config)
@@ -281,7 +281,7 @@ async def test_observability_e2e_context_assembly(
     loop.messages.append(LLMMessage(role=Role.system, content="System"))
     loop.messages.append(LLMMessage(role=Role.user, content="Hello"))
 
-    from vibe.core.config import ModelConfig
+    from rig_relay.core.config import ModelConfig
 
     model = ModelConfig(name="test-model", provider="test", alias="test", backend="api")
 
@@ -324,8 +324,8 @@ async def test_observability_e2e_context_layout(
     """Test the full chain: AgentLoop -> ContextLayoutPlan -> JSONL -> DuckDB."""
     monkeypatch.chdir(tmp_path)
 
-    from vibe.core.agent_loop import AgentLoop
-    from vibe.core.types import LLMMessage, Role
+    from rig_relay.core.agent_loop import AgentLoop
+    from rig_relay.core.types import LLMMessage, Role
 
     session_id = "e2e-session-layout"
     loop = AgentLoop(config=mock_config)
@@ -333,7 +333,7 @@ async def test_observability_e2e_context_layout(
     loop.messages.append(LLMMessage(role=Role.system, content="System"))
     loop.messages.append(LLMMessage(role=Role.user, content="Hello"))
 
-    from vibe.core.config import ModelConfig
+    from rig_relay.core.config import ModelConfig
 
     model = ModelConfig(name="test-model", provider="test", alias="test", backend="api")
 
@@ -378,8 +378,8 @@ async def test_observability_e2e_shadow_request_assembly(
 ):
     monkeypatch.chdir(tmp_path)
 
-    from vibe.core.agent_loop import AgentLoop
-    from vibe.core.types import LLMMessage, Role
+    from rig_relay.core.agent_loop import AgentLoop
+    from rig_relay.core.types import LLMMessage, Role
 
     session_id = "e2e-session-shadow"
     loop = AgentLoop(config=mock_config)
@@ -429,9 +429,9 @@ async def test_shadow_request_assembly_failure_does_not_fail_model_request(
 ):
     monkeypatch.chdir(tmp_path)
 
-    from vibe.core.agent_loop import AgentLoop
-    from vibe.core.context import assembler as assembler_mod
-    from vibe.core.types import LLMMessage, Role
+    from rig_relay.core.agent_loop import AgentLoop
+    from rig_relay.core.context import assembler as assembler_mod
+    from rig_relay.core.types import LLMMessage, Role
 
     session_id = "e2e-session-shadow-failure"
     loop = AgentLoop(config=mock_config)
@@ -477,16 +477,16 @@ async def test_provider_independent_repo_local_evidence_smoke(
     from tests.conftest import build_test_vibe_config
     from tests.mock.utils import mock_llm_chunk
     from tests.stubs.fake_backend import FakeBackend
-    from vibe.core.agent_loop import AgentLoop
-    from vibe.core.config.harness_files import (
+    from rig_relay.core.agent_loop import AgentLoop
+    from rig_relay.core.config.harness_files import (
         init_harness_files_manager,
         reset_harness_files_manager,
     )
-    from vibe.core.llm.format import ResolvedToolCall
-    from vibe.core.paths._vibe_home import SESSIONS_ROOT
-    from vibe.core.telemetry.constants import EventName
-    from vibe.core.tools.base import BaseTool
-    from vibe.core.types import LLMMessage, Role
+    from rig_relay.core.llm.format import ResolvedToolCall
+    from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
+    from rig_relay.core.telemetry.constants import EventName
+    from rig_relay.core.tools.base import BaseTool
+    from rig_relay.core.types import LLMMessage, Role
 
     class MockArgs(BaseModel):
         path: str = "big_log.txt"
@@ -686,7 +686,7 @@ async def test_evidence_isolation_from_stale_sessions(
     fresh_log.write_text(json.dumps(fresh_event) + "\n")
 
     # 3. Verify SESSIONS_ROOT points to local
-    from vibe.core.paths._vibe_home import SESSIONS_ROOT
+    from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
 
     assert SESSIONS_ROOT.path == local_home / "sessions"
 

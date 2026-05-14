@@ -70,8 +70,9 @@ The Python package exposes these commands via `pyproject.toml` `[project.scripts
 | `rig-relay-acp` | `rig_relay.cli.acp_entrypoint:main` |
 
 The `vibe` and `vibe-acp` commands are **deprecated legacy aliases**. New
-users should treat `rig-relay` as the primary product command and the 
-pywebview cockpit as the primary operator surface.
+users should treat `rig-relay` as the primary product command and the
+pywebview cockpit as the primary operator surface. The Textual TUI is legacy
+compatibility-only and is being retired.
 
 ## Version
 

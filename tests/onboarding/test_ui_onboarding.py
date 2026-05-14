@@ -7,13 +7,13 @@ import pytest
 from textual.pilot import Pilot
 from textual.widgets import Input
 
-from vibe.core.config import ProviderConfig
-from vibe.core.paths import GLOBAL_ENV_FILE
-from vibe.core.telemetry.build_metadata import build_entrypoint_metadata
-from vibe.core.telemetry.send import TelemetryClient
-from vibe.core.types import Backend
-from vibe.setup.onboarding import OnboardingApp
-from vibe.setup.onboarding.screens.api_key import ApiKeyScreen, persist_api_key
+from rig_relay.core.config import ProviderConfig
+from rig_relay.core.paths import GLOBAL_ENV_FILE
+from rig_relay.core.telemetry.build_metadata import build_entrypoint_metadata
+from rig_relay.core.telemetry.send import TelemetryClient
+from rig_relay.core.types import Backend
+from rig_relay.setup.onboarding import OnboardingApp
+from rig_relay.setup.onboarding.screens.api_key import ApiKeyScreen, persist_api_key
 
 
 async def _wait_for(

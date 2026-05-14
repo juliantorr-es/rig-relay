@@ -7,15 +7,15 @@ from os import environ
 import pytest
 
 from tests.cli.plan_offer.adapters.fake_whoami_gateway import FakeWhoAmIGateway
-from vibe.cli.plan_offer.decide_plan_offer import (
+from rig_relay.cli.plan_offer.decide_plan_offer import (
     PlanInfo,
     WhoAmIPlanType,
     decide_plan_offer,
     resolve_api_key_for_plan,
 )
-from vibe.cli.plan_offer.ports.whoami_gateway import WhoAmIResponse
-from vibe.core.config import ProviderConfig
-from vibe.core.types import Backend
+from rig_relay.cli.plan_offer.ports.whoami_gateway import WhoAmIResponse
+from rig_relay.core.config import ProviderConfig
+from rig_relay.core.types import Backend
 
 
 @pytest.fixture

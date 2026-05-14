@@ -6,11 +6,11 @@ from pathlib import Path
 from acp.schema import TextContentBlock
 import pytest
 
-from vibe.acp.acp_agent_loop import VibeAcpAgentLoop
-from vibe.acp.exceptions import InvalidRequestError
-from vibe.core.agents.models import BuiltinAgentName
-from vibe.core.session.session_id import extract_suffix
-from vibe.core.types import FunctionCall, LLMMessage, Role, ToolCall
+from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
+from rig_relay.acp.exceptions import InvalidRequestError
+from rig_relay.core.agents.models import BuiltinAgentName
+from rig_relay.core.session.session_id import extract_suffix
+from rig_relay.core.types import FunctionCall, LLMMessage, Role, ToolCall
 
 
 class TestACPForkSession:

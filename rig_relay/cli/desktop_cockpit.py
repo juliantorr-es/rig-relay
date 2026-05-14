@@ -23,13 +23,13 @@ from rig_relay.desktop.websocket_server import (
     DEFAULT_PORT as DEFAULT_WS_PORT,
     ProjectionWebSocketServer,
 )
-from vibe import __version__
-from vibe.core.config.harness_files import init_harness_files_manager
-from vibe.core.agent_loop import AgentLoop
-from vibe.core.config import VibeConfig
-from vibe.core.hooks.config import load_hooks_from_fs
-from vibe.core.logger import logger
-from vibe.core.telemetry.build_metadata import build_entrypoint_metadata
+from rig_relay import __version__
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.config.harness_files import init_harness_files_manager
+from rig_relay.core.hooks.config import load_hooks_from_fs
+from rig_relay.core.logger import logger
+from rig_relay.core.telemetry.build_metadata import build_entrypoint_metadata
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
@@ -436,8 +436,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
-    init_harness_files_manager("user", "project")
     args = _parse_args(argv)
+    init_harness_files_manager("user", "project")
 
     ws_port: int | None = None if args.no_ws else args.ws_port
 

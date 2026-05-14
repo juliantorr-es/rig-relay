@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from tests.acp.conftest import _create_acp_agent
-from vibe.core.config import MissingAPIKeyError, SessionLoggingConfig
+from rig_relay.core.config import MissingAPIKeyError, SessionLoggingConfig
 
 
 class TestListSessions:

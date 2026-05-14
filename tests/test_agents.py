@@ -8,8 +8,8 @@ import pytest
 from tests import TESTS_ROOT
 from tests.conftest import build_test_agent_loop, build_test_vibe_config
 from tests.stubs.fake_backend import FakeBackend
-from vibe.core.agents.manager import AgentManager
-from vibe.core.agents.models import (
+from rig_relay.core.agents.manager import AgentManager
+from rig_relay.core.agents.models import (
     BUILTIN_AGENTS,
     CHAT,
     AgentProfile,
@@ -18,10 +18,10 @@ from vibe.core.agents.models import (
     BuiltinAgentName,
     _deep_merge,
 )
-from vibe.core.config import VibeConfig
-from vibe.core.config.harness_files import HarnessFilesManager
-from vibe.core.tools.base import ToolPermission
-from vibe.core.types import LLMChunk, LLMMessage, LLMUsage, Role
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.config.harness_files import HarnessFilesManager
+from rig_relay.core.tools.base import ToolPermission
+from rig_relay.core.types import LLMChunk, LLMMessage, LLMUsage, Role
 
 
 class TestDeepMerge:

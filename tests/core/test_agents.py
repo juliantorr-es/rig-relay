@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from tests.conftest import build_test_vibe_config
-from vibe.core.agents.manager import AgentManager
-from vibe.core.agents.models import BUILTIN_AGENTS, EXPLORE, AgentSafety, AgentType
+from rig_relay.core.agents.manager import AgentManager
+from rig_relay.core.agents.models import BUILTIN_AGENTS, EXPLORE, AgentSafety, AgentType
 
 
 class TestAgentProfile:

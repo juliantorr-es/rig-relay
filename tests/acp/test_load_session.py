@@ -15,11 +15,11 @@ import pytest
 from tests.conftest import build_test_vibe_config
 from tests.stubs.fake_backend import FakeBackend
 from tests.stubs.fake_client import FakeClient
-from vibe.acp.acp_agent_loop import VibeAcpAgentLoop
-from vibe.core.agent_loop import AgentLoop
-from vibe.core.agents.models import BuiltinAgentName
-from vibe.core.config import ModelConfig, SessionLoggingConfig
-from vibe.core.types import Role
+from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.agents.models import BuiltinAgentName
+from rig_relay.core.config import ModelConfig, SessionLoggingConfig
+from rig_relay.core.types import Role
 
 
 @pytest.fixture

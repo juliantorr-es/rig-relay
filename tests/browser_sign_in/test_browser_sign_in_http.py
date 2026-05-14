@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 import httpx
 import pytest
 
-from vibe.setup.auth import (
+from rig_relay.setup.auth import (
     BrowserSignInError,
     BrowserSignInErrorCode,
     HttpBrowserSignInGateway,

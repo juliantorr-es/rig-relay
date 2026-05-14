@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from vibe.core.tools.arity import build_session_pattern
+from rig_relay.core.tools.arity import build_session_pattern
 
 
 class TestBuildSessionPattern:

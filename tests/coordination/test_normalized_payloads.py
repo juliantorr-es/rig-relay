@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from vibe.core.coordination import (
+from rig_relay.coordination import (
     CoordinationArtifactRef,
     CoordinationConflict,
     CoordinationHeartbeat,
@@ -243,7 +243,7 @@ def test_checkpoint_refused_payload_has_refusal_code() -> None:
 def test_coordination_event_envelope_has_schema_version_event_id_sequence_created_at_event_name_payload_event_hash(
     tmp_path: Path,
 ) -> None:
-    from vibe.core.coordination import (
+    from rig_relay.coordination import (
         CoordinationEvent,
         CoordinationSession,
         CoordinationStore,
@@ -273,7 +273,7 @@ def test_path_reserved_store_event_includes_reservation_mode_and_path_hashes(
     tmp_path: Path,
 ) -> None:
     _reset()
-    from vibe.core.coordination import CoordinationEvent, CoordinationStore
+    from rig_relay.coordination import CoordinationEvent, CoordinationStore
 
     store = CoordinationStore(tmp_path)
     store.reserve_paths(
@@ -306,7 +306,7 @@ def test_reservation_refused_store_event_includes_refusal_reason(
     tmp_path: Path,
 ) -> None:
     _reset()
-    from vibe.core.coordination import CoordinationEvent, CoordinationStore
+    from rig_relay.coordination import CoordinationEvent, CoordinationStore
 
     store = CoordinationStore(tmp_path)
     store.reserve_paths(
@@ -342,7 +342,7 @@ def test_artifact_published_store_event_includes_artifact_kind_and_hash(
     tmp_path: Path,
 ) -> None:
     _reset()
-    from vibe.core.coordination import CoordinationEvent, CoordinationStore
+    from rig_relay.coordination import CoordinationEvent, CoordinationStore
 
     store = CoordinationStore(tmp_path)
     store.publish_artifact(
@@ -370,7 +370,7 @@ def test_artifact_published_store_event_includes_artifact_kind_and_hash(
 def test_no_raw_prompt_or_model_output_in_normalized_payloads() -> None:
     """Verify that normalized payloads never contain raw prompts or model output fields."""
     _reset()
-    from vibe.core.coordination import (
+    from rig_relay.coordination import (
         build_artifact_published_payload,
         build_heartbeat_payload,
         build_path_reserved_payload,

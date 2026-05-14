@@ -6,7 +6,7 @@ import subprocess
 
 import pytest
 
-from vibe.core.guard import (
+from rig_relay.core.guard import (
     DirtyFileGuard,
     DirtyGuardFailurePolicy,
     GuardCaptureReason,

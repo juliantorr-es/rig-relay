@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.paths._local_config_walk import (
+from rig_relay.core.paths._local_config_walk import (
     _MAX_DIRS,
     WALK_MAX_DEPTH,
     walk_local_config_dirs,

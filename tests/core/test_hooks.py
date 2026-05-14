@@ -9,16 +9,16 @@ import tomli_w
 from tests.conftest import build_test_agent_loop
 from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend
-from vibe.core.config import VibeConfig
-from vibe.core.hooks.config import (
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.hooks.config import (
     HookConfig,
     HookConfigResult,
     _load_hooks_file,
     load_hooks_from_fs,
 )
-from vibe.core.hooks.executor import HookExecutor
-from vibe.core.hooks.manager import HooksManager
-from vibe.core.hooks.models import (
+from rig_relay.core.hooks.executor import HookExecutor
+from rig_relay.core.hooks.manager import HooksManager
+from rig_relay.core.hooks.models import (
     HookEndEvent,
     HookInvocation,
     HookMessageSeverity,
@@ -26,7 +26,7 @@ from vibe.core.hooks.models import (
     HookType,
     HookUserMessage,
 )
-from vibe.core.types import BaseEvent
+from rig_relay.core.types import BaseEvent
 
 
 @pytest.fixture
@@ -109,7 +109,7 @@ class TestConfigLoading:
                 }
             ],
         )
-        from vibe.core.trusted_folders import trusted_folders_manager
+        from rig_relay.core.trusted_folders import trusted_folders_manager
 
         trusted_folders_manager.add_trusted(tmp_working_directory)
 
@@ -156,7 +156,7 @@ class TestConfigLoading:
                 }
             ],
         )
-        from vibe.core.trusted_folders import trusted_folders_manager
+        from rig_relay.core.trusted_folders import trusted_folders_manager
 
         trusted_folders_manager.add_trusted(tmp_working_directory)
 
@@ -297,8 +297,8 @@ class TestHooksManager:
     @pytest.mark.asyncio
     async def test_exit_0_emits_start_and_end(self) -> None:
         handler = HooksManager([_make_hook(command="echo ok")])
-        from vibe.core.config import SessionLoggingConfig
-        from vibe.core.session.session_logger import SessionLogger
+        from rig_relay.core.config import SessionLoggingConfig
+        from rig_relay.core.session.session_logger import SessionLogger
 
         logger = SessionLogger(SessionLoggingConfig(enabled=False), "test-id")
         events: list[BaseEvent | HookUserMessage] = []
@@ -314,8 +314,8 @@ class TestHooksManager:
     @pytest.mark.asyncio
     async def test_exit_2_emits_retry_message(self) -> None:
         handler = HooksManager([_make_hook(command="echo 'fix it'; exit 2")])
-        from vibe.core.config import SessionLoggingConfig
-        from vibe.core.session.session_logger import SessionLogger
+        from rig_relay.core.config import SessionLoggingConfig
+        from rig_relay.core.session.session_logger import SessionLogger
 
         logger = SessionLogger(SessionLoggingConfig(enabled=False), "test-id")
         events: list[BaseEvent | HookUserMessage] = []
@@ -336,8 +336,8 @@ class TestHooksManager:
     @pytest.mark.asyncio
     async def test_exit_2_without_output_emits_warning(self) -> None:
         handler = HooksManager([_make_hook(command="exit 2")])
-        from vibe.core.config import SessionLoggingConfig
-        from vibe.core.session.session_logger import SessionLogger
+        from rig_relay.core.config import SessionLoggingConfig
+        from rig_relay.core.session.session_logger import SessionLogger
 
         logger = SessionLogger(SessionLoggingConfig(enabled=False), "test-id")
         events: list[BaseEvent | HookUserMessage] = []
@@ -351,8 +351,8 @@ class TestHooksManager:
     @pytest.mark.asyncio
     async def test_max_retry_limit(self) -> None:
         handler = HooksManager([_make_hook(command="echo retry; exit 2")])
-        from vibe.core.config import SessionLoggingConfig
-        from vibe.core.session.session_logger import SessionLogger
+        from rig_relay.core.config import SessionLoggingConfig
+        from rig_relay.core.session.session_logger import SessionLogger
 
         logger = SessionLogger(SessionLoggingConfig(enabled=False), "test-id")
 
@@ -381,8 +381,8 @@ class TestHooksManager:
     @pytest.mark.asyncio
     async def test_warning_on_nonzero_exit(self) -> None:
         handler = HooksManager([_make_hook(command="echo warn; exit 1")])
-        from vibe.core.config import SessionLoggingConfig
-        from vibe.core.session.session_logger import SessionLogger
+        from rig_relay.core.config import SessionLoggingConfig
+        from rig_relay.core.session.session_logger import SessionLogger
 
         logger = SessionLogger(SessionLoggingConfig(enabled=False), "test-id")
         events = [
@@ -401,8 +401,8 @@ class TestHooksManager:
     async def test_warning_falls_back_to_stderr(self) -> None:
         hook = _make_hook(command="echo problem >&2; exit 1")
         handler = HooksManager([hook])
-        from vibe.core.config import SessionLoggingConfig
-        from vibe.core.session.session_logger import SessionLogger
+        from rig_relay.core.config import SessionLoggingConfig
+        from rig_relay.core.session.session_logger import SessionLogger
 
         logger = SessionLogger(SessionLoggingConfig(enabled=False), "test-id")
         events = [
@@ -420,8 +420,8 @@ class TestHooksManager:
     @pytest.mark.asyncio
     async def test_timeout_emits_warning(self) -> None:
         handler = HooksManager([_make_hook(command="sleep 60", timeout=0.5)])
-        from vibe.core.config import SessionLoggingConfig
-        from vibe.core.session.session_logger import SessionLogger
+        from rig_relay.core.config import SessionLoggingConfig
+        from rig_relay.core.session.session_logger import SessionLogger
 
         logger = SessionLogger(SessionLoggingConfig(enabled=False), "test-id")
         events = [
@@ -481,7 +481,7 @@ class TestAgentLoopIntegration:
         events = [ev async for ev in agent_loop.act("hi")]
 
         # Should have two assistant events (two LLM turns)
-        from vibe.core.types import AssistantEvent
+        from rig_relay.core.types import AssistantEvent
 
         assistant_events = [e for e in events if isinstance(e, AssistantEvent)]
         assert len(assistant_events) == 2

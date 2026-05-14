@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from vibe.core.paths import GLOBAL_ENV_FILE
-from vibe.core.proxy_setup import (
+from rig_relay.core.paths import GLOBAL_ENV_FILE
+from rig_relay.core.proxy_setup import (
     SUPPORTED_PROXY_VARS,
     ProxySetupError,
     get_current_proxy_settings,

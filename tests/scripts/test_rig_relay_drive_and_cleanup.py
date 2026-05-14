@@ -306,7 +306,7 @@ class TestUploadAuthorizationGate:
         import json
         import subprocess
 
-        from vibe.core.auth.receipt import generate_dev_receipt
+        from rig_relay.core.auth.receipt import generate_dev_receipt
 
         bundle = tmp_path / "test_bundle.zip"
         bundle.write_text("fake bundle content")
@@ -338,7 +338,7 @@ class TestUploadAuthorizationGate:
         import json
         import subprocess
 
-        from vibe.core.auth.receipt import generate_dev_receipt
+        from rig_relay.core.auth.receipt import generate_dev_receipt
 
         bundle = tmp_path / "test_bundle.zip"
         bundle.write_text("fake bundle content")
@@ -432,7 +432,7 @@ class TestCleanupAuthorizationGate:
         import json
         import subprocess
 
-        from vibe.core.auth.receipt import generate_dev_receipt
+        from rig_relay.core.auth.receipt import generate_dev_receipt
 
         coord = tmp_path / "coordination"
         (coord / "leases" / "paths").mkdir(parents=True)
@@ -467,7 +467,7 @@ class TestCleanupAuthorizationGate:
         import json
         import subprocess
 
-        from vibe.core.auth.receipt import generate_dev_receipt
+        from rig_relay.core.auth.receipt import generate_dev_receipt
 
         coord = tmp_path / "coordination"
         (coord / "leases" / "paths").mkdir(parents=True)
@@ -501,7 +501,7 @@ class TestCleanupAuthorizationGate:
         import json
         import subprocess
 
-        from vibe.core.auth.receipt import generate_dev_receipt
+        from rig_relay.core.auth.receipt import generate_dev_receipt
 
         coord = tmp_path / "coordination"
         (coord / "leases" / "paths").mkdir(parents=True)

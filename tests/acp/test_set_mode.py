@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from vibe.acp.acp_agent_loop import VibeAcpAgentLoop
-from vibe.core.agents.models import BuiltinAgentName
+from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
+from rig_relay.core.agents.models import BuiltinAgentName
 
 
 class TestACPSetMode:

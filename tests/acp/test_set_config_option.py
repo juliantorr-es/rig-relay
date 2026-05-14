@@ -7,10 +7,10 @@ import pytest
 
 from tests.acp.conftest import _create_acp_agent
 from tests.conftest import build_test_vibe_config
-from vibe.acp.acp_agent_loop import VibeAcpAgentLoop
-from vibe.core.agent_loop import AgentLoop
-from vibe.core.agents.models import BuiltinAgentName
-from vibe.core.config import ModelConfig, VibeConfig
+from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.agents.models import BuiltinAgentName
+from rig_relay.core.config import ModelConfig, VibeConfig
 
 
 @pytest.fixture

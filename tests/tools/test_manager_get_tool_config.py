@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 from tests.conftest import build_test_vibe_config
-from vibe.core.tools.base import BaseToolConfig, ToolPermission
-from vibe.core.tools.manager import ToolManager
+from rig_relay.core.tools.base import BaseToolConfig, ToolPermission
+from rig_relay.core.tools.manager import ToolManager
 
 
 @pytest.fixture
@@ -190,7 +190,7 @@ class TestToolManagerFiltering:
         tool_dir = tmp_path / "tools"
         tool_dir.mkdir()
         (tool_dir / "dir_tool.py").write_text("""
-from vibe.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
+from rig_relay.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
 from pydantic import BaseModel
 from collections.abc import AsyncGenerator
 
@@ -210,7 +210,7 @@ class DirTool(BaseTool[DirToolArgs, DirToolResult, BaseToolConfig, BaseToolState
         # Create a standalone tool file
         file_tool = tmp_path / "file_tool.py"
         file_tool.write_text("""
-from vibe.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
+from rig_relay.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
 from pydantic import BaseModel
 from collections.abc import AsyncGenerator
 
@@ -257,7 +257,7 @@ class TestToolRuntimeAvailability:
         tool_dir.mkdir()
         (tool_dir / "conditional_tool.py").write_text("""
 import os
-from vibe.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
+from rig_relay.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
 from pydantic import BaseModel
 
 class ConditionalToolArgs(BaseModel):
@@ -394,7 +394,7 @@ class TestToolManagerModuleReuse:
         assert tool1.state is not tool2.state
 
         # Verify state is truly isolated by modifying one
-        from vibe.core.tools.builtins.todo import TodoItem
+        from rig_relay.core.tools.builtins.todo import TodoItem
 
         tool1.state.todos = [TodoItem(id="1", content="test")]
         assert len(tool1.state.todos) == 1
@@ -435,7 +435,7 @@ class TestToolManagerModuleReuse:
         dir2.mkdir()
 
         tool_code_v1 = """
-from vibe.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
+from rig_relay.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
 from pydantic import BaseModel
 from collections.abc import AsyncGenerator
 
@@ -453,7 +453,7 @@ class DummyTool(BaseTool[DummyArgs, DummyResult, BaseToolConfig, BaseToolState])
 """
 
         tool_code_v2 = """
-from vibe.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
+from rig_relay.core.tools.base import BaseTool, BaseToolConfig, BaseToolState
 from pydantic import BaseModel
 from collections.abc import AsyncGenerator
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from vibe.core.autocompletion.path_prompt import build_path_prompt_payload
+from rig_relay.core.autocompletion.path_prompt import build_path_prompt_payload
 
 
 def test_deduplicates_same_file_mentioned_twice(tmp_path: Path) -> None:

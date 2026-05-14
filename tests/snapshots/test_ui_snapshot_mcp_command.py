@@ -11,9 +11,9 @@ from tests.stubs.fake_mcp_registry import (
     FakeMCPRegistry,
     FakeMCPRegistryWithBrokenServer,
 )
-from vibe.core.config import MCPHttp, MCPStdio
-from vibe.core.tools.connectors import CONNECTORS_ENV_VAR
-from vibe.core.tools.mcp.tools import RemoteTool
+from rig_relay.core.config import MCPHttp, MCPStdio
+from rig_relay.core.tools.connectors import CONNECTORS_ENV_VAR
+from rig_relay.core.tools.mcp.tools import RemoteTool
 
 _MCP_PATCH = "vibe.core.agent_loop.MCPRegistry"
 

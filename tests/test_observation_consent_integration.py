@@ -21,9 +21,9 @@ from rig_relay.identity.telemetry_consent import (
     grant_consent,
     revoke_consent,
 )
-from vibe.core.config import VibeConfig
-from vibe.core.llm.format import ResolvedToolCall
-from vibe.core.tools.base import BaseTool
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.llm.format import ResolvedToolCall
+from rig_relay.core.tools.base import BaseTool
 
 # ═══════════════════════════════════════════════════════════════════════
 # ── Fixtures
@@ -129,7 +129,7 @@ class TestConsentScopeIntegration:
         Also monkeypatches ``observe_tool_call`` and ``ConsentStore.get``.
         """
         from rig_relay.evidence.model_observations import observe_tool_call
-        from vibe.core.agent_loop import AgentLoop
+        from rig_relay.core.agent_loop import AgentLoop
 
         config = VibeConfig()
         config.enable_local_observability = True

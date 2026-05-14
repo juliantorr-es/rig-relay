@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import argparse
 
-from vibe.cli.cli import get_initial_agent_name
-from vibe.core.agents.models import BuiltinAgentName
-from vibe.core.config import VibeConfig
+from rig_relay.cli.cli import get_initial_agent_name
+from rig_relay.core.agents.models import BuiltinAgentName
+from rig_relay.core.config import VibeConfig
 
 
 def _make_args(*, agent: str | None, prompt: str | None) -> argparse.Namespace:

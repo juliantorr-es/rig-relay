@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from vibe.acp.session import AcpSessionLoop
+from rig_relay.acp.session import AcpSessionLoop
 
 
 def _make_session() -> AcpSessionLoop:

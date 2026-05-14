@@ -7,19 +7,19 @@ import pytest
 from tests.conftest import build_test_vibe_config
 from tests.stubs.fake_audio_recorder import FakeAudioRecorder
 from tests.stubs.fake_transcribe_client import FakeTranscribeClient
-from vibe.cli.voice_manager.voice_manager import VoiceManager
-from vibe.cli.voice_manager.voice_manager_port import (
+from rig_relay.cli.voice_manager.voice_manager import VoiceManager
+from rig_relay.cli.voice_manager.voice_manager_port import (
     RecordingStartError,
     TranscribeState,
     VoiceManagerListener,
     VoiceToggleResult,
 )
-from vibe.core.audio_recorder.audio_recorder_port import (
+from rig_relay.core.audio_recorder.audio_recorder_port import (
     AudioBackendUnavailableError,
     NoAudioInputDeviceError,
 )
-from vibe.core.config import VibeConfig
-from vibe.core.transcribe.transcribe_client_port import (
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.transcribe.transcribe_client_port import (
     TranscribeDone,
     TranscribeError,
     TranscribeSessionCreated,

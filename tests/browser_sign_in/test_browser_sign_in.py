@@ -17,7 +17,7 @@ from tests.browser_sign_in.stubs import (
     build_sign_in_process,
     noop_sleep,
 )
-from vibe.setup.auth import (
+from rig_relay.setup.auth import (
     BrowserSignInError,
     BrowserSignInErrorCode,
     BrowserSignInPollResult,

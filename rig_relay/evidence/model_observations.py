@@ -316,7 +316,7 @@ def observe_tool_call(
         latency_ms=latency_ms,
     )
 
-    from vibe.core.telemetry.local import log_local_event
+    from rig_relay.core.telemetry.local import log_local_event
 
     log_local_event(
         session_id,
@@ -359,8 +359,8 @@ def capture_tool_receipt(
             contents, diffs, or secrets). Typically produced by a tool's
             ``build_receipt()`` method.
     """
-    from vibe.core.telemetry.constants import EventName
-    from vibe.core.telemetry.local import log_local_event
+    from rig_relay.core.telemetry.constants import EventName
+    from rig_relay.core.telemetry.local import log_local_event
 
     payload = {"tool_name": tool_name, "receipt": receipt}
     log_local_event(session_id, EventName.TOOL_RECEIPT_CAPTURED, payload)

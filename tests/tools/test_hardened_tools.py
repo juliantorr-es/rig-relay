@@ -6,19 +6,19 @@ import json
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
-from vibe.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
-from vibe.core.tools.builtins.search_replace import (
+from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
+from rig_relay.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
+from rig_relay.core.tools.builtins.search_replace import (
     SearchReplace,
     SearchReplaceArgs,
     SearchReplaceConfig,
 )
-from vibe.core.tools.builtins.write_file import (
+from rig_relay.core.tools.builtins.write_file import (
     WriteFile,
     WriteFileArgs,
     WriteFileConfig,
 )
-from vibe.core.tools.permissions import PermissionContext
+from rig_relay.core.tools.permissions import PermissionContext
 
 
 @pytest.fixture
@@ -745,7 +745,7 @@ async def test_write_file_blocked_by_dirty_guard_returns_structured(
     )
     (tmp_path / "dirty.py").write_text("modified\n")
 
-    from vibe.core.guard import reset_guard
+    from rig_relay.core.guard import reset_guard
 
     reset_guard()
 
@@ -792,7 +792,7 @@ async def test_write_file_hash_mismatch_returns_structured(tmp_path, monkeypatch
 
     (tmp_path / "data.py").write_text("version1\n")
 
-    from vibe.core.guard import reset_guard
+    from rig_relay.core.guard import reset_guard
 
     reset_guard()
 
@@ -847,7 +847,7 @@ async def test_write_file_correct_hash_succeeds(tmp_path, monkeypatch):
     (tmp_path / "data.py").write_text("version1\n")
     current_hash = "sha256:" + hashlib.sha256(b"version1\n").hexdigest()
 
-    from vibe.core.guard import reset_guard
+    from rig_relay.core.guard import reset_guard
 
     reset_guard()
 
@@ -900,7 +900,7 @@ async def test_write_file_refusal_is_content_light(tmp_path, monkeypatch):
     )
     (tmp_path / "secret.py").write_text("API_KEY=modified\n")
 
-    from vibe.core.guard import reset_guard
+    from rig_relay.core.guard import reset_guard
 
     reset_guard()
 

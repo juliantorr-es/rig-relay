@@ -1,20 +1,7 @@
-"""Rig Relay Current State Analysis Tool — core module.
-
-Reads the live coordination projection and derived datasets, then emits a
-compact content-light JSON cockpit pulse for parent/reviewer agents.
-
-Content-light: never includes raw file contents, prompts, model outputs,
-stdout/stderr bodies, or diffs. Uses DuckDB if available; falls back to
-stdlib JSONL aggregation.
-
-Provenance (Rig-to-Relay porting doctrine):
-  Porting status: relay_native (no Rig origin — designed for Relay).
-  See docs/governance/rig-to-relay-pattern-inventory.md for pattern map.
-"""
-
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
 from pathlib import Path
@@ -38,10 +25,43 @@ DEFAULT_FORBIDDEN = [
     "stdout_bodies",
     "stderr_bodies",
 ]
+_HEARTBEAT_CRITICAL_SECONDS = 180
+_HEARTBEAT_ATTENTION_SECONDS = 90
+
+
+@dataclass(frozen=True)
+class CurrentStateCounts:
+    coord_rows: int
+    artifact_rows: int
+    conflict_rows: int
+    checkpoint_rows: int
+    tool_failure_rows: int
+    provider_perf_rows: int
+    findings_rows: int
+
+
+@dataclass(frozen=True)
+class CurrentStateDerived:
+    active_children: int
+    available_child_slots: int
+    writers: int
+    readers: int
+    children: list[dict[str, Any]]
+    active_reservations: list[dict[str, Any]]
+    recent_artifacts: list[dict[str, Any]]
+    recent_conflicts: list[dict[str, Any]]
+    stale_items: list[dict[str, Any]]
+    stale_leases_count: int
+    conflicts_count: int
+    checkpoint_commits: int
+    checkpoint_refusals: int
+    recommendations: list[str]
+    warnings: list[str]
+    dataset_completeness: dict[str, int]
+    storage_status: dict[str, Any]
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
-    """Read JSONL file, return list of parsed dicts."""
     if not path.is_file():
         return []
     items: list[dict[str, Any]] = []
@@ -57,10 +77,9 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def _count_jsonl_rows(path: Path) -> int:
-    """Count rows in a JSONL file."""
     if not path.is_file():
         return 0
-    return _count_lines(path)
+    return sum(1 for _ in path.open("rb"))
 
 
 def _count_lines(path: Path) -> int:
@@ -71,7 +90,6 @@ def _count_lines(path: Path) -> int:
 
 
 def _read_derived(path: Path) -> list[dict[str, Any]]:
-    """Read derived dataset JSONL using DuckDB."""
     if not path.is_file():
         return []
     try:
@@ -84,7 +102,6 @@ def _read_derived(path: Path) -> list[dict[str, Any]]:
 
 
 def _read_coordination_sessions(root: Path) -> list[dict[str, Any]]:
-    """Read session state files from coordination store."""
     sessions_dir = root / "sessions"
     if not sessions_dir.is_dir():
         return []
@@ -98,7 +115,6 @@ def _read_coordination_sessions(root: Path) -> list[dict[str, Any]]:
 
 
 def _read_coordination_leases(root: Path) -> list[dict[str, Any]]:
-    """Read lease (reservation) files from coordination store."""
     leases_dir = root / "leases" / "paths"
     if not leases_dir.is_dir():
         return []
@@ -112,9 +128,146 @@ def _read_coordination_leases(root: Path) -> list[dict[str, Any]]:
 
 
 def _read_coordination_events(root: Path) -> list[dict[str, Any]]:
-    """Read coordination events for recent activity."""
-    events_path = root / "events.jsonl"
-    return _read_jsonl(events_path)
+    return _read_jsonl(root / "events.jsonl")
+
+
+def _summary_counts(ddir: Path) -> CurrentStateCounts:
+    return CurrentStateCounts(
+        coord_rows=_count_jsonl_rows(ddir / "cross_session_coordination_dataset.jsonl"),
+        artifact_rows=_count_jsonl_rows(ddir / "artifact_reuse_dataset.jsonl"),
+        conflict_rows=_count_jsonl_rows(ddir / "coordination_conflict_dataset.jsonl"),
+        checkpoint_rows=_count_jsonl_rows(ddir / "checkpoint_eval_dataset.jsonl"),
+        tool_failure_rows=_count_jsonl_rows(ddir / "tool_failure_patterns_dataset.jsonl"),
+        provider_perf_rows=_count_jsonl_rows(ddir / "provider_task_performance_dataset.jsonl"),
+        findings_rows=_count_jsonl_rows(ddir / "findings_dataset.jsonl"),
+    )
+
+
+def _classify_heartbeat_age(heartbeat_age: float | None) -> tuple[str, str]:
+    if heartbeat_age is not None and heartbeat_age > _HEARTBEAT_CRITICAL_SECONDS:
+        return "critical", "mark_stale"
+    if heartbeat_age is not None and heartbeat_age > _HEARTBEAT_ATTENTION_SECONDS:
+        return "needs_attention", "request_status"
+    return "normal", "wait"
+
+
+def _collect_event_summaries(
+    events: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], int, int, int, int]:
+    recent_artifacts: list[dict[str, Any]] = []
+    recent_conflicts: list[dict[str, Any]] = []
+    stale_items: list[dict[str, Any]] = []
+    stale_leases_count = 0
+    conflicts_count = 0
+    checkpoint_commits = 0
+    checkpoint_refusals = 0
+    for event in reversed(events[-200:]):
+        name = event.get("event_name", "")
+        payload = event.get("payload", {})
+        match name:
+            case "coord.artifact.published":
+                recent_artifacts.append({
+                    "session_id": payload.get("session_id", ""),
+                    "artifact_kind": payload.get("artifact_kind", ""),
+                    "artifact_sha256": payload.get("artifact_sha256", ""),
+                })
+            case "coord.conflict.reported":
+                recent_conflicts.append({
+                    "conflict_id": payload.get("conflict_id", ""),
+                    "kind": payload.get("conflict_kind", "conflict"),
+                    "other_session_id": payload.get("other_session_id"),
+                })
+                conflicts_count += 1
+            case "coord.lease.marked_stale":
+                stale_items.append({
+                    "session_id": payload.get("session_id", ""),
+                    "kind": "stale_lease",
+                    "age_seconds": None,
+                })
+                stale_leases_count += 1
+            case "coord.path.reservation_refused":
+                conflicts_count += 1
+            case "rig.relay.checkpoint.committed":
+                checkpoint_commits += 1
+            case "rig.relay.checkpoint.refused":
+                checkpoint_refusals += 1
+    return (
+        recent_artifacts,
+        recent_conflicts,
+        stale_items,
+        stale_leases_count,
+        conflicts_count,
+        checkpoint_commits,
+        checkpoint_refusals,
+    )
+
+
+def _build_child_projection(
+    session: dict[str, Any],
+    leases: list[dict[str, Any]],
+    now: datetime,
+) -> dict[str, Any]:
+    sid = session.get("session_id", "")
+    profile = session.get("agent_profile", "unknown")
+    updated = session.get("updated_at") or session.get("created_at", "")
+    heartbeat_age = None
+    if updated:
+        try:
+            hb_time = datetime.fromisoformat(updated)
+            heartbeat_age = (now - hb_time).total_seconds()
+        except (ValueError, TypeError):
+            pass
+    reservation_count = sum(
+        1 for lease in leases if lease.get("session_id") == sid and lease.get("status") == "active"
+    )
+    risk, recommended_action = _classify_heartbeat_age(heartbeat_age)
+    return {
+        "session_id": sid,
+        "task_id": session.get("task_id"),
+        "agent_profile_name": profile,
+        "status": session.get("status", "unknown"),
+        "current_step": session.get("current_step"),
+        "last_heartbeat_age_seconds": round(heartbeat_age, 1) if heartbeat_age is not None else None,
+        "reservation_count": reservation_count,
+        "recent_artifact_hashes": [],
+        "risk": risk,
+        "recommended_parent_action": recommended_action,
+    }
+
+
+def _recommendations_for_state(
+    *,
+    active_children: int,
+    max_children: int,
+    available_child_slots: int,
+    writers: int,
+    stale_leases_count: int,
+    conflicts_count: int,
+    checkpoint_commits: int,
+    warnings: list[str],
+    sessions: list[dict[str, Any]],
+) -> list[str]:
+    recommendations: list[str] = []
+    if active_children >= max_children:
+        recommendations.append(f"Active children ({active_children}) at or above max ({max_children}). Wait.")
+    elif available_child_slots > 0:
+        recommendations.append(f"{available_child_slots} child slot(s) available.")
+    if writers > 0:
+        recommendations.append(f"Active writer(s): {writers}. Do not launch another writer in the same checkout.")
+    if stale_leases_count > 0:
+        recommendations.append(f"Inspect {stale_leases_count} stale lease(s).")
+    if conflicts_count > 0:
+        recommendations.append(f"Inspect {conflicts_count} conflict(s) or refusal(s).")
+    if available_child_slots > 0 and writers == 0 and active_children > 0:
+        if any(
+            s.get("agent_profile") == "implementer" and s.get("status") == "completed"
+            for s in sessions
+        ):
+            recommendations.append("Implementer completed. Consider launching tester.")
+    if checkpoint_commits == 0 and writers > 0:
+        recommendations.append("No checkpoints committed yet. Consider checkpoint policy.")
+    recommendations.append("Continue monitoring." if not warnings else "Resolve warnings before launching new work.")
+    return recommendations
 
 
 def generate_current_state(
@@ -125,10 +278,6 @@ def generate_current_state(
     parent_session_id: str | None = None,
     max_children: int = DEFAULT_MAX_CHILDREN,
 ) -> dict[str, Any]:
-    """Generate a compact current state pulse.
-
-    Returns a content-light current_state dict.
-    """
     coord_root = coordination_root or DEFAULT_COORD_ROOT
     ddir = derived_dir or DEFAULT_DERIVED_DIR
     now = datetime.now(UTC)
@@ -138,113 +287,32 @@ def generate_current_state(
     leases = _read_coordination_leases(coord_root)
     events = _read_coordination_events(coord_root)
 
-    coord_rows = _count_jsonl_rows(ddir / "cross_session_coordination_dataset.jsonl")
-    artifact_rows = _count_jsonl_rows(ddir / "artifact_reuse_dataset.jsonl")
-    conflict_rows = _count_jsonl_rows(ddir / "coordination_conflict_dataset.jsonl")
-    checkpoint_rows = _count_jsonl_rows(ddir / "checkpoint_eval_dataset.jsonl")
-    tool_failure_rows = _count_jsonl_rows(ddir / "tool_failure_patterns_dataset.jsonl")
-    provider_perf_rows = _count_jsonl_rows(
-        ddir / "provider_task_performance_dataset.jsonl"
-    )
-    findings_rows = _count_jsonl_rows(ddir / "findings_dataset.jsonl")
+    dc = _summary_counts(ddir)
 
-    active_sessions = [
-        s for s in sessions if s.get("status") in {"active", "running", "granted"}
-    ]
+    dataset_completeness: dict[str, int] = {}
+    for key, val in [
+        ("coordination_rows", dc.coord_rows),
+        ("artifact_reuse_rows", dc.artifact_rows),
+        ("conflict_rows", dc.conflict_rows),
+        ("checkpoint_rows", dc.checkpoint_rows),
+        ("tool_failure_rows", dc.tool_failure_rows),
+        ("provider_perf_rows", dc.provider_perf_rows),
+        ("findings_rows", dc.findings_rows),
+    ]:
+        if val > 0:
+            dataset_completeness[key] = val
+
+    active_sessions = [s for s in sessions if s.get("status") in {"active", "running", "granted"}]
     active_children = len(active_sessions)
     available_child_slots = max(0, max_children - active_children)
 
-    writers = 0
-    readers = 0
-    for s in active_sessions:
-        profile = (s.get("agent_profile") or "").lower()
-        if profile in {"implementer", "documenter"}:
-            writers += 1
-        else:
-            readers += 1
+    writers = sum(
+        1 for s in active_sessions
+        if (s.get("agent_profile") or "").lower() in {"implementer", "documenter"}
+    )
+    readers = active_children - writers
 
-    children: list[dict[str, Any]] = []
-    stale_leases_count = 0
-    conflicts_count = 0
-    checkpoint_commits = 0
-    checkpoint_refusals = 0
-
-    recent_artifacts: list[dict[str, Any]] = []
-    recent_conflicts: list[dict[str, Any]] = []
-    stale_items: list[dict[str, Any]] = []
-
-    for event in reversed(events[-200:]):
-        name = event.get("event_name", "")
-        payload = event.get("payload", {})
-        if name == "coord.artifact.published":
-            recent_artifacts.append({
-                "session_id": payload.get("session_id", ""),
-                "artifact_kind": payload.get("artifact_kind", ""),
-                "artifact_sha256": payload.get("artifact_sha256", ""),
-            })
-        elif name == "coord.conflict.reported":
-            recent_conflicts.append({
-                "conflict_id": payload.get("conflict_id", ""),
-                "kind": payload.get("conflict_kind", "conflict"),
-                "other_session_id": payload.get("other_session_id"),
-            })
-            conflicts_count += 1
-        elif name == "coord.lease.marked_stale":
-            stale_items.append({
-                "session_id": payload.get("session_id", ""),
-                "kind": "stale_lease",
-                "age_seconds": None,
-            })
-            stale_leases_count += 1
-        elif name == "coord.path.reservation_refused":
-            conflicts_count += 1
-        elif name == "rig.relay.checkpoint.committed":
-            checkpoint_commits += 1
-        elif name == "rig.relay.checkpoint.refused":
-            checkpoint_refusals += 1
-
-    for s in active_sessions:
-        sid = s.get("session_id", "")
-        profile = s.get("agent_profile", "unknown")
-        updated = s.get("updated_at") or s.get("created_at", "")
-        heartbeat_age = None
-        if updated:
-            try:
-                hb_time = datetime.fromisoformat(updated)
-                heartbeat_age = (now - hb_time).total_seconds()
-            except (ValueError, TypeError):
-                pass
-
-        session_reservations = [
-            l
-            for l in leases
-            if l.get("session_id") == sid and l.get("status") == "active"
-        ]
-        reservation_count = len(session_reservations)
-
-        risk = "normal"
-        recommended_action = "wait"
-        if heartbeat_age is not None and heartbeat_age > 180:
-            risk = "critical"
-            recommended_action = "mark_stale"
-        elif heartbeat_age is not None and heartbeat_age > 90:
-            risk = "needs_attention"
-            recommended_action = "request_status"
-
-        children.append({
-            "session_id": sid,
-            "task_id": s.get("task_id"),
-            "agent_profile_name": profile,
-            "status": s.get("status", "unknown"),
-            "current_step": s.get("current_step"),
-            "last_heartbeat_age_seconds": round(heartbeat_age, 1)
-            if heartbeat_age is not None
-            else None,
-            "reservation_count": reservation_count,
-            "recent_artifact_hashes": [],
-            "risk": risk,
-            "recommended_parent_action": recommended_action,
-        })
+    children = [_build_child_projection(s, leases, now) for s in active_sessions]
 
     active_reservations: list[dict[str, Any]] = []
     for l in leases:
@@ -256,53 +324,31 @@ def generate_current_state(
                 "status": l.get("status", "active"),
             })
 
-    recommendations: list[str] = []
-    if active_children >= max_children:
-        recommendations.append(
-            f"Active children ({active_children}) at or above max ({max_children}). Wait."
-        )
-    elif available_child_slots > 0:
-        recommendations.append(f"{available_child_slots} child slot(s) available.")
-    if writers > 0:
-        recommendations.append(
-            f"Active writer(s): {writers}. Do not launch another writer in the same checkout."
-        )
-    if stale_leases_count > 0:
-        recommendations.append(f"Inspect {stale_leases_count} stale lease(s).")
-    if conflicts_count > 0:
-        recommendations.append(f"Inspect {conflicts_count} conflict(s) or refusal(s).")
-    if available_child_slots > 0 and writers == 0 and active_children > 0:
-        implementer_completed = any(
-            s.get("agent_profile") == "implementer" and s.get("status") == "completed"
-            for s in sessions
-        )
-        if implementer_completed:
-            recommendations.append("Implementer completed. Consider launching tester.")
-    if checkpoint_commits == 0 and writers > 0:
-        recommendations.append(
-            "No checkpoints committed yet. Consider checkpoint policy."
-        )
-    if not warnings:
-        recommendations.append("Continue monitoring.")
-    else:
-        recommendations.append("Resolve warnings before launching new work.")
+    (
+        recent_artifacts,
+        recent_conflicts,
+        stale_items,
+        stale_leases_count,
+        conflicts_count,
+        checkpoint_commits,
+        checkpoint_refusals,
+    ) = _collect_event_summaries(events)
 
-    dataset_completeness: dict[str, int] = {}
-    for key, val in [
-        ("coordination_rows", coord_rows),
-        ("artifact_reuse_rows", artifact_rows),
-        ("conflict_rows", conflict_rows),
-        ("checkpoint_rows", checkpoint_rows),
-        ("tool_failure_rows", tool_failure_rows),
-        ("provider_perf_rows", provider_perf_rows),
-        ("findings_rows", findings_rows),
-    ]:
-        if val > 0:
-            dataset_completeness[key] = val
+    recommendations = _recommendations_for_state(
+        active_children=active_children,
+        max_children=max_children,
+        available_child_slots=available_child_slots,
+        writers=writers,
+        stale_leases_count=stale_leases_count,
+        conflicts_count=conflicts_count,
+        checkpoint_commits=checkpoint_commits,
+        warnings=warnings,
+        sessions=sessions,
+    )
 
-    if coord_rows == 0:
+    if dc.coord_rows == 0:
         warnings.append("Derived coordination dataset is empty. Run dataset export.")
-    if checkpoint_rows == 0 and writers > 0:
+    if dc.checkpoint_rows == 0 and writers > 0:
         warnings.append("No checkpoint rows in dataset despite active writers.")
 
     storage_status = compute_storage_summary()
@@ -405,7 +451,6 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Writers: {state['summary']['active_writers']}")
     print(f"  Conflicts: {state['summary']['conflicts']}")
     print(f"  Recommendations: {len(state['recommendations'])}")
-    print("  DuckDB: available (core dependency)")
     return 0
 
 

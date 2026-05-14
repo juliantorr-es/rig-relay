@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from vibe.cli.voice_manager.telemetry import TranscriptionTrackingState
+from rig_relay.cli.voice_manager.telemetry import TranscriptionTrackingState
 
 
 class TestTranscriptionTrackingState:

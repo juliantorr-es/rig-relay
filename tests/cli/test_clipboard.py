@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 from textual.app import App
 
-from vibe.cli.clipboard import (
+from rig_relay.cli.clipboard import (
     _copy_osc52,
     _copy_pbcopy,
     _copy_to_clipboard,

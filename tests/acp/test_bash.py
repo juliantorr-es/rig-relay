@@ -7,9 +7,9 @@ from acp.schema import EnvVariable, TerminalOutputResponse, WaitForTerminalExitR
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.acp.tools.builtins.bash import AcpBashState, Bash
-from vibe.core.tools.base import ToolError
-from vibe.core.tools.builtins.bash import BashArgs, BashResult, BashToolConfig
+from rig_relay.acp.tools.builtins.bash import AcpBashState, Bash
+from rig_relay.core.tools.base import ToolError
+from rig_relay.core.tools.builtins.bash import BashArgs, BashResult, BashToolConfig
 
 
 class MockTerminalHandle:

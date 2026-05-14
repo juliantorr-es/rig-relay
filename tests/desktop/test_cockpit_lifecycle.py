@@ -3,9 +3,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from scripts.rig_relay_desktop_cockpit import CockpitAPI
 
 from rig_relay.desktop.chat_state import ChatRole
-from scripts.rig_relay_desktop_cockpit import CockpitAPI
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def test_cockpit_api_idempotency_duplicate_client_id(api):
     api._chat_state.messages = [msg]
 
     # Send same client_id
-    result = api.send_chat_message("Hi again", client_message_id="c1")
+    api.send_chat_message("Hi again", client_message_id="c1")
     # Should return state without starting a new loop
     assert api._adapter.process_message.call_count == 0
 

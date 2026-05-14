@@ -6,7 +6,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 import pytest
 
-from vibe.core.config.schema import (
+from rig_relay.core.config.schema import (
     DuplicateMergeMetadataError,
     MergeFieldMetadata,
     WithConcatMerge,
@@ -15,7 +15,7 @@ from vibe.core.config.schema import (
     WithShallowMerge,
     WithUnionMerge,
 )
-from vibe.core.utils.merge import MergeConflictError, MergeKeyError, MergeStrategy
+from rig_relay.core.utils.merge import MergeConflictError, MergeKeyError, MergeStrategy
 
 
 class TestMergeFieldMetadata:

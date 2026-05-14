@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from acp.schema import ToolCallStart
 
-from vibe.acp.tools.builtins.read_file import ReadFile
-from vibe.acp.tools.session_update import tool_call_session_update
-from vibe.core.tools.builtins.read_file import ReadFileArgs
-from vibe.core.types import ToolCallEvent
+from rig_relay.acp.tools.builtins.read_file import ReadFile
+from rig_relay.acp.tools.session_update import tool_call_session_update
+from rig_relay.core.tools.builtins.read_file import ReadFileArgs
+from rig_relay.core.types import ToolCallEvent
 
 
 class TestToolCallSessionUpdate:

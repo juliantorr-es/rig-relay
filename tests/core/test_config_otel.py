@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from vibe.core.config import OtelSpanExporterConfig, ProviderConfig, VibeConfig
-from vibe.core.types import Backend
+from rig_relay.core.config import OtelSpanExporterConfig, ProviderConfig, VibeConfig
+from rig_relay.core.types import Backend
 
 
 class TestOtelSpanExporterConfig:

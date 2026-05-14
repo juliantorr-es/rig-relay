@@ -5,13 +5,13 @@ import hashlib
 import json
 from pathlib import Path
 
-from vibe.core.telemetry import validate_evidence_session
-from vibe.core.telemetry.artifacts import ToolOutputArtifactWriter
-from vibe.core.telemetry.constants import EventName
-from vibe.core.telemetry.local import dump_canonical_json
-import vibe.core.telemetry.manifest as manifest_mod
-from vibe.core.telemetry.manifest import write_session_manifest
-from vibe.core.telemetry.receipts import write_session_receipts
+from rig_relay.core.telemetry import validate_evidence_session
+from rig_relay.core.telemetry.artifacts import ToolOutputArtifactWriter
+from rig_relay.core.telemetry.constants import EventName
+from rig_relay.core.telemetry.local import dump_canonical_json
+import rig_relay.core.telemetry.manifest as manifest_mod
+from rig_relay.core.telemetry.manifest import write_session_manifest
+from rig_relay.core.telemetry.receipts import write_session_receipts
 
 
 def _write_event(log_file: Path, event: dict) -> None:

@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 import pytest
 
-from vibe.core.config.layer import (
+from rig_relay.core.config.layer import (
     ConfigLayer,
     LayerImplementationError,
     RawConfig,

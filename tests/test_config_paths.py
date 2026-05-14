@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.paths import resolve_history_path, resolve_log_path
-from vibe.core.paths._vibe_home import (
+from rig_relay.core.paths import resolve_history_path, resolve_log_path
+from rig_relay.core.paths._vibe_home import (
     EvidenceRootMode,
     _get_vibe_home,
     resolve_evidence_root_resolution,

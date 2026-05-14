@@ -6,10 +6,10 @@ from pydantic import BaseModel, ValidationError
 import pytest
 
 from tests.conftest import build_test_vibe_config
-from vibe.core.agent_loop import AgentLoopStateError
-from vibe.core.nuage.exceptions import ErrorCode, WorkflowsException
-from vibe.core.nuage.remote_events_source import RemoteEventsSource
-from vibe.core.nuage.streaming import StreamEvent
+from rig_relay.core.agent_loop import AgentLoopStateError
+from rig_relay.core.nuage.exceptions import ErrorCode, WorkflowsException
+from rig_relay.core.nuage.remote_events_source import RemoteEventsSource
+from rig_relay.core.nuage.streaming import StreamEvent
 
 _SESSION_ID = "test-session"
 

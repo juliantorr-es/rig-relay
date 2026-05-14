@@ -45,7 +45,7 @@ from rig_relay.runtime.tool_invocation_adapter import (
     RuntimeToolInvocationStatus,
     RuntimeToolName,
 )
-from vibe.core.logger import logger
+from rig_relay.core.logger import logger
 
 # ── Constants ──────────────────────────────────────────────────────────
 
@@ -776,9 +776,9 @@ class RuntimeToolExecutionRunner:
         ToolStreamEvent | ValidateResult. The final yielded value is the
         ValidateResult, which we extract via anext().
         """
-        from vibe.core.tools.base import BaseToolState
-        from vibe.core.tools.builtins.validate import Validate, ValidateArgs
-        from vibe.core.tools.builtins.validate_models import ValidateToolConfig
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.validate import Validate, ValidateArgs
+        from rig_relay.core.tools.builtins.validate_models import ValidateToolConfig
 
         payload = envelope.payload or {}
 
@@ -814,8 +814,8 @@ class RuntimeToolExecutionRunner:
         tool's Path.cwd()-based checks (path validation, coordination
         store resolution) operate within the correct scope.
         """
-        from vibe.core.tools.base import BaseToolState
-        from vibe.core.tools.builtins.search_replace import (
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.search_replace import (
             SearchReplace,
             SearchReplaceArgs,
             SearchReplaceConfig,
@@ -851,8 +851,8 @@ class RuntimeToolExecutionRunner:
         self, envelope: RuntimeToolInvocationEnvelope
     ) -> Any:
         """Run the write_file tool with runtime context injected."""
-        from vibe.core.tools.base import BaseToolState
-        from vibe.core.tools.builtins.write_file import (
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.write_file import (
             WriteFile,
             WriteFileArgs,
             WriteFileConfig,
@@ -886,8 +886,8 @@ class RuntimeToolExecutionRunner:
 
     async def _run_bash_tool(self, envelope: RuntimeToolInvocationEnvelope) -> Any:
         """Run the bash tool with runtime context injected."""
-        from vibe.core.tools.base import BaseToolState
-        from vibe.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
 
         payload = envelope.payload or {}
 
@@ -918,9 +918,9 @@ class RuntimeToolExecutionRunner:
     @staticmethod
     def _build_validate_receipt(result: Any) -> Any:
         """Build a receipt from a validate result."""
-        from vibe.core.tools.base import BaseToolState
-        from vibe.core.tools.builtins.validate import Validate
-        from vibe.core.tools.builtins.validate_models import ValidateToolConfig
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.validate import Validate
+        from rig_relay.core.tools.builtins.validate_models import ValidateToolConfig
 
         tool = Validate(
             config_getter=lambda: ValidateToolConfig(), state=BaseToolState()
@@ -930,8 +930,8 @@ class RuntimeToolExecutionRunner:
     @staticmethod
     def _build_search_replace_receipt(result: Any) -> Any:
         """Build a receipt from a search_replace result."""
-        from vibe.core.tools.base import BaseToolState
-        from vibe.core.tools.builtins.search_replace import (
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.search_replace import (
             SearchReplace,
             SearchReplaceConfig,
         )
@@ -944,8 +944,8 @@ class RuntimeToolExecutionRunner:
     @staticmethod
     def _build_write_file_receipt(result: Any) -> Any:
         """Build a receipt from a write_file result."""
-        from vibe.core.tools.base import BaseToolState
-        from vibe.core.tools.builtins.write_file import WriteFile, WriteFileConfig
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.write_file import WriteFile, WriteFileConfig
 
         tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
         return tool.build_receipt(result)
@@ -953,8 +953,8 @@ class RuntimeToolExecutionRunner:
     @staticmethod
     def _build_bash_receipt(result: Any) -> Any:
         """Build a receipt from a bash result."""
-        from vibe.core.tools.base import BaseToolState
-        from vibe.core.tools.builtins.bash import Bash, BashToolConfig
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.bash import Bash, BashToolConfig
 
         tool = Bash(config_getter=lambda: BashToolConfig(), state=BaseToolState())
         return tool.build_receipt(result)
@@ -1073,7 +1073,7 @@ class RuntimeToolExecutionRunner:
         Returns None when the envelope lacks session_id or task_id
         (preserving the current behavior of skipping coordination).
         """
-        from vibe.core.tools.base import InvokeContext
+        from rig_relay.core.tools.base import InvokeContext
 
         if not envelope.session_id or not envelope.task_id:
             return None

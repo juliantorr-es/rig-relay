@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from vibe.cli import cli as cli_mod
-from vibe.core.telemetry.local import dump_canonical_json
-from vibe.core.telemetry.receipts import write_session_receipts
+from rig_relay.cli import cli as cli_mod
+from rig_relay.core.telemetry.local import dump_canonical_json
+from rig_relay.core.telemetry.receipts import write_session_receipts
 
 
 def _sha256_prefix(path: Path) -> str:

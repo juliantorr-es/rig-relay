@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from tests.conftest import build_test_agent_loop, build_test_vibe_config
-from vibe.core.agents.models import BuiltinAgentName
-from vibe.core.paths import PLANS_DIR
-from vibe.core.tools.base import ToolPermission
+from rig_relay.core.agents.models import BuiltinAgentName
+from rig_relay.core.paths import PLANS_DIR
+from rig_relay.core.tools.base import ToolPermission
 
 
 class TestPlanAgentWriteFileResolvePermission:
@@ -16,7 +16,7 @@ class TestPlanAgentWriteFileResolvePermission:
         agent = build_test_agent_loop(config=config, agent_name=BuiltinAgentName.PLAN)
 
         tool = agent.tool_manager.get("write_file")
-        from vibe.core.tools.builtins.write_file import WriteFileArgs
+        from rig_relay.core.tools.builtins.write_file import WriteFileArgs
 
         args = WriteFileArgs(path="/some/random/file.py", content="hello")
 
@@ -32,7 +32,7 @@ class TestPlanAgentWriteFileResolvePermission:
         agent = build_test_agent_loop(config=config, agent_name=BuiltinAgentName.PLAN)
 
         tool = agent.tool_manager.get("write_file")
-        from vibe.core.tools.builtins.write_file import WriteFileArgs
+        from rig_relay.core.tools.builtins.write_file import WriteFileArgs
 
         plan_path = str(PLANS_DIR.path / "my-plan.md")
         args = WriteFileArgs(path=plan_path, content="# Plan")
@@ -48,7 +48,7 @@ class TestPlanAgentWriteFileResolvePermission:
         agent = build_test_agent_loop(config=config, agent_name=BuiltinAgentName.PLAN)
 
         tool = agent.tool_manager.get("search_replace")
-        from vibe.core.tools.builtins.search_replace import SearchReplaceArgs
+        from rig_relay.core.tools.builtins.search_replace import SearchReplaceArgs
 
         args = SearchReplaceArgs(
             file_path="/some/file.py", content="<<<< SEARCH\na\n====\nb\n>>>> REPLACE"
@@ -72,7 +72,7 @@ class TestAcceptEditsAgentResolvePermission:
         )
 
         tool = agent.tool_manager.get("write_file")
-        from vibe.core.tools.builtins.write_file import WriteFileArgs
+        from rig_relay.core.tools.builtins.write_file import WriteFileArgs
 
         # Use a workdir-relative path; outside-workdir always requires ASK
         # regardless of agent permission.
@@ -93,7 +93,7 @@ class TestAgentOverrideNotLeakedAcrossSwitches:
         agent = build_test_agent_loop(config=config, agent_name=BuiltinAgentName.PLAN)
 
         tool = agent.tool_manager.get("write_file")
-        from vibe.core.tools.builtins.write_file import WriteFileArgs
+        from rig_relay.core.tools.builtins.write_file import WriteFileArgs
 
         args = WriteFileArgs(path="/some/file.py", content="hello")
 

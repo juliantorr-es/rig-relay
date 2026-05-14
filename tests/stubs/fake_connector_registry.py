@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from vibe.core.tools.base import BaseTool
-from vibe.core.tools.connectors.connector_registry import (
+from rig_relay.core.tools.base import BaseTool
+from rig_relay.core.tools.connectors.connector_registry import (
     ConnectorRegistry,
     RemoteTool,
     _normalize_name,

@@ -11,14 +11,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import zstandard
 
-from vibe.core.teleport.errors import (
+from rig_relay.core.teleport.errors import (
     ServiceTeleportError,
     ServiceTeleportNotSupportedError,
 )
-from vibe.core.teleport.git import GitRepoInfo
-from vibe.core.teleport.nuage import GitHubStatus, TeleportSession
-from vibe.core.teleport.teleport import TeleportService
-from vibe.core.teleport.types import (
+from rig_relay.core.teleport.git import GitRepoInfo
+from rig_relay.core.teleport.nuage import GitHubStatus, TeleportSession
+from rig_relay.core.teleport.teleport import TeleportService
+from rig_relay.core.teleport.types import (
     TeleportAuthCompleteEvent,
     TeleportAuthRequiredEvent,
     TeleportCheckingGitEvent,

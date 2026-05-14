@@ -1119,8 +1119,8 @@ def _execute_run_validation_suite(
             ],
         )
         paths = params.get("paths", [])
-        from vibe.core.tools.base import BaseToolState, InvokeContext
-        from vibe.core.tools.builtins.validation_suite import (
+        from rig_relay.core.tools.base import BaseToolState, InvokeContext
+        from rig_relay.core.tools.builtins.validation_suite import (
             ValidationStepRequest,
             ValidationSuite,
             ValidationSuiteArgs,
@@ -1310,8 +1310,8 @@ def _execute_checkpoint_commit(
                 summary="Checkpoint refused: include_paths is required.",
             )
 
-        from vibe.core.tools.base import BaseToolState, InvokeContext
-        from vibe.core.tools.builtins.checkpoint import (
+        from rig_relay.core.tools.base import BaseToolState, InvokeContext
+        from rig_relay.core.tools.builtins.checkpoint import (
             Checkpoint,
             CheckpointArgs,
             CheckpointToolConfig,
@@ -1334,7 +1334,7 @@ def _execute_checkpoint_commit(
 
         import asyncio
 
-        from vibe.core.tools.builtins.checkpoint import CheckpointResult
+        from rig_relay.core.tools.builtins.checkpoint import CheckpointResult
 
         async def _collect() -> CheckpointResult:
             async for event in tool.run(args, ctx):

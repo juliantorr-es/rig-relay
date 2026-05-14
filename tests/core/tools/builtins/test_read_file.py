@@ -6,19 +6,19 @@ from pathlib import Path
 import pytest
 
 from tests.mock.utils import collect_result
-from vibe.core.config.harness_files import (
+from rig_relay.core.config.harness_files import (
     init_harness_files_manager,
     reset_harness_files_manager,
 )
-from vibe.core.tools.builtins.read_file import (
+from rig_relay.core.tools.builtins.read_file import (
     ReadFile,
     ReadFileArgs,
     ReadFileResult,
     ReadFileState,
     ReadFileToolConfig,
 )
-from vibe.core.trusted_folders import trusted_folders_manager
-from vibe.core.utils import VIBE_WARNING_TAG
+from rig_relay.core.trusted_folders import trusted_folders_manager
+from rig_relay.core.utils import VIBE_WARNING_TAG
 
 
 @pytest.fixture()

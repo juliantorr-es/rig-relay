@@ -1,7 +1,71 @@
 """rig_relay.coordination — Store, leases, current_state, queue, spawn.
 
-Target package for migrating:
-  vibe/core/coordination/
-  scripts/rig_relay_current_state.py
-  scripts/rig_relay_queue_plan.py
+Canonical re-exports for commonly used coordination types.
 """
+
+from rig_relay.coordination.models import (
+    CoordinationArtifactRef,
+    CoordinationClaimResult,
+    CoordinationConflict,
+    CoordinationEvent,
+    CoordinationHeartbeat,
+    CoordinationPathReservation,
+    CoordinationReservationResult,
+    CoordinationSession,
+    CoordinationStateProjection,
+    CoordinationTaskClaim,
+    build_artifact_published_payload,
+    build_checkpoint_committed_payload,
+    build_checkpoint_refused_payload,
+    build_conflict_reported_payload,
+    build_handoff_accepted_payload,
+    build_handoff_rejected_payload,
+    build_handoff_requested_payload,
+    build_heartbeat_payload,
+    build_lease_expired_payload,
+    build_lease_marked_stale_payload,
+    build_path_released_payload,
+    build_path_reserved_payload,
+    build_projection_read_payload,
+    build_reservation_refused_payload,
+    build_session_registered_payload,
+    build_task_claim_payload,
+    build_task_released_payload,
+    reset_path_salt_for_testing,
+    salted_path_hash,
+)
+from rig_relay.coordination.store import CoordinationStore, FileCoordinationStore
+
+__all__ = [
+    "CoordinationArtifactRef",
+    "CoordinationClaimResult",
+    "CoordinationConflict",
+    "CoordinationEvent",
+    "CoordinationHeartbeat",
+    "CoordinationPathReservation",
+    "CoordinationReservationResult",
+    "CoordinationSession",
+    "CoordinationStateProjection",
+    "CoordinationStore",
+    "CoordinationTaskClaim",
+    "FileCoordinationStore",
+    "build_artifact_published_payload",
+    "build_checkpoint_committed_payload",
+    "build_checkpoint_refused_payload",
+    "build_conflict_reported_payload",
+    "build_handoff_accepted_payload",
+    "build_handoff_rejected_payload",
+    "build_handoff_requested_payload",
+    "build_heartbeat_payload",
+    "build_lease_expired_payload",
+    "build_lease_marked_stale_payload",
+    "build_path_released_payload",
+    "build_path_reserved_payload",
+    "build_projection_read_payload",
+    "build_reservation_refused_payload",
+    "build_session_registered_payload",
+    "build_task_claim_payload",
+    "build_task_released_payload",
+    "reset_path_salt_for_testing",
+    "salted_path_hash",
+]

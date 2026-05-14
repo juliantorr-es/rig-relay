@@ -10,9 +10,9 @@ import pytest
 from tests.acp.conftest import _create_acp_agent
 from tests.stubs.fake_backend import FakeBackend
 from tests.stubs.fake_client import FakeClient
-from vibe.acp.acp_agent_loop import VibeAcpAgentLoop
-from vibe.core.agent_loop import AgentLoop
-from vibe.core.types import LLMChunk, LLMMessage, LLMUsage, Role
+from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.types import LLMChunk, LLMMessage, LLMUsage, Role
 
 
 def _is_uuid(value: str) -> bool:

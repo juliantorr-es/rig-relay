@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from vibe.cli.history_manager import HistoryManager
+from rig_relay.cli.history_manager import HistoryManager
 
 
 def test_history_manager_normalizes_loaded_entries_like_numbers_to_strings(

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.config.harness_files import HarnessFilesManager
-from vibe.core.trusted_folders import trusted_folders_manager
+from rig_relay.core.config.harness_files import HarnessFilesManager
+from rig_relay.core.trusted_folders import trusted_folders_manager
 
 
 class TestHarnessConfigFilePriority:

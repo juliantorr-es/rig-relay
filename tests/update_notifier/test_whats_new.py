@@ -8,8 +8,8 @@ import pytest
 from tests.update_notifier.adapters.fake_update_cache_repository import (
     FakeUpdateCacheRepository,
 )
-from vibe.cli.update_notifier import UpdateCache
-from vibe.cli.update_notifier.whats_new import (
+from rig_relay.cli.update_notifier import UpdateCache
+from rig_relay.cli.update_notifier.whats_new import (
     load_whats_new_content,
     mark_version_as_seen,
     should_show_whats_new,

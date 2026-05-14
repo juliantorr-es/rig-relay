@@ -8,9 +8,9 @@ import pytest
 from tests.conftest import build_test_vibe_config
 from tests.stubs.fake_audio_player import FakeAudioPlayer
 from tests.stubs.fake_tts_client import FakeTTSClient
-from vibe.cli.narrator_manager import NarratorManager, NarratorState
-from vibe.cli.turn_summary import TurnSummaryResult
-from vibe.core.tts.tts_client_port import TTSResult
+from rig_relay.cli.narrator_manager import NarratorManager, NarratorState
+from rig_relay.cli.turn_summary import TurnSummaryResult
+from rig_relay.core.tts.tts_client_port import TTSResult
 
 
 def _make_manager(

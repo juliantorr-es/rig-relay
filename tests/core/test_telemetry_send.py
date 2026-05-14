@@ -8,22 +8,22 @@ import pytest
 
 from tests.conftest import build_test_vibe_config
 from tests.stubs.fake_tool import FakeTool, FakeToolArgs
-from vibe.core.agent_loop import ToolDecision, ToolExecutionResponse
-from vibe.core.config import DEFAULT_MISTRAL_API_ENV_KEY
-from vibe.core.llm.format import ResolvedToolCall
-from vibe.core.telemetry.build_metadata import (
+from rig_relay.core.agent_loop import ToolDecision, ToolExecutionResponse
+from rig_relay.core.config import DEFAULT_MISTRAL_API_ENV_KEY
+from rig_relay.core.llm.format import ResolvedToolCall
+from rig_relay.core.telemetry.build_metadata import (
     build_base_metadata,
     build_request_metadata,
 )
-from vibe.core.telemetry.constants import EventName
-from vibe.core.telemetry.send import TelemetryClient
-from vibe.core.telemetry.types import EntrypointMetadata, TelemetryRequestMetadata
-from vibe.core.tools.base import BaseTool, ToolPermission
-from vibe.core.types import Backend
-from vibe.core.utils import get_user_agent
+from rig_relay.core.telemetry.constants import EventName
+from rig_relay.core.telemetry.send import TelemetryClient
+from rig_relay.core.telemetry.types import EntrypointMetadata, TelemetryRequestMetadata
+from rig_relay.core.tools.base import BaseTool, ToolPermission
+from rig_relay.core.types import Backend
+from rig_relay.core.utils import get_user_agent
 
 _original_send_telemetry_event = TelemetryClient.send_telemetry_event
-from vibe.core.tools.builtins.write_file import WriteFile, WriteFileArgs
+from rig_relay.core.tools.builtins.write_file import WriteFile, WriteFileArgs
 
 
 def _make_resolved_tool_call(
@@ -785,8 +785,8 @@ class TestTelemetryClient:
         assert "correlation_id" not in telemetry_events[0]
 
     def test_telemetry_url_custom_provider_config(self) -> None:
-        from vibe.core.config import ProviderConfig
-        from vibe.core.types import Backend
+        from rig_relay.core.config import ProviderConfig
+        from rig_relay.core.types import Backend
 
         custom_api_base = "https://api.custom.host/v2"
 
@@ -809,8 +809,8 @@ class TestTelemetryClient:
         )
 
     def test_telemetry_url_preserves_port_in_api_base(self) -> None:
-        from vibe.core.config import ProviderConfig
-        from vibe.core.types import Backend
+        from rig_relay.core.config import ProviderConfig
+        from rig_relay.core.types import Backend
 
         custom_api_base = "http://api.custom.host:8080/v1/"
 
@@ -833,8 +833,8 @@ class TestTelemetryClient:
         )
 
     def test_telemetry_url_falls_back_to_default_when_api_base_malformed(self) -> None:
-        from vibe.core.config import ProviderConfig
-        from vibe.core.types import Backend
+        from rig_relay.core.config import ProviderConfig
+        from rig_relay.core.types import Backend
 
         config = build_test_vibe_config(
             enable_telemetry=True,
@@ -864,7 +864,7 @@ class TestTelemetryClient:
         assert client.is_active() is False
 
     def test_is_active_false_when_no_mistral_provider(self) -> None:
-        from vibe.core.config import ProviderConfig
+        from rig_relay.core.config import ProviderConfig
 
         config = build_test_vibe_config(enable_telemetry=True)
         config.providers = [

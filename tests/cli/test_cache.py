@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import tomllib
 
-from vibe.cli.cache import read_cache, write_cache
+from rig_relay.cli.cache import read_cache, write_cache
 
 
 class TestReadCache:

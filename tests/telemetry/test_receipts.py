@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.telemetry import validate_evidence_session, write_session_manifest
-from vibe.core.telemetry.constants import EventName
-from vibe.core.telemetry.local import dump_canonical_json
-from vibe.core.telemetry.receipts import (
+from rig_relay.core.telemetry import validate_evidence_session, write_session_manifest
+from rig_relay.core.telemetry.constants import EventName
+from rig_relay.core.telemetry.local import dump_canonical_json
+from rig_relay.core.telemetry.receipts import (
     build_session_receipts,
     load_receipts,
     verify_receipt,
@@ -222,7 +222,7 @@ def test_receipt_event_name_mismatch(session_setup):
     tampered_data["event_name"] = "wrong.event.name"
 
     # Re-hash to pass hash verification
-    from vibe.core.telemetry.receipts import (
+    from rig_relay.core.telemetry.receipts import (
         build_receipt_payload,
         compute_receipt_hashes,
     )
@@ -283,7 +283,7 @@ def test_doctor_receipt_output(session_setup, monkeypatch, capsys):
     write_session_manifest(session_root, session_id)
     write_session_receipts(session_root, session_id)
 
-    from vibe.core.telemetry.doctor import run_evidence_validation
+    from rig_relay.core.telemetry.doctor import run_evidence_validation
 
     run_evidence_validation(repo_root / ".rig" / "relay", session_id)
     captured = capsys.readouterr()
@@ -299,7 +299,7 @@ def test_doctor_json_receipt_fields(session_setup, monkeypatch, capsys):
     write_session_manifest(session_root, session_id)
     write_session_receipts(session_root, session_id)
 
-    from vibe.core.telemetry.doctor import run_evidence_validation
+    from rig_relay.core.telemetry.doctor import run_evidence_validation
 
     run_evidence_validation(repo_root / ".rig" / "relay", session_id, json_output=True)
     captured = capsys.readouterr()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from vibe.core.context.assembler import (
+from rig_relay.core.context.assembler import (
     build_context_assembly_report,
     build_shadow_request_report,
     plan_context_layout,
@@ -10,7 +10,7 @@ from vibe.core.context.assembler import (
     write_layout_plan,
     write_shadow_request_report,
 )
-from vibe.core.telemetry.context_blocks import (
+from rig_relay.core.telemetry.context_blocks import (
     ContextAssemblyReport,
     ContextBlockKind,
     ContextBlockStability,
@@ -18,8 +18,8 @@ from vibe.core.telemetry.context_blocks import (
     estimate_tokens,
     fingerprint_text,
 )
-from vibe.core.telemetry.local import dump_canonical_json
-from vibe.core.types import LLMMessage, Role
+from rig_relay.core.telemetry.local import dump_canonical_json
+from rig_relay.core.types import LLMMessage, Role
 
 
 def test_token_estimate():
@@ -228,7 +228,7 @@ def test_prefix_stability_with_different_block_ids():
 
 def test_deterministic_sorting_by_source_index():
     """Verify that source_index is used for ordering when stability and kind match."""
-    from vibe.core.telemetry.context_blocks import ContextBlock
+    from rig_relay.core.telemetry.context_blocks import ContextBlock
 
     b1 = ContextBlock(
         kind=ContextBlockKind.SYSTEM_PROMPT,

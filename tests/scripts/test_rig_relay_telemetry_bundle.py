@@ -19,7 +19,7 @@ from scripts.rig_relay_create_telemetry_bundle import (
 )
 from scripts.rig_relay_upload_google_drive import _upload_dry_run, upload_bundle
 from scripts.rig_relay_validate_telemetry_bundle import validate_bundle
-from vibe.core.config.telemetry_modes import (
+from rig_relay.core.config.telemetry_modes import (
     ALLOWED_SHARE_LEVELS_FOR_UPLOAD,
     can_upload_remote_beta_data,
     can_use_autonomous_spawn,

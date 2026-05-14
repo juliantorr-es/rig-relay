@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from vibe.cli import cli as cli_mod, entrypoint as entrypoint_mod
-from vibe.core.config import MissingAPIKeyError
-from vibe.core.trusted_folders import trusted_folders_manager
+from rig_relay.cli import cli as cli_mod, entrypoint as entrypoint_mod
+from rig_relay.core.config import MissingAPIKeyError
+from rig_relay.core.trusted_folders import trusted_folders_manager
 
 
 def _make_args(**overrides: object) -> argparse.Namespace:

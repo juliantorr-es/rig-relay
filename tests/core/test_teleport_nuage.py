@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from vibe.core.teleport.errors import ServiceTeleportError
-from vibe.core.teleport.nuage import (
+from rig_relay.core.teleport.errors import ServiceTeleportError
+from rig_relay.core.teleport.nuage import (
     ChatAssistantParams,
     GitHubParams,
     NuageClient,

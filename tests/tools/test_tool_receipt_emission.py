@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from vibe.core.tools.base import BaseToolState
-from vibe.core.tools.builtins.search_replace import SearchReplaceResult
+from rig_relay.core.tools.base import BaseToolState
+from rig_relay.core.tools.builtins.search_replace import SearchReplaceResult
 
 # ── Helper: capture_tool_receipt ──
 
@@ -29,7 +29,7 @@ def test_capture_tool_receipt_emits_event(tmp_path: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
 
     # Monkey-patch the session path resolution
-    import vibe.core.telemetry.local as local_module
+    import rig_relay.core.telemetry.local as local_module
 
     original = local_module.get_observability_log_path
 
@@ -78,7 +78,7 @@ def test_capture_tool_receipt_no_raw_output(tmp_path: Path) -> None:
     log_path = tmp_path / "observability.jsonl"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    import vibe.core.telemetry.local as local_module
+    import rig_relay.core.telemetry.local as local_module
 
     original = local_module.get_observability_log_path
 
@@ -130,14 +130,14 @@ def test_capture_tool_receipt_failure_safe(tmp_path: Path) -> None:
 @pytest.fixture
 def bash_tool() -> type:
     """Return the Bash tool class for testing."""
-    from vibe.core.tools.builtins.bash import Bash
+    from rig_relay.core.tools.builtins.bash import Bash
 
     return Bash
 
 
 def test_bash_tool_has_build_receipt(bash_tool: type) -> None:
     """Bash tool class has build_receipt method (duck-type check)."""
-    from vibe.core.tools.builtins.bash import Bash, BashToolConfig
+    from rig_relay.core.tools.builtins.bash import Bash, BashToolConfig
 
     tool = Bash(
         config_getter=lambda: BashToolConfig(
@@ -151,7 +151,7 @@ def test_bash_tool_has_build_receipt(bash_tool: type) -> None:
 
 def test_bash_success_receipt_content_light(bash_tool: type) -> None:
     """Success bash receipt contains no raw stdout/stderr."""
-    from vibe.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
+    from rig_relay.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
 
     tool = Bash(
         config_getter=lambda: BashToolConfig(
@@ -184,7 +184,7 @@ def test_bash_success_receipt_content_light(bash_tool: type) -> None:
 
 def test_bash_timeout_receipt_content_light(bash_tool: type) -> None:
     """Timeout bash receipt contains no raw output."""
-    from vibe.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
+    from rig_relay.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
 
     tool = Bash(
         config_getter=lambda: BashToolConfig(
@@ -216,7 +216,7 @@ def test_bash_timeout_receipt_content_light(bash_tool: type) -> None:
 
 def test_bash_refusal_receipt_content_light(bash_tool: type) -> None:
     """Refused bash receipt contains no raw output."""
-    from vibe.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
+    from rig_relay.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
 
     tool = Bash(
         config_getter=lambda: BashToolConfig(
@@ -251,7 +251,7 @@ def test_bash_refusal_receipt_content_light(bash_tool: type) -> None:
 def test_capture_bash_receipt_integration(tmp_path: Path) -> None:
     """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
     from rig_relay.evidence.model_observations import capture_tool_receipt
-    from vibe.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
+    from rig_relay.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
 
     tool = Bash(
         config_getter=lambda: BashToolConfig(
@@ -275,7 +275,7 @@ def test_capture_bash_receipt_integration(tmp_path: Path) -> None:
     log_path = tmp_path / "obs.jsonl"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    import vibe.core.telemetry.local as local_module
+    import rig_relay.core.telemetry.local as local_module
 
     original = local_module.get_observability_log_path
 
@@ -311,7 +311,7 @@ def test_capture_bash_receipt_integration(tmp_path: Path) -> None:
 
 def test_bash_receipt_emission_does_not_raise(tmp_path: Path) -> None:
     """build_receipt failure does not raise (failure-safe pattern)."""
-    from vibe.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
+    from rig_relay.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
 
     tool = Bash(
         config_getter=lambda: BashToolConfig(
@@ -342,7 +342,7 @@ def test_bash_receipt_emission_does_not_raise(tmp_path: Path) -> None:
 @pytest.fixture
 def sr_tool() -> type:
     """Return the SearchReplace tool class for testing."""
-    from vibe.core.tools.builtins.search_replace import SearchReplace
+    from rig_relay.core.tools.builtins.search_replace import SearchReplace
 
     return SearchReplace
 
@@ -350,7 +350,7 @@ def sr_tool() -> type:
 @pytest.fixture
 def sr_result_success() -> SearchReplaceResult:
     """Build a minimal SearchReplaceResult with success status."""
-    from vibe.core.tools.builtins.search_replace import SearchReplaceResult
+    from rig_relay.core.tools.builtins.search_replace import SearchReplaceResult
 
     return SearchReplaceResult(
         file="test.py",
@@ -377,7 +377,7 @@ def sr_result_success() -> SearchReplaceResult:
 
 def test_search_replace_has_build_receipt(sr_tool: type) -> None:
     """SearchReplace tool class has build_receipt method (duck-type check)."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -393,7 +393,7 @@ def test_search_replace_success_receipt_content_light(
     sr_tool: type, sr_result_success: SearchReplaceResult
 ) -> None:
     """Success search_replace receipt contains no raw file content."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -419,7 +419,7 @@ def test_search_replace_success_receipt_content_light(
 
 def test_search_replace_no_match_receipt_content_light(sr_tool: type) -> None:
     """no_match search_replace receipt contains error_kind, no content."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
         SearchReplaceResult,
@@ -460,7 +460,7 @@ def test_search_replace_no_match_receipt_content_light(sr_tool: type) -> None:
 
 def test_search_replace_refused_receipt_content_light(sr_tool: type) -> None:
     """Refused search_replace receipt contains refusal info, no content."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
         SearchReplaceResult,
@@ -501,7 +501,7 @@ def test_search_replace_receipt_omits_raw_content(
     sr_tool: type, sr_result_success: SearchReplaceResult
 ) -> None:
     """Receipt has no content, old_text, new_text, diff, or patch fields."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -525,7 +525,7 @@ def test_search_replace_receipt_includes_hashes(
     sr_tool: type, sr_result_success: SearchReplaceResult
 ) -> None:
     """Receipt includes before/after sha256 hashes."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -546,7 +546,7 @@ def test_search_replace_receipt_includes_status_fields(
     sr_tool: type, sr_result_success: SearchReplaceResult
 ) -> None:
     """Receipt includes status, error_kind, refusal_reason, duration_ms."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -569,7 +569,7 @@ def test_capture_search_replace_receipt_integration(
 ) -> None:
     """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
     from rig_relay.evidence.model_observations import capture_tool_receipt
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -583,7 +583,7 @@ def test_capture_search_replace_receipt_integration(
     log_path = tmp_path / "obs.jsonl"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    import vibe.core.telemetry.local as local_module
+    import rig_relay.core.telemetry.local as local_module
 
     original = local_module.get_observability_log_path
 
@@ -625,7 +625,7 @@ def test_search_replace_receipt_schema_validates(
 
     import jsonschema
 
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -658,7 +658,7 @@ def test_search_replace_receipt_schema_validates(
 
 def test_search_replace_no_match_refusal_sanitized(sr_tool: type) -> None:
     """Receipt refusal_reason is sanitized — strips file context lines."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
         SearchReplaceResult,
@@ -716,7 +716,7 @@ def test_search_replace_no_match_refusal_sanitized(sr_tool: type) -> None:
 
 def test_search_replace_sanitize_refusal_none(sr_tool: type) -> None:
     """_sanitize_refusal_for_receipt returns None for None input."""
-    from vibe.core.tools.builtins.search_replace import SearchReplace
+    from rig_relay.core.tools.builtins.search_replace import SearchReplace
 
     result = SearchReplace._sanitize_refusal_for_receipt(None)
     assert result is None
@@ -724,7 +724,7 @@ def test_search_replace_sanitize_refusal_none(sr_tool: type) -> None:
 
 def test_search_replace_sanitize_refusal_empty(sr_tool: type) -> None:
     """_sanitize_refusal_for_receipt returns None for empty string."""
-    from vibe.core.tools.builtins.search_replace import SearchReplace
+    from rig_relay.core.tools.builtins.search_replace import SearchReplace
 
     result = SearchReplace._sanitize_refusal_for_receipt("")
     assert result is None
@@ -732,7 +732,7 @@ def test_search_replace_sanitize_refusal_empty(sr_tool: type) -> None:
 
 def test_search_replace_sanitize_refusal_safe_string_preserved(sr_tool: type) -> None:
     """_sanitize_refusal_for_receipt preserves safe refusal strings."""
-    from vibe.core.tools.builtins.search_replace import SearchReplace
+    from rig_relay.core.tools.builtins.search_replace import SearchReplace
 
     safe = "Expected 2 replacements but got 1. File was not mutated."
     result = SearchReplace._sanitize_refusal_for_receipt(safe)
@@ -744,7 +744,7 @@ def test_search_replace_receipt_passes_policy_validator(
 ) -> None:
     """Success SearchReplace receipt passes the content-light policy validator."""
     from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -761,7 +761,7 @@ def test_search_replace_receipt_passes_policy_validator(
 def test_search_replace_no_match_receipt_passes_policy_validator(sr_tool: type) -> None:
     """No-match SearchReplace receipt passes policy validator even with context."""
     from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
         SearchReplaceResult,
@@ -808,7 +808,7 @@ def test_search_replace_no_match_receipt_passes_policy_validator(sr_tool: type) 
 def test_search_replace_refused_receipt_passes_policy_validator(sr_tool: type) -> None:
     """Refused SearchReplace receipt passes policy validator."""
     from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
         SearchReplaceResult,
@@ -844,7 +844,7 @@ def test_search_replace_refused_receipt_passes_policy_validator(sr_tool: type) -
 
 def test_search_replace_sr_instantiation_and_duck_type(sr_tool: type) -> None:
     """SearchReplace instantiates cleanly and exposes run + build_receipt."""
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
         SearchReplaceReceipt,
@@ -881,7 +881,7 @@ def test_search_replace_receipt_passes_validate_event(
 ) -> None:
     """SearchReplace receipt passes validate_event from policy validator."""
     from rig_relay.evidence.tool_receipt_policy import validate_event
-    from vibe.core.tools.builtins.search_replace import (
+    from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
@@ -907,8 +907,8 @@ def test_search_replace_receipt_passes_validate_event(
 
 def test_validate_tool_has_build_receipt() -> None:
     """Validate tool class has build_receipt method (duck-type check)."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import Validate, ValidateToolConfig
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import Validate, ValidateToolConfig
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -918,8 +918,8 @@ def test_validate_tool_has_build_receipt() -> None:
 
 def test_validate_success_receipt_content_light() -> None:
     """Success validate receipt contains no raw stdout/stderr."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateCheckResult,
         ValidateResult,
@@ -958,8 +958,8 @@ def test_validate_success_receipt_content_light() -> None:
 
 def test_validate_failed_receipt_content_light() -> None:
     """Failed validate receipt contains no raw output and preserves failure info."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateCheckResult,
         ValidateResult,
@@ -1015,8 +1015,8 @@ def test_validate_failed_receipt_content_light() -> None:
 
 def test_validate_receipt_includes_hashes() -> None:
     """Validate receipt preserves SHA256 hashes and byte counts."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateCheckResult,
         ValidateResult,
@@ -1055,8 +1055,8 @@ def test_validate_receipt_includes_hashes() -> None:
 def test_capture_validate_receipt_integration(tmp_path: Path) -> None:
     """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
     from rig_relay.evidence.model_observations import capture_tool_receipt
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateCheckResult,
         ValidateResult,
@@ -1090,7 +1090,7 @@ def test_capture_validate_receipt_integration(tmp_path: Path) -> None:
     log_path = tmp_path / "obs.jsonl"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    import vibe.core.telemetry.local as local_module
+    import rig_relay.core.telemetry.local as local_module
 
     original = local_module.get_observability_log_path
 
@@ -1130,8 +1130,8 @@ def test_capture_validate_receipt_integration(tmp_path: Path) -> None:
 def test_validate_receipt_passes_policy_validator() -> None:
     """Validate receipt passes content-light policy validator."""
     from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateCheckResult,
         ValidateResult,
@@ -1169,8 +1169,8 @@ def test_validate_receipt_schema_validates() -> None:
 
     import jsonschema
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.validate import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import (
         Validate,
         ValidateCheckResult,
         ValidateResult,
@@ -1213,8 +1213,8 @@ def test_validate_receipt_schema_validates() -> None:
 
 def test_write_file_tool_has_build_receipt() -> None:
     """WriteFile tool class has build_receipt method (duck-type check)."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.write_file import WriteFile, WriteFileConfig
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.write_file import WriteFile, WriteFileConfig
 
     tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
     assert hasattr(tool, "build_receipt")
@@ -1223,8 +1223,8 @@ def test_write_file_tool_has_build_receipt() -> None:
 
 def test_write_file_success_receipt_content_light() -> None:
     """Success write_file receipt contains no raw file content."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.write_file import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,
@@ -1263,8 +1263,8 @@ def test_write_file_success_receipt_content_light() -> None:
 
 def test_write_file_refused_receipt_content_light() -> None:
     """Refused write_file receipt contains no raw content."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.write_file import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,
@@ -1295,8 +1295,8 @@ def test_write_file_refused_receipt_content_light() -> None:
 
 def test_write_file_blocked_receipt_content_light() -> None:
     """Blocked write_file receipt contains no raw content."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.write_file import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,
@@ -1326,8 +1326,8 @@ def test_write_file_blocked_receipt_content_light() -> None:
 
 def test_write_file_receipt_includes_overwrite_fields() -> None:
     """WriteFile receipt includes created/overwritten/parent_dirs fields."""
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.write_file import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,
@@ -1366,8 +1366,8 @@ def test_write_file_receipt_includes_overwrite_fields() -> None:
 def test_capture_write_file_receipt_integration(tmp_path: Path) -> None:
     """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
     from rig_relay.evidence.model_observations import capture_tool_receipt
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.write_file import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,
@@ -1393,7 +1393,7 @@ def test_capture_write_file_receipt_integration(tmp_path: Path) -> None:
     log_path = tmp_path / "obs.jsonl"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    import vibe.core.telemetry.local as local_module
+    import rig_relay.core.telemetry.local as local_module
 
     original = local_module.get_observability_log_path
 
@@ -1434,8 +1434,8 @@ def test_write_file_receipt_schema_validates(tmp_path: Path) -> None:
 
     import jsonschema
 
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.write_file import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,
@@ -1493,8 +1493,8 @@ def test_write_file_receipt_schema_validates(tmp_path: Path) -> None:
 def test_write_file_receipt_passes_policy_validator() -> None:
     """WriteFile receipt passes the receipt policy validator."""
     from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
-    from vibe.core.tools.base import BaseToolState
-    from vibe.core.tools.builtins.write_file import (
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,

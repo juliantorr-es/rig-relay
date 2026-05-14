@@ -4,7 +4,7 @@ from typing import Any
 from unittest.mock import patch
 
 from tests.conftest import build_test_vibe_config
-from vibe.core.nuage.events import (
+from rig_relay.core.nuage.events import (
     CustomTaskCanceled,
     CustomTaskCanceledAttributes,
     CustomTaskCompleted,
@@ -19,8 +19,8 @@ from vibe.core.nuage.events import (
     JSONPatchReplace,
     JSONPayload,
 )
-from vibe.core.nuage.remote_events_source import RemoteEventsSource
-from vibe.core.types import (
+from rig_relay.core.nuage.remote_events_source import RemoteEventsSource
+from rig_relay.core.types import (
     AssistantEvent,
     ReasoningEvent,
     Role,

@@ -17,13 +17,13 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from vibe.core.tools.base import BaseToolState
-from vibe.core.tools.builtins.search_replace import (
+from rig_relay.core.tools.base import BaseToolState
+from rig_relay.core.tools.builtins.search_replace import (
     SearchReplace,
     SearchReplaceConfig,
     SearchReplaceResult,
 )
-from vibe.core.tools.builtins.write_file import (
+from rig_relay.core.tools.builtins.write_file import (
     WriteFile,
     WriteFileConfig,
     WriteFileResult,

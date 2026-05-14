@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from vibe.core.utils.merge import MergeConflictError, MergeKeyError, MergeStrategy
+from rig_relay.core.utils.merge import MergeConflictError, MergeKeyError, MergeStrategy
 
 
 class TestMergeStrategyEnum:
