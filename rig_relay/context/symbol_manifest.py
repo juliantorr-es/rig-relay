@@ -69,7 +69,7 @@ def build_codebase_symbol_manifest(
 ) -> SymbolManifestBuildResult:
     corpus_parts: list[str] = []
     source_parts: list[str] = []
-    for subdir in ("vibe", "rig_relay", "tests", "docs"):
+    for subdir in ("rig_relay", "tests", "docs"):
         root = repo_root / subdir
         if root.is_dir():
             for path in sorted(root.rglob("*")):

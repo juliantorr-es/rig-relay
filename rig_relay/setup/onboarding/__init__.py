@@ -1,43 +1,35 @@
+"""Console-based onboarding flow — replacement for deleted Textual TUI version."""
+
 from __future__ import annotations
 
-# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
 import sys
-from typing import Any
 
 from rich import print as rprint
-from textual.app import App
 
 from rig_relay.core.paths import GLOBAL_ENV_FILE
 from rig_relay.core.telemetry.types import EntrypointMetadata
-from rig_relay.setup.onboarding.screens import ApiKeyScreen, WelcomeScreen
-
-
-class OnboardingApp(App[str | None]):
-    CSS_PATH = "onboarding.tcss"
-
-    def __init__(
-        self, entrypoint_metadata: EntrypointMetadata | None = None, **kwargs: Any
-    ) -> None:
-        super().__init__(**kwargs)
-        self._entrypoint_metadata = entrypoint_metadata
-
-    def on_mount(self) -> None:
-        self.theme = "textual-ansi"
-
-        self.install_screen(WelcomeScreen(), "welcome")
-        self.install_screen(
-            ApiKeyScreen(entrypoint_metadata=self._entrypoint_metadata), "api_key"
-        )
-        self.push_screen("welcome")
+from rig_relay.setup.onboarding.screens.api_key import run_api_key_screen
+from rig_relay.setup.onboarding.screens.welcome import show_welcome
 
 
 def run_onboarding(
-    app: App | None = None, *, entrypoint_metadata: EntrypointMetadata | None = None
+    app: object | None = None,
+    *,
+    entrypoint_metadata: EntrypointMetadata | None = None,
 ) -> None:
-    result = (app or OnboardingApp(entrypoint_metadata=entrypoint_metadata)).run()
+    """Run the onboarding flow using console-based prompts."""
+    if app is not None:
+        rprint("[yellow]Warning: Textual App passed to console-based onboarding, ignoring.[/]")
+
+    result = show_welcome()
+    if result is None:
+        rprint("\n[yellow]Setup skipped. See you next time![/]")
+        sys.exit(0)
+
+    result = run_api_key_screen()
     match result:
         case None:
-            rprint("\n[yellow]Setup cancelled. See you next time![/]")
+            rprint("\n[yellow]Setup skipped. See you next time![/]")
             sys.exit(0)
         case str() as s if s.startswith("env_var_error:"):
             env_key = s.removeprefix("env_var_error:")

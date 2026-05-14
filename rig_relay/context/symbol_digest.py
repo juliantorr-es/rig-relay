@@ -71,7 +71,7 @@ def build_digest_from_repo(
     digest = CodebaseSymbolDigest()
 
     # Core source paths
-    for subdir in ("", "vibe", "rig_relay", "tests"):
+    for subdir in ("", "rig_relay", "tests"):
         d = repo_root / subdir
         if d.is_dir():
             for f in sorted(d.rglob("*.py")):

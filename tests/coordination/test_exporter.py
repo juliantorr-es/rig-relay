@@ -43,14 +43,14 @@ def tiny_events_path(tmp_path: Path) -> Path:
             "sequence": 1,
             "created_at": "2025-01-01T00:00:00Z",
             "event_name": "coord.session.registered",
-            "event_hash": "sha256:e1hash",
+            "event_hash": "sha256:45b700b28dcfdffea9233809e0cb232bd5e0d22f7149660d21f1776dd13c6334",
             "payload": {
                 "session_id": "sess-a",
                 "task_id": "task-1",
                 "agent_profile_name": "explore",
                 "event_kind": "session_registered",
                 "status": "running",
-                "path_hashes": ["sha256:abc"],
+                "path_hashes": ["sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
                 "path_count": 1,
             },
         },
@@ -62,14 +62,14 @@ def tiny_events_path(tmp_path: Path) -> Path:
             "sequence": 2,
             "created_at": "2025-01-01T00:00:01Z",
             "event_name": "coord.path.reserved",
-            "event_hash": "sha256:e2hash",
+            "event_hash": "sha256:d414ea28c481a3d48919de8f7126692a9e28cf71c39fa8a3d5efc6d23dba4676",
             "payload": {
                 "session_id": "sess-a",
                 "task_id": "task-1",
                 "event_kind": "path_reserved",
                 "reservation_mode": "write",
                 "reservation_status": "active",
-                "path_hashes": ["sha256:def", "sha256:ghi"],
+                "path_hashes": ["sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34", "sha256:50ae61e841fac4e8f9e40baf2ad36ec868922ea48368c18f9535e47db56dd7fb"],
                 "path_count": 2,
             },
         },
@@ -81,7 +81,7 @@ def tiny_events_path(tmp_path: Path) -> Path:
             "sequence": 3,
             "created_at": "2025-01-01T00:00:02Z",
             "event_name": "coord.path.reservation_refused",
-            "event_hash": "sha256:e3hash",
+            "event_hash": "sha256:fc5577180df3c139c1851d4c67dc1be135c36ed62965ef5cd8b9f8a1ac6a7ebd",
             "payload": {
                 "session_id": "sess-b",
                 "task_id": "task-1",
@@ -91,7 +91,7 @@ def tiny_events_path(tmp_path: Path) -> Path:
                 "conflict_id": "c-1",
                 "other_session_id": "sess-a",
                 "resolution_kind": "serialize_or_split_scope",
-                "path_hashes": ["sha256:def"],
+                "path_hashes": ["sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34"],
                 "path_count": 1,
             },
         },
@@ -103,13 +103,13 @@ def tiny_events_path(tmp_path: Path) -> Path:
             "sequence": 4,
             "created_at": "2025-01-01T00:00:03Z",
             "event_name": "coord.artifact.published",
-            "event_hash": "sha256:e4hash",
+            "event_hash": "sha256:67e262b43a1d38709fdb08f4f77c3eda6618713585e656e9147a3b423c60f4ef",
             "payload": {
                 "session_id": "sess-a",
                 "task_id": "task-1",
                 "event_kind": "artifact_published",
                 "artifact_kind": "search_results",
-                "artifact_sha256": "sha256:art1",
+                "artifact_sha256": "sha256:2fdceec5cd7cf785f9caedb75f09d901ed20eabb93dab14eac23ac579214372c",
             },
         },
         # coord.conflict.reported
@@ -120,7 +120,7 @@ def tiny_events_path(tmp_path: Path) -> Path:
             "sequence": 5,
             "created_at": "2025-01-01T00:00:04Z",
             "event_name": "coord.conflict.reported",
-            "event_hash": "sha256:e5hash",
+            "event_hash": "sha256:240b10c4dc63480f8168a6f36806e0032ca7e17442727cf7b5c93777756eaf51",
             "payload": {
                 "conflict_id": "c-2",
                 "session_id": "sess-b",
@@ -129,7 +129,7 @@ def tiny_events_path(tmp_path: Path) -> Path:
                 "conflict_kind": "stale_lease",
                 "other_session_id": "sess-a",
                 "resolution_kind": "takeover",
-                "path_hashes": ["sha256:jkl"],
+                "path_hashes": ["sha256:268f277c6d766d31334fda0f7a5533a185598d269e61c76a805870244828a5f1"],
                 "path_count": 1,
             },
         },
@@ -151,7 +151,7 @@ def checkpoint_obs_path(tmp_path: Path) -> Path:
             "sequence": 10,
             "created_at": "2025-01-01T00:01:00Z",
             "event_name": "rig.relay.checkpoint.committed",
-            "event_hash": "sha256:c1hash",
+            "event_hash": "sha256:b6bfce3490009720269ef76d468c38254b11afb3d396f30e34827ae475655d5e",
             "payload": {
                 "session_id": "sess-a",
                 "task_id": "task-1",
@@ -161,8 +161,8 @@ def checkpoint_obs_path(tmp_path: Path) -> Path:
                 "post_commit_head": "def456",
                 "commit_sha": "def456",
                 "files_committed_count": 2,
-                "validation_summary_hash": "sha256:valhash",
-                "checkpoint_artifact_sha256": "sha256:ckpt-art",
+                "validation_summary_hash": "sha256:054c366f38d687d1a49c853f381ec4f2b027502eb3938671ff108e0b24a251a3",
+                "checkpoint_artifact_sha256": "sha256:5c18e5457bfeb4466a37bb408ebc5ac7ab04e473d3f44447970a21fc37692b92",
                 "status": "committed",
                 "warnings": [],
             },
@@ -174,7 +174,7 @@ def checkpoint_obs_path(tmp_path: Path) -> Path:
             "sequence": 11,
             "created_at": "2025-01-01T00:02:00Z",
             "event_name": "rig.relay.checkpoint.refused",
-            "event_hash": "sha256:c2hash",
+            "event_hash": "sha256:a0016334dd1092ef308d350713909bd0c92834efbacf6b357533d89eae9a14eb",
             "payload": {
                 "session_id": "sess-b",
                 "task_id": "task-2",
@@ -200,13 +200,13 @@ def test_build_coordination_row() -> None:
         "sequence": 1,
         "created_at": "2025-01-01T00:00:00Z",
         "event_name": "coord.session.registered",
-        "event_hash": "sha256:h",
+        "event_hash": "sha256:aaa9402664f1a41f40ebbc52c9993eb66aeb366602958fdfaa283b71e64db123",
         "payload": {
             "session_id": "sess-a",
             "task_id": "task-1",
             "event_kind": "session_registered",
             "status": "running",
-            "path_hashes": ["sha256:abc"],
+            "path_hashes": ["sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
             "path_count": 1,
         },
     }
@@ -216,7 +216,7 @@ def test_build_coordination_row() -> None:
     assert row["event_name"] == "coord.session.registered"
     assert row["event_kind"] == "session_registered"
     assert row["path_count"] == 1
-    assert row["path_hashes"] == ["sha256:abc"]
+    assert row["path_hashes"] == ["sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"]
 
 
 def test_build_conflict_row_from_refused() -> None:
@@ -225,14 +225,14 @@ def test_build_conflict_row_from_refused() -> None:
         "session_id": "sess-b",
         "created_at": "2025-01-01T00:00:02Z",
         "event_name": "coord.path.reservation_refused",
-        "event_hash": "sha256:h3",
+        "event_hash": "sha256:97fb5f8538b89f6c1accfd19836b65a73b61fbc2e0cbf84bb858a0fffa3f1592",
         "payload": {
             "conflict_kind": "path_write_overlap",
             "conflict_id": "c-1",
             "session_id": "sess-b",
             "other_session_id": "sess-a",
             "resolution_kind": "serialize_or_split_scope",
-            "path_hashes": ["sha256:def"],
+            "path_hashes": ["sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34"],
             "path_count": 1,
         },
     }
@@ -259,18 +259,18 @@ def test_build_artifact_reuse_row() -> None:
         "session_id": "sess-a",
         "created_at": "2025-01-01T00:00:03Z",
         "event_name": "coord.artifact.published",
-        "event_hash": "sha256:h4",
+        "event_hash": "sha256:e9590c04cea54beb769a96148583176605389b3a3809162f2fd6392b43fb8382",
         "payload": {
             "session_id": "sess-a",
             "task_id": "task-1",
             "artifact_kind": "search_results",
-            "artifact_sha256": "sha256:art1",
+            "artifact_sha256": "sha256:2fdceec5cd7cf785f9caedb75f09d901ed20eabb93dab14eac23ac579214372c",
         },
     }
     row = _build_artifact_reuse_row(event)
     assert row is not None
     assert row["artifact_kind"] == "search_results"
-    assert row["artifact_sha256"] == "sha256:art1"
+    assert row["artifact_sha256"] == "sha256:2fdceec5cd7cf785f9caedb75f09d901ed20eabb93dab14eac23ac579214372c"
 
 
 def test_build_artifact_reuse_row_missing_fields() -> None:
@@ -284,7 +284,7 @@ def test_build_checkpoint_committed_row() -> None:
         "session_id": "sess-a",
         "created_at": "2025-01-01T00:01:00Z",
         "event_name": "rig.relay.checkpoint.committed",
-        "event_hash": "sha256:c1",
+        "event_hash": "sha256:d0f631ca1ddba8db3bcfcb9e057cdc98d0379f1bee00e75a545147a27dadd982",
         "payload": {
             "session_id": "sess-a",
             "task_id": "task-1",
@@ -293,8 +293,8 @@ def test_build_checkpoint_committed_row() -> None:
             "post_commit_head": "def",
             "commit_sha": "def",
             "files_committed_count": 2,
-            "validation_summary_hash": "sha256:v",
-            "checkpoint_artifact_sha256": "sha256:a",
+            "validation_summary_hash": "sha256:4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080",
+            "checkpoint_artifact_sha256": "sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
             "status": "committed",
         },
     }
@@ -311,7 +311,7 @@ def test_build_checkpoint_refused_row() -> None:
         "session_id": "sess-b",
         "created_at": "2025-01-01T00:02:00Z",
         "event_name": "rig.relay.checkpoint.refused",
-        "event_hash": "sha256:c2",
+        "event_hash": "sha256:9c0abe51c6e6655d81de2d044d4fb194931f058c0426c67c7285d8f5657ed64a",
         "payload": {
             "session_id": "sess-b",
             "task_id": "task-2",
@@ -334,7 +334,7 @@ def test_check_forbidden_rejects_raw_content() -> None:
 
 
 def test_check_forbidden_accepts_clean_row() -> None:
-    row = {"session_id": "x", "artifact_sha256": "sha256:abc"}
+    row = {"session_id": "x", "artifact_sha256": "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}
     violations = _check_forbidden(row)
     assert violations == []
 
@@ -353,7 +353,7 @@ def test_cross_session_coordination_row_validates(schemas_dir: Path) -> None:
         "sequence": 1,
         "created_at": "2025-01-01T00:00:00Z",
         "event_name": "coord.session.registered",
-        "event_hash": "sha256:h",
+        "event_hash": "sha256:aaa9402664f1a41f40ebbc52c9993eb66aeb366602958fdfaa283b71e64db123",
         "event_kind": "session_registered",
     }
     from scripts.rig_relay_export_coordination_datasets import _validate_row
@@ -385,7 +385,7 @@ def test_artifact_reuse_row_validates(schemas_dir: Path) -> None:
         "schema_version": "rig.relay.artifact_reuse.v1",
         "session_id": "sess-a",
         "artifact_kind": "search_results",
-        "artifact_sha256": "sha256:art1",
+        "artifact_sha256": "sha256:2fdceec5cd7cf785f9caedb75f09d901ed20eabb93dab14eac23ac579214372c",
         "created_at": "2025-01-01T00:00:00Z",
     }
     from scripts.rig_relay_export_coordination_datasets import _validate_row
@@ -517,7 +517,7 @@ def test_export_strips_forbidden_content(tmp_path: Path) -> None:
             "sequence": 1,
             "created_at": "2025-01-01T00:00:00Z",
             "event_name": "coord.session.registered",
-            "event_hash": "sha256:bad",
+            "event_hash": "sha256:2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1",
             "payload": {"session_id": "sess-a", "prompt": "this should be caught"},
         }
     ]

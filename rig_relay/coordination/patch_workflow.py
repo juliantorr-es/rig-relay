@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 from rig_relay.coordination.patch_proposal import PatchDecision, PatchProposal
 
@@ -71,7 +72,7 @@ def create_patch_decision(
     *,
     proposal_id: str,
     decided_by: str,
-    decision: str,
+    decision: Literal["accepted", "rejected", "needs_revision", "superseded"],
     reason: str,
     decision_id: str | None = None,
 ) -> PatchDecision:

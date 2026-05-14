@@ -10,6 +10,7 @@ from anyio import Path
 from rig_relay.core.cartographer.models import (
     CartographerReceipt,
     FindingCandidate,
+    FindingKind,
     PatchPlan,
     RegulationDecision,
 )
@@ -139,7 +140,7 @@ class CartographerLoop:
                     # Convert out of scope finding to FindingCandidate seed
                     candidate = FindingCandidate(
                         finding_id=f"oos_{hashlib.sha256(line.encode()).hexdigest()[:8]}",
-                        kind="implementation_gap",  # default mapping
+                        kind=FindingKind.IMPLEMENTATION_GAP,
                         title=data.get("title", "Ingested Out-of-Scope Finding"),
                         summary=data.get("description", ""),
                         files=data.get("affected_files", []),

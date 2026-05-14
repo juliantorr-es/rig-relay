@@ -5,11 +5,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from rig_relay.core.telemetry.constants import EventName
+
 try:
     import duckdb
-
-    from rig_relay.core.telemetry.constants import EventName
-
     HAS_DUCKDB = True
 except ImportError:
     HAS_DUCKDB = False
@@ -92,12 +91,15 @@ class DuckDBProjection:
         summary.malformed_line_count = self._count_malformed_lines(log_files, summary)
 
         # 2. DuckDB Projections
+        if not HAS_DUCKDB:
+            return summary
+        import duckdb
         file_paths = [str(p) for p in log_files]
         con = duckdb.connect(database=":memory:")
 
         try:
             # Using Relation API to avoid fragile SQL string interpolation
-            rel = con.read_json(file_paths)
+            rel = con.read_json(file_paths)  # type: ignore[arg-type]
 
             # 2a. Basic event counts
             res = rel.aggregate(

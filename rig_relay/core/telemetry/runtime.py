@@ -8,7 +8,7 @@ import subprocess
 import sys
 from typing import Any
 
-from rig_relay import __version__
+from rig_relay import __version__, RIG_ROOT
 
 _CRITICAL_SYMBOLS = [
     "write_assembly_report",
@@ -56,7 +56,7 @@ def _get_git_head() -> str | None:
 
 
 def resolve_repo_root() -> Path | None:
-    """Resolve repository root from vibe package location."""
+    """Resolve repository root from rig_relay package location."""
     pkg = RIG_ROOT.resolve()
     for parent in [pkg] + list(pkg.parents):
         if (parent / ".git").exists():
@@ -131,8 +131,8 @@ def check_runtime_provenance() -> RuntimeProvenanceResult:
     python_exe = sys.executable
     rig_relay_cmd = shutil.which("rig-relay")
     pkg_path = str(RIG_ROOT.resolve())
-    agent_loop_path = get_module_path("vibe.core.agent_loop")
-    assembler_path = get_module_path("vibe.core.context.assembler")
+    agent_loop_path = get_module_path("rig_relay.core.agent_loop")
+    assembler_path = get_module_path("rig_relay.context.assembler")
     git_head = _get_git_head()
     symbols = _check_critical_symbols()
 

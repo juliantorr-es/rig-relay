@@ -250,7 +250,7 @@ class CockpitAPI:
 
         # Schedule processing on the background loop (thread-safe)
         lh = self._loop_holder
-        if lh is not None and lh[0] is not None:
+        if lh is not None and lh[0] is not None and self._adapter is not None:
             asyncio.run_coroutine_threadsafe(
                 self._adapter.process_message(text, msg_id), lh[0]
             )
@@ -327,16 +327,7 @@ class CockpitAPI:
 
 def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool = False) -> None:
     """Open pywebview window with optional WebSocket stream."""
-    try:
-        import webview  # type: ignore[import-untyped]
-        if not hasattr(webview, "__version__"):
-            webview.__version__ = "6.2.1"
-    except ImportError:
-        if not server_only:
-            print("pywebview not available. Install with: uv add pywebview")
-            print("Running dry-run instead...")
-            _dry_run(ws_port or DEFAULT_WS_PORT)
-            return
+    import time
 
     index_path = FRONTEND_DIR / "index.html"
     if not index_path.is_file():
@@ -374,7 +365,66 @@ def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool =
         )
         ws_thread.start()
         # Give the server a moment to start
-        import time
+        time.sleep(0.5)
+
+    if server_only:
+        print("Server-only mode. WebSocket is running.")
+        print(f"URL: file://{index_path}")
+        print(f"WebSocket Token: {ws_token}")
+        print("Press Ctrl+C to exit.")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("Exiting...")
+            return
+
+    try:
+        import webview  # type: ignore[import-untyped]
+    except ImportError:
+        print("pywebview not available. Install with: uv add pywebview")
+        print("Running dry-run instead...")
+        _dry_run(ws_port or DEFAULT_WS_PORT)
+        return
+    if not hasattr(webview, "__version__"):  # type: ignore[reportAttributeAccessIssue]
+        webview.__version__ = "6.2.1"  # type: ignore[reportAttributeAccessIssue]
+
+    index_path = FRONTEND_DIR / "index.html"
+    if not index_path.is_file():
+        print(f"Frontend not found at {index_path}")
+        return
+
+    ws_token: str | None = None
+    if ws_port is not None:
+        ws_token = _generate_ws_token()
+
+    loop_holder: list[asyncio.AbstractEventLoop] = [None]  # type: ignore[list-item]
+    server_holder: list[ProjectionWebSocketServer] = [None]  # type: ignore[list-item]
+
+    api = CockpitAPI(
+        ws_token=ws_token,
+        ws_port=ws_port,
+        loop_holder=loop_holder,
+        server_holder=server_holder,
+        mode=mode,
+    )
+
+    if ws_port is not None:
+        ws_thread = threading.Thread(
+            target=_run_ws_server,
+            args=(
+                BUILD_ROOT,
+                "127.0.0.1",
+                ws_port,
+                ws_token,
+                api.get_chat_state,
+                loop_holder,
+                server_holder,
+            ),
+            daemon=True,
+        )
+        ws_thread.start()
+        # Give the server a moment to start
         time.sleep(0.5)
 
     if server_only:

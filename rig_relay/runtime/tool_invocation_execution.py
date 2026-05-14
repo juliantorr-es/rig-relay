@@ -117,6 +117,45 @@ class _LeaseClaimOutcome:
     lease_info: tuple[str, str, list[str]] | None = None
 
 
+def _build_tool_receipt(tool_name: str, result: Any) -> Any:
+    """Build a receipt for a given tool result.
+
+    Creates a minimal tool instance and delegates to its build_receipt method.
+    """
+    from rig_relay.core.tools.base import BaseToolState
+
+    match tool_name:
+        case "validate":
+            from rig_relay.core.tools.builtins.validate import Validate
+            from rig_relay.core.tools.builtins.validate_models import ValidateToolConfig
+
+            tool = Validate(config_getter=lambda: ValidateToolConfig(), state=BaseToolState())
+        case "search_replace":
+            from rig_relay.core.tools.builtins.search_replace import (
+                SearchReplace,
+                SearchReplaceConfig,
+            )
+
+            tool = SearchReplace(
+                config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
+            )
+        case "write_file":
+            from rig_relay.core.tools.builtins.write_file import WriteFile, WriteFileConfig
+
+            tool = WriteFile(
+                config_getter=lambda: WriteFileConfig(), state=BaseToolState()
+            )
+        case "bash":
+            from rig_relay.core.tools.builtins.bash import Bash, BashToolConfig
+
+            tool = Bash(
+                config_getter=lambda: BashToolConfig(), state=BaseToolState()
+            )
+        case _:
+            return None
+    return tool.build_receipt(result)
+
+
 class RuntimeToolExecutionRunner:
     """Executes tools through the adapter.
 
@@ -916,48 +955,21 @@ class RuntimeToolExecutionRunner:
         return result
 
     @staticmethod
+    @staticmethod
     def _build_validate_receipt(result: Any) -> Any:
-        """Build a receipt from a validate result."""
-        from rig_relay.core.tools.base import BaseToolState
-        from rig_relay.core.tools.builtins.validate import Validate
-        from rig_relay.core.tools.builtins.validate_models import ValidateToolConfig
-
-        tool = Validate(
-            config_getter=lambda: ValidateToolConfig(), state=BaseToolState()
-        )
-        return tool.build_receipt(result)
+        return _build_tool_receipt("validate", result)
 
     @staticmethod
     def _build_search_replace_receipt(result: Any) -> Any:
-        """Build a receipt from a search_replace result."""
-        from rig_relay.core.tools.base import BaseToolState
-        from rig_relay.core.tools.builtins.search_replace import (
-            SearchReplace,
-            SearchReplaceConfig,
-        )
-
-        tool = SearchReplace(
-            config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
-        )
-        return tool.build_receipt(result)
+        return _build_tool_receipt("search_replace", result)
 
     @staticmethod
     def _build_write_file_receipt(result: Any) -> Any:
-        """Build a receipt from a write_file result."""
-        from rig_relay.core.tools.base import BaseToolState
-        from rig_relay.core.tools.builtins.write_file import WriteFile, WriteFileConfig
-
-        tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
-        return tool.build_receipt(result)
+        return _build_tool_receipt("write_file", result)
 
     @staticmethod
     def _build_bash_receipt(result: Any) -> Any:
-        """Build a receipt from a bash result."""
-        from rig_relay.core.tools.base import BaseToolState
-        from rig_relay.core.tools.builtins.bash import Bash, BashToolConfig
-
-        tool = Bash(config_getter=lambda: BashToolConfig(), state=BaseToolState())
-        return tool.build_receipt(result)
+        return _build_tool_receipt("bash", result)
 
     def _claim_mutation_lease(
         self, envelope: RuntimeToolInvocationEnvelope, file_path: str

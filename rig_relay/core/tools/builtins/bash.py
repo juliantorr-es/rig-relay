@@ -347,6 +347,10 @@ class Bash(
             label=f"outside workdir ({glob})",
         )
 
+    @staticmethod
+    def _build_timeout_error(command: str, timeout: int) -> ToolError:
+        return ToolError(f"Command timed out after {timeout}s: {command[:200]}")
+
     def _find_denylist_match(self, command: str) -> str | None:
         return next(
             (p for p in self.config.denylist if _matches_pattern(command, p)), None

@@ -39,17 +39,8 @@ VALID_STATES = frozenset({
 
 
 def _get_current_version() -> str:
-    """Read current version from vibe/__init__.py."""
-    init_path = REPO_ROOT / "vibe" / "__init__.py"
-    if not init_path.is_file():
-        return "unknown"
-    for line in init_path.read_text("utf-8").splitlines():
-        if line.startswith("__version__"):
-            parts = line.split("=", 1)
-            PARTS_EXPECTED = 2
-            if len(parts) == PARTS_EXPECTED:
-                return parts[1].strip().strip('"').strip("'")
-    return "unknown"
+    from rig_relay import __version__
+    return __version__
 
 
 def _compare_versions(current: str, latest: str) -> bool:

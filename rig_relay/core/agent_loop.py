@@ -153,87 +153,10 @@ if TYPE_CHECKING:
     from rig_relay.core.teleport.types import TeleportPushResponseEvent, TeleportYieldEvent
 
 
-class ToolExecutionResponse(StrEnum):
-    SKIP = auto()
-    EXECUTE = auto()
 
-
-class ToolDecision(BaseModel):
-    verdict: ToolExecutionResponse
-    approval_type: ToolPermission
-    feedback: str | None = None
-
-
-class AgentLoopError(Exception):
-    """Base exception for AgentLoop errors."""
-
-
-class AgentLoopStateError(AgentLoopError):
-    """Raised when agent loop is in an invalid state."""
-
-
-class AgentLoopLLMResponseError(AgentLoopError):
-    """Raised when LLM response is malformed or missing expected data."""
-
-
-class TeleportError(AgentLoopError):
-    """Raised when teleport to Vibe Code fails."""
-
-
-def _should_raise_rate_limit_error(e: Exception) -> bool:
-    return isinstance(e, BackendError) and e.status == HTTPStatus.TOO_MANY_REQUESTS
-
-
-def _is_context_too_long_error(e: Exception) -> bool:
-    if isinstance(e, BackendError):
-        return e.is_context_too_long
-    if isinstance(e, RuntimeError) and isinstance(e.__cause__, BackendError):
-        return e.__cause__.is_context_too_long
-    return False
-
-
-def _is_non_retryable_error(e: BaseException) -> bool:
-    # Detect Temporal-style ``non_retryable`` flag without importing temporalio.
-    # Walks ``__cause__`` so an ``ActivityError`` whose cause is a non-retryable
-    # ``ApplicationError`` is detected too — that's what callers driving the
-    # agent loop from a Temporal activity will see when a sub-activity has
-    # already failed terminally.
-    seen: set[int] = set()
-    current: BaseException | None = e
-    while current is not None and id(current) not in seen:
-        if getattr(current, "non_retryable", False):
-            return True
-        seen.add(id(current))
-        current = current.__cause__
-    return False
-
-
-def requires_init(fn: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator that awaits deferred initialization before executing the method."""
-    if inspect.isasyncgenfunction(fn):
-
-        @wraps(fn)
-        async def gen_wrapper(self: AgentLoop, *args: Any, **kwargs: Any) -> Any:
-            await self.wait_until_ready()
-            agen = fn(self, *args, **kwargs)
-            sent: Any = None
-            try:
-                while True:
-                    sent = yield await agen.asend(sent)
-            except StopAsyncIteration:
-                return
-            finally:
-                await agen.aclose()
-
-        return gen_wrapper
-
-    @wraps(fn)
-    async def wrapper(self: AgentLoop, *args: Any, **kwargs: Any) -> Any:
-        await self.wait_until_ready()
-        return await fn(self, *args, **kwargs)
-
-    return wrapper
-
+from rig_relay.core._agent_helpers import _is_context_too_long_error, _is_non_retryable_error, _should_raise_rate_limit_error, requires_init
+from rig_relay.core._agent_models import ToolDecision, ToolExecutionResponse
+from rig_relay.core._errors import AgentLoopError, AgentLoopStateError, AgentLoopLLMResponseError, TeleportError
 
 class AgentLoop:
     def __init__(  # noqa: PLR0913, PLR0915

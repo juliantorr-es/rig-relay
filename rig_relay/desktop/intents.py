@@ -339,6 +339,20 @@ def _build_result(
     return result
 
 
+def _classify_intent(intent_name: str) -> str:
+    """Classify an intent by security level.
+
+    Returns "phase1_protected", "protected", "allowed", or "unsupported".
+    """
+    if intent_name in PHASE_1_ENABLED:
+        return "phase1_protected"
+    if intent_name in PROTECTED_INTENTS:
+        return "protected"
+    if intent_name in ALLOWED_INTENTS:
+        return "allowed"
+    return "unsupported"
+
+
 def execute_desktop_intent(
     request: dict[str, Any],
     chat_state_provider: Any | None = None,
@@ -399,128 +413,79 @@ def execute_desktop_intent(
         if inspect.iscoroutine(result):
             asyncio.create_task(result)
 
-    # Check Phase 1 protected intents (receipt-gated)
-    if intent_name in PHASE_1_ENABLED:
-        _emit_progress(
-            EVENT_OPERATION_STARTED,
-            phase="phase_1_protected",
-            status="running",
-            message=f"Starting Phase 1 protected intent '{intent_name}'",
-            result_kind=PHASE_1_ENABLED.get(intent_name, ""),
-        )
-        result = _handle_phase_1_protected_intent(
-            intent_name,
-            intent_id,
-            request.get("parameters", {}),
-            request.get("authorization_receipt"),
-        )
-        status = result.get("status", "failed")
-        if status == "refused":
+    # Unified dispatch: classify intent and execute
+    match _classify_intent(intent_name):
+        case "phase1_protected":
             _emit_progress(
-                EVENT_OPERATION_REFUSED,
+                EVENT_OPERATION_STARTED,
                 phase="phase_1_protected",
-                status="refused",
-                message=result.get(
-                    "summary", f"Protected intent '{intent_name}' refused"
-                ),
+                status="running",
+                message=f"Starting Phase 1 protected intent '{intent_name}'",
+                result_kind=PHASE_1_ENABLED.get(intent_name, ""),
             )
-        elif status == "completed":
+            result = _handle_phase_1_protected_intent(
+                intent_name,
+                intent_id,
+                request.get("parameters", {}),
+                request.get("authorization_receipt"),
+            )
+            status = result.get("status", "failed")
+            event = EVENT_OPERATION_COMPLETED if status == "completed" else (
+                EVENT_OPERATION_REFUSED if status == "refused" else EVENT_OPERATION_FAILED
+            )
             _emit_progress(
-                EVENT_OPERATION_COMPLETED,
-                phase="phase_1_protected",
-                status="completed",
-                message=result.get(
-                    "summary", f"Protected intent '{intent_name}' completed"
-                ),
+                event, phase="phase_1_protected", status=status,
+                message=result.get("summary", f"Protected intent '{intent_name}': {status}"),
                 result_kind=result.get("result_kind", ""),
-                projection_refresh_recommended=result.get(
-                    "projection_refresh_recommended", False
-                ),
+                projection_refresh_recommended=result.get("projection_refresh_recommended", False),
                 warnings=result.get("warnings", []),
             )
-        else:
+            emit_result(result)
+            return result
+
+        case "protected":
+            result = _build_result(
+                intent_name, intent_id, "refused",
+                authorization_required=True,
+                error_code=PROTECTED_INTENTS.get(intent_name, "unknown"),
+                summary=f"Protected intent '{intent_name}' refused. Not enabled for receipt-gated execution.",
+            )
+            _emit_progress(EVENT_OPERATION_REFUSED, phase="protected_check", status="refused",
+                           message=f"Protected intent '{intent_name}' refused")
+            emit_result(result)
+            return result
+
+        case "allowed":
             _emit_progress(
-                EVENT_OPERATION_FAILED,
-                phase="phase_1_protected",
-                status="failed",
-                message=result.get(
-                    "summary", f"Protected intent '{intent_name}' failed"
-                ),
+                EVENT_OPERATION_STARTED, phase=intent_name, status="running",
+                message=f"Starting intent '{intent_name}'",
+                result_kind=ALLOWED_INTENTS[intent_name].get("description", "").split(".")[0],
+            )
+            result = _execute_allowed_intent(
+                intent_name, intent_id, request.get("parameters", {}), chat_state_provider
+            )
+            result_status = result.get("status", "failed")
+            _emit_progress(
+                EVENT_OPERATION_COMPLETED if result_status == "completed" else EVENT_OPERATION_FAILED,
+                phase=intent_name, status=result_status,
+                message=result.get("summary", f"Intent '{intent_name}': {result_status}"),
+                result_kind=result.get("result_kind", ""),
+                projection_refresh_recommended=result.get("projection_refresh_recommended", False),
                 warnings=result.get("warnings", []),
             )
-        emit_result(result)
-        return result
+            emit_result(result)
+            return result
 
-    # Check remaining protected intents (always refused)
-    if intent_name in PROTECTED_INTENTS:
-        result = _build_result(
-            intent_name,
-            intent_id,
-            "refused",
-            authorization_required=True,
-            error_code=PROTECTED_INTENTS[intent_name],
-            summary=f"Protected intent '{intent_name}' refused. Not enabled for receipt-gated execution.",
-        )
-        _emit_progress(
-            EVENT_OPERATION_REFUSED,
-            phase="protected_check",
-            status="refused",
-            message=f"Protected intent '{intent_name}' refused",
-        )
-        emit_result(result)
-        return result
-
-    # Check allowed intents
-    if intent_name not in ALLOWED_INTENTS:
-        result = _build_result(
-            intent_name,
-            intent_id,
-            "refused",
-            error_code="unsupported_intent",
-            summary=f"Unknown intent '{intent_name}'. Allowed: {', '.join(sorted(ALLOWED_INTENTS))}",
-        )
-        _emit_progress(
-            EVENT_OPERATION_REFUSED,
-            phase="intent_check",
-            status="refused",
-            message=f"Unknown intent '{intent_name}'",
-        )
-        emit_result(result)
-        return result
-
-    # Execute allowed intent
-    _emit_progress(
-        EVENT_OPERATION_STARTED,
-        phase=intent_name,
-        status="running",
-        message=f"Starting intent '{intent_name}'",
-        result_kind=ALLOWED_INTENTS[intent_name].get("description", "").split(".")[0],
-    )
-
-    result = _execute_allowed_intent(
-        intent_name, intent_id, request.get("parameters", {}), chat_state_provider
-    )
-
-    result_status = result.get("status", "failed")
-    result_event_type = (
-        EVENT_OPERATION_COMPLETED
-        if result_status == "completed"
-        else EVENT_OPERATION_FAILED
-    )
-    _emit_progress(
-        result_event_type,
-        phase=intent_name,
-        status=result_status,
-        message=result.get("summary", f"Intent '{intent_name}': {result_status}"),
-        result_kind=result.get("result_kind", ""),
-        projection_refresh_recommended=result.get(
-            "projection_refresh_recommended", False
-        ),
-        warnings=result.get("warnings", []),
-    )
-
-    emit_result(result)
-    return result
+        case _:  # unsupported
+            result = _build_result(
+                intent_name, intent_id, "refused",
+                error_code="unsupported_intent",
+                summary=f"Unknown intent '{intent_name}'.",
+            )
+            _emit_progress(EVENT_OPERATION_REFUSED, phase="intent_check", status="refused",
+                           message=f"Unknown intent '{intent_name}'")
+            emit_result(result)
+            return result
 
 
 # ── Phase 1 Protected Intent Gate ─────────────────────────────────────

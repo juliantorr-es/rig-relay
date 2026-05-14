@@ -379,6 +379,17 @@ class Validate(
             refusal_reason=reason,
         )
 
+    def _denied_profile_reason(
+        self, args: ValidateArgs, profile: Profile
+    ) -> str | None:
+        if args.env_profile is not None:
+            return None
+        if profile.allow_mutation and not args.allow_mutation:
+            return "Profile requires mutation but --allow-mutation not set"
+        if profile.allow_network and not args.allow_network:
+            return "Profile requires network but --allow-network not set"
+        return None
+
     def _build_run_context(
         self, args: ValidateArgs, ctx: InvokeContext | None
     ) -> tuple[
@@ -402,9 +413,10 @@ class Validate(
         scheduler_store = ValidationSchedulerStore(resolve_scheduler_root(None, cwd))
         cache_enabled = args.cache_policy != CACHE_POLICY_DISABLED
         scheduler_enabled = args.scheduler_policy != "disabled"
+        profile = get_profile(args.profile)
         scheduler_warnings = [
             warning
-            for check in get_profile(args.profile).checks if get_profile(args.profile) is not None
+            for check in (profile.checks if profile is not None else [])
             for warning in check_lifecycle_policy(args.validation_phase, args.profile, check.argv)
         ]
         return (
@@ -418,9 +430,9 @@ class Validate(
             scheduler_warnings,
         )
 
-    async def run(
+    async def run(  # type: ignore[override]
         self, args: ValidateArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | ValidateResult, None]:
+    ) -> AsyncGenerator[ToolStreamEvent | ValidateResult | str, None]:
         profile = get_profile(args.profile)
         if profile is None:
             known = ", ".join(list_profiles())

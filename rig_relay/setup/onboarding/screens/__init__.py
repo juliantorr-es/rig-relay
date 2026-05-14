@@ -1,6 +1,6 @@
-from __future__ import annotations
+"""Onboarding screens — console-based prompts."""
 
-from rig_relay.setup.onboarding.screens.api_key import ApiKeyScreen
-from rig_relay.setup.onboarding.screens.welcome import WelcomeScreen
+from rig_relay.setup.onboarding.screens.api_key import run_api_key_screen
+from rig_relay.setup.onboarding.screens.welcome import show_welcome
 
-__all__ = ["ApiKeyScreen", "WelcomeScreen"]
+__all__ = ["run_api_key_screen", "show_welcome"]

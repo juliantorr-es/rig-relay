@@ -2,21 +2,36 @@
 
 Conventions for AI agents and humans contributing to **Rig Relay** — a Python 3.12+ CLI coding assistant managed with `uv`.
 
-Layout: `vibe/core` is the engine (agent loop, tools, LLM backends, config); `vibe/cli` is the Textual TUI; `vibe/acp` bridges to the Agent Client Protocol; `vibe/setup` runs first-run wizards. Tests live in `tests/` with autouse fixtures in `conftest.py` and test doubles in `tests/stubs/`.
+Layout: `rig_relay/` is the entire product tree — `core/` (engine: agent loop, LLM backends, config, tools), `acp/` (Agent Client Protocol), `cli/` (entry points, desktop cockpit), `desktop/` (cockpit backend, intents), `evidence/` (receipts, lifecycle), `governance/` (auth, dirty guard), `runtime/` (supervisor, tool invocation), `coordination/` (store, leases, fleet), `identity/` (OAuth, consent), `context/` (compiler, symbol indexing). Tests live in `tests/` with autouse fixtures in `conftest.py` and test doubles in `tests/stubs/`.
 
 ## Commands
 
 Always go through `uv` — never invoke bare `python` or `pip`.
 
-- `uv run rig-relay` / `uv run rig-relay-acp` — the two primary entry points.
-- `uv run rig-relay --help` — show available flags and commands.
-- `uv run rig-relay-cockpit` — start the pywebview desktop cockpit (primary surface).
-- `uv run vibe` — legacy compatibility alias (deprecated).
+- `uv run rig-relay` — launch the Desktop Cockpit (primary surface).
+- `uv run rig-relay-acp` — launch the ACP server.
+- `uv run rig-relay --help` / `uv run rig-relay-acp --help` — show flags.
 - `uv run pytest` — full suite (parallel via `pytest-xdist`).
 - `uv run pyright` — strict type check.
 - `uv run ruff check --fix .` and `uv run ruff format .` — run both after every code change and report the files modified.
-- `uv run pre-commit run --all-files` — full lint pass. Install once with `uv tool install pre-commit && uv run pre-commit install`.
-- Useful uv basics: `uv sync --all-extras`, `uv add <pkg>`, `uv remove <pkg>`.
+- Useful uv basics: `uv sync`, `uv add <pkg>`, `uv remove <pkg>`.
+
+### CLI tools for file operations
+
+Prefer these over raw `find`/`grep`/`sed`:
+
+- **`rg`** (ripgrep) — fast recursive search: `rg PATTERN [PATH]`
+- **`fd`** — fast file find: `fd -e py PATTERN` (vs `find -name`)
+- **`sd`** — better `sed`: `sd 'BEFORE' 'AFTER' FILE` (no BSD sed quirks)
+- **`sg`** (ast-grep) — AST-aware structural search: `sg -p 'async def $NAME($$$)'`
+- **`bat`** — `cat` with syntax highlighting: `bat file.py`
+- **`jq`** — JSON query: `jq '.key' file.json`
+- **`yq`** — TOML/YAML query: `yq '.project.scripts' pyproject.toml`
+- **`hyperfine`** — benchmark commands: `hyperfine 'uv run pytest -n auto' --warmup 2`
+- **`difft`** (difftastic) — AST-aware diff: `difft --color always file1.py file2.py`
+- **`watchexec`** — auto-run on file change: `watchexec -e py 'uv run pytest -x'`
+- **`just`** — command runner (like Make but simpler): `just <recipe>`
+- **`eza`** — modern `ls`: `eza --tree --git --icons`
 
 ## Project layout & module conventions
 
