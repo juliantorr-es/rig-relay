@@ -99,6 +99,8 @@ QueuePanelWidget > .queue-row {
         lines.append(
             f"Selected: {selected.kind} {selected.status} {_cap(selected.title)}"
         )
+        if selected.payload_ref:
+            lines.append(f"Payload: {_cap(selected.payload_ref, 48)}")
         lines.append(f"Created: {selected.created_at or 'unknown'}")
         if selected.blocked_reason:
             lines.append(f"Blocked: {_cap(selected.blocked_reason)}")

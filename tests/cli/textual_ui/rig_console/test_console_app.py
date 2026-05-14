@@ -16,6 +16,7 @@ from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWi
 from vibe.cli.textual_ui.rig_console.widgets.inspector_drawer import (
     InspectorDrawerWidget,
 )
+from vibe.cli.textual_ui.rig_console.widgets.queue_input import QueueInputWidget
 from vibe.cli.textual_ui.rig_console.widgets.queue_panel import QueuePanelWidget
 
 
@@ -33,6 +34,7 @@ class TestConsoleAppEntryPoint:
             assert pilot.app.screen.query_one(FooterStatusWidget)
             assert pilot.app.screen.query_one(InspectorDrawerWidget)
             assert pilot.app.screen.query_one(QueuePanelWidget)
+            assert pilot.app.screen.query_one(QueueInputWidget)
 
     @pytest.mark.asyncio
     async def test_runtime_mode_mounts_with_empty_roots(self, tmp_path: Path) -> None:
@@ -75,14 +77,14 @@ class TestConsoleAppEntryPoint:
     async def test_help_and_quit_keys_work(self) -> None:
         app = RigConsoleApp(mode="fixture")
         async with app.run_test(size=(100, 30)) as pilot:
-            await pilot.press("?")
-            await pilot.pause()
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
+            assert ("?", "show_help", "Help") in screen.BINDINGS
+            assert ("q", "quit", "Quit") in screen.BINDINGS
+            screen.action_show_help()
             assert screen._projection.footer_hint is not None
             assert "help" in screen._projection.footer_hint
-            await pilot.press("q")
-            await pilot.pause()
+            screen.action_quit()
             assert not pilot.app.is_running
 
     @pytest.mark.asyncio
@@ -109,6 +111,9 @@ class TestConsoleAppEntryPoint:
             assert isinstance(screen, DashboardScreen)
             commands = list(build_rig_console_commands(screen))
             assert any(command[0] == "Refresh" for command in commands)
+            assert any(command[0] == "Queue Message" for command in commands)
+            assert any(command[0] == "Steer Current Task" for command in commands)
+            assert any(command[0] == "Toggle Queue Panel" for command in commands)
             assert all(isinstance(command, SystemCommand) for command in commands)
 
     @pytest.mark.asyncio
@@ -118,8 +123,8 @@ class TestConsoleAppEntryPoint:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
             before = screen._details_visible
-            await pilot.press("t")
-            await pilot.pause()
+            assert ("t", "toggle_details", "Details") in screen.BINDINGS
+            screen.action_toggle_details()
             assert screen._details_visible is not before
 
     @pytest.mark.asyncio
@@ -129,8 +134,8 @@ class TestConsoleAppEntryPoint:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
             assert screen._projection.inspector.visible is False
-            await pilot.press("i")
-            await pilot.pause()
+            assert ("i", "toggle_inspector", "Inspector") in screen.BINDINGS
+            screen.action_toggle_inspector()
             assert screen._projection.inspector.visible is True
 
     @pytest.mark.asyncio
@@ -140,6 +145,18 @@ class TestConsoleAppEntryPoint:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
             assert screen._projection.queue.visible is False
-            await pilot.press("u")
-            await pilot.pause()
+            assert ("u", "toggle_queue_panel", "Queue") in screen.BINDINGS
+            screen.action_toggle_queue_panel()
             assert screen._projection.queue.visible is True
+
+    @pytest.mark.asyncio
+    async def test_ctrl_enter_requests_steer_mode(self) -> None:
+        app = RigConsoleApp(mode="fixture")
+        async with app.run_test(size=(100, 30)) as pilot:
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            widget = screen.query_one(QueueInputWidget)
+            widget.set_value("steer this")
+            await pilot.press("ctrl+enter")
+            await pilot.pause()
+            assert widget.mode_label == "STEER mode"

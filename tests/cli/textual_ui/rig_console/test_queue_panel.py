@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from vibe.cli.textual_ui.rig_console.projections import (
     QueueItemProjection,
     QueueProjection,
@@ -51,6 +52,7 @@ def _queue_projection() -> QueueProjection:
                 kind="validate",
                 status="running",
                 title="Validate quick",
+                payload_ref="local://queue/q-2",
                 receipt_sha256="sha256:receipt",
                 runtime_result_sha256="sha256:result",
             ),
@@ -119,5 +121,6 @@ class TestQueuePanelWidget:
         projection = _queue_projection()
         widget = QueuePanelWidget(projection)
         text = "\n".join(widget._render_lines())
+        assert "local://queue/q-2" in text
         assert "sha256:receipt" in text
         assert "sha256:result" in text

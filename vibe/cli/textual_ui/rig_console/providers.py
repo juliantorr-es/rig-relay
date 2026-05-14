@@ -19,8 +19,6 @@ import json
 from pathlib import Path
 from typing import Any, Protocol
 
-from rig_relay.coordination.fleet_queue_runner import FleetQueueRunnerResult
-
 from git import Repo
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -30,7 +28,8 @@ from rig_relay.coordination.fleet_projection import (
     build_fleet_projection,
     build_queue_summary,
 )
-from rig_relay.coordination.fleet_queue import FleetQueue, FleetQueueItemKind
+from rig_relay.coordination.fleet_queue import FleetQueue
+from rig_relay.coordination.fleet_queue_runner import FleetQueueRunnerResult
 from rig_relay.coordination.lease_manager import PathLeaseManager
 from rig_relay.coordination.models import CoordinationSession
 from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
@@ -47,11 +46,6 @@ from rig_relay.runtime.tool_invocation_execution import (
     RuntimeToolExecutionRunner,
     RuntimeToolExecutionStatus,
 )
-from vibe.cli.textual_ui.rig_console.queue_runner import QueueRunnerBridge
-    RuntimeToolExecutionResult,
-    RuntimeToolExecutionRunner,
-    RuntimeToolExecutionStatus,
-)
 from vibe.cli.textual_ui.rig_console.actions import build_validate_runtime_exec_intent
 from vibe.cli.textual_ui.rig_console.projections import (
     DashboardProjection,
@@ -62,6 +56,7 @@ from vibe.cli.textual_ui.rig_console.projections import (
     build_inspector_projection,
     evidence_rail_from_receipt_index,
 )
+from vibe.cli.textual_ui.rig_console.queue_runner import QueueRunnerBridge
 
 _PROVIDER_PATH_CAP = 10
 
@@ -174,6 +169,20 @@ class DashboardProjectionProvider(Protocol):
         """Run governed validate through runtime_exec."""
         ...
 
+    async def run_next_queue_item(self) -> FleetQueueRunnerResult:
+        """Run the next eligible queued item through FleetQueueRunner.
+
+        Returns blocked if queue/runner are unavailable.
+        Returns idle if no runnable item exists.
+        """
+        ...
+
+    def enqueue_validate(
+        self, changed_paths: list[str] | None = None
+    ) -> FleetQueueRunnerResult:
+        """Enqueue a validate item (does not execute it)."""
+        ...
+
 
 class FixtureDashboardProjectionProvider:
     """Fixture provider that returns a fixed DashboardProjection.
@@ -202,6 +211,20 @@ class FixtureDashboardProjectionProvider:
             tool_name=RuntimeToolName.RUNTIME_EXEC.value,
             error_kind="missing_runtime_provider",
             refusal_reason="Validate unavailable in fixture mode",
+        )
+
+    async def run_next_queue_item(self) -> FleetQueueRunnerResult:
+        return FleetQueueRunnerResult(
+            decision="idle", reason="No queue runner in fixture mode"
+        )
+
+    def enqueue_validate(
+        self, changed_paths: list[str] | None = None
+    ) -> FleetQueueRunnerResult:
+        return FleetQueueRunnerResult(
+            decision="blocked",
+            error_kind="fixture_mode",
+            reason="Cannot enqueue validate in fixture mode",
         )
 
 
@@ -500,6 +523,7 @@ class RuntimeDashboardProjectionProvider:
                 status=item.status,
                 title=_queue_title(item.kind, item.payload),
                 summary=_queue_summary(item.payload),
+                payload_ref=_queue_ref(item.payload, "payload_ref"),
                 created_at=item.created_at,
                 blocked_reason=item.blocked_reason,
                 receipt_sha256=_queue_ref(item.payload, "receipt_sha256"),
@@ -518,6 +542,52 @@ class RuntimeDashboardProjectionProvider:
             cancelled_count=counts.get("cancelled", 0),
             selected_index=0,
         )
+
+    def _queue_bridge(self) -> QueueRunnerBridge | None:
+        """Lazily initialize the queue runner bridge."""
+        if self._queue_runner_bridge is not None:
+            return self._queue_runner_bridge
+        if self._coordination_root is None:
+            return None
+        runner = self._runner()
+        if runner is None:
+            return None
+        self._queue_runner_bridge = QueueRunnerBridge(
+            coordination_root=self._coordination_root,
+            executor=runner,
+        )
+        return self._queue_runner_bridge
+
+    async def run_next_queue_item(self) -> FleetQueueRunnerResult:
+        """Run the next eligible queued item through the queue runner bridge.
+
+        Returns blocked/idle/completed/failed according to FleetQueueRunner.
+        Never crashes — returns blocked when bridge is unavailable.
+        """
+        bridge = self._queue_bridge()
+        if bridge is None:
+            return FleetQueueRunnerResult(
+                decision="blocked",
+                error_kind="missing_queue_runner_bridge",
+                reason="Queue runner bridge not configured",
+            )
+        return await bridge.run_next()
+
+    def enqueue_validate(
+        self, changed_paths: list[str] | None = None
+    ) -> FleetQueueRunnerResult:
+        """Enqueue a validate item through the queue runner bridge.
+
+        Returns blocked if bridge is unavailable.
+        """
+        bridge = self._queue_bridge()
+        if bridge is None:
+            return FleetQueueRunnerResult(
+                decision="blocked",
+                error_kind="missing_queue_runner_bridge",
+                reason="Queue runner bridge not configured",
+            )
+        return bridge.enqueue_validate(changed_paths=changed_paths)
 
 
 def _queue_title(kind: str, payload: dict[str, Any]) -> str:

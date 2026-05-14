@@ -30,6 +30,7 @@ from vibe.cli.textual_ui.rig_console.providers import (
     FixtureDashboardProjectionProvider,
     RuntimeDashboardProjectionProvider,
 )
+from vibe.cli.textual_ui.rig_console.queue_runner import QueueRunnerBridge
 from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
@@ -277,12 +278,27 @@ RigConsoleApp {
         self,
     ) -> FixtureDashboardProjectionProvider | RuntimeDashboardProjectionProvider:
         if self._mode == "runtime":
+            queue_runner_bridge: QueueRunnerBridge | None = None
+            validate_runner: RuntimeToolExecutionRunner | None = None
+            if self._coordination_root is not None and self._audit_root is not None:
+                audit_path = (
+                    self._audit_root
+                    if self._audit_root.suffix == ".jsonl"
+                    else self._audit_root / "observability.jsonl"
+                )
+                store = RuntimeAuditPersistenceStore(audit_path)
+                validate_runner = RuntimeToolExecutionRunner(audit_store=store)
+                queue_runner_bridge = QueueRunnerBridge(
+                    coordination_root=self._coordination_root, executor=validate_runner
+                )
             return RuntimeDashboardProjectionProvider(
                 session_id=self._session_id,
                 session_path=self._session_path,
                 workspace_root=self._workspace_root,
                 coordination_root=self._coordination_root,
                 audit_root=self._audit_root,
+                queue_runner_bridge=queue_runner_bridge,
+                validate_runner=validate_runner,
             )
         return FixtureDashboardProjectionProvider(_sample_dashboard())
 

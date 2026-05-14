@@ -15,15 +15,13 @@ Phase 0:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from rig_relay.coordination.fleet_queue import FleetQueue
+from rig_relay.coordination.fleet_queue import FleetQueue, FleetQueueItemKind
 from rig_relay.coordination.fleet_queue_runner import (
     FleetQueueRunner,
     FleetQueueRunnerConfig,
     FleetQueueRunnerResult,
 )
-from rig_relay.coordination.fleet_queue import FleetQueueItemKind
 from rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionRunner
 
 _RUNNER_TIMEOUT_MS = 300_000  # 5 minutes
@@ -37,7 +35,11 @@ class QueueRunnerBridge:
     Never exposes raw content in results.
     """
 
-    def __init__(self, coordination_root: Path | None, executor: RuntimeToolExecutionRunner | None) -> None:
+    def __init__(
+        self,
+        coordination_root: Path | None,
+        executor: RuntimeToolExecutionRunner | None,
+    ) -> None:
         self._coordination_root = coordination_root
         self._executor = executor
 
@@ -79,7 +81,9 @@ class QueueRunnerBridge:
         )
         return await runner.run_once()
 
-    def enqueue_validate(self, changed_paths: list[str] | None = None) -> FleetQueueRunnerResult:
+    def enqueue_validate(
+        self, changed_paths: list[str] | None = None
+    ) -> FleetQueueRunnerResult:
         """Enqueue a validate item. Returns the result synchronously.
 
         Does not execute the item — only enqueues it.
@@ -125,6 +129,7 @@ class QueueRunnerBridge:
 
 def _now_iso() -> str:
     from datetime import UTC, datetime
+
     return datetime.now(UTC).isoformat()
 
 

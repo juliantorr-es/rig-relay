@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
+from uuid import uuid4
 
 from textual._context import NoActiveAppError
 from textual.app import ComposeResult
@@ -12,10 +13,14 @@ from textual.containers import Horizontal
 from textual.css.query import NoMatches
 from textual.screen import Screen
 
+from rig_relay.coordination.fleet_queue_runner import FleetQueueRunnerResult
 from rig_relay.desktop.execution_progress import ExecutionProgressProjection
 from vibe.cli.textual_ui.rig_console.actions import RigConsoleAction
 from vibe.cli.textual_ui.rig_console.intents import DashboardActionResult
-from vibe.cli.textual_ui.rig_console.projections import DashboardProjection
+from vibe.cli.textual_ui.rig_console.projections import (
+    DashboardProjection,
+    QueueItemProjection,
+)
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
 from vibe.cli.textual_ui.rig_console.widgets.fleet_panel import FleetPanelWidget
@@ -27,11 +32,48 @@ from vibe.cli.textual_ui.rig_console.widgets.operator_header import OperatorHead
 from vibe.cli.textual_ui.rig_console.widgets.progress_timeline import (
     ProgressTimelineWidget,
 )
+from vibe.cli.textual_ui.rig_console.widgets.queue_input import QueueInputWidget
 from vibe.cli.textual_ui.rig_console.widgets.queue_panel import QueuePanelWidget
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
 
 
-class DashboardScreen(Screen):
+class DashboardStatusActions:
+    def action_show_runtime_status(self: Any) -> None:
+        """Show runtime adapter status."""
+        status = self._projection.session.status or "unknown"
+        self._set_feedback("runtime_status", f"Runtime status: {status}")
+
+    def action_show_leases(self: Any) -> None:
+        """Show blocker summary as a lease/status snapshot."""
+        blockers = self._projection.session.blocker_summary
+        if not blockers:
+            self._set_feedback("leases", "No active leases or blockers")
+            return
+        parts = ", ".join(f"{count} {key}" for key, count in blockers.items())
+        self._set_feedback("leases", f"Leases/blockers: {parts}")
+
+    def action_show_audit_timeline(self: Any) -> None:
+        """Show a safe audit timeline summary."""
+        count = self._projection.evidence.receipt_count
+        self._set_feedback("audit_timeline", f"Audit receipts: {count}")
+
+    def action_copy_latest_receipt_ref(self: Any) -> None:
+        """Copy the latest receipt ref if clipboard support is available."""
+        latest = self._projection.session.latest_receipt_kind
+        if not latest:
+            self._set_feedback("copy_receipt", "No receipt reference available")
+            return
+        try:
+            import pyperclip
+
+            pyperclip.copy(latest)
+        except Exception:
+            self._set_feedback("copy_receipt", "Clipboard unavailable")
+            return
+        self._set_feedback("copy_receipt", "Latest receipt reference copied")
+
+
+class DashboardScreen(DashboardStatusActions, Screen):
     """Compose header, activity zone, and footer from a DashboardProjection.
 
     Accepts an optional DashboardProjectionProvider for live refresh.
@@ -53,6 +95,7 @@ class DashboardScreen(Screen):
         u — toggle queue panel
         j / k — next / previous queue item
         o — inspect selected queue item
+        ctrl+enter — steer current task (safe placeholder)
         e — focus evidence rail (placeholder, read-only)
         v — validate current status (placeholder, read-only)
     """
@@ -95,6 +138,7 @@ DashboardScreen > InspectorDrawerWidget {
         ("j", "next_queue_item", "Next Queue"),
         ("k", "previous_queue_item", "Previous Queue"),
         ("o", "inspect_selected_queue_item", "Inspect Queue"),
+        ("ctrl+enter", "steer_current_task", "Steer Current"),
         ("n", "next_item", "Next Item"),
         ("p", "previous_item", "Previous Item"),
         ("c", "copy_selected_ref", "Copy Ref"),
@@ -116,6 +160,7 @@ DashboardScreen > InspectorDrawerWidget {
         self._last_refresh_error: str | None = None
         self._last_refresh_at: str | None = None
         self._details_visible: bool = False
+        self._local_queue_payloads: dict[str, str] = {}
 
     def compose(self) -> ComposeResult:
         proj = self._projection
@@ -127,10 +172,16 @@ DashboardScreen > InspectorDrawerWidget {
             classes="dashboard-activity",
         )
         yield QueuePanelWidget(proj.queue)
+        yield QueueInputWidget(
+            on_queue=self._handle_queue_input, on_steer=self._handle_steer_input
+        )
         yield FleetPanelWidget(proj.fleet)
         yield ProgressTimelineWidget(proj.execution_progress or None)
         yield InspectorDrawerWidget(proj.inspector)
         yield FooterStatusWidget(proj)
+
+    def on_mount(self) -> None:
+        self.focus()
 
     def action_quit(self) -> None:
         self.app.exit()
@@ -213,6 +264,30 @@ DashboardScreen > InspectorDrawerWidget {
         self._projection = self._projection.model_copy(update={"queue": queue})
         self._set_status("info", "queue", "open" if queue.visible else "closed")
 
+    def action_queue_message(self) -> None:
+        widget = self._queue_input_widget()
+        if widget is None:
+            self._set_status("error", "queue_message", "Queue input unavailable")
+            return
+        widget.set_mode("QUEUE")
+        widget.queue_current()
+
+    def action_clear_input(self) -> None:
+        widget = self._queue_input_widget()
+        if widget is None:
+            self._set_status("error", "clear_input", "Queue input unavailable")
+            return
+        widget.clear()
+        self._set_status("info", "clear_input", "Queue input cleared")
+
+    def action_steer_current_task(self) -> None:
+        widget = self._queue_input_widget()
+        if widget is not None:
+            widget.set_mode("STEER")
+            widget.request_steer()
+            return
+        self._set_status("info", "steer", "STEER mode not implemented yet")
+
     def action_next_queue_item(self) -> None:
         queue = self._projection.queue
         if not queue.items:
@@ -228,6 +303,65 @@ DashboardScreen > InspectorDrawerWidget {
             return
         selected_index = (queue.selected_index - 1) % len(queue.items)
         self._sync_queue_selection(selected_index)
+
+    async def action_queue_run_next(self) -> None:
+        provider = self._provider
+        if provider is None or not hasattr(provider, "run_next_queue_item"):
+            self._set_status("error", "queue_run_next", "No provider configured")
+            return
+        self._set_status("info", "queue_run_next", "Running next queue item...")
+        self.run_worker(self._do_queue_run_next, exclusive=True, exit_on_error=False)
+
+    async def _do_queue_run_next(self) -> None:
+        provider = cast(Any, self._provider)
+        if provider is None:
+            return
+        try:
+            result = await provider.run_next_queue_item()
+            self._set_queue_runner_result(result)
+            # Refresh projection after runner completes
+            if hasattr(provider, "dashboard_projection"):
+                refreshed = await provider.dashboard_projection()
+                self.update_projection(refreshed)
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            self._set_status("error", "queue_run_next", type(exc).__name__)
+
+    def action_queue_validate(self) -> None:
+        provider = cast(Any, self._provider)
+        if provider is None or not hasattr(provider, "enqueue_validate"):
+            self._set_status("error", "queue_validate", "No provider configured")
+            return
+        result = provider.enqueue_validate()
+        self._set_queue_runner_result(result)
+        self._set_status("info", "queue_validate", "Validate enqueued")
+
+    async def action_queue_refresh(self) -> None:
+        provider = cast(Any, self._provider)
+        if provider is None or not hasattr(provider, "dashboard_projection"):
+            self._set_status("error", "queue_refresh", "No provider configured")
+            return
+        try:
+            refreshed = await provider.dashboard_projection()
+            self.update_projection(refreshed)
+            self._set_status("ok", "queue_refresh", "Queue refreshed")
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            self._set_status("error", "queue_refresh", type(exc).__name__)
+
+    def _set_queue_runner_result(self, result: FleetQueueRunnerResult) -> None:
+        if result.decision == "completed":
+            self._set_status("ok", "queue", f"Queue: {result.reason or 'completed'}")
+        elif result.decision == "idle":
+            self._set_status("info", "queue", "No runnable queue item")
+        elif result.decision == "blocked":
+            reason = result.reason or result.error_kind or "blocked"
+            self._set_status("blocked", "queue", f"Queue blocked: {reason}")
+        elif result.decision == "failed":
+            reason = result.reason or result.error_kind or "failed"
+            self._set_status("error", "queue", f"Queue failed: {reason}")
 
     def action_inspect_selected_queue_item(self) -> None:
         queue = self._projection.queue
@@ -359,40 +493,6 @@ DashboardScreen > InspectorDrawerWidget {
             return
         self._set_feedback("copy_ref", "Selected reference copied")
 
-    def action_show_runtime_status(self) -> None:
-        """Show runtime adapter status."""
-        status = self._projection.session.status or "unknown"
-        self._set_feedback("runtime_status", f"Runtime status: {status}")
-
-    def action_show_leases(self) -> None:
-        """Show blocker summary as a lease/status snapshot."""
-        blockers = self._projection.session.blocker_summary
-        if not blockers:
-            self._set_feedback("leases", "No active leases or blockers")
-            return
-        parts = ", ".join(f"{count} {key}" for key, count in blockers.items())
-        self._set_feedback("leases", f"Leases/blockers: {parts}")
-
-    def action_show_audit_timeline(self) -> None:
-        """Show a safe audit timeline summary."""
-        count = self._projection.evidence.receipt_count
-        self._set_feedback("audit_timeline", f"Audit receipts: {count}")
-
-    def action_copy_latest_receipt_ref(self) -> None:
-        """Copy the latest receipt ref if clipboard support is available."""
-        latest = self._projection.session.latest_receipt_kind
-        if not latest:
-            self._set_feedback("copy_receipt", "No receipt reference available")
-            return
-        try:
-            import pyperclip
-
-            pyperclip.copy(latest)
-        except Exception:
-            self._set_feedback("copy_receipt", "Clipboard unavailable")
-            return
-        self._set_feedback("copy_receipt", "Latest receipt reference copied")
-
     def action_focus_evidence(self) -> None:
         """Placeholder: focus/evidence action. Read-only, no mutation."""
         self._set_status(
@@ -404,6 +504,51 @@ DashboardScreen > InspectorDrawerWidget {
         self._set_status(
             "info", "validate", "Validate action: placeholder (read-only, not wired)"
         )
+
+    def _queue_input_widget(self) -> QueueInputWidget | None:
+        try:
+            return self.query_one(QueueInputWidget)
+        except NoMatches:
+            return None
+
+    def _handle_queue_input(self, text: str) -> None:
+        self._queue_message(text)
+
+    def _handle_steer_input(self, text: str) -> None:
+        self._set_feedback("steer", "STEER mode requested — not implemented yet")
+
+    def _queue_message(self, text: str) -> None:
+        message = text.strip()
+        if not message:
+            self._set_status("info", "queue_message", "Queue input is empty")
+            return
+        queue_input = self._queue_input_widget()
+        if queue_input is not None:
+            queue_input.set_mode("QUEUE")
+            queue_input.clear()
+        queue = self._projection.queue
+        payload_ref = f"local://queue/{uuid4().hex}"
+        self._local_queue_payloads[payload_ref] = message
+        item = QueueItemProjection(
+            queue_item_id=f"queue-{uuid4().hex[:8]}",
+            kind="message",
+            status="queued",
+            title="Queue message",
+            summary="local payload stored",
+            payload_ref=payload_ref,
+            created_at=datetime.now(UTC).isoformat(),
+        )
+        updated_items = [*queue.items, item]
+        updated_queue = queue.model_copy(
+            update={
+                "items": updated_items,
+                "queued_count": queue.queued_count + 1,
+                "selected_index": len(updated_items) - 1,
+            }
+        )
+        self._projection = self._projection.model_copy(update={"queue": updated_queue})
+        self._sync_queue_selection(updated_queue.selected_index)
+        self._set_feedback("queue_message", "Queued message")
 
     def update_projection(self, projection: DashboardProjection) -> None:
         """Replace the projection and re-render all widgets."""
@@ -421,6 +566,9 @@ DashboardScreen > InspectorDrawerWidget {
 
             evidence_rail = self.query_one(EvidenceRailWidget)
             evidence_rail.update_projection(proj.evidence)
+
+            queue_panel = self.query_one(QueuePanelWidget)
+            queue_panel.update_projection(proj.queue)
 
             fleet_panel = self.query_one(FleetPanelWidget)
             fleet_panel.update_projection(proj.fleet)

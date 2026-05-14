@@ -75,12 +75,97 @@ safe hash/reference when available.
 The queue panel is a read-only projection of the current fleet queue snapshot.
 It shows queue counts, the running item when present, blocked items, and recent
 completed, failed, or cancelled items. Queue items are content-light summaries:
-IDs, kind, status, title or summary, timestamps, sanitized blocked reasons, and
-safe receipt/runtime hashes when available.
+IDs, kind, status, title or summary, payload refs, timestamps, sanitized
+blocked reasons, and safe receipt/runtime hashes when available.
 
 The panel never mutates queue state and never executes queued actions. Use `u`
-to toggle the panel, `j`/`k` to move through queue items, and `o` to send the
+to toggle the panel, `j`/`k` to navigate queue items, and `o` to send the
 selected queue item to the inspector when both views are present.
+
+## Queue Input
+
+The queue input bar is a local-only cockpit surface for staging the next
+message or action. It is read-only with respect to the governed runtime:
+
+- `Enter` queues the current message
+- `Shift+Enter` inserts a newline when multiline editing is supported
+- `Ctrl+Enter` requests steering for the current task
+
+Queue messages are not exposed as raw prompt text in projections. The TUI keeps
+the body behind a local-only payload boundary and only surfaces a content-light
+summary plus an opaque `payload_ref` in queue projections. Steering is explicit
+and visibly labeled, but is safe-placeholder behavior in this mission and does
+not invoke live steering semantics.
+
+## Queue Runner Integration
+
+The queue panel is backed by a **QueueRunnerBridge** — the TUI's sole surface
+for triggering queue item execution through governed runtime paths.
+
+### Architecture
+
+```
+Queue Panel (read-only projection)
+        │
+        ▼  (action: queue_run_next)
+Dashboard action handler
+        │
+        ▼  (Textual worker)
+QueueRunnerBridge.run_next()
+        │
+        ▼
+FleetQueueRunner.run_once()
+        │
+        ├── VALIDATE  → RuntimeToolExecutionRunner.execute_validate()
+        └── RUNTIME_EXEC → RuntimeToolExecutionRunner.execute_runtime_exec()
+```
+
+The TUI never calls raw tools (`BaseTool`, `ToolError`, file I/O tools, bash)
+directly. All executable queued actions route through the governed
+`FleetQueueRunner` / `RuntimeToolExecutionRunner` path.
+
+### Supported Queue Item Kinds
+
+| Kind | Runtime Method | Notes |
+|---|---|---|
+| `VALIDATE` | `execute_validate()` | Lint/type-check the workspace |
+| `RUNTIME_EXEC` | `execute_runtime_exec()` | Run a named sub-tool |
+| `MESSAGE` | _(none)_ | Completes synchronously, no exec |
+| `HANDOFF_NOTE` | _(none)_ | Completes synchronously, no exec |
+
+### Phase 0 Behavior (Current)
+
+- **One item per action**: Each `queue_run_next` call processes exactly one
+  queue item. No looping.
+- **Content-light results**: `FleetQueueRunnerResult` contains only metadata:
+  `decision`, `queue_item_id`, `runtime_result_sha256`, `receipt_sha256`,
+  `tool_name`, `error_kind`, `reason`, `changed_paths`. No raw content.
+- **Missing-root safety**: When `coordination_root` or `executor` is `None`,
+  `run_next()` returns a blocked result (`decision="blocked"`,
+  `error_kind="missing_runner_roots"`). Never crashes, never writes to
+  `~/.rig/relay`.
+- **Empty-queue idle**: When no items are eligible, returns
+  `decision="idle"` with `queue_item_id=None`.
+
+### Deferred Actions
+
+The following are explicitly **not** exposed as queue buttons in Phase 0:
+
+- Direct `write_file` / `search_replace` / `bash` tool buttons
+- File-system mutation from the TUI
+- Any action that bypasses `FleetQueueRunner`
+
+These may be added in future phases as `RUNTIME_EXEC` items with governed
+sub-tools.
+
+### Queue Action Keybindings
+
+- `u` — Toggle queue panel
+- `j` / `k` — Navigate queue items
+- `o` — Inspect selected queue item
+- `Ctrl+r` — Run next queued item (via QueueRunnerBridge)
+- `Ctrl+v` — Enqueue a validate item
+- `Ctrl+Enter` — Request steering for the current task
 
 ## What It Refuses To Show
 
@@ -129,6 +214,10 @@ command palette:
 - Refresh
 - Help
 - Toggle Details
+- Queue Message
+- Steer Current Task
+- Clear Input
+- Toggle Queue Panel
 - Runtime Status
 - Leases
 - Audit Timeline

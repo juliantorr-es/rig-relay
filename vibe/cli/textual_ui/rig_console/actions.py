@@ -117,10 +117,38 @@ ACTION_QUEUE_REFRESH = RigConsoleAction(
     description="Refresh the queue projection from stored events",
     callback_name="action_queue_refresh",
 )
+ACTION_QUEUE_MESSAGE = RigConsoleAction(
+    name="queue_message",
+    title="Queue Message",
+    description="Queue the current input message",
+    callback_name="action_queue_message",
+)
+ACTION_STEER_CURRENT_TASK = RigConsoleAction(
+    name="steer_current_task",
+    title="Steer Current Task",
+    description="Request steering for the current task",
+    callback_name="action_steer_current_task",
+)
+ACTION_CLEAR_INPUT = RigConsoleAction(
+    name="clear_input",
+    title="Clear Input",
+    description="Clear the queue input bar",
+    callback_name="action_clear_input",
+)
+ACTION_TOGGLE_QUEUE_PANEL = RigConsoleAction(
+    name="toggle_queue_panel",
+    title="Toggle Queue Panel",
+    description="Show or hide the queue panel",
+    callback_name="action_toggle_queue_panel",
+)
 
 SAFE_ACTIONS: tuple[RigConsoleAction, ...] = (
     ACTION_REFRESH,
     ACTION_RUN_VALIDATE,
+    ACTION_QUEUE_MESSAGE,
+    ACTION_STEER_CURRENT_TASK,
+    ACTION_CLEAR_INPUT,
+    ACTION_TOGGLE_QUEUE_PANEL,
     ACTION_QUEUE_RUN_NEXT,
     ACTION_QUEUE_VALIDATE,
     ACTION_QUEUE_REFRESH,

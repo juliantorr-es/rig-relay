@@ -237,6 +237,7 @@ class QueueItemProjection(BaseModel):
     status: str
     title: str
     summary: str | None = None
+    payload_ref: str | None = None
     created_at: str | None = None
     blocked_reason: str | None = None
     receipt_sha256: str | None = None
