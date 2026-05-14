@@ -133,6 +133,7 @@ def _write_consent(
 def _make_bundle(path: Path) -> None:
     """Create a valid content-light telemetry bundle for testing."""
     import zipfile
+
     bundle_content = json.dumps({
         "schema_version": "rig.relay.telemetry_bundle_manifest.v1",
         "bundle_id": path.stem,
@@ -147,7 +148,7 @@ def _make_bundle(path: Path) -> None:
         "datasets": [],
     })
     with zipfile.ZipFile(path, "w") as zf:
-        zf.writestr("manifest.json", bundle_content)
+        zf.writestr("telemetry_bundle_manifest.json", bundle_content)
 
 
 def test_contribute_dry_run_creates_planned_result(tmp_path: Path):
@@ -157,7 +158,7 @@ def test_contribute_dry_run_creates_planned_result(tmp_path: Path):
     bundle = tmp_path / "contrib_bundle.zip"
     _make_bundle(bundle)
     state_root = tmp_path / "rig-relay"
-    _write_consent(state_root / "consent", granted=True)
+    _write_consent(state_root, granted=True)
 
     result = contribute_bundle(
         bundle_path=bundle,
@@ -186,9 +187,9 @@ def test_contribute_refuses_missing_consent(tmp_path: Path):
     from scripts.rig_relay_contribute_telemetry_bundle import contribute_bundle
 
     bundle = tmp_path / "contrib_no_consent.zip"
-    bundle.write_bytes(b"bundle data")
+    _make_bundle(bundle)
     state_root = tmp_path / "rig-relay-no-consent"
-    _write_consent(state_root / "consent", granted=False)
+    _write_consent(state_root, granted=False)
 
     result = contribute_bundle(
         bundle_path=bundle,
@@ -214,7 +215,7 @@ def test_contribute_refuses_missing_commercial_scope(tmp_path: Path):
     bundle = tmp_path / "contrib_no_commercial.zip"
     _make_bundle(bundle)
     state_root = tmp_path / "rig-relay-no-commercial"
-    _write_consent(state_root / "consent", granted=True)
+    _write_consent(state_root, granted=True)
 
     result = contribute_bundle(
         bundle_path=bundle,
@@ -238,7 +239,7 @@ def test_contribute_receipt_contains_no_tokens(tmp_path: Path):
     bundle = tmp_path / "contrib_receipt_tokens.zip"
     _make_bundle(bundle)
     state_root = tmp_path / "rig-relay-receipt"
-    _write_consent(state_root / "consent", granted=True)
+    _write_consent(state_root, granted=True)
 
     result = contribute_bundle(
         bundle_path=bundle,
@@ -268,11 +269,11 @@ def test_contribute_bundle_redaction_checks_content_light(tmp_path: Path):
     # Create a bundle with forbidden content
     bundle = tmp_path / "contrib_bad_content.zip"
     state_root = tmp_path / "rig-relay-redaction"
-    _write_consent(state_root / "consent", granted=True)
+    _write_consent(state_root, granted=True)
 
     with zipfile.ZipFile(bundle, "w") as zf:
         zf.writestr(
-            "manifest.json",
+            "telemetry_bundle_manifest.json",
             json.dumps({
                 "schema_version": "rig.relay.telemetry_bundle_manifest.v1",
                 "bundle_id": "test_bad",
@@ -322,7 +323,7 @@ def test_contribute_state_root_isolation(tmp_path: Path):
     bundle = tmp_path / "contrib_isolation.zip"
     _make_bundle(bundle)
     state_root = tmp_path / "rig-relay-custom"
-    _write_consent(state_root / "consent", granted=True)
+    _write_consent(state_root, granted=True)
 
     result = contribute_bundle(
         bundle_path=bundle,

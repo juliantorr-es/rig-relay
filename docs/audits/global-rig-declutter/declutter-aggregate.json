@@ -1,0 +1,1134 @@
+{
+  "counts_by_class": {
+    "manual-review": 174,
+    "preserve-for-history": 2,
+    "protected": 5,
+    "quarantine-candidate": 5
+  },
+  "counts_by_kind": {
+    "dir": 165,
+    "file": 21
+  },
+  "entries": [
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/.DS_Store",
+      "size_bytes": 10244
+    },
+    {
+      "classification": "preserve-for-history",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay",
+      "size_bytes": 2499765873
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/.DS_Store",
+      "size_bytes": 10244
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/.env",
+      "size_bytes": 55
+    },
+    {
+      "classification": "protected",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/config.toml",
+      "size_bytes": 7493
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/consent",
+      "size_bytes": 384
+    },
+    {
+      "classification": "protected",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/consent/telemetry_consent.json",
+      "size_bytes": 384
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/history.jsonl",
+      "size_bytes": 815235
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/identity",
+      "size_bytes": 0
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/logs",
+      "size_bytes": 35009558
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/logs/.DS_Store",
+      "size_bytes": 6148
+    },
+    {
+      "classification": "quarantine-candidate",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/logs/rig-relay.log",
+      "size_bytes": 49096
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/logs/session",
+      "size_bytes": 34953132
+    },
+    {
+      "classification": "quarantine-candidate",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/logs/vibe.log",
+      "size_bytes": 1182
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions",
+      "size_bytes": 2463836796
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/sessions/.DS_Store",
+      "size_bytes": 65540
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/02bbef1f-487b-ace3-b7db-f486e05aeacf",
+      "size_bytes": 1622743
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/033df2c4-7260-2d43-ceaf-dfe90e56084f",
+      "size_bytes": 198204
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/09ad7281-6348-ad07-708e-ece4d4b68123",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/0a2329ac-e4c9-f229-76c3-35a205e05418",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/0ae49da5-3f26-3dad-2408-7c076dc5c884",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/1165e864-4e59-24e8-b1ba-5ee745d557a3",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/11efcde4-b906-f96e-3fae-e942268e7afd",
+      "size_bytes": 1171
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/127bac80-a34e-cd51-0537-fd3099ceb7b8",
+      "size_bytes": 1169
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/139a8ae5-7203-1d47-eed1-ed6b2b2e4d2d",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/172efe43-1efa-e2e1-391f-4c7d1615ccec",
+      "size_bytes": 86867217
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/182f32f6-b4ec-4eac-bb8c-1a9248c46096",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/18f248ab-3979-a2c5-6990-c67dabb2b3e1",
+      "size_bytes": 60918034
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/1bf62c51-2958-e1ef-e0b5-07f7521437ef",
+      "size_bytes": 49672759
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/1eb2d3dd-ccd9-e181-3373-a2574bec82f6",
+      "size_bytes": 93698
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/21bd16ec-c5cf-4d1c-998d-07f7521437ef",
+      "size_bytes": 21013760
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/225a579f-57fd-ee0b-be34-2acd875486b4",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/23bd1fc0-c6ba-2ef6-3310-24b60e1224dc",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/289bb293-aad0-c745-4dc8-7b28eee79151",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/28add6ab-1517-3669-e244-fad5ebe7247d",
+      "size_bytes": 1168
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/2b3b538b-7529-88f2-0540-cac239356457",
+      "size_bytes": 4578588
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/2d0a57ee-c5f8-0504-0775-e80f514ddf9d",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/2d2d02ce-493e-85f5-5664-eb07412be6ea",
+      "size_bytes": 1170
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/2e4da42d-f38f-69d7-85ce-107b36e329cd",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/30aebb7d-908d-91a8-eada-f7f8cc6d2b2a",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/30cb6f32-c440-c03a-128c-879753b9f45a",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/317a8f4b-d722-033f-f778-2937c0ace418",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/317e4c5f-34bd-2410-4c6a-cac239356457",
+      "size_bytes": 86552702
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/3247b9d3-03ca-a029-b892-18e1a27fd4ed",
+      "size_bytes": 41322
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/35581b4e-76fa-613a-e4a6-34cc12066edb",
+      "size_bytes": 33005633
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/384f5e69-46aa-fcb8-55ab-eb1b98ea4055",
+      "size_bytes": 219767
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/3b1ecec2-4e7d-d6e9-6b9c-07f7521437ef",
+      "size_bytes": 70079497
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/3bc63be0-152d-a634-7533-07f7521437ef",
+      "size_bytes": 125889393
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/3e1e2708-fccd-ef93-b9c0-1a7d936e471b",
+      "size_bytes": 1170
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/40f8e5d8-dbf9-7085-01e5-c67dabb2b3e1",
+      "size_bytes": 56717367
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/43ce1e88-6f29-6a1a-c4c0-44adff76c54f",
+      "size_bytes": 1171
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/486ff820-bf54-8b92-e426-07f7521437ef",
+      "size_bytes": 66780416
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/4c3282f4-c83e-094a-3cd4-0a95218843a7",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/4db73282-5d4b-c6f8-b755-07f7521437ef",
+      "size_bytes": 41866531
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/4df33944-b4d7-0464-11c9-7a46029968b0",
+      "size_bytes": 1168
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/4fe09274-9a34-9193-acd2-4c7d1615ccec",
+      "size_bytes": 35594628
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/51e8f115-0efc-3398-7dd7-c67dabb2b3e1",
+      "size_bytes": 59335244
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/52f19ac7-9c1a-adee-2de5-07fd07abc2ff",
+      "size_bytes": 1968233
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/54ab5ee2-c674-e70c-301b-e55d84afc30f",
+      "size_bytes": 1168
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/5564f29e-8a96-c1b5-6047-4b8cec6fe90c",
+      "size_bytes": 60547295
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/55aee0bd-bb1b-8db5-fb22-07f7521437ef",
+      "size_bytes": 67917776
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/55d97f48-96c7-c196-3ab5-7d78194d1ba1",
+      "size_bytes": 1168
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/56e4d9d8-9de3-5825-72b0-6e99a6311253",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/5c07d849-4b77-037a-9ba1-fb071f378b1c",
+      "size_bytes": 85162
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/5c092ebd-2d45-630c-fa11-07f7521437ef",
+      "size_bytes": 57942524
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/5c3c7e35-ecc2-e774-5ecf-24888abd8fe5",
+      "size_bytes": 2168
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/621d5810-4d6d-781d-785c-29ecaa3c6583",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/67d2aa1b-d118-2761-28cd-041228736e34",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/68706d4c-e8c7-5dc2-22b1-759142d2d78d",
+      "size_bytes": 1171
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/6b3d5b2a-27fb-45ab-cf18-07f7521437ef",
+      "size_bytes": 57047227
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/6cffe300-cfa9-692f-1acd-19030585ceb9",
+      "size_bytes": 740417
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/6d67ca34-ced2-1cb7-0578-36e0f4809586",
+      "size_bytes": 86595
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/6d85550e-370e-7f19-ec4f-e523c63cd60b",
+      "size_bytes": 86541
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/6ecea8e1-35c3-436a-90ba-4b2e9df4e1bd",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/70d265c6-28f7-ef62-5b35-07f7521437ef",
+      "size_bytes": 58285001
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/77fa6ff4-cb93-afc6-bccd-b11969b37f0c",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/7c7e9a9e-62f3-0414-8903-4c7d1615ccec",
+      "size_bytes": 19525582
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/7d01b7c8-93db-0f8a-532c-490f266cc6b3",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/80cb0812-9439-a21d-b52d-17d14a5c5701",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/8223a818-42c3-4f4a-8978-cdb6fbf83aff",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/829fdfaf-6172-9666-5893-c6eb4b212d3c",
+      "size_bytes": 47987385
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/86600850-c5a3-7783-ced6-07f7521437ef",
+      "size_bytes": 61269537
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/86cb424c-6614-60c6-a0df-07f7521437ef",
+      "size_bytes": 65974941
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/8911b559-9105-77dd-adb0-c67dabb2b3e1",
+      "size_bytes": 2170121
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/8c01b34f-d229-70d2-9eb2-c67dabb2b3e1",
+      "size_bytes": 36446333
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/8d1101c3-2828-19d5-6e38-4c7d1615ccec",
+      "size_bytes": 78956118
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/91729cdd-10ff-65f2-e375-b183d5e99379",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/926563aa-ffe4-230f-087b-4c7d1615ccec",
+      "size_bytes": 58676308
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/957b2f3f-15de-269e-075a-24a5ff72703d",
+      "size_bytes": 1236938
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/9850a2af-dc11-6e14-b9e1-4a82ec9b6548",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/99a7ee0c-c0b2-6d95-9fe7-d5f6a13060a8",
+      "size_bytes": 85330
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/9e2f0887-12b5-99df-0057-25adcd859253",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/a128dd03-b66f-d5f2-65d4-4c7d1615ccec",
+      "size_bytes": 57626938
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/a789d044-a32c-05b8-6c80-d0ac9e0a1c42",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ad1397bf-b519-a2e0-603f-3e2b2d951b32",
+      "size_bytes": 86541
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ae2274b1-6645-0df1-9631-d5483e152b81",
+      "size_bytes": 828691
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/b544db34-0b41-8852-88be-4a680bbc3c77",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/b97eca02-8b96-f88c-c0a8-36b2265d0bde",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/c36cdb43-326a-eb31-f97d-269b6f245860",
+      "size_bytes": 41322
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/c7e5e38a-d5ab-cd41-badf-07f7521437ef",
+      "size_bytes": 93159592
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/c88d5749-6c2f-10ae-3671-8bd030adc905",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ce75e290-8eb2-4863-ec7f-03c2c355c5e0",
+      "size_bytes": 1170
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/d2431f9f-f19b-933a-36bc-43428182aec2",
+      "size_bytes": 2026832
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/d33b6e44-364c-f1cf-00ca-17b176dcaa29",
+      "size_bytes": 26610588
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/d3b51859-1a34-b450-25f7-22b67160b8f2",
+      "size_bytes": 1170
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/d4b8eb97-c3a5-8241-ce9c-07f7521437ef",
+      "size_bytes": 29967970
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/d4f12d6b-7197-588c-b3b5-c67dabb2b3e1",
+      "size_bytes": 63793876
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/d51ca0ab-9858-09f3-1feb-44502931a2f2",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/d5e69409-0de3-4345-9438-96b9ea7a145f",
+      "size_bytes": 4383031
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/d8e5fd35-13eb-3675-58be-4c7d1615ccec",
+      "size_bytes": 72476607
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/dff8f71d-42c9-8a0a-fbaf-cac239356457",
+      "size_bytes": 82220611
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/e2547ccc-03f8-e519-59f6-4c7d1615ccec",
+      "size_bytes": 78464673
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/e3584a4c-0178-590b-eae9-0d5750f4974c",
+      "size_bytes": 4106979
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/e3a6ad23-f49d-1fb4-9315-40f11f71a5cc",
+      "size_bytes": 1168
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/e3ab256f-eac7-9d5e-9f55-261d774a530e",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/e4ef9bdd-64d8-bd21-869d-9d43118da3e6",
+      "size_bytes": 85264
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/e533b3a5-9389-6687-48e1-c67dabb2b3e1",
+      "size_bytes": 83909318
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/e57b11c8-f23f-d719-63b2-db777e24b20c",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ebe629eb-0b67-de3b-a4d4-9d0e89410e02",
+      "size_bytes": 705
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ee3c96dc-86fc-dd9a-f897-c67dabb2b3e1",
+      "size_bytes": 21299640
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ee8fe56d-3720-62e9-a754-80a5c7906344",
+      "size_bytes": 85262
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ef73d165-d32d-c479-9db4-e1e83fe4fcb5",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ef77b506-922e-716f-1b9a-c67dabb2b3e1",
+      "size_bytes": 107378384
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ef97753c-b171-b611-56ee-c67dabb2b3e1",
+      "size_bytes": 82848174
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/f0376bd1-5296-59a1-6153-07f7521437ef",
+      "size_bytes": 63955234
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/f68ec8f4-bb95-eaf3-6d33-0cd50f603901",
+      "size_bytes": 1168
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/f7f3022a-bb4b-dd4b-3129-4c7d1615ccec",
+      "size_bytes": 42534173
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/fc0ae197-e982-0631-6c43-b7178da9f49a",
+      "size_bytes": 86442
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/fc244488-cd7c-2509-b52c-b5bde44e4709",
+      "size_bytes": 678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/ff143f7a-e268-6de8-d202-07f7521437ef",
+      "size_bytes": 51084847
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_150548_e2547ccc",
+      "size_bytes": 1042125
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_150603_ff143f7a",
+      "size_bytes": 576451
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_153155_55aee0bd",
+      "size_bytes": 465996
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_154324_a128dd03",
+      "size_bytes": 224171
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_160040_486ff820",
+      "size_bytes": 330865
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_161017_f7f3022a",
+      "size_bytes": 291335
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_164131_86cb424c",
+      "size_bytes": 377845
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_170941_d8e5fd35",
+      "size_bytes": 706236
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_172258_6b3d5b2a",
+      "size_bytes": 215059
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_173226_926563aa",
+      "size_bytes": 494011
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_175721_f0376bd1",
+      "size_bytes": 234676
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_180539_172efe43",
+      "size_bytes": 475408
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_182656_1bf62c51",
+      "size_bytes": 613594
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_182817_8d1101c3",
+      "size_bytes": 476498
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_184206_86600850",
+      "size_bytes": 418235
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_190153_4fe09274",
+      "size_bytes": 549969
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_190842_70d265c6",
+      "size_bytes": 500387
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_191326_7c7e9a9e",
+      "size_bytes": 112856
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_192111_18f248ab",
+      "size_bytes": 408282
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_193444_3bc63be0",
+      "size_bytes": 186996
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_194551_e533b3a5",
+      "size_bytes": 410846
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_201120_d4b8eb97",
+      "size_bytes": 131977
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_201743_8911b559",
+      "size_bytes": 82382
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_204311_4db73282",
+      "size_bytes": 281592
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_205245_d4f12d6b",
+      "size_bytes": 1426522
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_210756_8c01b34f",
+      "size_bytes": 251678
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_211606_c7e5e38a",
+      "size_bytes": 136859
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_213123_40f8e5d8",
+      "size_bytes": 1024216
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_214505_ef97753c",
+      "size_bytes": 649390
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_214731_5c092ebd",
+      "size_bytes": 527495
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_220439_51e8f115",
+      "size_bytes": 595237
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_220723_3b1ecec2",
+      "size_bytes": 254441
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_221717_ef77b506",
+      "size_bytes": 975087
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_222142_d5e69409",
+      "size_bytes": 330389
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_223202_21bd16ec",
+      "size_bytes": 101687
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_224438_d33b6e44",
+      "size_bytes": 211406
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/session_20260513_224703_ee3c96dc",
+      "size_bytes": 488857
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay/sessions/vibe-cli-purge",
+      "size_bytes": 3101
+    },
+    {
+      "classification": "quarantine-candidate",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/sessions.zip",
+      "size_bytes": 86006
+    },
+    {
+      "classification": "protected",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/trusted_folders.toml",
+      "size_bytes": 75
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay/vibehistory",
+      "size_bytes": 27
+    },
+    {
+      "classification": "preserve-for-history",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay-smoke",
+      "size_bytes": 475903
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay-smoke/.DS_Store",
+      "size_bytes": 10244
+    },
+    {
+      "classification": "protected",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay-smoke/config.toml",
+      "size_bytes": 7335
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay-smoke/logs",
+      "size_bytes": 150182
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay-smoke/logs/.DS_Store",
+      "size_bytes": 6148
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay-smoke/logs/session",
+      "size_bytes": 144034
+    },
+    {
+      "classification": "quarantine-candidate",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay-smoke/logs/vibe.log",
+      "size_bytes": 0
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay-smoke/sessions",
+      "size_bytes": 308097
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay-smoke/sessions/.DS_Store",
+      "size_bytes": 10244
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay-smoke/sessions/4e228785-6018-a400-c805-875b76fc23bf",
+      "size_bytes": 185137
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay-smoke/sessions/4f4602a9-a7dd-9f1b-d864-6a369120895b",
+      "size_bytes": 86473
+    },
+    {
+      "classification": "manual-review",
+      "kind": "dir",
+      "path": "/Users/user/.rig/relay-smoke/sessions/e5ce45a6-13a1-a9f7-56e4-56ea77c4376b",
+      "size_bytes": 26243
+    },
+    {
+      "classification": "protected",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay-smoke/trusted_folders.toml",
+      "size_bytes": 28
+    },
+    {
+      "classification": "manual-review",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay-smoke/vibehistory",
+      "size_bytes": 17
+    },
+    {
+      "classification": "quarantine-candidate",
+      "kind": "file",
+      "path": "/Users/user/.rig/relay.zip",
+      "size_bytes": 231525143
+    }
+  ],
+  "exists": true,
+  "rig_root": "/Users/user/.rig",
+  "total_bytes": 7731323956,
+  "total_entries": 186
+}

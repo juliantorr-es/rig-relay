@@ -49,11 +49,12 @@ Content-light: never includes raw prompts, model outputs, file contents,
 stdout/stderr bodies, diffs, or secrets. Receipts use hashes and redacted IDs.
 """
 
-# ruff: noqa: PLR0911, PLR0912, PLR0913, PLR0915
+# ruff: noqa: PLR0911, PLR0912, PLR0913, PLR0914, PLR0915
 from __future__ import annotations
 
 import argparse
 from datetime import UTC, datetime
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -207,10 +208,13 @@ def contribute_bundle(
     result: dict[str, Any] = {
         "contribution_id": f"contrib_{uuid.uuid4().hex[:12]}",
         "schema_version": "rig.relay.contribution_result.v1",
-        "participant_id": participant_id,
         "created_at": now.isoformat(),
-        "bundle_path": str(bundle_path),
         "status": "pending",
+        "dry_run": dry_run,
+        "upload_attempted": False,
+        "upload_confirmed": confirm,
+        "consent_checked": False,
+        "content_light_guarantee": True,
         "warnings": [],
         "steps": {},
     }
@@ -255,6 +259,7 @@ def contribute_bundle(
         include_model_observations=include_model_observations,
         is_commercial=is_commercial,
     )
+    result["consent_checked"] = True
     result["steps"]["check_consent"] = {
         "status": "passed" if allowed else "refused",
         "reason": reason,
@@ -277,6 +282,7 @@ def contribute_bundle(
         confirm=confirm,
         state_root=state_root,
     )
+    result["upload_attempted"] = True
     result["steps"]["upload"] = {"status": upload_receipt["status"]}
     result["upload_receipt"] = upload_receipt
 
@@ -285,34 +291,55 @@ def contribute_bundle(
     final_receipt_dir.mkdir(parents=True, exist_ok=True)
     receipt_path = final_receipt_dir / f"contribution_{bundle_path.stem}.json"
 
+    # Determine contribution mode
+    if is_commercial:
+        contrib_mode = "commercial"
+    elif include_model_observations:
+        contrib_mode = "model_observations"
+    else:
+        contrib_mode = "basic"
+
+    # Compute content-light identifiers (hashes, not raw IDs)
+    bundle_size_bytes = bundle_path.stat().st_size
+    drive_folder_id_hash = (
+        "sha256:" + hashlib.sha256(folder_id.encode()).hexdigest() if folder_id else ""
+    )
+    drive_file_id_hash = (
+        "sha256:" + hashlib.sha256(upload_receipt["drive_file_id"].encode()).hexdigest()
+        if upload_receipt.get("drive_file_id")
+        else ""
+    )
+
     contribution_receipt: dict[str, Any] = {
         "schema_version": "rig.relay.contribution_receipt.v1",
         "contribution_id": result["contribution_id"],
         "participant_id": participant_id,
         "created_at": now.isoformat(),
-        "bundle_id": bundle_path.stem,
         "bundle_sha256": upload_receipt.get("bundle_sha256", ""),
-        "drive_folder_id": folder_id,
+        "bundle_size_bytes": bundle_size_bytes,
+        "destination_kind": "google_drive",
         "consent_policy_version": "alpha-usage-data-license-v1",
         "consent_scopes": active_scopes,
-        "status": upload_receipt["status"],
+        "contribution_mode": contrib_mode,
         "upload_method": upload_receipt.get("upload_method", "dry_run"),
+        "status": upload_receipt["status"],
+        "content_light_guarantee": True,
         "warnings": list(set(result["warnings"] + upload_receipt.get("warnings", []))),
     }
+    if drive_folder_id_hash:
+        contribution_receipt["drive_folder_id_hash"] = drive_folder_id_hash
+    if drive_file_id_hash:
+        contribution_receipt["drive_file_id_hash"] = drive_file_id_hash
+
     result["receipt"] = contribution_receipt
     result["receipt_path"] = str(receipt_path)
 
-    # Redact drive IDs from receipt (content-light)
-    contribution_receipt["drive_folder_id"] = (
-        "sha256:" + folder_id
-        if folder_id and not folder_id.startswith("sha256:")
-        else folder_id
-    )
+    # Write receipt and compute its SHA256 for the result
+    receipt_json = json.dumps(contribution_receipt, indent=2) + "\n"
+    receipt_sha256 = "sha256:" + hashlib.sha256(receipt_json.encode()).hexdigest()
+    receipt_path.write_text(receipt_json, encoding="utf-8")
 
-    with receipt_path.open("w", encoding="utf-8") as f:
-        json.dump(contribution_receipt, f, indent=2)
-        f.write("\n")
-
+    result["receipt_sha256"] = receipt_sha256
     result["status"] = contribution_receipt["status"]
     return result
 

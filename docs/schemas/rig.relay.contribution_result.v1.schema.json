@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.contribution_result.v1.schema.json",
+  "title": "Rig Relay Telemetry Contribution Result v1",
+  "description": "Result of a telemetry bundle contribution attempt. Contains the orchestration metadata — consent check, validation steps, upload attempt — separate from the receipt which holds destination-specific fields. No OAuth tokens, raw Drive file IDs, raw consent bodies, prompts, model outputs, source code, diffs, stdout/stderr, secrets, or private paths.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contribution_id",
+    "created_at",
+    "status",
+    "dry_run",
+    "upload_attempted",
+    "upload_confirmed",
+    "consent_checked",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.contribution_result.v1"
+    },
+    "contribution_id": {
+      "type": "string",
+      "description": "Unique contribution identifier."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the contribution was initiated."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "dry_run",
+        "uploaded",
+        "refused_consent",
+        "refused_content_light",
+        "refused_schema",
+        "refused_validation_error",
+        "failed"
+      ],
+      "description": "Overall contribution status."
+    },
+    "receipt_path": {
+      "type": "string",
+      "description": "Filesystem path to the written receipt JSON, if successfully written."
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of the receipt JSON file content."
+    },
+    "bundle_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of the contributed bundle."
+    },
+    "dry_run": {
+      "type": "boolean",
+      "description": "Whether the contribution was a dry run (no network upload)."
+    },
+    "upload_attempted": {
+      "type": "boolean",
+      "description": "Whether an upload was attempted (dry-run or real)."
+    },
+    "upload_confirmed": {
+      "type": "boolean",
+      "description": "Whether the user confirmed the upload (--confirm was passed)."
+    },
+    "consent_checked": {
+      "type": "boolean",
+      "description": "Whether the consent scope check was performed."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable warnings about the contribution."
+    },
+    "error_code": {
+      "type": "string",
+      "description": "Machine-readable error code, present when status is a refusal or failure."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "Guarantee that the result contains no raw content."
+    },
+    "steps": {
+      "type": "object",
+      "description": "Orchestration step statuses (validate_bundle, validate_schema, check_consent, upload). Per-step status, reason, warnings, and active_scopes.",
+      "additionalProperties": true
+    },
+    "upload_receipt": {
+      "type": "object",
+      "description": "Raw upload receipt from the Google Drive upload step. Contains bundle_id, drive_file_id (nullable), drive_folder_id, upload_method, bundle_sha256, status.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

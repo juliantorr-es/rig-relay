@@ -44,3 +44,5 @@ class EventName(StrEnum):
     CHECKPOINT_REFUSED = "rig.relay.checkpoint.refused"
     # Model observation events
     MODEL_OBSERVATION_CAPTURED = "rig.relay.model_observation.captured"
+    # Tool receipt events
+    TOOL_RECEIPT_CAPTURED = "rig.relay.tool_receipt.captured"

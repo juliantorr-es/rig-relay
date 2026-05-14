@@ -52,18 +52,45 @@ explicitly triggered by the user via the CLI script.
 
 ### Rule 5: Content-Light Receipt
 
-Every contribution produces a local receipt with:
+Every contribution produces a local receipt and a result dict, both governed
+by JSON schemas.
+
+**Contribution receipt** (`rig.relay.contribution_receipt.v1.schema.json`):
 
 - contribution_id
 - bundle_sha256 (hash, not raw bundle)
+- bundle_size_bytes
+- destination_kind (always `google_drive`)
 - consent_policy_version
 - consent_scopes (active scopes at time of upload)
-- Drive folder ID (hashed/redacted)
+- contribution_mode (basic, model_observations, or commercial)
+- Drive folder/file IDs (hashed only -- never raw)
+- upload_method
 - Status (dry_run, uploaded, refused_consent, etc.)
+- content_light_guarantee
 - Warnings
 
-Receipts contain no OAuth tokens, no raw Drive file IDs, and no
-raw consent record contents.
+**Contribution result** (`rig.relay.contribution_result.v1.schema.json`):
+
+- Orchestration metadata: consent_checked, upload_attempted, upload_confirmed
+- Status (dry_run, uploaded, refused_consent, refused_content_light, etc.)
+- receipt_path and receipt_sha256
+- content_light_guarantee
+
+Receipts and results contain no OAuth tokens, no raw Drive file IDs, no raw
+Drive folder IDs, and no raw consent record contents. Raw identifiers are
+replaced with SHA256 hashes.
+
+## Schema Governance
+
+Telemetry contribution artifacts are governed by the following JSON schemas:
+
+| Schema | Purpose |
+|--------|---------|
+| `rig.relay.contribution_receipt.v1.schema.json` | Content-light contribution receipt with hashed Drive IDs, bundle identity via `bundle_sha256`, explicit `contribution_mode`, and `content_light_guarantee`. No raw Drive folder/file IDs are retained — identifiers are represented as SHA256 hashes where needed. |
+| `rig.relay.contribution_result.v1.schema.json` | Orchestration result for the contribution flow. Contains consent check status, upload attempt metadata, step statuses (`steps`), upload receipt (`upload_receipt`), receipt path/SHA256, and `content_light_guarantee`. Separate from raw telemetry/event bundles. |
+
+Both schemas enforce `additionalProperties: false` and are self-validated by the global schema validation script (`scripts/rig_relay_validate_schemas.py`). Contribution receipts and results are content-light artifacts distinct from raw telemetry/event bundles.
 
 ## Flow
 
@@ -125,6 +152,18 @@ Reuses existing modules:
 - `ConsentStore` from `rig_relay.identity.consent_store`
 - `redact_for_remote` from `rig_relay.evidence.redaction`
 
+## Tool Receipt Evidence Index
+
+Receipt events are indexed by `rig_relay.evidence.receipt_index` for query,
+validation, and replay inspection. The index is:
+
+- **Content-light**: no raw stdout, stderr, file contents, diffs, or snippets.
+- **Read-only derived evidence**: built from session observability, never modified.
+- **Audit surface**: answers which tools ran, mutations, refusals, timeouts.
+- **Governed by** `docs/schemas/rig.relay.tool_receipt_index.v1.schema.json`.
+
+See [Session Storage Lifecycle](session-storage-lifecycle.md#tool-receipt-evidence-index).
+
 ## Cross-References
 
 - [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md)
@@ -133,4 +172,5 @@ Reuses existing modules:
 - [Consent Store](../../rig_relay/identity/consent_store.py)
 - [Frontend Rendering Safety](frontend-rendering-safety.md)
 - [Relay Local/Remote Boundary](relay-local-remote-boundary.md)
+- [Session Storage Lifecycle](session-storage-lifecycle.md)
 - [Identity Provider Policy](identity-provider-policy.md)

@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.bash_invocation.v1.schema.json",
+  "title": "Rig Relay Bash Invocation v1",
+  "description": "Schema for a deterministic bash tool invocation request. Defines the bounded envelope for subprocess execution.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.bash_invocation.v1"]
+    },
+    "command": {
+      "type": "string",
+      "description": "Shell command string to execute"
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "description": "Timeout in milliseconds",
+      "minimum": 0
+    },
+    "cwd": {
+      "type": "string",
+      "description": "Working directory for the command"
+    },
+    "max_stdout_bytes": {
+      "type": "integer",
+      "description": "Maximum bytes to capture from stdout",
+      "minimum": 0
+    },
+    "max_stderr_bytes": {
+      "type": "integer",
+      "description": "Maximum bytes to capture from stderr",
+      "minimum": 0
+    },
+    "allow_shell": {
+      "type": "boolean",
+      "description": "Whether shell string execution is allowed",
+      "default": true
+    }
+  },
+  "required": ["command"],
+  "additionalProperties": false
+}

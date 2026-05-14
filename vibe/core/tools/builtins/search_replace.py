@@ -6,6 +6,7 @@ import difflib
 from pathlib import Path
 import re
 import shutil
+import time
 from typing import ClassVar, NamedTuple, final
 
 import anyio
@@ -60,6 +61,47 @@ class BlockApplyResult(NamedTuple):
     warnings: list[str]
 
 
+_MISMATCH_KEYWORDS: dict[str, str] = {
+    "Search text not found": "old_text_not_found",
+    "search text hasn't been modified": "unchanged_replacement",
+}
+
+
+def _is_binary_content(content: bytes) -> bool:
+    """Check if content appears to be binary (contains null bytes)."""
+    return b"\x00" in content[:8192] if content else False
+
+
+def _classify_refusal(check: object) -> str:
+    """Classify a guard refusal into a structured error_kind."""
+    guard_detail = getattr(check, "detail", "") or getattr(check, "reason", "") or ""
+    if "hash" in guard_detail.lower() or "sha256" in guard_detail.lower():
+        return "expected_hash_mismatch"
+    if "protected" in guard_detail.lower() or "dirty" in guard_detail.lower():
+        return "protected_file"
+    if "outside" in guard_detail.lower() or "traversal" in guard_detail.lower():
+        return "path_refused"
+    if "binary" in guard_detail.lower():
+        return "binary_file"
+    return "protected_file"
+
+
+def _classify_block_errors(errors: list[str]) -> str:
+    """Classify SEARCH/REPLACE block errors into a structured error_kind."""
+    for error in errors:
+        for keyword, kind in _MISMATCH_KEYWORDS.items():
+            if keyword in error:
+                return kind
+    if errors:
+        if any("Expected" in e and "replacements" in e for e in errors):
+            return "replacement_count_mismatch"
+        if any("allow_multiple=False" in e for e in errors):
+            return "multiple_matches_when_single_required"
+        if any("encoding" in e.lower() for e in errors):
+            return "encoding_error"
+    return "old_text_not_found"
+
+
 class SearchReplaceArgs(BaseModel):
     file_path: str
     content: str
@@ -70,6 +112,20 @@ class SearchReplaceArgs(BaseModel):
             "Required when editing a file that was dirty (modified, staged, or untracked) at session start. "
             "The patch will be REFUSED if this hash does not match the current file bytes — "
             "re-read the file and recompute the hash if you get a stale-hash refusal."
+        ),
+    )
+    expected_replacements: int | None = Field(
+        default=None,
+        description=(
+            "Expected number of replacements. If set and actual replacements differ, "
+            "the operation returns count_mismatch without mutating the file."
+        ),
+    )
+    allow_multiple: bool = Field(
+        default=True,
+        description=(
+            "If false, multiple matches for the same search text return "
+            "ambiguous_match without mutating the file."
         ),
     )
 
@@ -85,6 +141,39 @@ class SearchReplaceResult(BaseModel):
     changed_files: list[str] = Field(default_factory=list)
     failed_block_count: int = 0
     total_block_count: int = 0
+    replacements: int = 0
+    before_bytes: int = 0
+    after_bytes: int = 0
+    status: str = "success"
+    error_kind: str | None = None
+    refusal_reason: str | None = None
+    duration_ms: float | None = None
+
+
+class SearchReplaceReceipt(BaseModel):
+    """Content-light receipt for a search_replace invocation.
+
+    Contains no raw file content, old_text, new_text, diffs, or
+    private paths — only metadata, block counts, hashes, byte
+    counts, and structured error classification.
+    """
+
+    file: str
+    status: str = "success"
+    blocks_applied: int = 0
+    lines_changed: int = 0
+    replacements: int = 0
+    warnings: list[str] = Field(default_factory=list)
+    before_file_sha256: dict[str, str] = Field(default_factory=dict)
+    after_file_sha256: dict[str, str] = Field(default_factory=dict)
+    changed_files: list[str] = Field(default_factory=list)
+    failed_block_count: int = 0
+    total_block_count: int = 0
+    before_bytes: int = 0
+    after_bytes: int = 0
+    error_kind: str | None = None
+    refusal_reason: str | None = None
+    duration_ms: float | None = None
 
 
 @dataclass(frozen=True)
@@ -196,7 +285,7 @@ class SearchReplace(
             ttl_seconds=300,
         )
         if not reservation_result.allowed:
-            raise ToolError("search_replace coordination reservation refused")
+            return False
         return True
 
     @staticmethod
@@ -231,10 +320,7 @@ class SearchReplace(
         block_result: BlockApplyResult,
         total_block_count: int,
     ) -> SearchReplaceResult:
-        try:
-            repo_file_key = file_path.relative_to(Path.cwd()).as_posix()
-        except ValueError:
-            repo_file_key = file_path.as_posix()
+        repo_file_key = SearchReplace._repo_file_key(file_path)
 
         if modified_content == original_content:
             lines_changed = 0
@@ -246,14 +332,20 @@ class SearchReplace(
             after_hash = sha256_file_bytes(file_path.read_bytes())
             assert after_hash is not None
 
+        before_bytes = len(original_content.encode("utf-8"))
+        after_bytes = len(modified_content.encode("utf-8"))
+
         return SearchReplaceResult(
             file=str(file_path),
             blocks_applied=block_result.applied,
             lines_changed=lines_changed,
+            replacements=block_result.applied,
             warnings=block_result.warnings,
             content=modified_content,
             before_file_sha256={repo_file_key: before_hash},
             after_file_sha256={repo_file_key: after_hash},
+            before_bytes=before_bytes,
+            after_bytes=after_bytes,
             changed_files=[repo_file_key]
             if modified_content != original_content
             else [],
@@ -267,7 +359,9 @@ class SearchReplace(
         file_path: Path,
         search_replace_blocks: list[SearchReplaceBlock],
         total_block_count: int,
-    ) -> tuple[str, SearchReplaceResult]:
+        allow_multiple: bool = True,
+        expected_replacements: int | None = None,
+    ) -> SearchReplaceResult:
         before_snapshot = self.get_file_snapshot_for_path(str(file_path))
         before_hash = sha256_file_bytes(before_snapshot.content)
         assert before_hash is not None
@@ -278,16 +372,34 @@ class SearchReplace(
             search_replace_blocks,
             file_path,
             self.config.fuzzy_threshold,
+            allow_multiple=allow_multiple,
+            expected_replacements=expected_replacements,
         )
+
+        # ── Structured mismatch: block errors produce a result, not an exception ──
         if block_result.errors:
-            error_message = "SEARCH/REPLACE blocks failed:\n" + "\n\n".join(
-                block_result.errors
+            error_kind = _classify_block_errors(block_result.errors)
+            status = self._classify_status_from_error_kind(error_kind)
+            repo_file_key = self._repo_file_key(file_path)
+            return SearchReplaceResult(
+                file=str(file_path),
+                blocks_applied=block_result.applied,
+                lines_changed=0,
+                content=original_content,
+                before_bytes=len(original_content.encode("utf-8")),
+                after_bytes=len(original_content.encode("utf-8")),
+                warnings=block_result.warnings,
+                before_file_sha256={repo_file_key: before_hash},
+                after_file_sha256={repo_file_key: before_hash},
+                changed_files=[],
+                failed_block_count=total_block_count - block_result.applied,
+                total_block_count=total_block_count,
+                status=status,
+                error_kind=error_kind,
+                refusal_reason="SEARCH/REPLACE blocks failed:\n"
+                + "\n\n".join(block_result.errors),
             )
-            if block_result.warnings:
-                error_message += "\n\nWarnings encountered:\n" + "\n".join(
-                    block_result.warnings
-                )
-            raise ToolError(error_message)
+
         modified_content = block_result.content
         if modified_content != original_content:
             try:
@@ -296,7 +408,8 @@ class SearchReplace(
             except Exception:
                 pass
             await self._write_file(file_path, modified_content, decoded.encoding)
-        result = self._build_search_replace_result(
+
+        return self._build_search_replace_result(
             file_path=file_path,
             before_hash=before_hash,
             original_content=original_content,
@@ -304,7 +417,85 @@ class SearchReplace(
             block_result=block_result,
             total_block_count=total_block_count,
         )
-        return modified_content, result
+
+    @staticmethod
+    def _classify_status_from_error_kind(error_kind: str) -> str:
+        """Map error_kind to a structured result status.
+
+        Legacy callers may see status="mismatch" which is still valid;
+        new code prefers specific statuses.
+        """
+        if error_kind in {
+            "old_text_not_found",
+            "unchanged_replacement",
+            "encoding_error",
+        }:
+            return "no_match"
+        if error_kind == "multiple_matches_when_single_required":
+            return "ambiguous_match"
+        if error_kind == "replacement_count_mismatch":
+            return "count_mismatch"
+        return "mismatch"
+
+    @final
+    @staticmethod
+    def _repo_file_key(file_path: Path) -> str:
+        try:
+            return file_path.relative_to(Path.cwd()).as_posix()
+        except ValueError:
+            return file_path.as_posix()
+
+    @final
+    def build_receipt(self, result: SearchReplaceResult) -> SearchReplaceReceipt:
+        """Build a content-light receipt from a search_replace result.
+
+        The receipt contains no raw file content, old_text, new_text,
+        diffs, or private paths — only metadata, block counts, hashes,
+        byte counts, and structured error classification.
+
+        ``refusal_reason`` is sanitized to strip file context lines
+        (search text, context analysis, fuzzy match diffs) that are
+        present in the user-facing result but must not enter receipts.
+        """
+        return SearchReplaceReceipt(
+            file=result.file,
+            status=result.status,
+            blocks_applied=result.blocks_applied,
+            lines_changed=result.lines_changed,
+            replacements=result.replacements,
+            warnings=result.warnings,
+            before_file_sha256=result.before_file_sha256,
+            after_file_sha256=result.after_file_sha256,
+            changed_files=result.changed_files,
+            failed_block_count=result.failed_block_count,
+            total_block_count=result.total_block_count,
+            before_bytes=result.before_bytes,
+            after_bytes=result.after_bytes,
+            error_kind=result.error_kind,
+            refusal_reason=self._sanitize_refusal_for_receipt(result.refusal_reason),
+            duration_ms=result.duration_ms,
+        )
+
+    @final
+    @staticmethod
+    def _sanitize_refusal_for_receipt(refusal_reason: str | None) -> str | None:
+        """Strip file content context from a refusal reason string.
+
+        Keeps only summary lines (``SEARCH/REPLACE block …``) and
+        debugging tips. Strips search text, context analysis, fuzzy
+        match diffs, and file content lines.
+        """
+        if not refusal_reason:
+            return None
+        lines = refusal_reason.split("\n")
+        safe_lines: list[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith(("SEARCH/REPLACE block", "Expected")):
+                safe_lines.append(line.rstrip())
+            elif stripped.startswith(("Debugging tips:", "1.", "2.", "3.", "4.")):
+                safe_lines.append(line.rstrip())
+        return "\n".join(safe_lines) if safe_lines else None
 
     def get_file_snapshot(self, args: SearchReplaceArgs) -> FileSnapshot | None:
         return self.get_file_snapshot_for_path(args.file_path)
@@ -323,12 +514,35 @@ class SearchReplace(
     async def run(
         self, args: SearchReplaceArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | SearchReplaceResult, None]:
+        start = time.perf_counter()
         file_path, search_replace_blocks = self._prepare_and_validate_args(args)
         total_block_count = len(search_replace_blocks)
         coordination_store, coordination = self._build_coordination_state(
             ctx, file_path
         )
         reservation_allowed = self._claim_coordination(coordination_store, coordination)
+        if (
+            not reservation_allowed
+            and coordination_store is not None
+            and coordination is not None
+        ):
+            yield SearchReplaceResult(
+                file=str(file_path),
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                duration_ms=(time.perf_counter() - start) * 1000,
+                warnings=[],
+                before_file_sha256={},
+                after_file_sha256={},
+                changed_files=[],
+                failed_block_count=0,
+                total_block_count=total_block_count,
+                status="blocked",
+                error_kind="path_reserved",
+                refusal_reason="Coordination reservation refused: another session has an active lease on this path",
+            )
+            return
 
         guard = get_guard()
         check = guard.check_search_replace(
@@ -336,16 +550,35 @@ class SearchReplace(
         )
         if not check.allowed:
             guard.record_refusal(file_path, check.reason)
-            raise ToolError(f"search_replace refused: {check.detail}")
+            yield SearchReplaceResult(
+                file=str(file_path),
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                duration_ms=(time.perf_counter() - start) * 1000,
+                warnings=[],
+                before_file_sha256={},
+                after_file_sha256={},
+                changed_files=[],
+                failed_block_count=0,
+                total_block_count=total_block_count,
+                status="refused",
+                error_kind=_classify_refusal(check),
+                refusal_reason=check.detail,
+            )
+            return
 
         guard.mark_touched(file_path)
 
         try:
-            modified_content, result = await self._apply_search_replace(
+            result = await self._apply_search_replace(
                 file_path=file_path,
                 search_replace_blocks=search_replace_blocks,
                 total_block_count=total_block_count,
+                allow_multiple=args.allow_multiple,
+                expected_replacements=args.expected_replacements,
             )
+            result.duration_ms = (time.perf_counter() - start) * 1000
             self._publish_coordination_artifact(
                 coordination_store, coordination, result
             )
@@ -385,6 +618,14 @@ class SearchReplace(
 
         if not file_path.is_file():
             raise ToolError(f"Path is not a file: {file_path}")
+
+        # Refuse binary files — search/replace on binary content is undefined
+        raw_head = file_path.read_bytes()[:8192]
+        if _is_binary_content(raw_head):
+            raise ToolError(
+                f"Refusing to edit binary file: {file_path}. "
+                "search_replace operates on text files only."
+            )
 
         search_replace_blocks = self._parse_search_replace_blocks(content)
         if not search_replace_blocks:
@@ -437,11 +678,14 @@ class SearchReplace(
         blocks: list[SearchReplaceBlock],
         filepath: Path,
         fuzzy_threshold: float = 0.9,
+        allow_multiple: bool = True,
+        expected_replacements: int | None = None,
     ) -> BlockApplyResult:
         applied = 0
         errors: list[str] = []
         warnings: list[str] = []
         current_content = content
+        total_replacements = 0
 
         for i, (search, replace) in enumerate(blocks, 1):
             if search not in current_content:
@@ -471,6 +715,15 @@ class SearchReplace(
                 continue
 
             occurrences = current_content.count(search)
+            if not allow_multiple and occurrences > 1:
+                error_msg = (
+                    f"SEARCH/REPLACE block {i} failed: Search text found {occurrences} times "
+                    f"in {filepath} but allow_multiple=False. "
+                    f"Make the search pattern more specific or allow multiple replacements."
+                )
+                errors.append(error_msg)
+                continue
+
             if occurrences > 1:
                 warning_msg = (
                     f"Search text in block {i} appears {occurrences} times in the file. "
@@ -481,6 +734,19 @@ class SearchReplace(
 
             current_content = current_content.replace(search, replace, 1)
             applied += 1
+            total_replacements += 1
+
+        # Check expected replacement count after all blocks processed
+        if (
+            expected_replacements is not None
+            and total_replacements != expected_replacements
+        ):
+            count_error = (
+                f"Expected {expected_replacements} replacements but got {total_replacements}. "
+                f"File was not mutated — check search text and retry with corrected expectation."
+            )
+            # Prepend so it's the primary error
+            errors.insert(0, count_error)
 
         return BlockApplyResult(
             content=current_content, applied=applied, errors=errors, warnings=warnings

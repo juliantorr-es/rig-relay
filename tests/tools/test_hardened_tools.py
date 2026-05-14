@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 import pytest
@@ -122,11 +123,16 @@ async def test_search_replace_does_not_write_when_block_fails(tmp_path, monkeypa
 
     content = "<<<<<<< SEARCH\nNon-existent\n=======\nNew\n>>>>>>> REPLACE"
 
-    with pytest.raises(ToolError, match="SEARCH/REPLACE blocks failed"):
-        await collect_result(
-            tool.run(SearchReplaceArgs(file_path="file.txt", content=content))
-        )
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="file.txt", content=content))
+    )
 
+    assert result.status == "no_match"
+    assert result.error_kind == "old_text_not_found"
+    assert result.refusal_reason is not None
+    assert "SEARCH/REPLACE blocks failed" in result.refusal_reason
+    assert result.failed_block_count == 1
+    assert result.blocks_applied == 0
     assert target.read_text(encoding="utf-8") == "Hello World"
 
 
@@ -282,9 +288,7 @@ async def test_write_file_emits_coordination_events(tmp_path, monkeypatch):
         "coord.artifact.published",
         "coord.path.released",
     ]
-    assert (
-        events[0]["payload"]["schema_version"] == "rig.relay.coordination.task_claim.v1"
-    )
+    assert events[0]["payload"]["event_kind"] == "task_claimed"
     assert events[2]["payload"]["artifact_kind"] == "write_file"
 
 
@@ -352,12 +356,14 @@ async def test_search_replace_failed_does_not_emit_success_hash(tmp_path, monkey
     tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
 
     content = _sr_block("non-existent", "replacement")
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="code.py", content=content))
+    )
 
-    with pytest.raises(ToolError, match="SEARCH/REPLACE blocks failed"):
-        await collect_result(
-            tool.run(SearchReplaceArgs(file_path="code.py", content=content))
-        )
-
+    assert result.status == "no_match"
+    assert result.error_kind == "old_text_not_found"
+    assert result.failed_block_count == 1
+    assert result.blocks_applied == 0
     assert target.read_text(encoding="utf-8") == "x = 1\n"
 
 
@@ -371,12 +377,15 @@ async def test_search_replace_block_counts_on_partial(tmp_path, monkeypatch):
     tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
 
     content = _sr_block("aaa", "AAA") + "\n" + _sr_block("zzz", "ZZZ")
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="code.py", content=content))
+    )
 
-    with pytest.raises(ToolError, match="SEARCH/REPLACE blocks failed"):
-        await collect_result(
-            tool.run(SearchReplaceArgs(file_path="code.py", content=content))
-        )
-
+    assert result.status == "no_match"
+    assert result.error_kind == "old_text_not_found"
+    assert result.blocks_applied == 1
+    assert result.failed_block_count == 1
+    assert result.total_block_count == 2
     assert target.read_text(encoding="utf-8") == "aaa\nbbb\nccc\n"
 
 
@@ -455,3 +464,391 @@ async def test_search_replace_emits_coordination_events(tmp_path, monkeypatch):
         "coord.path.released",
     ]
     assert events[2]["payload"]["artifact_kind"] == "search_replace"
+
+
+# ── Coordination structured blocking (Stage: guard-availability) ───────
+
+
+@pytest.mark.asyncio
+async def test_write_file_blocked_by_active_lease_returns_structured(
+    tmp_path, monkeypatch
+):
+    """WriteFile blocked by active coordination lease returns status='blocked' with error_kind='path_reserved'."""
+    monkeypatch.chdir(tmp_path)
+
+    # Create a persistent reservation via CoordinationStore (never released)
+    # Use resolved absolute path to match what normalize_tool_path produces
+    from rig_relay.coordination.store import CoordinationStore
+
+    abs_path = str((tmp_path / "blocked.txt").resolve())
+    store = CoordinationStore(tmp_path / ".build" / "rig-relay" / "coordination")
+    store.claim_task(
+        session_id="session_persistent",
+        task_id="task_persistent",
+        claim_kind="write_file",
+        ttl_seconds=600,
+        scope={"allowed_paths": [abs_path]},
+    )
+    store.reserve_paths(
+        session_id="session_persistent",
+        task_id="task_persistent",
+        mode="write",
+        paths=[abs_path],
+        ttl_seconds=600,
+    )
+
+    # Try to write to the reserved path with a different session
+    session_dir_beta = tmp_path / "session_beta"
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(path="blocked.txt", content="second", overwrite=True),
+            InvokeContext(tool_call_id="call-second", session_dir=session_dir_beta),
+        )
+    )
+
+    assert result.status == "blocked"
+    assert result.error_kind == "path_reserved"
+    assert (
+        result.refusal_reason is not None
+        and "reservation refused" in result.refusal_reason
+    )
+    assert result.bytes_written == 0
+    assert result.after_sha256 == ""
+
+
+@pytest.mark.asyncio
+async def test_search_replace_blocked_by_active_lease_returns_structured(
+    tmp_path, monkeypatch
+):
+    """SearchReplace blocked by active coordination lease returns status='blocked' with error_kind='path_reserved'."""
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "code.py"
+    target.write_text("x = 1\ny = 2\n", encoding="utf-8")
+
+    # Create a persistent reservation via CoordinationStore (never released)
+    from rig_relay.coordination.store import CoordinationStore
+
+    abs_path = str((tmp_path / "code.py").resolve())
+    store = CoordinationStore(tmp_path / ".build" / "rig-relay" / "coordination")
+    store.claim_task(
+        session_id="session_persistent",
+        task_id="task_persistent_sr",
+        claim_kind="search_replace",
+        ttl_seconds=600,
+        scope={"allowed_paths": [abs_path]},
+    )
+    store.reserve_paths(
+        session_id="session_persistent",
+        task_id="task_persistent_sr",
+        mode="write",
+        paths=[abs_path],
+        ttl_seconds=600,
+    )
+    # Try search_replace on the reserved path with a different session
+    session_dir_beta = tmp_path / "session_beta"
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+    block_content = _sr_block("x = 1", "x = 99")
+    # Second session tries search_replace on same path
+    session_dir_beta = tmp_path / "session_beta"
+    block_content = _sr_block("x = 1", "x = 99")
+    result = await collect_result(
+        tool.run(
+            SearchReplaceArgs(file_path="code.py", content=block_content),
+            InvokeContext(tool_call_id="call-second", session_dir=session_dir_beta),
+        )
+    )
+
+    assert result.status == "blocked"
+    assert result.error_kind == "path_reserved"
+    assert (
+        result.refusal_reason is not None
+        and "reservation refused" in result.refusal_reason
+    )
+    assert result.blocks_applied == 0
+
+
+@pytest.mark.asyncio
+async def test_write_file_blocked_by_dirty_guard_returns_structured(
+    tmp_path, monkeypatch
+):
+    """WriteFile blocked by dirty-file guard returns status='refused' with error_kind='dirty_file_protected'."""
+    monkeypatch.chdir(tmp_path)
+    import subprocess
+
+    subprocess.run(
+        ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "t@t.com"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "T"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    (tmp_path / "clean.py").write_text("x = 1\n")
+    subprocess.run(
+        ["git", "add", "clean.py"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True, check=True
+    )
+
+    (tmp_path / "dirty.py").write_text("original\n")
+    subprocess.run(
+        ["git", "add", "dirty.py"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add dirty"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    (tmp_path / "dirty.py").write_text("modified\n")
+
+    from vibe.core.guard import reset_guard
+
+    reset_guard()
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="dirty.py", content="overwritten", overwrite=True))
+    )
+
+    assert result.status == "refused"
+    assert result.error_kind == "dirty_file_protected"
+    assert result.refusal_reason is not None
+    assert result.bytes_written == 0
+
+
+@pytest.mark.asyncio
+async def test_write_file_hash_mismatch_returns_structured(tmp_path, monkeypatch):
+    """WriteFile with stale expected hash returns status='refused' with error_kind='expected_hash_mismatch'."""
+    monkeypatch.chdir(tmp_path)
+    import subprocess
+
+    subprocess.run(
+        ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "t@t.com"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "T"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    (tmp_path / "data.py").write_text("original\n")
+    subprocess.run(
+        ["git", "add", "data.py"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True, check=True
+    )
+
+    (tmp_path / "data.py").write_text("version1\n")
+
+    from vibe.core.guard import reset_guard
+
+    reset_guard()
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(
+                path="data.py",
+                content="version2",
+                overwrite=True,
+                allow_overwrite_protected=True,
+                expected_before_sha256="sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            )
+        )
+    )
+
+    assert result.status == "refused"
+    assert result.error_kind == "expected_hash_mismatch"
+    assert result.refusal_reason is not None
+
+
+@pytest.mark.asyncio
+async def test_write_file_correct_hash_succeeds(tmp_path, monkeypatch):
+    """WriteFile with correct expected hash succeeds."""
+    monkeypatch.chdir(tmp_path)
+    import subprocess
+
+    subprocess.run(
+        ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "t@t.com"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "T"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    (tmp_path / "data.py").write_text("original\n")
+    subprocess.run(
+        ["git", "add", "data.py"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True, check=True
+    )
+
+    (tmp_path / "data.py").write_text("version1\n")
+    current_hash = "sha256:" + hashlib.sha256(b"version1\n").hexdigest()
+
+    from vibe.core.guard import reset_guard
+
+    reset_guard()
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(
+                path="data.py",
+                content="version2",
+                overwrite=True,
+                allow_overwrite_protected=True,
+                expected_before_sha256=current_hash,
+            )
+        )
+    )
+
+    assert result.status == "success"
+    assert result.bytes_written > 0
+    assert (tmp_path / "data.py").read_text(encoding="utf-8") == "version2"
+
+
+@pytest.mark.asyncio
+async def test_write_file_refusal_is_content_light(tmp_path, monkeypatch):
+    """WriteFile refusal metadata does not contain raw file contents."""
+    monkeypatch.chdir(tmp_path)
+    import subprocess
+
+    subprocess.run(
+        ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "t@t.com"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "T"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    (tmp_path / "secret.py").write_text("API_KEY=secret\n")
+    subprocess.run(
+        ["git", "add", "secret.py"], cwd=tmp_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True, check=True
+    )
+    (tmp_path / "secret.py").write_text("API_KEY=modified\n")
+
+    from vibe.core.guard import reset_guard
+
+    reset_guard()
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="secret.py", content="hacked", overwrite=True))
+    )
+
+    dumped = result.model_dump(mode="json")
+    dumped_str = json.dumps(dumped)
+    assert "API_KEY" not in dumped_str
+    assert result.content == ""
+
+
+@pytest.mark.asyncio
+async def test_search_replace_refusal_is_content_light(tmp_path, monkeypatch):
+    """SearchReplace refusal metadata does not contain raw search/replace text or file contents."""
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "code.py"
+    target.write_text("sensitive=data\n", encoding="utf-8")
+
+    # Create a persistent coordination reservation (never released)
+    from rig_relay.coordination.store import CoordinationStore
+
+    abs_path = str((tmp_path / "code.py").resolve())
+    store = CoordinationStore(tmp_path / ".build" / "rig-relay" / "coordination")
+    store.claim_task(
+        session_id="session_persistent_sr_cl",
+        task_id="task_persistent_sr_cl",
+        claim_kind="search_replace",
+        ttl_seconds=600,
+        scope={"allowed_paths": [abs_path]},
+    )
+    store.reserve_paths(
+        session_id="session_persistent_sr_cl",
+        task_id="task_persistent_sr_cl",
+        mode="write",
+        paths=[abs_path],
+        ttl_seconds=600,
+    )
+
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+    session_dir_beta = tmp_path / "session_beta"
+    block_content = _sr_block("sensitive=data", "leaked=yes")
+    result = await collect_result(
+        tool.run(
+            SearchReplaceArgs(file_path="code.py", content=block_content),
+            InvokeContext(tool_call_id="call-second", session_dir=session_dir_beta),
+        )
+    )
+
+    dumped = result.model_dump(mode="json")
+    dumped_str = json.dumps(dumped)
+    assert result.status == "blocked"
+    assert result.content == ""
+    assert "sensitive" not in dumped_str
+    assert "leaked" not in dumped_str
+
+
+# ── Path normalization consistency ─────────────────────────────────────
+
+
+def test_path_normalization_equivalent_forms(tmp_path, monkeypatch):
+    """normalize_path does NOT resolve relative paths -- only converts to POSIX."""
+    from rig_relay.coordination.models import normalize_path
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "file.py").write_text("")
+
+    abs_path = str((tmp_path / "sub" / "file.py").resolve())
+    rel_path = "sub/file.py"
+
+    abs_normalized = normalize_path(abs_path)
+    rel_normalized = normalize_path(rel_path)
+
+    # normalize_path does NOT resolve -- it only converts to POSIX
+    # So relative and absolute produce different results for the same file
+    assert abs_normalized != rel_normalized
+    # But for already-resolved absolute paths, normalize_path is idempotent
+    assert normalize_path(abs_path) == abs_path

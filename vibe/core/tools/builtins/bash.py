@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator
+import hashlib
 import os
 from pathlib import Path
 import sys
+import time
 from typing import ClassVar, Literal, final
 
 from pydantic import BaseModel, Field
@@ -234,6 +236,18 @@ class BashArgs(BaseModel):
     timeout: int | None = Field(
         default=None, description="Override the default command timeout."
     )
+    cwd: str | None = Field(
+        default=None,
+        description="Working directory for the command. Defaults to current directory.",
+    )
+    max_stdout_bytes: int | None = Field(
+        default=None,
+        description="Maximum bytes to capture from stdout. Overrides config max_output_bytes.",
+    )
+    max_stderr_bytes: int | None = Field(
+        default=None,
+        description="Maximum bytes to capture from stderr. Overrides config max_output_bytes.",
+    )
 
 
 class BashResult(BaseModel):
@@ -241,6 +255,35 @@ class BashResult(BaseModel):
     stdout: str
     stderr: str
     returncode: int
+    status: str = "success"
+    duration_ms: float | None = None
+    stdout_bytes: int = 0
+    stderr_bytes: int = 0
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
+    error_kind: str | None = None
+    refusal_reason: str | None = None
+
+
+class BashReceipt(BaseModel):
+    """Content-light receipt for a bash invocation.
+
+    Contains no raw stdout/stderr — only metadata, byte counts,
+    hashes, exit code, and timing information.
+    """
+
+    command: str
+    status: str
+    exit_code: int
+    duration_ms: float | None = None
+    stdout_bytes: int = 0
+    stderr_bytes: int = 0
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
+    stdout_sha256: str | None = None
+    stderr_sha256: str | None = None
+    error_kind: str | None = None
+    refusal_reason: str | None = None
 
 
 class Bash(
@@ -447,12 +490,18 @@ class Bash(
         )
 
     @final
-    def _build_timeout_error(self, command: str, timeout: int) -> ToolError:
-        return ToolError(f"Command timed out after {timeout}s: {command!r}")
-
-    @final
     def _build_result(
-        self, *, command: str, stdout: str, stderr: str, returncode: int
+        self,
+        *,
+        command: str,
+        stdout: str,
+        stderr: str,
+        returncode: int,
+        duration_ms: float | None = None,
+        stdout_bytes: int = 0,
+        stderr_bytes: int = 0,
+        stdout_truncated: bool = False,
+        stderr_truncated: bool = False,
     ) -> BashResult:
         if returncode != 0:
             error_msg = f"Command failed: {command!r}\n"
@@ -464,70 +513,216 @@ class Bash(
             raise ToolError(error_msg.strip())
 
         return BashResult(
-            command=command, stdout=stdout, stderr=stderr, returncode=returncode
+            command=command,
+            stdout=stdout,
+            stderr=stderr,
+            returncode=returncode,
+            status="success",
+            duration_ms=duration_ms,
+            stdout_bytes=stdout_bytes,
+            stderr_bytes=stderr_bytes,
+            stdout_truncated=stdout_truncated,
+            stderr_truncated=stderr_truncated,
+            error_kind=None,
+            refusal_reason=None,
         )
 
-    async def run(
-        self, args: BashArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | BashResult, None]:
-        guard = get_guard()
-        is_destructive, reason = guard.is_destructive_git_command(args.command)
-        if is_destructive:
-            raise ToolError(f"bash refused: {reason}")
+    @final
+    def _build_timeout_result(
+        self,
+        *,
+        command: str,
+        duration_ms: float | None = None,
+        timeout: int = 0,
+        stdout_bytes: int = 0,
+        stderr_bytes: int = 0,
+    ) -> BashResult:
+        return BashResult(
+            command=command,
+            stdout="",
+            stderr="",
+            returncode=-1,
+            status="timed_out",
+            duration_ms=duration_ms,
+            stdout_bytes=stdout_bytes,
+            stderr_bytes=stderr_bytes,
+            stdout_truncated=False,
+            stderr_truncated=False,
+            error_kind="timeout",
+            refusal_reason=f"Command timed out after {timeout}s",
+        )
 
-        timeout = args.timeout or self.config.default_timeout
-        max_bytes = self.config.max_output_bytes
+    @final
+    def build_receipt(self, result: BashResult) -> BashReceipt:
+        """Build a content-light receipt from a command result.
 
-        proc = None
+        The receipt contains no raw stdout/stderr — only byte counts,
+        SHA256 hashes, exit code, timing, and metadata.
+        """
+        stdout_sha256 = None
+        stderr_sha256 = None
+        if result.stdout:
+            stdout_sha256 = hashlib.sha256(result.stdout.encode("utf-8")).hexdigest()
+        if result.stderr:
+            stderr_sha256 = hashlib.sha256(result.stderr.encode("utf-8")).hexdigest()
+
+        return BashReceipt(
+            command=result.command,
+            status=result.status,
+            exit_code=result.returncode,
+            duration_ms=result.duration_ms,
+            stdout_bytes=result.stdout_bytes,
+            stderr_bytes=result.stderr_bytes,
+            stdout_truncated=result.stdout_truncated,
+            stderr_truncated=result.stderr_truncated,
+            stdout_sha256=stdout_sha256,
+            stderr_sha256=stderr_sha256,
+            error_kind=result.error_kind,
+            refusal_reason=result.refusal_reason,
+        )
+
+    @final
+    async def _run_subprocess(
+        self,
+        command: str,
+        cwd: str | None,
+        timeout: int,
+        max_stdout: int,
+        max_stderr: int,
+        start: float,
+    ) -> BashResult:
+        """Execute a subprocess and return a structured result.
+
+        Handles process creation, timeout, output decoding, and truncation.
+        Raises ``ToolError`` for non-zero exit codes (preserving existing
+        contract); yields timed_out/refused results for those specific cases.
+        """
+        kwargs: dict[Literal["start_new_session"], bool] = (
+            {} if is_windows() else {"start_new_session": True}
+        )
+
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.DEVNULL,
+            env=_get_base_env(),
+            executable=_get_shell_executable(),
+            cwd=cwd,
+            **kwargs,
+        )
+
         try:
-            # start_new_session is Unix-only, on Windows it's ignored
-            kwargs: dict[Literal["start_new_session"], bool] = (
-                {} if is_windows() else {"start_new_session": True}
-            )
-
-            proc = await asyncio.create_subprocess_shell(
-                args.command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                stdin=asyncio.subprocess.DEVNULL,
-                env=_get_base_env(),
-                executable=_get_shell_executable(),
-                **kwargs,
-            )
-
             try:
-                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                raw_stdout, raw_stderr = await asyncio.wait_for(
                     proc.communicate(), timeout=timeout
                 )
             except TimeoutError:
                 await kill_async_subprocess(proc)
-                raise self._build_timeout_error(args.command, timeout)
+                elapsed = (time.perf_counter() - start) * 1000
+                return self._build_timeout_result(
+                    command=command,
+                    duration_ms=elapsed,
+                    timeout=timeout,
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                )
 
             encoding = _get_subprocess_encoding()
-            stdout = (
-                stdout_bytes.decode(encoding, errors="replace")[:max_bytes]
-                if stdout_bytes
+            total_stdout_bytes = len(raw_stdout) if raw_stdout else 0
+            total_stderr_bytes = len(raw_stderr) if raw_stderr else 0
+
+            stdout_str = (
+                raw_stdout.decode(encoding, errors="replace")[:max_stdout]
+                if raw_stdout
                 else ""
             )
-            stderr = (
-                stderr_bytes.decode(encoding, errors="replace")[:max_bytes]
-                if stderr_bytes
+            stderr_str = (
+                raw_stderr.decode(encoding, errors="replace")[:max_stderr]
+                if raw_stderr
                 else ""
             )
 
+            stdout_truncated = total_stdout_bytes > max_stdout
+            stderr_truncated = total_stderr_bytes > max_stderr
             returncode = proc.returncode or 0
+            elapsed = (time.perf_counter() - start) * 1000
 
-            yield self._build_result(
-                command=args.command,
-                stdout=stdout,
-                stderr=stderr,
+            return self._build_result(
+                command=command,
+                stdout=stdout_str,
+                stderr=stderr_str,
                 returncode=returncode,
+                duration_ms=elapsed,
+                stdout_bytes=total_stdout_bytes,
+                stderr_bytes=total_stderr_bytes,
+                stdout_truncated=stdout_truncated,
+                stderr_truncated=stderr_truncated,
             )
+        finally:
+            await kill_async_subprocess(proc)
 
+    async def run(
+        self, args: BashArgs, ctx: InvokeContext | None = None
+    ) -> AsyncGenerator[ToolStreamEvent | BashResult, None]:
+        start = time.perf_counter()
+        guard = get_guard()
+        is_destructive, reason = guard.is_destructive_git_command(args.command)
+        if is_destructive:
+            elapsed = (time.perf_counter() - start) * 1000
+            yield BashResult(
+                command=args.command,
+                stdout="",
+                stderr="",
+                returncode=-1,
+                status="refused",
+                duration_ms=elapsed,
+                stdout_bytes=0,
+                stderr_bytes=0,
+                stdout_truncated=False,
+                stderr_truncated=False,
+                error_kind="refused",
+                refusal_reason=reason,
+            )
+            return
+
+        timeout = args.timeout or self.config.default_timeout
+        max_stdout_cap = (
+            args.max_stdout_bytes
+            if args.max_stdout_bytes is not None
+            else self.config.max_output_bytes
+        )
+        max_stderr_cap = (
+            args.max_stderr_bytes
+            if args.max_stderr_bytes is not None
+            else self.config.max_output_bytes
+        )
+
+        try:
+            result = await self._run_subprocess(
+                command=args.command,
+                cwd=args.cwd,
+                timeout=timeout,
+                max_stdout=max_stdout_cap,
+                max_stderr=max_stderr_cap,
+                start=start,
+            )
+            yield result
         except (ToolError, asyncio.CancelledError):
             raise
         except Exception as exc:
-            raise ToolError(f"Error running command {args.command!r}: {exc}") from exc
-        finally:
-            if proc is not None:
-                await kill_async_subprocess(proc)
+            elapsed = (time.perf_counter() - start) * 1000
+            yield BashResult(
+                command=args.command,
+                stdout="",
+                stderr="",
+                returncode=-1,
+                status="failure",
+                duration_ms=elapsed,
+                stdout_bytes=0,
+                stderr_bytes=0,
+                stdout_truncated=False,
+                stderr_truncated=False,
+                error_kind="internal_error",
+                refusal_reason=str(exc),
+            )

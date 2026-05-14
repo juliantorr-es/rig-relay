@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.validate_receipt.v1.schema.json",
+  "title": "Rig Relay Validate Receipt v1",
+  "description": "Content-light receipt for a validate invocation. Contains no raw stdout/stderr \u2014 only hashes, byte counts, per-check metadata, timing, and blocker summary.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "rig.relay.validate_receipt.v1"
+      ]
+    },
+    "profile": {
+      "type": "string",
+      "description": "The validation profile that was run"
+    },
+    "scope": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional mission scope label"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "skipped",
+        "timed_out",
+        "refused"
+      ],
+      "description": "Overall outcome of the validate invocation"
+    },
+    "command_count": {
+      "type": "integer",
+      "description": "Total number of checks run"
+    },
+    "passed_count": {
+      "type": "integer",
+      "description": "Number of passing checks"
+    },
+    "failed_count": {
+      "type": "integer",
+      "description": "Number of failing checks"
+    },
+    "skipped_count": {
+      "type": "integer",
+      "description": "Number of skipped or blocked checks"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Total wall-clock duration in milliseconds"
+    },
+    "blocker_summary": {
+      "type": "object",
+      "description": "Count of failures by blocker kind",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "error_kind": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Final error category, if any"
+    },
+    "refusal_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Human-readable refusal reason, if refused"
+    },
+    "check_receipts": {
+      "type": "array",
+      "description": "Content-light per-check receipts",
+      "items": {
+        "$ref": "#/$defs/ValidateCheckReceipt"
+      }
+    },
+    "before_git_summary": {
+      "$ref": "#/$defs/GitSummary"
+    },
+    "after_git_summary": {
+      "$ref": "#/$defs/GitSummary"
+    }
+  },
+  "required": [
+    "profile",
+    "status",
+    "command_count"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "GitSummary": {
+      "type": ["object", "null"],
+      "description": "Content-light git state summary (counts only, no paths/hashes)",
+      "properties": {
+        "dirty_count": { "type": "integer" },
+        "modified_count": { "type": "integer" },
+        "deleted_count": { "type": "integer" },
+        "untracked_count": { "type": "integer" },
+        "staged_count": { "type": "integer" },
+        "conflicted_count": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "ValidateCheckReceipt": {
+      "type": "object",
+      "description": "Content-light receipt for a single validate check",
+      "properties": {
+        "check_id": {
+          "type": "string",
+          "description": "Stable check identifier"
+        },
+        "command_kind": {
+          "type": "string",
+          "description": "Kind of check (pytest, ruff, pyright, git, schema, policy, custom)"
+        },
+        "command_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Hash of normalized command"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "skipped",
+            "blocked",
+            "timed_out",
+            "unknown"
+          ],
+          "description": "Per-check outcome"
+        },
+        "exit_code": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Process exit code"
+        },
+        "duration_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Per-check duration in milliseconds"
+        },
+        "stdout_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "SHA256 hex digest of stdout content"
+        },
+        "stderr_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "SHA256 hex digest of stderr content"
+        },
+        "stdout_bytes": {
+          "type": "integer",
+          "description": "Total stdout bytes"
+        },
+        "stderr_bytes": {
+          "type": "integer",
+          "description": "Total stderr bytes"
+        },
+        "stdout_truncated": {
+          "type": "boolean",
+          "description": "Whether stdout was truncated"
+        },
+        "stderr_truncated": {
+          "type": "boolean",
+          "description": "Whether stderr was truncated"
+        },
+        "failure_kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Blocker kind if failed"
+        },
+        "affected_paths": {
+          "type": "array",
+          "description": "Paths affected by the check",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "check_id",
+        "command_kind"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

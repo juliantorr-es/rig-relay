@@ -181,6 +181,81 @@ Commercial/aggregate export of observation data requires:
 3. Content-light guarantee verified on all observations
 4. See [Usage Data Commercial License](../legal/usage-data-license-alpha.md)
 
+## Local-Only Ingestion
+
+Model observations are **local by default**. Every observation is written to
+the session's local observability JSONL under the event name
+`rig.relay.model_observation.captured`. No observation data is uploaded,
+exported, or transmitted unless the user explicitly enables contribution
+flows and grants the required consent scopes.
+
+### Ingestion Path
+
+Observations are captured in `vibe/core/agent_loop.py` via the
+`_capture_model_observation_for_tool_response()` helper, which is called at
+the end of `_handle_tool_response()` for every non-skipped tool call when
+`enable_local_observability` is active.
+
+The helper:
+1. Checks `status != "skipped"` and `enable_local_observability`
+2. Extracts provider info from `self.config.get_active_provider()`
+3. Extracts model info from `self.config.get_active_model()`
+4. Computes a deterministic `task_fingerprint` as SHA256 of the
+   namespaced preimage `rig-relay-tool-args-v1:<canonical_args_json>`
+5. Calls `observe_tool_call()` from `rig_relay/evidence/model_observations.py`
+6. Errors are caught and logged — observation failures never break tool execution
+
+Only content-light fields from `ModelObservation` reach the observability log.
+Raw tool args, raw tool output, stdout/stderr bodies, source code, diffs,
+and secrets are never stored in observation events.
+
+### Guards
+
+| Gate | Mechanism |
+|------|-----------|
+| Config-level | `enable_local_observability` must be `True` |
+| Status-level | `status == "skipped"` produces no observation |
+| Consent-level | `observation_allowed_by_consent()` checked via `ConsentStore.get()` — default-deny |
+| Error resilience | try/except with `logger.warning`, never propagates |
+| Content-light | All observation fields validated by `validate_observation_content_light()` |
+| Fingerprint | Preimage is SHA256-hashed and namespaced — raw args never persisted |
+
+### Default-Deny Behavior
+
+Model observations are **default-deny**. When no consent record exists
+(consent status is `NOT_REQUESTED`), `observation_allowed_by_consent()`
+returns `False` and the observation is silently skipped. This ensures:
+
+- First-time users without any consent configuration produce no observations
+- Consent must be explicitly granted before any observation is captured
+- Revoked or denied consent is equivalent to no consent for collection purposes
+
+The full gate stack evaluated in `_capture_model_observation_for_tool_response()`:
+
+1. **Status gate** — `status == "skipped"` → return early, no consent check
+2. **Config gate** — `enable_local_observability == False` → return early, no consent check
+3. **Consent gate** — loads `ConsentStore().get()`, calls
+   `observation_allowed_by_consent(record, kind)` with the derived
+   observation kind → if `False`, return early
+4. **Persistence** — calls `observe_tool_call()` to build and write the observation
+
+### Backend-to-Observation-Kind Mapping
+
+The `_capture_model_observation_for_tool_response()` helper derives the
+observation kind from the active provider's backend:
+
+| Backend | Classification | Observation Kind |
+|---------|---------------|-----------------|
+| `api` | Cloud | `provider` |
+| `generic` | Cloud | `provider` |
+| `mlx` | Local | `local_model` |
+| `llama_cpp` | Local | `local_model` |
+| `ollama` | Local | `local_model` |
+| Unknown/missing | Falls to cloud | `provider` |
+
+The classification is purely string-based on `str(getattr(provider, "backend", "generic"))`.
+Local backends are `{"mlx", "llama_cpp", "ollama"}`; everything else is cloud.
+
 ## Related
 
 - [Usage Data Doctrine](./usage-data-doctrine.md)

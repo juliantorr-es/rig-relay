@@ -64,6 +64,23 @@ class WriteFileResult(BaseModel):
     created_file: bool = False
     overwrote_existing_file: bool = False
     parent_dirs_created: bool = False
+    status: str = "success"
+    error_kind: str | None = None
+    refusal_reason: str | None = None
+
+
+def _classify_write_guard_refusal(check: object) -> str:
+    """Classify a dirty-guard refusal into a structured error_kind."""
+    rsn = getattr(check, "reason", "") or ""
+    if "stale_hash" in rsn or "hash_mismatch" in rsn or "mismatch" in rsn:
+        return "expected_hash_mismatch"
+    if "no_overwrite_flag" in rsn or "missing_expected_hash" in rsn:
+        return "dirty_file_protected"
+    if "protected_file_missing" in rsn:
+        return "protected_file_missing"
+    if "missing" in rsn:
+        return "dirty_file_protected"
+    return "dirty_file_protected"
 
 
 @dataclass(frozen=True)
@@ -162,7 +179,7 @@ class WriteFile(
             ttl_seconds=300,
         )
         if not reservation_result.allowed:
-            raise ToolError("write_file coordination reservation refused")
+            return False
         return True
 
     @staticmethod
@@ -212,6 +229,23 @@ class WriteFile(
         reservation_allowed = self._maybe_claim_coordination(
             coordination_store, coordination
         )
+        if (
+            not reservation_allowed
+            and coordination_store is not None
+            and coordination is not None
+        ):
+            yield WriteFileResult(
+                path=str(file_path),
+                bytes_written=0,
+                file_existed=file_path.exists(),
+                content="",
+                before_sha256=None,
+                after_sha256="",
+                status="blocked",
+                error_kind="path_reserved",
+                refusal_reason="Coordination reservation refused: another session has an active lease on this path",
+            )
+            return
 
         guard = get_guard()
         check = guard.check_write_file(
@@ -221,7 +255,19 @@ class WriteFile(
         )
         if not check.allowed:
             guard.record_refusal(file_path, check.reason)
-            raise ToolError(f"write_file refused: {check.detail}")
+            _cls = _classify_write_guard_refusal(check)
+            yield WriteFileResult(
+                path=str(file_path),
+                bytes_written=0,
+                file_existed=file_path.exists(),
+                content="",
+                before_sha256=None,
+                after_sha256="",
+                status="refused",
+                error_kind=_cls,
+                refusal_reason=check.detail,
+            )
+            return
 
         guard.mark_touched(file_path)
 

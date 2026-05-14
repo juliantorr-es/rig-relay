@@ -22,11 +22,21 @@ It contains the agent loop, LLM backends, tool registry, and CLI framework.
 These modules are **legacy bones** being strangulated — not the product
 architecture.
 
+The `vibe/cli/` Textual TUI is not being deleted yet. It remains a
+development compatibility surface until Relay CLI and the pywebview cockpit
+reach operational parity.
+
 ### Migration Follows Strangler Fig, Not Fork
 
 Following Fowler's Strangler Fig pattern, the new system (`rig_relay.*`) grows
 around the old system (`vibe.*`) until the old system can be replaced. This is
 a controlled migration, not a high-risk rewrite.
+
+### Product Copy Must Not Recenter Vibe
+
+Public-facing copy should treat Vibe as legacy substrate or compatibility
+history. It must not present Vibe as the future UI or primary operator
+experience.
 
 ## Migration Phases
 
@@ -91,6 +101,12 @@ All public-facing surfaces must use Rig Relay identity:
 - **Telemetry schemas**: `rig.relay.*`
 - **Update status**: `rig-relay` product channel
 
+### Rule 6: Textual Compatibility Persists Until Parity
+
+The Textual TUI remains available during alpha for development compatibility.
+It is retired as the future product UI, but not removed until Relay CLI and
+pywebview parity is proven and the user no longer needs it for development.
+
 ## Authority Boundaries
 
 All governance authority remains on the backend. The frontend is a dumb
@@ -103,6 +119,7 @@ for full porting rules.
 - [Rig-to-Relay Pattern Inventory](rig-to-relay-pattern-inventory.md)
 - [Vibe Legacy Boundary Inventory](../audits/vibe-legacy-boundary-inventory.md)
 - [Desktop Cockpit UI Doctrine](desktop-cockpit-ui.md)
+- [Relay Surface Matrix](relay-surface-matrix.md)
 - [Versioning Policy](../release/versioning-policy.md)
 - [Install Channels](../install.md)
 - [Self-Dogfood Workflow](../dogfood/rig-relay-self-dogfood.md)

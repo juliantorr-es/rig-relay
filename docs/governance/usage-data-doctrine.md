@@ -71,6 +71,11 @@ no prompt text, and no file contents.
 | authorization_receipt_sha256 | `desktop.intent.completed`, `desktop.intent.refused` |
 | authorization_action | `desktop.intent.completed`, `desktop.intent.refused` |
 | authorization_status | `desktop.intent.completed`, `desktop.intent.refused` |
+| observation_id | `MODEL_OBSERVATION_CAPTURED` |
+| task_kind, task_fingerprint | `MODEL_OBSERVATION_CAPTURED` |
+| provider_kind, provider_name, model_id, backend | `MODEL_OBSERVATION_CAPTURED` |
+| tool_call_count, tool_success_count, failure_count | `MODEL_OBSERVATION_CAPTURED` |
+| latency_ms (observation) | `MODEL_OBSERVATION_CAPTURED` |
 
 ### Locally Retained (kept on disk, never exported)
 
@@ -417,6 +422,8 @@ Current evaluation schemas:
 | `rig.relay.telemetry_consent.v1.schema.json` | Explicit opt-in consent record with share_level |
 | `rig.relay.telemetry_bundle_manifest.v1.schema.json` | Content-light bundle manifest with content hash |
 | `rig.relay.google_drive_upload_receipt.v1.schema.json` | Upload receipt for beta artifact lake |
+| `rig.relay.contribution_receipt.v1.schema.json` | Content-light contribution receipt with hashed Drive IDs |
+| `rig.relay.contribution_result.v1.schema.json` | Orchestration result for contribution flow |
 | `rig.relay.telemetry_settings.v1.schema.json` | Telemetry mode and feature gate settings |
 
 Existing observability schemas (not modified by this doctrine):

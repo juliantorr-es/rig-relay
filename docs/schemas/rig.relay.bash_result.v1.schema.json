@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.bash_result.v1.schema.json",
+  "title": "Rig Relay Bash Result v1",
+  "description": "Schema for a deterministic bash tool execution result. Contains the full stdout/stderr output with truncation metadata.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.bash_result.v1"]
+    },
+    "command": {
+      "type": "string",
+      "description": "The command that was executed"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "timed_out", "refused", "truncated"],
+      "description": "Outcome of the command execution"
+    },
+    "exit_code": {
+      "type": "integer",
+      "description": "Process exit code"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Wall-clock duration in milliseconds"
+    },
+    "stdout_bytes": {
+      "type": "integer",
+      "description": "Total stdout bytes before truncation"
+    },
+    "stderr_bytes": {
+      "type": "integer",
+      "description": "Total stderr bytes before truncation"
+    },
+    "stdout_truncated": {
+      "type": "boolean",
+      "description": "Whether stdout was truncated"
+    },
+    "stderr_truncated": {
+      "type": "boolean",
+      "description": "Whether stderr was truncated"
+    },
+    "error_kind": {
+      "type": "string",
+      "enum": ["nonzero_exit", "timeout", "refused", "internal_error", null],
+      "description": "Structured error classification"
+    },
+    "refusal_reason": {
+      "type": "string",
+      "description": "Reason for refusal, if refused"
+    }
+  },
+  "required": ["command", "status", "exit_code"],
+  "additionalProperties": false
+}

@@ -47,11 +47,17 @@ async def test_uses_effective_workdir(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_handles_timeout(bash):
-    with pytest.raises(ToolError) as err:
-        await collect_result(bash.run(BashArgs(command="sleep 2", timeout=1)))
+async def test_handles_timeout_structured_result(bash):
+    """Timeout yields a structured BashResult with status='timed_out'."""
+    result = await collect_result(bash.run(BashArgs(command="sleep 2", timeout=1)))
 
-    assert "Command timed out after 1s" in str(err.value)
+    assert result.status == "timed_out"
+    assert result.error_kind == "timeout"
+    assert result.returncode == -1
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert result.duration_ms is not None
+    assert result.duration_ms >= 0
 
 
 @pytest.mark.asyncio

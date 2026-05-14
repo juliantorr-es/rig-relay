@@ -35,6 +35,9 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras
 
+      - name: Check lockfile consistency
+        run: uv lock --check
+
       - name: Install pip (required by pre-commit)
         run: uv pip install pip
 
@@ -49,6 +52,12 @@ jobs:
 
       - name: Run pre-commit
         run: uv run pre-commit run --all-files --show-diff-on-failure
+
+      - name: Validate JSON schemas
+        run: uv run python scripts/rig_relay_validate_schemas.py
+
+      - name: Check schema files for Python contamination
+        run: uv run pytest tests/coordination/test_schema_validation.py::test_no_schema_contains_python_syntax -n0
 
   tests:
     name: Tests
@@ -81,6 +90,9 @@ jobs:
           uv run rig-relay-acp --help
           uv run vibe --help
           uv run vibe-acp --help
+
+      - name: Validate tool receipt emission is content-light
+        run: uv run pytest tests/tools/test_tool_receipt_emission.py -n0
 
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep

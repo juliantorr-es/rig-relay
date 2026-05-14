@@ -23,8 +23,8 @@ into `vibe` as the product interface.
 
 | Surface | Current Path | Classification | Notes |
 |---|---|---|---|
-| `rig-relay` | `pyproject.toml`, `vibe.cli.entrypoint:main` | `retain` | Primary product command |
-| `rig-relay-acp` | `pyproject.toml`, `vibe.acp.entrypoint:main` | `retain` | Primary ACP command |
+| `rig-relay` | `pyproject.toml`, `rig_relay.cli.entrypoint:main` | `retain` | Primary product command |
+| `rig-relay-acp` | `pyproject.toml`, `rig_relay.cli.acp_entrypoint:main` | `retain` | Primary ACP command |
 | `vibe` | `pyproject.toml`, `vibe.cli.entrypoint:main` | `quarantine` | Legacy alias; keep for alpha compatibility |
 | `vibe-acp` | `pyproject.toml`, `vibe.acp.entrypoint:main` | `quarantine` | Legacy alias; keep for alpha compatibility |
 | `rig-relay-cockpit` | `docs/install.md` only | `retain` | Primary cockpit launcher reference |

@@ -3136,8 +3136,8 @@ def run_textual_ui(
     from vibe.cli.stderr_guard import stderr_guard
 
     print(
-        "Warning: Textual UI is legacy. Use `uv run python scripts/rig_relay_desktop_cockpit.py` "
-        "for the primary Relay cockpit. Legacy CLI/script entry points remain available.",
+        "Textual TUI is retained for development compatibility. The future product UI "
+        "is Relay cockpit + Relay CLI.",
         file=sys.stderr,
     )
     update_notifier = PyPIUpdateGateway(project_name="mistral-vibe")

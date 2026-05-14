@@ -1,0 +1,288 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.validate_result.v1.schema.json",
+  "title": "Rig Relay Validate Result v1",
+  "description": "Structured validation result with per-check results, blocker taxonomy, and aggregate counts. Content-light: no raw stdout/stderr bodies in the result envelope.",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "blocked",
+        "refused",
+        "timed_out",
+        "skipped"
+      ],
+      "description": "Overall validation status"
+    },
+    "profile": {
+      "type": "string",
+      "description": "Echoed input profile name"
+    },
+    "scope": {
+      "type": "string",
+      "description": "Echoed input scope"
+    },
+    "command_count": {
+      "type": "integer",
+      "description": "Total commands run"
+    },
+    "passed_count": {
+      "type": "integer",
+      "description": "Count of passing checks"
+    },
+    "failed_count": {
+      "type": "integer",
+      "description": "Count of failing checks"
+    },
+    "skipped_count": {
+      "type": "integer",
+      "description": "Count of skipped checks"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Total elapsed time in milliseconds"
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ValidateCheckResult"
+      },
+      "description": "Per-check results"
+    },
+    "blocker_summary": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "Blocker counts by kind"
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Files changed during validation (only when profile allows mutation)"
+    },
+    "before_git_state": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/ValidateGitState"
+        }
+      ],
+      "description": "Optional pre-state git workspace snapshot"
+    },
+    "after_git_state": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/ValidateGitState"
+        }
+      ],
+      "description": "Optional post-state git workspace snapshot"
+    },
+    "error_kind": {
+      "type": "string",
+      "description": "Final error category"
+    },
+    "refusal_reason": {
+      "type": "string",
+      "description": "Human-readable refusal summary"
+    }
+  },
+  "required": [
+    "status",
+    "profile",
+    "command_count",
+    "passed_count",
+    "failed_count",
+    "skipped_count"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "ValidateCheckResult": {
+      "type": "object",
+      "properties": {
+        "check_id": {
+          "type": "string",
+          "description": "Stable check identifier"
+        },
+        "command_kind": {
+          "type": "string",
+          "description": "Kind of check (pytest, ruff, pyright, git, schema, policy, custom)"
+        },
+        "command_display": {
+          "type": "string",
+          "description": "Human-readable command summary"
+        },
+        "command_fingerprint": {
+          "type": "string",
+          "description": "Hash of normalized command"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "skipped",
+            "blocked",
+            "timed_out",
+            "refused"
+          ]
+        },
+        "exit_code": {
+          "type": "integer",
+          "description": "Process exit code when present"
+        },
+        "duration_ms": {
+          "type": "number",
+          "description": "Measured runtime in milliseconds"
+        },
+        "stdout_sha256": {
+          "type": "string",
+          "description": "SHA256 hash of raw stdout"
+        },
+        "stderr_sha256": {
+          "type": "string",
+          "description": "SHA256 hash of raw stderr"
+        },
+        "stdout_bytes": {
+          "type": "integer",
+          "description": "Byte count of raw stdout"
+        },
+        "stderr_bytes": {
+          "type": "integer",
+          "description": "Byte count of raw stderr"
+        },
+        "stdout_truncated": {
+          "type": "boolean",
+          "description": "Whether stdout exceeded cap"
+        },
+        "stderr_truncated": {
+          "type": "boolean",
+          "description": "Whether stderr exceeded cap"
+        },
+        "parsed_summary": {
+          "type": "object",
+          "description": "Optional structured summary from a profile-specific parser"
+        },
+        "failure_kind": {
+          "type": "string",
+          "description": "Blocker kind when status is not passed"
+        },
+        "affected_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional hash-safe path list"
+        }
+      },
+      "required": [
+        "check_id",
+        "command_kind",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "ValidateGitState": {
+      "type": "object",
+      "description": "Content-light git workspace state snapshot. Contains no file contents, diffs, or raw git status output.",
+      "properties": {
+        "branch": {
+          "type": "string",
+          "description": "Current git branch"
+        },
+        "head": {
+          "type": "string",
+          "description": "Full SHA of HEAD"
+        },
+        "is_git_repo": {
+          "type": "boolean",
+          "description": "Whether cwd is inside a git worktree"
+        },
+        "is_worktree": {
+          "type": "boolean",
+          "description": "Whether HEAD is detached (branch is None)"
+        },
+        "upstream": {
+          "type": "string",
+          "description": "Upstream tracking branch"
+        },
+        "ahead_count": {
+          "type": "integer",
+          "description": "Commits ahead of upstream"
+        },
+        "behind_count": {
+          "type": "integer",
+          "description": "Commits behind upstream"
+        },
+        "dirty_count": {
+          "type": "integer",
+          "description": "Total dirtied paths"
+        },
+        "modified_count": {
+          "type": "integer",
+          "description": "Working tree modifications"
+        },
+        "deleted_count": {
+          "type": "integer",
+          "description": "Working tree deletions"
+        },
+        "untracked_count": {
+          "type": "integer",
+          "description": "Untracked files"
+        },
+        "staged_count": {
+          "type": "integer",
+          "description": "Staged changes"
+        },
+        "conflicted_count": {
+          "type": "integer",
+          "description": "Conflicted files"
+        },
+        "dirty_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Workspace-relative POSIX paths of dirty files"
+        },
+        "untracked_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Workspace-relative POSIX paths of untracked files"
+        },
+        "changed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Workspace-relative POSIX paths of all changed files"
+        },
+        "status_porcelain_sha256": {
+          "type": "string",
+          "description": "SHA256 hash of raw git status output"
+        },
+        "error_kind": {
+          "type": "string",
+          "description": "Error category if git state collection failed"
+        },
+        "refusal_reason": {
+          "type": "string",
+          "description": "Human-readable failure reason"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

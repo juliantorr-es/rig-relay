@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.bash_receipt.v1.schema.json",
+  "title": "Rig Relay Bash Receipt v1",
+  "description": "Content-light receipt for a bash invocation. Contains no raw stdout/stderr — only metadata, byte counts, SHA256 hashes, exit code, and timing.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.bash_receipt.v1"]
+    },
+    "command": {
+      "type": "string",
+      "description": "The command that was executed"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "timed_out", "refused", "truncated"],
+      "description": "Outcome of the command execution"
+    },
+    "exit_code": {
+      "type": "integer",
+      "description": "Process exit code"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Wall-clock duration in milliseconds"
+    },
+    "stdout_bytes": {
+      "type": "integer",
+      "description": "Total stdout bytes"
+    },
+    "stderr_bytes": {
+      "type": "integer",
+      "description": "Total stderr bytes"
+    },
+    "stdout_truncated": {
+      "type": "boolean",
+      "description": "Whether stdout was truncated"
+    },
+    "stderr_truncated": {
+      "type": "boolean",
+      "description": "Whether stderr was truncated"
+    },
+    "stdout_sha256": {
+      "type": "string",
+      "description": "SHA256 hex digest of stdout content, if any"
+    },
+    "stderr_sha256": {
+      "type": "string",
+      "description": "SHA256 hex digest of stderr content, if any"
+    },
+    "error_kind": {
+      "type": "string",
+      "enum": ["nonzero_exit", "timeout", "refused", "internal_error", null],
+      "description": "Structured error classification"
+    },
+    "refusal_reason": {
+      "type": "string",
+      "description": "Reason for refusal, if refused"
+    }
+  },
+  "required": ["command", "status", "exit_code"],
+  "additionalProperties": false
+}

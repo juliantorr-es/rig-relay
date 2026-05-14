@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.tool_receipt_index.v1.schema.json",
+  "title": "Rig Relay Tool Receipt Index v1",
+  "description": "Content-light indexed receipt record derived from session observability events. Contains no raw tool output, file contents, diffs, snippets, or secrets — only metadata, hashes, byte counts, and structured error classification.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.tool_receipt_index.v1"]
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier that produced the receipt"
+    },
+    "event_name": {
+      "type": "string",
+      "enum": ["rig.relay.tool_receipt.captured"],
+      "description": "Observability event name"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier from the observability envelope"
+    },
+    "captured_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the receipt was captured"
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Name of the tool that produced the receipt (e.g. bash, search_replace)"
+    },
+    "invocation_id": {
+      "type": "string",
+      "description": "Invocation or call identifier, if available"
+    },
+    "status": {
+      "type": "string",
+      "description": "Tool execution outcome status (success, failure, refused, timed_out, etc.)"
+    },
+    "error_kind": {
+      "type": "string",
+      "description": "Structured error classification when status is not success"
+    },
+    "refusal_reason": {
+      "type": "string",
+      "description": "Human-readable reason when status is refused"
+    },
+    "changed": {
+      "type": "boolean",
+      "description": "Whether the tool invocation mutated files (search_replace only)"
+    },
+    "path": {
+      "type": "string",
+      "description": "Primary file path affected by the tool, if applicable (resolved absolute)"
+    },
+    "before_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of file content before mutation (search_replace only)"
+    },
+    "after_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of file content after mutation (search_replace only)"
+    },
+    "stdout_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of stdout content (bash only)"
+    },
+    "stderr_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of stderr content (bash only)"
+    },
+    "stdout_bytes": {
+      "type": "integer",
+      "description": "Total stdout bytes (bash only)"
+    },
+    "stderr_bytes": {
+      "type": "integer",
+      "description": "Total stderr bytes (bash only)"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Wall-clock duration in milliseconds"
+    },
+    "receipt_schema_version": {
+      "type": "string",
+      "description": "Receipt schema version, if available"
+    }
+  },
+  "required": ["schema_version", "session_id", "event_name", "tool_name"],
+  "additionalProperties": false
+}

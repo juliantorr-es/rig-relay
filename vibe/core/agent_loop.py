@@ -1026,7 +1026,7 @@ class AgentLoop:
             async for event in self._execute_tool_call(span, tool_call):
                 yield event
 
-    async def _execute_tool_call(
+    async def _execute_tool_call(  # noqa: PLR0915
         self, span: trace.Span, tool_call: ResolvedToolCall
     ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
         try:
@@ -1110,6 +1110,28 @@ class AgentLoop:
                 span=span,
                 duration_ms=duration * 1000,
             )
+
+            # Emit content-light tool receipt if the tool produces one
+            build_receipt = getattr(tool_instance, "build_receipt", None)
+            if build_receipt is not None:
+                try:
+                    receipt = build_receipt(result_model)
+                    from rig_relay.evidence.model_observations import (
+                        capture_tool_receipt,
+                    )
+
+                    capture_tool_receipt(
+                        session_id=self.session_id,
+                        tool_name=tool_call.tool_name,
+                        receipt=receipt.model_dump(mode="json"),
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to capture tool receipt for %s",
+                        tool_call.tool_name,
+                        exc_info=True,
+                    )
+
             yield ToolResultEvent(
                 tool_name=tool_call.tool_name,
                 tool_class=tool_call.tool_class,
@@ -1328,6 +1350,10 @@ class AgentLoop:
             mutation_class=str(mutation_class_str),
         )
 
+        self._capture_model_observation_for_tool_response(
+            tool_call, status, duration_ms
+        )
+
     def _tool_failure_event(
         self,
         tool_call: ResolvedToolCall,
@@ -1345,6 +1371,77 @@ class AgentLoop:
             cancelled=cancelled,
             tool_call_id=tool_call.call_id,
         )
+
+    def _capture_model_observation_for_tool_response(
+        self,
+        tool_call: ResolvedToolCall,
+        status: Literal["success", "failure", "skipped"],
+        duration_ms: float | None = None,
+    ) -> None:
+        """Build and persist a content-light ModelObservation for a completed tool call.
+
+        Gated on:
+        - status != "skipped" (skipped tools are not observed)
+        - enable_local_observability (config-level gate)
+        - observation_allowed_by_consent() (user-level consent gate)
+
+        Observation failures are caught and logged without breaking tool execution.
+        The task fingerprint is a SHA256 of the canonical-JSON serialized args,
+        namespaced with ``rig-relay-tool-args-v1:`` to prevent preimage confusion.
+        Raw tool args are never written to the observability event.
+        """
+        if status == "skipped" or not self.config.enable_local_observability:
+            return
+
+        try:
+            from rig_relay.evidence.model_observations import observe_tool_call
+            from rig_relay.identity.consent_store import ConsentStore
+            from rig_relay.identity.telemetry_consent import (
+                observation_allowed_by_consent,
+            )
+
+            active_model = self.config.get_active_model()
+            active_provider = self.config.get_active_provider()
+
+            provider_backend_str = str(getattr(active_provider, "backend", "generic"))
+            is_local = provider_backend_str in {"mlx", "llama_cpp", "ollama"}
+            provider_kind = "local" if is_local else "cloud"
+            obs_backend = {"mlx": "mlx", "llama_cpp": "llama_cpp"}.get(
+                provider_backend_str, "api"
+            )
+
+            # Consent gate — skip observation if consent denies the kind
+            observation_kind = "local_model" if is_local else "provider"
+            consent_record = ConsentStore().get()
+            if not observation_allowed_by_consent(consent_record, observation_kind):
+                return
+
+            success = 1 if status == "success" else 0
+            failure = 1 if status == "failure" else 0
+            preimage = "rig-relay-tool-args-v1:" + dump_canonical_json(
+                tool_call.args_dict
+            )
+            task_fingerprint = hashlib.sha256(preimage.encode("utf-8")).hexdigest()
+
+            observe_tool_call(
+                session_id=self.session_id,
+                task_kind=self.agent_profile.name,
+                task_fingerprint=task_fingerprint,
+                provider_kind=provider_kind,
+                provider_name=active_provider.name,
+                model_id=active_model.name,
+                backend=obs_backend,
+                tool_call_count=1,
+                tool_success_count=success,
+                failure_count=failure,
+                latency_ms=duration_ms,
+            )
+        except Exception:
+            logger.warning(
+                "Failed to capture model observation for %s",
+                tool_call.tool_name,
+                exc_info=True,
+            )
 
     async def _report_context_assembly(self, active_model: ModelConfig) -> None:
         if not self.config.enable_local_observability:

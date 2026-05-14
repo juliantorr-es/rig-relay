@@ -91,12 +91,12 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-include = ["vibe/"]
+include = ["vibe/", "rig_relay/"]
 
 
 [project.scripts]
-rig-relay = "vibe.cli.entrypoint:main"
-rig-relay-acp = "vibe.acp.entrypoint:main"
+rig-relay = "rig_relay.cli.entrypoint:main"
+rig-relay-acp = "rig_relay.cli.acp_entrypoint:main"
 vibe = "vibe.cli.entrypoint:main"  # Deprecated legacy alias
 vibe-acp = "vibe.acp.entrypoint:main"  # Deprecated legacy alias
 vibe-legacy = "vibe.cli.entrypoint:main"

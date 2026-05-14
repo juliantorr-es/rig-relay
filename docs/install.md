@@ -66,8 +66,8 @@ The Python package exposes these commands via `pyproject.toml` `[project.scripts
 
 | Command | Entry Point |
 |---|---|
-| `rig-relay` | `vibe.cli.entrypoint:main` |
-| `rig-relay-acp` | `vibe.acp.entrypoint:main` |
+| `rig-relay` | `rig_relay.cli.entrypoint:main` |
+| `rig-relay-acp` | `rig_relay.cli.acp_entrypoint:main` |
 
 The `vibe` and `vibe-acp` commands are **deprecated legacy aliases**. New
 users should treat `rig-relay` as the primary product command and the 

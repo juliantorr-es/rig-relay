@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.search_replace_result.v1.schema.json",
+  "title": "Rig Relay SearchReplace Result v1",
+  "description": "Schema for a deterministic search_replace tool execution result. Contains full file content and block-level outcome metadata.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.search_replace_result.v1"]
+    },
+    "file": {
+      "type": "string",
+      "description": "Path to the edited file"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "no_match", "ambiguous_match", "count_mismatch", "refused"],
+      "description": "Outcome of the search/replace operation"
+    },
+    "blocks_applied": {
+      "type": "integer",
+      "description": "Number of blocks successfully applied"
+    },
+    "lines_changed": {
+      "type": "integer",
+      "description": "Number of lines changed in the file"
+    },
+    "content": {
+      "type": "string",
+      "description": "Full file content after the operation (or original if no changes)"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Warning messages from the operation"
+    },
+    "before_file_sha256": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Map of repo file key to sha256 hash of the file before editing"
+    },
+    "after_file_sha256": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Map of repo file key to sha256 hash of the file after editing"
+    },
+    "changed_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of files that were changed"
+    },
+    "failed_block_count": {
+      "type": "integer",
+      "description": "Number of blocks that failed to match"
+    },
+    "total_block_count": {
+      "type": "integer",
+      "description": "Total number of blocks in the request"
+    },
+    "replacements": {
+      "type": "integer",
+      "description": "Number of text replacements performed"
+    },
+    "before_bytes": {
+      "type": "integer",
+      "description": "File size in bytes before editing"
+    },
+    "after_bytes": {
+      "type": "integer",
+      "description": "File size in bytes after editing"
+    },
+    "error_kind": {
+      "type": "string",
+      "description": "Structured error classification when status is not success"
+    },
+    "refusal_reason": {
+      "type": "string",
+      "description": "Human-readable reason when status is refused"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Wall-clock duration in milliseconds"
+    }
+  },
+  "required": ["file", "status", "blocks_applied", "lines_changed", "content"]
+}

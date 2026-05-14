@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.search_replace_invocation.v1.schema.json",
+  "title": "Rig Relay SearchReplace Invocation v1",
+  "description": "Schema for a deterministic search_replace tool invocation request. Defines the bounded envelope for SEARCH/REPLACE block editing.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.search_replace_invocation.v1"]
+    },
+    "file_path": {
+      "type": "string",
+      "description": "Path to the file to edit"
+    },
+    "content": {
+      "type": "string",
+      "description": "One or more SEARCH/REPLACE blocks to apply"
+    },
+    "expected_before_sha256": {
+      "type": "string",
+      "description": "sha256:<hex> of the file bytes before editing. Required for dirty files."
+    },
+    "expected_replacements": {
+      "type": "integer",
+      "description": "Expected number of replacements. If set and actual count differs, returns count_mismatch without mutation."
+    },
+    "allow_multiple": {
+      "type": "boolean",
+      "description": "If false, multiple matches for the same search text return ambiguous_match without mutation."
+    }
+  },
+  "required": ["file_path", "content"]
+}

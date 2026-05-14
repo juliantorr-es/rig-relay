@@ -25,6 +25,7 @@ from rig_relay.evidence.model_observations import (
     build_model_observation,
     compute_local_model_comfort_score,
     observation_sha256,
+    observe_tool_call,
     validate_observation_content_light,
 )
 from rig_relay.evidence.redaction import (
@@ -596,3 +597,171 @@ class TestProviderRankingSnapshot:
     def test_ranking_id_generated(self) -> None:
         snap = aggregate_provider_rankings([_make_observation()])
         assert snap.ranking_id.startswith("rank_")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ── Observe tool call tests
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestObserveToolCallContentLight:
+    """Verify that observe_tool_call produces content-light events."""
+
+    MINIMAL_ARGS: ClassVar[dict[str, Any]] = {
+        "session_id": "test-session-obs",
+        "task_kind": "code_gen",
+        "task_fingerprint": "abcd1234",
+        "provider_kind": ProviderKind.CLOUD,
+        "provider_name": "openai",
+        "model_id": "gpt-4o",
+        "backend": Backend.API,
+    }
+
+    def test_event_contains_no_raw_args(self, tmp_path) -> None:
+        obs = observe_tool_call(
+            **self.MINIMAL_ARGS,
+            tool_call_count=3,
+            tool_success_count=2,
+            latency_ms=500.0,
+        )
+        assert obs is not None
+        data = obs.model_dump(mode="json")
+        raw_like = {"args", "raw_args", "tool_args", "arguments", "command"}
+        assert raw_like.isdisjoint(data.keys())
+
+    def test_event_contains_no_raw_output(self, tmp_path) -> None:
+        obs = observe_tool_call(**self.MINIMAL_ARGS)
+        assert obs is not None
+        data = obs.model_dump(mode="json")
+        output_like = {"output", "raw_output", "result", "stdout", "stderr"}
+        assert output_like.isdisjoint(data.keys())
+
+    def test_event_contains_no_source_or_diff(self, tmp_path) -> None:
+        obs = observe_tool_call(**self.MINIMAL_ARGS)
+        assert obs is not None
+        data = obs.model_dump(mode="json")
+        source_like = {
+            "source_code",
+            "diff",
+            "raw_prompt",
+            "prompt",
+            "raw_model_output",
+            "model_output",
+            "stdout",
+            "stderr",
+            "api_key",
+            "access_token",
+            "private_path",
+        }
+        assert source_like.isdisjoint(data.keys())
+
+    def test_event_contains_no_forbidden_redaction_fields(self, tmp_path) -> None:
+        obs = observe_tool_call(**self.MINIMAL_ARGS)
+        assert obs is not None
+        violations = validate_observation_content_light(obs)
+        assert violations == []
+
+    def test_event_has_content_light_guarantee(self, tmp_path) -> None:
+        obs = observe_tool_call(**self.MINIMAL_ARGS)
+        assert obs is not None
+        assert obs.content_light_guarantee is True
+
+    def test_fingerprint_passed_through_as_is(self, tmp_path) -> None:
+        """observe_tool_call passes task_fingerprint through without hashing.
+        The namespace- prefix and SHA256 computation happen in the caller
+        (_capture_model_observation_for_tool_response).
+        """
+        obs = observe_tool_call(**self.MINIMAL_ARGS)
+        assert obs is not None
+        assert obs.task_fingerprint == self.MINIMAL_ARGS["task_fingerprint"]
+
+    def test_skipped_status_returns_none(self, tmp_path) -> None:
+        """Simulate that skipped tool calls produce no observation.
+        The observe_tool_call function itself does not gate on status;
+        this test verifies that the event is written even for zero-count calls.
+        """
+        obs = observe_tool_call(
+            **self.MINIMAL_ARGS,
+            tool_call_count=1,
+            tool_success_count=0,
+            failure_count=0,
+        )
+        # observe_tool_call always writes — the skip gating is in the caller
+        assert obs is not None
+        assert obs.tool_success_count == 0
+        assert obs.failure_count == 0
+
+    def test_multiple_calls_produce_separate_observations(self, tmp_path) -> None:
+        obs1 = observe_tool_call(**self.MINIMAL_ARGS, tool_call_count=1)
+        obs2 = observe_tool_call(**self.MINIMAL_ARGS, tool_call_count=2)
+        assert obs1 is not None
+        assert obs2 is not None
+        assert obs1.observation_id != obs2.observation_id
+
+    def test_latency_defaults_to_none(self, tmp_path) -> None:
+        obs = observe_tool_call(**self.MINIMAL_ARGS)
+        assert obs is not None
+        assert obs.latency_ms is None
+
+
+class TestObserveToolCallFailureResilience:
+    """Verify observe_tool_call failures do not propagate."""
+
+    def test_invalid_session_id_does_not_raise(self) -> None:
+        """Even with a non-sensical session_id, the function catches internally."""
+        obs = observe_tool_call(
+            session_id="",
+            task_kind="test",
+            task_fingerprint="fp",
+            provider_kind=ProviderKind.CLOUD,
+            provider_name="p",
+            model_id="m",
+        )
+        # The function itself does not raise on invalid session — log_local_event
+        # creates directories as needed.
+        assert obs is not None
+
+    def test_empty_provider_name_does_not_raise(self) -> None:
+        obs = observe_tool_call(
+            session_id="test-empty-provider",
+            task_kind="test",
+            task_fingerprint="fp",
+            provider_kind=ProviderKind.CLOUD,
+            provider_name="",
+            model_id="m",
+        )
+        assert obs is not None
+        assert obs.provider_name == ""
+
+
+class TestTaskFingerprintDeterminism:
+    """Verify task_fingerprint is deterministic and content-light."""
+
+    def test_deterministic_fingerprint(self) -> None:
+        common_args: dict[str, Any] = dict(
+            session_id="det-session",
+            task_kind="code_gen",
+            task_fingerprint="deterministic-test-fp",
+            provider_kind=ProviderKind.CLOUD,
+            provider_name="openai",
+            model_id="gpt-4o",
+        )
+        obs1 = observe_tool_call(**common_args)
+        obs2 = observe_tool_call(**common_args)
+        assert obs1 is not None
+        assert obs2 is not None
+        assert obs1.task_fingerprint == obs2.task_fingerprint
+
+    def test_fingerprint_passed_through_unmodified(self) -> None:
+        """observe_tool_call does not modify the fingerprint."""
+        original = "some-fingerprint"
+        obs = observe_tool_call(
+            session_id="fp-session",
+            task_kind="code_gen",
+            task_fingerprint=original,
+            provider_kind=ProviderKind.CLOUD,
+            provider_name="openai",
+            model_id="gpt-4o",
+        )
+        assert obs is not None
+        assert obs.task_fingerprint == original

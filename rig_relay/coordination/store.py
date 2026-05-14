@@ -355,19 +355,17 @@ class CoordinationStore:
 
     def release_paths(self, *, session_id: str, task_id: str, paths: list[str]) -> None:
         released: list[str] = []
-        for raw_path in paths:
-            path_hash = hashlib.sha256(raw_path.encode("utf-8")).hexdigest()
-            lease_path = self._lease_path(path_hash)
-            if lease_path.exists():
-                reservation = CoordinationPathReservation.model_validate_json(
-                    lease_path.read_text(encoding="utf-8")
-                )
-                if reservation.session_id == session_id:
-                    reservation.status = "released"
-                    self._write_json(
-                        lease_path, reservation.model_dump(exclude_none=True)
-                    )
-                    released.append(raw_path)
+        normalized = [normalize_path(path) for path in paths]
+        lease_key = self._path_key(session_id + task_id + "|".join(normalized))
+        lease_path = self.root / "leases" / "paths" / f"{lease_key}.json"
+        if lease_path.exists():
+            reservation = CoordinationPathReservation.model_validate_json(
+                lease_path.read_text(encoding="utf-8")
+            )
+            if reservation.session_id == session_id:
+                reservation.status = "released"
+                self._write_json(lease_path, reservation.model_dump(exclude_none=True))
+                released.extend(normalized)
         if released:
             release_payload = build_path_released_payload(session_id, task_id, released)
             self._append_event("coord.path.released", release_payload)

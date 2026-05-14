@@ -1,0 +1,16 @@
+{
+  "byte_count": 231661427,
+  "candidate_paths": [
+    "/Users/user/.rig/relay/logs/rig-relay.log",
+    "/Users/user/.rig/relay/logs/vibe.log",
+    "/Users/user/.rig/relay/sessions.zip",
+    "/Users/user/.rig/relay-smoke/logs/vibe.log",
+    "/Users/user/.rig/relay.zip"
+  ],
+  "file_count": 5,
+  "quarantine_root": "/Users/user/.rig/quarantine",
+  "script_version": "rig_global_declutter_audit.v1",
+  "source_root": "/Users/user/.rig",
+  "source_root_hash": "e65714baef5fe94f1a01a4645798486179316e6b4bf289eb6207dbf60c36d027",
+  "timestamp": "2026-05-13T23:01:09.643094+00:00"
+}

@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.contribution_receipt.v1.schema.json",
+  "title": "Rig Relay Telemetry Contribution Receipt v1",
+  "description": "Content-light receipt for a telemetry bundle contribution to Google Drive. Records consent context, bundle identity, and upload status. No OAuth tokens, raw Drive file IDs, raw consent bodies, prompts, model outputs, source code, diffs, stdout/stderr, secrets, or private paths.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contribution_id",
+    "created_at",
+    "bundle_sha256",
+    "bundle_size_bytes",
+    "destination_kind",
+    "consent_policy_version",
+    "consent_scopes",
+    "contribution_mode",
+    "upload_method",
+    "status",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.contribution_receipt.v1"
+    },
+    "contribution_id": {
+      "type": "string",
+      "description": "Unique contribution identifier."
+    },
+    "participant_id": {
+      "type": "string",
+      "description": "Anonymous participant identifier."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of contribution."
+    },
+    "bundle_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of the contributed bundle, prefixed with 'sha256:'."
+    },
+    "bundle_size_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Size of the contributed bundle in bytes."
+    },
+    "destination_kind": {
+      "type": "string",
+      "enum": ["google_drive"],
+      "description": "Upload destination kind."
+    },
+    "drive_file_id_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the Google Drive file ID. Present only when upload status is 'uploaded'."
+    },
+    "drive_folder_id_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the Google Drive folder ID. Present when folder was specified."
+    },
+    "consent_policy_version": {
+      "type": "string",
+      "description": "Consent policy version at time of contribution."
+    },
+    "consent_scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Active consent scope names at time of contribution."
+    },
+    "contribution_mode": {
+      "type": "string",
+      "enum": ["basic", "model_observations", "commercial"],
+      "description": "Contribution mode reflecting consent scope requirements."
+    },
+    "upload_method": {
+      "type": "string",
+      "enum": ["dry_run", "google_drive_resumable"],
+      "description": "Upload method used."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["dry_run", "uploaded", "refused_consent", "failed"],
+      "description": "Contribution status."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable warnings about the contribution."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "Guarantee that the receipt contains no raw content."
+    }
+  },
+  "additionalProperties": false
+}

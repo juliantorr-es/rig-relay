@@ -278,6 +278,55 @@ def build_model_observation(
     )
 
 
+# ── Observe tool call ─────────────────────────────────────────────────
+
+
+def observe_tool_call(
+    *,
+    session_id: str,
+    task_kind: str,
+    task_fingerprint: str,
+    provider_kind: str,
+    provider_name: str,
+    model_id: str,
+    backend: str = Backend.API,
+    tool_call_count: int = 1,
+    tool_success_count: int = 0,
+    failure_count: int = 0,
+    latency_ms: float | None = None,
+) -> ModelObservation | None:
+    """Build and persist a content-light ModelObservation from a tool execution.
+
+    Checks local observability gates internally. Returns the observation if
+    written, None if skipped (e.g. observability disabled).
+
+    All arguments are content-light. The observation is written to the session's
+    local observability JSONL via ``log_local_event``.
+    """
+    observation = build_model_observation(
+        task_kind=task_kind,
+        task_fingerprint=task_fingerprint,
+        provider_kind=provider_kind,
+        provider_name=provider_name,
+        model_id=model_id,
+        backend=backend,
+        tool_call_count=tool_call_count,
+        tool_success_count=tool_success_count,
+        failure_count=failure_count,
+        latency_ms=latency_ms,
+    )
+
+    from vibe.core.telemetry.local import log_local_event
+
+    log_local_event(
+        session_id,
+        "rig.relay.model_observation.captured",
+        observation.model_dump(mode="json"),
+    )
+
+    return observation
+
+
 # ── Observation SHA256 ────────────────────────────────────────────────
 
 
@@ -293,6 +342,28 @@ def observation_sha256(observation: ModelObservation) -> str:
     )
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+# ── Tool receipt emission ─────────────────────────────────────────────
+
+
+def capture_tool_receipt(
+    *, session_id: str, tool_name: str, receipt: dict[str, Any]
+) -> None:
+    """Emit a content-light tool receipt event to local observability.
+
+    Args:
+        session_id: Current session identifier.
+        tool_name: Name of the tool that produced the receipt.
+        receipt: Content-light receipt dict (no raw stdout/stderr, file
+            contents, diffs, or secrets). Typically produced by a tool's
+            ``build_receipt()`` method.
+    """
+    from vibe.core.telemetry.constants import EventName
+    from vibe.core.telemetry.local import log_local_event
+
+    payload = {"tool_name": tool_name, "receipt": receipt}
+    log_local_event(session_id, EventName.TOOL_RECEIPT_CAPTURED, payload)
 
 
 # ── Content-light validation ──────────────────────────────────────────

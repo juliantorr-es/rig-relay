@@ -105,3 +105,9 @@ Findings reference language-specific best-practice anchors documented in `docs/f
 - **Append-only JSONL.** Agents append new rows to `out-of-scope-findings.jsonl`. Never edit or remove existing rows.
 - **Index is derived.** The Markdown index is regenerated from the JSONL. If the index is stale, regenerate it.
 - **Link from final reports.** Every mission final report should include a small "Out-of-scope findings recorded" section linking back to this registry.
+
+### Testing Gaps
+
+| ID | Title | Severity | Blocked By |
+|----|-------|----------|------------|
+| `finding_20250613_validate_test_duplication` | test_validate.py and test_validate_git_state.py contain 19 duplicate/near-duplicate git-state tests | medium | — |
