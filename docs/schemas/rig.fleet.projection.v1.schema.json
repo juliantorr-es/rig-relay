@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig.relay/schemas/fleet_projection.v1.json",
+  "title": "Fleet Projection",
+  "description": "Content-light read model for the fleet coordination plane. Summarizes queue state, active leases, blockers, patch proposals, and agent/session liveness. Contains no raw file contents, stdout, stderr, diffs, patches, prompts, secrets, argv, or snippets.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier",
+      "enum": ["rig.fleet.projection.v1"]
+    },
+    "projection_id": {
+      "type": "string",
+      "description": "Unique projection identifier"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the projection was built"
+    },
+    "fleet_name": {
+      "type": "string",
+      "description": "Human-readable fleet name",
+      "default": "default"
+    },
+    "agents": {
+      "type": "object",
+      "description": "Summary of active agents/sessions",
+      "properties": {
+        "total_agents": { "type": "integer", "description": "Total registered agents" },
+        "active_sessions": { "type": "integer", "description": "Currently active sessions" },
+        "recent_heartbeats": { "type": "integer", "description": "Heartbeats in the recent window" },
+        "stale_sessions": { "type": "integer", "description": "Sessions without recent heartbeat" }
+      },
+      "required": ["total_agents", "active_sessions", "recent_heartbeats", "stale_sessions"],
+      "additionalProperties": false
+    },
+    "queue": {
+      "type": "object",
+      "description": "Summary of queue state by status",
+      "properties": {
+        "queued": { "type": "integer", "description": "Items waiting to run" },
+        "running": { "type": "integer", "description": "Items currently running" },
+        "blocked": { "type": "integer", "description": "Items blocked" },
+        "completed": { "type": "integer", "description": "Items completed" },
+        "failed": { "type": "integer", "description": "Items failed" },
+        "cancelled": { "type": "integer", "description": "Items cancelled" },
+        "total": { "type": "integer", "description": "Total items in queue history" },
+        "highest_priority": { "type": "integer", "description": "Highest priority among queued items" }
+      },
+      "required": ["queued", "running", "blocked", "completed", "failed", "cancelled", "total", "highest_priority"],
+      "additionalProperties": false
+    },
+    "leases": {
+      "type": "object",
+      "description": "Summary of active leases",
+      "properties": {
+        "total_active": { "type": "integer", "description": "Total active leases" },
+        "exclusive_write": { "type": "integer", "description": "Exclusive write leases" },
+        "shared_read": { "type": "integer", "description": "Shared read leases" },
+        "stale": { "type": "integer", "description": "Stale/expired leases" },
+        "expired": { "type": "integer", "description": "Expired leases" },
+        "path_count": { "type": "integer", "description": "Total leased paths" }
+      },
+      "required": ["total_active", "exclusive_write", "shared_read", "stale", "expired", "path_count"],
+      "additionalProperties": false
+    },
+    "blockers": {
+      "type": "object",
+      "description": "Summary of current blockers",
+      "properties": {
+        "total_blockers": { "type": "integer", "description": "Total active blockers" },
+        "blocker_kinds": {
+          "type": "object",
+          "description": "Blocker kind -> count mapping",
+          "additionalProperties": { "type": "integer" }
+        },
+        "oldest_blocked_at": { "oneOf": [{ "type": "string" }, { "type": "null" }], "description": "ISO 8601 of oldest active blocker" }
+      },
+      "required": ["total_blockers", "blocker_kinds", "oldest_blocked_at"],
+      "additionalProperties": false
+    },
+    "patches": {
+      "type": "object",
+      "description": "Summary of patch proposals",
+      "properties": {
+        "pending": { "type": "integer", "description": "Pending patch proposals" },
+        "applied": { "type": "integer", "description": "Applied patch proposals" },
+        "rejected": { "type": "integer", "description": "Rejected patch proposals" },
+        "revised": { "type": "integer", "description": "Revised patch proposals" },
+        "total": { "type": "integer", "description": "Total patch proposals" },
+        "oldest_pending_at": { "oneOf": [{ "type": "string" }, { "type": "null" }], "description": "ISO 8601 of oldest pending proposal" },
+        "latest_proposal_id": { "oneOf": [{ "type": "string" }, { "type": "null" }], "description": "ID of the most recent proposal" }
+      },
+      "required": ["pending", "applied", "rejected", "revised", "total", "oldest_pending_at", "latest_proposal_id"],
+      "additionalProperties": false
+    },
+    "recent_event_count": {
+      "type": "integer",
+      "description": "Count of recent coordination events"
+    }
+  },
+  "required": ["schema_version", "projection_id", "created_at", "fleet_name", "agents", "queue", "leases", "blockers", "patches"],
+  "additionalProperties": false
+}

@@ -9,12 +9,22 @@ from pathlib import Path
 from textual.app import App, ComposeResult, SystemCommand
 from textual.screen import Screen
 
+from rig_relay.coordination.fleet_projection import (
+    FleetBlockerSummary,
+    FleetLeaseSummary,
+    FleetProjection,
+    FleetQueueSummary,
+    build_fleet_projection,
+)
+from rig_relay.runtime.runtime_audit_event import RuntimeAuditEvent
+from rig_relay.runtime.runtime_supervisor_projection import RuntimeSupervisorProjection
 from vibe.cli.textual_ui.rig_console.commands import build_rig_console_commands
 from vibe.cli.textual_ui.rig_console.projections import (
     DashboardProjection,
     EvidenceRailItemProjection,
     EvidenceRailProjection,
     SessionPaneProjection,
+    build_inspector_projection,
 )
 from vibe.cli.textual_ui.rig_console.providers import (
     FixtureDashboardProjectionProvider,
@@ -103,26 +113,43 @@ def _sample_evidence(session_id: str) -> EvidenceRailProjection:
     )
 
 
+def _sample_fleet_projection() -> FleetProjection:
+    """Sample fleet projection for fixture data."""
+    return build_fleet_projection(
+        projection_id="fp-sample",
+        created_at="2026-05-14T15:00:00",
+        queue=FleetQueueSummary(queued=2, running=1, total=5, highest_priority=3),
+        leases=FleetLeaseSummary(
+            total_active=3, exclusive_write=2, shared_read=1, path_count=7
+        ),
+        blockers=FleetBlockerSummary(
+            total_blockers=1, blocker_kinds={"dirty_files": 2}
+        ),
+    )
+
+
 def _sample_dashboard() -> DashboardProjection:
+    session = _sample_projection(
+        session_id="abc123-def456",
+        status="active",
+        task_title="Refactor auth module",
+        branch_name="feature/auth-refactor",
+        receipt_count=7,
+        changed_paths=[
+            "src/auth/login.py",
+            "src/auth/tokens.py",
+            "tests/test_auth.py",
+            "src/auth/session.py",
+            "src/auth/middleware.py",
+            "src/auth/__init__.py",
+        ],
+    )
+    evidence = _sample_evidence("abc123-def456")
     return DashboardProjection(
         title="Rig Relay Operator",
         subtitle="Session overview",
-        session=_sample_projection(
-            session_id="abc123-def456",
-            status="active",
-            task_title="Refactor auth module",
-            branch_name="feature/auth-refactor",
-            receipt_count=7,
-            changed_paths=[
-                "src/auth/login.py",
-                "src/auth/tokens.py",
-                "tests/test_auth.py",
-                "src/auth/session.py",
-                "src/auth/middleware.py",
-                "src/auth/__init__.py",
-            ],
-        ),
-        evidence=_sample_evidence("abc123-def456"),
+        session=session,
+        evidence=evidence,
         safety_state="active",
         footer_hint="q: quit  r: refresh  ?: help",
         backlog_items=[
@@ -130,30 +157,62 @@ def _sample_dashboard() -> DashboardProjection:
             "Resolve dirty file guard for src/config.py",
             "Review validate report for task-0042",
         ],
+        inspector=build_inspector_projection(session, evidence, _sample_supervisor()),
+        fleet=_sample_fleet_projection(),
     )
 
 
 def _sample_altered_dashboard() -> DashboardProjection:
     """Alternate fixture data for testing refresh swaps projection."""
+    session = _sample_projection(
+        session_id="alt789-xyz012",
+        status="blocked",
+        task_title="Implement search_replace",
+        branch_name="main",
+        validate_status="blocked",
+        blocker_summary={"dirty_files": 2, "policy_guard": 1},
+        receipt_count=3,
+        latest_receipt_kind="validate",
+        pending_user_action="resolve_dirty_files",
+        changed_paths=["src/config.py", "src/main.py"],
+    )
+    evidence = _sample_evidence("alt789-xyz012")
     return DashboardProjection(
         title="Rig Relay Operator",
         subtitle="Alternate session",
-        session=_sample_projection(
-            session_id="alt789-xyz012",
-            status="blocked",
-            task_title="Implement search_replace",
-            branch_name="main",
-            validate_status="blocked",
-            blocker_summary={"dirty_files": 2, "policy_guard": 1},
-            receipt_count=3,
-            latest_receipt_kind="validate",
-            pending_user_action="resolve_dirty_files",
-            changed_paths=["src/config.py", "src/main.py"],
-        ),
-        evidence=_sample_evidence("alt789-xyz012"),
+        session=session,
+        evidence=evidence,
         safety_state="blocked",
         footer_hint="q: quit  r: refresh  ?: help",
         backlog_items=["Resolve dirty file guard for src/config.py"],
+        inspector=build_inspector_projection(session, evidence, _sample_supervisor()),
+        fleet=_sample_fleet_projection(),
+    )
+
+
+def _sample_supervisor() -> RuntimeSupervisorProjection:
+    return RuntimeSupervisorProjection(
+        schema_version="rig.relay.runtime_supervisor_projection.v1",
+        projection_id="proj-sample",
+        created_at="2026-05-14T15:00:00",
+        total_invocations=1,
+        status_counts={"completed": 1},
+        recent_invocations=[
+            RuntimeAuditEvent(
+                schema_version="rig.relay.runtime_audit_event.v1",
+                audit_event_id="aev-sample",
+                invocation_id="inv-sample",
+                tool_name="validate",
+                status="completed",
+                receipt_sha256="sha256:sample",
+                runtime_result_sha256="sha256:sample-result",
+                changed_paths=["src/auth/login.py"],
+                duration_ms=12.0,
+                created_at="2026-05-14T15:00:00",
+            )
+        ],
+        changed_path_count=1,
+        changed_path_hashes=["sha256:sample-result"],
     )
 
 

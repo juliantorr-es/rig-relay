@@ -8,6 +8,7 @@ from typing import Any, ClassVar
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal
+from textual.css.query import NoMatches
 from textual.screen import Screen
 
 from rig_relay.desktop.execution_progress import ExecutionProgressProjection
@@ -16,7 +17,11 @@ from vibe.cli.textual_ui.rig_console.intents import DashboardActionResult
 from vibe.cli.textual_ui.rig_console.projections import DashboardProjection
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
+from vibe.cli.textual_ui.rig_console.widgets.fleet_panel import FleetPanelWidget
 from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWidget
+from vibe.cli.textual_ui.rig_console.widgets.inspector_drawer import (
+    InspectorDrawerWidget,
+)
 from vibe.cli.textual_ui.rig_console.widgets.operator_header import OperatorHeaderWidget
 from vibe.cli.textual_ui.rig_console.widgets.progress_timeline import (
     ProgressTimelineWidget,
@@ -40,6 +45,9 @@ class DashboardScreen(Screen):
         r — refresh projection from provider (no-op without provider)
         ? / h — show available actions in footer
         t — toggle detail hints
+        i — toggle inspector
+        n / p — next / previous inspector item
+        c — copy selected inspector hash/ref
         e — focus evidence rail (placeholder, read-only)
         v — validate current status (placeholder, read-only)
     """
@@ -59,8 +67,13 @@ DashboardScreen > .dashboard-activity > SessionPaneWidget {
     height: auto;
 }
 
-DashboardScreen > .dashboard-activity > EvidenceRailWidget {
+    DashboardScreen > .dashboard-activity > EvidenceRailWidget {
     width: 50%;
+    height: auto;
+}
+
+DashboardScreen > InspectorDrawerWidget {
+    width: 100%;
     height: auto;
 }
 """
@@ -71,8 +84,12 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         ("?", "show_help", "Help"),
         ("h", "show_help", "Help"),
         ("t", "toggle_details", "Details"),
+        ("v", "run_validate", "Run Validate"),
+        ("i", "toggle_inspector", "Inspector"),
+        ("n", "next_item", "Next Item"),
+        ("p", "previous_item", "Previous Item"),
+        ("c", "copy_selected_ref", "Copy Ref"),
         ("e", "focus_evidence", "Evidence"),
-        ("v", "validate_current", "Validate"),
     ]
 
     def __init__(
@@ -86,6 +103,7 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         self._projection = projection
         self._provider = provider
         self._refresh_in_progress: bool = False
+        self._validate_in_progress: bool = False
         self._last_refresh_error: str | None = None
         self._last_refresh_at: str | None = None
         self._details_visible: bool = False
@@ -99,7 +117,9 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
             EvidenceRailWidget(proj.evidence),
             classes="dashboard-activity",
         )
+        yield FleetPanelWidget(proj.fleet)
         yield ProgressTimelineWidget(proj.execution_progress or None)
+        yield InspectorDrawerWidget(proj.inspector)
         yield FooterStatusWidget(proj)
 
     def action_quit(self) -> None:
@@ -118,6 +138,15 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         self._set_status("info", "refresh", "Refresh started")
         self._refresh_in_progress = True
         self.run_worker(self._do_refresh, exclusive=True, exit_on_error=False)
+
+    async def action_run_validate(self) -> None:
+        provider = self._provider
+        if provider is None or not hasattr(provider, "run_validate"):
+            self._set_feedback("validate", "Validate unavailable: no runtime provider")
+            return
+        self._set_status("info", "validate", "Validate running")
+        self._validate_in_progress = True
+        self.run_worker(self._do_validate, exclusive=True, exit_on_error=False)
 
     async def _do_refresh(self) -> None:
         """Worker body: call provider and update projection.
@@ -145,12 +174,31 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         finally:
             self._refresh_in_progress = False
 
+    async def _do_validate(self) -> None:
+        provider = self._provider
+        if provider is None or not hasattr(provider, "run_validate"):
+            self._validate_in_progress = False
+            return
+        self._validate_in_progress = True
+        try:
+            result = await provider.run_validate(self._projection)
+            self._set_validate_result(result)
+            refreshed = await provider.dashboard_projection()
+            self.update_projection(refreshed)
+            self._set_status("ok", "validate", "Validate complete")
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            self._set_status("error", "validate", type(exc).__name__)
+        finally:
+            self._validate_in_progress = False
+
     def action_show_help(self) -> None:
         """Show available keybindings in the footer."""
         self._details_visible = True
         self._set_feedback(
             "show_help",
-            "Available: refresh, help, details, runtime, leases, audit, copy",
+            "Available: refresh, help, details, inspector, next, prev, copy, runtime, leases, audit",
         )
 
     def action_toggle_details(self) -> None:
@@ -158,6 +206,77 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         self._details_visible = not self._details_visible
         footer = "details: on" if self._details_visible else "details: off"
         self._set_status("info", "details", footer)
+
+    def _set_validate_result(self, result: object) -> None:
+        status = getattr(result, "status", "failed")
+        refusal_reason = getattr(result, "refusal_reason", None)
+        error_kind = getattr(result, "error_kind", None)
+        if status == "completed":
+            self._set_status("ok", "validate", "Validate completed")
+            return
+        if status == "blocked":
+            message = refusal_reason or error_kind or "Validate blocked"
+            self._set_status("blocked", "validate", str(message))
+            return
+        if status == "refused":
+            message = refusal_reason or error_kind or "Validate refused"
+            self._set_status("refused", "validate", str(message))
+            return
+        message = refusal_reason or error_kind or "Validate failed"
+        self._set_status("error", "validate", str(message))
+
+    def action_toggle_inspector(self) -> None:
+        inspector = self._projection.inspector.model_copy(
+            update={"visible": not self._projection.inspector.visible}
+        )
+        self._projection = self._projection.model_copy(update={"inspector": inspector})
+        self._set_status("info", "inspector", "open" if inspector.visible else "closed")
+
+    def action_next_item(self) -> None:
+        inspector = self._projection.inspector
+        if not inspector.items:
+            self._set_status("info", "inspector", inspector.empty_state)
+            return
+        selected_index = (inspector.selected_index + 1) % len(inspector.items)
+        self._projection = self._projection.model_copy(
+            update={
+                "inspector": inspector.model_copy(
+                    update={"selected_index": selected_index}
+                )
+            }
+        )
+        self._set_status("info", "inspector", f"item {selected_index + 1}")
+
+    def action_previous_item(self) -> None:
+        inspector = self._projection.inspector
+        if not inspector.items:
+            self._set_status("info", "inspector", inspector.empty_state)
+            return
+        selected_index = (inspector.selected_index - 1) % len(inspector.items)
+        self._projection = self._projection.model_copy(
+            update={
+                "inspector": inspector.model_copy(
+                    update={"selected_index": selected_index}
+                )
+            }
+        )
+        self._set_status("info", "inspector", f"item {selected_index + 1}")
+
+    def action_copy_selected_ref(self) -> None:
+        inspector = self._projection.inspector
+        item = inspector.selected_item
+        if item is None:
+            self._set_feedback("copy_ref", inspector.empty_state)
+            return
+        ref = item.receipt_sha256 or item.runtime_result_sha256 or item.item_id
+        try:
+            import pyperclip
+
+            pyperclip.copy(ref)
+        except Exception:
+            self._set_feedback("copy_ref", "Clipboard unavailable")
+            return
+        self._set_feedback("copy_ref", "Selected reference copied")
 
     def action_show_runtime_status(self) -> None:
         """Show runtime adapter status."""
@@ -212,22 +331,30 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
 
     def _render_all(self) -> None:
         proj = self._projection
+        try:
+            header = self.query_one(OperatorHeaderWidget)
+            header.update_projection(proj)
 
-        header = self.query_one(OperatorHeaderWidget)
-        header.update_projection(proj)
+            session_pane = self.query_one(SessionPaneWidget)
+            session_pane.update_projection(proj.session)
 
-        session_pane = self.query_one(SessionPaneWidget)
-        session_pane.update_projection(proj.session)
+            evidence_rail = self.query_one(EvidenceRailWidget)
+            evidence_rail.update_projection(proj.evidence)
 
-        evidence_rail = self.query_one(EvidenceRailWidget)
-        evidence_rail.update_projection(proj.evidence)
+            fleet_panel = self.query_one(FleetPanelWidget)
+            fleet_panel.update_projection(proj.fleet)
 
-        ep = proj.execution_progress or ExecutionProgressProjection()
-        timeline = self.query_one(ProgressTimelineWidget)
-        timeline.update_projection(ep)
+            ep = proj.execution_progress or ExecutionProgressProjection()
+            timeline = self.query_one(ProgressTimelineWidget)
+            timeline.update_projection(ep)
 
-        footer = self.query_one(FooterStatusWidget)
-        footer.update_projection(proj)
+            inspector = self.query_one(InspectorDrawerWidget)
+            inspector.update_projection(proj.inspector)
+
+            footer = self.query_one(FooterStatusWidget)
+            footer.update_projection(proj)
+        except NoMatches:
+            return
 
     def _set_status(
         self, status: str, action_name: str, message: str | None = None

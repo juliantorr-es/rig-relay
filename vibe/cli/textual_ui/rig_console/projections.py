@@ -12,11 +12,15 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from rig_relay.coordination.fleet_projection import FleetProjection
 from rig_relay.desktop.execution_progress import ExecutionProgressProjection
 from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord
+from rig_relay.runtime.runtime_audit_event import RuntimeAuditEvent
+from rig_relay.runtime.runtime_supervisor_projection import RuntimeSupervisorProjection
 
 _EVIDENCE_RAIL_CAP = 20
 _DASHBOARD_BACKLOG_CAP = 5
+_INSPECTOR_ITEM_CAP = 30
 
 
 class SessionPaneProjection(BaseModel):
@@ -183,6 +187,125 @@ def evidence_rail_from_receipt_index(
     )
 
 
+class InspectorItemProjection(BaseModel):
+    """Content-light summary for one selected inspector item."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str
+    source_kind: str
+    title: str
+    status: str | None = None
+    tool_name: str | None = None
+    created_at: str | None = None
+    duration_ms: float | None = None
+    changed_paths: list[str] = Field(default_factory=list)
+    receipt_sha256: str | None = None
+    runtime_result_sha256: str | None = None
+    error_kind: str | None = None
+    refusal_reason: str | None = None
+    path: str | None = None
+    summary: str | None = None
+
+
+class InspectorProjection(BaseModel):
+    """Projection for the inspector drawer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    visible: bool = False
+    selected_index: int = 0
+    empty_state: str = "No item selected"
+    items: list[InspectorItemProjection] = Field(default_factory=list)
+
+    @property
+    def selected_item(self) -> InspectorItemProjection | None:
+        if not self.items:
+            return None
+        index = max(0, min(self.selected_index, len(self.items) - 1))
+        return self.items[index]
+
+
+def _build_inspector_audit_item(event: RuntimeAuditEvent) -> InspectorItemProjection:
+    summary = f"{event.status} {event.tool_name}"
+    return InspectorItemProjection(
+        item_id=event.audit_event_id,
+        source_kind="runtime_audit",
+        title=f"Audit {event.tool_name}",
+        status=event.status,
+        tool_name=event.tool_name,
+        created_at=event.created_at,
+        duration_ms=event.duration_ms,
+        changed_paths=list(event.changed_paths),
+        receipt_sha256=event.receipt_sha256,
+        runtime_result_sha256=event.runtime_result_sha256,
+        error_kind=event.error_kind,
+        refusal_reason=event.refusal_reason,
+        summary=summary,
+    )
+
+
+def _build_inspector_evidence_item(
+    item: EvidenceRailItemProjection,
+) -> InspectorItemProjection:
+    item_id = item.event_id or f"{item.tool_name}:{item.captured_at or 'unknown'}"
+    summary = f"{item.status} {item.tool_name}"
+    return InspectorItemProjection(
+        item_id=item_id,
+        source_kind="receipt",
+        title=f"Receipt {item.tool_name}",
+        status=item.status,
+        tool_name=item.tool_name,
+        created_at=item.captured_at,
+        duration_ms=item.duration_ms,
+        changed_paths=[item.path] if item.path else [],
+        error_kind=item.error_kind,
+        path=item.path,
+        summary=summary,
+    )
+
+
+def _build_inspector_blocker_item(
+    session: SessionPaneProjection,
+) -> InspectorItemProjection | None:
+    if not session.blocker_summary:
+        return None
+    summary = ", ".join(
+        f"{count} {name}" for name, count in sorted(session.blocker_summary.items())
+    )
+    return InspectorItemProjection(
+        item_id=f"{session.session_id}:blockers",
+        source_kind="lease_blocker",
+        title="Active Leases / Blockers",
+        status=session.validate_status or "blocked",
+        created_at=session.last_heartbeat_at,
+        refusal_reason=summary,
+        summary=summary,
+    )
+
+
+def build_inspector_projection(
+    session: SessionPaneProjection,
+    evidence: EvidenceRailProjection,
+    supervisor: RuntimeSupervisorProjection | None = None,
+) -> InspectorProjection:
+    """Build a content-light inspector projection from current dashboard state."""
+    items: list[InspectorItemProjection] = []
+
+    if supervisor is not None:
+        for event in supervisor.recent_invocations:
+            items.append(_build_inspector_audit_item(event))
+
+    blocker_item = _build_inspector_blocker_item(session)
+    if blocker_item is not None:
+        items.append(blocker_item)
+
+    for item in evidence.items:
+        items.append(_build_inspector_evidence_item(item))
+
+    return InspectorProjection(items=items[:_INSPECTOR_ITEM_CAP])
+
+
 class DashboardProjection(BaseModel):
     """Content-light projection for the DashboardScreen.
 
@@ -202,6 +325,8 @@ class DashboardProjection(BaseModel):
     footer_hint: str | None = None
     backlog_items: list[str] = Field(default_factory=list)
     execution_progress: ExecutionProgressProjection | None = None
+    inspector: InspectorProjection = Field(default_factory=InspectorProjection)
+    fleet: FleetProjection | None = None
 
     @property
     def backlog_capped(self) -> list[str]:

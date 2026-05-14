@@ -55,6 +55,20 @@ The dashboard is built from content-light projections. It may show:
 - git branch and HEAD summary when available
 - safe footer hints and keybindings
 
+## Inspector Drawer
+
+The dashboard includes a keyboard-driven inspector drawer for the currently
+selected content-light item. It can show summaries for runtime audit events,
+recent runtime supervisor invocations, lease/blocker state, and evidence
+receipts. The drawer displays only metadata: IDs, status, tool names,
+timestamps, durations, hashes, changed path refs, and already-sanitized error
+or refusal details.
+
+The inspector is read-only. It does not expose stdout, stderr, content,
+file_contents, diffs, patches, prompts, secrets, argv, or snippets. Use `i`
+to open or close the drawer, `n`/`p` to move through items, and `c` to copy a
+safe hash/reference when available.
+
 ## What It Refuses To Show
 
 The console must not display raw:
@@ -93,6 +107,22 @@ the projection layer.
 - `q` quit
 
 No mutation keybindings are defined here.
+
+## Command Palette
+
+The dashboard also exposes the same safe read-only actions through the Textual
+command palette:
+
+- Refresh
+- Help
+- Toggle Details
+- Runtime Status
+- Leases
+- Audit Timeline
+- Copy Receipt Ref
+
+Command execution routes through the dashboard action registry. The palette is
+read-only in this mission and must not bypass governed runtime execution.
 
 ## Related Docs
 

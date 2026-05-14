@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Fleet Patch Proposal v1",
+  "description": "A proposed mutation to one or more files submitted by an agent. Content-light: no embedded diffs, patches, or file contents. Diffs are referenced via artifact_refs only.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "mission_id",
+    "agent_id",
+    "title",
+    "summary",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.fleet.patch_proposal.v1"
+    },
+    "proposal_id": {
+      "type": "string",
+      "description": "Unique identifier for this proposal."
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Identifier of the parent mission."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Identifier of the submitting agent."
+    },
+    "title": {
+      "type": "string",
+      "description": "Short human-readable title for the proposal."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief description of the proposed change."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of creation."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "rejected",
+        "needs_revision",
+        "superseded"
+      ],
+      "description": "Current status of the proposal."
+    },
+    "touched_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "File paths affected by this proposal, in order."
+    },
+    "touched_path_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "description": "Salted SHA256 hashes of affected paths."
+    },
+    "base_head": {
+      "type": "string",
+      "description": "Git commit hash or branch ref the proposal is based on."
+    },
+    "expected_before_sha256": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "description": "Map of file path to expected SHA256 before mutation."
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PatchProposalArtifactRef"
+      },
+      "description": "References to external diff/patch artifacts."
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "PatchProposalArtifactRef": {
+      "type": "object",
+      "required": [
+        "artifact_path",
+        "sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "rig.fleet.patch_proposal_artifact_ref.v1"
+        },
+        "artifact_path": {
+          "type": "string",
+          "description": "Path to the artifact file."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA256 hash of the artifact content."
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size of the artifact in bytes."
+        },
+        "media_type": {
+          "type": "string",
+          "description": "Media type of the artifact (e.g. text/x-diff, application/x-patch)."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

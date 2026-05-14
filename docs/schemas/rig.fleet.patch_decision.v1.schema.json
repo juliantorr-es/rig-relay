@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Fleet Patch Decision v1",
+  "description": "The orchestrator's decision on a PatchProposal. Only the orchestrator creates PatchDecisions.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "decision_id",
+    "proposal_id",
+    "decided_by",
+    "decision",
+    "reason"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.fleet.patch_decision.v1"
+    },
+    "decision_id": {
+      "type": "string",
+      "description": "Unique identifier for this decision."
+    },
+    "proposal_id": {
+      "type": "string",
+      "description": "Reference to the proposal being decided."
+    },
+    "decided_by": {
+      "type": "string",
+      "description": "Identifier of the orchestrator or reviewer making the decision."
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "accepted",
+        "rejected",
+        "needs_revision",
+        "superseded"
+      ],
+      "description": "The decision outcome."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Human-readable explanation for the decision."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of the decision."
+    }
+  },
+  "additionalProperties": false
+}

@@ -13,6 +13,9 @@ from vibe.cli.textual_ui.rig_console.console_app import RigConsoleApp, main
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
 from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
 from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWidget
+from vibe.cli.textual_ui.rig_console.widgets.inspector_drawer import (
+    InspectorDrawerWidget,
+)
 
 
 class TestConsoleAppEntryPoint:
@@ -27,6 +30,7 @@ class TestConsoleAppEntryPoint:
         async with app.run_test(size=(100, 30)) as pilot:
             assert isinstance(pilot.app.screen, DashboardScreen)
             assert pilot.app.screen.query_one(FooterStatusWidget)
+            assert pilot.app.screen.query_one(InspectorDrawerWidget)
 
     @pytest.mark.asyncio
     async def test_runtime_mode_mounts_with_empty_roots(self, tmp_path: Path) -> None:
@@ -115,3 +119,14 @@ class TestConsoleAppEntryPoint:
             await pilot.press("t")
             await pilot.pause()
             assert screen._details_visible is not before
+
+    @pytest.mark.asyncio
+    async def test_toggle_inspector_opens_drawer(self) -> None:
+        app = RigConsoleApp(mode="fixture")
+        async with app.run_test(size=(100, 30)) as pilot:
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            assert screen._projection.inspector.visible is False
+            await pilot.press("i")
+            await pilot.pause()
+            assert screen._projection.inspector.visible is True

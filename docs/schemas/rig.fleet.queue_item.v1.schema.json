@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Fleet Queue Item",
+  "description": "A typed item in the fleet queue. Content-light: payload carries only summary/hash/ref.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "queue_item_id",
+    "kind",
+    "status",
+    "priority",
+    "depends_on",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.fleet.queue_item.v1"
+    },
+    "queue_item_id": {
+      "type": "string",
+      "description": "Unique identifier for the queue item."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["message", "runtime_exec", "validate", "handoff_note", "pause", "resume"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "blocked", "completed", "failed", "cancelled", "superseded"]
+    },
+    "priority": {
+      "type": "integer",
+      "description": "Higher values are dispatched first."
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Queue item IDs that must reach a terminal state before this item is runnable."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mission_id": {
+      "type": ["string", "null"]
+    },
+    "agent_id": {
+      "type": ["string", "null"]
+    },
+    "payload": {
+      "type": "object",
+      "description": "Content-light item payload (summary/hash/ref only)."
+    },
+    "blocked_reason": {
+      "type": ["string", "null"]
+    },
+    "superseded_by": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": false
+}

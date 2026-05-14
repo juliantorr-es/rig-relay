@@ -5,9 +5,15 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from rig_relay.runtime.tool_invocation_execution import (
+    RuntimeToolExecutionResult,
+    RuntimeToolExecutionRunner,
+    RuntimeToolExecutionStatus,
+)
 from vibe.cli.textual_ui.rig_console.projections import DashboardProjection
 from vibe.cli.textual_ui.rig_console.providers import RuntimeDashboardProjectionProvider
 from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
@@ -180,6 +186,54 @@ class TestRuntimeDashboardProjectionProvider:
         assert ev.items[2].tool_name == "validate"
         assert ev.items[3].tool_name == "search_replace"
         assert ev.items[4].tool_name == "bash"
+
+    @pytest.mark.asyncio
+    async def test_run_validate_builds_runtime_exec_intent(
+        self, tmp_path: Path
+    ) -> None:
+        session_dir = _make_synthetic_session(tmp_path)
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001",
+            session_path=session_dir,
+            workspace_root=tmp_path,
+            audit_root=tmp_path / "audit",
+        )
+        projection = await provider.dashboard_projection()
+        result = RuntimeToolExecutionResult(
+            status=RuntimeToolExecutionStatus.COMPLETED,
+            intent_id="intent-001",
+            tool_name="runtime_exec",
+            tool_status="passed",
+        )
+
+        with patch.object(
+            RuntimeToolExecutionRunner,
+            "execute_runtime_exec",
+            new=AsyncMock(return_value=result),
+        ) as mock_execute:
+            returned = await provider.run_validate(projection)
+
+        assert returned.status == RuntimeToolExecutionStatus.COMPLETED
+        assert mock_execute.await_count == 1
+        intent = mock_execute.await_args.args[0]
+        assert intent.tool_name.value == "runtime_exec"
+        assert intent.payload["tool_name"] == "validate"
+
+    @pytest.mark.asyncio
+    async def test_run_validate_refuses_without_runtime_roots(
+        self, tmp_path: Path
+    ) -> None:
+        session_dir = _make_synthetic_session(tmp_path)
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001", session_path=session_dir
+        )
+        projection = await provider.dashboard_projection()
+
+        result = await provider.run_validate(projection)
+
+        assert result.status == RuntimeToolExecutionStatus.REFUSED
+        assert result.refusal_reason is not None
+        assert "runtime roots" in result.refusal_reason
 
     @pytest.mark.asyncio
     async def test_maps_validate_status(self, tmp_path: Path) -> None:

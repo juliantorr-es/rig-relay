@@ -458,6 +458,7 @@ def build_checkpoint_refused_payload(
 
 
 from rig_relay.coordination.fleet_models import (
+    CreateProposalResult,
     FleetAgentMessage,
     FleetAgentSession,
     FleetCoordinationEvent,
@@ -465,6 +466,19 @@ from rig_relay.coordination.fleet_models import (
     FleetPatchProposal,
     FleetPathLease,
     FleetWorkClaim,
+    PatchDecision,
+    PatchProposal,
+    PatchProposalArtifactRef,
+    compute_proposal_fingerprint,
+)
+from rig_relay.coordination.fleet_queue import (
+    FleetQueue,
+    FleetQueueEvent,
+    FleetQueueEventKind,
+    FleetQueueItem,
+    FleetQueueItemKind,
+    FleetQueueItemStatus,
+    FleetQueueSnapshot,
 )
 
 __all__ = [
@@ -478,13 +492,24 @@ __all__ = [
     "CoordinationSession",
     "CoordinationStateProjection",
     "CoordinationTaskClaim",
+    "CreateProposalResult",
     "FleetAgentMessage",
     "FleetAgentSession",
     "FleetCoordinationEvent",
     "FleetMergeDecision",
     "FleetPatchProposal",
     "FleetPathLease",
+    "FleetQueue",
+    "FleetQueueEvent",
+    "FleetQueueEventKind",
+    "FleetQueueItem",
+    "FleetQueueItemKind",
+    "FleetQueueItemStatus",
+    "FleetQueueSnapshot",
     "FleetWorkClaim",
+    "PatchDecision",
+    "PatchProposal",
+    "PatchProposalArtifactRef",
     "build_artifact_published_payload",
     "build_checkpoint_committed_payload",
     "build_checkpoint_refused_payload",
@@ -502,6 +527,7 @@ __all__ = [
     "build_session_registered_payload",
     "build_task_claim_payload",
     "build_task_released_payload",
+    "compute_proposal_fingerprint",
     "normalize_path",
     "now_plus",
     "reset_path_salt_for_testing",

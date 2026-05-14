@@ -1,6 +1,6 @@
 # Rig Fleet Coordination Plane
 
-**Status: Foundation Implemented (Phase 3 Closure, 2026-05).**
+**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05).**
 
 ## 1. Vision
 
@@ -33,8 +33,9 @@ The model is built on typed, append-only, receipt-backed events, and maps direct
 | **AgentMessage** | A typed message sent between agents or from agent to orchestrator. |
 | **CoordinationEvent** | A canonical entry in the fleet event log (`rig.fleet.*`). |
 | **ConflictNotice** | Evidence of a coordination collision. Maps to `CoordinationConflict`. |
-| **PatchProposal** | A structured proposal to mutate files, containing a diff and rationale. |
-| **MergeDecision** | The orchestrator's decision (accept/reject/revise) on a patch proposal. |
+| **PatchProposal** | A structured proposal to mutate files, containing metadata and artifact references (Phase 0). No embedded diffs. |
+| **PatchDecision** | The orchestrator's decision (accept/reject/needs_revision/supersede) on a PatchProposal (Phase 0). |
+| **FleetMergeDecision** | Legacy merge decision model. Superseded by PatchDecision in Phase 0. |
 
 ## 3. Lease Semantics
 
@@ -87,6 +88,64 @@ The fleet event log (`events.jsonl`) is the source of truth.
   - `parent_event_id`: (Optional) Link to the event that triggered this one.
 - **Content-Light**: No raw prompts, secrets, or large blobs (stdout/stderr) are allowed in the event log. Diffs appear only in dedicated `patch_proposal` artifacts, not in the event log itself.
 
+## 7.5 Fleet Queue (Phase 0)
+
+The fleet queue is an append-only event-sourced primitive that allows the orchestrator to accept typed queue items, order them deterministically, and dispatch eligible items one at a time.
+
+### Queue Item Kinds
+
+| Kind | Purpose |
+|------|---------|
+| `message` | Inter-agent or system message |
+| `runtime_exec` | A runtime tool execution (validate, search_replace, write_file, bash) |
+| `validate` | A validation-only run (read-only tool execution) |
+| `handoff_note` | Orchestrator-directed handoff between agents |
+| `pause` | Request to pause processing |
+| `resume` | Request to resume processing |
+
+### Item State Machine
+
+```
+    ┌─────────┐
+    │ QUEUED  │─── cancel ──→ CANCELLED
+    └────┬────┘
+         │ mark_running
+         v
+    ┌─────────┐
+    │ RUNNING │─── mark_completed ──→ COMPLETED
+    └────┬────┘
+         ├── mark_failed ──→ FAILED
+         └── mark_blocked ──→ BLOCKED
+```
+
+Additional transition: `superseded` (set when a newer item replaces this one).
+
+### Ordering Rules
+
+1. Only items with status `queued` are eligible.
+2. `depends_on` blocks an item until all dependencies reach a terminal state (completed, failed, cancelled, or superseded).
+3. Items are sorted by: highest `priority` first, then `created_at` ascending (FIFO), then `queue_item_id` (deterministic tiebreaker).
+4. Cancelled items are never runnable.
+
+### Storage
+
+- Canonical source: append-only JSONL (`FleetQueueEvent` rows).
+- Current queue state (`FleetQueueSnapshot`) is derived by replaying events on read.
+- No DuckDB indexing. No writes to `/Users/user/.rig/relay`.
+
+### Content-Light
+
+Queue events must not contain raw prompts, stdout, stderr, content, diffs, patches, secrets, argv, snippets, or file contents. Item payloads carry only summary/ref/hash.
+
+### Phase 0 Limitations
+
+- No full scheduler: `next_runnable_item()` returns one eligible item but does not execute it.
+- No runtime execution from the queue yet.
+- No patch proposal integration.
+- No TUI queue panel.
+- Not thread-safe or multi-process safe (no file locking).
+- No supervisor projection integration.
+
 ## 7. Storage Design
 
 - **Canonical Store**: Local files under `.rig/fleet/`.
@@ -113,3 +172,65 @@ The Fleet Coordination Plane provides compact projections for:
 - **Lease Map**: Visual or tabular view of path contention.
 - **Message Board**: Recent inter-agent communications.
 - **Review Queue**: Pending patch proposals and review requests.
+
+## 10. Phase 0 — Patch Proposal Workflow
+
+**Design principle**: Agents propose; orchestrator disposes.
+
+Phase 0 implements the minimal artifact workflow: agents create `PatchProposal` models, and orchestrators issue `PatchDecision` models. Patch application is deferred to a future phase.
+
+### Models
+
+Defined in `rig_relay/coordination/patch_proposal.py`. Re-exported through `fleet_models.py` → `models.py`.
+
+| Model | Purpose |
+|-------|---------|
+| `PatchProposal` | Describes intended mutations: proposal_id, mission_id, agent_id, title, summary, touched_paths (with hashes), expected_before_sha256, and artifact_refs. |
+| `PatchProposalArtifactRef` | Content-light reference to an external diff/patch artifact (path, sha256, size_bytes, media_type). |
+| `PatchDecision` | Orchestrator decision on a proposal: accepted, rejected, needs_revision, or superseded. |
+| `CreateProposalResult` | Dataclass holding the created proposal and its stable fingerprint. |
+
+### Proposal Status Lifecycle
+
+```
+    ┌─────────┐
+    │ pending  │
+    └────┬─────┘
+         │
+    ┌────┴──────┐
+    │ orchestrator │
+    │  decides  │
+    └────┬──────┘
+         ├──→ accepted
+         ├──→ rejected
+         ├──→ needs_revision
+         └──→ superseded
+```
+
+### Content-Light Boundary
+
+- **Never embedded**: raw diffs, patches, file contents, stdout, stderr, secrets.
+- **Metadata only**: `PatchProposal` carries touched_paths, hashes, and artifact refs.
+- **Artifact refs**: point to external diff files by path+sha256. The raw diff lives outside the coordination event stream.
+- **Fingerprint**: `compute_proposal_fingerprint` computes a stable SHA256 over all fields except `proposal_id` and `schema_version`. Used for deduplication and change detection.
+
+### Relationship to Path Leases
+
+- **Independent**: A PatchProposal does not require a held path lease. Agents may submit proposals for any paths.
+- **Application gate**: In a future phase, the orchestrator will acquire path leases before applying accepted proposals.
+- **Pre-flight check**: The `expected_before_sha256` field records expected file states at proposal time. The orchestrator can verify these against actual file hashes before applying.
+
+### Orchestrator Authority
+
+- **Only the orchestrator creates PatchDecisions.**
+- **Only the orchestrator applies patches** (future phase).
+- Agents propose; the orchestrator disposes.
+
+### Deferred Features (Post-Phase 0)
+
+- **Patch application**: No code applies proposals to the worktree. Only models exist.
+- **Lease integration**: No automatic lease acquisition on proposal acceptance.
+- **Orchestrator loop**: No runtime loop that polls for pending proposals and auto-decides.
+- **Revisions**: No `needs_revision` → resubmit → re-decide cycle enforcement.
+- **Supersede propagation**: No automatic cascading of superseded status to dependent proposals.
+- **TUI panel**: No queue or proposal review panel in the cockpit.

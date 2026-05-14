@@ -6,6 +6,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Protocol
 
+from rig_relay.runtime.tool_invocation_adapter import RuntimeToolIntent, RuntimeToolName
+
 
 @dataclass(frozen=True)
 class RigConsoleAction:
@@ -29,6 +31,12 @@ ACTION_REFRESH = RigConsoleAction(
     description="Refresh the cockpit projection",
     callback_name="action_refresh",
 )
+ACTION_RUN_VALIDATE = RigConsoleAction(
+    name="run_validate",
+    title="Run Validate",
+    description="Run governed validate via runtime_exec",
+    callback_name="action_run_validate",
+)
 ACTION_SHOW_HELP = RigConsoleAction(
     name="show_help",
     title="Help",
@@ -40,6 +48,30 @@ ACTION_TOGGLE_DETAILS = RigConsoleAction(
     title="Toggle Details",
     description="Toggle detail hints in the footer",
     callback_name="action_toggle_details",
+)
+ACTION_TOGGLE_INSPECTOR = RigConsoleAction(
+    name="toggle_inspector",
+    title="Toggle Inspector",
+    description="Open or close the inspector drawer",
+    callback_name="action_toggle_inspector",
+)
+ACTION_NEXT_ITEM = RigConsoleAction(
+    name="next_item",
+    title="Next Item",
+    description="Move to the next inspector item",
+    callback_name="action_next_item",
+)
+ACTION_PREVIOUS_ITEM = RigConsoleAction(
+    name="previous_item",
+    title="Previous Item",
+    description="Move to the previous inspector item",
+    callback_name="action_previous_item",
+)
+ACTION_COPY_SELECTED_REF = RigConsoleAction(
+    name="copy_selected_ref",
+    title="Copy Selected Ref",
+    description="Copy the selected receipt or result hash",
+    callback_name="action_copy_selected_ref",
 )
 ACTION_SHOW_RUNTIME_STATUS = RigConsoleAction(
     name="show_runtime_status",
@@ -68,8 +100,13 @@ ACTION_COPY_LATEST_RECEIPT_REF = RigConsoleAction(
 
 SAFE_ACTIONS: tuple[RigConsoleAction, ...] = (
     ACTION_REFRESH,
+    ACTION_RUN_VALIDATE,
     ACTION_SHOW_HELP,
     ACTION_TOGGLE_DETAILS,
+    ACTION_TOGGLE_INSPECTOR,
+    ACTION_NEXT_ITEM,
+    ACTION_PREVIOUS_ITEM,
+    ACTION_COPY_SELECTED_REF,
     ACTION_SHOW_RUNTIME_STATUS,
     ACTION_SHOW_LEASES,
     ACTION_SHOW_AUDIT_TIMELINE,
@@ -81,3 +118,24 @@ ActionHandler = Callable[[], Awaitable[None] | None]
 
 def action_names() -> tuple[str, ...]:
     return tuple(action.name for action in SAFE_ACTIONS)
+
+
+def build_validate_runtime_exec_intent(
+    *,
+    intent_id: str,
+    changed_paths: list[str] | None = None,
+) -> RuntimeToolIntent:
+    payload: dict[str, object] = {
+        "tool_name": RuntimeToolName.VALIDATE.value,
+        "profile": "quick",
+    }
+    if changed_paths:
+        payload["paths"] = changed_paths
+    return RuntimeToolIntent(
+        intent_id=intent_id,
+        tool_name=RuntimeToolName.RUNTIME_EXEC,
+        payload=payload,
+        requested_paths=changed_paths or [],
+        require_worktree=False,
+        allow_main_repo_mutation=False,
+    )

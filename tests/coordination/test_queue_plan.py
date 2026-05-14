@@ -311,7 +311,12 @@ def test_filters_by_profile(tmp_path: Path):
         work_item_id="wi_doc", title="Documenter task", agent_profile="documenter"
     )
     queue = _make_queue([wi_impl, wi_tester, wi_doc])
-    plan = compute_ready_plan(queue, max_items=4, profiles=["implementer", "tester"], coordination_root=tmp_path)
+    plan = compute_ready_plan(
+        queue,
+        max_items=4,
+        profiles=["implementer", "tester"],
+        coordination_root=tmp_path,
+    )
     ready_ids = [r["work_item_id"] for r in plan["ready_items"]]
     assert "wi_impl" in ready_ids
     assert "wi_tester" in ready_ids
@@ -325,7 +330,7 @@ def test_recommendations_present_when_ready(tmp_path: Path):
     assert len(plan["recommendations"]) > 0
 
 
-def test_active_count_reflects_running_items():
+def test_active_count_reflects_running_items(tmp_path: Path):
     """Active count is derived from coordination sessions, not queue fields.
 
     Without coordination session files, active_count defaults to 0.

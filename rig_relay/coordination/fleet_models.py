@@ -131,7 +131,17 @@ class FleetMergeDecision(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
+# Re-export Phase 0 patch proposal models from the dedicated module
+from rig_relay.coordination.patch_proposal import (
+    CreateProposalResult,
+    PatchDecision,
+    PatchProposal,
+    PatchProposalArtifactRef,
+    compute_proposal_fingerprint,
+)
+
 __all__ = [
+    "CreateProposalResult",
     "FleetAgentMessage",
     "FleetAgentSession",
     "FleetCoordinationEvent",
@@ -139,4 +149,8 @@ __all__ = [
     "FleetPatchProposal",
     "FleetPathLease",
     "FleetWorkClaim",
+    "PatchDecision",
+    "PatchProposal",
+    "PatchProposalArtifactRef",
+    "compute_proposal_fingerprint",
 ]

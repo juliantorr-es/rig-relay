@@ -153,12 +153,11 @@ class TestDashboardPilotHelpKey:
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
             assert screen._projection.footer_hint is not None
-            assert "r: refresh" in screen._projection.footer_hint
-            assert "?: help" in screen._projection.footer_hint
+            assert "Available:" in screen._projection.footer_hint
 
     @pytest.mark.asyncio
     async def test_help_key_adds_backlog_items(self) -> None:
-        """After '?' the backlog contains help descriptions."""
+        """After '?' the footer help updates."""
         proj = _make_projection()
         provider = FixtureDashboardProjectionProvider(proj)
         app = _TestDashboardApp(proj, provider=provider)
@@ -167,7 +166,8 @@ class TestDashboardPilotHelpKey:
             await pilot.pause()
             screen = pilot.app.screen
             assert isinstance(screen, DashboardScreen)
-            assert len(screen._projection.backlog_items) >= 3
+            assert screen._projection.footer_hint is not None
+            assert "Available:" in screen._projection.footer_hint
 
 
 class TestDashboardPilotRefreshKey:

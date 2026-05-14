@@ -22,13 +22,32 @@ from typing import Any, Protocol
 from git import Repo
 from pydantic import BaseModel, ConfigDict, Field
 
+from rig_relay.coordination.fleet_projection import (
+    FleetLeaseSummary,
+    FleetProjection,
+    build_fleet_projection,
+)
+from rig_relay.coordination.lease_manager import PathLeaseManager
 from rig_relay.coordination.models import CoordinationSession
 from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
 from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord, build_receipt_index
+from rig_relay.runtime.context_resolver import RuntimeContextResolver
+from rig_relay.runtime.runtime_audit_event import RuntimeAuditPersistenceStore
+from rig_relay.runtime.runtime_supervisor_projection import (
+    RuntimeSupervisorProjection,
+    build_runtime_supervisor_projection,
+)
+from rig_relay.runtime.tool_invocation_adapter import RuntimeToolName
+from rig_relay.runtime.tool_invocation_execution import (
+    RuntimeToolExecutionResult,
+    RuntimeToolExecutionRunner,
+)
+from vibe.cli.textual_ui.rig_console.actions import build_validate_runtime_exec_intent
 from vibe.cli.textual_ui.rig_console.projections import (
     DashboardProjection,
     EvidenceRailProjection,
     SessionPaneProjection,
+    build_inspector_projection,
     evidence_rail_from_receipt_index,
 )
 
@@ -182,6 +201,7 @@ class RuntimeDashboardProjectionProvider:
         self._lane_id = lane_id
         self._task_title = task_title
         self._runtime_events = runtime_events
+        self._validate_runner: RuntimeToolExecutionRunner | None = None
 
     async def dashboard_projection(self) -> DashboardProjection:
         """Build a DashboardProjection from available local evidence.
@@ -194,6 +214,7 @@ class RuntimeDashboardProjectionProvider:
             self._session_path if self._session_path is not None else self._session_id
         )
         records, errors = build_receipt_index(path)
+        supervisor = self._build_supervisor_projection()
 
         evidence = evidence_rail_from_receipt_index(
             records, self._session_id, max_items=self._max_evidence_items
@@ -201,12 +222,15 @@ class RuntimeDashboardProjectionProvider:
 
         session = self._build_session(records, evidence)
         footer = self._build_footer(errors, evidence)
+        inspector = build_inspector_projection(session, evidence, supervisor)
 
         execution_progress = None
         if self._runtime_events is not None:
             execution_progress = execution_progress_from_runtime_events(
                 self._runtime_events
             )
+
+        fleet = self._build_fleet_projection()
 
         return DashboardProjection(
             title="Rig Console",
@@ -217,6 +241,8 @@ class RuntimeDashboardProjectionProvider:
             footer_hint=footer,
             backlog_items=[],
             execution_progress=execution_progress,
+            inspector=inspector,
+            fleet=fleet,
         )
 
     def _build_session(
@@ -288,12 +314,123 @@ class RuntimeDashboardProjectionProvider:
             pending_user_action=None,
         )
 
+    def _build_supervisor_projection(self) -> RuntimeSupervisorProjection | None:
+        store = self._audit_store()
+        if store is None:
+            return None
+        return build_runtime_supervisor_projection(store)
+
+    def _audit_store(self) -> RuntimeAuditPersistenceStore | None:
+        audit_root = self._audit_root
+        if audit_root is None:
+            return None
+        path = (
+            audit_root
+            if audit_root.suffix == ".jsonl"
+            else audit_root / "observability.jsonl"
+        )
+        return RuntimeAuditPersistenceStore(path)
+
+    def _runner(self) -> RuntimeToolExecutionRunner | None:
+        store = self._audit_store()
+        if store is None:
+            return None
+        if self._validate_runner is None:
+            self._validate_runner = RuntimeToolExecutionRunner(audit_store=store)
+        return self._validate_runner
+
+    async def run_validate(
+        self, projection: DashboardProjection
+    ) -> RuntimeToolExecutionResult:
+        """Run governed validate via runtime_exec and return the execution result."""
+        if self._workspace_root is None or self._audit_root is None:
+            return RuntimeToolExecutionResult(
+                status="refused",
+                intent_id="validate-unavailable",
+                tool_name=RuntimeToolName.RUNTIME_EXEC.value,
+                error_kind="missing_runtime_roots",
+                refusal_reason="workspace_root and audit_root are required for validate",
+            )
+
+        runner = self._runner()
+        if runner is None:
+            return RuntimeToolExecutionResult(
+                status="refused",
+                intent_id="validate-unavailable",
+                tool_name=RuntimeToolName.RUNTIME_EXEC.value,
+                error_kind="missing_audit_store",
+                refusal_reason="audit store is required for validate",
+            )
+
+        task_id = (
+            projection.session.task_title
+            or projection.session.current_step
+            or "validate"
+        )
+        resolver = RuntimeContextResolver(
+            repo_root=self._workspace_root, session_root=self._session_path
+        )
+        resolution = resolver.resolve_for_intent(
+            "validate",
+            session_id=projection.session.session_id,
+            task_id=task_id,
+            paths=projection.session.changed_paths or None,
+            require_worktree=False,
+        )
+
+        if resolution.status != "resolved":
+            return RuntimeToolExecutionResult(
+                status="blocked",
+                intent_id="validate-unavailable",
+                tool_name=RuntimeToolName.RUNTIME_EXEC.value,
+                error_kind=resolution.error_kind or "context_unresolved",
+                refusal_reason=resolution.refusal_reason,
+            )
+
+        intent = build_validate_runtime_exec_intent(
+            intent_id=f"validate-{projection.session.session_id}",
+            session_id=projection.session.session_id,
+            task_id=task_id,
+            changed_paths=projection.session.changed_paths[:5],
+        )
+        return await runner.execute_runtime_exec(intent, resolution)
+
     def _build_footer(self, errors: list[str], evidence: EvidenceRailProjection) -> str:
         """Build a concise footer hint string."""
         parts: list[str] = ["Read-only evidence provider"]
         if errors:
             parts.append(f"({len(errors)} read errors)")
         return "  ".join(parts)
+
+    def _build_fleet_projection(self) -> FleetProjection | None:
+        """Build a FleetProjection from available coordination data.
+
+        Phase 0: reads path leases from PathLeaseManager when
+        coordination_root is set. All other subsystems (queue,
+        agents, blockers, patches) return empty defaults.
+
+        Never crashes — returns None when coordination_root is
+        unavailable or lease reading fails.
+        """
+        if self._coordination_root is None:
+            return None
+
+        try:
+            path_manager = PathLeaseManager(self._coordination_root)
+            leases = path_manager.query_active_leases()
+        except Exception:
+            leases = []
+
+        lease_summary = FleetLeaseSummary(
+            total_active=len(leases),
+            exclusive_write=sum(1 for l in leases if l.mode == "write"),
+            shared_read=sum(1 for l in leases if l.mode == "read"),
+            path_count=sum(len(l.paths) for l in leases),
+        )
+
+        return build_fleet_projection(
+            coordination_root=self._coordination_root, leases=lease_summary
+        )
 
 
 __all__ = [
