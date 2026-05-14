@@ -18,8 +18,8 @@
 **Rig Relay v0.1.0-alpha.1 — a governed local coding harness for Rig.**
 
 Rig Relay is a Relay-native local agent cockpit with a CLI compatibility
-surface. It provides a governed control plane, desktop cockpit, and durable
-local evidence for safe development work.
+surface. It provides a governed control plane, desktop cockpit, terminal
+cockpit, and durable local evidence for safe development work.
 
 > [!WARNING]
 > Rig Relay works on Windows, but we officially support and target UNIX environments.
@@ -91,9 +91,17 @@ Rig Relay needs a provider key before it can run model turns. DeepSeek is the de
 
 ### Interactive Mode
 
-Run the primary executable to start a session in your current directory:
+Run the primary executable to start the Textual cockpit in your current
+directory:
 ```bash
 rig-relay
+```
+
+`rig-relay` now opens the Textual Rig Console by default. The legacy CLI
+remains available explicitly:
+
+```bash
+rig-relay legacy
 ```
 
 ### Programmatic Mode
@@ -146,7 +154,8 @@ uv run python scripts/rig_relay_desktop_cockpit.py --dry-run
 
 ### Textual Rig Console
 
-Launch the terminal-native coding cockpit with:
+Launch the terminal-native coding cockpit with `rig-relay` or the explicit
+alias:
 
 ```bash
 uv run rig-console
@@ -233,10 +242,11 @@ Rig Relay maintains backward compatibility for users transitioning from Mistral 
 `vibe` remains a legacy compatibility alias, not the product identity.
 
 ### Commands
-- `rig-relay` is the primary executable.
+- `rig-relay` is the primary executable and launches the Textual cockpit.
 - `rig-relay-acp` is the primary ACP executable.
 - `vibe` is a legacy compatibility alias for `rig-relay`.
 - `vibe-acp` is a legacy compatibility alias for `rig-relay-acp`.
+- `rig-relay legacy` and `rig-relay run` explicitly invoke the legacy CLI.
 
 ## Upstream and License
 

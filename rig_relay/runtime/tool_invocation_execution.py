@@ -18,6 +18,7 @@ Constraints:
 """
 
 from __future__ import annotations
+from vibe.core.logger import logger
 
 from collections.abc import AsyncGenerator
 from contextlib import contextmanager
@@ -1049,7 +1050,12 @@ class RuntimeToolExecutionRunner:
             manager = PathLeaseManager(Path(coordination_root))
             manager.release_paths(session_id=session_id, task_id=task_id, paths=paths)
         except Exception:
-            pass
+            logger.warning(
+                "Lease release failed for session=%s task=%s paths=%s",
+                session_id,
+                task_id,
+                paths,
+            )
 
     @staticmethod
     def _resolve_coordination_root(envelope: RuntimeToolInvocationEnvelope) -> Path:
@@ -1127,12 +1133,17 @@ class RuntimeToolExecutionRunner:
         if self._audit_store is None:
             return
         try:
+            mission_id = getattr(envelope, "mission_id", None)
+            agent_id = getattr(envelope, "agent_id", None)
+            lease_id = getattr(envelope, "lease_id", None)
+            parent_event_id = getattr(envelope, "parent_event_id", None)
+
             event = build_runtime_audit_event(
                 result,
-                mission_id=None,
-                agent_id=None,
-                lease_id=None,
-                parent_event_id=None,
+                mission_id=mission_id,
+                agent_id=agent_id,
+                lease_id=lease_id,
+                parent_event_id=parent_event_id,
             )
             self._audit_store.append(event)
         except Exception:

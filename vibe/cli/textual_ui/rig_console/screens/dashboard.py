@@ -11,6 +11,7 @@ from textual.containers import Horizontal
 from textual.screen import Screen
 
 from rig_relay.desktop.execution_progress import ExecutionProgressProjection
+from vibe.cli.textual_ui.rig_console.actions import RigConsoleAction
 from vibe.cli.textual_ui.rig_console.intents import DashboardActionResult
 from vibe.cli.textual_ui.rig_console.projections import DashboardProjection
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
@@ -112,6 +113,7 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
         so receipt/session reads don't block the UI event loop.
         """
         if self._provider is None:
+            self._set_feedback("refresh", "No provider configured")
             return
         self._set_status("info", "refresh", "Refresh started")
         self._refresh_in_progress = True
@@ -146,25 +148,50 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
     def action_show_help(self) -> None:
         """Show available keybindings in the footer."""
         self._details_visible = True
-        self._projection = self._projection.model_copy(
-            update={
-                "footer_hint": "q: quit  r: refresh  ?: help  t: details  e: evidence  v: validate",
-                "backlog_items": [
-                    "Refresh — fetch latest projection from provider",
-                    "Help — show available actions",
-                    "Details — toggle detail hints",
-                    "Evidence — focus evidence rail (placeholder)",
-                    "Validate — read-only status check (placeholder)",
-                ],
-            }
+        self._set_feedback(
+            "show_help",
+            "Available: refresh, help, details, runtime, leases, audit, copy",
         )
-        self._render_all()
 
     def action_toggle_details(self) -> None:
         """Toggle the detail hint state without mutating backend data."""
         self._details_visible = not self._details_visible
         footer = "details: on" if self._details_visible else "details: off"
         self._set_status("info", "details", footer)
+
+    def action_show_runtime_status(self) -> None:
+        """Show runtime adapter status."""
+        status = self._projection.session.status or "unknown"
+        self._set_feedback("runtime_status", f"Runtime status: {status}")
+
+    def action_show_leases(self) -> None:
+        """Show blocker summary as a lease/status snapshot."""
+        blockers = self._projection.session.blocker_summary
+        if not blockers:
+            self._set_feedback("leases", "No active leases or blockers")
+            return
+        parts = ", ".join(f"{count} {key}" for key, count in blockers.items())
+        self._set_feedback("leases", f"Leases/blockers: {parts}")
+
+    def action_show_audit_timeline(self) -> None:
+        """Show a safe audit timeline summary."""
+        count = self._projection.evidence.receipt_count
+        self._set_feedback("audit_timeline", f"Audit receipts: {count}")
+
+    def action_copy_latest_receipt_ref(self) -> None:
+        """Copy the latest receipt ref if clipboard support is available."""
+        latest = self._projection.session.latest_receipt_kind
+        if not latest:
+            self._set_feedback("copy_receipt", "No receipt reference available")
+            return
+        try:
+            import pyperclip
+
+            pyperclip.copy(latest)
+        except Exception:
+            self._set_feedback("copy_receipt", "Clipboard unavailable")
+            return
+        self._set_feedback("copy_receipt", "Latest receipt reference copied")
 
     def action_focus_evidence(self) -> None:
         """Placeholder: focus/evidence action. Read-only, no mutation."""
@@ -216,3 +243,22 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
             update={"footer_hint": "  ".join(hint_parts)}
         )
         self._render_all()
+
+    def run_safe_action(self, action: RigConsoleAction) -> None:
+        handler = getattr(self, action.callback_name, None)
+        if handler is None:
+            self._set_status("error", action.name, "Unknown action")
+            return
+        try:
+            result = handler()
+            if asyncio.iscoroutine(result):
+                self.run_worker(result, exclusive=True, exit_on_error=False)
+        except Exception as exc:
+            self._set_status("error", action.name, type(exc).__name__)
+
+    def _set_feedback(self, action_name: str, message: str) -> None:
+        self._set_status("info", action_name, message)
+        try:
+            self.app.notify(message, title="Rig Console", severity="information")
+        except Exception:
+            pass

@@ -69,10 +69,10 @@ The execution layer bridges the runtime adapter and concrete tools (validate, se
 
 ### Constraints
 - **bash_legacy** — ✅ Supported (Phase 2)
-- **runtime_exec** — NOT wired (deferred to Phase 2)
-- No lease acquisition
-- No RuntimeSupervisor integration
-- No audit persistence
+- **runtime_exec** — ✅ Supported (Phase 3)
+- Lease acquisition — ✅ Supported (Phase 3)
+- RuntimeSupervisor integration — ❌ Deferred
+- Audit persistence — ✅ Supported (Phase 3)
 
 ## Audit Persistence (Phase 3)
 
@@ -322,12 +322,13 @@ b_result = await runner.execute_bash(b_intent, resolution)
 | Content-light results | ✅ Implemented | No raw content in result model |
 | Schema validation of result | ✅ Implemented | Against `rig.relay.runtime_tool_execution_result.v1` |
 | `execute_write_file()` | ✅ Implemented | Mutation, runs WriteFile through hardened interface |
-| `execute_bash()` | ✅ Implemented | Subprocess, runs Bash through hardened interface with timeout/refusal/error handling |
-| Lease acquisition | ✅ Phase 3 | Acquire before mutation, release in finally, TTL crash recovery |
-| RuntimeSupervisor integration | ❌ Deferred | Phase 2 |
-| Coordination policy | ✅ Phase 3 | coordination_enabled flag, lease error => BLOCKED |
-| Lease TTL | ✅ Phase 3 | DEFAULT_LEASE_TTL_SECONDS=120, configurable per envelope |
-| Audit persistence | ❌ Deferred | Phase 2 |
+| `execute_bash()` | ✅ Implemented | Subprocess, runs Bash through hardened interface |
+| Lease acquisition | ✅ Implemented | Acquire before mutation, release in finally, TTL crash recovery |
+| RuntimeSupervisor integration | ❌ Deferred | Phase 4 |
+| Coordination policy | ✅ Implemented | coordination_enabled flag, lease error => BLOCKED |
+| Lease TTL | ✅ Implemented | DEFAULT_LEASE_TTL_SECONDS=120, configurable per envelope |
+| Audit persistence | ✅ Implemented | Content-light JSONL audit trail |
+| Context propagation | ✅ Implemented | mission_id, agent_id, etc. propagated to audit |
 
 ## Dependencies
 

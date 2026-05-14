@@ -181,17 +181,17 @@ def test_ready_plan_validates_sample():
 # ── Queue planner tests ──────────────────────────────────────────────────
 
 
-def test_returns_ready_item_when_dependencies_complete():
+def test_returns_ready_item_when_dependencies_complete(tmp_path: Path):
     wi = _make_work_item(status="pending")
     queue = _make_queue([wi])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     assert len(plan["ready_items"]) == 1
     assert plan["ready_items"][0]["work_item_id"] == "wi_test_001"
     assert len(plan["blocked_items"]) == 0
     assert len(plan["waiting_items"]) == 0
 
 
-def test_blocks_item_when_dependency_pending():
+def test_blocks_item_when_dependency_pending(tmp_path: Path):
     wi1 = _make_work_item(
         work_item_id="wi_001", title="First item", status="pending", priority=10
     )
@@ -203,7 +203,7 @@ def test_blocks_item_when_dependency_pending():
         dependencies=[{"work_item_id": "wi_001", "type": "must_complete"}],
     )
     queue = _make_queue([wi1, wi2])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     ready_ids = [r["work_item_id"] for r in plan["ready_items"]]
     assert "wi_001" in ready_ids
     assert "wi_002" not in ready_ids
@@ -211,59 +211,59 @@ def test_blocks_item_when_dependency_pending():
     assert "wi_002" in waiting_ids
 
 
-def test_respects_max_items():
+def test_respects_max_items(tmp_path: Path):
     items = [
         _make_work_item(work_item_id=f"wi_{i:03d}", title=f"Item {i}", priority=i)
         for i in range(10)
     ]
     queue = _make_queue(items)
-    plan = compute_ready_plan(queue, max_items=3)
+    plan = compute_ready_plan(queue, max_items=3, coordination_root=tmp_path)
     assert len(plan["ready_items"]) == 3
 
 
-def test_respects_max_parallel_children():
+def test_respects_max_parallel_children(tmp_path: Path):
     items = [
         _make_work_item(work_item_id=f"wi_{i:03d}", title=f"Item {i}") for i in range(6)
     ]
     queue = _make_queue(items, max_parallel_children=2)
-    plan = compute_ready_plan(queue, max_items=10)
+    plan = compute_ready_plan(queue, max_items=10, coordination_root=tmp_path)
     # With max_parallel_children=2 and 0 active, only 2 slots available
     assert len(plan["ready_items"]) <= 2
     assert plan["available_slots"] == 2
 
 
-def test_sorts_by_priority():
+def test_sorts_by_priority(tmp_path: Path):
     items = [
         _make_work_item(work_item_id=f"wi_{p:03d}", title=f"Priority {p}", priority=p)
         for p in [90, 10, 50, 30, 70]
     ]
     queue = _make_queue(items)
-    plan = compute_ready_plan(queue, max_items=5)
+    plan = compute_ready_plan(queue, max_items=5, coordination_root=tmp_path)
     priorities = [r["priority"] for r in plan["ready_items"]]
     assert priorities == sorted(priorities)
 
 
-def test_skips_active_items():
+def test_skips_active_items(tmp_path: Path):
     wi_active = _make_work_item(work_item_id="wi_active", status="running")
     wi_pending = _make_work_item(work_item_id="wi_pending", title="Pending item")
     queue = _make_queue([wi_active, wi_pending], active_work_item_ids=["wi_active"])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     ready_ids = [r["work_item_id"] for r in plan["ready_items"]]
     assert "wi_active" not in ready_ids
     assert "wi_pending" in ready_ids
 
 
-def test_skips_terminal_items():
+def test_skips_terminal_items(tmp_path: Path):
     wi_done = _make_work_item(work_item_id="wi_done", status="completed")
     wi_pending = _make_work_item(work_item_id="wi_pending", title="Pending item")
     queue = _make_queue([wi_done, wi_pending], completed_work_item_ids=["wi_done"])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     ready_ids = [r["work_item_id"] for r in plan["ready_items"]]
     assert "wi_done" not in ready_ids
     assert "wi_pending" in ready_ids
 
 
-def test_blocks_item_with_blocked_status():
+def test_blocks_item_with_blocked_status(tmp_path: Path):
     wi_blocked = _make_work_item(
         work_item_id="wi_blocked", status="blocked", blocked_by=["Some external reason"]
     )
@@ -271,26 +271,26 @@ def test_blocks_item_with_blocked_status():
         work_item_id="wi_pending", title="Pending item", priority=60
     )
     queue = _make_queue([wi_blocked, wi_pending])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     blocked_ids = [b["work_item_id"] for b in plan["blocked_items"]]
     assert "wi_blocked" in blocked_ids
     ready_ids = [r["work_item_id"] for r in plan["ready_items"]]
     assert "wi_pending" in ready_ids
 
 
-def test_handles_empty_queue():
+def test_handles_empty_queue(tmp_path: Path):
     queue = _make_queue([])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     assert len(plan["ready_items"]) == 0
     assert len(plan["blocked_items"]) == 0
     assert len(plan["waiting_items"]) == 0
     assert plan["active_count"] == 0
 
 
-def test_emits_content_light_output():
+def test_emits_content_light_output(tmp_path: Path):
     wi = _make_work_item()
     queue = _make_queue([wi])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     output = json.dumps(plan)
     # Check that actual content patterns are absent.
     # The string 'raw_file_contents' appears in the schema-required
@@ -300,7 +300,7 @@ def test_emits_content_light_output():
     assert "/Users/" not in output
 
 
-def test_filters_by_profile():
+def test_filters_by_profile(tmp_path: Path):
     wi_impl = _make_work_item(
         work_item_id="wi_impl", title="Implementer task", agent_profile="implementer"
     )
@@ -311,17 +311,17 @@ def test_filters_by_profile():
         work_item_id="wi_doc", title="Documenter task", agent_profile="documenter"
     )
     queue = _make_queue([wi_impl, wi_tester, wi_doc])
-    plan = compute_ready_plan(queue, max_items=4, profiles=["implementer", "tester"])
+    plan = compute_ready_plan(queue, max_items=4, profiles=["implementer", "tester"], coordination_root=tmp_path)
     ready_ids = [r["work_item_id"] for r in plan["ready_items"]]
     assert "wi_impl" in ready_ids
     assert "wi_tester" in ready_ids
     assert "wi_doc" not in ready_ids
 
 
-def test_recommendations_present_when_ready():
+def test_recommendations_present_when_ready(tmp_path: Path):
     wi = _make_work_item()
     queue = _make_queue([wi])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     assert len(plan["recommendations"]) > 0
 
 
@@ -334,7 +334,7 @@ def test_active_count_reflects_running_items():
     wi_active = _make_work_item(work_item_id="wi_active", status="running")
     wi_pending = _make_work_item(work_item_id="wi_pending", title="Pending item")
     queue = _make_queue([wi_active, wi_pending], active_work_item_ids=["wi_active"])
-    plan = compute_ready_plan(queue, max_items=4)
+    plan = compute_ready_plan(queue, max_items=4, coordination_root=tmp_path)
     # No coordination sessions exist, so active_count is 0
     assert plan["active_count"] == 0
     # Running items are excluded from ready_items

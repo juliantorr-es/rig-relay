@@ -90,6 +90,12 @@ class RuntimeToolIntent(BaseModel):
     require_worktree: bool = False
     allow_main_repo_mutation: bool = False
 
+    # ── Context propagation (Otel-inspired) ───────────────────────
+    mission_id: str | None = None
+    agent_id: str | None = None
+    lease_id: str | None = None
+    parent_event_id: str | None = None
+
 
 # ── Output envelope ────────────────────────────────────────────────────
 
@@ -132,6 +138,12 @@ class RuntimeToolInvocationEnvelope(BaseModel):
     # Coordination policy
     coordination_enabled: bool = True
     lease_ttl_seconds: int | None = None
+
+    # ── Context propagation (Otel-inspired) ───────────────────────
+    mission_id: str | None = None
+    agent_id: str | None = None
+    lease_id: str | None = None
+    parent_event_id: str | None = None
 
     # Refusal details
     error_kind: RuntimeToolInvocationErrorKind | None = None
@@ -237,6 +249,12 @@ class RuntimeToolInvocationAdapter:
         base_envelope.repo_root = ctx.repo_root
         base_envelope.cwd = effective_cwd
         base_envelope.coordination_enabled = ctx.coordination_enabled
+
+        # ── Propagate context fields ───────────────────────────────
+        base_envelope.mission_id = intent.mission_id
+        base_envelope.agent_id = intent.agent_id
+        base_envelope.lease_id = intent.lease_id
+        base_envelope.parent_event_id = intent.parent_event_id
 
         # ── Tool-specific validation ────────────────────────────────
         return self._apply_tool_policy(intent, base_envelope, ctx)
@@ -403,6 +421,10 @@ class RuntimeToolInvocationAdapter:
             "worktree_path": ctx.worktree_path,
             "env_overlay": payload.get("env_overlay", {}),
             "requested_capabilities": payload.get("requested_capabilities", []),
+            "mission_id": intent.mission_id,
+            "agent_id": intent.agent_id,
+            "lease_id": intent.lease_id,
+            "parent_event_id": intent.parent_event_id,
         }
 
         # Validate shape by constructing ExecutionRequest (no side effects)
@@ -417,6 +439,10 @@ class RuntimeToolInvocationAdapter:
                 purpose=exec_payload["purpose"],
                 workspace_id=exec_payload["workspace_id"],
                 worktree_path=exec_payload["worktree_path"],
+                mission_id=exec_payload["mission_id"],
+                agent_id=exec_payload["agent_id"],
+                lease_id=exec_payload["lease_id"],
+                parent_event_id=exec_payload["parent_event_id"],
                 requested_capabilities=[
                     RuntimeCapabilityKind(c) if isinstance(c, str) else c
                     for c in caps_raw

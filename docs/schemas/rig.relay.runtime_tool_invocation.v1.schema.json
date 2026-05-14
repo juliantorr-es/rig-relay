@@ -113,6 +113,22 @@
     "refusal_reason": {
       "type": ["string", "null"],
       "description": "Human-readable explanation for blocked/refused status."
+    },
+    "mission_id": {
+      "type": ["string", "null"],
+      "description": "Optional grouping identifier for related fleet sessions."
+    },
+    "agent_id": {
+      "type": ["string", "null"],
+      "description": "Optional identifier for the specific agent instance."
+    },
+    "lease_id": {
+      "type": ["string", "null"],
+      "description": "Optional identifier for a previously acquired lease."
+    },
+    "parent_event_id": {
+      "type": ["string", "null"],
+      "description": "Optional link to the event that triggered this invocation."
     }
   },
   "additionalProperties": false

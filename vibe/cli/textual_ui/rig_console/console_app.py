@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SystemCommand
 from textual.screen import Screen
 
+from vibe.cli.textual_ui.rig_console.commands import build_rig_console_commands
 from vibe.cli.textual_ui.rig_console.projections import (
     DashboardProjection,
     EvidenceRailItemProjection,
@@ -203,6 +204,11 @@ RigConsoleApp {
         self.push_screen(DashboardScreen(self._projection, provider=self._provider))
         if self._mode == "runtime" and self._refresh_interval > 0:
             self.set_interval(self._refresh_interval, self._poll_refresh)
+
+    def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
+        yield from super().get_system_commands(screen)
+        if isinstance(screen, DashboardScreen):
+            yield from build_rig_console_commands(screen)
 
     def _build_provider(
         self,

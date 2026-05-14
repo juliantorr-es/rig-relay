@@ -96,8 +96,8 @@ These are three distinct hashes for three distinct artifacts.
 | `receipt_sha256` | Execution result → tool receipt | ReceiptEnvelope evidence | Links execution result to receipt |
 | `tool_receipt_kind` | Tool-specific (validate, search_replace) | Execution result | Identifies which receipt schema applies |
 | `tool_receipt_schema_version` | Tool receipt model | Execution result | Records which schema version produced the hash |
-| `receipt_envelope_id` | ReceiptEnvelope | Execution result | Links execution result to envelope (initially `None`) |
-| `audit_event_id` | AuditEvent | Execution result | Links execution result to audit (initially `None`) |
+| `receipt_envelope_id` | ReceiptEnvelope | Execution result | Links execution result to envelope |
+| `audit_event_id` | AuditEvent | Execution result | Links execution result to audit |
 | `changed_paths` | Mutation tool payload | Execution result | Lists files affected |
 | `envelope_id` | ReceiptEnvelope | AuditEvent | Links audit event to envelope |
 | `evidence_sha256` | AuditEvent → ReceiptEnvelope | AuditEvent | Links audit event to evidence |

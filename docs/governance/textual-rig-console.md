@@ -7,6 +7,13 @@ Rig Relay. The pywebview cockpit remains the desktop cockpit.
 
 ## Launch
 
+Use `rig-relay` for the default product launcher. `rig-console` remains an
+explicit alias.
+
+```bash
+uv run rig-relay
+```
+
 ```bash
 uv run rig-console
 ```

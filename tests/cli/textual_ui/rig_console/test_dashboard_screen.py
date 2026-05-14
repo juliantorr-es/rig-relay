@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+from vibe.cli.textual_ui.rig_console.actions import ACTION_REFRESH, RigConsoleAction
 from vibe.cli.textual_ui.rig_console.projections import (
     DashboardProjection,
     EvidenceRailProjection,
@@ -120,6 +121,24 @@ class TestDashboardScreen:
         assert screen._projection.footer_hint is not None
         assert "[ok]" in screen._projection.footer_hint
         assert "refresh" in screen._projection.footer_hint
+
+    def test_run_safe_action_dispatches_refresh(self) -> None:
+        screen = DashboardScreen(_make_projection())
+        with patch.object(screen, "action_refresh") as mock_refresh:
+            screen.run_safe_action(ACTION_REFRESH)
+        mock_refresh.assert_called_once()
+
+    def test_run_safe_action_handles_unknown_action(self) -> None:
+        screen = DashboardScreen(_make_projection())
+        unknown = RigConsoleAction(
+            name="unknown",
+            title="Unknown",
+            description="Unknown",
+            callback_name="action_does_not_exist",
+        )
+        with patch.object(screen, "_render_all"):
+            screen.run_safe_action(unknown)
+        assert screen._projection.footer_hint is not None
 
     def test_no_forbidden_raw_fields(self) -> None:
         screen = DashboardScreen(_make_projection())

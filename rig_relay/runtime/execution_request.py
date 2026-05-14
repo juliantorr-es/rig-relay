@@ -55,6 +55,11 @@ class ExecutionRequest(BaseModel):
     workspace_id: str | None = None
     worktree_path: str | None = None
     requested_capabilities: list[RuntimeCapabilityKind] = []
+    # ── Context propagation (Otel-inspired) ───────────────────────
+    mission_id: str | None = None
+    agent_id: str | None = None
+    lease_id: str | None = None
+    parent_event_id: str | None = None
     request_sha256: str | None = None
 
     @field_validator("argv")

@@ -1,6 +1,6 @@
 # Rig Fleet Coordination Plane
 
-**Status: Proposed (Phase Q, 2026-05).**
+**Status: Foundation Implemented (Phase 3 Closure, 2026-05).**
 
 ## 1. Vision
 

@@ -23,12 +23,13 @@
         "worktree_path": { "type": ["string", "null"] },
         "repo_root": { "type": ["string", "null"] },
         "coordination_scope": { "type": ["string", "null"] },
+        "coordination_enabled": { "type": "boolean" },
         "receipt_index_path": { "type": ["string", "null"] },
         "dirty_policy": { "type": ["string", "null"] },
         "resolved_from": { "type": "array", "items": { "type": "string" } },
         "warnings": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["schema_version", "session_id", "task_id", "resolved_from", "warnings"],
+      "required": ["schema_version", "session_id", "task_id", "repo_root", "resolved_from", "warnings"],
       "additionalProperties": false
     },
     "RuntimeContextResolution": {

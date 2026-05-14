@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from textual.app import SystemCommand
 
+from vibe.cli.textual_ui.rig_console.commands import build_rig_console_commands
 from vibe.cli.textual_ui.rig_console.console_app import RigConsoleApp, main
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
 from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
@@ -92,3 +94,24 @@ class TestConsoleAppEntryPoint:
             await pilot.pause()
             assert screen._last_refresh_error == "RuntimeError"
             assert "secret payload" not in (screen._projection.footer_hint or "")
+
+    @pytest.mark.asyncio
+    async def test_command_palette_entries_include_refresh(self) -> None:
+        app = RigConsoleApp(mode="fixture")
+        async with app.run_test(size=(100, 30)) as pilot:
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            commands = list(build_rig_console_commands(screen))
+            assert any(command[0] == "Refresh" for command in commands)
+            assert all(isinstance(command, SystemCommand) for command in commands)
+
+    @pytest.mark.asyncio
+    async def test_toggle_details_changes_visible_state(self) -> None:
+        app = RigConsoleApp(mode="fixture")
+        async with app.run_test(size=(100, 30)) as pilot:
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            before = screen._details_visible
+            await pilot.press("t")
+            await pilot.pause()
+            assert screen._details_visible is not before

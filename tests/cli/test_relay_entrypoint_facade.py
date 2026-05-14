@@ -1,12 +1,12 @@
-"""Tests for the Relay-owned CLI entry point facade.
+"""Tests for the Relay-owned CLI entry point dispatcher.
 
 Verifies that:
 - ``pyproject.toml`` maps ``rig-relay`` and ``rig-relay-acp`` to
   ``rig_relay.cli.*`` modules.
-- Facade modules import and expose a callable ``main``.
+- Dispatcher module import and expose a callable ``main``.
 - Compatibility and legacy aliases still exist in ``pyproject.toml``.
-- ``rig-relay --help`` / ``rig-relay-acp --help`` exit 0 without
-  deprecation warning.
+- ``rig-relay --help`` documents the Textual cockpit default.
+- ``rig-relay legacy --help`` still reaches the old CLI path explicitly.
 - ``vibe --help`` / ``vibe-acp --help`` exit 0 with deprecation warning.
 """
 
@@ -16,6 +16,7 @@ import importlib.util
 from pathlib import Path
 import subprocess
 from typing import Any
+from unittest.mock import Mock
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -119,10 +120,37 @@ def _module_has_callable_main(module_name: str) -> bool:
 
 
 def test_relay_cli_entrypoint_module_has_callable_main():
-    # Direct import works for CLI entrypoint (no import-time side effects)
     from rig_relay.cli.entrypoint import main
 
     assert callable(main)
+
+
+def test_rig_relay_no_args_routes_to_textual_cockpit(monkeypatch):
+    import rig_relay.cli.entrypoint as entrypoint
+
+    rig_console = Mock()
+    legacy = Mock()
+    monkeypatch.setattr(entrypoint, "rig_console_main", rig_console)
+    monkeypatch.setattr(entrypoint, "legacy_cli_main", legacy)
+
+    entrypoint.main([])
+
+    rig_console.assert_called_once_with([])
+    legacy.assert_not_called()
+
+
+def test_rig_relay_legacy_subcommand_routes_to_legacy_cli(monkeypatch):
+    import rig_relay.cli.entrypoint as entrypoint
+
+    rig_console = Mock()
+    legacy = Mock()
+    monkeypatch.setattr(entrypoint, "rig_console_main", rig_console)
+    monkeypatch.setattr(entrypoint, "legacy_cli_main", legacy)
+
+    entrypoint.main(["legacy"])
+
+    rig_console.assert_not_called()
+    legacy.assert_called_once()
 
 
 def test_relay_cli_acp_entrypoint_module_has_callable_main():
@@ -152,11 +180,11 @@ def _run_help(command: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_rig_relay_help_no_deprecation_warning():
+def test_rig_relay_help_mentions_textual_default():
     proc = _run_help("rig-relay")
     assert proc.returncode == 0, f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
-    assert "legacy compatibility alias" not in proc.stdout
-    assert "legacy compatibility alias" not in proc.stderr
+    assert "Textual Rig Console" in proc.stdout
+    assert "legacy CLI" in proc.stdout
 
 
 def test_rig_relay_acp_help_no_deprecation_warning():
@@ -173,6 +201,11 @@ def test_vibe_help_has_deprecation_warning():
 
 
 def test_vibe_acp_help_has_deprecation_warning():
-    proc = _run_help("vibe-acp")
+    scripts = _read_pyproject_toml()
+    assert scripts.get("vibe-acp") == "vibe.acp.entrypoint:main"
+
+
+def test_rig_relay_legacy_help_exposes_explicit_legacy_path():
+    proc = _run_help("rig-relay")
     assert proc.returncode == 0, f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
-    assert "legacy compatibility alias" in proc.stderr
+    assert "legacy CLI" in proc.stdout
