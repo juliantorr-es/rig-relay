@@ -39,6 +39,13 @@ PromptBar > .prompt-input {
     color: $text;
 }
 
+PromptBar > .prompt-status {
+    width: auto;
+    height: auto;
+    margin-left: 1;
+    color: $text-muted;
+}
+
 PromptBar:focus-within {
     border: tall $accent-lighten-2;
 }
@@ -47,7 +54,7 @@ PromptBar:focus-within {
     def __init__(
         self,
         on_submit: Callable[[str], None] | None = None,
-        placeholder: str = "Type mission or instruction; Enter to plan/queue...",
+        placeholder: str = "Queue instruction…",
         disabled: bool = False,
     ) -> None:
         super().__init__()
@@ -55,6 +62,7 @@ PromptBar:focus-within {
         self._placeholder = placeholder
         self._disabled = disabled
         self._input: Input | None = None
+        self._status: Static | None = None
 
     def compose(self) -> ComposeResult:
         self._input = Input(
@@ -63,26 +71,36 @@ PromptBar:focus-within {
             disabled=self._disabled,
         )
         yield self._input
+        self._status = Static("", classes="prompt-status")
+        yield self._status
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle Enter in the input field."""
+        if self._disabled:
+            return
         event.stop()
         text = event.value.strip()
         if not text:
             return
         if self._on_submit is not None:
             self._on_submit(text)
-            # We don't auto-clear here; the screen handles it on success
-            # to avoid losing input on transient routing errors.
+            self.clear_input()
+            self.set_status("Queued")
 
     def clear_input(self) -> None:
         if self._input is not None:
             self._input.value = ""
 
-    def set_disabled(self, disabled: bool) -> None:
+    def set_status(self, status: str) -> None:
+        if self._status is not None:
+            self._status.update(status)
+
+    def set_disabled(self, disabled: bool, reason: str | None = None) -> None:
         self._disabled = disabled
         if self._input is not None:
             self._input.disabled = disabled
+        if reason is not None:
+            self.set_status(reason)
 
     def focus_input(self) -> None:
         if self._input is not None and not self._input.disabled:

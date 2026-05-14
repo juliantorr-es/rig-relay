@@ -46,7 +46,7 @@ ActivityLogWidget > .log-row {
 
     def add_log(self, status: str, action: str, message: str | None = None) -> None:
         ts = datetime.now().strftime("%H:%M:%S")
-        log = f"[dim]{ts}[/] [[bold]{status.upper()}[/]] {action}"
+        log = f"[dim]{ts}[/] [bold][{status.upper()}][/] {action}"
         if message:
             log += f": {message}"
         self._logs.append(log)

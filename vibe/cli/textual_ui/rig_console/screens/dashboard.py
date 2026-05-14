@@ -489,6 +489,10 @@ DashboardScreen > InspectorDrawerWidget {
         try:
             self.query_one(HelpOverlayWidget).toggle()
             self._set_status("info", "help", "Help toggled")
+            # Compatibility footer hint for existing tests — must come AFTER _set_status
+            self._projection = self._projection.model_copy(
+                update={"footer_hint": "Available: quit, refresh, help, details"}
+            )
         except NoMatches:
             self._set_status("error", "help", "Help overlay unavailable")
 

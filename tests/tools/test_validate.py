@@ -1485,3 +1485,190 @@ async def test_collect_git_state_porcelain_sha256(tmp_path: Path) -> None:
     state = await _collect_git_state(str(tmp_path))
     assert state.status_porcelain_sha256 is not None
     assert len(state.status_porcelain_sha256) == 64
+
+
+# ── Cache / Scheduler Integration ─────────────────────────────────────
+
+
+def test_cache_compute_key_includes_check_id() -> None:
+    """compute_cache_key returns unique keys for different check_ids."""
+    from rig_relay.evidence.validation_cache import compute_cache_key
+
+    key1 = compute_cache_key("c1", "pytest", "fp1", "fp2", "/tmp")
+    key2 = compute_cache_key("c2", "pytest", "fp1", "fp2", "/tmp")
+    assert key1 != key2
+
+
+def test_cache_store_and_lookup(tmp_path: Path) -> None:
+    """Stored record is retrievable via lookup."""
+    from rig_relay.evidence.validation_cache import (
+        CACHE_STATUS_HIT,
+        ValidationCacheRecord,
+        ValidationCacheStore,
+        compute_cache_key,
+    )
+
+    ck = compute_cache_key("c1", "pytest", "fp1", "fp2", str(tmp_path))
+    store = ValidationCacheStore(str(tmp_path / ".cache"))
+    assert store.lookup(ck).cache_status != CACHE_STATUS_HIT
+
+    record = ValidationCacheRecord(
+        cache_key=ck,
+        check_id="c1",
+        command_kind="pytest",
+        command_fingerprint="fp1",
+        input_fingerprint="fp2",
+        input_file_fingerprints={},
+        status="passed",
+        exit_code=0,
+        duration_ms=10.0,
+        stdout_sha256="sha256:abc",
+        stderr_sha256="sha256:def",
+        stdout_bytes=12,
+        stderr_bytes=12,
+    )
+    store.store(record)
+
+    lookup = store.lookup(ck)
+    assert lookup.cache_status == CACHE_STATUS_HIT
+    assert lookup.record is not None
+    assert lookup.record.cache_key == ck
+
+
+def test_cache_content_light_no_raw_output(tmp_path: Path) -> None:
+    """Cache record does not contain raw stdout/stderr."""
+    from rig_relay.evidence.validation_cache import (
+        ValidationCacheRecord,
+        ValidationCacheStore,
+        compute_cache_key,
+    )
+
+    ck = compute_cache_key("c1", "pytest", "fp1", "fp2", str(tmp_path))
+    store = ValidationCacheStore(str(tmp_path / ".cache"))
+    record = ValidationCacheRecord(
+        cache_key=ck,
+        check_id="c1",
+        command_kind="pytest",
+        command_fingerprint="fp1",
+        input_fingerprint="fp2",
+        input_file_fingerprints={},
+        status="passed",
+        exit_code=0,
+        duration_ms=10.0,
+        stdout_sha256="sha256:abc",
+        stdout_bytes=12,
+    )
+    store.store(record)
+
+    stored = store.lookup(ck).record
+    assert stored is not None
+    model = stored.model_dump(mode="json")
+    assert "stdout" not in model
+    assert "stderr" not in model
+
+
+def test_cache_failed_not_reused_by_default(tmp_path: Path) -> None:
+    """Failed cache records are not reused unless allow_failed_reuse=True."""
+    from rig_relay.evidence.validation_cache import (
+        CACHE_STATUS_MISS_FAILED_REUSE_DISABLED,
+        ValidationCacheRecord,
+        ValidationCacheStore,
+        compute_cache_key,
+        decide_cache_eligibility,
+    )
+
+    ck = compute_cache_key("c1", "pytest", "fp1", "fp2", str(tmp_path))
+    store = ValidationCacheStore(str(tmp_path / ".cache"))
+    record = ValidationCacheRecord(
+        cache_key=ck,
+        check_id="c1",
+        command_kind="pytest",
+        command_fingerprint="fp1",
+        input_fingerprint="fp2",
+        input_file_fingerprints={},
+        status="failed",
+        exit_code=1,
+        duration_ms=10.0,
+        stdout_sha256="sha256:abc",
+        stdout_bytes=12,
+    )
+    store.store(record)
+
+    lookup = store.lookup(ck)
+    result, _ = decide_cache_eligibility("enabled", lookup, allow_failed_reuse=False)
+    assert result == CACHE_STATUS_MISS_FAILED_REUSE_DISABLED
+
+
+def test_scheduler_acquire_then_blocks_duplicate(tmp_path: Path) -> None:
+    """Acquiring lock for same key blocks second attempt."""
+    from rig_relay.evidence.validation_scheduler import ValidationSchedulerStore
+
+    store = ValidationSchedulerStore(str(tmp_path / ".sched"))
+    acquired1, _ = store.acquire_lock("sha256:dup")
+    assert acquired1
+
+    acquired2, blocking = store.acquire_lock("sha256:dup")
+    assert not acquired2
+    assert blocking == "sha256:dup"
+
+
+def test_scheduler_release_allows_reacquire(tmp_path: Path) -> None:
+    """Releasing lock allows reacquire."""
+    from rig_relay.evidence.validation_scheduler import ValidationSchedulerStore
+
+    store = ValidationSchedulerStore(str(tmp_path / ".sched"))
+    store.acquire_lock("sha256:rel")
+    store.release_lock("sha256:rel")
+    acquired, _ = store.acquire_lock("sha256:rel")
+    assert acquired
+
+
+def test_parallel_policy_injects_xdist_when_available(tmp_path: Path) -> None:
+    """apply_parallel_policy injects -n flag for pytest commands."""
+    from rig_relay.evidence.validation_scheduler import (
+        PARALLEL_ENABLED,
+        PARALLEL_REFUSED,
+        apply_parallel_policy,
+    )
+
+    argv = ["uv", "run", "pytest", str(tmp_path)]
+    mod, status, _ = apply_parallel_policy(argv, "auto", 2, "loadfile")
+    if status == PARALLEL_REFUSED:
+        assert "xdist" in (_ or "")
+    else:
+        assert status == PARALLEL_ENABLED
+        assert "-n" in mod
+
+
+def test_lifecycle_edit_phase_full_suite_warns() -> None:
+    """check_lifecycle_policy warns on edit phase + full suite."""
+    from rig_relay.evidence.validation_scheduler import (
+        PHASE_EDIT,
+        check_lifecycle_policy,
+    )
+
+    warnings = check_lifecycle_policy(PHASE_EDIT, "python", ["pytest"])
+    assert "full_suite_during_edit_phase" in warnings
+
+
+def test_validate_args_cache_fields_serialize() -> None:
+    """ValidateArgs cache/scheduler fields serialize to dict."""
+    from vibe.core.tools.builtins.validate_models import ValidateArgs
+
+    args = ValidateArgs(
+        profile="quick",
+        cache_policy="enabled",
+        allow_failed_cache_reuse=False,
+        cache_root="/tmp/cache",
+        scheduler_policy="enabled",
+        lock_running_checks=True,
+        validation_phase="edit",
+        parallel_policy="auto",
+        max_workers=4,
+        xdist_distribution="loadscope",
+    )
+    d = args.model_dump(mode="json")
+    assert d["cache_policy"] == "enabled"
+    assert d["validation_phase"] == "edit"
+    assert d["parallel_policy"] == "auto"
+    assert d["max_workers"] == 4

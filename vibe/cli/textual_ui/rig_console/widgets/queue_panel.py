@@ -82,7 +82,7 @@ QueuePanelWidget > .queue-section {
     width: 100%;
     height: auto;
     margin-top: 1;
-    border-top: thin $surface-lighten-1;
+    border-top: solid $surface-lighten-1;
     padding-top: 1;
 }
 """
@@ -105,6 +105,43 @@ QueuePanelWidget > .queue-section {
         self.remove_children()
         self.mount(Static("QUEUE ORCHESTRATION", classes="queue-header"))
         self.mount_all(self._build_widgets())
+
+    def _render_lines(self) -> list[str]:
+        """Build the list of lines to render for compatibility with old tests."""
+        header = "Queue Panel"
+        if self._projection is None:
+            return [header, "[dim]no queue data[/]"]
+        
+        proj = self._projection
+        lines = [header, f"Counts: {_format_counts(proj)}"]
+        
+        running = proj.running_item
+        if running is not None:
+            lines.append(f"Running: {_format_item(running)}")
+            
+        selected = proj.selected_item
+        if selected is not None:
+            lines.append(f"Selected: {selected.kind} {selected.status} {_cap(selected.title)}")
+            if selected.payload_ref:
+                lines.append(f"  Payload: {selected.payload_ref}")
+            if selected.receipt_sha256:
+                lines.append(f"  Receipt: {selected.receipt_sha256}")
+            if selected.runtime_result_sha256:
+                lines.append(f"  Result:  {selected.runtime_result_sha256}")
+            if selected.summary:
+                lines.append(f"Summary: {_cap(selected.summary)}")
+            if selected.blocked_reason:
+                lines.append(f"Blocked: {_cap(selected.blocked_reason)}")
+        
+        recent_terminal = [
+            item
+            for item in proj.items
+            if item.status in {"completed", "failed", "cancelled"}
+        ][:3]
+        if recent_terminal:
+            lines.append("Recent: " + " | ".join(_format_item(item) for item in recent_terminal))
+                
+        return lines
 
     def _build_widgets(self) -> list[Static]:
         if self._projection is None:

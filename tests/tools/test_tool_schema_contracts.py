@@ -649,3 +649,56 @@ class TestValidateSchema:
         """ValidateArgs Pydantic model rejects extra fields at construction."""
         with pytest.raises((TypeError, ValueError)):
             ValidateArgs(profile="quick", unknown_field="bad")  # type: ignore[call-arg]
+
+    def test_validate_args_cache_policy_fields(self) -> None:
+        """ValidateArgs serializes new cache/scheduler/parallel fields."""
+        schema = _load_schema("rig.relay.validate_invocation.v1.schema.json")
+        instance = ValidateArgs(
+            profile="quick",
+            cache_policy="enabled",
+            allow_failed_cache_reuse=False,
+            cache_root="/tmp/cache",
+            scheduler_policy="enabled",
+            lock_running_checks=True,
+            validation_phase="edit",
+            parallel_policy="auto",
+            max_workers=4,
+            xdist_distribution="loadscope",
+        ).model_dump(mode="json")
+        _validate(instance, schema, "ValidateArgs cache policy")
+
+    def test_validate_args_cache_policy_defaults(self) -> None:
+        """ValidateArgs default values validate against schema."""
+        schema = _load_schema("rig.relay.validate_invocation.v1.schema.json")
+        instance = ValidateArgs(profile="quick").model_dump(mode="json")
+        _validate(instance, schema, "ValidateArgs defaults")
+
+    def test_validate_check_result_metadata_fields(self) -> None:
+        """ValidateCheckResult with new metadata fields validates against schema."""
+        schema = _load_schema("rig.relay.validate_result.v1.schema.json")
+        instance = ValidateResult(
+            status="passed",
+            profile="quick",
+            command_count=1,
+            passed_count=1,
+            failed_count=0,
+            skipped_count=0,
+            checks=[
+                {
+                    "check_id": "c1",
+                    "command_kind": "pytest",
+                    "status": "passed",
+                    "cache_status": "hit",
+                    "cache_key": "sha256:abc123",
+                    "cache_record_sha256": "sha256:def456",
+                    "input_fingerprint": "sha256:fp123",
+                    "reused_from": "sha256:src789",
+                    "scheduler_status": "running",
+                    "parallel_status": "enabled",
+                    "worker_count": 4,
+                    "distribution": "loadfile",
+                    "validation_phase": "edit",
+                }
+            ],
+        ).model_dump(mode="json")
+        _validate(instance, schema, "ValidateCheckResult metadata")

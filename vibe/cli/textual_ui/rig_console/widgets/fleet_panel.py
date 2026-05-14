@@ -175,7 +175,6 @@ FleetPanelWidget > .fleet-row {
     def compose(self) -> ComposeResult:
         if self._projection:
             self.add_class("visible")
-        yield Static("FLEET COORDINATION", classes="fleet-header")
         for widget in self._build_widgets():
             yield widget
 
@@ -187,15 +186,16 @@ FleetPanelWidget > .fleet-row {
         else:
             self.remove_class("visible")
         self.remove_children()
-        self.mount(Static("FLEET COORDINATION", classes="fleet-header"))
         self.mount_all(self._build_widgets())
 
     def _build_widgets(self) -> list[Static]:
+        header = Static("FLEET PANEL", classes="fleet-header")
         if self._projection is None:
-            return [Static("[dim]no fleet data[/]", classes="fleet-row")]
+            return [header, Static("[dim]no fleet data[/]", classes="fleet-row")]
 
         proj = self._projection
         widgets = [
+            header,
             Static(f"QUEUE:    {_format_queue(proj.queue)}", classes="fleet-row"),
             Static(f"LEASES:   {_format_leases(proj.leases)}", classes="fleet-row"),
             Static(f"BLOCKERS: {_format_blockers(proj.blockers)}", classes="fleet-row"),

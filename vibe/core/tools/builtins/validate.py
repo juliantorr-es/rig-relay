@@ -19,13 +19,9 @@ from typing import ClassVar, final
 
 from rig_relay.evidence.validation_cache import (
     CACHE_POLICY_DISABLED,
-    CACHE_POLICY_FORCE_RERUN,
     CACHE_STATUS_BLOCKED_RUNNING,
     CACHE_STATUS_DISABLED,
     CACHE_STATUS_HIT,
-    CACHE_STATUS_MISS_FAILED_REUSE_DISABLED,
-    CACHE_STATUS_MISS_FORCE_RERUN,
-    CACHE_STATUS_MISS_MISSING_RECORD,
     CACHE_STATUS_MISS_RAN,
     ValidationCacheRecord,
     ValidationCacheStore,
@@ -34,10 +30,7 @@ from rig_relay.evidence.validation_cache import (
     decide_cache_eligibility,
 )
 from rig_relay.evidence.validation_scheduler import (
-    PARALLEL_DISABLED,
     PARALLEL_ENABLED,
-    PARALLEL_NOT_APPLICABLE,
-    PARALLEL_REFUSED,
     SCHEDULER_BLOCKED_DUPLICATE,
     SCHEDULER_COMPLETED,
     SCHEDULER_NOT_SCHEDULED,
@@ -558,7 +551,7 @@ class Validate(
 
             results.append(cr)
 
-            if cache_enabled and cr.status in ("passed", "failed"):
+            if cache_enabled and cr.status in {"passed", "failed"}:
                 record = ValidationCacheRecord(
                     cache_key=ck,
                     check_id=check.check_id,

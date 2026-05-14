@@ -8,6 +8,7 @@ from rig_relay.evidence.validation_scheduler import (
     PARALLEL_DISABLED,
     PARALLEL_ENABLED,
     PARALLEL_NOT_APPLICABLE,
+    PARALLEL_REFUSED,
     PHASE_EDIT,
     PHASE_PRE_REPORT,
     ValidationLock,

@@ -91,7 +91,7 @@ InspectorDrawerWidget > .inspector-detail {
     def _build_state_text(self) -> str:
         proj = self._projection
         if not proj.visible:
-            return "Closed"
+            return "Inspector closed"
         if not proj.items:
             return proj.empty_state
         selected = proj.selected_item

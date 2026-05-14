@@ -115,7 +115,7 @@ class ValidationSchedulerState(BaseModel):
 def _has_xdist_flag(argv: list[str]) -> bool:
     """Check if argv already contains an xdist flag."""
     for arg in argv:
-        if arg in ("-n", "--numprocesses", "--dist"):
+        if arg in {"-n", "--numprocesses", "--dist"}:
             return True
         if arg.startswith("-n") and len(arg) > 2:
             return True
@@ -155,7 +155,7 @@ def _is_schema_validation(argv: list[str]) -> bool:
 def _is_ruff_pyright(argv: list[str]) -> bool:
     """Check if argv targets ruff or pyright."""
     for arg in argv:
-        if arg in ("ruff", "pyright"):
+        if arg in {"ruff", "pyright"}:
             return True
     return False
 
@@ -223,7 +223,7 @@ def check_lifecycle_policy(
     """
     warnings: list[str] = []
 
-    is_full_suite = profile in ("full", "python", "schemas") or any(
+    is_full_suite = profile in {"full", "python", "schemas"} or any(
         "pytest" in arg for arg in argv
     )
 
