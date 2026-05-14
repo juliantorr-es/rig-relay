@@ -38,22 +38,22 @@ ProgressTimelineWidget {
     width: 100%;
     height: auto;
     padding: 0 1;
-    margin: 0 0 1 0;
-    background: $surface;
-    border: solid $border;
+    background: transparent;
+    border: none;
+    border-bottom: solid #1B2129;
 }
 
 ProgressTimelineWidget > .progress-timeline-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: $text;
+    color: #7D8590;
 }
 
 ProgressTimelineWidget > .progress-timeline-body {
     width: 100%;
     height: auto;
-    color: $text;
+    color: #E6EDF3;
     padding: 0 0 0 1;
 }
 """

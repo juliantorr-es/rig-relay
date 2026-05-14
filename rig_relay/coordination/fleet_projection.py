@@ -42,6 +42,18 @@ class FleetAgentSummary(BaseModel):
     stale_sessions: int = 0
 
 
+class FleetAgentDetail(BaseModel):
+    """Granular summary for one agent/session in the workforce strip."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: str
+    status: str
+    role: str | None = None
+    last_heartbeat_age: str | None = None
+    lease_summary: str | None = None
+
+
 class FleetQueueNextItem(BaseModel):
     """Summary of the next runnable queue item."""
 
@@ -148,6 +160,7 @@ class FleetProjection(BaseModel):
     patches: FleetPatchProposalSummary = Field(
         default_factory=FleetPatchProposalSummary
     )
+    agent_details: list[FleetAgentDetail] = Field(default_factory=list)
     recent_event_count: int = 0
 
 
@@ -162,6 +175,7 @@ def build_fleet_projection(
     blockers: FleetBlockerSummary | None = None,
     patches: FleetPatchProposalSummary | None = None,
     agents: FleetAgentSummary | None = None,
+    agent_details: list[FleetAgentDetail] | None = None,
     recent_event_count: int = 0,
     projection_id: str | None = None,
     created_at: str | None = None,
@@ -208,6 +222,7 @@ def build_fleet_projection(
         leases=leases or FleetLeaseSummary(),
         blockers=blockers or FleetBlockerSummary(),
         patches=patches or FleetPatchProposalSummary(),
+        agent_details=agent_details or [],
         recent_event_count=recent_event_count,
     )
 

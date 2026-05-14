@@ -52,11 +52,10 @@ class QueuePanelWidget(Vertical):
     DEFAULT_CSS = """
 QueuePanelWidget {
     width: 100%;
-    height: auto;
-    padding: 1 1;
-    margin: 1 0;
-    background: $surface;
-    border: solid $accent;
+    height: 1fr;
+    padding: 0 1;
+    background: transparent;
+    border-top: solid #1B2129;
     display: none;
 }
 
@@ -68,14 +67,14 @@ QueuePanelWidget > .queue-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: $accent;
-    margin-bottom: 1;
+    color: #7D8590;
+    margin-bottom: 0;
 }
 
 QueuePanelWidget > .queue-row {
     width: 100%;
     height: auto;
-    margin-bottom: 0;
+    color: #E6EDF3;
 }
 
 QueuePanelWidget > .queue-section {

@@ -65,31 +65,31 @@ class SessionPaneWidget(Vertical):
 
     DEFAULT_CSS = """
 SessionPaneWidget {
-    width: 100%;
+    width: 1fr;
     height: auto;
     padding: 0 1;
-    margin: 0 0 1 0;
-    background: $surface;
-    border: solid $border;
+    background: transparent;
+    border: none;
+    border-right: solid #1B2129;
 }
 
 SessionPaneWidget > .session-pane-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: $text;
+    color: #7D8590;
 }
 
 SessionPaneWidget > .session-pane-metadata {
     width: 100%;
     height: auto;
-    color: $text-muted;
+    color: #7D8590;
 }
 
 SessionPaneWidget > .session-pane-step {
     width: 100%;
     height: auto;
-    color: $text;
+    color: #E6EDF3;
 }
 
 SessionPaneWidget > .session-pane-validate {

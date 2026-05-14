@@ -27,8 +27,8 @@ PromptBar {
     height: 3;
     padding: 0 1;
     margin: 1 0;
-    background: $surface;
-    border: tall $accent;
+    background: #0A0E14;
+    border: tall #3FB1CE;
 }
 
 PromptBar > .prompt-input {
@@ -36,18 +36,18 @@ PromptBar > .prompt-input {
     height: 1;
     border: none;
     background: transparent;
-    color: $text;
+    color: #E6EDF3;
 }
 
 PromptBar > .prompt-status {
     width: auto;
     height: auto;
     margin-left: 1;
-    color: $text-muted;
+    color: #7D8590;
 }
 
 PromptBar:focus-within {
-    border: tall $accent-lighten-2;
+    border: tall #3FB1CE;
 }
 """
 

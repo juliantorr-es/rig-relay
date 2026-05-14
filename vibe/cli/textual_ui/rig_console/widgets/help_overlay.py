@@ -15,8 +15,8 @@ HelpOverlayWidget {
     width: 60;
     height: auto;
     padding: 1 2;
-    background: $surface;
-    border: double $accent;
+    background: #0A0E14;
+    border: double #3FB1CE;
     display: none;
     layer: help;
 }
@@ -29,13 +29,14 @@ HelpOverlayWidget > .help-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: $accent;
+    color: #3FB1CE;
     margin-bottom: 1;
 }
 
 HelpOverlayWidget > .help-row {
     width: 100%;
     height: auto;
+    color: #E6EDF3;
 }
 """
 

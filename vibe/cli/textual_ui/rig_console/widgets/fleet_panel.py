@@ -141,12 +141,11 @@ class FleetPanelWidget(Vertical):
 
     DEFAULT_CSS = """
 FleetPanelWidget {
-    width: 100%;
-    height: auto;
-    padding: 1 1;
-    margin: 1 0;
-    background: $surface;
-    border: solid $accent;
+    width: 35;
+    height: 1fr;
+    padding: 0 1;
+    background: transparent;
+    border: none;
     display: none;
 }
 
@@ -158,13 +157,28 @@ FleetPanelWidget > .fleet-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: $accent;
+    color: #7D8590;
     margin-bottom: 1;
 }
 
-FleetPanelWidget > .fleet-row {
+FleetPanelWidget > .agent-row {
     width: 100%;
     height: auto;
+    margin-bottom: 0;
+}
+
+FleetPanelWidget > .fleet-metrics {
+    width: 100%;
+    height: auto;
+    margin-top: 1;
+    border-top: solid #1B2129;
+    padding-top: 1;
+}
+
+FleetPanelWidget > .metric-row {
+    width: 100%;
+    height: auto;
+    color: #7D8590;
 }
 """
 
@@ -175,6 +189,7 @@ FleetPanelWidget > .fleet-row {
     def compose(self) -> ComposeResult:
         if self._projection:
             self.add_class("visible")
+        yield Static("WORKFORCE", classes="fleet-header")
         for widget in self._build_widgets():
             yield widget
 
@@ -186,34 +201,55 @@ FleetPanelWidget > .fleet-row {
         else:
             self.remove_class("visible")
         self.remove_children()
+        self.mount(Static("WORKFORCE", classes="fleet-header"))
         self.mount_all(self._build_widgets())
 
-    def _build_widgets(self) -> list[Static]:
-        header = Static("FLEET PANEL", classes="fleet-header")
+    def _build_widgets(self) -> list[Static | FleetMetricsWidget]:
         if self._projection is None:
-            return [header, Static("[dim]no fleet data[/]", classes="fleet-row")]
+            return [Static("[dim]no fleet data[/]", classes="agent-row")]
 
         proj = self._projection
-        widgets = [
-            header,
-            Static(f"QUEUE:    {_format_queue(proj.queue)}", classes="fleet-row"),
-            Static(f"LEASES:   {_format_leases(proj.leases)}", classes="fleet-row"),
-            Static(f"BLOCKERS: {_format_blockers(proj.blockers)}", classes="fleet-row"),
-            Static(f"PATCHES:  {_format_patches(proj)}", classes="fleet-row"),
-            Static(f"AGENTS:   {_format_agents(proj)}", classes="fleet-row"),
-        ]
+        widgets: list[Static | FleetMetricsWidget] = []
+
+        # 1. Individual Agent Strip
+        if proj.agent_details:
+            for agent in proj.agent_details:
+                status_color = "green" if agent.status == "READY" else "cyan" if agent.status == "RUNNING" else "yellow" if agent.status == "QUEUED" else "dim"
+                row = f"{_cap(agent.agent_id, 16):18} [{status_color}]{agent.status:8}[/] "
+                meta = []
+                if agent.role:
+                    meta.append(agent.role)
+                if agent.last_heartbeat_age:
+                    meta.append(agent.last_heartbeat_age)
+                if meta:
+                    row += f"[dim]{' · '.join(meta)}[/]"
+                widgets.append(Static(row, classes="agent-row"))
+        else:
+            # Fallback to aggregate agents if no details available
+            widgets.append(Static(_format_agents(proj), classes="agent-row"))
+
+        # 2. Aggregate Metrics (Compact)
+        widgets.append(FleetMetricsWidget(proj))
+            
+        return widgets
+
+
+class FleetMetricsWidget(Vertical):
+    """Internal widget for compact fleet metrics."""
+
+    def __init__(self, projection: FleetProjection) -> None:
+        super().__init__(classes="fleet-metrics")
+        self._projection = projection
+
+    def compose(self) -> ComposeResult:
+        proj = self._projection
+        yield Static(f"QUEUE:    {_format_queue(proj.queue)}", classes="metric-row")
+        yield Static(f"LEASES:   {_format_leases(proj.leases)}", classes="metric-row")
+        yield Static(f"BLOCKERS: {_format_blockers(proj.blockers)}", classes="metric-row")
+        yield Static(f"PATCHES:  {_format_patches(proj)}", classes="metric-row")
         
         next_text = _format_next_item(proj.queue)
         if next_text:
-            widgets.append(Static(f"NEXT:     {next_text}", classes="fleet-row"))
-            
-        replay_text = _format_replay(proj.queue)
-        if replay_text:
-            widgets.append(Static(f"REPLAY:   {replay_text}", classes="fleet-row"))
-            
-        if proj.recent_event_count:
-            widgets.append(Static(f"EVENTS:   {proj.recent_event_count} recent", classes="fleet-row"))
-            
-        return widgets
+            yield Static(f"NEXT:     {next_text}", classes="metric-row")
 
 __all__ = ["FleetPanelWidget"]

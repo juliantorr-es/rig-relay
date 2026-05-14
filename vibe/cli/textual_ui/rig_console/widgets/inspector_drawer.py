@@ -18,11 +18,10 @@ class InspectorDrawerWidget(Vertical):
     DEFAULT_CSS = """
 InspectorDrawerWidget {
     width: 100%;
-    height: auto;
-    padding: 1 1;
-    margin: 1 0;
-    background: $surface;
-    border: solid $accent;
+    height: 1fr;
+    padding: 0 1;
+    background: transparent;
+    border: none;
     display: none;
 }
 
@@ -34,21 +33,21 @@ InspectorDrawerWidget > .inspector-title {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: $accent;
+    color: #7D8590;
     margin-bottom: 0;
 }
 
 InspectorDrawerWidget > .inspector-state {
     width: 100%;
     height: auto;
-    color: $text-muted;
+    color: #7D8590;
     margin-bottom: 1;
 }
 
 InspectorDrawerWidget > .inspector-detail {
     width: 100%;
     height: auto;
-    color: $text;
+    color: #E6EDF3;
 }
 """
 

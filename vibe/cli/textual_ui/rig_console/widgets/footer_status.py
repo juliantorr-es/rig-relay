@@ -29,21 +29,21 @@ FooterStatusWidget {
     width: 100%;
     height: auto;
     padding: 0 1;
-    margin: 1 0 0 0;
-    background: $surface;
-    border: solid $border;
+    background: transparent;
+    border: none;
+    border-top: solid #1B2129;
 }
 
 FooterStatusWidget > .footer-hint {
     width: 100%;
     height: auto;
-    color: $text-muted;
+    color: #7D8590;
 }
 
 FooterStatusWidget > .footer-backlog {
     width: 100%;
     height: auto;
-    color: $text;
+    color: #E6EDF3;
 }
 """
 

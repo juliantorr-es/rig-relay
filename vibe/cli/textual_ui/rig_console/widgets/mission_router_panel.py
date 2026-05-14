@@ -81,8 +81,19 @@ MissionRouterPanelWidget > .router-row {
         lines.append("")
         lines.append("Proposed Nodes:")
         for node in proj.nodes[:10]:
+            # [R] runtime, [A] delegated agent, [F] fleet, [P] patch proposal, [H] human review
+            prefix = "[R]"
+            if node.route == "delegated_agent":
+                prefix = "[A]"
+            elif node.route == "fleet":
+                prefix = "[F]"
+            elif node.route == "patch_proposal":
+                prefix = "[P]"
+            elif node.route == "human_review":
+                prefix = "[H]"
+
             risk = f"[{'red' if node.risk_level in ('high', 'critical') else 'green'}]{node.risk_level}[/]"
-            lines.append(f"• {node.title} -> [cyan]{node.route}[/] ({risk})")
+            lines.append(f"• {prefix} {node.title} -> [cyan]{node.route}[/] ({risk})")
 
         if len(proj.nodes) > 10:
             lines.append(f"... and {len(proj.nodes) - 10} more")

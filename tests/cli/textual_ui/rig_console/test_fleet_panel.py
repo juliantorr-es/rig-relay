@@ -71,30 +71,29 @@ class TestFleetPanelWidget:
     """FleetPanelWidget structural tests."""
 
     def test_build_widgets_empty_state(self) -> None:
-        """_build_widgets with None projection returns header + empty state."""
+        """_build_widgets with None projection returns empty state row."""
         widget = FleetPanelWidget(projection=None)
         widgets = widget._build_widgets()
-        assert len(widgets) == 2
+        assert len(widgets) == 1
         assert isinstance(widgets[0], Static)
-        assert isinstance(widgets[1], Static)
 
     def test_build_widgets_all_zero(self) -> None:
-        """_build_widgets with empty projection returns header + 5 rows."""
+        """_build_widgets with empty projection returns agent row + metrics widget."""
         proj = build_fleet_projection(
             projection_id="fp-empty", created_at="2026-01-01T00:00:00"
         )
         widget = FleetPanelWidget(projection=proj)
         widgets = widget._build_widgets()
-        assert len(widgets) == 6
-        assert all(isinstance(w, Static) for w in widgets)
+        assert len(widgets) == 2
+        assert isinstance(widgets[0], Static)
 
     def test_build_widgets_with_data(self) -> None:
-        """_build_widgets with populated projection returns header + 5+ rows."""
+        """_build_widgets with populated projection returns agent rows + metrics widget."""
         proj = _fleet_projection()
         widget = FleetPanelWidget(projection=proj)
         widgets = widget._build_widgets()
-        assert len(widgets) >= 7
-        assert all(isinstance(w, Static) for w in widgets)
+        # Header is not returned by _build_widgets anymore
+        assert len(widgets) >= 2
 
 
 class TestFormatQueue:

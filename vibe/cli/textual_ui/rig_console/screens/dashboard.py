@@ -8,7 +8,7 @@ from typing import Any, ClassVar, cast
 
 from textual._context import NoActiveAppError
 from textual.app import ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.screen import Screen
 
@@ -107,28 +107,59 @@ class DashboardScreen(DashboardStatusActions, Screen):
 
     DEFAULT_CSS = """
 DashboardScreen {
-    background: #06110B;
+    background: #0A0E14;
+    color: #E6EDF3;
     layers: base help;
+}
+
+DashboardScreen > .dashboard-main {
+    height: 1fr;
+    width: 100%;
+}
+
+DashboardScreen > .dashboard-main > .workforce-strip {
+    width: 35;
+    height: 1fr;
+    border-right: solid #1B2129;
+}
+
+DashboardScreen > .dashboard-main > .center-zone {
+    width: 1fr;
+    height: 1fr;
+}
+
+DashboardScreen > .dashboard-main > .inspector-zone {
+    width: 40;
+    height: 1fr;
+    border-left: solid #1B2129;
 }
 
 DashboardScreen > .dashboard-activity {
     width: 100%;
     height: auto;
+    margin-bottom: 1;
 }
 
 DashboardScreen > .dashboard-activity > SessionPaneWidget {
-    width: 50%;
+    width: 1fr;
     height: auto;
 }
 
-    DashboardScreen > .dashboard-activity > EvidenceRailWidget {
-    width: 50%;
+DashboardScreen > .dashboard-activity > EvidenceRailWidget {
+    width: 1fr;
     height: auto;
 }
 
-DashboardScreen > InspectorDrawerWidget {
-    width: 100%;
-    height: auto;
+PromptBar {
+    height: 3;
+    background: #0A0E14;
+    border: solid #3FB1CE;
+}
+
+StatusBarWidget {
+    background: #1B2129;
+    color: #7D8590;
+    border-bottom: solid #0A0E14;
 }
 """
 
@@ -182,18 +213,20 @@ DashboardScreen > InspectorDrawerWidget {
 
         yield OperatorHeaderWidget(proj)
         yield StatusBarWidget(proj)
-        yield Horizontal(
-            SessionPaneWidget(proj.session),
-            EvidenceRailWidget(proj.evidence),
-            classes="dashboard-activity",
-        )
-        yield QueuePanelWidget(proj.queue)
-        yield MissionRouterPanelWidget(proj.mission_router)
-        yield PromptBar(on_submit=self._handle_queue_input)
+        with Horizontal(classes="dashboard-main"):
+            yield FleetPanelWidget(proj.fleet).add_class("workforce-strip")
+            with Vertical(classes="center-zone"):
+                yield MissionRouterPanelWidget(proj.mission_router)
+                yield ProgressTimelineWidget(proj.execution_progress or None)
+                with Horizontal(classes="dashboard-activity"):
+                    yield SessionPaneWidget(proj.session)
+                    yield EvidenceRailWidget(proj.evidence)
+            with Vertical(classes="inspector-zone"):
+                yield InspectorDrawerWidget(proj.inspector)
+                yield QueuePanelWidget(proj.queue)
+        
         yield ActivityLogWidget()
-        yield FleetPanelWidget(proj.fleet)
-        yield ProgressTimelineWidget(proj.execution_progress or None)
-        yield InspectorDrawerWidget(proj.inspector)
+        yield PromptBar(on_submit=self._handle_queue_input)
         yield FooterStatusWidget(proj)
         yield HelpOverlayWidget()
         yield NotificationPanelWidget()

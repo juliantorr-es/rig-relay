@@ -24,6 +24,19 @@ _INSPECTOR_ITEM_CAP = 30
 _QUEUE_ITEM_CAP = 30
 
 
+class ValidationEconomyProjection(BaseModel):
+    """Projection for the validation economy strip."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cache_hits: int = 0
+    work_skipped_ms: float = 0
+    running_count: int = 0
+    queued_count: int = 0
+    blocked_duplicate_count: int = 0
+    total_checks: int = 0
+
+
 class SessionPaneProjection(BaseModel):
     """Content-light projection for one session card in the Rig console.
 
@@ -455,6 +468,7 @@ class DashboardProjection(BaseModel):
     mission_router: MissionRouterProjection = Field(
         default_factory=MissionRouterProjection
     )
+    validation_economy: ValidationEconomyProjection | None = None
 
     @property
     def backlog_capped(self) -> list[str]:
