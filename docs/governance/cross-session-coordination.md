@@ -23,6 +23,17 @@ Doctrine:
 
 This is the shared coordination layer that future delegate/fleet orchestration will use for real-time session visibility.
 
+## Evolution: Fleet Coordination
+
+As of Phase Q (2026-05), Rig Relay is evolving towards a **Fleet Coordination Plane**. This model extends the local-first cross-session primitives to support orchestrator-driven fleets:
+
+- **Orchestrator Authority**: The orchestrator is the sole authority for mutating shared files; agents submit patch proposals.
+- **Unified Fleet Log**: Coordination events use the `rig.fleet.*` namespace.
+- **Inter-Agent Messaging**: A new `AgentMessage` primitive enables typed coordination (blockers, help needed) without informal chat.
+- **Mission Context**: The `mission_id` groups related fleet sessions.
+
+See [Fleet Coordination Plane](fleet-coordination-plane.md) for the full specification.
+
 ## Coordination Events
 
 Every coordination primitive emits a canonical event row into the session's `observability.jsonl` stream.

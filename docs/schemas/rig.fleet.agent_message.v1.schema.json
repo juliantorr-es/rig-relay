@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Fleet Agent Message",
+  "description": "Represents a typed message between agents or between an agent and the orchestrator in the Rig Fleet Coordination Plane.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "message_id",
+    "from_agent",
+    "to_agent",
+    "message_kind",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.fleet.agent_message.v1"
+    },
+    "message_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "from_agent": {
+      "type": "string",
+      "description": "Identifier of the sender agent."
+    },
+    "to_agent": {
+      "type": "string",
+      "description": "Identifier of the recipient agent or 'orchestrator'."
+    },
+    "message_kind": {
+      "type": "string",
+      "enum": [
+        "blocker_reported",
+        "handoff_requested",
+        "handoff_accepted",
+        "handoff_rejected",
+        "status_update",
+        "review_requested",
+        "help_needed"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Link to the mission context."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Message-specific data payload. Must be content-light."
+    }
+  },
+  "additionalProperties": false
+}

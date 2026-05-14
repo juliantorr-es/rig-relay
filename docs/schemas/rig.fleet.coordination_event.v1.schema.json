@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Fleet Coordination Event",
+  "description": "Canonical event row for the Rig Fleet Coordination Plane.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "mission_id",
+    "agent_id",
+    "event_kind",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.fleet.coordination_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Identifier of the parent mission."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Identifier of the agent emitting the event."
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "session_started",
+        "session_ended",
+        "path_lease_requested",
+        "path_lease_granted",
+        "path_lease_refused",
+        "path_lease_released",
+        "agent_message_sent",
+        "patch_proposal_submitted",
+        "merge_decision_applied",
+        "heartbeat"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "parent_event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific data payload. Must be content-light."
+    }
+  },
+  "additionalProperties": false
+}

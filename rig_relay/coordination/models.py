@@ -457,6 +457,16 @@ def build_checkpoint_refused_payload(
     }
 
 
+from rig_relay.coordination.fleet_models import (
+    FleetAgentMessage,
+    FleetAgentSession,
+    FleetCoordinationEvent,
+    FleetMergeDecision,
+    FleetPatchProposal,
+    FleetPathLease,
+    FleetWorkClaim,
+)
+
 __all__ = [
     "CoordinationArtifactRef",
     "CoordinationClaimResult",
@@ -468,6 +478,13 @@ __all__ = [
     "CoordinationSession",
     "CoordinationStateProjection",
     "CoordinationTaskClaim",
+    "FleetAgentMessage",
+    "FleetAgentSession",
+    "FleetCoordinationEvent",
+    "FleetMergeDecision",
+    "FleetPatchProposal",
+    "FleetPathLease",
+    "FleetWorkClaim",
     "build_artifact_published_payload",
     "build_checkpoint_committed_payload",
     "build_checkpoint_refused_payload",

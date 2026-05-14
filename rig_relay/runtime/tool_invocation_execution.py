@@ -376,6 +376,212 @@ class RuntimeToolExecutionRunner:
         )
         return self._attach_receipt(result)
 
+    async def execute_write_file(
+        self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
+    ) -> RuntimeToolExecutionResult:
+        """Execute a write_file tool invocation through the adapter."""
+        start = time.perf_counter()
+
+        if intent.tool_name != RuntimeToolName.WRITE_FILE:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                error_kind="unsupported_tool",
+                refusal_reason=f"Tool '{intent.tool_name.value}' is not supported for write_file execution",
+            )
+
+        envelope = self._adapter.prepare(intent, resolution)
+
+        if envelope.status == RuntimeToolInvocationStatus.BLOCKED:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.BLOCKED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                error_kind=envelope.error_kind.value if envelope.error_kind else None,
+                refusal_reason=envelope.refusal_reason,
+            )
+
+        if envelope.status == RuntimeToolInvocationStatus.REFUSED:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                error_kind=envelope.error_kind.value if envelope.error_kind else None,
+                refusal_reason=envelope.refusal_reason,
+            )
+
+        schema_valid, schema_errors = self._validate_envelope_schema(envelope)
+        if not schema_valid:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.FAILED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                envelope_schema_valid=False,
+                error_kind="envelope_schema_invalid",
+                refusal_reason=f"Envelope failed schema validation: {'; '.join(schema_errors)}",
+                duration_ms=(time.perf_counter() - start) * 1000,
+            )
+
+        try:
+            result = await self._run_write_file_tool(envelope)
+        except Exception as e:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.FAILED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                envelope_schema_valid=True,
+                error_kind="execution_error",
+                refusal_reason=str(e),
+                duration_ms=(time.perf_counter() - start) * 1000,
+            )
+
+        receipt_sha256: str | None = None
+        receipt: Any = None
+        try:
+            receipt = self._build_write_file_receipt(result)
+            rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
+            receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
+        except Exception:
+            pass
+
+        receipt_schema_version = None
+        if receipt is not None:
+            receipt_schema_version = getattr(receipt, "schema_version", None)
+
+        duration = (time.perf_counter() - start) * 1000
+
+        execution_status = RuntimeToolExecutionStatus.COMPLETED
+        tool_status = getattr(result, "status", "unknown")
+        tool_error_kind = getattr(result, "error_kind", None)
+        tool_refusal = getattr(result, "refusal_reason", None)
+
+        if tool_status in {"refused", "blocked"}:
+            execution_status = RuntimeToolExecutionStatus.REFUSED
+
+        payload = envelope.payload or {}
+        changed_paths: list[str] = (
+            [payload.get("path", "")] if payload.get("path") else []
+        )
+
+        result = RuntimeToolExecutionResult(
+            status=execution_status,
+            invocation_id=envelope.invocation_id,
+            intent_id=intent.intent_id,
+            tool_name=intent.tool_name.value,
+            envelope_schema_valid=True,
+            tool_status=tool_status,
+            tool_error_kind=tool_error_kind,
+            receipt_sha256=receipt_sha256,
+            duration_ms=duration,
+            error_kind=tool_error_kind,
+            refusal_reason=tool_refusal,
+            tool_receipt_kind="write_file",
+            tool_receipt_schema_version=receipt_schema_version,
+            changed_paths=changed_paths,
+        )
+        return self._attach_receipt(result)
+
+    async def execute_bash(
+        self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
+    ) -> RuntimeToolExecutionResult:
+        """Execute a bash tool invocation through the adapter."""
+        start = time.perf_counter()
+
+        if intent.tool_name != RuntimeToolName.BASH_LEGACY:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                error_kind="unsupported_tool",
+                refusal_reason=f"Tool '{intent.tool_name.value}' is not supported for bash execution",
+            )
+
+        envelope = self._adapter.prepare(intent, resolution)
+
+        if envelope.status == RuntimeToolInvocationStatus.BLOCKED:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.BLOCKED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                error_kind=envelope.error_kind.value if envelope.error_kind else None,
+                refusal_reason=envelope.refusal_reason,
+            )
+
+        if envelope.status == RuntimeToolInvocationStatus.REFUSED:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                error_kind=envelope.error_kind.value if envelope.error_kind else None,
+                refusal_reason=envelope.refusal_reason,
+            )
+
+        schema_valid, schema_errors = self._validate_envelope_schema(envelope)
+        if not schema_valid:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.FAILED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                envelope_schema_valid=False,
+                error_kind="envelope_schema_invalid",
+                refusal_reason=f"Envelope failed schema validation: {'; '.join(schema_errors)}",
+                duration_ms=(time.perf_counter() - start) * 1000,
+            )
+
+        try:
+            result = await self._run_bash_tool(envelope)
+        except Exception as e:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.FAILED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                envelope_schema_valid=True,
+                error_kind="execution_error",
+                refusal_reason=str(e),
+                duration_ms=(time.perf_counter() - start) * 1000,
+            )
+
+        receipt_sha256: str | None = None
+        receipt: Any = None
+        try:
+            receipt = self._build_bash_receipt(result)
+            rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
+            receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
+        except Exception:
+            pass
+
+        receipt_schema_version = None
+        if receipt is not None:
+            receipt_schema_version = getattr(receipt, "schema_version", None)
+
+        duration = (time.perf_counter() - start) * 1000
+
+        execution_status = RuntimeToolExecutionStatus.COMPLETED
+        tool_status = getattr(result, "status", "unknown")
+        tool_error_kind = getattr(result, "error_kind", None)
+        tool_refusal = getattr(result, "refusal_reason", None)
+
+        if tool_status in {"refused", "blocked"}:
+            execution_status = RuntimeToolExecutionStatus.REFUSED
+
+        result = RuntimeToolExecutionResult(
+            status=execution_status,
+            invocation_id=envelope.invocation_id,
+            intent_id=intent.intent_id,
+            tool_name=intent.tool_name.value,
+            envelope_schema_valid=True,
+            tool_status=tool_status,
+            tool_error_kind=tool_error_kind,
+            receipt_sha256=receipt_sha256,
+            duration_ms=duration,
+            error_kind=tool_error_kind,
+            refusal_reason=tool_refusal,
+            tool_receipt_kind="bash",
+            tool_receipt_schema_version=receipt_schema_version,
+        )
+        return self._attach_receipt(result)
+
     # ── Internal helpers ───────────────────────────────────────────
 
     async def _run_validate_tool(self, envelope: RuntimeToolInvocationEnvelope) -> Any:
@@ -456,6 +662,74 @@ class RuntimeToolExecutionRunner:
 
         return result
 
+    async def _run_write_file_tool(
+        self, envelope: RuntimeToolInvocationEnvelope
+    ) -> Any:
+        """Run the write_file tool with runtime context injected."""
+        from vibe.core.tools.base import BaseToolState
+        from vibe.core.tools.builtins.write_file import (
+            WriteFile,
+            WriteFileArgs,
+            WriteFileConfig,
+        )
+
+        payload = envelope.payload or {}
+
+        args = WriteFileArgs(
+            path=payload.get("path", ""),
+            content=payload.get("content", ""),
+            overwrite=payload.get("overwrite", False),
+            allow_overwrite_protected=payload.get("allow_overwrite_protected", False),
+            expected_before_sha256=payload.get("expected_before_sha256"),
+        )
+
+        invoke_ctx = self._build_invoke_context(envelope)
+        config = WriteFileConfig()
+        tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+        with self._cwd_for_envelope(envelope):
+            agen: AsyncGenerator[Any, None] = tool.run(args, ctx=invoke_ctx)
+            result: Any = None
+            while True:
+                try:
+                    item = await anext(agen)
+                    result = item
+                except StopAsyncIteration:
+                    break
+
+        return result
+
+    async def _run_bash_tool(self, envelope: RuntimeToolInvocationEnvelope) -> Any:
+        """Run the bash tool with runtime context injected."""
+        from vibe.core.tools.base import BaseToolState
+        from vibe.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
+
+        payload = envelope.payload or {}
+
+        args = BashArgs(
+            command=payload.get("command", ""),
+            timeout=payload.get("timeout"),
+            cwd=payload.get("cwd"),
+            max_stdout_bytes=payload.get("max_stdout_bytes"),
+            max_stderr_bytes=payload.get("max_stderr_bytes"),
+        )
+
+        invoke_ctx = self._build_invoke_context(envelope)
+        config = BashToolConfig()
+        tool = Bash(config_getter=lambda: config, state=BaseToolState())
+
+        with self._cwd_for_envelope(envelope):
+            agen: AsyncGenerator[Any, None] = tool.run(args, ctx=invoke_ctx)
+            result: Any = None
+            while True:
+                try:
+                    item = await anext(agen)
+                    result = item
+                except StopAsyncIteration:
+                    break
+
+        return result
+
     @staticmethod
     def _build_validate_receipt(result: Any) -> Any:
         """Build a receipt from a validate result."""
@@ -480,6 +754,24 @@ class RuntimeToolExecutionRunner:
         tool = SearchReplace(
             config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
         )
+        return tool.build_receipt(result)
+
+    @staticmethod
+    def _build_write_file_receipt(result: Any) -> Any:
+        """Build a receipt from a write_file result."""
+        from vibe.core.tools.base import BaseToolState
+        from vibe.core.tools.builtins.write_file import WriteFile, WriteFileConfig
+
+        tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+        return tool.build_receipt(result)
+
+    @staticmethod
+    def _build_bash_receipt(result: Any) -> Any:
+        """Build a receipt from a bash result."""
+        from vibe.core.tools.base import BaseToolState
+        from vibe.core.tools.builtins.bash import Bash, BashToolConfig
+
+        tool = Bash(config_getter=lambda: BashToolConfig(), state=BaseToolState())
         return tool.build_receipt(result)
 
     @staticmethod

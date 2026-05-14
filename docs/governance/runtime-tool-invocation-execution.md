@@ -26,9 +26,49 @@ The execution layer bridges the runtime adapter and concrete tools (validate, se
   the injected context (session_id, task_id). Same-owner renewal succeeds.
   Reservations are released immediately after execution.
 
-### Constraints (Phase 1)
-- **write_file** — NOT wired (deferred to Phase 2)
-- **bash_legacy** — NOT wired (deferred to Phase 2)
+### WriteFile (mutation) — `execute_write_file()`
+- Runs the `WriteFile` tool through its hardened interface (Phase 2)
+- Returns content-light `RuntimeToolExecutionResult`
+- **InvokeContext injected**: session_id and task_id are passed through the
+  invocation path via `_build_invoke_context()`
+- **CWD managed**: `_cwd_for_envelope()` temporarily sets CWD to
+  `envelope.cwd` during execution, restoring the original on exit
+- **Coordination enabled**: the tool's internal coordination runs using
+  the injected context (session_id, task_id).
+- **Dirty guard**: the tool internally handles dirty-file protection,
+  protected-file permission, and expected-before-SHA256 validation.
+- **Receipt**: `WriteFileReceipt` is built via `_build_write_file_receipt()`
+  and converted to a `RuntimeToolInvocationReceipt` through `_attach_receipt()`.
+- **Linkage**: `tool_receipt_kind='write_file'`,
+  `tool_receipt_schema_version='rig.relay.write_file_receipt.v1'`,
+  `changed_paths=[path]` populated on success.
+
+### Bash (subprocess) — `execute_bash()`
+- Runs the `Bash` tool through its hardened interface (Phase 2)
+- Returns content-light `RuntimeToolExecutionResult`
+- **InvokeContext injected**: session_id and task_id are passed through the
+  invocation path via `_build_invoke_context()`
+- **CWD managed**: `_cwd_for_envelope()` temporarily sets CWD to
+  `envelope.cwd` during execution, restoring the original on exit
+- **Timeout handled by bash tool**: the hardened `Bash._run_subprocess()` uses
+  `asyncio.wait_for()` with the configured timeout; timeouts produce
+  `BashResult(status="timed_out", error_kind="timeout")` which maps to
+  `RuntimeToolExecutionResult(tool_status="timed_out", error_kind="timeout")`
+- **Guard integration**: destructive git commands (`git restore`, `git checkout`,
+  `git reset`, `git clean`, `git stash`) are refused by the dirty-file guard
+  before execution, producing `BashResult(status="refused")`
+- **Error handling**: non-zero exit codes raise `ToolError` (preserving existing
+  hardened contract), caught by the adapter as `FAILED` with
+  `error_kind="execution_error"`
+- **Receipt**: `BashReceipt` is built via `_build_bash_receipt()` and converted
+  to a `RuntimeToolInvocationReceipt` through `_attach_receipt()`. The receipt
+  is content-light — no raw stdout/stderr, only SHA256 hashes and byte counts.
+- **Linkage**: `tool_receipt_kind='bash'`,
+  `tool_receipt_schema_version='rig.relay.bash_receipt.v1'`,
+  `changed_paths=[]` (bash does not track file changes)
+
+### Constraints
+- **bash_legacy** — ✅ Supported (Phase 2)
 - **runtime_exec** — NOT wired (deferred to Phase 2)
 - No lease acquisition
 - No RuntimeSupervisor integration
@@ -109,11 +149,13 @@ behavior but is not required for normal operation.
 
 ## Status Mapping
 
-| Tool (any) status | Execution result status |
-|-------------------|------------------------|
-| `success` / `passed` / `failed` | `COMPLETED` |
-| `skipped` / `timed_out` | `COMPLETED` |
-| `refused` / `blocked` | `REFUSED` |
+| Tool (any) status | Execution result status | Notes |
+|-------------------|------------------------|-------|
+| `success` / `passed` / `failed` | `COMPLETED` | Tool ran to completion |
+| `skipped` / `timed_out` | `COMPLETED` | Timeout captured via `tool_status` and `error_kind` |
+| `refused` / `blocked` | `REFUSED` | Guard or adapter refusal |
+| bash `failure` (non-zero exit) | `FAILED` | `ToolError` raised by hardened bash contract, caught as `execution_error` |
+| bash `refused` (guard) | `REFUSED` | Destructive git commands blocked by dirty-file guard |
 
 Adapter-level `BLOCKED` → `BLOCKED`. Adapter-level `REFUSED` → `REFUSED`.
 
@@ -122,15 +164,15 @@ Adapter-level `BLOCKED` → `BLOCKED`. Adapter-level `REFUSED` → `REFUSED`.
 The `RuntimeToolExecutionResult` model carries linkage fields that bridge
 the execution result to tool receipts, receipt envelopes, and audit events:
 
-| Field | Validate | SearchReplace | Description |
-|-------|----------|---------------|-------------|
-| `tool_receipt_kind` | `"validate"` | `"search_replace"` | Identifies which receipt schema applies |
-| `tool_receipt_schema_version` | From `ValidateReceipt.schema_version` | From `SearchReplaceReceipt.schema_version` | Records which schema version produced the receipt hash |
-| `changed_paths` | `[]` (empty) | `[file_path]` | Files affected by mutation tools |
-| `receipt` | `RuntimeToolInvocationReceipt` | `RuntimeToolInvocationReceipt` | Produced by `build_runtime_tool_invocation_receipt()` and stored directly as the Pydantic model |
-| `invocation_id` | From envelope | From envelope | Links result back to invocation |
-| `receipt_envelope_id` | `None` (Phase 2) | `None` (Phase 2) | Populated by envelope builder |
-| `audit_event_id` | `None` (Phase 2) | `None` (Phase 2) | Populated by audit integration |
+| Field | Validate | SearchReplace | Bash | Description |
+|-------|----------|---------------|------|-------------|
+| `tool_receipt_kind` | `"validate"` | `"search_replace"` | `"bash"` | Identifies which receipt schema applies |
+| `tool_receipt_schema_version` | From `ValidateReceipt.schema_version` | From `SearchReplaceReceipt.schema_version` | From `BashReceipt.schema_version` | Records which schema version produced the receipt hash |
+| `changed_paths` | `[]` (empty) | `[file_path]` | `[]` (bash does not track file changes) | Files affected by mutation tools |
+| `receipt` | `RuntimeToolInvocationReceipt` | `RuntimeToolInvocationReceipt` | `RuntimeToolInvocationReceipt` | Produced by `build_runtime_tool_invocation_receipt()` and stored directly as the Pydantic model |
+| `invocation_id` | From envelope | From envelope | From envelope | Links result back to invocation |
+| `receipt_envelope_id` | `None` (Phase 2) | `None` (Phase 2) | `None` (Phase 2) | Populated by envelope builder |
+| `audit_event_id` | `None` (Phase 2) | `None` (Phase 2) | `None` (Phase 2) | Populated by audit integration |
 
 The `receipt` field stores a `RuntimeToolInvocationReceipt` Pydantic model
 (not a dict). The model has `extra="forbid"` and the execution result
@@ -152,6 +194,19 @@ content. This field is explicitly governed:
   has no `content` field; write_file is not wired into the runner
 - **Not emitted in telemetry/projections** — tool output artifacts and
   observability events use only SHA256 hashes and metadata
+
+BashResult has `stdout: str` and `stderr: str` fields that contain raw
+command output. These fields are explicitly governed:
+
+- **Local operational payload only** — used by the agent loop for display
+  and verification during the same session
+- **Not emitted in receipt** — `BashReceipt` has no `stdout`/`stderr` fields;
+  `build_receipt()` computes SHA256 hashes and byte counts instead
+- **Not emitted in runtime execution result** — `RuntimeToolExecutionResult`
+  has no `stdout`/`stderr` fields; the content-light contract is enforced
+  by `ConfigDict(extra="forbid")` on all models and `additionalProperties: false`
+  on all schemas
+- **Not emitted in telemetry/projections** — only hashes and metadata
 
 This boundary is enforced by the receipt schema
 (`rig.relay.write_file_receipt.v1`, `additionalProperties: false`) and
@@ -198,6 +253,14 @@ sr_intent = RuntimeToolIntent(
     },
 )
 sr_result = await runner.execute_search_replace(sr_intent, resolution)
+
+# Bash execution
+b_intent = RuntimeToolIntent(
+    intent_id="intent-003",
+    tool_name=RuntimeToolName.BASH_LEGACY,
+    payload={"command": "echo hello", "legacy_fallback_allowed": True},
+)
+b_result = await runner.execute_bash(b_intent, resolution)
 ```
 
 ## Implementation Status
@@ -218,8 +281,8 @@ sr_result = await runner.execute_search_replace(sr_intent, resolution)
 | Schema validation (no workarounds) | ✅ Implemented | Tests validate full model dumps without `exclude_none` |
 | Content-light results | ✅ Implemented | No raw content in result model |
 | Schema validation of result | ✅ Implemented | Against `rig.relay.runtime_tool_execution_result.v1` |
-| `execute_write_file()` | ❌ Deferred | Phase 2 |
-| `execute_bash()` | ❌ Not routed | Bash runs through the legacy agent loop, not the runtime adapter |
+| `execute_write_file()` | ✅ Implemented | Mutation, runs WriteFile through hardened interface |
+| `execute_bash()` | ✅ Implemented | Subprocess, runs Bash through hardened interface with timeout/refusal/error handling |
 | Lease acquisition | ❌ Deferred | Phase 2 |
 | RuntimeSupervisor integration | ❌ Deferred | Phase 2 |
 | Audit persistence | ❌ Deferred | Phase 2 |
@@ -231,5 +294,6 @@ sr_result = await runner.execute_search_replace(sr_intent, resolution)
 - `InvokeContext` (`vibe.core.tools.base`) — passed to SearchReplace tool
 - `Validate` tool (`vibe/core/tools/builtins/validate.py`) — actual validation logic
 - `SearchReplace` tool (`vibe/core/tools/builtins/search_replace.py`) — actual search/replace logic
+- `Bash` tool (`vibe/core/tools/builtins/bash.py`) — actual command execution with timeout/refusal/error handling (`vibe/core/tools/builtins/search_replace.py`) — actual search/replace logic
 - `jsonschema` — envelope schema validation
 - Schema: `rig.relay.runtime_tool_execution_result.v1`

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rig Fleet Path Lease",
+  "description": "Represents an exclusive or shared lease on a set of file paths in the Rig Fleet Coordination Plane.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "lease_id",
+    "agent_id",
+    "mission_id",
+    "paths",
+    "mode",
+    "expires_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.fleet.path_lease.v1"
+    },
+    "lease_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Identifier of the agent holding the lease."
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Identifier of the mission associated with the lease."
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Salted SHA256 hashes of the file paths."
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "exclusive_write",
+        "shared_read"
+      ]
+    },
+    "granted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "released",
+        "expired",
+        "stale"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
