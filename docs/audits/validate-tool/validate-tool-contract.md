@@ -235,6 +235,17 @@ Stage 5 (Worktree/Lane Awareness and Dirty-State Policy) is implemented in
 | `clean` | Blocks/fails if any dirty files exist (dirty_count > 0 or conflicted_count > 0) |
 | `allow_listed_dirty` | Allows dirty paths listed in `ValidateArgs.paths`; blocks if unlisted dirty paths exist |
 
+Dirty-policy enforcement runs after path normalization. `ValidateArgs.paths` are
+normalized via `_normalize_validate_paths()` before being compared against
+`before_git_state.dirty_paths` (workspace-relative POSIX paths from git porcelain
+parsing). This means relative, absolute, and `./`-prefixed paths are all resolved
+to their canonical workspace-relative form before the `allow_listed_dirty`
+comparison.
+
+`_check_dirty_policy()` from `validate_git.py` is the single policy authority.
+`Validate.run()` no longer inlines dirty-policy logic that compares raw
+`args.paths` against dirty paths.
+
 When `expected_dirty_policy` is set and the policy fails, the validation yields a
 `ValidateResult` with `status="failed"`, `error_kind="dirty_workspace"`, and a
 `blocker_summary` containing `dirty_workspace: 1`.

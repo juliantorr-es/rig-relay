@@ -23,6 +23,8 @@ from typing import Any
 
 import jsonschema
 
+from rig_relay.desktop.projection_integrity import build_projection_integrity_assessment
+from rig_relay.evidence.receipt_index import build_receipt_index
 from rig_relay.evidence.storage_lifecycle import compute_storage_summary
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -97,6 +99,7 @@ READ_ONLY_ACTIONS = [
     "view_telemetry_bundle",
     "view_update_status",
     "view_queue_plan",
+    "view_integrity_assessment",
 ]
 
 
@@ -340,6 +343,47 @@ def _build_update(build_root: Path) -> dict[str, Any]:
     }
 
 
+def _build_integrity(root: Path | None = None) -> dict[str, Any] | None:
+    """Build a content-light projection integrity assessment from available receipts.
+
+    Tries to load the most recent session's receipt index and produce an
+    assessment. Returns ``None`` when no receipt records are available.
+
+    Args:
+        root: Path to .build/rig-relay directory (unused, for signature
+            consistency with other _build_* helpers).
+
+    Returns:
+        ProjectionIntegrityAssessment as a dict, or None.
+    """
+    from pathlib import Path as _Path
+
+    sessions_root = _Path.home() / ".rig" / "relay" / "sessions"
+    if not sessions_root.is_dir():
+        return None
+
+    # Find the most recent session directory
+    session_dirs = sorted(
+        (d for d in sessions_root.iterdir() if d.is_dir()),
+        key=lambda d: d.stat().st_mtime,
+        reverse=True,
+    )
+    if not session_dirs:
+        return None
+
+    # Try each session until we find one with receipt records
+    for session_dir in session_dirs:
+        session_id = session_dir.name
+        records, _errors = build_receipt_index(session_id)
+        if records:
+            assessment = build_projection_integrity_assessment(
+                receipt_records=[r.model_dump(mode="json") for r in records]
+            )
+            return assessment.model_dump(mode="json")
+
+    return None
+
+
 def _validate_against_schema(projection: dict[str, Any]) -> list[str]:
     """Validate projection against schema. Returns list of violation messages."""
     schema = _load_json(PROJECTION_SCHEMA_PATH)
@@ -350,7 +394,7 @@ def _validate_against_schema(projection: dict[str, Any]) -> list[str]:
     return [e.message for e in validator.iter_errors(projection)]
 
 
-def build_projection(build_root: Path | None = None) -> dict[str, Any]:
+def build_projection(build_root: Path | None = None) -> dict[str, Any]:  # noqa: PLR0914
     """Build a content-light desktop projection from available artifacts.
 
     Args:
@@ -371,6 +415,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
     update = _build_update(root)
     storage = _build_storage(root)
     providers = _build_providers()
+    integrity = _build_integrity(root)
 
     source_status = {
         "current_state": current_state["available"],
@@ -381,6 +426,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
         "update": update["available"],
         "storage": storage["available"],
         "provider_status": providers["total"] > 0,
+        "integrity": integrity is not None,
     }
 
     warnings: list[str] = []
@@ -404,6 +450,7 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:
         "update": update,
         "storage": storage,
         "providers": providers,
+        "integrity": integrity,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

@@ -7,7 +7,9 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "enum": ["rig.relay.search_replace_result.v1"]
+      "enum": [
+        "rig.relay.search_replace_result.v1"
+      ]
     },
     "file": {
       "type": "string",
@@ -15,7 +17,14 @@
     },
     "status": {
       "type": "string",
-      "enum": ["success", "no_match", "ambiguous_match", "count_mismatch", "refused"],
+      "enum": [
+        "success",
+        "no_match",
+        "ambiguous_match",
+        "count_mismatch",
+        "refused",
+        "blocked"
+      ],
       "description": "Outcome of the search/replace operation"
     },
     "blocks_applied": {
@@ -32,22 +41,30 @@
     },
     "warnings": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Warning messages from the operation"
     },
     "before_file_sha256": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Map of repo file key to sha256 hash of the file before editing"
     },
     "after_file_sha256": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Map of repo file key to sha256 hash of the file after editing"
     },
     "changed_files": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "List of files that were changed"
     },
     "failed_block_count": {
@@ -71,17 +88,44 @@
       "description": "File size in bytes after editing"
     },
     "error_kind": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Structured error classification when status is not success"
     },
     "refusal_reason": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Human-readable reason when status is refused"
     },
     "duration_ms": {
-      "type": "number",
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Wall-clock duration in milliseconds"
     }
   },
-  "required": ["file", "status", "blocks_applied", "lines_changed", "content"]
+  "required": [
+    "file",
+    "status",
+    "blocks_applied",
+    "lines_changed",
+    "content"
+  ]
 }

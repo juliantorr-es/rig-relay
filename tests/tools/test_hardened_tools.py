@@ -95,8 +95,14 @@ async def test_write_file_rejects_directory_target(tmp_path, monkeypatch):
     dir_path = tmp_path / "subdir"
     dir_path.mkdir()
 
-    with pytest.raises(ToolError, match="Path is a directory"):
-        await collect_result(tool.run(WriteFileArgs(path="subdir", content="test")))
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="subdir", content="test"))
+    )
+
+    assert result.status == "refused"
+    assert result.error_kind == "path_is_directory"
+    assert result.after_sha256 == ""
+    assert "directory" in result.refusal_reason.lower()
 
 
 @pytest.mark.asyncio
@@ -106,10 +112,133 @@ async def test_search_replace_rejects_outside_workdir_path(tmp_path, monkeypatch
     tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
 
     outside_path = str(tmp_path.parent / "escape.txt")
-    with pytest.raises(ToolError, match="outside the project directory"):
-        await collect_result(
-            tool.run(SearchReplaceArgs(file_path=outside_path, content="test"))
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path=outside_path, content="test"))
+    )
+    assert result.status == "refused"
+    assert result.error_kind == "unsafe_path"
+    assert result.before_bytes == 0
+    assert result.after_bytes == 0
+
+
+@pytest.mark.asyncio
+async def test_search_replace_rejects_file_not_found(tmp_path, monkeypatch):
+    """SearchReplace with non-existent file returns structured refused/file_not_found."""
+    monkeypatch.chdir(tmp_path)
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(
+            SearchReplaceArgs(
+                file_path="nonexistent.py",
+                content="<<<<<<< SEARCH\nfoo\n=======\nbar\n>>>>>>> REPLACE",
+            )
         )
+    )
+    assert result.status == "refused"
+    assert result.error_kind == "file_not_found"
+    assert result.before_bytes == 0
+    assert result.after_bytes == 0
+
+
+@pytest.mark.asyncio
+async def test_search_replace_rejects_directory_path(tmp_path, monkeypatch):
+    """SearchReplace with directory path returns structured refused/path_is_directory."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "mydir").mkdir()
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(
+            SearchReplaceArgs(
+                file_path="mydir",
+                content="<<<<<<< SEARCH\nfoo\n=======\nbar\n>>>>>>> REPLACE",
+            )
+        )
+    )
+    assert result.status == "refused"
+    assert result.error_kind == "path_is_directory"
+    assert result.before_bytes == 0
+    assert result.after_bytes == 0
+
+
+@pytest.mark.asyncio
+async def test_search_replace_rejects_binary_file(tmp_path, monkeypatch):
+    """SearchReplace with binary file returns structured refused/binary_file with before_bytes."""
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "binary.bin"
+    target.write_bytes(b"\x00\x01\x02")
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(
+            SearchReplaceArgs(
+                file_path="binary.bin",
+                content="<<<<<<< SEARCH\nfoo\n=======\nbar\n>>>>>>> REPLACE",
+            )
+        )
+    )
+    assert result.status == "refused"
+    assert result.error_kind == "binary_file"
+    assert result.before_bytes == 3  # len(b"\x00\x01\x02")
+    assert result.after_bytes == 0
+
+
+@pytest.mark.asyncio
+async def test_search_replace_rejects_empty_content(tmp_path, monkeypatch):
+    """SearchReplace with empty content returns structured refused/empty_content."""
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "file.py"
+    target.write_text("x = 1\n", encoding="utf-8")
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="file.py", content=""))
+    )
+    assert result.status == "refused"
+    assert result.error_kind == "empty_content"
+    assert result.before_bytes == 0
+    assert result.after_bytes == 0
+
+
+@pytest.mark.asyncio
+async def test_search_replace_rejects_content_too_large(tmp_path, monkeypatch):
+    """SearchReplace with oversized content returns structured refused/content_too_large."""
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "file.py"
+    target.write_text("x = 1\n", encoding="utf-8")
+    config = SearchReplaceConfig(max_content_size=10)
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="file.py", content="x" * 20))
+    )
+    assert result.status == "refused"
+    assert result.error_kind == "content_too_large"
+    assert result.before_bytes == 0
+    assert result.after_bytes == 0
+
+
+@pytest.mark.asyncio
+async def test_search_replace_rejects_no_valid_blocks(tmp_path, monkeypatch):
+    """SearchReplace with no SEARCH/REPLACE blocks returns structured refused/parse_error with before_bytes."""
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "file.py"
+    target.write_text("x = 1\n", encoding="utf-8")
+    config = SearchReplaceConfig()
+    tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(SearchReplaceArgs(file_path="file.py", content="just some text"))
+    )
+    assert result.status == "refused"
+    assert result.error_kind == "parse_error"
+    assert result.before_bytes == 6  # len("x = 1\n")
+    assert result.after_bytes == 0
 
 
 @pytest.mark.asyncio
@@ -211,11 +340,14 @@ async def test_write_file_overwrite_false_on_existing_does_not_emit_hash(
     config = WriteFileConfig()
     tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
 
-    with pytest.raises(ToolError, match="exists"):
-        await collect_result(
-            tool.run(WriteFileArgs(path="protected.txt", content="overwrite attempt"))
-        )
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="protected.txt", content="overwrite attempt"))
+    )
 
+    assert result.status == "refused"
+    assert result.error_kind == "overwrite_required"
+    assert result.file_existed is True
+    assert result.after_sha256 == ""
     assert target.read_text(encoding="utf-8") == "do not touch"
 
 
@@ -852,3 +984,79 @@ def test_path_normalization_equivalent_forms(tmp_path, monkeypatch):
     assert abs_normalized != rel_normalized
     # But for already-resolved absolute paths, normalize_path is idempotent
     assert normalize_path(abs_path) == abs_path
+
+
+@pytest.mark.asyncio
+async def test_write_file_atomicity_failure_preserves_original(tmp_path, monkeypatch):
+    """Existing file content is preserved and temp file cleaned up when atomic replace fails."""
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "important.txt"
+    original = "preserve this content"
+    target.write_text(original, encoding="utf-8")
+
+    def _failing_replace(src, dst):
+        raise OSError("Simulated atomic replace failure")
+
+    monkeypatch.setattr("os.replace", _failing_replace)
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    with pytest.raises(ToolError, match="Error writing"):
+        await collect_result(
+            tool.run(
+                WriteFileArgs(
+                    path="important.txt",
+                    content="this should not appear",
+                    overwrite=True,
+                )
+            )
+        )
+
+    # Original content preserved
+    assert target.read_text(encoding="utf-8") == original
+    # No temp files left behind
+    tmp_files = [p for p in tmp_path.iterdir() if p.name.endswith(".tmp")]
+    assert len(tmp_files) == 0
+
+
+@pytest.mark.asyncio
+async def test_write_file_atomicity_new_file_timing_and_bytes(tmp_path, monkeypatch):
+    """WriteFile new file populates duration_ms, before_bytes=0, after_bytes correctly."""
+    monkeypatch.chdir(tmp_path)
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="timing.txt", content="hello world"))
+    )
+
+    assert result.duration_ms is not None
+    assert result.duration_ms > 0
+    assert result.before_bytes == 0  # new file
+    assert result.after_bytes == 11  # len("hello world")
+
+
+@pytest.mark.asyncio
+async def test_write_file_atomicity_overwrite_timing_and_bytes(tmp_path, monkeypatch):
+    """WriteFile overwrite populates correct before_bytes, after_bytes, and duration_ms."""
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "existing.txt"
+    target.write_text("old content here", encoding="utf-8")
+
+    config = WriteFileConfig()
+    tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
+
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(path="existing.txt", content="new content!", overwrite=True)
+        )
+    )
+
+    assert result.duration_ms is not None
+    assert result.duration_ms > 0
+    assert result.before_bytes == 16  # len("old content here")
+    assert result.after_bytes == 12  # len("new content!")
+    assert result.before_sha256 is not None
+    assert result.after_sha256 is not None
+    assert result.before_sha256 != result.after_sha256

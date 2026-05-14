@@ -165,6 +165,7 @@ def _extract_receipt(event: dict[str, Any]) -> dict[str, Any] | None:
 # ruff: noqa: PLR0914  — _build_record_from_event extracts many fields
 
 
+# ruff: noqa: PLR0915
 def _build_record_from_event(event: dict[str, Any]) -> ToolReceiptIndexRecord:
     """Build an index record from a single receipt-captured event.
 
@@ -230,6 +231,13 @@ def _build_record_from_event(event: dict[str, Any]) -> ToolReceiptIndexRecord:
             after_sha256 = after_map[path]
         elif after_map:
             after_sha256 = next(iter(after_map.values()), None)
+
+    elif tool_name == "write_file":
+        path = receipt.get("path")
+        changed = receipt.get("status") == "success"
+        before_sha256 = receipt.get("before_sha256")
+        after_sha256 = receipt.get("after_sha256")
+        # before_bytes and after_bytes are in receipt but not indexed at top level
 
     elif tool_name == "validate":
         # Validate receipt is content-light per-check.
@@ -338,8 +346,12 @@ def summarize_receipt_index(
         st = record.status or "unknown"
         summary.by_status[st] = summary.by_status.get(st, 0) + 1
 
-        # Mutation tracking (search_replace with changes)
-        if record.tool_name == "search_replace" and record.changed and record.path:
+        # Mutation tracking (search_replace and write_file with changes)
+        if (
+            record.tool_name in {"search_replace", "write_file"}
+            and record.changed
+            and record.path
+        ):
             summary.mutation_count += 1
             summary.mutated_paths[record.path] = {
                 "before": record.before_sha256,

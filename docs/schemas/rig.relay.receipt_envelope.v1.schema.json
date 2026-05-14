@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.receipt_envelope.v1.schema.json",
+  "title": "Receipt Envelope v1",
+  "description": "Canonical content-light receipt envelope. Wraps any receipt (tool, runtime, governance) with actor, subject, decision, and evidence metadata. All content is content-light: no raw payloads, stdout, stderr, file contents, diffs, snippets, or secrets.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "envelope_id",
+    "receipt_kind",
+    "actor",
+    "subject",
+    "evidence",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.receipt_envelope.v1"
+    },
+    "envelope_id": {
+      "type": "string",
+      "description": "Unique envelope identifier."
+    },
+    "receipt_kind": {
+      "type": "string",
+      "description": "The kind of receipt (e.g. tool_invocation, governance_decision, runtime_event)."
+    },
+    "actor": { "$ref": "#/$defs/ReceiptActor" },
+    "subject": { "$ref": "#/$defs/ReceiptSubject" },
+    "input": { "anyOf": [{ "$ref": "#/$defs/ReceiptInput" }, { "type": "null" }] },
+    "output": { "anyOf": [{ "$ref": "#/$defs/ReceiptOutput" }, { "type": "null" }] },
+    "decision": { "anyOf": [{ "$ref": "#/$defs/ReceiptDecision" }, { "type": "null" }] },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ReceiptEvidence" },
+      "description": "Content-light evidence attached to the receipt."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the envelope was created."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ReceiptActorKind": {
+      "type": "string",
+      "enum": ["human", "agent", "tool", "runtime", "system"]
+    },
+    "ReceiptSubjectKind": {
+      "type": "string",
+      "enum": ["tool_invocation", "runtime_invocation", "governance_decision", "worktree", "projection", "session", "artifact"]
+    },
+    "ReceiptEvidenceKind": {
+      "type": "string",
+      "enum": ["sha256", "schema", "receipt_index", "governance_decision", "runtime_event", "tool_receipt", "projection_integrity"]
+    },
+    "ReceiptActor": {
+      "type": "object",
+      "required": ["actor_id", "actor_kind"],
+      "properties": {
+        "actor_id": { "type": "string" },
+        "actor_kind": { "$ref": "#/$defs/ReceiptActorKind" },
+        "display_name": { "type": ["string", "null"] },
+        "is_human": { "type": "boolean" },
+        "is_authoritative": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptSubject": {
+      "type": "object",
+      "required": ["subject_id", "subject_kind"],
+      "properties": {
+        "subject_id": { "type": "string" },
+        "subject_kind": { "$ref": "#/$defs/ReceiptSubjectKind" },
+        "workspace_id": { "type": ["string", "null"] },
+        "session_id": { "type": ["string", "null"] },
+        "path": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptInput": {
+      "type": "object",
+      "required": ["input_kind"],
+      "properties": {
+        "input_id": { "type": ["string", "null"] },
+        "input_kind": { "type": "string" },
+        "input_sha256": { "type": ["string", "null"] },
+        "input_bytes": { "type": ["integer", "null"], "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptOutput": {
+      "type": "object",
+      "required": ["output_kind"],
+      "properties": {
+        "output_id": { "type": ["string", "null"] },
+        "output_kind": { "type": "string" },
+        "output_sha256": { "type": ["string", "null"] },
+        "output_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "status": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptDecision": {
+      "type": "object",
+      "required": ["decision"],
+      "properties": {
+        "decision": { "type": "string" },
+        "rationale": { "type": ["string", "null"] },
+        "gate": { "type": ["string", "null"] },
+        "governance_decision_id": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptEvidence": {
+      "type": "object",
+      "required": ["evidence_kind"],
+      "properties": {
+        "evidence_id": { "type": ["string", "null"] },
+        "evidence_kind": { "$ref": "#/$defs/ReceiptEvidenceKind" },
+        "evidence_sha256": { "type": ["string", "null"] },
+        "schema_version": { "type": ["string", "null"] },
+        "uri": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

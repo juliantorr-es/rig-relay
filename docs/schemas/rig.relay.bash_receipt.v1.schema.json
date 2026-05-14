@@ -2,12 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.relay.bash_receipt.v1.schema.json",
   "title": "Rig Relay Bash Receipt v1",
-  "description": "Content-light receipt for a bash invocation. Contains no raw stdout/stderr — only metadata, byte counts, SHA256 hashes, exit code, and timing.",
+  "description": "Content-light receipt for a bash invocation. Contains no raw stdout/stderr \u2014 only metadata, byte counts, SHA256 hashes, exit code, and timing.",
   "type": "object",
   "properties": {
     "schema_version": {
       "type": "string",
-      "enum": ["rig.relay.bash_receipt.v1"]
+      "enum": [
+        "rig.relay.bash_receipt.v1"
+      ]
     },
     "command": {
       "type": "string",
@@ -15,7 +17,13 @@
     },
     "status": {
       "type": "string",
-      "enum": ["success", "failure", "timed_out", "refused", "truncated"],
+      "enum": [
+        "success",
+        "failure",
+        "timed_out",
+        "refused",
+        "truncated"
+      ],
       "description": "Outcome of the command execution"
     },
     "exit_code": {
@@ -23,7 +31,14 @@
       "description": "Process exit code"
     },
     "duration_ms": {
-      "type": "number",
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Wall-clock duration in milliseconds"
     },
     "stdout_bytes": {
@@ -43,23 +58,60 @@
       "description": "Whether stderr was truncated"
     },
     "stdout_sha256": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "SHA256 hex digest of stdout content, if any"
     },
     "stderr_sha256": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "SHA256 hex digest of stderr content, if any"
     },
     "error_kind": {
-      "type": "string",
-      "enum": ["nonzero_exit", "timeout", "refused", "internal_error", null],
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "nonzero_exit",
+            "timeout",
+            "refused",
+            "internal_error"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Structured error classification"
     },
     "refusal_reason": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Reason for refusal, if refused"
     }
   },
-  "required": ["command", "status", "exit_code"],
+  "required": [
+    "command",
+    "status",
+    "exit_code"
+  ],
   "additionalProperties": false
 }

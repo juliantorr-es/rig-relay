@@ -1,7 +1,34 @@
-"""rig_relay.governance — Dirty guard, auth, telemetry modes, update policy.
+"""rig_relay.governance — Dirty guard, auth, telemetry modes, update policy, governance engine.
 
 Target package for migrating:
   vibe/core/guard/
   vibe/core/auth/
   vibe/core/telemetry/
+
+Exports:
+  GovernanceEngine — pure governance gate evaluator
+  GateDecision, GovernanceDecisionKind, GovernanceReasonSeverity — decision models
+  DecisionReason, BlockedIntent, AllowedIntent — decision sub-models
 """
+
+from __future__ import annotations
+
+from rig_relay.governance.decisions import (
+    AllowedIntent,
+    BlockedIntent,
+    DecisionReason,
+    GateDecision,
+    GovernanceDecisionKind,
+    GovernanceReasonSeverity,
+)
+from rig_relay.governance.governance_engine import GovernanceEngine
+
+__all__ = [
+    "AllowedIntent",
+    "BlockedIntent",
+    "DecisionReason",
+    "GateDecision",
+    "GovernanceDecisionKind",
+    "GovernanceEngine",
+    "GovernanceReasonSeverity",
+]

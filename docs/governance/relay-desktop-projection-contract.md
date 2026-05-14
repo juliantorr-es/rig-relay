@@ -213,9 +213,39 @@ Widgets are rendered in three groups within the cockpit:
 | — | LatestIntentResult | Rig Relay-specific |
 | — | RefinementBacklog | Rig Relay-specific |
 
+## Integrity Contract
+
+The projection integrity assessment is a content-light check attached to
+every desktop projection. It is **not a separate widget** — it decorates the
+projection with trust metadata.
+
+| Field | Type | Description |
+|---|---|---|
+| `integrity_status` | string | `verified`, `degraded`, `stale`, `orphaned`, `unknown` |
+| `contract_status` | string | `satisfied`, `partial`, `violated`, `not_applicable` |
+| `violation_count` | integer | Total integrity violations |
+| `violations` | array | List of violation objects (code, message, severity, optional widget_name/receipt_id/path) |
+| `checked_at` | string | ISO 8601 timestamp |
+| `receipt_count` | integer | Number of receipt records evaluated |
+| `stale_receipt_count` | integer | Receipts exceeding staleness threshold |
+| `orphaned_receipt_count` | integer | Receipts missing session_id or tool_name |
+| `authority_backed` | boolean | Whether all claimed authorities have receipt backing |
+
+**Integrity status priority:** VERIFIED > STALE > ORPHANED > DEGRADED > UNKNOWN
+
+**Contract status rules:**
+- NOT_APPLICABLE when no authorities or widgets claimed
+- SATISFIED when zero violations
+- VIOLATED when any error-severity violation exists
+- PARTIAL otherwise
+
+**Forbidden frontend inference:** Modifying integrity policy, bypassing
+violations, interpreting violations as authorization to mutate
+
 ## Cross-References
 
 - [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md)
 - [Desktop Cockpit UI](desktop-cockpit-ui.md)
 - [Desktop Projection Schema](../schemas/rig.relay.desktop_projection.v1.schema.json)
+- [Projection Integrity Schema](../schemas/rig.relay.projection_integrity.v1.schema.json)
 - [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md)

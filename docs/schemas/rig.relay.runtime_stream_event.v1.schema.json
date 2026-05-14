@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.runtime_stream_event.v1.schema.json",
+  "title": "RuntimeStreamEvent",
+  "description": "Stream event emitted by the RuntimeSupervisor during bounded subprocess execution. Events are discriminated by event_kind.",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/RuntimeStatusEvent" },
+    { "$ref": "#/$defs/RuntimeOutputChunkEvent" },
+    { "$ref": "#/$defs/RuntimeHeartbeatEvent" },
+    { "$ref": "#/$defs/RuntimeWarningEvent" },
+    { "$ref": "#/$defs/RuntimeCompletionEvent" },
+    { "$ref": "#/$defs/RuntimeFailureEvent" }
+  ],
+  "required": ["schema_version", "event_id", "lease_id", "request_id", "event_kind", "captured_at"],
+  "properties": {
+    "schema_version": { "const": "rig.relay.runtime_stream_event.v1" },
+    "event_id": { "type": "string" },
+    "lease_id": { "type": "string" },
+    "request_id": { "type": "string" },
+    "event_kind": {
+      "type": "string",
+      "enum": ["status", "stdout_chunk", "stderr_chunk", "heartbeat", "warning", "completion", "failure"]
+    },
+    "captured_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "RuntimeStatusEvent": {
+      "title": "RuntimeStatusEvent",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/EventBase" },
+        {
+          "properties": {
+            "event_kind": { "const": "status" },
+            "status": { "$ref": "#/$defs/RuntimeInvocationStatus" },
+            "message": { "type": ["string", "null"] }
+          },
+          "required": ["status"]
+        }
+      ]
+    },
+    "RuntimeOutputChunkEvent": {
+      "title": "RuntimeOutputChunkEvent",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/EventBase" },
+        {
+          "properties": {
+            "event_kind": { "type": "string", "enum": ["stdout_chunk", "stderr_chunk"] },
+            "stream": { "type": "string", "enum": ["stdout", "stderr"] },
+            "chunk_index": { "type": "integer", "minimum": 0 },
+            "chunk_text": { "type": ["string", "null"] },
+            "chunk_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "chunk_bytes": { "type": "integer", "minimum": 0 },
+            "truncated": { "type": "boolean" }
+          },
+          "required": ["stream", "chunk_index", "chunk_sha256", "chunk_bytes"]
+        }
+      ]
+    },
+    "RuntimeHeartbeatEvent": {
+      "title": "RuntimeHeartbeatEvent",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/EventBase" },
+        {
+          "properties": {
+            "event_kind": { "const": "heartbeat" },
+            "elapsed_ms": { "type": "number", "minimum": 0 }
+          },
+          "required": ["elapsed_ms"]
+        }
+      ]
+    },
+    "RuntimeWarningEvent": {
+      "title": "RuntimeWarningEvent",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/EventBase" },
+        {
+          "properties": {
+            "event_kind": { "const": "warning" },
+            "warning_kind": { "type": "string" },
+            "message": { "type": "string" }
+          },
+          "required": ["warning_kind", "message"]
+        }
+      ]
+    },
+    "RuntimeCompletionEvent": {
+      "title": "RuntimeCompletionEvent",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/EventBase" },
+        {
+          "properties": {
+            "event_kind": { "const": "completion" },
+            "status": { "type": "string", "enum": ["succeeded", "failed"] },
+            "exit_code": { "type": "integer" },
+            "duration_ms": { "type": "number", "minimum": 0 },
+            "stdout_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "stderr_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "stdout_bytes": { "type": "integer", "minimum": 0 },
+            "stderr_bytes": { "type": "integer", "minimum": 0 },
+            "stdout_truncated": { "type": "boolean" },
+            "stderr_truncated": { "type": "boolean" }
+          },
+          "required": ["status", "exit_code", "duration_ms", "stdout_sha256", "stderr_sha256", "stdout_bytes", "stderr_bytes"]
+        }
+      ]
+    },
+    "RuntimeFailureEvent": {
+      "title": "RuntimeFailureEvent",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/EventBase" },
+        {
+          "properties": {
+            "event_kind": { "const": "failure" },
+            "status": { "type": "string", "enum": ["failed", "timed_out", "cancelled", "blocked"] },
+            "error_kind": { "type": "string" },
+            "refusal_reason": { "type": ["string", "null"] },
+            "duration_ms": { "type": ["number", "null"] },
+            "exit_code": { "type": ["integer", "null"] },
+            "stdout_sha256": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" },
+            "stderr_sha256": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" },
+            "stdout_bytes": { "type": ["integer", "null"], "minimum": 0 },
+            "stderr_bytes": { "type": ["integer", "null"], "minimum": 0 },
+            "stdout_truncated": { "type": "boolean" },
+            "stderr_truncated": { "type": "boolean" }
+          },
+          "required": ["status", "error_kind"]
+        }
+      ]
+    },
+    "EventBase": {
+      "title": "RuntimeStreamEventBase",
+      "type": "object",
+      "properties": {
+        "schema_version": { "const": "rig.relay.runtime_stream_event.v1" },
+        "event_id": { "type": "string" },
+        "lease_id": { "type": "string" },
+        "request_id": { "type": "string" },
+        "event_kind": { "type": "string" },
+        "captured_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["event_id", "lease_id", "request_id", "event_kind", "captured_at"]
+    },
+    "RuntimeInvocationStatus": {
+      "type": "string",
+      "enum": ["pending", "starting", "running", "succeeded", "failed", "timed_out", "cancelled", "blocked"]
+    }
+  }
+}

@@ -1,49 +1,31 @@
-# WriteFile Final Gaps
+# WriteFile Hardening State
 
-## Current Hardening Status
+## Current Status (Post-Closure)
 
-WriteFile remains behind SearchReplace on evidence maturity.
+WriteFile has reached near-parity with SearchReplace on evidence maturity.
 
-## Observed State
+## Current State
 
 - structured invocation model: present
-- structured result model: partial
-- structured receipt model: missing
-- `build_receipt()`: missing
-- schema coverage: missing
-- receipt emission compatibility: missing
-- receipt policy validation: missing
-- receipt index compatibility: missing
-- before/after hashes: partial
-- before/after byte counts: partial
+- structured result model: partial (carries `content` field for backwards compatibility)
+- structured receipt model: **complete** (WriteFileReceipt, 16 fields, extra="forbid")
+- `build_receipt()`: **complete** (content-light, sanitized refusal_reason)
+- schema coverage: **added** (rig.relay.write_file_receipt.v1)
+- receipt emission compatibility: **complete** (duck-typed into agent loop)
+- receipt policy validation: **complete** (tested via test_tool_receipt_emission.py)
+- receipt index compatibility: **complete** (write_file case in receipt_index.py)
+- before/after hashes: present (success path only)
+- before/after byte counts: complete (before_bytes from snapshot, after_bytes from file stat)
 - created vs overwritten status: present
 - path safety: present
 - outside-workspace refusal: present
-- atomicity: partial
+- atomicity: complete (tempfile + os.replace atomic pattern)
 
-## Final Gaps
+## Remaining Gaps
 
-1. **No receipt model**
-   - WriteFile still lacks a content-light receipt envelope.
+1. **content still in WriteFileResult** — Legacy callers may depend on it. See `docs/audits/tool-hardening/write-file-legacy-result-content-audit.md` — recommended to keep, mark as deprecated.
+2. **Permission preservation** — Only mode bits preserved after atomic replace (ACLs/xattrs dropped).
 
-2. **No schema / schema tests**
-   - There is no write_file receipt schema to validate against.
+## Gap Closure Reference
 
-3. **No receipt emission path**
-   - The generic receipt capture seam cannot help until the tool exposes `build_receipt()`.
-
-4. **Incomplete structured result**
-   - The result still carries raw content and does not yet provide a fully structured status taxonomy comparable to SearchReplace.
-
-5. **Evidence standard gap**
-   - There is not yet a direct proof that receipts exclude raw file contents.
-
-## Hardening Target
-
-WriteFile should reach parity with or exceed SearchReplace on:
-
-- structured statuses
-- content-light receipts
-- hash and byte accounting
-- overwrite/refusal semantics
-- atomic write evidence
+See `docs/audits/tool-hardening/write-file-receipt-gap-closure.md` for the detailed closure report.

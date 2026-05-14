@@ -22,7 +22,14 @@
       "description": "Echoed input profile name"
     },
     "scope": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Echoed input scope"
     },
     "command_count": {
@@ -42,28 +49,53 @@
       "description": "Count of skipped checks"
     },
     "duration_ms": {
-      "type": "number",
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Total elapsed time in milliseconds"
     },
     "checks": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ValidateCheckResult"
-      },
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Per-check results"
     },
     "blocker_summary": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "integer"
-      },
+      "oneOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Blocker counts by kind"
     },
     "changed_files": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Files changed during validation (only when profile allows mutation)"
     },
     "before_git_state": {
@@ -89,11 +121,25 @@
       "description": "Optional post-state git workspace snapshot"
     },
     "error_kind": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Final error category"
     },
     "refusal_reason": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Human-readable refusal summary"
     }
   },

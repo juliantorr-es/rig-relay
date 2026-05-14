@@ -879,3 +879,133 @@ def test_summarize_validate_counts(tmp_path: Path) -> None:
     assert summary.by_status.get("success") == 1
     assert summary.by_status.get("passed") == 1
     assert summary.by_status.get("failed") == 1
+
+
+# ── WriteFile receipt index tests ─────────────────────────────────────
+
+
+def _make_write_file_receipt_event(
+    session_id: str = "test_session",
+    status: str = "success",
+    path: str = "out.py",
+    bytes_written: int = 10,
+    before_sha256: str | None = None,
+    after_sha256: str | None = None,
+    error_kind: str | None = None,
+    refusal_reason: str | None = None,
+) -> dict:
+    if before_sha256 is None:
+        before_sha256 = hashlib.sha256(b"old content").hexdigest()
+    if after_sha256 is None:
+        after_sha256 = hashlib.sha256(b"new content").hexdigest()
+    return {
+        "schema_version": "rig.relay.observability.v1",
+        "event_id": "evt-wf-001",
+        "session_id": session_id,
+        "sequence": 1,
+        "created_at": "2026-05-13T00:00:01",
+        "event_name": EventName.TOOL_RECEIPT_CAPTURED,
+        "payload": {
+            "tool_name": "write_file",
+            "receipt": {
+                "path": path,
+                "status": status,
+                "bytes_written": bytes_written,
+                "before_sha256": before_sha256,
+                "after_sha256": after_sha256,
+                "before_bytes": 10,
+                "after_bytes": 10,
+                "file_existed": False,
+                "created_file": True,
+                "overwrote_existing_file": False,
+                "parent_dirs_created": False,
+                "error_kind": error_kind,
+                "refusal_reason": refusal_reason,
+            },
+        },
+        "producer": {"name": "rig-relay", "version": "0.1.0"},
+        "receipt_candidate": True,
+        "event_hash": "sha256:wf",
+    }
+
+
+def test_build_receipt_index_single_write_file(tmp_path: Path) -> None:
+    """Single write_file receipt event is indexed with hashes."""
+    path = _write_observability(
+        tmp_path / "observability.jsonl",
+        [_make_write_file_receipt_event(session_id="wf_test")],
+    )
+    records, errors = build_receipt_index(path)
+    assert len(errors) == 0
+    assert len(records) == 1
+    rec = records[0]
+    assert rec.tool_name == "write_file"
+    assert rec.status == "success"
+    assert rec.before_sha256 is not None
+    assert rec.after_sha256 is not None
+    assert rec.path is not None
+    assert isinstance(rec.changed, bool)
+
+
+def test_write_file_receipt_content_light(tmp_path: Path) -> None:
+    """Write_file receipt index record remains content-light."""
+    path = _write_observability(
+        tmp_path / "observability.jsonl",
+        [_make_write_file_receipt_event(session_id="s1")],
+    )
+    records, _ = build_receipt_index(path)
+    warnings = validate_index_content_light(records)
+    assert warnings == []
+
+
+def test_summarize_mutations_both_tools(tmp_path: Path) -> None:
+    """Summary mutation_count includes write_file and search_replace."""
+    path = _write_observability(
+        tmp_path / "observability.jsonl",
+        [
+            _make_search_replace_receipt_event(
+                session_id="s1",
+                file="src/main.py",
+                changed_files=["src/main.py"],
+                before_hash="aaa",
+                after_hash="bbb",
+            ),
+            _make_write_file_receipt_event(
+                session_id="s1",
+                path="src/config.py",
+                before_sha256="ccc",
+                after_sha256="ddd",
+            ),
+            _make_bash_receipt_event(session_id="s1"),
+        ],
+    )
+    records, _ = build_receipt_index(path)
+    summary = summarize_receipt_index(records)
+    assert summary.mutation_count == 2
+    assert summary.by_tool.get("search_replace") == 1
+    assert summary.by_tool.get("write_file") == 1
+
+
+def test_summarize_mutations_write_file_refused_excluded(tmp_path: Path) -> None:
+    """Write_file refused/blocked events are not counted as mutations."""
+    path = _write_observability(
+        tmp_path / "observability.jsonl",
+        [
+            _make_write_file_receipt_event(
+                session_id="s1",
+                status="refused",
+                error_kind="dirty_file_protected",
+                refusal_reason="Guard refused",
+            ),
+            _make_write_file_receipt_event(
+                session_id="s1",
+                status="success",
+                path="src/ok.py",
+                before_sha256="eee",
+                after_sha256="fff",
+            ),
+        ],
+    )
+    records, _ = build_receipt_index(path)
+    summary = summarize_receipt_index(records)
+    assert summary.mutation_count == 1

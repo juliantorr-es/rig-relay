@@ -515,7 +515,13 @@ class SearchReplace(
         self, args: SearchReplaceArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | SearchReplaceResult, None]:
         start = time.perf_counter()
-        file_path, search_replace_blocks = self._prepare_and_validate_args(args)
+        validation = self._prepare_and_validate_args(args)
+        if isinstance(validation, SearchReplaceResult):
+            validation.duration_ms = (time.perf_counter() - start) * 1000
+            yield validation
+            return
+
+        file_path, search_replace_blocks = validation
         total_block_count = len(search_replace_blocks)
         coordination_store, coordination = self._build_coordination_state(
             ctx, file_path
@@ -596,47 +602,121 @@ class SearchReplace(
                 )
 
     @final
-    def _prepare_and_validate_args(
+    def _prepare_and_validate_args(  # noqa: PLR0911
         self, args: SearchReplaceArgs
-    ) -> tuple[Path, list[SearchReplaceBlock]]:
+    ) -> SearchReplaceResult | tuple[Path, list[SearchReplaceBlock]]:
         content = args.content.strip()
 
         if len(content) > self.config.max_content_size:
-            raise ToolError(
-                f"Content size ({len(content)} bytes) exceeds max_content_size "
-                f"({self.config.max_content_size} bytes)"
+            return SearchReplaceResult(
+                file="",
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                before_bytes=0,
+                after_bytes=0,
+                status="refused",
+                error_kind="content_too_large",
+                refusal_reason=(
+                    f"Content size ({len(content)} bytes) exceeds max_content_size "
+                    f"({self.config.max_content_size} bytes)"
+                ),
             )
 
         if not content:
-            raise ToolError("Empty content provided")
+            return SearchReplaceResult(
+                file="",
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                before_bytes=0,
+                after_bytes=0,
+                status="refused",
+                error_kind="empty_content",
+                refusal_reason="Empty content provided",
+            )
 
         file_path = normalize_tool_path(args.file_path)
-        require_path_within_workdir(file_path)
+
+        try:
+            require_path_within_workdir(file_path)
+        except ToolError:
+            return SearchReplaceResult(
+                file=str(file_path),
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                before_bytes=0,
+                after_bytes=0,
+                status="refused",
+                error_kind="unsafe_path",
+                refusal_reason=f"Path is outside the project directory: {file_path}",
+            )
 
         if not file_path.exists():
-            raise ToolError(f"File does not exist: {file_path}")
+            return SearchReplaceResult(
+                file=str(file_path),
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                before_bytes=0,
+                after_bytes=0,
+                status="refused",
+                error_kind="file_not_found",
+                refusal_reason=f"File does not exist: {file_path}",
+            )
 
         if not file_path.is_file():
-            raise ToolError(f"Path is not a file: {file_path}")
+            return SearchReplaceResult(
+                file=str(file_path),
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                before_bytes=0,
+                after_bytes=0,
+                status="refused",
+                error_kind="path_is_directory",
+                refusal_reason=f"Path is not a file: {file_path}",
+            )
 
         # Refuse binary files — search/replace on binary content is undefined
         raw_head = file_path.read_bytes()[:8192]
         if _is_binary_content(raw_head):
-            raise ToolError(
-                f"Refusing to edit binary file: {file_path}. "
-                "search_replace operates on text files only."
+            return SearchReplaceResult(
+                file=str(file_path),
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                before_bytes=file_path.stat().st_size,
+                after_bytes=0,
+                status="refused",
+                error_kind="binary_file",
+                refusal_reason=(
+                    f"Refusing to edit binary file: {file_path}. "
+                    "search_replace operates on text files only."
+                ),
             )
 
         search_replace_blocks = self._parse_search_replace_blocks(content)
         if not search_replace_blocks:
-            raise ToolError(
-                "No valid SEARCH/REPLACE blocks found in content.\n"
-                "Expected format:\n"
-                "<<<<<<< SEARCH\n"
-                "[exact content to find]\n"
-                "=======\n"
-                "[new content to replace with]\n"
-                ">>>>>>> REPLACE"
+            return SearchReplaceResult(
+                file=str(file_path),
+                blocks_applied=0,
+                lines_changed=0,
+                content="",
+                before_bytes=file_path.stat().st_size,
+                after_bytes=0,
+                status="refused",
+                error_kind="parse_error",
+                refusal_reason=(
+                    "No valid SEARCH/REPLACE blocks found in content.\n"
+                    "Expected format:\n"
+                    "<<<<<<< SEARCH\n"
+                    "[exact content to find]\n"
+                    "=======\n"
+                    "[new content to replace with]\n"
+                    ">>>>>>> REPLACE"
+                ),
             )
 
         return file_path, search_replace_blocks

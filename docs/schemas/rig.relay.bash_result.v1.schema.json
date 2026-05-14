@@ -5,25 +5,30 @@
   "description": "Schema for a deterministic bash tool execution result. Contains the full stdout/stderr output with truncation metadata.",
   "type": "object",
   "properties": {
-    "schema_version": {
-      "type": "string",
-      "enum": ["rig.relay.bash_result.v1"]
-    },
     "command": {
       "type": "string",
       "description": "The command that was executed"
     },
     "status": {
       "type": "string",
-      "enum": ["success", "failure", "timed_out", "refused", "truncated"],
+      "enum": [
+        "success",
+        "failure",
+        "timed_out",
+        "refused",
+        "truncated"
+      ],
       "description": "Outcome of the command execution"
     },
-    "exit_code": {
-      "type": "integer",
-      "description": "Process exit code"
-    },
     "duration_ms": {
-      "type": "number",
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Wall-clock duration in milliseconds"
     },
     "stdout_bytes": {
@@ -43,15 +48,50 @@
       "description": "Whether stderr was truncated"
     },
     "error_kind": {
-      "type": "string",
-      "enum": ["nonzero_exit", "timeout", "refused", "internal_error", null],
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "nonzero_exit",
+            "timeout",
+            "refused",
+            "internal_error"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Structured error classification"
     },
     "refusal_reason": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Reason for refusal, if refused"
+    },
+    "returncode": {
+      "type": "integer",
+      "description": "Process return code"
+    },
+    "stdout": {
+      "type": "string",
+      "description": "Full stdout output"
+    },
+    "stderr": {
+      "type": "string",
+      "description": "Full stderr output"
     }
   },
-  "required": ["command", "status", "exit_code"],
+  "required": [
+    "command",
+    "status",
+    "returncode"
+  ],
   "additionalProperties": false
 }

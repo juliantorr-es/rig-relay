@@ -16,9 +16,13 @@
       "description": "The validation profile that was run"
     },
     "scope": {
-      "type": [
-        "string",
-        "null"
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Optional mission scope label"
     },
@@ -50,27 +54,46 @@
       "description": "Number of skipped or blocked checks"
     },
     "duration_ms": {
-      "type": "number",
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Total wall-clock duration in milliseconds"
     },
     "blocker_summary": {
-      "type": "object",
-      "description": "Count of failures by blocker kind",
-      "additionalProperties": {
-        "type": "integer"
-      }
+      "oneOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Count of failures by blocker kind"
     },
     "error_kind": {
-      "type": [
-        "string",
-        "null"
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Final error category, if any"
     },
     "refusal_reason": {
-      "type": [
-        "string",
-        "null"
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Human-readable refusal reason, if refused"
     },
@@ -96,15 +119,30 @@
   "additionalProperties": false,
   "$defs": {
     "GitSummary": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "description": "Content-light git state summary (counts only, no paths/hashes)",
       "properties": {
-        "dirty_count": { "type": "integer" },
-        "modified_count": { "type": "integer" },
-        "deleted_count": { "type": "integer" },
-        "untracked_count": { "type": "integer" },
-        "staged_count": { "type": "integer" },
-        "conflicted_count": { "type": "integer" }
+        "dirty_count": {
+          "type": "integer"
+        },
+        "modified_count": {
+          "type": "integer"
+        },
+        "deleted_count": {
+          "type": "integer"
+        },
+        "untracked_count": {
+          "type": "integer"
+        },
+        "staged_count": {
+          "type": "integer"
+        },
+        "conflicted_count": {
+          "type": "integer"
+        }
       },
       "additionalProperties": false
     },

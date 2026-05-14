@@ -17,6 +17,7 @@ import os
 import time
 from typing import ClassVar, final
 
+from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import BaseTool, BaseToolState, InvokeContext
 
 # Git state
@@ -129,6 +130,10 @@ class Validate(
         "receipt-policy, tool-hardening). Returns structured results "
         "with blocker taxonomy."
     )
+    determinism_class: ClassVar[ToolDeterminismClass] = (
+        ToolDeterminismClass.DETERMINISTIC_REPO_STATE
+    )
+    mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
 
     @classmethod
     def format_call_display(cls, args: ValidateArgs) -> ToolCallDisplay:
@@ -350,44 +355,6 @@ class Validate(
         if cwd is None:
             cwd = os.getcwd()
 
-        # ── Collect git state ──
-        before_git_state = await _collect_git_state(cwd)
-
-        # ── Enforce dirty policy ──
-        if args.expected_dirty_policy == "clean" and before_git_state.dirty_count > 0:
-            yield ValidateResult(
-                status="failed",
-                profile=args.profile,
-                error_kind="dirty_workspace",
-                refusal_reason=(
-                    f"expected_dirty_policy='clean' but workspace has "
-                    f"{before_git_state.dirty_count} dirty files"
-                ),
-                before_git_state=before_git_state,
-                blocker_summary={"dirty_workspace": 1},
-            )
-            return
-
-        if (
-            args.expected_dirty_policy == "allow_listed_dirty"
-            and before_git_state.dirty_count > 0
-        ):
-            allowed = set(args.paths)
-            unlisted = [p for p in before_git_state.dirty_paths if p not in allowed]
-            if unlisted:
-                yield ValidateResult(
-                    status="failed",
-                    profile=args.profile,
-                    error_kind="dirty_workspace",
-                    refusal_reason=(
-                        f"expected_dirty_policy='allow_listed_dirty' but "
-                        f"{len(unlisted)} dirty paths not in allowed list"
-                    ),
-                    before_git_state=before_git_state,
-                    blocker_summary={"dirty_workspace": 1},
-                )
-                return
-
         # ── Resolve path scopes ──
         normalized_paths, refusal = self._resolve_paths(args, cwd)
         if refusal:
@@ -396,6 +363,24 @@ class Validate(
                 profile=args.profile,
                 error_kind="unsafe_paths",
                 refusal_reason=refusal,
+            )
+            return
+
+        # ── Collect git state ──
+        before_git_state = await _collect_git_state(cwd)
+
+        # ── Enforce dirty policy via _check_dirty_policy ──
+        policy_reason = _check_dirty_policy(
+            before_git_state, args.expected_dirty_policy, normalized_paths
+        )
+        if policy_reason:
+            yield ValidateResult(
+                status="failed",
+                profile=args.profile,
+                error_kind="dirty_workspace",
+                refusal_reason=policy_reason,
+                before_git_state=before_git_state,
+                blocker_summary={"dirty_workspace": 1},
             )
             return
 

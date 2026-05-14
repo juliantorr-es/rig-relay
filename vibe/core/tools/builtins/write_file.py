@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+import os
 from pathlib import Path
+import tempfile
+import time
 from typing import ClassVar, final
 
-import anyio
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from vibe.core.coordination import CoordinationStore
 from vibe.core.guard import get_guard
@@ -67,6 +70,35 @@ class WriteFileResult(BaseModel):
     status: str = "success"
     error_kind: str | None = None
     refusal_reason: str | None = None
+    before_bytes: int | None = None
+    after_bytes: int | None = None
+    duration_ms: float | None = None
+
+
+class WriteFileReceipt(BaseModel):
+    """Content-light receipt for a write_file invocation.
+
+    Contains no raw file content — only metadata, SHA256 hashes, byte
+    counts, path, and structured error classification.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "rig.relay.write_file_receipt.v1"
+    path: str
+    status: str = "success"
+    error_kind: str | None = None
+    refusal_reason: str | None = None
+    bytes_written: int = 0
+    before_sha256: str | None = None
+    after_sha256: str | None = None
+    before_bytes: int | None = None
+    after_bytes: int | None = None
+    file_existed: bool = False
+    created_file: bool = False
+    overwrote_existing_file: bool = False
+    parent_dirs_created: bool = False
+    duration_ms: float | None = None
 
 
 def _classify_write_guard_refusal(check: object) -> str:
@@ -135,6 +167,41 @@ class WriteFile(
     @classmethod
     def get_status_text(cls) -> str:
         return "Writing file"
+
+    @final
+    def build_receipt(self, result: WriteFileResult) -> WriteFileReceipt:
+        """Build a content-light receipt from a write_file result.
+
+        The receipt contains no raw file content — only metadata, SHA256
+        hashes, byte counts, path, and structured error classification.
+        """
+        return WriteFileReceipt(
+            path=str(result.path),
+            status=result.status,
+            error_kind=result.error_kind,
+            refusal_reason=self._sanitize_refusal_for_receipt(result.refusal_reason),
+            bytes_written=result.bytes_written,
+            before_sha256=result.before_sha256,
+            after_sha256=result.after_sha256,
+            before_bytes=result.before_bytes,
+            after_bytes=result.after_bytes,
+            file_existed=result.file_existed,
+            created_file=result.created_file,
+            overwrote_existing_file=result.overwrote_existing_file,
+            parent_dirs_created=result.parent_dirs_created,
+            duration_ms=result.duration_ms,
+        )
+
+    @staticmethod
+    def _sanitize_refusal_for_receipt(refusal_reason: str | None) -> str | None:
+        """Strip file content context from a refusal reason string.
+
+        Guard check.detail may contain file paths, not raw content.
+        Currently a pass-through since the guard does not embed content.
+        """
+        if not refusal_reason:
+            return None
+        return refusal_reason
 
     @staticmethod
     def _coordination_store(ctx: InvokeContext | None) -> CoordinationStore | None:
@@ -218,12 +285,86 @@ class WriteFile(
         )
 
     @final
+    # ruff: noqa: PLR0914
     async def run(
         self, args: WriteFileArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | WriteFileResult, None]:
-        file_path, file_existed, content_bytes, parent_dirs_created = (
-            self._prepare_and_validate_path(args)
-        )
+        start = time.perf_counter()
+
+        # ── Path safety (abnormal — may raise ToolError) ──
+        file_path = normalize_tool_path(args.path)
+        require_path_within_workdir(file_path)
+
+        # ── Early deterministic refusals (structured results) ──
+        if file_path.is_dir():
+            elapsed = (time.perf_counter() - start) * 1000
+            yield WriteFileResult(
+                path=str(file_path),
+                bytes_written=0,
+                file_existed=False,
+                content="",
+                before_sha256=None,
+                after_sha256="",
+                status="refused",
+                error_kind="path_is_directory",
+                refusal_reason=f"Path is a directory, not a file: {file_path}",
+                duration_ms=elapsed,
+            )
+            return
+
+        content_bytes = len(args.content.encode("utf-8"))
+        if content_bytes > self.config.max_write_bytes:
+            elapsed = (time.perf_counter() - start) * 1000
+            yield WriteFileResult(
+                path=str(file_path),
+                bytes_written=0,
+                file_existed=file_path.exists(),
+                content="",
+                before_sha256=None,
+                after_sha256="",
+                status="refused",
+                error_kind="content_too_large",
+                refusal_reason=f"Content exceeds {self.config.max_write_bytes} bytes limit",
+                duration_ms=elapsed,
+            )
+            return
+
+        file_existed = file_path.exists()
+
+        if file_existed and not args.overwrite:
+            elapsed = (time.perf_counter() - start) * 1000
+            yield WriteFileResult(
+                path=str(file_path),
+                bytes_written=0,
+                file_existed=True,
+                content="",
+                before_sha256=None,
+                after_sha256="",
+                status="refused",
+                error_kind="overwrite_required",
+                refusal_reason=f"File '{file_path}' exists. Set overwrite=True to replace.",
+                duration_ms=elapsed,
+            )
+            return
+
+        parent_dirs_created = self._prepare_parent_dir(file_path)
+        if not file_path.parent.exists():
+            elapsed = (time.perf_counter() - start) * 1000
+            yield WriteFileResult(
+                path=str(file_path),
+                bytes_written=0,
+                file_existed=file_existed,
+                content="",
+                before_sha256=None,
+                after_sha256="",
+                status="refused",
+                error_kind="parent_missing",
+                refusal_reason=f"Parent directory does not exist: {file_path.parent}",
+                duration_ms=elapsed,
+            )
+            return
+
+        # ── Coordination ──
         coordination_store = self._coordination_store(ctx)
         coordination = self._build_coordination_context(ctx, file_path)
         reservation_allowed = self._maybe_claim_coordination(
@@ -234,6 +375,7 @@ class WriteFile(
             and coordination_store is not None
             and coordination is not None
         ):
+            elapsed = (time.perf_counter() - start) * 1000
             yield WriteFileResult(
                 path=str(file_path),
                 bytes_written=0,
@@ -244,9 +386,11 @@ class WriteFile(
                 status="blocked",
                 error_kind="path_reserved",
                 refusal_reason="Coordination reservation refused: another session has an active lease on this path",
+                duration_ms=elapsed,
             )
             return
 
+        # ── Dirty file guard ──
         guard = get_guard()
         check = guard.check_write_file(
             file_path,
@@ -256,6 +400,7 @@ class WriteFile(
         if not check.allowed:
             guard.record_refusal(file_path, check.reason)
             _cls = _classify_write_guard_refusal(check)
+            elapsed = (time.perf_counter() - start) * 1000
             yield WriteFileResult(
                 path=str(file_path),
                 bytes_written=0,
@@ -266,20 +411,26 @@ class WriteFile(
                 status="refused",
                 error_kind=_cls,
                 refusal_reason=check.detail,
+                duration_ms=elapsed,
             )
             return
 
         guard.mark_touched(file_path)
 
+        # ── Prepare write ──
         snapshot = self.get_file_snapshot_for_path(str(file_path))
         before_sha256 = sha256_file_bytes(snapshot.content)
+        before_bytes = len(snapshot.content) if snapshot.content is not None else 0
 
+        # ── Atomic write ──
         try:
             await self._write_file(args, file_path)
 
             after_sha256 = sha256_file_bytes(file_path.read_bytes())
             assert after_sha256 is not None  # file was just written
+            after_bytes = file_path.stat().st_size
 
+            elapsed = (time.perf_counter() - start) * 1000
             result = WriteFileResult(
                 path=str(file_path),
                 bytes_written=content_bytes,
@@ -290,6 +441,9 @@ class WriteFile(
                 created_file=not file_existed,
                 overwrote_existing_file=file_existed,
                 parent_dirs_created=parent_dirs_created,
+                duration_ms=elapsed,
+                before_bytes=before_bytes,
+                after_bytes=after_bytes,
             )
             self._maybe_publish_coordination_artifact(
                 coordination_store, coordination, result
@@ -307,43 +461,72 @@ class WriteFile(
                     paths=[coordination.relative_path],
                 )
 
-    def _prepare_and_validate_path(
-        self, args: WriteFileArgs
-    ) -> tuple[Path, bool, int, bool]:
-        file_path = normalize_tool_path(args.path)
-        require_path_within_workdir(file_path)
+    def _prepare_parent_dir(self, file_path: Path) -> bool:
+        """Create parent directories if configured.
 
-        if file_path.is_dir():
-            raise ToolError(f"Path is a directory, not a file: {file_path}")
-
-        content_bytes = len(args.content.encode("utf-8"))
-        if content_bytes > self.config.max_write_bytes:
-            raise ToolError(
-                f"Content exceeds {self.config.max_write_bytes} bytes limit"
-            )
-
-        file_existed = file_path.exists()
-
-        if file_existed and not args.overwrite:
-            raise ToolError(
-                f"File '{file_path}' exists. Set overwrite=True to replace."
-            )
-
-        parent_dirs_created = False
+        Returns True if parent dirs were created by this call.
+        """
         if self.config.create_parent_dirs:
             parent_existed = file_path.parent.is_dir()
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            parent_dirs_created = not parent_existed
-        elif not file_path.parent.exists():
-            raise ToolError(f"Parent directory does not exist: {file_path.parent}")
+            return not parent_existed
+        return False
 
-        return file_path, file_existed, content_bytes, parent_dirs_created
+    @staticmethod
+    def _atomic_write_text(file_path: Path, content: str) -> None:
+        """Write text content atomically using same-directory temp file + os.replace().
+
+        Creates a temporary file in the same directory as target, writes content,
+        fsyncs, then replaces the target atomically on POSIX when source and
+        destination are on the same filesystem. Best-effort durable atomic replace.
+
+        Bounded by max_write_bytes (64 KB), so synchronous I/O is acceptable
+        and will not block the event loop significantly.
+        """
+        content_bytes = content.encode("utf-8")
+        temp_path: Path | None = None
+        try:
+            fd, tmp_path_str = tempfile.mkstemp(
+                dir=str(file_path.parent), prefix=f".{file_path.name}.", suffix=".tmp"
+            )
+            temp_path = Path(tmp_path_str)
+
+            try:
+                os.write(fd, content_bytes)
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+
+            # Preserve existing file mode when overwriting
+            if file_path.exists():
+                old_mode = file_path.stat().st_mode
+                temp_path.chmod(old_mode)
+
+            # Atomic replace (atomic on POSIX when same filesystem)
+            os.replace(tmp_path_str, str(file_path))
+
+            # Best-effort directory fsync on POSIX
+            try:
+                parent_fd = os.open(str(file_path.parent), os.O_RDONLY)
+                try:
+                    os.fsync(parent_fd)
+                finally:
+                    os.close(parent_fd)
+            except (OSError, AttributeError):
+                pass  # Directory sync is best-effort
+
+        except Exception:
+            # Clean up temp file on failure (before replace)
+            if temp_path is not None and temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except OSError:
+                    pass
+            raise
 
     async def _write_file(self, args: WriteFileArgs, file_path: Path) -> None:
+        """Write content atomically using same-directory temp file + os.replace()."""
         try:
-            async with await anyio.Path(file_path).open(
-                mode="w", encoding="utf-8"
-            ) as f:
-                await f.write(args.content)
+            await asyncio.to_thread(self._atomic_write_text, file_path, args.content)
         except Exception as e:
             raise ToolError(f"Error writing {file_path}: {e}") from e

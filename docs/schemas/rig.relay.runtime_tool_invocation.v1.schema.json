@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.runtime_tool_invocation.v1.schema.json",
+  "title": "RuntimeToolInvocationEnvelope",
+  "description": "Structured invocation envelope for tool execution under runtime context. Contains canonical runtime metadata plus tool payload. NOT a receipt — payload may contain tool input (file content, SEARCH/REPLACE blocks). Receipts are content-light and must not store raw payloads.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "invocation_id",
+    "intent_id",
+    "tool_name",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.runtime_tool_invocation.v1"
+    },
+    "invocation_id": {
+      "type": "string",
+      "description": "Unique identifier for this invocation envelope."
+    },
+    "intent_id": {
+      "type": "string",
+      "description": "Reference to the original intent that produced this envelope."
+    },
+    "tool_name": {
+      "type": "string",
+      "enum": [
+        "write_file",
+        "search_replace",
+        "validate",
+        "runtime_exec",
+        "bash_legacy"
+      ],
+      "description": "Target tool name."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "prepared",
+        "blocked",
+        "refused"
+      ],
+      "description": "Envelope status. Prepared = ready for execution. Blocked/refused = context or policy prevented preparation."
+    },
+    "session_id": {
+      "type": ["string", "null"],
+      "description": "Canonical session ID from resolved runtime context."
+    },
+    "task_id": {
+      "type": ["string", "null"],
+      "description": "Canonical task ID from resolved runtime context."
+    },
+    "lane_id": {
+      "type": ["string", "null"],
+      "description": "Optional lane identifier from resolved runtime context."
+    },
+    "workspace_id": {
+      "type": ["string", "null"],
+      "description": "Optional workspace identifier from resolved runtime context."
+    },
+    "worktree_path": {
+      "type": ["string", "null"],
+      "description": "Optional git worktree path from resolved runtime context."
+    },
+    "repo_root": {
+      "type": ["string", "null"],
+      "description": "Optional repository root path from resolved runtime context."
+    },
+    "cwd": {
+      "type": ["string", "null"],
+      "description": "Effective working directory for the tool (worktree_path, then repo_root, then None)."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Tool-specific payload. May contain file content, SEARCH/REPLACE blocks, argv, etc. NOT content-light — this is the tool input, not a receipt."
+    },
+    "requested_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Paths requested by the intent, resolved against context scope."
+    },
+    "error_kind": {
+      "type": ["string", "null"],
+      "enum": [
+        "context_unresolved",
+        "session_required",
+        "task_required",
+        "worktree_required",
+        "unsafe_path",
+        "dirty_policy_failed",
+        "lease_conflict",
+        "path_reserved",
+        "expected_hash_missing",
+        "unsupported_tool",
+        "unsupported_mutation_location",
+        "invalid_payload",
+        null
+      ],
+      "description": "Structured error kind for blocked/refused envelopes."
+    },
+    "refusal_reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable explanation for blocked/refused status."
+    }
+  },
+  "additionalProperties": false
+}

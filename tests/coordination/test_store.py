@@ -151,3 +151,193 @@ def test_expired_reservation_is_marked_stale(tmp_path: Path) -> None:
 
     assert projection.active_path_reservations == {}
     assert projection.active_task_claims == {}
+
+
+# ── Same-owner claim_task renewal ─────────────────────────────────────
+
+
+def test_claim_task_same_owner_renews(tmp_path: Path) -> None:
+    """Same session_id + task_id re-claim refreshes expiry."""
+    store = CoordinationStore(tmp_path)
+    first = store.claim_task(
+        session_id="session-a", task_id="task-a", claim_kind="test", ttl_seconds=120
+    )
+    assert first.allowed is True
+    assert first.claim is not None
+    original_expires = first.claim.expires_at
+
+    second = store.claim_task(
+        session_id="session-a", task_id="task-a", claim_kind="test", ttl_seconds=300
+    )
+    assert second.allowed is True
+    assert second.claim is not None
+    # Expiry should be refreshed (extended)
+    assert second.claim.expires_at > original_expires  # type: ignore[operator]
+
+
+def test_claim_task_same_session_different_task_blocked(tmp_path: Path) -> None:
+    """Same session but different task_id is blocked."""
+    store = CoordinationStore(tmp_path)
+    store.claim_task(
+        session_id="session-a", task_id="task-a", claim_kind="test", ttl_seconds=120
+    )
+    result = store.claim_task(
+        session_id="session-a", task_id="task-b", claim_kind="test", ttl_seconds=120
+    )
+    assert result.allowed is True  # Different task_id -> separate claim
+
+
+def test_claim_task_different_session_same_task_blocked(tmp_path: Path) -> None:
+    """Different session_id on same task is blocked."""
+    store = CoordinationStore(tmp_path)
+    store.claim_task(
+        session_id="session-a", task_id="task-a", claim_kind="test", ttl_seconds=120
+    )
+    result = store.claim_task(
+        session_id="session-b", task_id="task-a", claim_kind="test", ttl_seconds=120
+    )
+    assert result.allowed is False
+    assert result.conflict is not None
+
+
+def test_claim_task_different_session_different_task_allowed(tmp_path: Path) -> None:
+    """Different session and different task is allowed."""
+    store = CoordinationStore(tmp_path)
+    store.claim_task(
+        session_id="session-a", task_id="task-a", claim_kind="test", ttl_seconds=120
+    )
+    result = store.claim_task(
+        session_id="session-b", task_id="task-b", claim_kind="test", ttl_seconds=120
+    )
+    assert result.allowed is True
+
+
+# ── Same-owner reserve_paths renewal ──────────────────────────────────
+
+
+def test_reserve_paths_same_owner_renews(tmp_path: Path) -> None:
+    """Same session_id + task_id can reserve same path twice."""
+    store = CoordinationStore(tmp_path)
+    first = store.reserve_paths(
+        session_id="session-a",
+        task_id="task-a",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=120,
+    )
+    assert first.allowed is True
+
+    second = store.reserve_paths(
+        session_id="session-a",
+        task_id="task-a",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=300,
+    )
+    assert second.allowed is True
+    assert second.reservation is not None
+
+    # Only one lease file should exist (reused key)
+    leases = list((tmp_path / "leases" / "paths").glob("*.json"))
+    assert len(leases) == 1
+
+
+def test_reserve_paths_same_session_different_task_blocked(tmp_path: Path) -> None:
+    """Same session but different task_id on same path is blocked."""
+    store = CoordinationStore(tmp_path)
+    store.reserve_paths(
+        session_id="session-a",
+        task_id="task-a",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=120,
+    )
+    result = store.reserve_paths(
+        session_id="session-a",
+        task_id="task-b",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=120,
+    )
+    assert result.allowed is False
+    assert result.conflict is not None
+
+
+def test_reserve_paths_different_session_blocked(tmp_path: Path) -> None:
+    """Different session_id on same path and task is blocked."""
+    store = CoordinationStore(tmp_path)
+    store.reserve_paths(
+        session_id="session-a",
+        task_id="task-a",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=120,
+    )
+    result = store.reserve_paths(
+        session_id="session-b",
+        task_id="task-a",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=120,
+    )
+    assert result.allowed is False
+    assert result.conflict is not None
+
+
+def test_reserve_paths_different_session_different_task_blocked(tmp_path: Path) -> None:
+    """Different session and different task on same path is blocked."""
+    store = CoordinationStore(tmp_path)
+    store.reserve_paths(
+        session_id="session-a",
+        task_id="task-a",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=120,
+    )
+    result = store.reserve_paths(
+        session_id="session-b",
+        task_id="task-b",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=120,
+    )
+    assert result.allowed is False
+    assert result.conflict is not None
+
+
+# ── Release after same-owner renewal ──────────────────────────────────
+
+
+def test_release_after_same_owner_renewal(tmp_path: Path) -> None:
+    """Releasing a path after same-owner renewal works."""
+    store = CoordinationStore(tmp_path)
+    store.claim_task(
+        session_id="session-a", task_id="task-a", claim_kind="test", ttl_seconds=120
+    )
+    store.reserve_paths(
+        session_id="session-a",
+        task_id="task-a",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=120,
+    )
+    # Renew
+    store.claim_task(
+        session_id="session-a", task_id="task-a", claim_kind="test", ttl_seconds=300
+    )
+    store.reserve_paths(
+        session_id="session-a",
+        task_id="task-a",
+        mode="write",
+        paths=["vibe/core/tools/builtins/task.py"],
+        ttl_seconds=300,
+    )
+    # Release should work
+    store.release_paths(
+        session_id="session-a",
+        task_id="task-a",
+        paths=["vibe/core/tools/builtins/task.py"],
+    )
+    # Verify the reservation is released
+    projection = store.read_state_projection()
+    assert projection.active_path_reservations == {}

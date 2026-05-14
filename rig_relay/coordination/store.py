@@ -199,27 +199,33 @@ class CoordinationStore:
                     else "1970-01-01T00:00:00+00:00"
                 )
                 if expires_dt > now:
-                    conflict = CoordinationConflict(
-                        conflict_id=str(hash(task_id + session_id) & 0xFFFFFFFF),
-                        kind="task_already_claimed",
-                        session_id=session_id,
-                        other_session_id=existing.session_id,
-                        task_id=task_id,
-                        paths=[],
-                        recommended_resolution="serialize_or_split_scope",
+                    # Same-owner renewal: refresh claim, don't block
+                    same_owner = (
+                        existing.session_id == session_id
+                        and existing.task_id == task_id
                     )
-                    self._write_json(
-                        self._conflict_path(conflict.conflict_id),
-                        conflict.model_dump(exclude_none=True),
-                    )
-                    return CoordinationClaimResult(
-                        allowed=False,
-                        claim=None,
-                        conflict=conflict,
-                        warnings=[
-                            f"Task '{task_id}' already claimed by {existing.session_id}"
-                        ],
-                    )
+                    if not same_owner:
+                        conflict = CoordinationConflict(
+                            conflict_id=str(hash(task_id + session_id) & 0xFFFFFFFF),
+                            kind="task_already_claimed",
+                            session_id=session_id,
+                            other_session_id=existing.session_id,
+                            task_id=task_id,
+                            paths=[],
+                            recommended_resolution="serialize_or_split_scope",
+                        )
+                        self._write_json(
+                            self._conflict_path(conflict.conflict_id),
+                            conflict.model_dump(exclude_none=True),
+                        )
+                        return CoordinationClaimResult(
+                            allowed=False,
+                            claim=None,
+                            conflict=conflict,
+                            warnings=[
+                                f"Task '{task_id}' already claimed by {existing.session_id}"
+                            ],
+                        )
 
         scope_paths = list(scope.get("allowed_paths", [])) if scope else []
         claim = CoordinationTaskClaim(
@@ -246,7 +252,6 @@ class CoordinationStore:
         paths: list[str],
         ttl_seconds: int,
     ) -> CoordinationReservationResult:
-        now = datetime.now(UTC)
         expires = now_plus(ttl_seconds)
         normalized = [normalize_path(path) for path in paths]
 
@@ -288,49 +293,7 @@ class CoordinationStore:
                                     f"Path '{raw_path}' already reserved by {existing.session_id}"
                                 ],
                             )
-            for raw_path in paths:
-                path_hash = hashlib.sha256(raw_path.encode("utf-8")).hexdigest()
-                lease_path = self._lease_path(path_hash)
-                if lease_path.exists():
-                    existing = CoordinationPathReservation.model_validate_json(
-                        lease_path.read_text(encoding="utf-8")
-                    )
-                    if existing.status == "active":
-                        expires_dt = datetime.fromisoformat(
-                            existing.expires_at.replace("Z", "+00:00")
-                            if existing.expires_at
-                            else "1970-01-01T00:00:00+00:00"
-                        )
-                        if expires_dt > now and existing.session_id != session_id:
-                            conflict = CoordinationConflict(
-                                conflict_id=self._path_key("|".join(normalized)),
-                                kind="path_write_overlap",
-                                session_id=session_id,
-                                other_session_id=existing.session_id,
-                                task_id=task_id,
-                                paths=[raw_path],
-                                recommended_resolution="serialize_or_split_scope",
-                            )
-                            self._write_json(
-                                self._conflict_path(conflict.conflict_id),
-                                conflict.model_dump(exclude_none=True),
-                            )
-                            refusal_payload = build_reservation_refused_payload(
-                                conflict
-                            )
-                            self._append_event(
-                                "coord.path.reservation_refused", refusal_payload
-                            )
-                            return CoordinationReservationResult(
-                                allowed=False,
-                                reservation=None,
-                                conflict=conflict,
-                                warnings=[
-                                    f"Path '{raw_path}' already reserved by {existing.session_id}"
-                                ],
-                            )
 
-        normalized = [normalize_path(path) for path in paths]
         reservation = CoordinationPathReservation(
             session_id=session_id,
             task_id=task_id,

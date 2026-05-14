@@ -7,7 +7,9 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "enum": ["rig.relay.search_replace_invocation.v1"]
+      "enum": [
+        "rig.relay.search_replace_invocation.v1"
+      ]
     },
     "file_path": {
       "type": "string",
@@ -18,11 +20,25 @@
       "description": "One or more SEARCH/REPLACE blocks to apply"
     },
     "expected_before_sha256": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "sha256:<hex> of the file bytes before editing. Required for dirty files."
     },
     "expected_replacements": {
-      "type": "integer",
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Expected number of replacements. If set and actual count differs, returns count_mismatch without mutation."
     },
     "allow_multiple": {
@@ -30,5 +46,8 @@
       "description": "If false, multiple matches for the same search text return ambiguous_match without mutation."
     }
   },
-  "required": ["file_path", "content"]
+  "required": [
+    "file_path",
+    "content"
+  ]
 }

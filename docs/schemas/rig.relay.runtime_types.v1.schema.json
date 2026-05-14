@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.runtime_types.v1.schema.json",
+  "title": "Rig Relay Runtime Types v1",
+  "description": "Enum and model definitions for runtime provider kinds, trust tiers, capabilities, and invocation status. Defines the foundational runtime type system used by all runtime-related schemas.",
+  "type": "object",
+  "definitions": {
+    "RuntimeProviderKind": {
+      "type": "string",
+      "enum": [
+        "local",
+        "cli",
+        "custom",
+        "dry_run",
+        "stub"
+      ],
+      "description": "Kinds of runtime providers."
+    },
+    "RuntimeProviderTrustTier": {
+      "type": "string",
+      "enum": [
+        "blocked",
+        "advisory",
+        "reviewer",
+        "planner",
+        "executor_candidate",
+        "validator"
+      ],
+      "description": "Trust tiers for runtime providers. Lower tiers have fewer permissions."
+    },
+    "RuntimeProviderStatus": {
+      "type": "string",
+      "enum": [
+        "available",
+        "unavailable",
+        "degraded",
+        "blocked",
+        "error"
+      ],
+      "description": "Operational status of a runtime provider."
+    },
+    "RuntimeCapabilityKind": {
+      "type": "string",
+      "enum": [
+        "file_read",
+        "file_write_proposal",
+        "shell_proposal",
+        "patch_proposal",
+        "replay_access",
+        "network_fetch_proposal",
+        "docs_fetch_proposal",
+        "telemetry_export_proposal",
+        "validation",
+        "receipt_read",
+        "coordination_read",
+        "coordination_write",
+        "worktree_read",
+        "worktree_write"
+      ],
+      "description": "Kinds of runtime capabilities. Includes Rig-original kinds plus Rig Relay extensions."
+    },
+    "RuntimeInvocationStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "starting",
+        "running",
+        "succeeded",
+        "failed",
+        "timed_out",
+        "cancelled",
+        "blocked"
+      ],
+      "description": "Status of a runtime invocation."
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "rig.relay.runtime_types.v1"
+      ]
+    },
+    "provider_kind": {
+      "$ref": "#/definitions/RuntimeProviderKind",
+      "description": "The kind of runtime provider."
+    },
+    "trust_tier": {
+      "$ref": "#/definitions/RuntimeProviderTrustTier",
+      "description": "Trust tier for a runtime provider."
+    },
+    "provider_status": {
+      "$ref": "#/definitions/RuntimeProviderStatus",
+      "description": "Operational status of a runtime provider."
+    },
+    "capability_kind": {
+      "$ref": "#/definitions/RuntimeCapabilityKind",
+      "description": "Kind of runtime capability."
+    },
+    "invocation_status": {
+      "$ref": "#/definitions/RuntimeInvocationStatus",
+      "description": "Status of a runtime invocation."
+    },
+    "capability": {
+      "type": "object",
+      "description": "A runtime capability with kind and scope.",
+      "properties": {
+        "capability_kind": {
+          "$ref": "#/definitions/RuntimeCapabilityKind"
+        },
+        "scope": {
+          "type": "string",
+          "description": "Scope of the capability (global, workspace, session, request).",
+          "default": "request"
+        }
+      },
+      "required": [
+        "capability_kind"
+      ],
+      "additionalProperties": false
+    },
+    "provider_descriptor": {
+      "type": "object",
+      "description": "Content-light descriptor for a runtime provider.",
+      "properties": {
+        "provider_id": {
+          "type": "string",
+          "description": "Unique identifier for the provider."
+        },
+        "kind": {
+          "$ref": "#/definitions/RuntimeProviderKind"
+        },
+        "trust_tier": {
+          "$ref": "#/definitions/RuntimeProviderTrustTier"
+        },
+        "status": {
+          "$ref": "#/definitions/RuntimeProviderStatus"
+        },
+        "version": {
+          "type": "string",
+          "description": "Provider version string."
+        }
+      },
+      "required": [
+        "provider_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

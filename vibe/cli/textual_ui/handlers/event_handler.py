@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from vibe.cli.textual_ui.stream_coalescer import StreamCoalescer
 from vibe.cli.textual_ui.widgets.compact import CompactMessage
 from vibe.cli.textual_ui.widgets.loading import DEFAULT_LOADING_STATUS
 from vibe.cli.textual_ui.widgets.messages import (
@@ -57,6 +58,7 @@ class EventHandler:
         self.current_compact: CompactMessage | None = None
         self.current_streaming_message: AssistantMessage | None = None
         self.current_streaming_reasoning: ReasoningMessage | None = None
+        self._coalescer: StreamCoalescer | None = None
         self._hook_run_container: HookRunContainer | None = None
 
     async def _handle_hook_event(
@@ -188,11 +190,13 @@ class EventHandler:
             self.current_streaming_reasoning = None
 
         if self.current_streaming_message is None:
-            msg = AssistantMessage(event.content)
+            msg = AssistantMessage("")
             self.current_streaming_message = msg
+            self._coalescer = StreamCoalescer()
             await self.mount_callback(msg)
-        else:
-            await self.current_streaming_message.append_content(event.content)
+        if self._coalescer is not None:
+            self._coalescer.append(event.content)
+        await self._flush_coalescer()
 
     async def _handle_reasoning_message(self, event: ReasoningEvent) -> None:
         if self.current_streaming_message is not None:
@@ -227,14 +231,31 @@ class EventHandler:
     async def _handle_unknown_event(self, event: BaseEvent) -> None:
         await self.mount_callback(NoMarkupStatic(str(event), classes="unknown-event"))
 
+    async def _flush_coalescer(self) -> None:
+        """Check coalescer and flush pending text to the streaming message widget."""
+        if self._coalescer is None or self.current_streaming_message is None:
+            return
+        text = self._coalescer.flush()
+        if text:
+            await self.current_streaming_message.append_content(text)
+
     async def finalize_streaming(self) -> None:
         if self.current_streaming_reasoning is not None:
             self.current_streaming_reasoning.stop_spinning()
             await self.current_streaming_reasoning.stop_stream()
             self.current_streaming_reasoning = None
         if self.current_streaming_message is not None:
+            # Force-flush any remaining coalesced text before finalizing
+            if self._coalescer is not None:
+                pending = self._coalescer.force_flush()
+                if pending:
+                    await self.current_streaming_message.append_content(pending)
+                # Capture streaming metrics snapshot (test-only; connect to telemetry later):
+                # metrics = self._coalescer.get_metrics_snapshot()
+                # logger.debug("stream_coalescer_metrics: %s", metrics)
             await self.current_streaming_message.stop_stream()
             self.current_streaming_message = None
+        self._coalescer = None
 
     def stop_current_tool_call(self, success: bool = True) -> None:
         for tool_call in self.tool_calls.values():

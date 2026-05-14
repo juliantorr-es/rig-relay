@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.runtime_tool_invocation_dry_run.v1.schema.json",
+  "title": "RuntimeToolDryRunResult",
+  "description": "Dry-run assessment result for tool invocation. Content-light: no raw file contents, stdout, stderr, diffs, snippets, or secrets. Only boolean flags, paths, schema validity indicators, and structured error/refusal information.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "intent_id",
+    "tool_name"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.runtime_tool_invocation_dry_run.v1"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["would_prepare", "blocked", "refused", "invalid"],
+      "description": "Dry-run status. would_prepare = adapter would prepare the envelope. blocked = context/policy blocked. refused = tool/path/payload refused. invalid = envelope or payload failed validation."
+    },
+    "invocation_id": {
+      "type": ["string", "null"],
+      "description": "The invocation ID from the prepared envelope, if available."
+    },
+    "intent_id": {
+      "type": "string",
+      "description": "Reference to the original intent ID."
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Name of the tool assessed."
+    },
+    "envelope_schema_valid": {
+      "type": "boolean",
+      "description": "Whether the prepared envelope passed schema validation against the runtime_tool_invocation schema."
+    },
+    "tool_schema_valid": {
+      "type": ["boolean", "null"],
+      "description": "Whether the tool-specific payload shape passed structural validation."
+    },
+    "would_execute": {
+      "type": "boolean",
+      "description": "Always false — this is a dry run. No tool would be executed."
+    },
+    "would_mutate": {
+      "type": "boolean",
+      "description": "Classification-only: true for write_file and search_replace. No actual mutation occurs."
+    },
+    "would_acquire_lease": {
+      "type": "boolean",
+      "description": "Always false — no lease would be acquired during dry run."
+    },
+    "requested_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths requested by the intent."
+    },
+    "error_kind": {
+      "type": ["string", "null"],
+      "description": "Structured error kind from blocked/refused/invalid results."
+    },
+    "refusal_reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable explanation for blocked/refused/invalid status."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Warnings from the adapter or validation."
+    }
+  },
+  "additionalProperties": false
+}

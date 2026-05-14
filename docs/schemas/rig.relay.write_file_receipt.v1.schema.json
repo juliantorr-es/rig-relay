@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.write_file_receipt.v1.schema.json",
+  "title": "Rig Relay WriteFile Receipt v1",
+  "description": "Content-light receipt for a write_file invocation. Contains no raw file content — only metadata, SHA256 hashes, byte counts, path, and structured error classification.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "rig.relay.write_file_receipt.v1"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "description": "Path to the written file"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "refused",
+        "blocked"
+      ],
+      "description": "Outcome of the write operation"
+    },
+    "error_kind": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Structured error classification when status is not success"
+    },
+    "refusal_reason": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Sanitized human-readable reason when status is refused or blocked"
+    },
+    "bytes_written": {
+      "type": "integer",
+      "description": "Number of bytes written to the file"
+    },
+    "before_sha256": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "SHA256 hash of the file content before writing (null if file did not exist or hash was not captured)"
+    },
+    "after_sha256": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "SHA256 hash of the file content after writing"
+    },
+    "before_bytes": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "File size in bytes before writing (null if file did not exist or size was not captured)"
+    },
+    "after_bytes": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "File size in bytes after writing (null if write did not succeed)"
+    },
+    "file_existed": {
+      "type": "boolean",
+      "description": "Whether the file existed before the write operation"
+    },
+    "created_file": {
+      "type": "boolean",
+      "description": "Whether this operation created a new file"
+    },
+    "overwrote_existing_file": {
+      "type": "boolean",
+      "description": "Whether this operation overwrote an existing file"
+    },
+    "parent_dirs_created": {
+      "type": "boolean",
+      "description": "Whether parent directories were created by this operation"
+    },
+    "duration_ms": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Wall-clock duration in milliseconds (null if not measured)"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "path",
+    "status"
+  ]
+}

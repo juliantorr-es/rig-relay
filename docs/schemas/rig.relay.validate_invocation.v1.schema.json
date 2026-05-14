@@ -10,20 +10,44 @@
       "description": "Named validation profile (quick, python, schemas, receipt-policy, tool-hardening)"
     },
     "scope": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Optional mission scope label"
     },
     "paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Optional path scope for targeted validation"
     },
     "workspace_root": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Working root for deterministic resolution"
     },
     "timeout_seconds": {
-      "type": "integer",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Per-profile timeout override in seconds"
     },
     "check_only": {
@@ -39,18 +63,41 @@
       "description": "If true, allow mutation-capable checks (default: false)"
     },
     "env_profile": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Restricted environment profile"
     },
     "expected_dirty_policy": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Expected workspace dirty policy (clean, allow_dirty, allow_listed_dirty)"
     },
     "output_cap_bytes": {
-      "type": "integer",
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Output cap per-check before truncation"
     }
   },
-  "required": ["profile"],
+  "required": [
+    "profile"
+  ],
   "additionalProperties": false
 }

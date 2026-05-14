@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.worktree.v1.schema.json",
+  "title": "Worktree v1",
+  "description": "Worktree lifecycle models for Rig Relay worktree manager. Defines WorktreeRecord and WorktreeOperationResult for git worktree operations.",
+  "type": "object",
+  "definitions": {
+    "WorktreeStatus": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "missing",
+        "dirty",
+        "stale",
+        "removed",
+        "error"
+      ],
+      "description": "Status of a tracked worktree."
+    },
+    "WorktreeOperationKind": {
+      "type": "string",
+      "enum": [
+        "create",
+        "remove",
+        "list",
+        "inspect",
+        "get_head"
+      ],
+      "description": "Kind of worktree operation."
+    },
+    "WorktreeRecord": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "description": "Schema version identifier.",
+          "default": "rig.relay.worktree.v1"
+        },
+        "workspace_id": {
+          "type": "string",
+          "description": "Unique workspace/lane identifier."
+        },
+        "branch_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Name of the branch checked out in this worktree."
+        },
+        "path": {
+          "type": "string",
+          "description": "Absolute filesystem path to the worktree."
+        },
+        "head_sha": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Current HEAD SHA of the worktree."
+        },
+        "status": {
+          "$ref": "#/definitions/WorktreeStatus"
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ISO8601 timestamp of worktree creation."
+        },
+        "removed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ISO8601 timestamp of worktree removal."
+        },
+        "refusal_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human-readable refusal explanation."
+        },
+        "error_kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Machine-readable error classification."
+        }
+      },
+      "required": [
+        "workspace_id",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "WorktreeOperationResult": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "description": "Schema version identifier.",
+          "default": "rig.relay.worktree.v1"
+        },
+        "operation": {
+          "$ref": "#/definitions/WorktreeOperationKind",
+          "description": "The operation that was performed."
+        },
+        "status": {
+          "type": "string",
+          "description": "Operation outcome (created, removed, refused, error, etc.)."
+        },
+        "record": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/WorktreeRecord"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Single worktree record, if applicable."
+        },
+        "records": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/WorktreeRecord"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "List of worktree records, if applicable."
+        },
+        "error_kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Machine-readable error classification."
+        },
+        "refusal_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human-readable refusal explanation."
+        }
+      },
+      "required": [
+        "operation",
+        "status"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/definitions/WorktreeRecord"
+    },
+    {
+      "$ref": "#/definitions/WorktreeOperationResult"
+    }
+  ]
+}

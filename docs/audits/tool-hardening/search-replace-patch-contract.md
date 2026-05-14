@@ -97,7 +97,7 @@ Three new JSON schemas:
 - `content` field preserved in result for legacy consumers
 - `run()` signature unchanged — still yields `SearchReplaceResult`
 - `SearchReplaceReceipt` is an additive model, not required
-- File-not-found, outside-workdir, and parse failures still raise `ToolError`
+- File-not-found, outside-workdir, content-size, empty-content, directory-path, binary-file, and parse failures now return structured `SearchReplaceResult(status="refused")` with domain-specific `error_kind` instead of raising `ToolError`. Receipt emission follows automatically.
 
 ## Bugs Fixed Incidentally
 
@@ -246,8 +246,12 @@ SearchReplace now instantiates cleanly and exposes ``run()`` and
 ### Remaining Risks
 
 1. **Legacy ToolError paths** (file not found, outside workdir, parse
-   failure) still bypass receipt emission. Acceptable — these are caller
-   errors, not tool outcomes.
+   failure, content size, empty content, directory target, binary file)
+   now return structured `SearchReplaceResult(status="refused")` with
+   domain-specific `error_kind`. Receipt emission follows automatically.
+   Only truly exceptional filesystem errors (PermissionError, OSError)
+   in `_read_file`/`_write_file` remain as ToolError — these are
+   system-level faults, not tool outcomes.
 2. **No end-to-end agent-loop integration test**. ``build_receipt`` +
    ``capture_tool_receipt`` pipeline tested in isolation; full
    ``_execute_tool()`` path not exercised.

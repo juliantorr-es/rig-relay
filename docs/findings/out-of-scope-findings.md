@@ -65,6 +65,24 @@
 |----|-------|----------|------------|
 | `finding_20260513_search_replace_plr0914` | search_replace.py has recurring PLR0914/PLR0915 pressure | low | — |
 
+### Safety Guard Gaps
+
+| ID | Title | Severity | Blocked By |
+|----|-------|----------|------------|
+| `finding_20260517_validate_check_missing_dependency_bug` | validate_runner.check_missing_dependency incorrectly blocks multi-word commands like 'git status' | medium | — |
+
+### Stale Infrastructure
+
+| ID | Title | Severity | Blocked By |
+|----|-------|----------|------------|
+| `finding_20260517_stale_ci_workflows` | pylint.yml and python-package-conda.yml are stale legacy workflows from mistral-vibe | medium | — |
+
+### Testing Gaps
+
+| ID | Title | Severity | Blocked By |
+|----|-------|----------|------------|
+| `finding_20250613_validate_test_duplication` | test_validate.py and test_validate_git_state.py contain 19 duplicate/near-duplicate git-state tests | medium | — |
+
 ## Schema
 
 Each JSONL row conforms to `rig.relay.out_of_scope_finding.v1`:
@@ -105,9 +123,3 @@ Findings reference language-specific best-practice anchors documented in `docs/f
 - **Append-only JSONL.** Agents append new rows to `out-of-scope-findings.jsonl`. Never edit or remove existing rows.
 - **Index is derived.** The Markdown index is regenerated from the JSONL. If the index is stale, regenerate it.
 - **Link from final reports.** Every mission final report should include a small "Out-of-scope findings recorded" section linking back to this registry.
-
-### Testing Gaps
-
-| ID | Title | Severity | Blocked By |
-|----|-------|----------|------------|
-| `finding_20250613_validate_test_duplication` | test_validate.py and test_validate_git_state.py contain 19 duplicate/near-duplicate git-state tests | medium | — |

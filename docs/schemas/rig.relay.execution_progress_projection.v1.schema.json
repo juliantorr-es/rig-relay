@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.execution_progress_projection.v1.schema.json",
+  "title": "ExecutionProgressProjection",
+  "description": "Content-light runtime execution summary for UI/projection consumers. Never contains raw output.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.execution_progress_projection.v1"
+    },
+    "invocation_id": { "type": ["string", "null"] },
+    "lease_id": { "type": ["string", "null"] },
+    "request_id": { "type": ["string", "null"] },
+    "workspace_id": { "type": ["string", "null"] },
+    "worktree_path": { "type": ["string", "null"] },
+    "status": { "type": "string" },
+    "started_at": { "type": ["string", "null"] },
+    "last_event_at": { "type": ["string", "null"] },
+    "elapsed_ms": { "type": ["number", "null"] },
+    "heartbeat_count": { "type": "integer", "minimum": 0 },
+    "warning_count": { "type": "integer", "minimum": 0 },
+    "latest_warning_kind": { "type": ["string", "null"] },
+    "latest_warning_message": { "type": ["string", "null"], "maxLength": 203 },
+    "stdout_bytes": { "type": ["integer", "null"], "minimum": 0 },
+    "stderr_bytes": { "type": ["integer", "null"], "minimum": 0 },
+    "stdout_truncated": { "type": "boolean" },
+    "stderr_truncated": { "type": "boolean" },
+    "exit_code": { "type": ["integer", "null"] },
+    "error_kind": { "type": ["string", "null"] },
+    "refusal_reason": { "type": ["string", "null"] },
+    "terminal_event_id": { "type": ["string", "null"] },
+    "evidence_sha256": { "type": ["string", "null"] }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "heartbeat_count",
+    "warning_count",
+    "stdout_truncated",
+    "stderr_truncated"
+  ],
+  "additionalProperties": false
+}

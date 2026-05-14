@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.execution_lease.v1.schema.json",
+  "title": "Rig Relay Execution Lease v1",
+  "description": "Execution request, lease, and result models for governed execution. Defines how commands are specified (ExecutionRequest) and authorized (ExecutionLease) for bounded execution in a workspace/worktree lane.",
+  "type": "object",
+  "definitions": {
+    "ExecutionLeaseStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "released",
+        "expired",
+        "cancelled",
+        "failed"
+      ],
+      "description": "Status of an execution lease lifecycle."
+    },
+    "RuntimeCapabilityKind": {
+      "type": "string",
+      "enum": [
+        "file_read",
+        "file_write_proposal",
+        "shell_proposal",
+        "patch_proposal",
+        "replay_access",
+        "network_fetch_proposal",
+        "docs_fetch_proposal",
+        "telemetry_export_proposal",
+        "validation",
+        "receipt_read",
+        "coordination_read",
+        "coordination_write",
+        "worktree_read",
+        "worktree_write"
+      ]
+    },
+    "ExecutionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "argv",
+        "cwd",
+        "timeout_ms",
+        "purpose"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "rig.relay.execution_request.v1"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "env_overlay": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "worktree_path": {
+          "type": "string"
+        },
+        "requested_capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RuntimeCapabilityKind"
+          },
+          "default": []
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      }
+    },
+    "ExecutionLease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "lease_id",
+        "request",
+        "acquired_at",
+        "expires_at",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "rig.relay.execution_lease.v1"
+        },
+        "lease_id": {
+          "type": "string"
+        },
+        "request": {
+          "$ref": "#/definitions/ExecutionRequest"
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "worktree_path": {
+          "type": "string"
+        },
+        "acquired_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "released_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "$ref": "#/definitions/ExecutionLeaseStatus"
+        },
+        "refusal_reason": {
+          "type": "string"
+        },
+        "error_kind": {
+          "type": "string"
+        }
+      }
+    },
+    "ExecutionLeaseResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "rig.relay.execution_lease_result.v1"
+        },
+        "status": {
+          "type": "string"
+        },
+        "lease": {
+          "$ref": "#/definitions/ExecutionLease"
+        },
+        "error_kind": {
+          "type": "string"
+        },
+        "refusal_reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

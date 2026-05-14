@@ -25,6 +25,8 @@ from vibe.core.tools.builtins.validate import (
     DIRTY_POLICY_ALLOW_DIRTY,
     DIRTY_POLICY_ALLOW_LISTED_DIRTY,
     DIRTY_POLICY_CLEAN,
+    Validate,
+    ValidateArgs,
     ValidateGitState,
     ValidateResult,
     ValidateToolConfig,
@@ -388,3 +390,173 @@ async def test_worktree_readiness_with_dirty_policy_clean(temp_git_repo: Path) -
     r = results[0]
     # Should fail due to dirty workspace
     assert r.status == "failed" or r.error_kind == "dirty_workspace"
+
+
+@pytest.mark.asyncio
+async def test_allow_listed_dirty_relative_path_passes(temp_git_repo):
+    """allow_listed_dirty passes when dirty path is a workspace-relative path."""
+    (temp_git_repo / "dirty.py").write_text("x=2\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_ALLOW_LISTED_DIRTY,
+        paths=["dirty.py"],
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    assert results[0].status in ("passed", "skipped")
+
+
+@pytest.mark.asyncio
+async def test_allow_listed_dirty_absolute_path_passes(temp_git_repo):
+    """allow_listed_dirty passes when dirty path is an absolute path inside workspace."""
+    dirty_file = temp_git_repo / "dirty.py"
+    dirty_file.write_text("x=2\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_ALLOW_LISTED_DIRTY,
+        paths=[str(dirty_file.resolve())],
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    assert results[0].status in ("passed", "skipped")
+
+
+@pytest.mark.asyncio
+async def test_allow_listed_dirty_dot_slash_path_passes(temp_git_repo):
+    """allow_listed_dirty passes when dirty path uses ./ prefix."""
+    (temp_git_repo / "dirty.py").write_text("x=2\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_ALLOW_LISTED_DIRTY,
+        paths=["./dirty.py"],
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    assert results[0].status in ("passed", "skipped")
+
+
+@pytest.mark.asyncio
+async def test_allow_listed_dirty_fails_with_unlisted_path(temp_git_repo):
+    """allow_listed_dirty fails when a dirty path is not in the allowed list."""
+    (temp_git_repo / "dirty.py").write_text("x=2\n")
+    (temp_git_repo / "other.py").write_text("y=3\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_ALLOW_LISTED_DIRTY,
+        paths=["dirty.py"],
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    r = results[0]
+    assert r.status == "failed"
+    assert r.error_kind == "dirty_workspace"
+    assert r.before_git_state is not None
+    assert r.blocker_summary == {"dirty_workspace": 1}
+
+
+@pytest.mark.asyncio
+async def test_allow_listed_dirty_empty_paths_fails_when_dirty(temp_git_repo):
+    """allow_listed_dirty with empty paths fails when workspace is dirty."""
+    (temp_git_repo / "dirty.py").write_text("x=2\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_ALLOW_LISTED_DIRTY,
+        paths=[],
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    r = results[0]
+    assert r.status == "failed"
+    assert r.error_kind == "dirty_workspace"
+
+
+@pytest.mark.asyncio
+async def test_outside_workspace_path_refused_before_dirty_policy(
+    temp_git_repo, tmp_path
+):
+    """Outside-workspace path is refused before dirty-policy comparison."""
+    outside = tmp_path / "outside.py"
+    outside.write_text("x=2\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_CLEAN,
+        paths=[str(outside)],
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    r = results[0]
+    assert r.status == "refused"
+    assert r.error_kind == "unsafe_paths"
+    # Dirty-policy failure would be "failed", not "refused"
+    assert r.error_kind != "dirty_workspace"
+
+
+@pytest.mark.asyncio
+async def test_allow_listed_dirty_duplicate_paths_passes(temp_git_repo):
+    """Duplicate listed paths still pass."""
+    (temp_git_repo / "dirty.py").write_text("x=2\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_ALLOW_LISTED_DIRTY,
+        paths=["dirty.py", "dirty.py"],
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    assert results[0].status in ("passed", "skipped")
+
+
+@pytest.mark.asyncio
+async def test_clean_policy_fails_on_any_dirty_file(temp_git_repo):
+    """clean policy still fails on any dirty file."""
+    (temp_git_repo / "dirty.py").write_text("x=2\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_CLEAN,
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    r = results[0]
+    assert r.status == "failed"
+    assert r.error_kind == "dirty_workspace"
+    assert r.before_git_state is not None
+    assert r.blocker_summary == {"dirty_workspace": 1}
+
+
+@pytest.mark.asyncio
+async def test_allow_dirty_passes_with_dirty_files(temp_git_repo):
+    """allow_dirty still passes with dirty files."""
+    (temp_git_repo / "dirty.py").write_text("x=2\n")
+    config = ValidateToolConfig()
+    tool = Validate(config_getter=lambda: config, state=BaseToolState())
+    args = ValidateArgs(
+        profile="worktree-readiness",
+        workspace_root=str(temp_git_repo),
+        expected_dirty_policy=DIRTY_POLICY_ALLOW_DIRTY,
+    )
+    results = [r async for r in tool.run(args) if isinstance(r, ValidateResult)]
+    assert len(results) == 1
+    assert results[0].status in ("passed", "skipped")

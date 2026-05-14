@@ -47,19 +47,17 @@ Staged plan to reduce duplication, consolidate test files, and fill coverage gap
 
 ---
 
-## Stage 2 — Validate Test Consolidation
+## Stage 2 — Validate Test Consolidation ✅ (Complete)
 
 **Goal:** Remove exact and near-duplicate git-state tests from `test_validate.py` and clean up the file split.
 
+**Status:** ✅ Done — 18 duplicate tests removed, 1 unique test preserved.
+
 **Files affected:**
-- `tests/tools/test_validate.py` — remove 19 git-state tests (lines 1469-1797)
+- `tests/tools/test_validate.py` — 18 git-state tests removed (preserved `test_collect_git_state_porcelain_sha256` which has no equivalent in dedicated file)
 - `tests/tools/test_validate_git_state.py` — no changes
 
-**Tests to preserve:**
-- All ~108 Stage 1-4 tests in `test_validate.py` (lines 1-1468)
-- All 27 tests in `test_validate_git_state.py`
-
-**Tests to delete (from test_validate.py):**
+**Tests removed (18):**
 ```
 test_parse_git_status_branch_sets_branch
 test_parse_git_status_branch_with_ahead_behind
@@ -67,7 +65,7 @@ test_parse_git_status_branch_detached_head
 test_parse_git_status_porcelain_line_untracked
 test_parse_git_status_porcelain_line_modified
 test_parse_git_status_porcelain_parses_full_output
-test_collect_git_state_non_repo
+test_collect_git_state_non_repo                     [EXACT DUPLICATE]
 test_collect_git_state_empty_repo
 test_collect_git_state_detects_dirty
 test_check_dirty_policy_none_passes
@@ -79,46 +77,37 @@ test_check_dirty_policy_allow_listed_dirty_fails
 test_worktree_readiness_profile_registered
 test_validate_receipt_git_summary_content_light
 test_validate_git_state_extra_forbidden
-test_collect_git_state_porcelain_sha256
 ```
 
-**Coverage preserved:** All 19 tests are fully covered by `test_validate_git_state.py`
-**Net reduction:** ~310 lines, bringing `test_validate.py` from 1,797 to ~1,480 lines
-
-**Risks:** None — all tests are exact or near-duplicate of dedicated file's tests
-**Validation:** `uv run pytest tests/tools/test_validate_git_state.py -x` passes; `uv run pytest tests/tools/test_validate.py -x` passes (all remaining tests)
-**Exit criteria:** `test_validate.py` has 108 tests (down from 127); 0 git-state tests remain
+**Coverage preserved:** All 18 removals fully covered by `test_validate_git_state.py` (27 tests)
+**Net reduction:** 308 lines, 18 tests; `test_validate.py` now 1,489 lines / 109 tests
+**Validation:** `uv run pytest tests/tools/test_validate_git_state.py -x` → 27 passed; `uv run pytest tests/tools/test_validate.py -x` → 109 passed
 
 ---
 
-## Stage 3 — Schema/Model Contract Tests
+## Stage 3 — Schema/Model Contract Tests ✅ (Complete)
 
 **Goal:** Add model-dump-against-schema validation for all untested schemas.
 
+**Status:** ✅ Done — 13 tests added covering 9 schemas across 3 tool families.
+
 **Files affected (create):**
-- `tests/schemas/test_bash_schema_contracts.py`
-- `tests/schemas/test_search_replace_schema_contracts.py`
-- `tests/schemas/test_validate_schema_contracts.py`
-- `tests/schemas/test_write_file_schema_contracts.py`
+- `tests/tools/test_tool_schema_contracts.py` — 13 tests for bash, search_replace, validate models
 
-**Coverage to add (filling gaps gap-003, gap-008, gap-009, gap-010, gap-011):**
-- `BashResult.model_dump()` → validates against `rig.relay.bash_result.v1`
-- `BashReceipt.model_dump()` → validates against `rig.relay.bash_receipt.v1`
-- `BashArgs.model_dump()` → validates against `rig.relay.bash_invocation.v1`
-- `SearchReplaceResult.model_dump()` → validates against `rig.relay.search_replace_result.v1`
-- `SearchReplaceReceipt.model_dump()` → validates against `rig.relay.search_replace_receipt.v1`
-- `SearchReplaceArgs.model_dump()` → validates against `rig.relay.search_replace_invocation.v1`
-- `ValidateResult.model_dump()` → validates against `rig.relay.validate_result.v1`
-- `ValidateReceipt.model_dump()` → validates against `rig.relay.validate_receipt.v1`
-- `ValidateArgs.model_dump()` → validates against `rig.relay.validate_invocation.v1`
-- `WriteFileResult.model_dump()` → validates against schema (if exists)
-- `ContributionResult.model_dump()` → validates against schema (if exists)
+**Coverage added (closed gaps gap-003, gap-008, gap-009, gap-010, gap-011):**
+| Tool | Result | Receipt | Invocation |
+|------|--------|---------|------------|
+| Bash | ✓ `BashResult` → schema | ✓ `BashReceipt` → schema | ✓ `BashArgs` → schema |
+| SearchReplace | ✓ `SRResult` → schema | ✓ `SRReceipt` → schema | ✓ `SRArgs` → schema |
+| Validate | ✓ `ValResult` → schema | ✓ `ValReceipt` → schema | ✓ `ValArgs` → schema |
 
-**Tests to preserve:** All existing
-**Tests to delete:** None
-**Risks:** Low — new tests only; if a model dump fails schema validation, the schema or model needs correction
-**Validation:** `uv run pytest tests/schemas/ -x`
-**Exit criteria:** Every tool schema has at least one test that validates a real model dump against it
+**Schema fixes (2 stale bash schemas):**
+- `bash_result.v1`: renamed `exit_code`→`returncode`, added `stdout`/`stderr`, fixed nullable fields
+- `bash_invocation.v1`: renamed `timeout_ms`→`timeout`, removed `allow_shell`/`schema_version`, fixed nullable fields
+- Fixed nullable `error_kind`, `refusal_reason`, `duration_ms` across all search_replace and validate schemas
+
+**Not yet covered:** WriteFile and Contribution schemas (need schema files)
+**Validation:** `uv run pytest tests/tools/test_tool_schema_contracts.py -x` → 13 passed; `uv run python scripts/rig_relay_validate_schemas.py` → 78/78 valid
 
 ---
 
@@ -232,11 +221,11 @@ Each test should:
 |-------|------|--------------|---------------|-------------|------|
 | 0 | Audit (done) | 5 new | 0 | +2,500 | — |
 | 1 | Taxonomy/tiers | 3 | 0 | +50 | Medium |
-| 2 | Validate dedup | 1 | 19 | -310 | **High** |
-| 3 | Schema contracts | 4 new | 0 | +400 | **High** |
+| 2 | Validate dedup ✅ | 1 | 18 | -308 | **High** |
+| 3 | Schema contracts ✅ | 1 new | 0 | +350 | **High** |
 | 4 | Mutation matrix | 1 | 0 | -150 | Medium |
 | 5 | Pipeline E2E | 1 new | 0 | +300 | **High** |
 | 6 | Slow tiering | 6 | 0 | +30 | Low |
 | 7 | CI alignment | 2 | 0 | +50 | Medium |
 
-**Recommended next slice:** Stage 2 (Validate dedup — safest, highest ROI) + Stage 3 (Schema contracts — fills the most critical coverage gap).
+**Recommended next slice:** Stage 4 (Mutation tool test matrix) + Stage 5 (Receipt pipeline E2E tests). Stage 2 and 3 are complete.

@@ -1,0 +1,182 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.audit_event.v1.schema.json",
+  "title": "Audit Event v1",
+  "description": "Content-light audit trail event. References a ReceiptEnvelope by ID or embeds a full ReceiptEnvelope. All event data is content-light: no raw payloads, stdout, stderr, file contents, diffs, snippets, or secrets.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "sequence",
+    "timestamp",
+    "action",
+    "decision"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.audit_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic sequence number for event ordering."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the event was created."
+    },
+    "workspace_id": {
+      "type": ["string", "null"],
+      "description": "Optional workspace context identifier."
+    },
+    "session_id": {
+      "type": ["string", "null"],
+      "description": "Optional session context identifier."
+    },
+    "actor": {
+      "anyOf": [{ "$ref": "#/$defs/ReceiptActor" }, { "type": "null" }],
+      "description": "Optional actor who performed the action."
+    },
+    "action": { "$ref": "#/$defs/AuditActionKind" },
+    "subject": {
+      "anyOf": [{ "$ref": "#/$defs/ReceiptSubject" }, { "type": "null" }],
+      "description": "Optional subject acted upon."
+    },
+    "decision": { "$ref": "#/$defs/AuditDecisionKind" },
+    "envelope_id": {
+      "type": ["string", "null"],
+      "description": "Optional ReceiptEnvelope reference by ID."
+    },
+    "envelope": {
+      "anyOf": [{ "$ref": "#/$defs/ReceiptEnvelope" }, { "type": "null" }],
+      "description": "Optional embedded ReceiptEnvelope."
+    },
+    "evidence_sha256": {
+      "type": ["string", "null"],
+      "description": "Optional SHA256 hash of related evidence payload."
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional human-readable notes."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "AuditActionKind": {
+      "type": "string",
+      "enum": ["receipt_created", "decision_recorded", "execution_requested", "execution_started", "execution_completed", "worktree_created", "worktree_removed", "validation_completed", "projection_built", "envelope_created"],
+      "description": "Canonical audit action types."
+    },
+    "AuditDecisionKind": {
+      "type": "string",
+      "enum": ["allowed", "blocked", "refused", "completed", "failed", "informational"],
+      "description": "Canonical audit decision outcomes."
+    },
+    "ReceiptActorKind": {
+      "type": "string",
+      "enum": ["human", "agent", "tool", "runtime", "system"]
+    },
+    "ReceiptSubjectKind": {
+      "type": "string",
+      "enum": ["tool_invocation", "runtime_invocation", "governance_decision", "worktree", "projection", "session", "artifact"]
+    },
+    "ReceiptEvidenceKind": {
+      "type": "string",
+      "enum": ["sha256", "schema", "receipt_index", "governance_decision", "runtime_event", "tool_receipt", "projection_integrity"]
+    },
+    "ReceiptActor": {
+      "type": "object",
+      "required": ["actor_id", "actor_kind"],
+      "properties": {
+        "actor_id": { "type": "string" },
+        "actor_kind": { "$ref": "#/$defs/ReceiptActorKind" },
+        "display_name": { "type": ["string", "null"] },
+        "is_human": { "type": "boolean" },
+        "is_authoritative": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptSubject": {
+      "type": "object",
+      "required": ["subject_id", "subject_kind"],
+      "properties": {
+        "subject_id": { "type": "string" },
+        "subject_kind": { "$ref": "#/$defs/ReceiptSubjectKind" },
+        "workspace_id": { "type": ["string", "null"] },
+        "session_id": { "type": ["string", "null"] },
+        "path": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptInput": {
+      "type": "object",
+      "required": ["input_kind"],
+      "properties": {
+        "input_id": { "type": ["string", "null"] },
+        "input_kind": { "type": "string" },
+        "input_sha256": { "type": ["string", "null"] },
+        "input_bytes": { "type": ["integer", "null"], "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptOutput": {
+      "type": "object",
+      "required": ["output_kind"],
+      "properties": {
+        "output_id": { "type": ["string", "null"] },
+        "output_kind": { "type": "string" },
+        "output_sha256": { "type": ["string", "null"] },
+        "output_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "status": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptDecision": {
+      "type": "object",
+      "required": ["decision"],
+      "properties": {
+        "decision": { "type": "string" },
+        "rationale": { "type": ["string", "null"] },
+        "gate": { "type": ["string", "null"] },
+        "governance_decision_id": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptEvidence": {
+      "type": "object",
+      "required": ["evidence_kind"],
+      "properties": {
+        "evidence_id": { "type": ["string", "null"] },
+        "evidence_kind": { "$ref": "#/$defs/ReceiptEvidenceKind" },
+        "evidence_sha256": { "type": ["string", "null"] },
+        "schema_version": { "type": ["string", "null"] },
+        "uri": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "ReceiptEnvelope": {
+      "type": "object",
+      "required": ["schema_version", "envelope_id", "receipt_kind", "actor", "subject", "evidence", "created_at"],
+      "properties": {
+        "schema_version": { "type": "string", "const": "rig.relay.receipt_envelope.v1" },
+        "envelope_id": { "type": "string" },
+        "receipt_kind": { "type": "string" },
+        "actor": { "$ref": "#/$defs/ReceiptActor" },
+        "subject": { "$ref": "#/$defs/ReceiptSubject" },
+        "input": { "anyOf": [{ "$ref": "#/$defs/ReceiptInput" }, { "type": "null" }] },
+        "output": { "anyOf": [{ "$ref": "#/$defs/ReceiptOutput" }, { "type": "null" }] },
+        "decision": { "anyOf": [{ "$ref": "#/$defs/ReceiptDecision" }, { "type": "null" }] },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/ReceiptEvidence" } },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

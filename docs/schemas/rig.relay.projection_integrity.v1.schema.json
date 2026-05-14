@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.projection_integrity.v1.schema.json",
+  "title": "Projection Integrity Assessment v1",
+  "description": "Content-light integrity assessment for a desktop projection. Contains no raw receipt payloads, logs, or output — only status enums, violation codes, counts, and timestamps.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "integrity_status",
+    "contract_status",
+    "violation_count",
+    "violations",
+    "checked_at",
+    "receipt_count",
+    "stale_receipt_count",
+    "orphaned_receipt_count",
+    "authority_backed"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.projection_integrity.v1"
+    },
+    "integrity_status": {
+      "type": "string",
+      "enum": ["verified", "degraded", "stale", "orphaned", "unknown"],
+      "description": "Overall integrity status of this projection's receipt backing."
+    },
+    "contract_status": {
+      "type": "string",
+      "enum": ["satisfied", "partial", "violated", "not_applicable"],
+      "description": "Contract satisfaction status based on violation severity."
+    },
+    "violation_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of integrity violations detected."
+    },
+    "violations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ProjectionViolation" },
+      "description": "List of integrity violations."
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the assessment was performed."
+    },
+    "receipt_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of receipt records evaluated."
+    },
+    "stale_receipt_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of receipt records exceeding the stale threshold."
+    },
+    "orphaned_receipt_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of receipt records missing required linkage fields."
+    },
+    "authority_backed": {
+      "type": "boolean",
+      "description": "Whether all claimed authorities have corresponding receipt backing."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ProjectionViolationCode": {
+      "type": "string",
+      "enum": ["missing_receipt", "stale_receipt", "orphaned_receipt", "authority_unbacked", "schema_mismatch", "content_policy_violation", "unknown_widget"],
+      "description": "Canonical violation codes for projection integrity checks."
+    },
+    "ProjectionViolation": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "$ref": "#/$defs/ProjectionViolationCode" },
+        "message": { "type": "string" },
+        "severity": { "type": "string", "default": "warning" },
+        "widget_name": { "type": ["string", "null"] },
+        "receipt_id": { "type": ["string", "null"] },
+        "path": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

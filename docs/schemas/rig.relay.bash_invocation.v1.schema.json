@@ -5,39 +5,60 @@
   "description": "Schema for a deterministic bash tool invocation request. Defines the bounded envelope for subprocess execution.",
   "type": "object",
   "properties": {
-    "schema_version": {
-      "type": "string",
-      "enum": ["rig.relay.bash_invocation.v1"]
-    },
     "command": {
       "type": "string",
       "description": "Shell command string to execute"
     },
-    "timeout_ms": {
-      "type": "integer",
-      "description": "Timeout in milliseconds",
-      "minimum": 0
-    },
     "cwd": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "description": "Working directory for the command"
     },
     "max_stdout_bytes": {
-      "type": "integer",
-      "description": "Maximum bytes to capture from stdout",
-      "minimum": 0
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Maximum bytes to capture from stdout"
     },
     "max_stderr_bytes": {
-      "type": "integer",
-      "description": "Maximum bytes to capture from stderr",
-      "minimum": 0
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Maximum bytes to capture from stderr"
     },
-    "allow_shell": {
-      "type": "boolean",
-      "description": "Whether shell string execution is allowed",
-      "default": true
+    "timeout": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Timeout in seconds"
     }
   },
-  "required": ["command"],
+  "required": [
+    "command"
+  ],
   "additionalProperties": false
 }

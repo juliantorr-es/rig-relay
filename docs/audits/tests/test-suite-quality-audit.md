@@ -127,6 +127,57 @@
 
 Only `tests/tools/test_validation_suite.py` uses subprocess-based pytest invocation. This is intentional (tests the validation suite orchestration). All other subprocess tests run git, uv, or shell commands.
 
+## Execution Results (Stage 2-3)
+
+### Stage 2 — Validate Dedup Complete
+
+**Removed 18 duplicate tests** from `tests/tools/test_validate.py`:
+- 1 exact duplicate (test_collect_git_state_non_repo)
+- 17 near-duplicates (porcelain parsing, dirty policy, worktree readiness, extra_forbidden, receipt content-light)
+- **Preserved** 1 unique test (test_collect_git_state_porcelain_sha256) with no equivalent in dedicated file
+
+**Coverage preservation:** All 18 removals fully covered by `tests/tools/test_validate_git_state.py`
+**Net reduction:** 308 lines, 18 tests, `test_validate.py` now 1,489 lines / 109 tests
+**Validation:** 109/109 tests pass, 27/27 git state tests pass
+
+### Stage 3 — Schema Contracts Complete
+
+**Created** `tests/tools/test_tool_schema_contracts.py` with **13 tests** across 3 tool families:
+
+| Tool | Model | Tests |
+|------|-------|-------|
+| Bash | BashResult | schema + extra_forbidden |
+| Bash | BashReceipt | schema + nullable |
+| Bash | BashArgs | schema |
+| SearchReplace | SearchReplaceResult | schema |
+| SearchReplace | SearchReplaceReceipt | schema |
+| SearchReplace | SearchReplaceArgs | schema |
+| Validate | ValidateResult | schema + nullable (git state) |
+| Validate | ValidateReceipt | schema |
+| Validate | ValidateArgs | schema + extra_forbidden |
+
+**Schema fixes applied** (2 stale bash schemas):
+- `bash_result.v1`: renamed `exit_code`→`returncode`, added `stdout`/`stderr`, fixed nullable fields
+- `bash_invocation.v1`: renamed `timeout_ms`→`timeout`, removed `allow_shell`/`schema_version`, fixed nullable fields
+- Fixed nullable `error_kind`, `refusal_reason`, `duration_ms` across all search_replace and validate schemas
+
+**Coverage gaps closed:** gap-003, gap-008, gap-009, gap-010, gap-011
+**Validation:** 13/13 schema contract tests pass, 78/78 schemas valid, 34/34 receipt emission tests pass
+
+### Remaining duplicate groups (not in scope)
+- dup-007: 3 exact schema tests in delegate_fleet/queue_plan
+- dup-008: test_uses_effective_workdir in bash vs bash_hardening
+- dup-009: test_uses_effective_workdir in grep vs bash
+- dup-010: test_textual_retirement_policy_exists
+- dup-011: justified adapter conformance tests
+
+### Remaining coverage gaps (not in scope)
+- gap-001, gap-002: Receipt pipeline E2E tests
+- gap-004: Dirty policy E2E (allow_dirty, allow_listed_dirty)
+- gap-005: write_file receipt policy
+- gap-006: CI command coverage
+- gap-007: Tool registry discovery
+
 See `data/test_file_inventory.jsonl`, `data/test_duplicate_candidates.jsonl`, `data/test_coverage_gap_inventory.jsonl` for detailed records.
 
 See `test-cleanup-roadmap.md` for staged cleanup plan.

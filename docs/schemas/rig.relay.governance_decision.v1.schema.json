@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.governance_decision.v1.schema.json",
+  "title": "Governance Decision v1",
+  "description": "Decision model for Rig Relay governance gate evaluation. Defines the structure of a GateDecision produced by GovernanceEngine.evaluate_action_legality().",
+  "type": "object",
+  "definitions": {
+    "GovernanceDecisionKind": {
+      "type": "string",
+      "enum": [
+        "allowed",
+        "blocked",
+        "requires_review",
+        "not_applicable"
+      ],
+      "description": "Possible outcomes of a governance gate evaluation."
+    },
+    "GovernanceReasonSeverity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "error",
+        "critical"
+      ],
+      "description": "Severity levels for governance decision reasons."
+    },
+    "DecisionReason": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Machine-readable reason code (e.g. provider_blocked)."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable explanation."
+        },
+        "severity": {
+          "$ref": "#/definitions/GovernanceReasonSeverity"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "BlockedIntent": {
+      "type": "object",
+      "properties": {
+        "intent_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "intent_id",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "AllowedIntent": {
+      "type": "object",
+      "properties": {
+        "intent_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "intent_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier.",
+      "default": "rig.relay.governance_decision.v1"
+    },
+    "workspace_id": {
+      "type": ["string", "null"],
+      "description": "Optional workspace context identifier."
+    },
+    "decision": {
+      "$ref": "#/definitions/GovernanceDecisionKind",
+      "description": "The governance decision outcome."
+    },
+    "gate": {
+      "type": "string",
+      "description": "Name of the gate that produced this decision."
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/DecisionReason"
+      },
+      "description": "List of reasons contributing to the decision."
+    },
+    "allowed_intents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AllowedIntent"
+      },
+      "description": "Intents explicitly allowed by this decision."
+    },
+    "blocked_intents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/BlockedIntent"
+      },
+      "description": "Intents explicitly blocked by this decision."
+    }
+  },
+  "required": [
+    "decision",
+    "gate"
+  ],
+  "additionalProperties": false
+}

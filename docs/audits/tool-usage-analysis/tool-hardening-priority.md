@@ -14,20 +14,23 @@
 - Risk tier: `1`
 - Observed usage: `2057` calls
 - Failure count: `217`
-- Guardrails: schema validation, max output size, timeout, structured refusal, content-light summaries
-- Tests: malformed input, refusal path, truncation, protected content redaction
-- Deterministic Rig-managed tool: maybe
-- Receipt envelope: **implemented** (SearchReplaceReceipt with SHA256 before/after hashes, block counts, byte counts, error classification)
+- Guardrails: schema validation, max output size, timeout, structured refusal, content-light summaries, content-light receipts, deterministic validation → structured results, before_bytes on non-success paths
+- Tests: malformed input, refusal path, truncation, protected content redaction, schema contract (blocked/refused), 6 new validation-error-to-structured-result tests (binary, not_found, dir, no_blocks, empty, content_size)
+- Deterministic Rig-managed tool: yes
+- Receipt envelope: **implemented** (SearchReplaceReceipt with SHA256 before/after hashes, block counts, byte counts, error classification, duration_ms, before_bytes, after_bytes)
 - Receipt index: **implemented** (indexed by `rig_relay.evidence.receipt_index`)
-- Schemas: `docs/schemas/rig.relay.search_replace_invocation.v1.schema.json`, `rig.relay.search_replace_receipt.v1.schema.json`, `rig.relay.tool_receipt_index.v1.schema.json`
+- Schemas: `docs/schemas/rig.relay.search_replace_invocation.v1.schema.json`, `docs/schemas/rig.relay.search_replace_receipt.v1.schema.json`, `docs/schemas/rig.relay.search_replace_result.v1.schema.json`
 
 ## `write_file`
 - Risk tier: `2`
 - Observed usage: `943` calls
 - Failure count: `39`
-- Guardrails: schema validation, max output size, timeout, structured refusal, content-light summaries
-- Tests: malformed input, refusal path, truncation, protected content redaction
-- Deterministic Rig-managed tool: maybe
+- Guardrails: schema validation, max output size, timeout, structured refusal, content-light summaries, content-light receipts, atomic write (tempfile + os.replace), fsync durability
+- Tests: hardened mutation tests, refusal taxonomy, hash verification, byte-count verification, coordination lease blocking, dirty-guard blocking, receipt emission tests, schema validation tests, policy validator tests, shared mutation contract tests (20), receipt index write_file tests, atomicity failure/recovery tests (3)
+- Deterministic Rig-managed tool: yes (receipt envelope implemented, duration_ms/before_bytes/after_bytes added, atomic write)
+- Receipt envelope: **implemented** (WriteFileReceipt with SHA256 before/after hashes, byte counts, created/overwritten status, error classification, duration_ms, before_bytes, after_bytes)
+- Schemas: `docs/schemas/rig.relay.write_file_receipt.v1.schema.json`
+- Docs: `docs/audits/tool-hardening/mutation-tool-contract-matrix.md`, `docs/audits/tool-hardening/write-file-receipt-gap-closure.md`
 
 ## `coordination`
 - Risk tier: `0`

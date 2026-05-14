@@ -322,7 +322,86 @@ Exit criteria met:
 - 253 total tests across all stages
 
 
-## Stage 6 - Aggregate Patch Eligibility
+## Stage 6 - Dirty-Policy Normalization Fix ✅ COMPLETED
+
+Goal:
+
+- fix dirty-policy enforcement in `Validate.run()` so `allow_listed_dirty` compares
+  git dirty paths against normalized workspace-relative paths, not raw `args.paths`
+
+Bug:
+
+- `_collect_git_state()` was called before path normalization
+- dirty-policy `allow_listed_dirty` compared `set(args.paths)` (raw user input —
+  absolute, `./`-prefixed, or duplicated) against `before_git_state.dirty_paths`
+  (workspace-relative POSIX paths from porcelain parsing)
+- absolute paths like `/absolute/path/to/file.py` never matched `"file.py"`
+- `./`-prefixed paths like `"./file.py"` never matched `"file.py"`
+- two inlined dirty-policy branches duplicated `_check_dirty_policy()` but used raw
+  args.paths instead of normalized paths
+
+Fix:
+
+- moved path normalization (`_resolve_paths` → `_normalize_validate_paths`) before
+  git state collection
+- unsafe-path refusal now happens before dirty-policy enforcement
+- git state collection (`_collect_git_state`) runs after normalization
+- both inlined dirty-policy branches replaced with a single
+  `_check_dirty_policy(before_git_state, args.expected_dirty_policy, normalized_paths)`
+  call — `_check_dirty_policy` is now the single policy authority
+
+New execution order in `Validate.run()`:
+
+1. resolve profile
+2. check mutation/network policy
+3. compute output cap
+4. resolve cwd/workspace_root
+5. normalize paths with `_normalize_validate_paths(args.paths, cwd)`
+6. if unsafe paths, return structured refused `ValidateResult`
+7. collect `before_git_state`
+8. enforce `expected_dirty_policy` via `_check_dirty_policy` with normalized paths
+9. build checks
+10. run checks
+11. collect `after_git_state`
+12. return `ValidateResult`
+
+Files changed:
+
+- `vibe/core/tools/builtins/validate.py` — reordered `run()` method
+- `tests/tools/test_validate_git_state.py` — 9 new regression tests
+
+Tests added:
+
+- `test_allow_listed_dirty_relative_path_passes` — relative path matches dirty path
+- `test_allow_listed_dirty_absolute_path_passes` — absolute path normalized to relative
+- `test_allow_listed_dirty_dot_slash_path_passes` — `./` prefix normalized away
+- `test_allow_listed_dirty_fails_with_unlisted_path` — unlisted dirty path detected
+- `test_allow_listed_dirty_empty_paths_fails_when_dirty` — empty paths + dirty workspace
+- `test_outside_workspace_path_refused_before_dirty_policy` — unsafe refusal precedes dirty check
+- `test_allow_listed_dirty_duplicate_paths_passes` — dupes deduplicated
+- `test_clean_policy_fails_on_any_dirty_file` — clean policy still works
+- `test_allow_dirty_passes_with_dirty_files` — allow_dirty still works
+
+Total validate tests: 145 (136 Stage 1-5 + 9 Stage 6)
+
+Not implemented:
+- `promotion-readiness` profile
+- fleet/delegate integration
+- aggregate patching
+- parsed summary changes
+
+Exit criteria met:
+
+- `allow_listed_dirty` accepts relative, absolute, `./`-prefixed, and duplicated paths
+- `allow_listed_dirty` blocks unlisted dirty paths and empty paths with dirty workspace
+- unsafe paths are refused as `"refused"/"unsafe_paths"` before dirty-policy check
+- `clean` and `allow_dirty` policies preserved
+- `before_git_state` and `blocker_summary` present in dirty-policy failure results
+- `_check_dirty_policy` is the single policy authority
+- no duplicate inline dirty-policy logic in `validate.py`
+- receipts remain content-light (no changes to receipt model)
+
+## Stage 7 - Aggregate Patch Eligibility
 
 Goal:
 
@@ -346,7 +425,7 @@ Exit criteria:
 
 - validate can answer promotion readiness
 
-## Stage 7 - Promotion Gate Integration
+## Stage 8 - Promotion Gate Integration
 
 Goal:
 
@@ -369,7 +448,7 @@ Exit criteria:
 
 - promotion uses validate as a source of truth
 
-## Stage 8 - Fleet / Delegate Policy Integration
+## Stage 9 - Fleet / Delegate Policy Integration
 
 Goal:
 

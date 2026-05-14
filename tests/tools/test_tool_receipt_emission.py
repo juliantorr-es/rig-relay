@@ -1206,3 +1206,331 @@ def test_validate_receipt_schema_validates() -> None:
     )
     receipt = tool.build_receipt(result)
     jsonschema.validate(instance=receipt.model_dump(mode="json"), schema=schema)
+
+
+# ── WriteFile build_receipt integration ───────────────────────────────
+
+
+def test_write_file_tool_has_build_receipt() -> None:
+    """WriteFile tool class has build_receipt method (duck-type check)."""
+    from vibe.core.tools.base import BaseToolState
+    from vibe.core.tools.builtins.write_file import WriteFile, WriteFileConfig
+
+    tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+    assert hasattr(tool, "build_receipt")
+    assert callable(tool.build_receipt)
+
+
+def test_write_file_success_receipt_content_light() -> None:
+    """Success write_file receipt contains no raw file content."""
+    from vibe.core.tools.base import BaseToolState
+    from vibe.core.tools.builtins.write_file import (
+        WriteFile,
+        WriteFileConfig,
+        WriteFileResult,
+    )
+
+    tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+    result = WriteFileResult(
+        path="/tmp/test.txt",
+        bytes_written=12,
+        file_existed=False,
+        content="hello world\n",
+        before_sha256=None,
+        after_sha256="abc123",
+        status="success",
+        created_file=True,
+        overwrote_existing_file=False,
+        parent_dirs_created=False,
+        duration_ms=5.0,
+        before_bytes=0,
+        after_bytes=12,
+    )
+    receipt = tool.build_receipt(result)
+    receipt_dict = receipt.model_dump(mode="json")
+
+    assert receipt_dict["path"] == "/tmp/test.txt"
+    assert receipt_dict["status"] == "success"
+    assert receipt_dict["bytes_written"] == 12
+    assert receipt_dict["after_sha256"] == "abc123"
+    assert receipt_dict["created_file"] is True
+    assert receipt_dict["file_existed"] is False
+    assert receipt_dict["duration_ms"] == 5.0
+    assert receipt_dict["before_bytes"] == 0
+    assert receipt_dict["after_bytes"] == 12
+    assert "content" not in receipt_dict
+
+
+def test_write_file_refused_receipt_content_light() -> None:
+    """Refused write_file receipt contains no raw content."""
+    from vibe.core.tools.base import BaseToolState
+    from vibe.core.tools.builtins.write_file import (
+        WriteFile,
+        WriteFileConfig,
+        WriteFileResult,
+    )
+
+    tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+    result = WriteFileResult(
+        path="/tmp/secret.py",
+        bytes_written=0,
+        file_existed=True,
+        content="",  # Refused paths set content to empty
+        before_sha256=None,
+        after_sha256="",
+        status="refused",
+        error_kind="dirty_file_protected",
+        refusal_reason="File is protected by dirty-file guard",
+        duration_ms=2.0,
+    )
+    receipt = tool.build_receipt(result)
+    receipt_dict = receipt.model_dump(mode="json")
+
+    assert receipt_dict["status"] == "refused"
+    assert receipt_dict["error_kind"] == "dirty_file_protected"
+    assert receipt_dict["refusal_reason"] is not None
+    assert receipt_dict["duration_ms"] == 2.0
+    assert "content" not in receipt_dict
+
+
+def test_write_file_blocked_receipt_content_light() -> None:
+    """Blocked write_file receipt contains no raw content."""
+    from vibe.core.tools.base import BaseToolState
+    from vibe.core.tools.builtins.write_file import (
+        WriteFile,
+        WriteFileConfig,
+        WriteFileResult,
+    )
+
+    tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+    result = WriteFileResult(
+        path="/tmp/blocked.txt",
+        bytes_written=0,
+        file_existed=True,
+        content="",
+        before_sha256=None,
+        after_sha256="",
+        status="blocked",
+        error_kind="path_reserved",
+        refusal_reason="Coordination reservation refused: another session has an active lease on this path",
+        duration_ms=3.5,
+    )
+    receipt = tool.build_receipt(result)
+    receipt_dict = receipt.model_dump(mode="json")
+
+    assert receipt_dict["status"] == "blocked"
+    assert receipt_dict["error_kind"] == "path_reserved"
+    assert receipt_dict["duration_ms"] == 3.5
+    assert "content" not in receipt_dict
+
+
+def test_write_file_receipt_includes_overwrite_fields() -> None:
+    """WriteFile receipt includes created/overwritten/parent_dirs fields."""
+    from vibe.core.tools.base import BaseToolState
+    from vibe.core.tools.builtins.write_file import (
+        WriteFile,
+        WriteFileConfig,
+        WriteFileResult,
+    )
+
+    tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+    result = WriteFileResult(
+        path="/tmp/a/b/c/file.txt",
+        bytes_written=20,
+        file_existed=True,
+        content="new content here\n",
+        before_sha256="old_hash",
+        after_sha256="new_hash",
+        status="success",
+        created_file=False,
+        overwrote_existing_file=True,
+        parent_dirs_created=True,
+        duration_ms=7.0,
+        before_bytes=15,
+        after_bytes=20,
+    )
+    receipt = tool.build_receipt(result)
+    receipt_dict = receipt.model_dump(mode="json")
+
+    assert receipt_dict["file_existed"] is True
+    assert receipt_dict["created_file"] is False
+    assert receipt_dict["overwrote_existing_file"] is True
+    assert receipt_dict["parent_dirs_created"] is True
+    assert receipt_dict["before_sha256"] == "old_hash"
+    assert receipt_dict["after_sha256"] == "new_hash"
+    assert receipt_dict["after_bytes"] == 20
+    assert receipt_dict["before_bytes"] == 15
+    assert receipt_dict["duration_ms"] == 7.0
+
+
+def test_capture_write_file_receipt_integration(tmp_path: Path) -> None:
+    """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
+    from rig_relay.evidence.model_observations import capture_tool_receipt
+    from vibe.core.tools.base import BaseToolState
+    from vibe.core.tools.builtins.write_file import (
+        WriteFile,
+        WriteFileConfig,
+        WriteFileResult,
+    )
+
+    tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+    result = WriteFileResult(
+        path="/tmp/integration.txt",
+        bytes_written=5,
+        file_existed=False,
+        content="hello",
+        before_sha256=None,
+        after_sha256="abc123",
+        status="success",
+        created_file=True,
+        duration_ms=4.0,
+        before_bytes=0,
+        after_bytes=5,
+    )
+    receipt = tool.build_receipt(result)
+
+    session_id = "wf_receipt_integration_001"
+    log_path = tmp_path / "obs.jsonl"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    import vibe.core.telemetry.local as local_module
+
+    original = local_module.get_observability_log_path
+
+    def fake_path(sid: str) -> Path:
+        if sid == session_id:
+            return log_path
+        return original(sid)
+
+    local_module.get_observability_log_path = fake_path
+
+    try:
+        capture_tool_receipt(
+            session_id=session_id,
+            tool_name="write_file",
+            receipt=receipt.model_dump(mode="json"),
+        )
+
+        assert log_path.exists()
+        event = json.loads(log_path.read_text().strip())
+        assert event["event_name"] == "rig.relay.tool_receipt.captured"
+        assert event["session_id"] == session_id
+
+        r = event["payload"]["receipt"]
+        assert r["path"] == "/tmp/integration.txt"
+        assert r["status"] == "success"
+        assert r["bytes_written"] == 5
+        assert r["duration_ms"] == 4.0
+        assert r["before_bytes"] == 0
+        assert r["after_bytes"] == 5
+        assert "content" not in r
+    finally:
+        local_module.get_observability_log_path = original
+
+
+def test_write_file_receipt_schema_validates(tmp_path: Path) -> None:
+    """WriteFile receipt validates against its JSON schema."""
+    import json
+
+    import jsonschema
+
+    from vibe.core.tools.base import BaseToolState
+    from vibe.core.tools.builtins.write_file import (
+        WriteFile,
+        WriteFileConfig,
+        WriteFileResult,
+    )
+
+    schema_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "docs"
+        / "schemas"
+        / "rig.relay.write_file_receipt.v1.schema.json"
+    )
+    with open(schema_path) as sf:
+        schema = json.load(sf)
+
+    tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+
+    # Success receipt
+    result = WriteFileResult(
+        path="/tmp/validated.txt",
+        bytes_written=7,
+        file_existed=False,
+        content="content",
+        before_sha256=None,
+        after_sha256="def456",
+        status="success",
+        created_file=True,
+        duration_ms=6.0,
+        before_bytes=0,
+        after_bytes=7,
+    )
+    receipt = tool.build_receipt(result)
+    receipt_dict = receipt.model_dump(mode="json")
+    receipt_dict["schema_version"] = "rig.relay.write_file_receipt.v1"
+    jsonschema.validate(instance=receipt_dict, schema=schema)
+
+    # Refused receipt also validates
+    result2 = WriteFileResult(
+        path="/tmp/refused.py",
+        bytes_written=0,
+        file_existed=True,
+        content="",
+        before_sha256=None,
+        after_sha256="",
+        status="refused",
+        error_kind="dirty_file_protected",
+        refusal_reason="Guard refused write",
+        duration_ms=1.0,
+    )
+    receipt2 = tool.build_receipt(result2)
+    receipt_dict2 = receipt2.model_dump(mode="json")
+    receipt_dict2["schema_version"] = "rig.relay.write_file_receipt.v1"
+    jsonschema.validate(instance=receipt_dict2, schema=schema)
+
+
+def test_write_file_receipt_passes_policy_validator() -> None:
+    """WriteFile receipt passes the receipt policy validator."""
+    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
+    from vibe.core.tools.base import BaseToolState
+    from vibe.core.tools.builtins.write_file import (
+        WriteFile,
+        WriteFileConfig,
+        WriteFileResult,
+    )
+
+    tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
+
+    # Success receipt
+    result = WriteFileResult(
+        path="/tmp/policy_test.txt",
+        bytes_written=10,
+        file_existed=False,
+        content="test data\n",
+        before_sha256=None,
+        after_sha256="ghi789",
+        status="success",
+        created_file=True,
+    )
+    receipt = tool.build_receipt(result)
+    payload = {"tool_name": "write_file", "receipt": receipt.model_dump(mode="json")}
+    findings = validate_receipt_payload(payload)
+    assert not findings, f"Policy violations: {findings}"
+
+    # Refused receipt
+    result2 = WriteFileResult(
+        path="/tmp/policy_refused.py",
+        bytes_written=0,
+        file_existed=True,
+        content="",
+        before_sha256=None,
+        after_sha256="",
+        status="refused",
+        error_kind="dirty_file_protected",
+        refusal_reason="Refused",
+    )
+    receipt2 = tool.build_receipt(result2)
+    payload2 = {"tool_name": "write_file", "receipt": receipt2.model_dump(mode="json")}
+    findings2 = validate_receipt_payload(payload2)
+    assert not findings2, f"Policy violations: {findings2}"
