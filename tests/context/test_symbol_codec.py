@@ -289,13 +289,61 @@ class TestManifest:
 
     def test_codebase_manifest_builder_is_deterministic(self, tmp_path: Path) -> None:
         (tmp_path / "vibe").mkdir()
-        (tmp_path / "vibe" / "a.py").write_text("RuntimeSessionAdapter " * 3)
+        for name in ("a.py", "b.py", "c.py"):
+            (tmp_path / "vibe" / name).write_text(
+                "class RuntimeSessionAdapter:\n"
+                "    pass\n\n"
+                "class RuntimeSessionAdapter:\n"
+                "    pass\n"
+            )
         (tmp_path / "docs").mkdir()
-        (tmp_path / "docs" / "guide.md").write_text("DashboardProjectionProvider " * 3)
+        (tmp_path / "docs" / "guide.md").write_text(
+            "# DashboardProjectionProvider\n"
+            "# DashboardProjectionProvider\n"
+            "# DashboardProjectionProvider\n"
+        )
         r1 = build_codebase_symbol_manifest(tmp_path)
         r2 = build_codebase_symbol_manifest(tmp_path)
         assert r1.manifest.manifest_sha256 == r2.manifest.manifest_sha256
+        assert [entry.alias for entry in r1.manifest.entries] == [
+            entry.alias for entry in r2.manifest.entries
+        ]
         assert r1.alias_mode == "section"
+
+    def test_codebase_manifest_changes_when_inputs_change(self, tmp_path: Path) -> None:
+        (tmp_path / "vibe").mkdir()
+        for name in ("a.py", "b.py", "c.py"):
+            (tmp_path / "vibe" / name).write_text(
+                "class RuntimeSessionAdapter:\n"
+                "    pass\n\n"
+                "class RuntimeSessionAdapter:\n"
+                "    pass\n"
+            )
+        r1 = build_codebase_symbol_manifest(tmp_path)
+        (tmp_path / "vibe" / "d.py").write_text(
+            "class RuntimeSessionAdapter:\n"
+            "    pass\n\n"
+            "class RuntimeSessionAdapter:\n"
+            "    pass\n"
+        )
+        r2 = build_codebase_symbol_manifest(tmp_path)
+        assert r1.manifest.manifest_sha256 != r2.manifest.manifest_sha256
+        assert r1.source_root_fingerprint == r2.source_root_fingerprint
+
+    def test_codebase_manifest_uses_alias_mode(self, tmp_path: Path) -> None:
+        (tmp_path / "vibe").mkdir()
+        for name in ("a.py", "b.py", "c.py"):
+            (tmp_path / "vibe" / name).write_text(
+                "class RuntimeSessionAdapter:\n"
+                "    pass\n\n"
+                "class RuntimeSessionAdapter:\n"
+                "    pass\n"
+            )
+        result = build_codebase_symbol_manifest(tmp_path, alias_mode="pua")
+        assert result.alias_mode == "pua"
+        assert result.manifest.entries == () or all(
+            len(entry.alias) == 1 for entry in result.manifest.entries
+        )
 
 
 # ── Git helpers ──────────────────────────────────────────────────

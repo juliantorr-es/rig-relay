@@ -11,7 +11,11 @@ from typing import Any
 
 from rig_relay.context.compiler import ContextCompiler
 from rig_relay.evidence.receipt_store import FilesystemReceiptStore
-from vibe.cli.textual_ui.rig_console.session_bridge import CodingSessionBridge
+from vibe.cli.textual_ui.rig_console.session_bridge import (
+    CodingSessionBridge,
+    FixtureSessionAdapter,
+    SessionBridge,
+)
 
 
 class SessionService:
@@ -123,14 +127,19 @@ class RigConsoleBackend:
         session_id: str = "default",
         workspace_root: Path | None = None,
         receipt_root: Path | None = None,
+        mode: str = "runtime",
     ) -> None:
         self._session_id = session_id
         self._workspace_root = (workspace_root or Path.cwd()).resolve()
+        self._mode = mode
         receipt_path = (receipt_root or Path.home() / ".rig" / "relay").resolve()
         self._receipt_store = FilesystemReceiptStore(receipt_path)
-        self._bridge = CodingSessionBridge(
-            session_id=session_id, receipt_store=self._receipt_store
-        )
+        if mode == "fixture":
+            self._bridge = FixtureSessionAdapter(session_id=session_id)
+        else:
+            self._bridge = CodingSessionBridge(
+                session_id=session_id, receipt_store=self._receipt_store
+            )
         self._session = SessionService(session_id, self._bridge)
         self._projection = ProjectionService(session_id, self._bridge)
 
@@ -147,8 +156,20 @@ class RigConsoleBackend:
         return self._receipt_store
 
     @property
-    def bridge(self) -> CodingSessionBridge:
+    def bridge(self) -> SessionBridge:
         return self._bridge
+
+    @property
+    def mode(self) -> str:
+        return self._mode
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
+
+    @property
+    def workspace_root(self) -> Path:
+        return self._workspace_root
 
 
 __all__ = ["ProjectionService", "RigConsoleBackend", "SessionService"]

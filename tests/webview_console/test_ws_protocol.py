@@ -11,6 +11,10 @@ from typing import Any
 
 import pytest
 
+from vibe.cli.textual_ui.rig_console.session_bridge import (
+    FixtureSessionAdapter,
+    RuntimeSessionAdapter,
+)
 from vibe.cli.webview_console.backend import RigConsoleBackend
 from vibe.cli.webview_console.ws_api import ConsoleWebSocketServer
 
@@ -19,41 +23,57 @@ _TEST_TOKEN = "test-token-1234"
 
 async def _make_server() -> ConsoleWebSocketServer:
     srv = ConsoleWebSocketServer(
-        RigConsoleBackend(session_id="test-session"), port=0, token=_TEST_TOKEN,
+        RigConsoleBackend(session_id="test-session"), port=0, token=_TEST_TOKEN
     )
     await srv.start()
     return srv
 
 
+def test_backend_fixture_mode_uses_fixture_adapter() -> None:
+    backend = RigConsoleBackend(session_id="test-session", mode="fixture")
+    assert backend.mode == "fixture"
+    assert isinstance(backend.bridge, FixtureSessionAdapter)
+    assert not isinstance(backend.bridge, RuntimeSessionAdapter)
+
+
+def test_backend_runtime_mode_uses_runtime_adapter() -> None:
+    backend = RigConsoleBackend(session_id="test-session", mode="runtime")
+    assert backend.mode == "runtime"
+    assert isinstance(backend.bridge, RuntimeSessionAdapter)
+
+
 async def _connect(port: int) -> Any:
     import websockets
+
     return await websockets.connect(f"ws://127.0.0.1:{port}")
 
 
 async def _auth(ws: Any, last_seen_seq: int = 0) -> dict[str, Any]:
     await ws.send(
-        json.dumps(
-            {
-                "schema": "rig.ws.client.auth.v1",
-                "token": _TEST_TOKEN,
-                "last_seen_seq": last_seen_seq,
-                "client_protocol_version": "rig.ws.v1",
-                "client_name": "pytest",
-            }
-        )
+        json.dumps({
+            "schema": "rig.ws.client.auth.v1",
+            "token": _TEST_TOKEN,
+            "last_seen_seq": last_seen_seq,
+            "client_protocol_version": "rig.ws.v1",
+            "client_name": "pytest",
+        })
     )
     auth_msg = json.loads(await ws.recv())
     await ws.recv()  # consume snapshot
     return auth_msg
 
 
-async def _send_intent(ws: Any, kind: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-    await ws.send(json.dumps({
-        "schema": "rig.ws.client.intent.v1",
-        "intent_id": "test-001",
-        "intent_kind": kind,
-        "payload": payload or {},
-    }))
+async def _send_intent(
+    ws: Any, kind: str, payload: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    await ws.send(
+        json.dumps({
+            "schema": "rig.ws.client.intent.v1",
+            "intent_id": "test-001",
+            "intent_kind": kind,
+            "payload": payload or {},
+        })
+    )
     # Consume messages until we get an ack (skip deltas that may have
     # arrived from background streaming tasks)
     for _ in range(20):
@@ -64,14 +84,18 @@ async def _send_intent(ws: Any, kind: str, payload: dict[str, Any] | None = None
     return {}
 
 
-async def _send_intent_expect_ack(ws: Any, kind: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+async def _send_intent_expect_ack(
+    ws: Any, kind: str, payload: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Send intent and read until ack. Ignores interleaved deltas."""
-    await ws.send(json.dumps({
-        "schema": "rig.ws.client.intent.v1",
-        "intent_id": "test-001",
-        "intent_kind": kind,
-        "payload": payload or {},
-    }))
+    await ws.send(
+        json.dumps({
+            "schema": "rig.ws.client.intent.v1",
+            "intent_id": "test-001",
+            "intent_kind": kind,
+            "payload": payload or {},
+        })
+    )
     for _ in range(20):
         raw = await asyncio.wait_for(ws.recv(), timeout=5.0)
         msg = json.loads(raw)
@@ -102,7 +126,9 @@ async def test_auth_bad_token_refused() -> None:
     srv = await _make_server()
     try:
         async with await _connect(srv.port) as ws:
-            await ws.send(json.dumps({"schema": "rig.ws.client.auth.v1", "token": "wrong"}))
+            await ws.send(
+                json.dumps({"schema": "rig.ws.client.auth.v1", "token": "wrong"})
+            )
             msg = json.loads(await ws.recv())
             assert msg["schema"] == "rig.ws.server.auth_error.v1"
     finally:
@@ -171,7 +197,9 @@ async def test_active_turn_refuses_second() -> None:
 
     backend = RigConsoleBackend(session_id="test-session")
     # Replace bridge with real RuntimeSessionAdapter + slow FakeLoop
-    bridge = CodingSessionBridge(session_id="test-session", receipt_store=backend.receipt_store)
+    bridge = CodingSessionBridge(
+        session_id="test-session", receipt_store=backend.receipt_store
+    )
     backend._bridge = bridge
     backend._session._bridge = bridge
     backend._projection._bridge = bridge
@@ -179,21 +207,29 @@ async def test_active_turn_refuses_second() -> None:
     class SlowFakeLoop:
         def __init__(self, *args: object, **kwargs: object) -> None:
             self.telemetry_client = MagicMock()
+
         async def __aenter__(self) -> SlowFakeLoop:
             return self
+
         async def __aexit__(self, *args: object) -> None:
             pass
+
         async def aclose(self) -> None:
             pass
+
         def emit_new_session_telemetry(self) -> None:
             pass
+
         async def act(self, text: str, client_message_id: str | None = None):
             from vibe.core.types import AssistantEvent, UserMessageEvent
+
             yield UserMessageEvent(content=text, message_id="msg-1")
             await asyncio.sleep(30)  # keep running until cancelled
             yield AssistantEvent(content="reply", message_id="msg-2")
 
-    with patch("vibe.cli.textual_ui.rig_console.session_bridge.AgentLoop", SlowFakeLoop):
+    with patch(
+        "vibe.cli.textual_ui.rig_console.session_bridge.AgentLoop", SlowFakeLoop
+    ):
         srv = ConsoleWebSocketServer(backend, port=0, token=_TEST_TOKEN)
         await srv.start()
         try:
@@ -202,7 +238,9 @@ async def test_active_turn_refuses_second() -> None:
                 ack1 = await _send_intent(ws, "start_turn", {"text": "hello"})
                 assert ack1["status"] == "accepted"
                 # Immediately send second intent while first is running
-                ack2 = await _send_intent_expect_ack(ws, "start_turn", {"text": "second"})
+                ack2 = await _send_intent_expect_ack(
+                    ws, "start_turn", {"text": "second"}
+                )
                 assert ack2.get("status") == "refused"
                 # Cancel the running turn
                 await _send_intent_expect_ack(ws, "cancel_turn")
@@ -271,15 +309,13 @@ async def test_reconnect_with_replay() -> None:
 
         async with await _connect(srv.port) as ws2:
             await ws2.send(
-                json.dumps(
-                    {
-                        "schema": "rig.ws.client.auth.v1",
-                        "token": _TEST_TOKEN,
-                        "last_seen_seq": last_delta_seq - 1 if last_delta_seq > 0 else 0,
-                        "client_protocol_version": "rig.ws.v1",
-                        "client_name": "pytest",
-                    }
-                )
+                json.dumps({
+                    "schema": "rig.ws.client.auth.v1",
+                    "token": _TEST_TOKEN,
+                    "last_seen_seq": last_delta_seq - 1 if last_delta_seq > 0 else 0,
+                    "client_protocol_version": "rig.ws.v1",
+                    "client_name": "pytest",
+                })
             )
             auth_msg = json.loads(await ws2.recv())
             assert auth_msg["schema"] == "rig.ws.server.auth_ok.v1"
@@ -316,15 +352,13 @@ async def test_reconnect_with_snapshot_fallback() -> None:
 
         async with await _connect(srv.port) as ws2:
             await ws2.send(
-                json.dumps(
-                    {
-                        "schema": "rig.ws.client.auth.v1",
-                        "token": _TEST_TOKEN,
-                        "last_seen_seq": 0,
-                        "client_protocol_version": "rig.ws.v1",
-                        "client_name": "pytest",
-                    }
-                )
+                json.dumps({
+                    "schema": "rig.ws.client.auth.v1",
+                    "token": _TEST_TOKEN,
+                    "last_seen_seq": 0,
+                    "client_protocol_version": "rig.ws.v1",
+                    "client_name": "pytest",
+                })
             )
             auth_msg = json.loads(await ws2.recv())
             assert auth_msg["schema"] == "rig.ws.server.auth_ok.v1"
@@ -397,9 +431,18 @@ async def test_stale_seq_ignored() -> None:
 
 
 _CONTENT_LIGHT_FORBIDDEN = {
-    "stdout", "stderr", "diff", "patch", "argv",
-    "file_contents", "raw_prompt", "secret", "raw_output",
-    "old_text", "new_text", "chunk_text",
+    "stdout",
+    "stderr",
+    "diff",
+    "patch",
+    "argv",
+    "file_contents",
+    "raw_prompt",
+    "secret",
+    "raw_output",
+    "old_text",
+    "new_text",
+    "chunk_text",
 }
 
 
@@ -456,7 +499,11 @@ async def test_replay_buffer_bounded() -> None:
     try:
         # Fill buffer with more entries than max
         for i in range(1050):
-            srv._append_replay({"schema": "rig.ws.server.delta.v1", "seq": i + 1, "value": {"item_id": f"i{i}"}})
+            srv._append_replay({
+                "schema": "rig.ws.server.delta.v1",
+                "seq": i + 1,
+                "value": {"item_id": f"i{i}"},
+            })
         assert len(srv._replay_buffer) <= 1000
     finally:
         await srv.close()

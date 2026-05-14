@@ -60,7 +60,7 @@ class ConsoleWebSocketServer:
         self._token = token or secrets.token_hex(_DEFAULT_TOKEN_BYTES)
         self._server: Any = None
         self._seq = 0
-        self._session_id = backend._session_id
+        self._session_id = backend.session_id
         self._replay_buffer: OrderedDict[int, dict[str, Any]] = OrderedDict()
         self._replay_buffer_max = replay_buffer_max
 
@@ -135,7 +135,7 @@ class ConsoleWebSocketServer:
 
         last_seen_seq = msg.get("last_seen_seq", 0)
         client_version = msg.get("client_protocol_version", "unknown")
-        
+
         # Protocol version negotiation
         server_version = "rig.ws.v1"
         compatibility = "full"
@@ -146,10 +146,10 @@ class ConsoleWebSocketServer:
         await _send(
             websocket,
             self._envelope(
-                "rig.ws.server.auth_ok.v1", 
+                "rig.ws.server.auth_ok.v1",
                 last_seen_seq=last_seen_seq,
                 server_protocol_version=server_version,
-                compatibility=compatibility
+                compatibility=compatibility,
             ),
         )
 
@@ -235,7 +235,7 @@ class ConsoleWebSocketServer:
             return
 
         result = await self._backend.session.start_turn(
-            text, self._backend._workspace_root
+            text, self._backend.workspace_root
         )
         ack = self._envelope(
             "rig.ws.server.ack.v1",

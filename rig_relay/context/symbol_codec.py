@@ -187,10 +187,11 @@ class SymbolManifest:
         total_net_savings: Sum of net_savings across all entries.
     """
 
-    def __init__(self, entries: tuple[ManifestEntry, ...]) -> None:
+    def __init__(self, entries: tuple[ManifestEntry, ...], seed: str = "") -> None:
         self.entries = entries
         serialized = "\n".join(f"{e.alias} {e.kind} {e.value}" for e in entries)
-        self.manifest_sha256 = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+        payload = f"{seed}\n{serialized}" if seed else serialized
+        self.manifest_sha256 = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         self.total_source_tokens = sum(e.source_token_cost for e in entries)
         self.total_alias_tokens = sum(e.alias_token_cost for e in entries)
         self.total_overhead = sum(e.manifest_overhead for e in entries)

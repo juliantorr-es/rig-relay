@@ -1,8 +1,8 @@
 """pywebview entry point for the Rig Console.
 
 Usage:
-    uv run rig-console-webview --mode fixture
-    uv run rig-console-webview --mode runtime
+    uv run rig-console --mode fixture
+    uv run rig-console --mode runtime
     uv run rig-console-textual  (legacy Textual fallback)
 """
 
@@ -10,11 +10,38 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+import threading
+import time
+from typing import Any
+
+from vibe.cli.webview_console.backend import RigConsoleBackend
+from vibe.cli.webview_console.ws_api import ConsoleWebSocketServer
+
+
+def _run_ws_server(
+    ws: Any, loop_holder: list[asyncio.AbstractEventLoop | None]
+) -> None:
+    async def _start() -> None:
+        loop = asyncio.get_running_loop()
+        loop_holder[0] = loop
+        await ws.start()
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await ws.close()
+
+    asyncio.run(_start())
 
 
 def _find_static_dir() -> Path:
     """Resolve the frontend/rig_console/ static directory."""
-    return Path(__file__).resolve().parent.parent.parent.parent / "frontend" / "rig_console"
+    return (
+        Path(__file__).resolve().parent.parent.parent.parent
+        / "frontend"
+        / "rig_console"
+    )
 
 
 def _load_html() -> str:
@@ -28,13 +55,14 @@ def _load_html() -> str:
 def _inject_bootstrap(html: str, port: int, token: str) -> str:
     """Inject session token, WebSocket URL, and port into the HTML."""
     return (
-        html.replace("{{WS_PORT}}", str(port))
+        html
+        .replace("{{WS_PORT}}", str(port))
         .replace("{{WS_TOKEN}}", token)
         .replace("{{API_BASE}}", f"http://127.0.0.1:{port}")
     )
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     """Launch the pywebview console."""
     import argparse
 
@@ -44,22 +72,25 @@ def main() -> None:
     parser.add_argument("--workspace-root", type=Path, default=None)
     parser.add_argument("--receipt-root", type=Path, default=None)
     parser.add_argument("--debug", action="store_true", default=False)
-    args = parser.parse_args()
-
-    # Build backend
-    from vibe.cli.webview_console.backend import RigConsoleBackend
+    args = parser.parse_args(argv)
 
     backend = RigConsoleBackend(
         session_id=args.session_id,
         workspace_root=args.workspace_root,
         receipt_root=args.receipt_root,
+        mode=args.mode,
     )
 
-    # Start WebSocket server
-    from vibe.cli.webview_console.ws_api import ConsoleWebSocketServer
-
     ws = ConsoleWebSocketServer(backend, port=0)
-    asyncio.run(ws.start())
+    loop_holder: list[asyncio.AbstractEventLoop | None] = [None]
+    ws_thread = threading.Thread(
+        target=_run_ws_server, args=(ws, loop_holder), daemon=True
+    )
+    ws_thread.start()
+    while ws.port == 0:
+        if not ws_thread.is_alive():
+            raise RuntimeError("WebSocket server failed to start")
+        time.sleep(0.01)
     port = ws.port
     token = ws.token
 
@@ -71,11 +102,7 @@ def main() -> None:
     import webview
 
     webview.create_window(
-        "Rig Console",
-        html=html,
-        width=1200,
-        height=800,
-        min_size=(800, 600),
+        "Rig Console", html=html, width=1200, height=800, min_size=(800, 600)
     )
 
     webview.start(
@@ -84,8 +111,8 @@ def main() -> None:
         private_mode=False,
     )
 
-    # Cleanup
-    asyncio.run(ws.close())
+    if loop_holder[0] is not None:
+        asyncio.run_coroutine_threadsafe(ws.close(), loop_holder[0]).result()
 
 
 if __name__ == "__main__":

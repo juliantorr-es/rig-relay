@@ -14,6 +14,7 @@ const store = {
 const seenEventIds = new Set();
 let lastSeq = 0;
 let pendingIntentId = 0;
+let pendingPrompt = '';
 let ws = null;
 let intentionalClose = false;
 
@@ -169,6 +170,14 @@ function handleAck(msg) {
     const reason = msg.reason || 'Prompt refused';
     store.transcript.push({ kind: 'turn_status', title: 'Refused', body_text: reason });
     scheduleRender();
+    return;
+  }
+
+  if (msg.status === 'accepted' && pendingPrompt) {
+    const input = document.getElementById('prompt-input');
+    input.value = '';
+    input.style.height = 'auto';
+    pendingPrompt = '';
   }
 }
 
@@ -230,21 +239,20 @@ document.addEventListener('DOMContentLoaded', () => {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendPrompt();
+      submitPrompt(input);
     }
   });
 
-  sendBtn.addEventListener('click', sendPrompt);
+  sendBtn.addEventListener('click', () => submitPrompt(input));
   cancelBtn.addEventListener('click', () => sendIntent('cancel_turn', {}));
-
-  function sendPrompt() {
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-    input.style.height = 'auto';
-    sendIntent('start_turn', { text });
-  }
 });
+
+function submitPrompt(input) {
+  const text = input.value.trim();
+  if (!text) return;
+  pendingPrompt = text;
+  sendIntent('start_turn', { text });
+}
 
 // ── Helpers ──
 

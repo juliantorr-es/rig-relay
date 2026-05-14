@@ -39,7 +39,7 @@ export class RigDaemonClient {
                 this.authenticate();
             });
 
-            this.ws.on('message', (data) => {
+            this.ws.on('message', (data: any) => {
                 this.handleMessage(data.toString());
             });
 
@@ -48,7 +48,7 @@ export class RigDaemonClient {
                 this.ws = null;
             });
 
-            this.ws.on('error', (err) => {
+            this.ws.on('error', (err: any) => {
                 this.delegate.onStatusChange('error', err.message);
                 this.ws = null;
             });
