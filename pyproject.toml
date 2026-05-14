@@ -97,6 +97,7 @@ include = ["vibe/", "rig_relay/"]
 [project.scripts]
 rig-relay = "rig_relay.cli.entrypoint:main"
 rig-relay-acp = "rig_relay.cli.acp_entrypoint:main"
+rig-relay-cockpit = "rig_relay.cli.desktop_cockpit:main"
 rig-console = "vibe.cli.webview_console.app:main"
 rig-console-textual = "vibe.cli.textual_ui.rig_console.console_app:main"
 vibe = "vibe.cli.entrypoint:main"  # Deprecated legacy alias

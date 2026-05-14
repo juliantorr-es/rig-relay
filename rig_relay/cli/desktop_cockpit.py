@@ -24,13 +24,14 @@ from rig_relay.desktop.websocket_server import (
     ProjectionWebSocketServer,
 )
 from vibe import __version__
+from vibe.core.config.harness_files import init_harness_files_manager
 from vibe.core.agent_loop import AgentLoop
 from vibe.core.config import VibeConfig
 from vibe.core.hooks.config import load_hooks_from_fs
 from vibe.core.logger import logger
 from vibe.core.telemetry.build_metadata import build_entrypoint_metadata
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
 FRONTEND_DIR = REPO_ROOT / "frontend" / "desktop"
 
@@ -99,6 +100,7 @@ def _run_ws_server(
 
         await server.start()
         print(f"WebSocket projection stream on ws://{host}:{port}")
+        print(f"Auth Token: {token}")
         try:
             await asyncio.Future()
         except asyncio.CancelledError:
@@ -123,6 +125,7 @@ class CockpitAPI:
         ws_port: int | None = None,
         loop_holder: list[asyncio.AbstractEventLoop] | None = None,
         server_holder: list[ProjectionWebSocketServer] | None = None,
+        mode: str = "runtime",
     ) -> None:
         self._store = ChatStore(chat_root=BUILD_ROOT / "desktop" / "chat")
         self._chat_state = self._store.load_state()
@@ -130,29 +133,34 @@ class CockpitAPI:
         self._ws_port = ws_port
         self._loop_holder = loop_holder
         self._server_holder = server_holder
+        self._mode = mode
 
-        # Initialize AgentLoop
-        config = VibeConfig.load()
-        hook_config_result = load_hooks_from_fs(config)
-        entrypoint_metadata = build_entrypoint_metadata(
-            agent_entrypoint="desktop",
-            agent_version=__version__,
-            client_name="rig_relay_desktop",
-            client_version=__version__,
-        )
-        self._agent_loop = AgentLoop(
-            config,
-            agent_name=config.default_agent,
-            enable_streaming=True,
-            entrypoint_metadata=entrypoint_metadata,
-            defer_heavy_init=True,
-            hook_config_result=hook_config_result,
-        )
-        self._adapter = ChatAgentAdapter(
-            agent_loop=self._agent_loop,
-            store=self._store,
-            on_update=self._notify_update,
-        )
+        if mode == "fixture":
+            self._agent_loop = None
+            self._adapter = None  # type: ignore
+        else:
+            # Initialize AgentLoop
+            config = VibeConfig.load()
+            hook_config_result = load_hooks_from_fs(config)
+            entrypoint_metadata = build_entrypoint_metadata(
+                agent_entrypoint="desktop",
+                agent_version=__version__,
+                client_name="rig_relay_desktop",
+                client_version=__version__,
+            )
+            self._agent_loop = AgentLoop(
+                config,
+                agent_name=config.default_agent,
+                enable_streaming=True,
+                entrypoint_metadata=entrypoint_metadata,
+                defer_heavy_init=True,
+                hook_config_result=hook_config_result,
+            )
+            self._adapter = ChatAgentAdapter(
+                agent_loop=self._agent_loop,
+                store=self._store,
+                on_update=self._notify_update,
+            )
 
         # Log startup event
         self._store.append_event(
@@ -216,7 +224,7 @@ class CockpitAPI:
             return {"error": "Message too long"}
 
         # Refuse if another response is active
-        if self._adapter.is_running:
+        if self._adapter is not None and self._adapter.is_running:
             return {"error": "another_response_active"}
 
         # Idempotency check for client_message_id
@@ -252,6 +260,10 @@ class CockpitAPI:
 
         return self.get_chat_state()
 
+    def clear_chat(self) -> dict:
+        """JS-facing alias for clear_chat_view."""
+        return self.clear_chat_view()
+
     def clear_chat_view(self) -> dict:
         self._chat_state.messages = []
         self._store.save_state(self._chat_state)
@@ -260,7 +272,7 @@ class CockpitAPI:
         return self.get_chat_state()
 
     def cancel_chat_response(self) -> dict:
-        if not self._adapter.is_running:
+        if self._adapter is None or not self._adapter.is_running:
             return {"error": "no_active_response"}
 
         if self._adapter.cancel():
@@ -269,6 +281,14 @@ class CockpitAPI:
             return self.get_chat_state()
 
         return {"error": "cancel_failed"}
+
+    def execute_intent(self, intent_request_json: str) -> dict:
+        """JS-facing entry point for governed intents."""
+        try:
+            req = json.loads(intent_request_json)
+        except json.JSONDecodeError:
+            return {"error": "invalid_json"}
+        return self.run_desktop_intent(req)
 
     def run_desktop_intent(self, intent_request: dict) -> dict:
         """Execute a governed desktop intent (read-only/dry-run only).
@@ -305,15 +325,18 @@ class CockpitAPI:
         return inspect_receipt(authorization_receipt)
 
 
-def _open_window(ws_port: int | None) -> None:
+def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool = False) -> None:
     """Open pywebview window with optional WebSocket stream."""
     try:
         import webview  # type: ignore[import-untyped]
+        if not hasattr(webview, "__version__"):
+            webview.__version__ = "6.2.1"
     except ImportError:
-        print("pywebview not available. Install with: uv add pywebview")
-        print("Running dry-run instead...")
-        _dry_run(ws_port or DEFAULT_WS_PORT)
-        return
+        if not server_only:
+            print("pywebview not available. Install with: uv add pywebview")
+            print("Running dry-run instead...")
+            _dry_run(ws_port or DEFAULT_WS_PORT)
+            return
 
     index_path = FRONTEND_DIR / "index.html"
     if not index_path.is_file():
@@ -332,6 +355,7 @@ def _open_window(ws_port: int | None) -> None:
         ws_port=ws_port,
         loop_holder=loop_holder,
         server_holder=server_holder,
+        mode=mode,
     )
 
     if ws_port is not None:
@@ -349,6 +373,21 @@ def _open_window(ws_port: int | None) -> None:
             daemon=True,
         )
         ws_thread.start()
+        # Give the server a moment to start
+        import time
+        time.sleep(0.5)
+
+    if server_only:
+        print("Server-only mode. WebSocket is running.")
+        print(f"URL: file://{index_path}")
+        print(f"WebSocket Token: {ws_token}")
+        print("Press Ctrl+C to exit.")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("Exiting...")
+            return
 
     webview.create_window(
         title="Rig Relay Cockpit",
@@ -359,7 +398,7 @@ def _open_window(ws_port: int | None) -> None:
         resizable=True,
         min_size=(800, 600),
     )
-    webview.start()
+    webview.start(gui='cocoa')
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -367,9 +406,20 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Rig Relay Desktop Cockpit — Read-Only Shell"
     )
     parser.add_argument(
+        "--mode",
+        choices=["runtime", "fixture"],
+        default="runtime",
+        help="Run in runtime mode (real agents) or fixture mode (sample data).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Build and print projection, exit without opening a window.",
+    )
+    parser.add_argument(
+        "--server-only",
+        action="store_true",
+        help="Start the WebSocket server and print the URL, but don't open a window.",
     )
     parser.add_argument(
         "--no-ws",
@@ -386,6 +436,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    init_harness_files_manager("user", "project")
     args = _parse_args(argv)
 
     ws_port: int | None = None if args.no_ws else args.ws_port
@@ -394,7 +445,7 @@ def main(argv: list[str] | None = None) -> int:
         _dry_run(ws_port or DEFAULT_WS_PORT)
         return 0
 
-    _open_window(ws_port)
+    _open_window(ws_port, mode=args.mode, server_only=args.server_only)
     return 0
 
 

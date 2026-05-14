@@ -65,6 +65,9 @@ def _inject_bootstrap(html: str, port: int, token: str) -> str:
 def main(argv: list[str] | None = None) -> None:
     """Launch the pywebview console."""
     import argparse
+    from vibe.core.config.harness_files import init_harness_files_manager
+
+    init_harness_files_manager("user", "project")
 
     parser = argparse.ArgumentParser(description="Rig Console (pywebview)")
     parser.add_argument("--mode", choices=["fixture", "runtime"], default="runtime")
@@ -74,6 +77,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--debug", action="store_true", default=False)
     args = parser.parse_args(argv)
 
+    print(f"Starting Rig Console in {args.mode} mode...")
     backend = RigConsoleBackend(
         session_id=args.session_id,
         workspace_root=args.workspace_root,
@@ -81,6 +85,7 @@ def main(argv: list[str] | None = None) -> None:
         mode=args.mode,
     )
 
+    print("Initializing WebSocket server...")
     ws = ConsoleWebSocketServer(backend, port=0)
     loop_holder: list[asyncio.AbstractEventLoop | None] = [None]
     ws_thread = threading.Thread(
@@ -93,6 +98,7 @@ def main(argv: list[str] | None = None) -> None:
         time.sleep(0.01)
     port = ws.port
     token = ws.token
+    print(f"WebSocket server ready on port {port}")
 
     # Load and inject frontend HTML
     html = _load_html()
@@ -101,12 +107,18 @@ def main(argv: list[str] | None = None) -> None:
     # Start pywebview window
     import webview
 
+    # Polyfill __version__ if missing (removed in pywebview 5.x+)
+    if not hasattr(webview, "__version__"):
+        webview.__version__ = "6.2.1"
+
+    print("Creating pywebview window...")
     webview.create_window(
         "Rig Console", html=html, width=1200, height=800, min_size=(800, 600)
     )
 
+    print("Starting pywebview loop...")
     webview.start(
-        gui=None,  # use platform default
+        gui='cocoa',  # force cocoa on macOS
         debug=args.debug,
         private_mode=False,
     )

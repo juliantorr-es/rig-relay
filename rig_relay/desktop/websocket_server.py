@@ -64,6 +64,7 @@ ALLOWED_MESSAGE_TYPES = frozenset({
     "get_chat_state",
     "get_progress_events",
     "desktop_intent",
+    "desktop_intent_request",
     "subscribe",
     "unsubscribe",
     "ping",
@@ -423,7 +424,7 @@ class ProjectionWebSocketServer:
             case "ping":
                 await _send_json(websocket, {"type": "pong"})
 
-            case "desktop_intent":
+            case "desktop_intent" | "desktop_intent_request":
                 subscribe_task = await self._handle_desktop_intent(
                     websocket, message, subscribe_task
                 )

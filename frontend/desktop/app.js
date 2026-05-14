@@ -1103,10 +1103,19 @@ function handleWSMessage(message) {
 
 // ── Init ──
 
-function initWebSocket() {
+async function initWebSocket() {
   if (typeof ProjectionWebSocketClient === 'undefined') return;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const wsConfig = window.pywebview ? await window.pywebview.api.get_ws_config() : {
+    host: '127.0.0.1',
+    port: parseInt(urlParams.get('ws_port')) || 9876,
+    token: urlParams.get('ws_token') || ''
+  };
+
   wsClient = new ProjectionWebSocketClient({
+    wsUrl: `ws://${wsConfig.host}:${wsConfig.port}`,
+    token: wsConfig.token,
     onProjection: function(data) {
       renderProjection(data);
     },
@@ -1165,7 +1174,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Periodic refresh
-  setInterval(function() {
+  setInterval(async function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const wsConfig = window.pywebview ? await window.pywebview.api.get_ws_config() : {
+      host: '127.0.0.1',
+      port: parseInt(urlParams.get('ws_port')) || 9876,
+      token: urlParams.get('ws_token') || ''
+    };
     if (!wsConnected && window.pywebview && window.pywebview.api) {
       loadFromBridge();
     }
