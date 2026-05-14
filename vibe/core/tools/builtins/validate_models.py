@@ -81,6 +81,8 @@ class Profile:
 
 
 class ValidateArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     profile: str
     scope: str | None = None
     paths: list[str] = Field(default_factory=list)

@@ -179,6 +179,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "vibe/core/telemetry/send.py" = ["PLR"]
 "vibe/core/telemetry/duckdb_projection.py" = ["PLR"]
 "vibe/core/context/assembler.py" = ["PLR"]
+"rig_relay/runtime/tool_invocation_execution.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

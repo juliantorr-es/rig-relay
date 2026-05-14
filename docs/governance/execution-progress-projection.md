@@ -2,9 +2,9 @@
 
 ## Status
 
-**Design draft.** Not implemented. Defines the content-light read model for
+**Phase P4a implemented.** Defines the content-light read model for
 RuntimeSupervisor execution summaries consumed by desktop/Textual/pywebview
-projection surfaces.
+projection surfaces. See `## Implementation Status` below.
 
 ## Motivation
 
@@ -171,14 +171,75 @@ function must:
 | `ReceiptTimeline` | Has data source (receipt index) | Terminal execution events may link to receipt IDs |
 | `SessionPaneProjection` | Has data source (coordination leases) | Execution status may be part of session pane in the future |
 
+## Implementation Status
+
+**Phases P4a + P4b.1 + P4c implemented.** See source:
+- Model + aggregation: `rig_relay/desktop/execution_progress.py`
+- Projection integration: `rig_relay/desktop/projection.py` (`build_projection()`)
+- Schema: `docs/schemas/rig.relay.execution_progress_projection.v1.schema.json`
+- Desktop schema: `docs/schemas/rig.relay.desktop_projection.v1.schema.json` (optional `execution_progress` field)
+- Tests: `tests/desktop/test_execution_progress_projection.py`
+- Integration tests: `tests/desktop/test_desktop_projection.py`
+
+### Implemented
+
+- `ExecutionProgressProjection` Pydantic model — 23 fields, `extra="forbid"`,
+  content-light (no `chunk_text`, `stdout`, `stderr`, `content`, `diff`,
+  `snippet`, `argv`).
+- `execution_progress_from_runtime_events()` pure aggregation function —
+  accepts `Sequence[Any]` (model instances or dicts), processes events
+  in order, skips malformed events without crashing.
+- Message sanitization: warning/refusal messages truncated to 200 chars.
+- All terminal events: last one wins (COMPLETION or FAILURE).
+- `build_projection()` integration: optional `runtime_events` parameter;
+  when provided, aggregates and attaches `execution_progress` to the
+  desktop projection output. When omitted, field is absent.
+- Desktop projection schema includes optional nullable `execution_progress`
+  object with `additionalProperties: false`.
+- 14 integration tests covering: no events, empty events, completion,
+  failure, content-light, malformed events, multi-event aggregation.
+- `ProgressTimelineWidget` Textual widget — renders projection as a compact
+  card in DashboardScreen, no raw event access, empty state handling,
+  40 unit tests.
+- `DashboardProjection.execution_progress` optional field — wires the
+  projection into the dashboard model without conditional DOM.
+- Widget integrated into `DashboardScreen.compose()` and `_render_all()`.
+- 8 forbidden fields verified absent in widget tests.
+- 93/93 schemas valid (execution_progress schema + desktop schema with
+  new field).
+
+### Deferred (next phases)
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **P4b.1** | Wire into `projection.py` `build_projection()` | Implemented |
+| **P4b.2** | Cockpit caller passes runtime events to `build_projection()` | Deferred |
+| **P4c** | Textual ProgressTimeline widget | Implemented |
+| **P4d** | pywebview ProgressTimeline widget | Deferred |
+
+### Content-light proof (P4a + P4b.1)
+
+All forbidden fields verified absent in model tests, integration tests,
+schema validation, and model review:
+
+| Forbidden field | Present in projection? | Evidence |
+|----------------|----------------------|----------|
+| `chunk_text` | No | Integration test `test_chunk_text_not_copied` |
+| `stdout` / `stderr` | No | Only `stdout_bytes`/`stderr_bytes` |
+| `content` | No | Model `extra="forbid"` + schema `additionalProperties: false` |
+| `diff` / `snippet` | No | Model `extra="forbid"` + schema `additionalProperties: false` |
+| `argv` | No | Model `extra="forbid"` |
+| `output` / `patch` | No | Model `extra="forbid"` |
+
 ## Implementation Phases
 
-| Phase | Scope | Dependencies |
-|-------|-------|-------------|
-| **P4a** | `execution_progress_from_runtime_events()` pure function + model | RuntimeStreamEvent models (done) |
-| **P4b** | Wire into projection.py `build_projection()`: collect runtime events, aggregate, emit `progress_events` | P4a |
-| **P4c** | Textual ProgressTimeline widget renders the projection | P4a |
-| **P4d** | pywebview desktop projection consumes `progress_events` | P4b |
+| Phase | Scope | Dependencies | Status |
+|-------|-------|-------------|--------|
+| **P4a** | `execution_progress_from_runtime_events()` pure function + model | RuntimeStreamEvent models (done) | Implemented |
+| **P4b.1** | Wire into projection.py `build_projection()`: optional `runtime_events` param, aggregate, attach `execution_progress` field | P4a | Implemented |
+| **P4b.2** | Cockpit caller passes runtime events to `build_projection()` | P4b.1 | Deferred |
+| **P4c** | Textual ProgressTimeline widget renders the projection | P4a | Implemented |
+| **P4d** | pywebview desktop projection consumes `progress_events` | P4b.1 | Deferred |
 
 ## Cross-References
 
@@ -190,7 +251,8 @@ function must:
 
 ## Recommended Implementation Slice
 
-**P4a — Pure aggregation function + model.** Delivers the model,
-aggregation function, and unit tests. No UI changes. No schema changes
-(existing schemas are sufficient: data flows through DesktopProjection's
-top-level `progress_events` array which is already schema-defined).
+**P4b.1 — Wire aggregation into `build_projection()`.** Delivers the
+integration seam (`runtime_events` parameter) and schema update
+(optional `execution_progress` field). No UI changes. Next slice should
+be P4b.2 (cockpit caller passes runtime events) or P4d (pywebview
+widget).

@@ -91,6 +91,12 @@ porting status, and adaptation notes.
 - **Port:** `relay_native`
 - **Adaptation:** Derives canonical runtime coordination context from an intent, infers session/task/worktree metadata when available, and refuses unsafe paths or missing required scope. Content-light only; does not acquire reservations or execute tools.
 
+### MissionEnvelope
+- **Rig:** Mission-shaped orchestration exists conceptually in docs and workflow direction, but not as a fully executable runtime path.
+- **Relay:** `docs/governance/mission-envelope.md` — minimal bridge object for governed runs
+- **Port:** `relay_native`
+- **Adaptation:** Mission-first envelope that can later carry ADR/sprint metadata as optional references. Keeps executable context packet compilation ahead of full orchestration.
+
 ### WorkspaceRuntime
 - **Rig:** `rig.domain.workspace_runtime.WorkspaceRuntime` — Lane-scoped execution context (worktree, replay, artifact namespaces)
 - **Relay:** `rig_relay.coordination.workspace_runtime.WorkspaceRuntime` — **new**

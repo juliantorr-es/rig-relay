@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig.relay/schemas/session_lifecycle_finalize_result.v1.json",
+  "title": "Session Lifecycle Finalize Result v1",
+  "description": "Content-light result of a session lifecycle finalization. Contains counts, paths, byte totals, and retention decisions. No raw prompts, model outputs, stdout/stderr bodies, secrets, or source diffs.",
+  "type": "object",
+  "required": ["status", "session_id"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.session_lifecycle_finalize_result.v1"],
+      "description": "Schema version identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "partial", "refused"],
+      "description": "Overall finalization status"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier"
+    },
+    "scanned_files": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of files inspected"
+    },
+    "total_bytes_before": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total bytes scanned"
+    },
+    "total_bytes_after": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total bytes after compaction"
+    },
+    "compacted_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Files compacted"
+    },
+    "refused_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Files refused (protected or error)"
+    },
+    "prune_candidate_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Candidates eligible for pruning"
+    },
+    "deleted_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Files deleted when allow_prune=true and dry_run=false"
+    },
+    "compacted_details": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CompactionDetail" },
+      "description": "Per-file compaction results"
+    },
+    "protected_details": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ProtectedDetail" },
+      "description": "Protected files skipped"
+    },
+    "refused_details": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RefusalDetail" },
+      "description": "Refused files with reasons"
+    },
+    "manifest_path": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Path to written manifest"
+    },
+    "receipt_path": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Path to written receipt"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "CompactionDetail": {
+      "type": "object",
+      "required": ["source_path", "category", "status"],
+      "properties": {
+        "source_path": { "type": "string" },
+        "output_path": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+        "size_bytes_before": { "type": "integer", "minimum": 0 },
+        "size_bytes_after": { "type": "integer", "minimum": 0 },
+        "category": { "type": "string" },
+        "status": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ProtectedDetail": {
+      "type": "object",
+      "required": ["path", "category"],
+      "properties": {
+        "path": { "type": "string" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "category": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "RefusalDetail": {
+      "type": "object",
+      "required": ["path", "category", "reason"],
+      "properties": {
+        "path": { "type": "string" },
+        "category": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

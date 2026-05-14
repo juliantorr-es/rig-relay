@@ -238,6 +238,23 @@ P1c (Runtime Models) ──────┼──→ P2b (Subprocess Supervisor) 
 - request_sha256 computed from canonical JSON of all fields except request_id and request_sha256
 - Governance hook placeholder via `requested_capabilities: list[RuntimeCapabilityKind]` — future RuntimeSupervisor can evaluate before acquiring lease
 
+### Mission Envelope Bridge
+**Status:** 🟡 **DOCUMENTED** (bridge design)
+**Effort:** 1–2 days for schema/model follow-up
+**Files:** `docs/governance/mission-envelope.md`, `docs/audits/rig-runtime-port/mission-envelope-spine-design.md`
+**Tests:** deferred until schema/model implementation
+
+**Deliverables:**
+- mission-first envelope concept
+- optional ADR/sprint metadata
+- reproducible context packet inputs
+- receipt-first compilation shape
+
+**Acceptance:**
+- mission-only runs are possible without ADR/sprint executable wiring
+- later hierarchy can be attached without changing `mission_id`
+- packet compilation can be grounded in AGENTS.md, git state, and path policy
+
 ---
 
 ## Phase 3: Evidence (P3a+P3b)

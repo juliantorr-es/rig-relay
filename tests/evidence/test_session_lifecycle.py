@@ -12,6 +12,7 @@ from rig_relay.evidence.session_lifecycle import (
     find_session_compaction_candidates,
     find_session_prune_candidates,
 )
+from rig_relay.governance.mission_envelope import MissionEnvelope
 
 
 def _make_file(path: Path, text: str = "x", days_ago: int = 0) -> Path:
@@ -201,3 +202,40 @@ def test_finalize_session_storage_emits_content_light_receipt(tmp_path: Path) ->
     receipt_text = result.receipt_path.read_text(encoding="utf-8")
     assert "secret stdout" not in receipt_text
     assert "raw_prompt" not in receipt_text
+
+
+def test_finalize_session_storage_optional_mission_linkage(tmp_path: Path) -> None:
+    current = tmp_path / ".rig" / "sessions" / "session-b"
+    _make_file(current / "intent_events.jsonl", '{"ok": true}\n')
+    envelope = MissionEnvelope.model_validate({
+        "schema_version": "rig.mission_envelope.v1",
+        "mission_id": "mission-2026-05-14-session-finalize",
+        "title": "Finalize session with mission linkage",
+        "created_at": "2026-05-14T12:00:00+00:00",
+        "repo_root": "/Users/user/Developer/GitHub/rig-relay",
+        "branch": "main",
+        "head": "61b46b8",
+        "dirty_summary": {
+            "tracked_modified_count": 0,
+            "untracked_count": 0,
+            "protected_dirty_count": 0,
+        },
+        "allowed_paths": [],
+        "protected_paths": [],
+        "instruction_paths": [],
+        "acceptance_checks": [],
+        "handoff_required": True,
+    })
+    result = finalize_session_storage(
+        session_id="session-b",
+        sessions_root=current,
+        policy=SessionRetentionPolicy(),
+        mission_envelope=envelope,
+    )
+
+    assert result.receipt_path is not None
+    receipt = result.receipt_path.read_text(encoding="utf-8")
+    assert envelope.mission_id in receipt
+    assert envelope.fingerprint in receipt
+    assert '"adr_id": null' in receipt or '"adr_id":' in receipt
+    assert '"sprint_id": null' in receipt or '"sprint_id":' in receipt

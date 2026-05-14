@@ -1,0 +1,10 @@
+{"gap": "No Headless Pilot Tests", "severity": "high", "type": "testing", "notes": "Partially addressed: 14 Pilot tests added for DashboardScreen mount, help key, refresh key, provider error, and quit (tests/cli/textual_ui/rig_console/test_dashboard_pilot.py)."}
+{"gap": "ExecutionProgressProjection Missing", "severity": "high", "type": "model", "notes": "Runtime progress is not yet projected."}
+{"gap": "ProgressTimelineWidget Missing", "severity": "medium", "type": "widget", "notes": "No visual representation of task progress over time."}
+{"gap": "Intents Not Fully Wired", "severity": "medium", "type": "architecture", "notes": "Dashboard actions are mostly placeholders or local-only."}
+{"gap": "No Dispatcher/Adapter", "severity": "high", "type": "architecture", "notes": "Missing the layer that maps intents to backend operations."}
+{"gap": "Legacy Transcript Integration", "severity": "medium", "type": "integration", "notes": "VibeApp transcript view is not yet integrated or replaced in Rig Console."}
+{"gap": "Mutation Buttons Missing", "severity": "high", "type": "feature", "notes": "No way to approve or trigger actions from the TUI."}
+{"gap": "Multi-session View Missing", "severity": "medium", "type": "feature", "notes": "Provider only handles one session at a time."}
+{"gap": "Coalescer Metrics Not Exposed", "severity": "low", "type": "observability", "notes": "Metrics are collected but not displayed anywhere."}
+{"gap": "Branch Name Not Resolved", "severity": "low", "type": "provider", "notes": "Provider doesn't yet resolve the current git branch."}

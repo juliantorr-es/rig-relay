@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig.relay/schemas/session_lifecycle_finalize_request.v1.json",
+  "title": "Session Lifecycle Finalize Request v1",
+  "description": "Request envelope for the session_lifecycle_finalize tool. Defaults to dry-run safe mode with no mutation flags enabled.",
+  "type": "object",
+  "required": ["session_id"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.session_lifecycle_finalize_request.v1"],
+      "description": "Schema version identifier"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier to finalize"
+    },
+    "sessions_root": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Root path for session storage; defaults to ~/.rig/sessions/{session_id}"
+    },
+    "older_than_days": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 30,
+      "description": "Age threshold in days for prune candidates"
+    },
+    "allow_compaction": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable JSONL gzip rollup"
+    },
+    "allow_prune": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable age-based file removal"
+    },
+    "write_receipt": {
+      "type": "boolean",
+      "default": true,
+      "description": "Write lifecycle receipt to session root"
+    },
+    "reason": {
+      "type": "string",
+      "default": "session_end",
+      "description": "Label for the finalization event"
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": true,
+      "description": "Audit-only mode; no files modified"
+    }
+  },
+  "additionalProperties": false
+}

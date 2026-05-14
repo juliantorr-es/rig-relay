@@ -8,12 +8,18 @@
     "schema_version": {
       "type": "string",
       "description": "Schema version identifier",
-      "enum": ["rig.relay.runtime_tool_execution_result.v1"]
+      "enum": [
+        "rig.relay.runtime_tool_execution_result.v1"
+      ]
     },
     "invocation_id": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Unique invocation identifier assigned by the adapter"
     },
@@ -27,7 +33,12 @@
     },
     "status": {
       "type": "string",
-      "enum": ["completed", "blocked", "refused", "failed"],
+      "enum": [
+        "completed",
+        "blocked",
+        "refused",
+        "failed"
+      ],
       "description": "Overall execution status"
     },
     "envelope_schema_valid": {
@@ -36,85 +47,289 @@
     },
     "tool_status": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Status returned by the tool (e.g. passed, failed, refused)"
     },
     "tool_error_kind": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Structured error kind from the tool"
     },
     "receipt_sha256": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "SHA-256 hash of the canonical JSON tool receipt"
     },
     "duration_ms": {
       "oneOf": [
-        { "type": "number" },
-        { "type": "null" }
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Total execution duration in milliseconds"
     },
     "error_kind": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Structured error kind for blocked/refused/failed executions"
     },
     "refusal_reason": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Human-readable reason for refusal or failure"
     },
     "warnings": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Non-fatal warnings from the execution"
     },
     "tool_receipt_kind": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Kind of tool receipt (e.g. validate, search_replace)"
     },
     "tool_receipt_schema_version": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Schema version of the tool receipt (e.g. rig.relay.validate_receipt.v1)"
     },
     "receipt_envelope_id": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "ReceiptEnvelope ID when one is built around the tool receipt"
     },
     "audit_event_id": {
       "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "AuditEvent ID when one is created for this execution"
     },
     "changed_paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Files affected by mutation tools"
+    },
+    "receipt": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/runtime_tool_invocation_receipt"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "RuntimeToolInvocationReceipt, produced alongside the execution result"
     }
   },
-  "required": ["schema_version", "intent_id", "tool_name", "status"],
-  "additionalProperties": false
+  "required": [
+    "schema_version",
+    "intent_id",
+    "tool_name",
+    "status"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "runtime_tool_invocation_receipt": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "invocation_id",
+        "intent_id",
+        "tool_name",
+        "adapter_status"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "enum": [
+            "rig.relay.runtime_tool_invocation_receipt.v1"
+          ],
+          "description": "Schema version identifier"
+        },
+        "invocation_id": {
+          "type": "string",
+          "description": "Invocation ID from the adapter envelope"
+        },
+        "intent_id": {
+          "type": "string",
+          "description": "Intent ID from the original RuntimeToolIntent"
+        },
+        "tool_name": {
+          "type": "string",
+          "description": "Name of the tool that was executed"
+        },
+        "adapter_status": {
+          "type": "string",
+          "description": "Adapter-level execution status (completed, blocked, refused, failed)"
+        },
+        "tool_status": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Status returned by the tool"
+        },
+        "tool_error_kind": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Structured error kind from tool or adapter"
+        },
+        "tool_receipt_kind": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Kind of tool receipt (e.g. validate, search_replace)"
+        },
+        "tool_receipt_schema_version": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Schema version of the tool receipt (e.g. rig.relay.validate_receipt.v1)"
+        },
+        "receipt_sha256": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 hash of the tool receipt canonical JSON"
+        },
+        "envelope_id": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "ReceiptEnvelope ID when one is built"
+        },
+        "audit_event_id": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "AuditEvent ID when one is created"
+        },
+        "changed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Files affected by mutation tools"
+        },
+        "duration_ms": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Adapter-level wall clock duration in milliseconds"
+        },
+        "created_at": {
+          "type": "string",
+          "description": "ISO 8601 timestamp when the receipt was created"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Non-fatal warnings from the execution"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

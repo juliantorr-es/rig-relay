@@ -15,6 +15,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from rig_relay.governance.mission_envelope import MissionEnvelope
+
 
 class SessionStorageCategory(StrEnum):
     RECEIPTS = auto()
@@ -115,6 +117,10 @@ class SessionLifecycleReceipt:
     prune_candidate_count: int
     deleted_count: int
     warnings: list[str]
+    mission_id: str | None = None
+    mission_envelope_sha256: str | None = None
+    adr_id: str | None = None
+    sprint_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -485,6 +491,10 @@ def write_session_lifecycle_receipt(
         "session_id": receipt.session_id,
         "reason": receipt.reason,
         "created_at": receipt.created_at,
+        "mission_id": receipt.mission_id,
+        "mission_envelope_sha256": receipt.mission_envelope_sha256,
+        "adr_id": receipt.adr_id,
+        "sprint_id": receipt.sprint_id,
         "scanned_files": receipt.scanned_files,
         "total_bytes_before": receipt.total_bytes_before,
         "total_bytes_after": receipt.total_bytes_after,
@@ -697,6 +707,7 @@ def finalize_session_storage(
     session_id: str,
     sessions_root: Path,
     policy: SessionRetentionPolicy,
+    mission_envelope: MissionEnvelope | None = None,
     allow_compaction: bool = True,
     allow_prune: bool = False,
     write_receipt: bool = True,
@@ -747,6 +758,12 @@ def finalize_session_storage(
             session_id=session_id,
             reason=reason,
             created_at=datetime.now(UTC).isoformat(),
+            mission_id=mission_envelope.mission_id if mission_envelope else None,
+            mission_envelope_sha256=(
+                mission_envelope.fingerprint if mission_envelope else None
+            ),
+            adr_id=mission_envelope.adr_id if mission_envelope else None,
+            sprint_id=mission_envelope.sprint_id if mission_envelope else None,
             scanned_files=state.scanned_files,
             total_bytes_before=state.total_bytes_before,
             total_bytes_after=total_bytes_after,

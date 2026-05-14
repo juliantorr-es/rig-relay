@@ -5,6 +5,11 @@ import time
 import pytest
 from textual.widgets import Static
 
+# All tests in this file use Textual's snapshot testing framework which
+# shares terminal state. Run them on the same xdist worker to prevent
+# concurrency-driven intermittent failures.
+pytestmark = pytest.mark.xdist_group(name="textual_serial_group")
+
 from tests.conftest import build_test_agent_loop, build_test_vibe_app
 from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend

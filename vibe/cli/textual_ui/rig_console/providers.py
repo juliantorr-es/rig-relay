@@ -14,13 +14,15 @@ Rules:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import json
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.coordination.models import CoordinationSession
+from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
 from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord, build_receipt_index
 from vibe.cli.textual_ui.rig_console.projections import (
     DashboardProjection,
@@ -148,6 +150,7 @@ class RuntimeDashboardProjectionProvider:
         session_root: Path | None = None,
         lane_id: str | None = None,
         task_title: str | None = None,
+        runtime_events: Sequence[Any] | None = None,
     ) -> None:
         self._session_id = session_id
         self._session_path = session_path
@@ -157,12 +160,14 @@ class RuntimeDashboardProjectionProvider:
         self._session_root = session_root
         self._lane_id = lane_id
         self._task_title = task_title
+        self._runtime_events = runtime_events
 
     async def dashboard_projection(self) -> DashboardProjection:
         """Build a DashboardProjection from available local evidence.
 
         Returns a clean empty projection if the session path does
-        not exist or cannot be read.
+        not exist or cannot be read. If runtime_events were provided
+        at construction, aggregates them into execution_progress.
         """
         path: str | Path = (
             self._session_path if self._session_path is not None else self._session_id
@@ -176,6 +181,12 @@ class RuntimeDashboardProjectionProvider:
         session = self._build_session(records, evidence)
         footer = self._build_footer(errors, evidence)
 
+        execution_progress = None
+        if self._runtime_events is not None:
+            execution_progress = execution_progress_from_runtime_events(
+                self._runtime_events
+            )
+
         return DashboardProjection(
             title="Rig Console",
             subtitle=f"Session {self._session_id[:12]}",
@@ -184,6 +195,7 @@ class RuntimeDashboardProjectionProvider:
             safety_state="read-only",
             footer_hint=footer,
             backlog_items=[],
+            execution_progress=execution_progress,
         )
 
     def _build_session(

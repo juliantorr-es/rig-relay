@@ -11,10 +11,12 @@ or secrets. Only linkage fields, hashes, timing, and statuses.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionResult
+if TYPE_CHECKING:
+    from rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionResult
 
 # ── Constants ──────────────────────────────────────────────────────────
 

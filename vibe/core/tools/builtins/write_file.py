@@ -33,6 +33,8 @@ from vibe.core.types import ToolResultEvent, ToolStreamEvent
 
 
 class WriteFileArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     path: str
     content: str
     overwrite: bool = Field(
@@ -58,6 +60,8 @@ class WriteFileArgs(BaseModel):
 
 
 class WriteFileResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     path: str
     bytes_written: int
     file_existed: bool

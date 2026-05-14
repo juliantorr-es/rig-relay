@@ -10,7 +10,7 @@ import time
 from typing import ClassVar, NamedTuple, final
 
 import anyio
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from vibe.core.coordination import CoordinationStore
 from vibe.core.guard import get_guard
@@ -103,6 +103,8 @@ def _classify_block_errors(errors: list[str]) -> str:
 
 
 class SearchReplaceArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     file_path: str
     content: str
     expected_before_sha256: str | None = Field(
@@ -131,6 +133,9 @@ class SearchReplaceArgs(BaseModel):
 
 
 class SearchReplaceResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "rig.relay.search_replace_result.v1"
     file: str
     blocks_applied: int
     lines_changed: int
@@ -158,6 +163,9 @@ class SearchReplaceReceipt(BaseModel):
     counts, and structured error classification.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "rig.relay.search_replace_receipt.v1"
     file: str
     status: str = "success"
     blocks_applied: int = 0

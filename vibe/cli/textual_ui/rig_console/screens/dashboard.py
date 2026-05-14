@@ -10,12 +10,16 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.screen import Screen
 
+from rig_relay.desktop.execution_progress import ExecutionProgressProjection
 from vibe.cli.textual_ui.rig_console.intents import DashboardActionResult
 from vibe.cli.textual_ui.rig_console.projections import DashboardProjection
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
 from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWidget
 from vibe.cli.textual_ui.rig_console.widgets.operator_header import OperatorHeaderWidget
+from vibe.cli.textual_ui.rig_console.widgets.progress_timeline import (
+    ProgressTimelineWidget,
+)
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
 
 
@@ -90,6 +94,7 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
             EvidenceRailWidget(proj.evidence),
             classes="dashboard-activity",
         )
+        yield ProgressTimelineWidget(proj.execution_progress or None)
         yield FooterStatusWidget(proj)
 
     def action_quit(self) -> None:
@@ -178,6 +183,10 @@ DashboardScreen > .dashboard-activity > EvidenceRailWidget {
 
         evidence_rail = self.query_one(EvidenceRailWidget)
         evidence_rail.update_projection(proj.evidence)
+
+        ep = proj.execution_progress or ExecutionProgressProjection()
+        timeline = self.query_one(ProgressTimelineWidget)
+        timeline.update_projection(ep)
 
         footer = self.query_one(FooterStatusWidget)
         footer.update_projection(proj)

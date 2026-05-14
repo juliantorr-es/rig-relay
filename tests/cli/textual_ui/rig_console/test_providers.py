@@ -600,3 +600,230 @@ class TestCoordinationEnrichment:
         assert proj.session.validate_status == "passed"
         assert proj.session.receipt_count == 5
         assert proj.session.status == "active"
+
+
+# ── Execution progress ────────────────────────────────────────────────
+
+
+def _runtime_event(kind: str, **overrides: object) -> dict[str, object]:
+    """Build a dict-shaped RuntimeStreamEvent for execution progress tests."""
+    base: dict[str, object] = {
+        "schema_version": "rig.relay.runtime_stream_event.v1",
+        "event_id": f"evt-{kind}-test",
+        "lease_id": "lease-exec-001",
+        "request_id": "req-exec-001",
+        "event_kind": kind,
+        "captured_at": "2026-07-20T10:00:00Z",
+    }
+    base.update(overrides)
+    return base
+
+
+class TestExecutionProgressInProvider:
+    """RuntimeDashboardProjectionProvider execution progress propagation tests."""
+
+    @pytest.mark.asyncio
+    async def test_execution_progress_none_when_no_runtime_events(
+        self, tmp_path: Path
+    ) -> None:
+        """Without runtime_events, execution_progress is None."""
+        session_dir = _make_synthetic_session(tmp_path)
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001", session_path=session_dir
+        )
+        proj = await provider.dashboard_projection()
+
+        assert proj.execution_progress is None
+
+    @pytest.mark.asyncio
+    async def test_execution_progress_empty_when_empty_runtime_events(
+        self, tmp_path: Path
+    ) -> None:
+        """Empty runtime_events list produces a valid empty projection."""
+        session_dir = _make_synthetic_session(tmp_path)
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001", session_path=session_dir, runtime_events=[]
+        )
+        proj = await provider.dashboard_projection()
+
+        assert proj.execution_progress is not None
+        assert proj.execution_progress.status == "pending"
+        assert proj.execution_progress.heartbeat_count == 0
+
+    @pytest.mark.asyncio
+    async def test_execution_progress_populated_from_runtime_events(
+        self, tmp_path: Path
+    ) -> None:
+        """Runtime events produce a populated execution_progress."""
+        session_dir = _make_synthetic_session(tmp_path)
+        events = [
+            _runtime_event("status", status="starting"),
+            _runtime_event("heartbeat", elapsed_ms=500.0),
+            _runtime_event(
+                "completion",
+                status="succeeded",
+                exit_code=0,
+                duration_ms=1500.0,
+                stdout_bytes=1024,
+                stderr_bytes=50,
+                stdout_truncated=False,
+                stderr_truncated=False,
+                stdout_sha256="abc",
+                stderr_sha256="def",
+            ),
+        ]
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001",
+            session_path=session_dir,
+            runtime_events=events,
+        )
+        proj = await provider.dashboard_projection()
+
+        assert proj.execution_progress is not None
+        assert proj.execution_progress.status == "succeeded"
+        assert proj.execution_progress.exit_code == 0
+        assert proj.execution_progress.stdout_bytes == 1024
+        assert proj.execution_progress.stderr_bytes == 50
+        assert proj.execution_progress.stdout_truncated is False
+
+    @pytest.mark.asyncio
+    async def test_execution_progress_byte_counts_only(self, tmp_path: Path) -> None:
+        """Byte counts propagate as integers, never raw content."""
+        session_dir = _make_synthetic_session(tmp_path)
+        events = [
+            _runtime_event("status", status="starting"),
+            _runtime_event(
+                "completion",
+                status="succeeded",
+                exit_code=0,
+                duration_ms=1000.0,
+                stdout_bytes=2048,
+                stderr_bytes=128,
+                stdout_truncated=True,
+                stderr_truncated=False,
+                stdout_sha256="abc",
+                stderr_sha256="def",
+            ),
+        ]
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001",
+            session_path=session_dir,
+            runtime_events=events,
+        )
+        proj = await provider.dashboard_projection()
+
+        assert proj.execution_progress is not None
+        assert isinstance(proj.execution_progress.stdout_bytes, int)
+        assert isinstance(proj.execution_progress.stderr_bytes, int)
+        assert proj.execution_progress.stdout_bytes == 2048
+        assert proj.execution_progress.stderr_bytes == 128
+        assert proj.execution_progress.stdout_truncated is True
+        # No raw output fields
+        assert not hasattr(proj.execution_progress, "chunk_text")
+        assert not hasattr(proj.execution_progress, "stdout")
+        assert not hasattr(proj.execution_progress, "stderr")
+
+    @pytest.mark.asyncio
+    async def test_execution_progress_warning_metadata_without_raw_content(
+        self, tmp_path: Path
+    ) -> None:
+        """Warning metadata propagates without raw content."""
+        session_dir = _make_synthetic_session(tmp_path)
+        events = [
+            _runtime_event("status", status="running"),
+            _runtime_event(
+                "warning",
+                warning_kind="stall_detected",
+                message="Process stalled for 30s",
+            ),
+            _runtime_event(
+                "completion",
+                status="succeeded",
+                exit_code=0,
+                duration_ms=5000.0,
+                stdout_bytes=0,
+                stderr_bytes=0,
+                stdout_sha256="abc",
+                stderr_sha256="def",
+            ),
+        ]
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001",
+            session_path=session_dir,
+            runtime_events=events,
+        )
+        proj = await provider.dashboard_projection()
+
+        assert proj.execution_progress is not None
+        assert proj.execution_progress.warning_count == 1
+        assert proj.execution_progress.latest_warning_kind == "stall_detected"
+        assert (
+            proj.execution_progress.latest_warning_message == "Process stalled for 30s"
+        )
+
+    @pytest.mark.asyncio
+    async def test_execution_progress_terminal_metadata_without_raw_content(
+        self, tmp_path: Path
+    ) -> None:
+        """Terminal error/refusal metadata propagates without raw content."""
+        session_dir = _make_synthetic_session(tmp_path)
+        events = [
+            _runtime_event("status", status="running"),
+            _runtime_event(
+                "failure",
+                status="failed",
+                error_kind="timeout",
+                refusal_reason="Execution exceeded 30s limit",
+                duration_ms=30000.0,
+                exit_code=1,
+                stdout_bytes=500,
+                stderr_bytes=200,
+            ),
+        ]
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001",
+            session_path=session_dir,
+            runtime_events=events,
+        )
+        proj = await provider.dashboard_projection()
+
+        assert proj.execution_progress is not None
+        assert proj.execution_progress.status == "failed"
+        assert proj.execution_progress.error_kind == "timeout"
+        assert proj.execution_progress.refusal_reason == "Execution exceeded 30s limit"
+        assert proj.execution_progress.exit_code == 1
+        assert proj.execution_progress.elapsed_ms == 30000.0
+
+    @pytest.mark.asyncio
+    async def test_execution_progress_does_not_break_existing_fields(
+        self, tmp_path: Path
+    ) -> None:
+        """Setting execution_progress does not break session/evidence fields."""
+        session_dir = _make_synthetic_session(tmp_path)
+        events = [
+            _runtime_event("status", status="starting"),
+            _runtime_event(
+                "completion",
+                status="succeeded",
+                exit_code=0,
+                duration_ms=1000.0,
+                stdout_bytes=100,
+                stderr_bytes=0,
+                stdout_sha256="abc",
+                stderr_sha256="def",
+            ),
+        ]
+        provider = RuntimeDashboardProjectionProvider(
+            session_id="test-session-001",
+            session_path=session_dir,
+            runtime_events=events,
+        )
+        proj = await provider.dashboard_projection()
+
+        # Existing fields must remain intact
+        assert proj.title == "Rig Console"
+        assert proj.session.receipt_count == 5
+        assert proj.session.validate_status == "passed"
+        assert proj.evidence.receipt_count == 5
+        assert proj.execution_progress is not None
+        assert proj.execution_progress.status == "succeeded"

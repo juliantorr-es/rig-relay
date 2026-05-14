@@ -1,8 +1,10 @@
 # Current Built-In Tool Inventory
 
-> Audit date: 2025-05-13
+> Audit date: 2026-05-14
 > Branch: main
-> HEAD: 8986750
+> HEAD: 61b46b8
+> Hardened contract closure: bash, write_file, search_replace, and validate now have complete request/result/receipt model triples with corresponding JSON Schema files, schema_version fields on all receipt models, and no `exclude_none=True` workarounds in schema validation tests.
+> Parallel test stability: `test_tool_schema_contracts.py` loads schemas via module-level `SCHEMAS_DIR` from `__file__` (safe under xdist per-process imports). `test_ui_bash_execution.py` uses `xdist_group("textual_serial_group")` to prevent Textual snapshot concurrency failures. A regression test (`test_schema_contracts_do_not_depend_on_execution_order`) validates all contract models in a single isolated test.
 > See `docs/audits/data/current_builtin_tools.jsonl` for machine-readable records.
 > See also: [bash replacement opportunity map](bash-replacement-opportunity-map.md)
 > Out-of-scope findings from tool audits are recorded in the [findings registry](../findings/out-of-scope-findings.md).

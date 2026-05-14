@@ -127,5 +127,6 @@
     "blocks_applied",
     "lines_changed",
     "content"
-  ]
+  ],
+  "additionalProperties": false
 }

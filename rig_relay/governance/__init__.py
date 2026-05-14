@@ -22,6 +22,23 @@ from rig_relay.governance.decisions import (
     GovernanceReasonSeverity,
 )
 from rig_relay.governance.governance_engine import GovernanceEngine
+from rig_relay.governance.mission_context_compiler import (
+    MissionContextCompileBlocker,
+    MissionContextCompiler,
+    MissionContextCompilerResult,
+)
+from rig_relay.governance.mission_context_packet import (
+    MissionContextBlocker,
+    MissionContextDirtyFileState,
+    MissionContextPacket,
+    MissionContextPacketReceipt,
+    MissionContextRequiredCheck,
+    MissionContextSourceRef,
+    MissionContextWarning,
+    MissionEnvelopeLink,
+    build_mission_context_packet_receipt,
+)
+from rig_relay.governance.mission_envelope import MissionDirtySummary, MissionEnvelope
 
 __all__ = [
     "AllowedIntent",
@@ -31,4 +48,18 @@ __all__ = [
     "GovernanceDecisionKind",
     "GovernanceEngine",
     "GovernanceReasonSeverity",
+    "MissionContextBlocker",
+    "MissionContextCompileBlocker",
+    "MissionContextCompiler",
+    "MissionContextCompilerResult",
+    "MissionContextDirtyFileState",
+    "MissionContextPacket",
+    "MissionContextPacketReceipt",
+    "MissionContextRequiredCheck",
+    "MissionContextSourceRef",
+    "MissionContextWarning",
+    "MissionDirtySummary",
+    "MissionEnvelope",
+    "MissionEnvelopeLink",
+    "build_mission_context_packet_receipt",
 ]

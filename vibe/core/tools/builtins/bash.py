@@ -9,7 +9,7 @@ import sys
 import time
 from typing import ClassVar, Literal, final
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from vibe.core.guard import get_guard
 from vibe.core.scratchpad import is_scratchpad_path
@@ -232,6 +232,8 @@ class BashToolConfig(BaseToolConfig):
 
 
 class BashArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     command: str
     timeout: int | None = Field(
         default=None, description="Override the default command timeout."
@@ -251,6 +253,8 @@ class BashArgs(BaseModel):
 
 
 class BashResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     command: str
     stdout: str
     stderr: str
@@ -272,6 +276,9 @@ class BashReceipt(BaseModel):
     hashes, exit code, and timing information.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "rig.relay.bash_receipt.v1"
     command: str
     status: str
     exit_code: int

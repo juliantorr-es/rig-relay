@@ -20,6 +20,8 @@
 - `~/.rig/sessions` is hot operational state, not the canonical archive.
 - Audit is read-only.
 - End-of-session finalization may compact the current session only.
+- Finalization receipts may optionally link a `MissionEnvelope` for the
+  triggering mission, but mission-only mode remains valid.
 - Compact and GC are dry-run first.
 - Confirmed deletion requires explicit flags.
 - Do not manually delete session trees unless the retention policy is

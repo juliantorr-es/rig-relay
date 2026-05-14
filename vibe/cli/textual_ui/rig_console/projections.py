@@ -12,6 +12,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from rig_relay.desktop.execution_progress import ExecutionProgressProjection
 from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord
 
 _EVIDENCE_RAIL_CAP = 20
@@ -186,7 +187,8 @@ class DashboardProjection(BaseModel):
     """Content-light projection for the DashboardScreen.
 
     Composes session pane, evidence rail, header metadata, footer
-    hints, and backlog items — all derived from backend state.
+    hints, backlog items, and optional execution progress — all
+    derived from backend state.
     No raw logs, file contents, diffs, or command transcripts.
     """
 
@@ -199,6 +201,7 @@ class DashboardProjection(BaseModel):
     safety_state: str | None = None
     footer_hint: str | None = None
     backlog_items: list[str] = Field(default_factory=list)
+    execution_progress: ExecutionProgressProjection | None = None
 
     @property
     def backlog_capped(self) -> list[str]:

@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.mission_context_packet_receipt.v1.schema.json",
+  "title": "Mission Context Packet Receipt v1",
+  "description": "Content-light receipt for mission context packet compilation. Contains no raw prompts, file bodies, stdout/stderr, diffs, or secrets.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.mission_context_packet_receipt.v1" },
+    "packet_id": { "type": "string" },
+    "mission_id": { "type": "string" },
+    "mission_envelope_sha256": { "type": "string" },
+    "packet_fingerprint": { "type": "string" },
+    "packet_sha256": { "type": "string" },
+    "index_backend": { "type": "string" },
+    "duckdb_cache_path": { "type": ["string", "null"] },
+    "source_ref_count": { "type": "integer", "minimum": 0 },
+    "dirty_file_count": { "type": "integer", "minimum": 0 },
+    "required_check_count": { "type": "integer", "minimum": 0 },
+    "warning_count": { "type": "integer", "minimum": 0 },
+    "blocker_count": { "type": "integer", "minimum": 0 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "blockers": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": [
+    "schema_version",
+    "packet_id",
+    "mission_id",
+    "mission_envelope_sha256",
+    "packet_fingerprint",
+    "packet_sha256",
+    "index_backend",
+    "source_ref_count",
+    "dirty_file_count",
+    "required_check_count",
+    "warning_count",
+    "blocker_count",
+    "created_at"
+  ],
+  "additionalProperties": false
+}

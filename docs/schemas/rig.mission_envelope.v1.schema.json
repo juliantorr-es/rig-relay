@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.mission_envelope.v1.schema.json",
+  "title": "Mission Envelope v1",
+  "description": "Minimal executable mission bridge object. Supports mission-only mode now and optional ADR/sprint metadata later. Contains no raw file bodies, prompts, stdout/stderr, or secrets.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.mission_envelope.v1"
+    },
+    "mission_id": { "type": "string" },
+    "title": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "repo_root": { "type": "string" },
+    "branch": { "type": "string" },
+    "head": { "type": "string" },
+    "dirty_summary": {
+      "type": "object",
+      "required": [
+        "tracked_modified_count",
+        "untracked_count",
+        "protected_dirty_count"
+      ],
+      "properties": {
+        "tracked_modified_count": { "type": "integer", "minimum": 0 },
+        "untracked_count": { "type": "integer", "minimum": 0 },
+        "protected_dirty_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "allowed_paths": { "type": "array", "items": { "type": "string" } },
+    "protected_paths": { "type": "array", "items": { "type": "string" } },
+    "instruction_paths": { "type": "array", "items": { "type": "string" } },
+    "acceptance_checks": { "type": "array", "items": { "type": "string" } },
+    "handoff_required": { "type": "boolean" },
+    "adr_id": { "type": ["string", "null"] },
+    "sprint_id": { "type": ["string", "null"] }
+  },
+  "required": [
+    "schema_version",
+    "mission_id",
+    "title",
+    "created_at",
+    "repo_root",
+    "branch",
+    "head",
+    "dirty_summary",
+    "allowed_paths",
+    "protected_paths",
+    "instruction_paths",
+    "acceptance_checks",
+    "handoff_required"
+  ],
+  "additionalProperties": false
+}

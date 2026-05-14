@@ -91,7 +91,9 @@
   "required": [
     "command",
     "status",
-    "returncode"
+    "returncode",
+    "stdout",
+    "stderr"
   ],
   "additionalProperties": false
 }

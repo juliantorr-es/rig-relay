@@ -357,3 +357,140 @@ def test_validate_receipt_allows_metadata_fields() -> None:
     payload = {"tool_name": "validate", "receipt": receipt}
     findings = validate_receipt_payload(payload)
     assert len(findings) == 0, f"Expected clean, got: {findings}"
+
+
+# ── SearchReplaceReceipt policy tests ────────────────────────────────
+
+
+def test_search_replace_receipt_passes_policy() -> None:
+    """A well-formed SearchReplaceReceipt passes the content-light policy."""
+    receipt = {
+        "schema_version": "rig.relay.search_replace_receipt.v1",
+        "file": "src/main.py",
+        "status": "success",
+        "blocks_applied": 2,
+        "lines_changed": 5,
+        "replacements": 2,
+        "before_file_sha256": {"src/main.py": "abc"},
+        "after_file_sha256": {"src/main.py": "def"},
+        "changed_files": ["src/main.py"],
+        "failed_block_count": 0,
+        "total_block_count": 2,
+        "before_bytes": 100,
+        "after_bytes": 105,
+    }
+    payload = {"tool_name": "search_replace", "receipt": receipt}
+    findings = validate_receipt_payload(payload)
+    assert len(findings) == 0, f"Expected clean, got: {findings}"
+
+
+def test_search_replace_receipt_rejects_content_injection() -> None:
+    """SearchReplaceReceipt with raw 'content' field is caught by policy."""
+    receipt = {
+        "schema_version": "rig.relay.search_replace_receipt.v1",
+        "file": "src/main.py",
+        "status": "success",
+        "content": "raw file content leaked",
+    }
+    payload = {"tool_name": "search_replace", "receipt": receipt}
+    findings = validate_receipt_payload(payload)
+    assert len(findings) >= 1
+    assert any("content" in f.field_path for f in findings)
+
+
+def test_search_replace_receipt_rejects_old_new_diff() -> None:
+    """SearchReplaceReceipt with old/new/diff fields is caught."""
+    receipt = {
+        "schema_version": "rig.relay.search_replace_receipt.v1",
+        "file": "src/main.py",
+        "status": "failed",
+        "old": "original text",
+        "new": "replacement text",
+        "diff": "--- a/src/main.py\n+++ b/src/main.py\n@@ -1 +1 @@\n-old\n+new",
+    }
+    payload = {"tool_name": "search_replace", "receipt": receipt}
+    findings = validate_receipt_payload(payload)
+    paths = {f.field_path for f in findings}
+    assert "receipt.old" in paths
+    assert "receipt.new" in paths
+    assert "receipt.diff" in paths
+
+
+def test_search_replace_receipt_rejects_snippet() -> None:
+    """SearchReplaceReceipt with 'snippet' field is caught."""
+    receipt = {
+        "schema_version": "rig.relay.search_replace_receipt.v1",
+        "file": "src/main.py",
+        "status": "failed",
+        "snippet": "some code snippet leaked",
+    }
+    payload = {"tool_name": "search_replace", "receipt": receipt}
+    findings = validate_receipt_payload(payload)
+    assert len(findings) >= 1
+    assert any("snippet" in f.field_path for f in findings)
+
+
+def test_search_replace_receipt_rejects_patch() -> None:
+    """SearchReplaceReceipt with 'patch' field is caught."""
+    receipt = {
+        "schema_version": "rig.relay.search_replace_receipt.v1",
+        "file": "src/main.py",
+        "status": "failed",
+        "patch": "--- a/file\n+++ b/file\n@@ -1 +1 @@\n-old\n+new",
+    }
+    payload = {"tool_name": "search_replace", "receipt": receipt}
+    findings = validate_receipt_payload(payload)
+    assert len(findings) >= 1
+    assert any("patch" in f.field_path for f in findings)
+
+
+# ── WriteFileReceipt policy tests ────────────────────────────────────
+
+
+def test_write_file_receipt_passes_policy() -> None:
+    """A well-formed WriteFileReceipt passes the content-light policy."""
+    receipt = {
+        "schema_version": "rig.relay.write_file_receipt.v1",
+        "path": "src/output.txt",
+        "status": "success",
+        "bytes_written": 42,
+        "before_sha256": "abc",
+        "after_sha256": "def",
+        "before_bytes": 0,
+        "after_bytes": 42,
+        "file_existed": False,
+        "created_file": True,
+        "overwrote_existing_file": False,
+        "parent_dirs_created": True,
+    }
+    payload = {"tool_name": "write_file", "receipt": receipt}
+    findings = validate_receipt_payload(payload)
+    assert len(findings) == 0, f"Expected clean, got: {findings}"
+
+
+def test_write_file_receipt_rejects_content_injection() -> None:
+    """WriteFileReceipt with raw 'content' field is caught by policy."""
+    receipt = {
+        "schema_version": "rig.relay.write_file_receipt.v1",
+        "path": "src/output.txt",
+        "status": "success",
+        "content": "raw file content leaked",
+    }
+    payload = {"tool_name": "write_file", "receipt": receipt}
+    findings = validate_receipt_payload(payload)
+    assert len(findings) >= 1
+    assert any("content" in f.field_path for f in findings)
+
+
+def test_write_file_receipt_rejects_file_contents() -> None:
+    """WriteFileReceipt with 'file_contents' field is caught."""
+    receipt = {
+        "schema_version": "rig.relay.write_file_receipt.v1",
+        "path": "src/output.txt",
+        "status": "success",
+        "file_contents": "raw content",
+    }
+    payload = {"tool_name": "write_file", "receipt": receipt}
+    findings = validate_receipt_payload(payload)
+    assert len(findings) >= 1
+    assert any("file_contents" in f.field_path for f in findings)

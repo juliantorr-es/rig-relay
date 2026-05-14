@@ -8,12 +8,13 @@
     "status": {
       "type": "string",
       "enum": [
-        "passed",
-        "failed",
         "blocked",
+        "failed",
+        "passed",
         "refused",
+        "skipped",
         "timed_out",
-        "skipped"
+        "unknown"
       ],
       "description": "Overall validation status"
     },
@@ -64,7 +65,7 @@
         {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/ValidateCheckResult"
           }
         },
         {
@@ -165,11 +166,25 @@
           "description": "Kind of check (pytest, ruff, pyright, git, schema, policy, custom)"
         },
         "command_display": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "Human-readable command summary"
         },
         "command_fingerprint": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "Hash of normalized command"
         },
         "status": {
@@ -184,27 +199,69 @@
           ]
         },
         "exit_code": {
-          "type": "integer",
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "Process exit code when present"
         },
         "duration_ms": {
-          "type": "number",
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "Measured runtime in milliseconds"
         },
         "stdout_sha256": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "SHA256 hash of raw stdout"
         },
         "stderr_sha256": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "SHA256 hash of raw stderr"
         },
         "stdout_bytes": {
-          "type": "integer",
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "Byte count of raw stdout"
         },
         "stderr_bytes": {
-          "type": "integer",
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "Byte count of raw stderr"
         },
         "stdout_truncated": {
@@ -216,11 +273,25 @@
           "description": "Whether stderr exceeded cap"
         },
         "parsed_summary": {
-          "type": "object",
+          "oneOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "Optional structured summary from a profile-specific parser"
         },
         "failure_kind": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "Blocker kind when status is not passed"
         },
         "affected_paths": {

@@ -14,6 +14,7 @@ from rig_relay.evidence.session_lifecycle import (
     SessionRetentionPolicy,
     finalize_session_storage,
 )
+from rig_relay.governance.mission_envelope import MissionEnvelope
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import BaseTool, BaseToolConfig, BaseToolState, InvokeContext
 from vibe.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
@@ -30,6 +31,7 @@ class SessionRetentionPolicyArgs(BaseModel):
 class SessionFinalizeArgs(BaseModel):
     session_id: str
     sessions_root: Path
+    mission_envelope: MissionEnvelope | None = None
     policy: SessionRetentionPolicyArgs = Field(
         default_factory=SessionRetentionPolicyArgs
     )
@@ -194,6 +196,7 @@ class SessionLifecycleFinalize(
             session_id=args.session_id,
             sessions_root=args.sessions_root,
             policy=policy,
+            mission_envelope=args.mission_envelope,
             allow_compaction=args.allow_compaction,
             allow_prune=args.allow_prune,
             write_receipt=args.write_receipt,

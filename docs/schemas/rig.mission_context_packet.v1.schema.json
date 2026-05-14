@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.mission_context_packet.v1.schema.json",
+  "title": "Mission Context Packet v1",
+  "description": "Deterministic, content-light context packet compiled from canonical docs, schemas, decisions, receipts, and safe repo state. DuckDB may index sources, but is never the source of truth.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.mission_context_packet.v1" },
+    "packet_id": { "type": "string" },
+    "mission_id": { "type": "string" },
+    "title": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "repo_root": { "type": "string" },
+    "branch": { "type": "string" },
+    "head": { "type": "string" },
+    "mission_envelope": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["schema_version", "mission_id", "fingerprint"],
+      "properties": {
+        "schema_version": { "type": "string", "const": "rig.mission_envelope.v1" },
+        "mission_id": { "type": "string" },
+        "fingerprint": { "type": "string" }
+      }
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+          "type": "object",
+          "additionalProperties": false,
+        "required": ["path", "sha256", "kind"],
+          "properties": {
+            "path": { "type": "string" },
+            "sha256": { "type": "string" },
+            "kind": { "type": "string" },
+            "size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+            "note": { "type": ["string", "null"] }
+          }
+        }
+      },
+    "dirty_file_states": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "status"],
+        "properties": {
+          "path": { "type": "string" },
+          "status": { "type": "string" },
+          "before_sha256": { "type": ["string", "null"] },
+          "after_sha256": { "type": ["string", "null"] },
+          "byte_count": { "type": ["integer", "null"], "minimum": 0 },
+          "protected": { "type": "boolean" }
+        }
+      }
+    },
+    "required_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "command", "required"],
+        "properties": {
+          "name": { "type": "string" },
+          "command": { "type": "string" },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "message"],
+        "properties": {
+          "kind": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "message"],
+        "properties": {
+          "kind": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "allowed_paths": { "type": "array", "items": { "type": "string" } },
+    "protected_paths": { "type": "array", "items": { "type": "string" } },
+    "instruction_paths": { "type": "array", "items": { "type": "string" } },
+    "acceptance_checks": { "type": "array", "items": { "type": "string" } },
+    "content_policy": { "type": "string" },
+    "handoff_required": { "type": "boolean" }
+  },
+  "required": [
+    "schema_version",
+    "packet_id",
+    "mission_id",
+    "title",
+    "created_at",
+    "repo_root",
+    "branch",
+    "head",
+    "allowed_paths",
+    "protected_paths",
+    "instruction_paths",
+    "acceptance_checks",
+    "handoff_required"
+  ],
+  "additionalProperties": false
+}

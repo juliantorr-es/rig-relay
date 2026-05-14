@@ -16,6 +16,7 @@ Provenance (Rig-to-Relay porting doctrine):
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from datetime import UTC, datetime
 import json
 from pathlib import Path
@@ -23,6 +24,7 @@ from typing import Any
 
 import jsonschema
 
+from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
 from rig_relay.desktop.projection_integrity import build_projection_integrity_assessment
 from rig_relay.evidence.receipt_index import build_receipt_index
 from rig_relay.evidence.storage_lifecycle import compute_storage_summary
@@ -394,14 +396,21 @@ def _validate_against_schema(projection: dict[str, Any]) -> list[str]:
     return [e.message for e in validator.iter_errors(projection)]
 
 
-def build_projection(build_root: Path | None = None) -> dict[str, Any]:  # noqa: PLR0914
+def build_projection(  # noqa: PLR0914
+    build_root: Path | None = None, runtime_events: Sequence[Any] | None = None
+) -> dict[str, Any]:
     """Build a content-light desktop projection from available artifacts.
 
     Args:
         build_root: Path to .build/rig-relay directory.
+        runtime_events: Optional sequence of runtime stream events (model instances
+            or dicts). When provided, aggregates into execution_progress using
+            execution_progress_from_runtime_events(). The result is content-light:
+            no raw chunk_text, stdout/stderr content, or file contents.
 
     Returns:
-        Projection dict with schema_version, source_status, and category fields.
+        Projection dict with schema_version, source_status, category fields,
+        and optional execution_progress.
     """
     root = build_root or DEFAULT_BUILD_ROOT
     now = datetime.now(UTC)
@@ -454,6 +463,10 @@ def build_projection(build_root: Path | None = None) -> dict[str, Any]:  # noqa:
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }
+
+    if runtime_events is not None:
+        exec_progress = execution_progress_from_runtime_events(runtime_events)
+        projection["execution_progress"] = exec_progress.model_dump(mode="json")
 
     schema_errors = _validate_against_schema(projection)
     if schema_errors:

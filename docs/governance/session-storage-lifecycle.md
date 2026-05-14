@@ -10,6 +10,9 @@ The primary product surface is an end-of-session agent tool:
 
 - `rig.relay.session_lifecycle.finalize`
 
+The finalize tool may optionally receive a `MissionEnvelope` and will
+write a mission-linked lifecycle receipt when one is provided.
+
 CLI scripts remain internal/admin/recovery utilities for now.
 
 ## Policy
@@ -69,6 +72,7 @@ CLI scripts remain internal/admin/recovery utilities for now.
   policy and the local recovery path.
 - Protected classes are never compacted or pruned.
 - Lifecycle receipts are part of the evidence trail.
+- Mission linkage is optional and must not require ADR or sprint metadata.
 
 ## Future CLI Surface
 

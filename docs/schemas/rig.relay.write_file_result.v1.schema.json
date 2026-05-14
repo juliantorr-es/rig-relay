@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.write_file_result.v1.schema.json",
+  "title": "Rig Relay WriteFile Result v1",
+  "description": "Schema for a deterministic write_file tool execution result. Contains the full result with mutation evidence fields.",
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Path to the written file"
+    },
+    "bytes_written": {
+      "type": "integer",
+      "description": "Number of bytes written to the file"
+    },
+    "file_existed": {
+      "type": "boolean",
+      "description": "Whether the file existed before the write operation"
+    },
+    "content": {
+      "type": "string",
+      "description": "Full file content after the write operation"
+    },
+    "before_sha256": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "SHA256 hash of the file content before writing"
+    },
+    "after_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of the file content after writing"
+    },
+    "created_file": {
+      "type": "boolean",
+      "description": "Whether this operation created a new file"
+    },
+    "overwrote_existing_file": {
+      "type": "boolean",
+      "description": "Whether this operation overwrote an existing file"
+    },
+    "parent_dirs_created": {
+      "type": "boolean",
+      "description": "Whether parent directories were created"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "refused",
+        "blocked"
+      ],
+      "description": "Outcome of the write operation"
+    },
+    "error_kind": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Structured error classification when status is not success"
+    },
+    "refusal_reason": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Human-readable reason when status is refused or blocked"
+    },
+    "before_bytes": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "File size in bytes before writing"
+    },
+    "after_bytes": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "File size in bytes after writing"
+    },
+    "duration_ms": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Wall-clock duration in milliseconds"
+    }
+  },
+  "required": [
+    "path",
+    "bytes_written",
+    "file_existed",
+    "content",
+    "status"
+  ],
+  "additionalProperties": false
+}

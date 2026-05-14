@@ -122,5 +122,6 @@
     "status",
     "blocks_applied",
     "lines_changed"
-  ]
+  ],
+  "additionalProperties": false
 }

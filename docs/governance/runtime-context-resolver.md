@@ -46,3 +46,4 @@ The resolver derives a read-mostly `RuntimeContext` that can be passed into tool
 
 Later runtime and mutation surfaces can consume the resolved context instead of making every agent thread carry bookkeeping IDs directly. That keeps lease and session handling in the control plane, where it belongs.
 
+The next bridge layer is the mission envelope documented in [mission-envelope.md](mission-envelope.md), which can compile a concrete runtime packet from the resolved context without requiring a full ADR/Sprint/Mission execution tree.

@@ -5,20 +5,26 @@ RuntimeToolInvocationAdapter.prepare(), validate the envelope schema,
 map envelope payloads to tool args, run the tool, and return
 structured content-light results.
 
+Context injection:
+- validate: no InvokeContext (read-only, no coordination needed).
+- search_replace: InvokeContext built from envelope (session_id, task_id)
+  and passed to the tool. CWD is set to envelope.cwd during execution
+  for path validation and coordination store resolution.
+
 Constraints:
-- Validate execution only (read-only).
-- search_replace execution (mutation) behind the adapter.
-- No lease acquisition.
-- No RuntimeSupervisor integration.
+- No lease acquisition (deferred).
+- No RuntimeSupervisor integration (deferred).
 - Audit integration is optional (not wired here).
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from contextlib import contextmanager
 from enum import StrEnum
 import hashlib
 import json
+import os
 from pathlib import Path
 import time
 from typing import Any
@@ -89,6 +95,8 @@ class RuntimeToolExecutionResult(BaseModel):
     receipt_envelope_id: str | None = None
     audit_event_id: str | None = None
     changed_paths: list[str] = Field(default_factory=list)
+    # ── Receipt model (produced alongside result) ─────────────────
+    receipt: RuntimeToolInvocationReceipt | None = None
 
 
 # ── Execution runner ──────────────────────────────────────────────────
@@ -222,7 +230,7 @@ class RuntimeToolExecutionRunner:
         elif tool_status == "failed":
             execution_status = RuntimeToolExecutionStatus.COMPLETED
 
-        return RuntimeToolExecutionResult(
+        result = RuntimeToolExecutionResult(
             status=execution_status,
             invocation_id=envelope.invocation_id,
             intent_id=intent.intent_id,
@@ -237,6 +245,7 @@ class RuntimeToolExecutionRunner:
             tool_receipt_kind=receipt_kind,
             tool_receipt_schema_version=receipt_schema_version,
         )
+        return self._attach_receipt(result)
 
     async def execute_search_replace(
         self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
@@ -319,12 +328,18 @@ class RuntimeToolExecutionRunner:
 
         # ── Build receipt hash ─────────────────────────────────────
         receipt_sha256: str | None = None
+        receipt: Any = None
         try:
             receipt = self._build_search_replace_receipt(result)
             rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
             receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
         except Exception:
             pass
+
+        # ── Extract receipt metadata ───────────────────────────────
+        receipt_schema_version = None
+        if receipt is not None:
+            receipt_schema_version = getattr(receipt, "schema_version", None)
 
         duration = (time.perf_counter() - start) * 1000
 
@@ -339,7 +354,11 @@ class RuntimeToolExecutionRunner:
         elif tool_status in {"no_match", "ambiguous_match", "count_mismatch"}:
             execution_status = RuntimeToolExecutionStatus.COMPLETED
 
-        return RuntimeToolExecutionResult(
+        payload = envelope.payload or {}
+        file_path = payload.get("file_path", "")
+        changed_paths: list[str] = [file_path] if file_path else []
+
+        result = RuntimeToolExecutionResult(
             status=execution_status,
             invocation_id=envelope.invocation_id,
             intent_id=intent.intent_id,
@@ -351,7 +370,11 @@ class RuntimeToolExecutionRunner:
             duration_ms=duration,
             error_kind=tool_error_kind,
             refusal_reason=tool_refusal,
+            tool_receipt_kind="search_replace",
+            tool_receipt_schema_version=receipt_schema_version,
+            changed_paths=changed_paths,
         )
+        return self._attach_receipt(result)
 
     # ── Internal helpers ───────────────────────────────────────────
 
@@ -390,11 +413,15 @@ class RuntimeToolExecutionRunner:
     async def _run_search_replace_tool(
         self, envelope: RuntimeToolInvocationEnvelope
     ) -> Any:
-        """Run the search_replace tool and extract the final result.
+        """Run the search_replace tool with runtime context injected.
 
-        The search_replace tool's run() method is an AsyncGenerator that
-        yields ToolStreamEvent | SearchReplaceResult. The final yielded
-        value is the SearchReplaceResult, extracted via anext().
+        Builds an InvokeContext from the envelope (session_id, task_id)
+        and passes it to the tool so coordination checks and path
+        validation use the canonical runtime context.
+
+        CWD is temporarily set to envelope.cwd during execution so the
+        tool's Path.cwd()-based checks (path validation, coordination
+        store resolution) operate within the correct scope.
         """
         from vibe.core.tools.base import BaseToolState
         from vibe.core.tools.builtins.search_replace import (
@@ -408,19 +435,24 @@ class RuntimeToolExecutionRunner:
         args = SearchReplaceArgs(
             file_path=payload.get("file_path", ""),
             content=payload.get("content", ""),
-            workspace_root=envelope.worktree_path or envelope.repo_root or None,
+            expected_before_sha256=payload.get("expected_before_sha256"),
+            expected_replacements=payload.get("expected_replacements"),
+            allow_multiple=payload.get("allow_multiple", True),
         )
 
+        invoke_ctx = self._build_invoke_context(envelope)
         config = SearchReplaceConfig()
         tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
-        agen: AsyncGenerator[Any, None] = tool.run(args)
-        result: Any = None
-        while True:
-            try:
-                item = await anext(agen)  # type: ignore[arg-type]
-                result = item
-            except StopAsyncIteration:
-                break
+
+        with self._cwd_for_envelope(envelope):
+            agen: AsyncGenerator[Any, None] = tool.run(args, ctx=invoke_ctx)
+            result: Any = None
+            while True:
+                try:
+                    item = await anext(agen)  # type: ignore[arg-type]
+                    result = item
+                except StopAsyncIteration:
+                    break
 
         return result
 
@@ -449,6 +481,63 @@ class RuntimeToolExecutionRunner:
             config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
         )
         return tool.build_receipt(result)
+
+    @staticmethod
+    def _build_invoke_context(envelope: RuntimeToolInvocationEnvelope) -> Any | None:
+        """Build an InvokeContext from an invocation envelope.
+
+        Returns None when the envelope lacks session_id or task_id
+        (preserving the current behavior of skipping coordination).
+        """
+        from vibe.core.tools.base import InvokeContext
+
+        if not envelope.session_id or not envelope.task_id:
+            return None
+
+        session_dir = Path(f"/runtime/sessions/{envelope.session_id}")
+
+        return InvokeContext(tool_call_id=envelope.task_id, session_dir=session_dir)
+
+    @staticmethod
+    @contextmanager
+    def _cwd_for_envelope(envelope: RuntimeToolInvocationEnvelope) -> Any:
+        """Context manager that sets CWD to envelope.cwd during execution.
+
+        Restores the original CWD on exit. If envelope.cwd is None,
+        this is a no-op.
+        """
+        target = envelope.cwd
+        if target is None:
+            yield
+            return
+        original = os.getcwd()
+        if original == target:
+            yield
+            return
+        os.chdir(target)
+        try:
+            yield
+        finally:
+            os.chdir(original)
+
+    @staticmethod
+    def _attach_receipt(
+        result: RuntimeToolExecutionResult,
+    ) -> RuntimeToolExecutionResult:
+        """Attach a receipt model to the execution result.
+
+        Silently continues if the receipt module or builder is unavailable.
+        """
+        try:
+            from rig_relay.runtime.tool_invocation_receipt import (
+                build_runtime_tool_invocation_receipt,
+            )
+
+            receipt_model = build_runtime_tool_invocation_receipt(result)
+            result = result.model_copy(update={"receipt": receipt_model})
+        except Exception:
+            pass
+        return result
 
     def _validate_envelope_schema(
         self, envelope: RuntimeToolInvocationEnvelope
@@ -481,3 +570,10 @@ __all__ = [
     "RuntimeToolExecutionRunner",
     "RuntimeToolExecutionStatus",
 ]
+
+# Resolve forward reference in RuntimeToolExecutionResult.receipt field.
+# tool_invocation_receipt.py uses TYPE_CHECKING for its execution import,
+# so this does not create a circular dependency.
+from rig_relay.runtime.tool_invocation_receipt import RuntimeToolInvocationReceipt
+
+RuntimeToolExecutionResult.model_rebuild()

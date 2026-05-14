@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.write_file_invocation.v1.schema.json",
+  "title": "Rig Relay WriteFile Invocation v1",
+  "description": "Schema for a deterministic write_file tool invocation request. Defines the bounded envelope for atomic file writes.",
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Path to the file to write"
+    },
+    "content": {
+      "type": "string",
+      "description": "UTF-8 content to write to the file"
+    },
+    "overwrite": {
+      "type": "boolean",
+      "description": "Must be set to true to overwrite an existing file"
+    },
+    "allow_overwrite_protected": {
+      "type": "boolean",
+      "description": "Set to true only when overwriting a dirty file at session start. Must be paired with expected_before_sha256."
+    },
+    "expected_before_sha256": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "sha256:<hex> of the file bytes before writing. Required when allow_overwrite_protected=true."
+    }
+  },
+  "required": [
+    "path",
+    "content"
+  ],
+  "additionalProperties": false
+}
