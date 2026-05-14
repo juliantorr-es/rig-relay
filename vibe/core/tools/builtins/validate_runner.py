@@ -65,33 +65,17 @@ def classify_failure(command_kind: str, exit_code: int, stderr: str) -> str:
 
 
 def check_missing_dependency(argv: Sequence[str]) -> str | None:
-    """Check if required executables exist for a command.
+    """Check if the primary executable exists.
 
-    Only checks the first resolvable binary token — subsequent tokens
-    are arguments/subcommands (e.g. ``git status`` only checks ``git``).
-    Handles ``uv run <tool>`` pattern: checks ``uv`` then skips ``run``.
+    Only checks the first token of argv. This avoids misclassifying
+    subcommands or arguments as missing dependencies (e.g., in
+    'git status' or 'uv run pytest', only 'git' or 'uv' are checked).
     """
-    main_bin: str | None = None
-    skip_tokens = {"run"}
-    for token in argv:
-        if token in skip_tokens:
-            continue
-        if token == "uv":
-            if not shutil.which("uv"):
-                return "uv"
-            continue
-        if token.isdigit():
-            continue
-        if token.startswith("-"):
-            continue
-        if "/" in token:
-            continue
-        if "." in token:
-            continue
-        main_bin = token
-        break
+    if not argv:
+        return None
 
-    if main_bin and not shutil.which(main_bin):
+    main_bin = argv[0]
+    if not shutil.which(main_bin):
         return main_bin
     return None
 

@@ -21,6 +21,7 @@ import hashlib
 from pathlib import Path
 import sys
 import textwrap
+from typing import Any, cast
 
 import pytest
 
@@ -134,6 +135,14 @@ def test_check_missing_dependency_empty_argv() -> None:
     """Empty argv returns no missing dependency."""
     result = check_missing_dependency([])
     assert result is None
+
+
+def test_check_missing_dependency_only_checks_first_token() -> None:
+    """Check that only the first token is validated, ignoring subcommands."""
+    # 'git' likely exists, 'nonexistent-sub' definitely doesn't
+    assert check_missing_dependency(["git", "nonexistent-sub"]) is None
+    # 'uv' exists in this environment, 'pytest' check is skipped
+    assert check_missing_dependency(["uv", "run", "pytest"]) is None
 
 
 # ── Classify failure ──────────────────────────────────────────────────
@@ -1336,7 +1345,7 @@ def test_parse_policy_summary_text_fallback() -> None:
     assert result is not None
     assert result["parser_name"] == "policy_text"
     assert result["parser_status"] == "parsed"
-    assert result["finding_count"] >= 2
+    assert cast(int, result["finding_count"]) >= 2
 
 
 def test_parse_policy_summary_empty() -> None:
@@ -1403,7 +1412,7 @@ def test_parsed_summary_in_model() -> None:
         check_id="ruff_check", command_kind="ruff", parsed_summary=summary
     )
     assert result.parsed_summary == summary
-    assert result.parsed_summary["violation_count"] == 3
+    assert cast(dict[str, Any], result.parsed_summary)["violation_count"] == 3
 
 
 def test_parsed_summary_none_default() -> None:
@@ -1702,7 +1711,7 @@ async def test_run_end_to_end_cache_hit(tmp_path: Path) -> None:
     (tmp_path / "dummy.py").write_text("x = 1\n")
 
     tool = Validate(
-        config_getter=lambda: ValidateToolConfig(permission="always"),
+        config_getter=lambda: ValidateToolConfig(permission=ToolPermission.ALWAYS),
         state=BaseToolState(),
     )
     args = ValidateArgs(
@@ -1768,7 +1777,7 @@ async def test_run_end_to_end_cache_miss_on_invalidation(tmp_path: Path) -> None
     (tmp_path / "dummy.py").write_text("x = 1\n")
 
     tool = Validate(
-        config_getter=lambda: ValidateToolConfig(permission="always"),
+        config_getter=lambda: ValidateToolConfig(permission=ToolPermission.ALWAYS),
         state=BaseToolState(),
     )
     args = ValidateArgs(
@@ -1833,7 +1842,7 @@ async def test_run_end_to_end_cache_content_light(tmp_path: Path) -> None:
     (tmp_path / "dummy.py").write_text("x = 1\n")
 
     tool = Validate(
-        config_getter=lambda: ValidateToolConfig(permission="always"),
+        config_getter=lambda: ValidateToolConfig(permission=ToolPermission.ALWAYS),
         state=BaseToolState(),
     )
     args = ValidateArgs(
@@ -1893,7 +1902,7 @@ async def test_run_end_to_end_cache_on_profile_with_focused_test(
     (tmp_path / "dummy.py").write_text("x = 1\n")
 
     tool = Validate(
-        config_getter=lambda: ValidateToolConfig(permission="always"),
+        config_getter=lambda: ValidateToolConfig(permission=ToolPermission.ALWAYS),
         state=BaseToolState(),
     )
     # Use quick profile (git status). Paths are passed but git doesn't use them.
@@ -1943,7 +1952,7 @@ async def test_run_end_to_end_cache_disabled_produces_no_cache(tmp_path: Path) -
     (tmp_path / "dummy.py").write_text("x = 1\n")
 
     tool = Validate(
-        config_getter=lambda: ValidateToolConfig(permission="always"),
+        config_getter=lambda: ValidateToolConfig(permission=ToolPermission.ALWAYS),
         state=BaseToolState(),
     )
     args = ValidateArgs(
@@ -1993,7 +2002,7 @@ async def test_run_end_to_end_force_rerun_ignores_cache(tmp_path: Path) -> None:
     (tmp_path / "dummy.py").write_text("x = 1\n")
 
     tool = Validate(
-        config_getter=lambda: ValidateToolConfig(permission="always"),
+        config_getter=lambda: ValidateToolConfig(permission=ToolPermission.ALWAYS),
         state=BaseToolState(),
     )
     # First call with normal cache
@@ -2052,7 +2061,7 @@ async def test_run_end_to_end_scheduler_disabled_no_block(tmp_path: Path) -> Non
     (tmp_path / "dummy.py").write_text("x = 1\n")
 
     tool = Validate(
-        config_getter=lambda: ValidateToolConfig(permission="always"),
+        config_getter=lambda: ValidateToolConfig(permission=ToolPermission.ALWAYS),
         state=BaseToolState(),
     )
     args = ValidateArgs(
@@ -2097,7 +2106,7 @@ async def test_run_end_to_end_cache_error_resilient(tmp_path: Path) -> None:
     (tmp_path / "dummy.py").write_text("x = 1\n")
 
     tool = Validate(
-        config_getter=lambda: ValidateToolConfig(permission="always"),
+        config_getter=lambda: ValidateToolConfig(permission=ToolPermission.ALWAYS),
         state=BaseToolState(),
     )
     args = ValidateArgs(
