@@ -1,6 +1,6 @@
 """Relay-owned entry point dispatcher.
 
-Launches the Rig Relay Desktop Cockpit by default.
+Launches the Rig Relay Desktop by default.
 """
 
 from __future__ import annotations

@@ -1,0 +1,276 @@
+/* Rig Relay — Widget Cards
+   Three disclosure levels: compact / standard / expanded */
+
+/* ── Card base ── */
+.widget-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: grid-column var(--transition-layout),
+              grid-row var(--transition-layout),
+              border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+.widget-card:hover {
+  border-color: var(--border-active);
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Disclosure: Level 1 — Compact ── */
+.widget-card[data-disclosure="compact"] {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  height: var(--widget-compact-height);
+  cursor: pointer;
+}
+
+.widget-card[data-disclosure="compact"] .widget-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.widget-card[data-disclosure="compact"] .widget-chip {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.widget-card[data-disclosure="compact"] .widget-body,
+.widget-card[data-disclosure="compact"] .widget-actions,
+.widget-card[data-disclosure="compact"] .widget-detail {
+  display: none;
+}
+
+/* ── Disclosure: Level 2 — Standard ── */
+.widget-card[data-disclosure="standard"] {
+  display: flex;
+  flex-direction: column;
+  min-height: var(--widget-standard-min-height);
+}
+
+.widget-card[data-disclosure="standard"] .widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  user-select: none;
+}
+
+.widget-card[data-disclosure="standard"] .widget-header:hover {
+  background: var(--bg-card-hover);
+}
+
+.widget-card[data-disclosure="standard"] .widget-expand-icon {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.widget-card[data-disclosure="standard"] .widget-expand-icon.open {
+  transform: rotate(180deg);
+}
+
+.widget-card[data-disclosure="standard"] .widget-body {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  transition: max-height var(--transition-base), opacity var(--transition-fast);
+}
+
+.widget-card[data-disclosure="standard"] .widget-body.collapsed {
+  max-height: 0;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+}
+
+.widget-card[data-disclosure="standard"] .widget-actions {
+  padding: 0 var(--space-4) var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* ── Disclosure: Level 3 — Expanded (full-page overlay) ── */
+.expanded-widget {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.expanded-widget .widget-header {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.expanded-widget .widget-body {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+
+/* ── Widget chips / pills ── */
+.widget-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.widget-chip .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.widget-chip.ok { border-color: var(--ok); color: var(--ok); background: var(--ok-bg); }
+.widget-chip.ok .dot { background: var(--ok); }
+.widget-chip.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-bg); }
+.widget-chip.warn .dot { background: var(--warn); }
+.widget-chip.error { border-color: var(--error); color: var(--error); background: var(--error-bg); }
+.widget-chip.error .dot { background: var(--error); }
+.widget-chip.info { border-color: var(--info); color: var(--info); background: var(--accent-subtle); }
+.widget-chip.info .dot { background: var(--info); }
+
+/* ── KV tables inside widgets ── */
+.kv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.kv-table td {
+  padding: 3px 0;
+  vertical-align: top;
+}
+
+.kv-table .key {
+  color: var(--text-secondary);
+  width: 40%;
+  font-weight: var(--font-weight-normal);
+}
+
+.kv-table .val {
+  color: var(--text-primary);
+}
+
+.kv-table .val.mono {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.kv-table .val.ok { color: var(--ok); }
+.kv-table .val.warn { color: var(--warn); }
+.kv-table .val.error { color: var(--error); }
+
+/* ── Action buttons in widgets ── */
+.widget-actions button,
+.action-btn {
+  font-size: var(--font-size-xs);
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+              color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.widget-actions button:hover,
+.action-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+}
+
+.widget-actions button.primary,
+.action-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
+  font-weight: var(--font-weight-medium);
+}
+
+.widget-actions button.primary:hover,
+.action-btn.primary:hover {
+  background: var(--accent-hover);
+}
+
+.widget-actions button.danger,
+.action-btn.danger {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.widget-actions button.danger:hover,
+.action-btn.danger:hover {
+  background: var(--error-bg);
+}
+
+/* ── Missing / empty state ── */
+.widget-missing {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+}
+
+/* ── Expand trigger ── */
+.widget-expand-trigger {
+  font-size: var(--font-size-xs);
+  color: var(--accent);
+  cursor: pointer;
+  padding-top: var(--space-2);
+  user-select: none;
+}
+
+.widget-expand-trigger:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* ── Close button for overlays ── */
+.close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.close-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}

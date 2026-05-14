@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rig Relay Desktop Cockpit — Read-Only Shell — CLI wrapper.
+"""Rig Relay Desktop Shell — CLI wrapper.
 
 The core implementation now lives in ``rig_relay.desktop.projection`` and
 ``rig_relay.desktop.websocket_server``. This script is the thin CLI wrapper.
@@ -78,6 +78,7 @@ def _run_ws_server(
     port: int,
     token: str,
     chat_state_provider: Any | None = None,
+    chat_message_handler: Any | None = None,
     loop_holder: list[asyncio.AbstractEventLoop] | None = None,
     server_holder: list[ProjectionWebSocketServer] | None = None,
 ) -> None:
@@ -94,6 +95,7 @@ def _run_ws_server(
             port=port,
             token=token,
             chat_state_provider=chat_state_provider,
+            chat_message_handler=chat_message_handler,
         )
         if server_holder is not None:
             server_holder[0] = server
@@ -165,7 +167,7 @@ class CockpitAPI:
         # Log startup event
         self._store.append_event(
             "chat.backend.ready",
-            note="CockpitAPI initialized with AgentLoop",
+            note="Desktop API initialized with AgentLoop",
             backend_wired=True,
         )
 
@@ -341,13 +343,59 @@ def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool =
     loop_holder: list[asyncio.AbstractEventLoop] = [None]  # type: ignore[list-item]
     server_holder: list[ProjectionWebSocketServer] = [None]  # type: ignore[list-item]
 
-    api = CockpitAPI(
-        ws_token=ws_token,
-        ws_port=ws_port,
-        loop_holder=loop_holder,
-        server_holder=server_holder,
-        mode=mode,
-    )
+    try:
+        api = CockpitAPI(
+            ws_token=ws_token,
+            ws_port=ws_port,
+            loop_holder=loop_holder,
+            server_holder=server_holder,
+            mode=mode,
+        )
+    except Exception as exc:
+        from rig_relay.core.config._settings import MissingAPIKeyError
+
+        if isinstance(exc, MissingAPIKeyError):
+            print(f"\n{exc}")
+            print("Starting one-time setup to configure your API key...\n")
+            from rig_relay.setup.onboarding import run_onboarding
+
+            success = run_onboarding()
+            if not success:
+                print("\nFalling back to dry-run mode...\n")
+                _dry_run(ws_port or DEFAULT_WS_PORT)
+                return
+
+            print("\nRestarting with new configuration...\n")
+            try:
+                api = CockpitAPI(
+                    ws_token=ws_token,
+                    ws_port=ws_port,
+                    loop_holder=loop_holder,
+                    server_holder=server_holder,
+                    mode=mode,
+                )
+            except Exception as retry_exc:
+                print(f"Still failed after onboarding: {retry_exc}")
+                print("Falling back to dry-run mode...")
+                _dry_run(ws_port or DEFAULT_WS_PORT)
+                return
+        else:
+            print(f"Failed to start desktop API: {exc}")
+            print("Falling back to dry-run mode...")
+            _dry_run(ws_port or DEFAULT_WS_PORT)
+            return
+
+    def _chat_dispatcher(action: str, **kwargs: Any) -> dict:
+        if action == "send_chat_message":
+            return api.send_chat_message(
+                text=kwargs.get("text", ""),
+                client_message_id=kwargs.get("client_message_id"),
+            )
+        if action == "clear_chat":
+            return api.clear_chat_view()
+        if action == "cancel_chat_response":
+            return api.cancel_chat_response()
+        return {"error": f"Unknown action: {action}"}
 
     if ws_port is not None:
         ws_thread = threading.Thread(
@@ -358,13 +406,13 @@ def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool =
                 ws_port,
                 ws_token,
                 api.get_chat_state,
+                _chat_dispatcher,
                 loop_holder,
                 server_holder,
             ),
             daemon=True,
         )
         ws_thread.start()
-        # Give the server a moment to start
         time.sleep(0.5)
 
     if server_only:
@@ -389,58 +437,8 @@ def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool =
     if not hasattr(webview, "__version__"):  # type: ignore[reportAttributeAccessIssue]
         webview.__version__ = "6.2.1"  # type: ignore[reportAttributeAccessIssue]
 
-    index_path = FRONTEND_DIR / "index.html"
-    if not index_path.is_file():
-        print(f"Frontend not found at {index_path}")
-        return
-
-    ws_token: str | None = None
-    if ws_port is not None:
-        ws_token = _generate_ws_token()
-
-    loop_holder: list[asyncio.AbstractEventLoop] = [None]  # type: ignore[list-item]
-    server_holder: list[ProjectionWebSocketServer] = [None]  # type: ignore[list-item]
-
-    api = CockpitAPI(
-        ws_token=ws_token,
-        ws_port=ws_port,
-        loop_holder=loop_holder,
-        server_holder=server_holder,
-        mode=mode,
-    )
-
-    if ws_port is not None:
-        ws_thread = threading.Thread(
-            target=_run_ws_server,
-            args=(
-                BUILD_ROOT,
-                "127.0.0.1",
-                ws_port,
-                ws_token,
-                api.get_chat_state,
-                loop_holder,
-                server_holder,
-            ),
-            daemon=True,
-        )
-        ws_thread.start()
-        # Give the server a moment to start
-        time.sleep(0.5)
-
-    if server_only:
-        print("Server-only mode. WebSocket is running.")
-        print(f"URL: file://{index_path}")
-        print(f"WebSocket Token: {ws_token}")
-        print("Press Ctrl+C to exit.")
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("Exiting...")
-            return
-
     webview.create_window(
-        title="Rig Relay Cockpit",
+        title="Rig Relay",
         url=str(index_path),
         js_api=api,
         width=1200,
@@ -453,7 +451,7 @@ def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool =
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Rig Relay Desktop Cockpit — Read-Only Shell"
+        description="Rig Relay Desktop Shell"
     )
     parser.add_argument(
         "--mode",

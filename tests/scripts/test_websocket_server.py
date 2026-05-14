@@ -376,7 +376,7 @@ class TestReadOnlyProtocol:
 
     @pytest.mark.asyncio
     async def test_allowed_types_are_read_only(self) -> None:
-        """ALLOWED_MESSAGE_TYPES contains only read-only operations."""
+        """ALLOWED_MESSAGE_TYPES contains only non-mutating operations."""
         expected = frozenset({
             "auth",
             "get_projection",
@@ -384,6 +384,10 @@ class TestReadOnlyProtocol:
             "get_chat_state",
             "get_progress_events",
             "desktop_intent",
+            "desktop_intent_request",
+            "send_chat_message",
+            "clear_chat",
+            "cancel_chat_response",
             "subscribe",
             "unsubscribe",
             "ping",
