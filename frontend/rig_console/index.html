@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Console</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <header id="header">
+    <span id="title">Rig Console</span>
+    <span id="status-badge" class="status-idle">idle</span>
+    <span id="connection-badge" class="source-status warn">Connecting...</span>
+  </header>
+
+  <main id="main">
+    <section id="transcript-pane">
+      <div id="transcript"></div>
+    </section>
+    <aside id="sidebar">
+      <div id="status-card" class="card">
+        <div class="card-title">Status</div>
+        <div id="status-body">
+          <div class="kv"><span class="k">Session</span><span id="sid">—</span></div>
+          <div class="kv"><span class="k">Turn</span><span id="turn-status">idle</span></div>
+          <div class="kv"><span class="k">Dropped</span><span id="dropped">0</span></div>
+        </div>
+      </div>
+      <div id="context-card" class="card">
+        <div class="card-title">Context</div>
+        <div id="context-body">
+          <div class="kv"><span class="k">Sections</span><span id="ctx-sections">—</span></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer id="footer">
+    <div id="composer">
+      <textarea id="prompt-input" placeholder="Type a prompt..." rows="1" maxlength="4000"></textarea>
+      <button id="send-btn" disabled>Send</button>
+      <button id="cancel-btn" style="display:none">Cancel</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+const WS_PORT = {{WS_PORT}};
+const WS_TOKEN = "{{WS_TOKEN}}";
+const WS_URL = `ws://127.0.0.1:${WS_PORT}`;
+</script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -11,6 +11,7 @@ from rig_relay.context.compiler import (
     AgentsMdPack,
     CompactionHistoryPack,
     ContextCompiler,
+    ContextPack,
     DirtyFilesPack,
     DirtyOwnershipPack,
     GitStatePack,
@@ -18,6 +19,7 @@ from rig_relay.context.compiler import (
     RelevantTestsPack,
 )
 from rig_relay.context.models import ContextEnvelopeReceipt, ContextSection
+from rig_relay.context.symbol_codec import decompress_symbols
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActor,
     ReceiptActorKind,
@@ -62,6 +64,7 @@ class TestContextEnvelopeReceipt:
         e = ContextEnvelopeReceipt(rendered_prompt="t")
         assert e.created_at != ""
         assert e.receipt_id != ""
+        assert e.symbol_codec_receipt is None
 
 
 class TestAgentsMdPack:
@@ -278,6 +281,67 @@ class TestContextCompiler:
         names1 = [s.name for s in env1.sections]
         names2 = [s.name for s in env2.sections]
         assert names1 == names2
+
+    def test_compresses_navigation_sections_but_not_user_prompt(self) -> None:
+        class NavigationPack(ContextPack):
+            name = "related_files"
+
+            def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
+                return ("fingerprint",)
+
+            def _render(self, root: Path) -> str:
+                return (
+                    "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+                    "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+                    "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+                    "vibe/cli/textual_ui/rig_console/screens/dashboard.py"
+                )
+
+        class ProtectedPack(ContextPack):
+            name = "recent_transcript"
+
+            def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
+                return ("fingerprint-2",)
+
+            def _render(self, root: Path) -> str:
+                return "assistant said: do not compress this exact transcript"
+
+        compiler = ContextCompiler(session_id="s1")
+        env = compiler.build_envelope(
+            user_text="keep this prompt exact",
+            packs=[NavigationPack(), ProtectedPack()],
+        )
+
+        assert env.symbol_codec_receipt is not None
+        assert env.symbol_manifest is not None
+        assert "keep this prompt exact" in env.rendered_prompt
+        assert "do not compress this exact transcript" in env.rendered_prompt
+        assert "§" in env.rendered_prompt
+        assert (
+            "vibe/cli/textual_ui/rig_console/screens/dashboard.py"
+            not in env.rendered_prompt
+        )
+        assert "§" in env.compressed_prompt
+        assert decompress_symbols(
+            env.compressed_prompt, env.symbol_manifest
+        ).startswith('<context name="related_files">')
+
+    def test_non_navigation_sections_stay_uncompressed(self) -> None:
+        class ProtectedPack(ContextPack):
+            name = "recent_transcript"
+
+            def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
+                return ("fingerprint-3",)
+
+            def _render(self, root: Path) -> str:
+                return "tests/context/test_context_compiler.py exact content"
+
+        compiler = ContextCompiler(session_id="s1")
+        env = compiler.build_envelope(user_text="prompt", packs=[ProtectedPack()])
+
+        assert env.symbol_codec_receipt is None
+        assert env.symbol_manifest is None
+        assert env.rendered_prompt.count("tests/context/test_context_compiler.py") == 1
 
 
 class TestCompactionHistoryPack:

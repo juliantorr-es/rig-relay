@@ -58,6 +58,16 @@ Deterministic reversible symbol replacement. Replaces repeated long terms
 - Minimum occurrences: 3.
 - Maximum symbols: 256.
 
+### Current integration slice
+
+- `ContextCompiler.build_envelope()` compresses only navigational packs by
+  default.
+- `ContextEnvelopeReceipt` carries the symbol manifest plus the codec
+  receipt so downstream bridges can expand aliases before tool execution.
+- Tool execution must expand aliases before validation or tool dispatch.
+- AGENTS.md, user prompts, transcript bodies, test contents, and exact
+  command output stay uncompressed in the prompt envelope.
+
 ### Receipt fields
 
 ```json

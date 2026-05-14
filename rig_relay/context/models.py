@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from rig_relay.context.symbol_codec import SymbolManifest
+
 
 @dataclass(frozen=True, slots=True)
 class ContextSection:
@@ -36,15 +38,16 @@ class ContextEnvelopeReceipt:
     """
 
     rendered_prompt: str
+    compressed_prompt: str = ""
     sections: list[ContextSection] = field(default_factory=list)
     sections_omitted: list[str] = field(default_factory=list)
     envelope_sha256: str = ""
     cache_key: str | None = None
     session_id: str = ""
+    symbol_manifest: SymbolManifest | None = None
+    symbol_codec_receipt: dict[str, str | int | bool | None] | None = None
     receipt_id: str = field(default_factory=lambda: str(uuid4()))
-    created_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     @property
     def section_count(self) -> int:
@@ -55,7 +58,4 @@ class ContextEnvelopeReceipt:
         return self.cache_key is not None
 
 
-__all__ = [
-    "ContextEnvelopeReceipt",
-    "ContextSection",
-]
+__all__ = ["ContextEnvelopeReceipt", "ContextSection"]

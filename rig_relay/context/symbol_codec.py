@@ -41,6 +41,7 @@ def _typed_symbol_sequence(count: int) -> list[str]:
 
 
 _SYMBOL_PATTERN = re.compile(r"§[ptscdm]\d{3}")
+_ESCAPED_SECTION_MARKER = "\\u00A7"
 
 
 def _has_symbol_collision(text: str) -> bool:
@@ -272,11 +273,8 @@ def compress_with_manifest(
     if not manifest.entries:
         return _refused(text, input_sha, before, "No entries with positive net savings")
 
-    if _has_symbol_collision(text):
-        return _refused(text, input_sha, before, "Text contains reserved § symbols")
-
     entries = manifest.entries
-    compressed = text
+    compressed = text.replace("§", _ESCAPED_SECTION_MARKER)
     for entry in sorted(entries, key=lambda e: (-len(e.value), e.value)):
         compressed = compressed.replace(entry.value, entry.alias)
 
@@ -357,7 +355,7 @@ def decompress_symbols(compressed_text: str, manifest: SymbolManifest) -> str:
     result = compressed_text
     for entry in sorted(manifest.entries, key=lambda e: (-len(e.value), e.value)):
         result = result.replace(entry.alias, entry.value)
-    return result
+    return result.replace(_ESCAPED_SECTION_MARKER, "§")
 
 
 def expand_aliases(text: str, manifest: SymbolManifest) -> str:

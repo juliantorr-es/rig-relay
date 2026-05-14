@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncGenerator
 import json
+from typing import ClassVar
 
 from pydantic import BaseModel
 import pytest
 
+from rig_relay.context.models import ContextEnvelopeReceipt
+from rig_relay.context.symbol_codec import compress_with_manifest
 from tests.conftest import build_test_agent_loop, build_test_vibe_config
 from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend
@@ -13,7 +17,13 @@ from tests.stubs.fake_tool import FakeTool
 from vibe.core.agent_loop import AgentLoop
 from vibe.core.agents.models import BuiltinAgentName
 from vibe.core.config import VibeConfig
-from vibe.core.tools.base import ToolPermission
+from vibe.core.tools.base import (
+    BaseTool,
+    BaseToolConfig,
+    BaseToolState,
+    InvokeContext,
+    ToolPermission,
+)
 from vibe.core.tools.builtins.todo import TodoItem
 from vibe.core.types import (
     ApprovalCallback,
@@ -32,6 +42,34 @@ from vibe.core.types import (
 
 async def act_and_collect_events(agent_loop: AgentLoop, prompt: str) -> list[BaseEvent]:
     return [ev async for ev in agent_loop.act(prompt)]
+
+
+class RecordingArgs(BaseModel):
+    path: str
+
+
+class RecordingResult(BaseModel):
+    path: str
+
+
+class RecordingState(BaseToolState):
+    pass
+
+
+class RecordingTool(
+    BaseTool[RecordingArgs, RecordingResult, BaseToolConfig, RecordingState]
+):
+    recorded: ClassVar[list[str]] = []
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "record_tool"
+
+    async def run(
+        self, args: RecordingArgs, ctx: InvokeContext | None = None
+    ) -> AsyncGenerator[RecordingResult, None]:
+        self.recorded.append(args.path)
+        yield RecordingResult(path=args.path)
 
 
 def make_config(todo_permission: ToolPermission = ToolPermission.ALWAYS) -> VibeConfig:
@@ -478,6 +516,45 @@ async def test_tool_call_can_be_interrupted() -> None:
     # Agent loop should stop after cancellation — no second LLM turn
     assistant_events = [e for e in events if isinstance(e, AssistantEvent)]
     assert len(assistant_events) == 1
+
+
+@pytest.mark.asyncio
+async def test_tool_call_receives_expanded_alias_arguments() -> None:
+    tool_call = ToolCall(
+        id="call_alias",
+        index=0,
+        function=FunctionCall(name="record_tool", arguments='{"path":"§p001"}'),
+    )
+    backend = FakeBackend([
+        [mock_llm_chunk(content="Use the tool.", tool_calls=[tool_call])],
+        [mock_llm_chunk(content="Done.")],
+    ])
+    agent_loop = build_test_agent_loop(
+        config=build_test_vibe_config(enabled_tools=["record_tool"]),
+        agent_name=BuiltinAgentName.AUTO_APPROVE,
+        backend=backend,
+    )
+    agent_loop.tool_manager._available["record_tool"] = RecordingTool
+    tool = agent_loop.tool_manager.get("record_tool")
+    assert isinstance(tool, RecordingTool)
+
+    result = compress_with_manifest(
+        "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+        "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+        "vibe/cli/textual_ui/rig_console/screens/dashboard.py "
+        "vibe/cli/textual_ui/rig_console/screens/dashboard.py"
+    )
+    assert result.manifest is not None
+    envelope = ContextEnvelopeReceipt(
+        rendered_prompt="prompt",
+        compressed_prompt="prompt",
+        symbol_manifest=result.manifest,
+    )
+
+    events = [ev async for ev in agent_loop.act("Use alias", context_envelope=envelope)]
+
+    assert any(isinstance(ev, ToolResultEvent) for ev in events)
+    assert tool.recorded == ["vibe/cli/textual_ui/rig_console/screens/dashboard.py"]
 
 
 @pytest.mark.asyncio

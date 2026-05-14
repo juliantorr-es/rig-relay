@@ -81,6 +81,8 @@ from vibe.core.telemetry.types import (
 )
 
 _TRUNCATION_PROMPT_BYTES = 64_000
+from rig_relay.context.models import ContextEnvelopeReceipt
+from rig_relay.context.symbol_codec import expand_aliases
 from vibe.core.teleport.errors import ServiceTeleportError
 from vibe.core.teleport.telemetry import TeleportTelemetryTracker
 from vibe.core.teleport.types import TeleportCompleteEvent
@@ -327,6 +329,7 @@ class AgentLoop:
             pass
 
         self._current_user_message_id: str | None = None
+        self._current_context_envelope: ContextEnvelopeReceipt | None = None
         self._is_user_prompt_call: bool = False
 
         self._session_rules: list[ApprovedRule] = []
@@ -627,7 +630,11 @@ class AgentLoop:
 
     @requires_init
     async def act(
-        self, msg: str, client_message_id: str | None = None
+        self,
+        msg: str,
+        client_message_id: str | None = None,
+        *,
+        context_envelope: ContextEnvelopeReceipt | None = None,
     ) -> AsyncGenerator[BaseEvent, None]:
         self._clean_message_history()
         self.rewind_manager.create_checkpoint()
@@ -636,10 +643,15 @@ class AgentLoop:
         except ValueError:
             model_name = None
         async with agent_span(model=model_name, session_id=self.session_id):
-            async for event in self._conversation_loop(
-                msg, client_message_id=client_message_id
-            ):
-                yield event
+            previous_context_envelope = self._current_context_envelope
+            self._current_context_envelope = context_envelope
+            try:
+                async for event in self._conversation_loop(
+                    msg, client_message_id=client_message_id
+                ):
+                    yield event
+            finally:
+                self._current_context_envelope = previous_context_envelope
 
     @property
     def teleport_service(self) -> TeleportService:
@@ -1026,6 +1038,22 @@ class AgentLoop:
             async for event in self._execute_tool_call(span, tool_call):
                 yield event
 
+    def _expand_tool_call_args(self, args: Any) -> Any:
+        envelope = self._current_context_envelope
+        if envelope is None or envelope.symbol_manifest is None:
+            return args
+        if isinstance(args, str):
+            return expand_aliases(args, envelope.symbol_manifest)
+        if isinstance(args, list):
+            return [self._expand_tool_call_args(item) for item in args]
+        if isinstance(args, tuple):
+            return tuple(self._expand_tool_call_args(item) for item in args)
+        if isinstance(args, dict):
+            return {
+                key: self._expand_tool_call_args(value) for key, value in args.items()
+            }
+        return args
+
     async def _execute_tool_call(  # noqa: PLR0915
         self, span: trace.Span, tool_call: ResolvedToolCall
     ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
@@ -1070,6 +1098,7 @@ class AgentLoop:
 
             start_time = time.perf_counter()
             result_model = None
+            expanded_args = self._expand_tool_call_args(tool_call.args_dict)
             async for item in tool_instance.invoke(
                 ctx=InvokeContext(
                     tool_call_id=tool_call.call_id,
@@ -1085,7 +1114,7 @@ class AgentLoop:
                     skill_manager=self.skill_manager,
                     scratchpad_dir=self.scratchpad_dir,
                 ),
-                **tool_call.args_dict,
+                **expanded_args,
             ):
                 if isinstance(item, ToolStreamEvent):
                     yield item

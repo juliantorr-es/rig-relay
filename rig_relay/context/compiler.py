@@ -14,6 +14,7 @@ from typing import Any
 
 from rig_relay.context.models import ContextEnvelopeReceipt, ContextSection
 from rig_relay.context.repo_index import RepoContextIndex
+from rig_relay.context.symbol_codec import compress_with_manifest
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActor,
     ReceiptActorKind,
@@ -47,6 +48,101 @@ def _git(*args: str, cwd: Path | None = None) -> str:
         ).strip()
     except Exception:
         return ""
+
+
+_COMPRESSIBLE_PACKS = {
+    "git_state",
+    "dirty_files",
+    "dirty_ownership",
+    "active_file_focus",
+    "related_files",
+}
+
+
+def _symbol_receipt_payload(
+    receipt: Any | None,
+) -> dict[str, str | int | bool | None] | None:
+    if receipt is None:
+        return None
+    return {
+        "codec_name": getattr(receipt, "codec_name", ""),
+        "codec_version": getattr(receipt, "codec_version", ""),
+        "input_sha256": getattr(receipt, "input_sha256", ""),
+        "output_sha256": getattr(receipt, "output_sha256", ""),
+        "manifest_sha256": getattr(receipt, "manifest_sha256", ""),
+        "estimated_tokens_before": getattr(receipt, "estimated_tokens_before", 0),
+        "estimated_tokens_after": getattr(receipt, "estimated_tokens_after", 0),
+        "replacement_count": getattr(receipt, "replacement_count", 0),
+        "reversible": getattr(receipt, "reversible", True),
+        "lossy": getattr(receipt, "lossy", False),
+        "refused_reason": getattr(receipt, "refused_reason", None),
+    }
+
+
+def _build_envelope_parts(
+    root: Path, packs: list[ContextPack]
+) -> tuple[
+    list[ContextSection],
+    list[str],
+    list[str],
+    str,
+    Any | None,
+    dict[str, str | int | bool | None] | None,
+]:
+    sections: list[ContextSection] = []
+    omitted: list[str] = []
+    compressible_parts: list[str] = []
+    protected_parts: list[str] = []
+    symbol_manifest = None
+    symbol_codec_receipt = None
+
+    for pack in packs:
+        section = pack.build(root)
+        if section is None:
+            omitted.append(pack.name)
+            continue
+
+        sections.append(section)
+        source = pack.get_source(root)
+        if not source:
+            continue
+
+        part = f'<context name="{pack.name}">\n{source}\n</context>'
+        if pack.name in _COMPRESSIBLE_PACKS:
+            compressible_parts.append(part)
+        else:
+            protected_parts.append(part)
+
+    compressed_prompt = "\n\n".join(compressible_parts)
+    rendered_parts: list[str]
+    if compressed_prompt:
+        result = compress_with_manifest(compressed_prompt)
+        compressed_prompt = result.compressed_text
+        symbol_manifest = result.manifest
+        symbol_codec_receipt = _symbol_receipt_payload(result.receipt)
+        protected_parts.append(
+            '<context name="symbol_codec">\n'
+            f"codec={result.receipt.codec_name if result.receipt else 'rig.symbol.v1'}\n"
+            f"manifest_sha256={result.manifest.manifest_sha256 if result.manifest else ''}\n"
+            f"estimated_tokens_before={result.receipt.estimated_tokens_before if result.receipt else 0}\n"
+            f"estimated_tokens_after={result.receipt.estimated_tokens_after if result.receipt else 0}\n"
+            f"replacement_count={result.receipt.replacement_count if result.receipt else 0}\n"
+            "</context>"
+        )
+        rendered_parts = [
+            f'<context name="compressed_navigation">\n{compressed_prompt}\n</context>'
+        ] + protected_parts
+    else:
+        rendered_parts = protected_parts
+
+    return (
+        sections,
+        omitted,
+        rendered_parts,
+        compressed_prompt,
+        symbol_manifest,
+        symbol_codec_receipt,
+    )
 
 
 # ── Base pack ──────────────────────────────────────────────────────
@@ -324,7 +420,9 @@ class RelatedFilesPack(ContextPack):
                     lines.append(f"  {rel_type}: {', '.join(items[:3])}")
             idx_summary = self._repo_index.summary()
             if idx_summary.get("available"):
-                lines.append(f"  index: {idx_summary['file_count']} files, {idx_summary['relation_count']} relations")
+                lines.append(
+                    f"  index: {idx_summary['file_count']} files, {idx_summary['relation_count']} relations"
+                )
         return "\n".join(lines)
 
     def _summary(self, root: Path) -> str:
@@ -490,33 +588,28 @@ class ContextCompiler:
         if packs is None:
             packs = self._default_packs(user_text, snapshot)
 
-        sections: list[ContextSection] = []
-        omitted: list[str] = []
-        rendered_parts: list[str] = []
-
         root = self._workspace_root
-        for pack in packs:
-            section = pack.build(root)
-            if section is not None:
-                sections.append(section)
-                source = pack.get_source(root)
-                if source:
-                    rendered_parts.append(
-                        f'<context name="{pack.name}">\n{source}\n</context>'
-                    )
-            else:
-                omitted.append(pack.name)
-
+        (
+            sections,
+            omitted,
+            rendered_parts,
+            compressed_prompt,
+            symbol_manifest,
+            symbol_codec_receipt,
+        ) = _build_envelope_parts(root, packs)
         rendered_parts.append(f"<user_prompt>\n{user_text}\n</user_prompt>")
         rendered = "\n\n".join(rendered_parts)
 
         receipt = ContextEnvelopeReceipt(
             rendered_prompt=rendered,
+            compressed_prompt=compressed_prompt,
             sections=sections,
             sections_omitted=omitted,
             envelope_sha256=_hash(rendered),
             cache_key=_hash(*(s.fingerprint for s in sections)),
             session_id=self._session_id,
+            symbol_manifest=symbol_manifest,
+            symbol_codec_receipt=symbol_codec_receipt,
         )
 
         if self._receipt_store is not None:
@@ -536,6 +629,7 @@ class ContextCompiler:
                         "sections": [s.name for s in sections],
                         "omitted": omitted,
                         "cache_key": receipt.cache_key,
+                        "symbol_codec": receipt.symbol_codec_receipt,
                     },
                     decision=ReceiptDecision(
                         decision="included" if sections else "empty",
