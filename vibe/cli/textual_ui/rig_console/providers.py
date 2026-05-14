@@ -19,6 +19,8 @@ import json
 from pathlib import Path
 from typing import Any, Protocol
 
+from rig_relay.coordination.fleet_queue_runner import FleetQueueRunnerResult
+
 from git import Repo
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -26,7 +28,9 @@ from rig_relay.coordination.fleet_projection import (
     FleetLeaseSummary,
     FleetProjection,
     build_fleet_projection,
+    build_queue_summary,
 )
+from rig_relay.coordination.fleet_queue import FleetQueue, FleetQueueItemKind
 from rig_relay.coordination.lease_manager import PathLeaseManager
 from rig_relay.coordination.models import CoordinationSession
 from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
@@ -41,11 +45,19 @@ from rig_relay.runtime.tool_invocation_adapter import RuntimeToolName
 from rig_relay.runtime.tool_invocation_execution import (
     RuntimeToolExecutionResult,
     RuntimeToolExecutionRunner,
+    RuntimeToolExecutionStatus,
+)
+from vibe.cli.textual_ui.rig_console.queue_runner import QueueRunnerBridge
+    RuntimeToolExecutionResult,
+    RuntimeToolExecutionRunner,
+    RuntimeToolExecutionStatus,
 )
 from vibe.cli.textual_ui.rig_console.actions import build_validate_runtime_exec_intent
 from vibe.cli.textual_ui.rig_console.projections import (
     DashboardProjection,
     EvidenceRailProjection,
+    QueueItemProjection,
+    QueueProjection,
     SessionPaneProjection,
     build_inspector_projection,
     evidence_rail_from_receipt_index,
@@ -128,6 +140,19 @@ def _git_summary(workspace_root: Path | None) -> tuple[str | None, str | None]:
     return branch_name, head_sha
 
 
+def _safe_validate_paths(
+    changed_paths: list[str], workspace_root: Path | None
+) -> list[str] | None:
+    if workspace_root is None:
+        return None
+    safe_paths = [
+        path
+        for path in changed_paths
+        if Path(path).resolve().is_relative_to(workspace_root.resolve())
+    ]
+    return safe_paths or None
+
+
 class DashboardProjectionProvider(Protocol):
     """Protocol for supplying a dashboard projection to the UI.
 
@@ -141,6 +166,12 @@ class DashboardProjectionProvider(Protocol):
 
         Must not mutate files, run tools, or expose raw content.
         """
+        ...
+
+    async def run_validate(
+        self, projection: DashboardProjection
+    ) -> RuntimeToolExecutionResult:
+        """Run governed validate through runtime_exec."""
         ...
 
 
@@ -161,6 +192,17 @@ class FixtureDashboardProjectionProvider:
     def set_projection(self, projection: DashboardProjection) -> None:
         """Replace the fixture projection."""
         self._projection = projection
+
+    async def run_validate(
+        self, projection: DashboardProjection
+    ) -> RuntimeToolExecutionResult:
+        return RuntimeToolExecutionResult(
+            status=RuntimeToolExecutionStatus.REFUSED,
+            intent_id="validate-unavailable",
+            tool_name=RuntimeToolName.RUNTIME_EXEC.value,
+            error_kind="missing_runtime_provider",
+            refusal_reason="Validate unavailable in fixture mode",
+        )
 
 
 class RuntimeDashboardProjectionProvider:
@@ -201,6 +243,7 @@ class RuntimeDashboardProjectionProvider:
         self._lane_id = lane_id
         self._task_title = task_title
         self._runtime_events = runtime_events
+        self._queue_runner_bridge: QueueRunnerBridge | None = None
         self._validate_runner: RuntimeToolExecutionRunner | None = None
 
     async def dashboard_projection(self) -> DashboardProjection:
@@ -222,7 +265,8 @@ class RuntimeDashboardProjectionProvider:
 
         session = self._build_session(records, evidence)
         footer = self._build_footer(errors, evidence)
-        inspector = build_inspector_projection(session, evidence, supervisor)
+        queue = self._build_queue_projection()
+        inspector = build_inspector_projection(session, evidence, queue, supervisor)
 
         execution_progress = None
         if self._runtime_events is not None:
@@ -242,6 +286,7 @@ class RuntimeDashboardProjectionProvider:
             backlog_items=[],
             execution_progress=execution_progress,
             inspector=inspector,
+            queue=queue or QueueProjection(),
             fleet=fleet,
         )
 
@@ -345,17 +390,17 @@ class RuntimeDashboardProjectionProvider:
         """Run governed validate via runtime_exec and return the execution result."""
         if self._workspace_root is None or self._audit_root is None:
             return RuntimeToolExecutionResult(
-                status="refused",
+                status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id="validate-unavailable",
                 tool_name=RuntimeToolName.RUNTIME_EXEC.value,
                 error_kind="missing_runtime_roots",
-                refusal_reason="workspace_root and audit_root are required for validate",
+                refusal_reason="runtime roots are required for validate",
             )
 
         runner = self._runner()
         if runner is None:
             return RuntimeToolExecutionResult(
-                status="refused",
+                status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id="validate-unavailable",
                 tool_name=RuntimeToolName.RUNTIME_EXEC.value,
                 error_kind="missing_audit_store",
@@ -374,13 +419,15 @@ class RuntimeDashboardProjectionProvider:
             "validate",
             session_id=projection.session.session_id,
             task_id=task_id,
-            paths=projection.session.changed_paths or None,
+            paths=_safe_validate_paths(
+                projection.session.changed_paths, self._workspace_root
+            ),
             require_worktree=False,
         )
 
         if resolution.status != "resolved":
             return RuntimeToolExecutionResult(
-                status="blocked",
+                status=RuntimeToolExecutionStatus.BLOCKED,
                 intent_id="validate-unavailable",
                 tool_name=RuntimeToolName.RUNTIME_EXEC.value,
                 error_kind=resolution.error_kind or "context_unresolved",
@@ -389,8 +436,6 @@ class RuntimeDashboardProjectionProvider:
 
         intent = build_validate_runtime_exec_intent(
             intent_id=f"validate-{projection.session.session_id}",
-            session_id=projection.session.session_id,
-            task_id=task_id,
             changed_paths=projection.session.changed_paths[:5],
         )
         return await runner.execute_runtime_exec(intent, resolution)
@@ -406,31 +451,95 @@ class RuntimeDashboardProjectionProvider:
         """Build a FleetProjection from available coordination data.
 
         Phase 0: reads path leases from PathLeaseManager when
-        coordination_root is set. All other subsystems (queue,
-        agents, blockers, patches) return empty defaults.
+        coordination_root is set. Also reads fleet queue events
+        from the coordination root.
 
         Never crashes — returns None when coordination_root is
-        unavailable or lease reading fails.
+        unavailable or all subsystems fail.
         """
         if self._coordination_root is None:
             return None
 
+        lease_summary: FleetLeaseSummary
         try:
             path_manager = PathLeaseManager(self._coordination_root)
             leases = path_manager.query_active_leases()
+            lease_summary = FleetLeaseSummary(
+                total_active=len(leases),
+                exclusive_write=sum(1 for l in leases if l.mode == "write"),
+                shared_read=sum(1 for l in leases if l.mode == "read"),
+                path_count=sum(len(l.paths) for l in leases),
+            )
         except Exception:
-            leases = []
+            lease_summary = FleetLeaseSummary()
 
-        lease_summary = FleetLeaseSummary(
-            total_active=len(leases),
-            exclusive_write=sum(1 for l in leases if l.mode == "write"),
-            shared_read=sum(1 for l in leases if l.mode == "read"),
-            path_count=sum(len(l.paths) for l in leases),
-        )
+        queue_events = self._coordination_root / "queue" / "events.jsonl"
+        queue_summary = build_queue_summary(FleetQueue(queue_events))
 
         return build_fleet_projection(
-            coordination_root=self._coordination_root, leases=lease_summary
+            coordination_root=self._coordination_root,
+            leases=lease_summary,
+            queue=queue_summary,
         )
+
+    def _build_queue_projection(self) -> QueueProjection | None:
+        if self._coordination_root is None:
+            return None
+
+        queue_events = self._coordination_root / "queue" / "events.jsonl"
+        queue = FleetQueue(queue_events)
+        try:
+            snapshot = queue.list_items()
+        except Exception:
+            return QueueProjection()
+
+        items = [
+            QueueItemProjection(
+                queue_item_id=item.queue_item_id,
+                kind=item.kind,
+                status=item.status,
+                title=_queue_title(item.kind, item.payload),
+                summary=_queue_summary(item.payload),
+                created_at=item.created_at,
+                blocked_reason=item.blocked_reason,
+                receipt_sha256=_queue_ref(item.payload, "receipt_sha256"),
+                runtime_result_sha256=_queue_ref(item.payload, "runtime_result_sha256"),
+            )
+            for item in snapshot.items[:30]
+        ]
+        counts = snapshot.status_counts
+        return QueueProjection(
+            items=items,
+            queued_count=counts.get("queued", 0),
+            running_count=counts.get("running", 0),
+            blocked_count=counts.get("blocked", 0),
+            completed_count=counts.get("completed", 0),
+            failed_count=counts.get("failed", 0),
+            cancelled_count=counts.get("cancelled", 0),
+            selected_index=0,
+        )
+
+
+def _queue_title(kind: str, payload: dict[str, Any]) -> str:
+    title = payload.get("title") or payload.get("summary") or payload.get("name")
+    return str(title) if title else kind
+
+
+def _queue_summary(payload: dict[str, Any]) -> str | None:
+    summary = payload.get("summary")
+    if isinstance(summary, str) and summary.strip():
+        return summary
+    title = payload.get("title")
+    if isinstance(title, str) and title.strip():
+        return title
+    return None
+
+
+def _queue_ref(payload: dict[str, Any], key: str) -> str | None:
+    ref = payload.get(key)
+    if isinstance(ref, str) and ref.strip():
+        return ref
+    return None
 
 
 __all__ = [

@@ -50,6 +50,7 @@ The dashboard is built from content-light projections. It may show:
 - recent execution events
 - execution progress
 - active leases or blockers
+- queue state and queue item summaries
 - evidence receipts
 - validation or test summaries
 - git branch and HEAD summary when available
@@ -68,6 +69,18 @@ The inspector is read-only. It does not expose stdout, stderr, content,
 file_contents, diffs, patches, prompts, secrets, argv, or snippets. Use `i`
 to open or close the drawer, `n`/`p` to move through items, and `c` to copy a
 safe hash/reference when available.
+
+## Queue Panel
+
+The queue panel is a read-only projection of the current fleet queue snapshot.
+It shows queue counts, the running item when present, blocked items, and recent
+completed, failed, or cancelled items. Queue items are content-light summaries:
+IDs, kind, status, title or summary, timestamps, sanitized blocked reasons, and
+safe receipt/runtime hashes when available.
+
+The panel never mutates queue state and never executes queued actions. Use `u`
+to toggle the panel, `j`/`k` to move through queue items, and `o` to send the
+selected queue item to the inspector when both views are present.
 
 ## What It Refuses To Show
 

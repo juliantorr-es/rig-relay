@@ -16,6 +16,7 @@ from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWi
 from vibe.cli.textual_ui.rig_console.widgets.inspector_drawer import (
     InspectorDrawerWidget,
 )
+from vibe.cli.textual_ui.rig_console.widgets.queue_panel import QueuePanelWidget
 
 
 class TestConsoleAppEntryPoint:
@@ -31,6 +32,7 @@ class TestConsoleAppEntryPoint:
             assert isinstance(pilot.app.screen, DashboardScreen)
             assert pilot.app.screen.query_one(FooterStatusWidget)
             assert pilot.app.screen.query_one(InspectorDrawerWidget)
+            assert pilot.app.screen.query_one(QueuePanelWidget)
 
     @pytest.mark.asyncio
     async def test_runtime_mode_mounts_with_empty_roots(self, tmp_path: Path) -> None:
@@ -130,3 +132,14 @@ class TestConsoleAppEntryPoint:
             await pilot.press("i")
             await pilot.pause()
             assert screen._projection.inspector.visible is True
+
+    @pytest.mark.asyncio
+    async def test_toggle_queue_opens_panel(self) -> None:
+        app = RigConsoleApp(mode="fixture")
+        async with app.run_test(size=(100, 30)) as pilot:
+            screen = pilot.app.screen
+            assert isinstance(screen, DashboardScreen)
+            assert screen._projection.queue.visible is False
+            await pilot.press("u")
+            await pilot.pause()
+            assert screen._projection.queue.visible is True

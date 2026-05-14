@@ -46,7 +46,41 @@
         "failed": { "type": "integer", "description": "Items failed" },
         "cancelled": { "type": "integer", "description": "Items cancelled" },
         "total": { "type": "integer", "description": "Total items in queue history" },
-        "highest_priority": { "type": "integer", "description": "Highest priority among queued items" }
+        "highest_priority": { "type": "integer", "description": "Highest priority among queued items" },
+        "next_item": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "queue_item_id": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                "kind": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                "priority": { "type": "integer" },
+                "created_at": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+              },
+              "required": ["queue_item_id", "kind", "priority", "created_at"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "replay": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "total_lines": { "type": "integer" },
+                "valid_events": { "type": "integer" },
+                "malformed_lines": { "type": "integer" },
+                "invalid_events": { "type": "integer" },
+                "skipped_unknown_kind": { "type": "integer" },
+                "total_skipped": { "type": "integer" }
+              },
+              "required": ["total_lines", "valid_events", "malformed_lines", "invalid_events", "skipped_unknown_kind", "total_skipped"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
       },
       "required": ["queued", "running", "blocked", "completed", "failed", "cancelled", "total", "highest_priority"],
       "additionalProperties": false

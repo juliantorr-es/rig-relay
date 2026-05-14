@@ -6,6 +6,7 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
+from textual._context import NoActiveAppError
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.css.query import NoMatches
@@ -26,6 +27,7 @@ from vibe.cli.textual_ui.rig_console.widgets.operator_header import OperatorHead
 from vibe.cli.textual_ui.rig_console.widgets.progress_timeline import (
     ProgressTimelineWidget,
 )
+from vibe.cli.textual_ui.rig_console.widgets.queue_panel import QueuePanelWidget
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
 
 
@@ -48,6 +50,9 @@ class DashboardScreen(Screen):
         i — toggle inspector
         n / p — next / previous inspector item
         c — copy selected inspector hash/ref
+        u — toggle queue panel
+        j / k — next / previous queue item
+        o — inspect selected queue item
         e — focus evidence rail (placeholder, read-only)
         v — validate current status (placeholder, read-only)
     """
@@ -86,6 +91,10 @@ DashboardScreen > InspectorDrawerWidget {
         ("t", "toggle_details", "Details"),
         ("v", "run_validate", "Run Validate"),
         ("i", "toggle_inspector", "Inspector"),
+        ("u", "toggle_queue_panel", "Queue"),
+        ("j", "next_queue_item", "Next Queue"),
+        ("k", "previous_queue_item", "Previous Queue"),
+        ("o", "inspect_selected_queue_item", "Inspect Queue"),
         ("n", "next_item", "Next Item"),
         ("p", "previous_item", "Previous Item"),
         ("c", "copy_selected_ref", "Copy Ref"),
@@ -117,6 +126,7 @@ DashboardScreen > InspectorDrawerWidget {
             EvidenceRailWidget(proj.evidence),
             classes="dashboard-activity",
         )
+        yield QueuePanelWidget(proj.queue)
         yield FleetPanelWidget(proj.fleet)
         yield ProgressTimelineWidget(proj.execution_progress or None)
         yield InspectorDrawerWidget(proj.inspector)
@@ -146,7 +156,10 @@ DashboardScreen > InspectorDrawerWidget {
             return
         self._set_status("info", "validate", "Validate running")
         self._validate_in_progress = True
-        self.run_worker(self._do_validate, exclusive=True, exit_on_error=False)
+        try:
+            self.run_worker(self._do_validate, exclusive=True, exit_on_error=False)
+        except NoActiveAppError:
+            await self._do_validate()
 
     async def _do_refresh(self) -> None:
         """Worker body: call provider and update projection.
@@ -193,6 +206,54 @@ DashboardScreen > InspectorDrawerWidget {
         finally:
             self._validate_in_progress = False
 
+    def action_toggle_queue_panel(self) -> None:
+        queue = self._projection.queue.model_copy(
+            update={"visible": not self._projection.queue.visible}
+        )
+        self._projection = self._projection.model_copy(update={"queue": queue})
+        self._set_status("info", "queue", "open" if queue.visible else "closed")
+
+    def action_next_queue_item(self) -> None:
+        queue = self._projection.queue
+        if not queue.items:
+            self._set_status("info", "queue", queue.empty_state)
+            return
+        selected_index = (queue.selected_index + 1) % len(queue.items)
+        self._sync_queue_selection(selected_index)
+
+    def action_previous_queue_item(self) -> None:
+        queue = self._projection.queue
+        if not queue.items:
+            self._set_status("info", "queue", queue.empty_state)
+            return
+        selected_index = (queue.selected_index - 1) % len(queue.items)
+        self._sync_queue_selection(selected_index)
+
+    def action_inspect_selected_queue_item(self) -> None:
+        queue = self._projection.queue
+        if not queue.items:
+            self._set_status("info", "queue", queue.empty_state)
+            return
+        selected = queue.selected_item
+        if selected is not None:
+            inspector = self._projection.inspector
+            for index, item in enumerate(inspector.items):
+                if item.item_id == selected.queue_item_id:
+                    self._projection = self._projection.model_copy(
+                        update={
+                            "inspector": inspector.model_copy(
+                                update={"selected_index": index, "visible": True}
+                            )
+                        }
+                    )
+                    self._set_status("info", "inspector", "open")
+                    break
+            else:
+                self.action_toggle_inspector()
+        else:
+            self.action_toggle_inspector()
+        self._set_status("info", "queue", "selected item sent to inspector")
+
     def action_show_help(self) -> None:
         """Show available keybindings in the footer."""
         self._details_visible = True
@@ -231,6 +292,26 @@ DashboardScreen > InspectorDrawerWidget {
         )
         self._projection = self._projection.model_copy(update={"inspector": inspector})
         self._set_status("info", "inspector", "open" if inspector.visible else "closed")
+
+    def _sync_queue_selection(self, selected_index: int) -> None:
+        queue = self._projection.queue.model_copy(
+            update={"selected_index": selected_index}
+        )
+        self._projection = self._projection.model_copy(update={"queue": queue})
+        selected = queue.selected_item
+        if selected is not None:
+            inspector = self._projection.inspector
+            for index, item in enumerate(inspector.items):
+                if item.item_id == selected.queue_item_id:
+                    self._projection = self._projection.model_copy(
+                        update={
+                            "inspector": inspector.model_copy(
+                                update={"selected_index": index}
+                            )
+                        }
+                    )
+                    break
+            self._set_status("info", "queue", f"item {selected_index + 1}")
 
     def action_next_item(self) -> None:
         inspector = self._projection.inspector

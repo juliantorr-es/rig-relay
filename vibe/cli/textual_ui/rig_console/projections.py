@@ -21,6 +21,7 @@ from rig_relay.runtime.runtime_supervisor_projection import RuntimeSupervisorPro
 _EVIDENCE_RAIL_CAP = 20
 _DASHBOARD_BACKLOG_CAP = 5
 _INSPECTOR_ITEM_CAP = 30
+_QUEUE_ITEM_CAP = 30
 
 
 class SessionPaneProjection(BaseModel):
@@ -226,6 +227,53 @@ class InspectorProjection(BaseModel):
         return self.items[index]
 
 
+class QueueItemProjection(BaseModel):
+    """Content-light summary for one queue item."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    queue_item_id: str
+    kind: str
+    status: str
+    title: str
+    summary: str | None = None
+    created_at: str | None = None
+    blocked_reason: str | None = None
+    receipt_sha256: str | None = None
+    runtime_result_sha256: str | None = None
+
+
+class QueueProjection(BaseModel):
+    """Projection for the queue panel."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    visible: bool = False
+    selected_index: int = 0
+    empty_state: str = "No queue items yet"
+    queued_count: int = 0
+    running_count: int = 0
+    blocked_count: int = 0
+    completed_count: int = 0
+    failed_count: int = 0
+    cancelled_count: int = 0
+    items: list[QueueItemProjection] = Field(default_factory=list)
+
+    @property
+    def selected_item(self) -> QueueItemProjection | None:
+        if not self.items:
+            return None
+        index = max(0, min(self.selected_index, len(self.items) - 1))
+        return self.items[index]
+
+    @property
+    def running_item(self) -> QueueItemProjection | None:
+        for item in self.items:
+            if item.status == "running":
+                return item
+        return None
+
+
 def _build_inspector_audit_item(event: RuntimeAuditEvent) -> InspectorItemProjection:
     summary = f"{event.status} {event.tool_name}"
     return InspectorItemProjection(
@@ -287,6 +335,7 @@ def _build_inspector_blocker_item(
 def build_inspector_projection(
     session: SessionPaneProjection,
     evidence: EvidenceRailProjection,
+    queue: QueueProjection | None = None,
     supervisor: RuntimeSupervisorProjection | None = None,
 ) -> InspectorProjection:
     """Build a content-light inspector projection from current dashboard state."""
@@ -299,6 +348,23 @@ def build_inspector_projection(
     blocker_item = _build_inspector_blocker_item(session)
     if blocker_item is not None:
         items.append(blocker_item)
+
+    if queue is not None:
+        for item in queue.items:
+            items.append(
+                InspectorItemProjection(
+                    item_id=item.queue_item_id,
+                    source_kind="queue_item",
+                    title=f"Queue {item.kind}",
+                    status=item.status,
+                    tool_name=item.kind,
+                    created_at=item.created_at,
+                    receipt_sha256=item.receipt_sha256,
+                    runtime_result_sha256=item.runtime_result_sha256,
+                    refusal_reason=item.blocked_reason,
+                    summary=item.summary or item.title,
+                )
+            )
 
     for item in evidence.items:
         items.append(_build_inspector_evidence_item(item))
@@ -326,6 +392,7 @@ class DashboardProjection(BaseModel):
     backlog_items: list[str] = Field(default_factory=list)
     execution_progress: ExecutionProgressProjection | None = None
     inspector: InspectorProjection = Field(default_factory=InspectorProjection)
+    queue: QueueProjection = Field(default_factory=QueueProjection)
     fleet: FleetProjection | None = None
 
     @property

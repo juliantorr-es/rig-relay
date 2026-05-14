@@ -17,9 +17,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from rig_relay.coordination.fleet_queue import FleetQueue, FleetQueueSnapshot
 
 # ── Constants ──────────────────────────────────────────────────────────
 
@@ -41,6 +42,30 @@ class FleetAgentSummary(BaseModel):
     stale_sessions: int = 0
 
 
+class FleetQueueNextItem(BaseModel):
+    """Summary of the next runnable queue item."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    queue_item_id: str | None = None
+    kind: str | None = None
+    priority: int = 0
+    created_at: str | None = None
+
+
+class FleetReplayDiagnostics(BaseModel):
+    """Content-light replay diagnostics from queue event log."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    total_lines: int = 0
+    valid_events: int = 0
+    malformed_lines: int = 0
+    invalid_events: int = 0
+    skipped_unknown_kind: int = 0
+    total_skipped: int = 0
+
+
 class FleetQueueSummary(BaseModel):
     """Summary of queue state — counts by status."""
 
@@ -54,6 +79,8 @@ class FleetQueueSummary(BaseModel):
     cancelled: int = 0
     total: int = 0
     highest_priority: int = 0
+    next_item: FleetQueueNextItem | None = None
+    replay: FleetReplayDiagnostics | None = None
 
 
 class FleetLeaseSummary(BaseModel):
@@ -118,7 +145,9 @@ class FleetProjection(BaseModel):
     queue: FleetQueueSummary = Field(default_factory=FleetQueueSummary)
     leases: FleetLeaseSummary = Field(default_factory=FleetLeaseSummary)
     blockers: FleetBlockerSummary = Field(default_factory=FleetBlockerSummary)
-    patches: FleetPatchProposalSummary = Field(default_factory=FleetPatchProposalSummary)
+    patches: FleetPatchProposalSummary = Field(
+        default_factory=FleetPatchProposalSummary
+    )
     recent_event_count: int = 0
 
 
@@ -190,12 +219,188 @@ def _generate_projection_id(timestamp: str) -> str:
     return "fp-" + hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
+# ── Queue summary builder ──────────────────────────────────────────────
+
+
+def build_queue_summary(queue: FleetQueue | None = None) -> FleetQueueSummary:
+    """Build a FleetQueueSummary from a FleetQueue instance (or None).
+
+    Reads the queue's event-sourced snapshot to produce counts, next
+    runnable item summary, and replay diagnostics.
+
+    If queue is None or the events file is missing/empty, returns
+    empty-safe defaults. Never crashes.
+    """
+    if queue is None:
+        return FleetQueueSummary()
+
+    try:
+        snapshot = queue.list_items()
+    except Exception:
+        return FleetQueueSummary()
+
+    return build_queue_summary_from_snapshot(snapshot)
+
+
+def build_queue_summary_from_snapshot(
+    snapshot: FleetQueueSnapshot,
+) -> FleetQueueSummary:
+    """Build a FleetQueueSummary from an existing FleetQueueSnapshot.
+
+    Extracts status counts, next runnable item, and replay diagnostics.
+    """
+    counts = snapshot.status_counts
+    next_item: FleetQueueNextItem | None = None
+    rr = snapshot.replay_report
+
+    replay = (
+        FleetReplayDiagnostics(
+            total_lines=rr.total_lines,
+            valid_events=rr.valid_events,
+            malformed_lines=rr.malformed_lines,
+            invalid_events=rr.invalid_events,
+            skipped_unknown_kind=rr.skipped_unknown_kind,
+            total_skipped=rr.total_skipped,
+        )
+        if rr
+        else None
+    )
+
+    # Find next runnable from snapshot items
+
+    # Use the same logic as queue.next_runnable_item but avoid circular
+    # by computing from the snapshot directly
+    queued_items = [i for i in snapshot.items if i.status == "queued"]
+    if queued_items:
+        cand = min(
+            queued_items, key=lambda i: (-i.priority, i.created_at, i.queue_item_id)
+        )
+        next_item = FleetQueueNextItem(
+            queue_item_id=cand.queue_item_id,
+            kind=cand.kind,
+            priority=cand.priority,
+            created_at=cand.created_at,
+        )
+
+    return FleetQueueSummary(
+        queued=counts.get("queued", 0),
+        running=counts.get("running", 0),
+        blocked=counts.get("blocked", 0),
+        completed=counts.get("completed", 0),
+        failed=counts.get("failed", 0),
+        cancelled=counts.get("cancelled", 0),
+        total=snapshot.total_count,
+        highest_priority=next_item.priority if next_item else 0,
+        next_item=next_item,
+        replay=replay,
+    )
+
+
+# ── Lease summary builder ──────────────────────────────────────────────
+
+
+def build_lease_summary(coordination_root: Path | None = None) -> FleetLeaseSummary:
+    """Build a FleetLeaseSummary from a coordination root path.
+
+    Reads active leases from PathLeaseManager. Returns empty-safe
+    defaults if coordination_root is None, path doesn't exist, or
+    reading fails in any way.
+    """
+    if coordination_root is None:
+        return FleetLeaseSummary()
+
+    try:
+        from rig_relay.coordination.lease_manager import PathLeaseManager
+
+        path_manager = PathLeaseManager(coordination_root)
+        leases = path_manager.query_active_leases()
+    except Exception:
+        return FleetLeaseSummary()
+
+    return FleetLeaseSummary(
+        total_active=len(leases),
+        exclusive_write=sum(1 for l in leases if l.mode == "write"),
+        shared_read=sum(1 for l in leases if l.mode == "read"),
+        path_count=sum(len(l.paths) for l in leases),
+    )
+
+
+# ── Patch proposal summary builder ─────────────────────────────────────
+
+
+def build_patch_proposal_summary(
+    patch_root: Path | None = None,
+) -> FleetPatchProposalSummary:
+    """Build a FleetPatchProposalSummary from a patch metadata directory.
+
+    Scans .fleet/patch-proposals/*.json for proposal files. Returns
+    empty-safe defaults if patch_root is None, doesn't exist, or
+    reading fails.
+    """
+    if patch_root is None or not patch_root.exists():
+        return FleetPatchProposalSummary()
+
+    try:
+        import json
+
+        proposals_dir = patch_root / ".fleet" / "patch-proposals"
+        if not proposals_dir.is_dir():
+            return FleetPatchProposalSummary()
+
+        pending = 0
+        applied = 0
+        rejected = 0
+        revised = 0
+        total = 0
+        oldest_pending_at: str | None = None
+        latest_proposal_id: str | None = None
+
+        for path in sorted(proposals_dir.glob("*.json")):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                total += 1
+                status = data.get("status", "")
+                created = data.get("created_at", "")
+                pid = data.get("proposal_id", "")
+                if status == "pending":
+                    pending += 1
+                    if oldest_pending_at is None or created < oldest_pending_at:
+                        oldest_pending_at = created
+                elif status == "applied":
+                    applied += 1
+                elif status == "rejected":
+                    rejected += 1
+                elif status == "revised":
+                    revised += 1
+                latest_proposal_id = pid
+            except Exception:
+                continue
+
+        return FleetPatchProposalSummary(
+            pending=pending,
+            applied=applied,
+            rejected=rejected,
+            revised=revised,
+            total=total,
+            oldest_pending_at=oldest_pending_at,
+            latest_proposal_id=latest_proposal_id,
+        )
+    except Exception:
+        return FleetPatchProposalSummary()
+
+
 __all__ = [
     "FleetAgentSummary",
     "FleetBlockerSummary",
     "FleetLeaseSummary",
     "FleetPatchProposalSummary",
     "FleetProjection",
+    "FleetQueueNextItem",
     "FleetQueueSummary",
+    "FleetReplayDiagnostics",
     "build_fleet_projection",
+    "build_lease_summary",
+    "build_patch_proposal_summary",
+    "build_queue_summary",
+    "build_queue_summary_from_snapshot",
 ]

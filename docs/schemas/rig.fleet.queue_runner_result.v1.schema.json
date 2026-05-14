@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Queue Runner Result v1",
+  "description": "Result of a single FleetQueueRunner.run_once() call. Content-light: no raw file contents, diffs, patches, prompts, secrets, stdout, stderr, argv, or snippets.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.fleet.queue_runner_result.v1"
+    },
+    "queue_item_id": {
+      "type": ["string", "null"],
+      "description": "ID of the queue item that was processed, or null if idle."
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["completed", "failed", "blocked", "idle"],
+      "description": "Outcome of the run_once() call."
+    },
+    "runtime_result_sha256": {
+      "oneOf": [
+        {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        {"type": "null"}
+      ],
+      "description": "SHA256 hash of the runtime execution result metadata (content-light)."
+    },
+    "receipt_sha256": {
+      "oneOf": [
+        {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        {"type": "null"}
+      ],
+      "description": "SHA256 hash of the runtime tool invocation receipt."
+    },
+    "tool_name": {
+      "type": ["string", "null"],
+      "description": "Name of the tool that was executed, if applicable."
+    },
+    "error_kind": {
+      "type": ["string", "null"],
+      "description": "Structured error kind for failed/blocked decisions."
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "Sanitised reason string. Content-light: truncated, no raw file data."
+    },
+    "changed_paths": {
+      "type": ["array", "null"],
+      "items": {"type": "string"},
+      "description": "Paths that were changed by the execution, if available."
+    }
+  },
+  "required": ["schema_version", "decision"],
+  "additionalProperties": false
+}

@@ -137,14 +137,80 @@ Additional transition: `superseded` (set when a newer item replaces this one).
 
 Queue events must not contain raw prompts, stdout, stderr, content, diffs, patches, secrets, argv, snippets, or file contents. Item payloads carry only summary/ref/hash.
 
+### Phase 0 Queue Runner (2026-05)
+
+`FleetQueueRunner` (in `rig_relay/coordination/fleet_queue_runner.py`) connects queue items to governed runtime execution.
+
+Key behaviours:
+- **One item per call**: `run_once()` selects the next runnable item, processes it, and returns a `FleetQueueRunnerResult`.
+- **Event-sourced transitions**: running event before dispatch; completed/failed/blocked event after.
+- **Supported item kinds**:
+  - `validate` / `runtime_exec`: dispatched through `RuntimeToolExecutionRunner` (governed path with leases, auditing).
+  - `message` / `handoff_note`: completed immediately, no runtime mutation.
+  - `pause` / `resume`: completed immediately (no-op in Phase 0).
+- **Unsupported kinds**: marked blocked with `error_kind: unsupported_queue_item_kind`.
+- **Content-light result**: `FleetQueueRunnerResult` carries only `queue_item_id`, `decision`, `runtime_result_sha256`, `receipt_sha256`, `tool_name`, `error_kind`, `sanitised reason`, and `changed_paths`. No stdout, stderr, content, diffs, patches, prompts, secrets, argv, or snippets.
+
 ### Phase 0 Limitations
 
-- No full scheduler: `next_runnable_item()` returns one eligible item but does not execute it.
-- No runtime execution from the queue yet.
-- No patch proposal integration.
+- No full scheduler: `next_runnable_item()` and `run_once()` run one item at a time.
+- No parallel execution.
+- No patch application or proposal integration.
 - No TUI queue panel.
 - Not thread-safe or multi-process safe (no file locking).
 - No supervisor projection integration.
+- No DuckDB index.
+
+## 7.6 Fleet Projection / Read Model (Phase 0)
+
+`FleetProjection` (in `rig_relay/coordination/fleet_projection.py`) is a content-light read model that summarizes fleet queue state, leases, patch proposals, blockers, and agent/session liveness for the Textual Rig Console TUI.
+
+### Data Sources
+
+The projection reads from existing fleet/coordination artifacts:
+- **Fleet Queue**: `FleetQueue.list_items()` for `FleetQueueSnapshot` → status counts, next runnable item, replay diagnostics.
+- **PathLeaseManager**: `query_active_leases()` for active lease counts and modes.
+- **Patch proposals**: `.fleet/patch-proposals/*.json` for pending/applied/rejected/revised counts.
+- **Coordination events**: Recent event count (future: agent sessions from coordination store).
+
+Missing artifacts produce empty-safe defaults — the projection never crashes.
+
+### Sub-models
+
+| Model | Fields | Content-Light? |
+|-------|--------|----------------|
+| `FleetAgentSummary` | total_agents, active_sessions, recent_heartbeats, stale_sessions | Yes |
+| `FleetQueueSummary` | queued, running, blocked, completed, failed, cancelled, total, highest_priority, next_item, replay | Yes |
+| `FleetQueueNextItem` | queue_item_id, kind, priority, created_at | Yes |
+| `FleetReplayDiagnostics` | total_lines, valid_events, malformed_lines, invalid_events, skipped_unknown_kind, total_skipped | Yes |
+| `FleetLeaseSummary` | total_active, exclusive_write, shared_read, stale, expired, path_count | Yes |
+| `FleetBlockerSummary` | total_blockers, blocker_kinds, oldest_blocked_at | Yes |
+| `FleetPatchProposalSummary` | pending, applied, rejected, revised, total, oldest_pending_at, latest_proposal_id | Yes |
+| `FleetProjection` (root) | schema_version, projection_id, created_at, fleet_name, agents, queue, leases, blockers, patches, recent_event_count | Yes |
+
+### Worker Functions
+
+- `build_queue_summary(queue: FleetQueue | None) → FleetQueueSummary`: Reads queue snapshot, builds counts + next item + replay diagnostics.
+- `build_queue_summary_from_snapshot(snapshot: FleetQueueSnapshot) → FleetQueueSummary`: From an existing snapshot (no I/O).
+- `build_lease_summary(coordination_root: Path | None) → FleetLeaseSummary`: Reads active leases from `PathLeaseManager`.
+- `build_patch_proposal_summary(patch_root: Path | None) → FleetPatchProposalSummary`: Scans patch proposal JSON files.
+
+### Content-Light Enforcement
+
+All sub-models have `ConfigDict(extra="forbid")`. The `FleetProjection` JSON Schema has `additionalProperties:false` at every level (root, agents, queue, next_item, replay, leases, blockers, patches). Forbidden field names: `prompt`, `stdout`, `stderr`, `content`, `diff`, `patch`, `secret`, `argv`, `snippet`, `file_content`, `raw_prompt`, `raw_output`.
+
+### TUI Integration
+
+- `providers.py`: `_build_fleet_projection()` reads queue events from `coordination_root/queue/events.jsonl` and builds a `FleetQueueSummary` via `build_queue_summary(FleetQueue(...))`.
+- `widgets/fleet_panel.py`: `FleetPanelWidget` renders queue, leases, blockers, patches, agents, next item, and replay diagnostics rows. Read-only — no mutation keybindings.
+
+### Tests
+
+43 tests in `tests/coordination/test_fleet_projection.py`, 22 tests in `tests/cli/textual_ui/rig_console/test_fleet_panel.py` (6 for next_item/replay formatting).
+
+### Schema
+
+`docs/schemas/rig.fleet.projection.v1.schema.json` — validates serialized `FleetProjection` JSON with `additionalProperties:false` on all nested objects.
 
 ## 7. Storage Design
 

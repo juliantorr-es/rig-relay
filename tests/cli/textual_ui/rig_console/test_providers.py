@@ -215,6 +215,7 @@ class TestRuntimeDashboardProjectionProvider:
 
         assert returned.status == RuntimeToolExecutionStatus.COMPLETED
         assert mock_execute.await_count == 1
+        assert mock_execute.await_args is not None
         intent = mock_execute.await_args.args[0]
         assert intent.tool_name.value == "runtime_exec"
         assert intent.payload["tool_name"] == "validate"

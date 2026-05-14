@@ -19,6 +19,8 @@ from vibe.cli.textual_ui.rig_console.projections import (
     EvidenceRailProjection,
     InspectorItemProjection,
     InspectorProjection,
+    QueueItemProjection,
+    QueueProjection,
     SessionPaneProjection,
 )
 from vibe.cli.textual_ui.rig_console.screens.dashboard import DashboardScreen
@@ -205,10 +207,7 @@ class TestDashboardScreen:
 
     def test_build_validate_runtime_exec_intent_uses_runtime_exec(self) -> None:
         intent = build_validate_runtime_exec_intent(
-            intent_id="intent-validate-1",
-            session_id="session-1",
-            task_id="task-1",
-            changed_paths=["src/main.py"],
+            intent_id="intent-validate-1", changed_paths=["src/main.py"]
         )
         assert intent.tool_name.value == "runtime_exec"
         assert intent.payload["tool_name"] == "validate"
@@ -278,6 +277,52 @@ class TestDashboardScreen:
         with patch.object(screen, "_render_all"):
             screen.action_toggle_inspector()
         assert screen._projection.inspector.visible is not initial
+
+    def test_inspect_selected_queue_item_updates_inspector(self) -> None:
+        proj = _make_projection()
+        proj = proj.model_copy(
+            update={
+                "queue": QueueProjection(
+                    visible=True,
+                    items=[
+                        QueueItemProjection(
+                            queue_item_id="queue-1",
+                            kind="message",
+                            status="queued",
+                            title="Queue one",
+                        ),
+                        QueueItemProjection(
+                            queue_item_id="queue-2",
+                            kind="validate",
+                            status="running",
+                            title="Validate now",
+                        ),
+                    ],
+                    selected_index=1,
+                ),
+                "inspector": proj.inspector.model_copy(
+                    update={
+                        "items": [
+                            InspectorItemProjection(
+                                item_id="queue-1",
+                                source_kind="queue_item",
+                                title="Queue one",
+                            ),
+                            InspectorItemProjection(
+                                item_id="queue-2",
+                                source_kind="queue_item",
+                                title="Validate now",
+                            ),
+                        ]
+                    }
+                ),
+            }
+        )
+        screen = DashboardScreen(proj)
+        with patch.object(screen, "_render_all"):
+            screen.action_inspect_selected_queue_item()
+        assert screen._projection.inspector.visible is True
+        assert screen._projection.inspector.selected_index == 1
 
     def test_next_item_advances_inspector_selection(self) -> None:
         proj = _make_projection()

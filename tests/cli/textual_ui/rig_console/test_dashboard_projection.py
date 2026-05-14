@@ -137,7 +137,7 @@ class TestDashboardProjection:
             changed_path_count=1,
             changed_path_hashes=["sha256:result"],
         )
-        inspector = build_inspector_projection(session, evidence, supervisor)
+        inspector = build_inspector_projection(session, evidence, None, supervisor)
 
         assert inspector.items[0].source_kind == "runtime_audit"
         assert inspector.items[0].receipt_sha256 == "sha256:receipt"

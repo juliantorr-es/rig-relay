@@ -11,7 +11,7 @@ data is available. Shows active lease/blocker/queue counts when present.
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Vertical, Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
 from rig_relay.coordination.fleet_projection import (
@@ -48,6 +48,28 @@ def _format_queue(queue: FleetQueueSummary) -> str:
     if not parts:
         return "[dim]queue empty[/]"
     return "  ".join(parts)
+
+
+def _format_next_item(queue: FleetQueueSummary) -> str:
+    """Format next runnable item summary."""
+    ni = queue.next_item
+    if ni is None:
+        return ""
+    kind = ni.kind or "?"
+    return f"next: {kind} (pri {ni.priority})"
+
+
+def _format_replay(queue: FleetQueueSummary) -> str:
+    """Format replay diagnostics."""
+    r = queue.replay
+    if r is None:
+        return ""
+    parts: list[str] = []
+    if r.total_skipped:
+        parts.append(f"[yellow]{r.malformed_lines} malformed[/]")
+        parts.append(f"[yellow]{r.invalid_events} invalid[/]")
+        parts.append(f"[yellow]{r.skipped_unknown_kind} unknown[/]")
+    return "  ".join(parts) if parts else ""
 
 
 def _format_leases(leases: FleetLeaseSummary) -> str:
@@ -169,10 +191,17 @@ FleetPanelWidget > .fleet-row > Static {
             yield Static(f"Patches: {_format_patches(proj)}")
         with Horizontal(classes="fleet-row"):
             yield Static(f"Agents: {_format_agents(proj)}")
+        next_text = _format_next_item(proj.queue)
+        if next_text:
+            with Horizontal(classes="fleet-row"):
+                yield Static(f"Next: {next_text}")
+        replay_text = _format_replay(proj.queue)
+        if replay_text:
+            with Horizontal(classes="fleet-row"):
+                yield Static(f"Replay: {replay_text}")
         if proj.recent_event_count:
             yield Static(
-                f"Recent events: {proj.recent_event_count}",
-                classes="fleet-row",
+                f"Recent events: {proj.recent_event_count}", classes="fleet-row"
             )
 
     def update_projection(self, projection: FleetProjection | None) -> None:
@@ -187,23 +216,36 @@ FleetPanelWidget > .fleet-row > Static {
             self.mount(child)
 
     def _build_widgets(self) -> list:
-        """Build widget list from current projection."""
+        """Build widget list from current projection.
+
+        Returns flat list of Static widgets. The with Horizontal(...)
+        wrappers used in compose() are omitted here because they require
+        an active Textual app context. update_projection() mounts these
+        widgets directly.
+        """
         widgets: list = [Static("Fleet Panel", classes="fleet-header")]
         if self._projection is None:
             widgets.append(Static("[dim]no fleet data[/]", classes="fleet-row"))
             return widgets
 
         proj = self._projection
-        with Horizontal(classes="fleet-row"):
-            widgets.append(Static(f"Queue: {_format_queue(proj.queue)}"))
-        with Horizontal(classes="fleet-row"):
-            widgets.append(Static(f"Leases: {_format_leases(proj.leases)}"))
-        with Horizontal(classes="fleet-row"):
-            widgets.append(Static(f"Blockers: {_format_blockers(proj.blockers)}"))
-        with Horizontal(classes="fleet-row"):
-            widgets.append(Static(f"Patches: {_format_patches(proj)}"))
-        with Horizontal(classes="fleet-row"):
-            widgets.append(Static(f"Agents: {_format_agents(proj)}"))
+        widgets.append(
+            Static(f"Queue: {_format_queue(proj.queue)}", classes="fleet-row")
+        )
+        widgets.append(
+            Static(f"Leases: {_format_leases(proj.leases)}", classes="fleet-row")
+        )
+        widgets.append(
+            Static(f"Blockers: {_format_blockers(proj.blockers)}", classes="fleet-row")
+        )
+        widgets.append(Static(f"Patches: {_format_patches(proj)}", classes="fleet-row"))
+        widgets.append(Static(f"Agents: {_format_agents(proj)}", classes="fleet-row"))
+        next_text = _format_next_item(proj.queue)
+        if next_text:
+            widgets.append(Static(f"Next: {next_text}", classes="fleet-row"))
+        replay_text = _format_replay(proj.queue)
+        if replay_text:
+            widgets.append(Static(f"Replay: {replay_text}", classes="fleet-row"))
         if proj.recent_event_count:
             widgets.append(
                 Static(f"Recent events: {proj.recent_event_count}", classes="fleet-row")

@@ -157,7 +157,9 @@ def _sample_dashboard() -> DashboardProjection:
             "Resolve dirty file guard for src/config.py",
             "Review validate report for task-0042",
         ],
-        inspector=build_inspector_projection(session, evidence, _sample_supervisor()),
+        inspector=build_inspector_projection(
+            session, evidence, None, _sample_supervisor()
+        ),
         fleet=_sample_fleet_projection(),
     )
 
@@ -185,7 +187,9 @@ def _sample_altered_dashboard() -> DashboardProjection:
         safety_state="blocked",
         footer_hint="q: quit  r: refresh  ?: help",
         backlog_items=["Resolve dirty file guard for src/config.py"],
-        inspector=build_inspector_projection(session, evidence, _sample_supervisor()),
+        inspector=build_inspector_projection(
+            session, evidence, None, _sample_supervisor()
+        ),
         fleet=_sample_fleet_projection(),
     )
 

@@ -18,7 +18,6 @@ Constraints:
 """
 
 from __future__ import annotations
-from vibe.core.logger import logger
 
 from collections.abc import AsyncGenerator
 from contextlib import contextmanager
@@ -46,6 +45,7 @@ from rig_relay.runtime.tool_invocation_adapter import (
     RuntimeToolInvocationStatus,
     RuntimeToolName,
 )
+from vibe.core.logger import logger
 
 # ── Constants ──────────────────────────────────────────────────────────
 

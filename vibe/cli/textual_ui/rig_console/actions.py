@@ -98,9 +98,32 @@ ACTION_COPY_LATEST_RECEIPT_REF = RigConsoleAction(
     callback_name="action_copy_latest_receipt_ref",
 )
 
+
+ACTION_QUEUE_RUN_NEXT = RigConsoleAction(
+    name="queue_run_next",
+    title="Run Next Queued Item",
+    description="Execute the next eligible queued item through FleetQueueRunner",
+    callback_name="action_queue_run_next",
+)
+ACTION_QUEUE_VALIDATE = RigConsoleAction(
+    name="queue_validate",
+    title="Queue Validate",
+    description="Enqueue a validate item, then run through FleetQueueRunner",
+    callback_name="action_queue_validate",
+)
+ACTION_QUEUE_REFRESH = RigConsoleAction(
+    name="queue_refresh",
+    title="Refresh Queue",
+    description="Refresh the queue projection from stored events",
+    callback_name="action_queue_refresh",
+)
+
 SAFE_ACTIONS: tuple[RigConsoleAction, ...] = (
     ACTION_REFRESH,
     ACTION_RUN_VALIDATE,
+    ACTION_QUEUE_RUN_NEXT,
+    ACTION_QUEUE_VALIDATE,
+    ACTION_QUEUE_REFRESH,
     ACTION_SHOW_HELP,
     ACTION_TOGGLE_DETAILS,
     ACTION_TOGGLE_INSPECTOR,
@@ -121,9 +144,7 @@ def action_names() -> tuple[str, ...]:
 
 
 def build_validate_runtime_exec_intent(
-    *,
-    intent_id: str,
-    changed_paths: list[str] | None = None,
+    *, intent_id: str, changed_paths: list[str] | None = None
 ) -> RuntimeToolIntent:
     payload: dict[str, object] = {
         "tool_name": RuntimeToolName.VALIDATE.value,
