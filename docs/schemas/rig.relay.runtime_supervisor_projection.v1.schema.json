@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig.relay/schemas/runtime_supervisor_projection.v1.json",
+  "title": "Runtime Supervisor Projection",
+  "description": "Content-light summary projection of runtime execution state. Derived from RuntimeAuditEvent records. Contains no raw file contents, stdout, stderr, diffs, snippets, or secrets.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier",
+      "enum": ["rig.relay.runtime_supervisor_projection.v1"]
+    },
+    "projection_id": {
+      "type": "string",
+      "description": "Unique projection identifier"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the projection was built"
+    },
+    "total_invocations": {
+      "type": "integer",
+      "description": "Total number of tracked invocations"
+    },
+    "status_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer" },
+      "description": "Count of invocations per status (completed, blocked, refused, failed)"
+    },
+    "recent_invocations": {
+      "type": "array",
+      "items": { "type": "object", "required": ["audit_event_id", "invocation_id", "tool_name", "status"] },
+      "description": "Most recent invocations (content-light audit events)"
+    },
+    "changed_path_count": {
+      "type": "integer",
+      "description": "Total changed paths across recent invocations"
+    },
+    "changed_path_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA-256 hashes of recent runtime results"
+    }
+  },
+  "required": ["schema_version", "projection_id", "created_at", "total_invocations"],
+  "additionalProperties": false
+}

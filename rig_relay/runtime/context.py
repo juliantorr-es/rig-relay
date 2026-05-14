@@ -14,6 +14,7 @@ class RuntimeContext(BaseModel):
     worktree_path: str | None = None
     repo_root: str | None = None
     coordination_scope: str | None = None
+    coordination_enabled: bool = True
     receipt_index_path: str | None = None
     dirty_policy: str | None = None
     resolved_from: list[str] = Field(default_factory=list)

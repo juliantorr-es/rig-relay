@@ -255,44 +255,54 @@ class CoordinationStore:
         expires = now_plus(ttl_seconds)
         normalized = [normalize_path(path) for path in paths]
 
-        if mode == "write":
-            for existing in self._iter_reservations():
-                if existing.status != "active" or existing.mode != "write":
-                    continue
-                if existing.session_id == session_id and existing.task_id == task_id:
-                    continue
-                for existing_path in existing.paths:
-                    for raw_path in paths:
-                        if self._is_prefix(existing_path, raw_path) or self._is_prefix(
-                            raw_path, existing_path
-                        ):
-                            conflict = CoordinationConflict(
-                                conflict_id=self._path_key("|".join(normalized)),
-                                kind="path_write_overlap",
-                                session_id=session_id,
-                                other_session_id=existing.session_id,
-                                task_id=task_id,
-                                paths=[raw_path],
-                                recommended_resolution="serialize_or_split_scope",
-                            )
-                            self._write_json(
-                                self._conflict_path(conflict.conflict_id),
-                                conflict.model_dump(exclude_none=True),
-                            )
-                            refusal_payload = build_reservation_refused_payload(
-                                conflict
-                            )
-                            self._append_event(
-                                "coord.path.reservation_refused", refusal_payload
-                            )
-                            return CoordinationReservationResult(
-                                allowed=False,
-                                reservation=None,
-                                conflict=conflict,
-                                warnings=[
-                                    f"Path '{raw_path}' already reserved by {existing.session_id}"
-                                ],
-                            )
+        # ── Conflict detection ────────────────────────────────────
+        # exclusive_write (mode="write") conflicts with both read and write.
+        # shared_read (mode="read") conflicts only with existing write.
+        for existing in self._iter_reservations():
+            if existing.status != "active":
+                continue
+            # Same-owner renewal is allowed
+            if existing.session_id == session_id and existing.task_id == task_id:
+                continue
+            # Read/read coexistence: no conflict
+            if mode == "read" and existing.mode == "read":
+                continue
+            # Check for path overlap
+            for existing_path in existing.paths:
+                for raw_path in paths:
+                    if self._is_prefix(existing_path, raw_path) or self._is_prefix(
+                        raw_path, existing_path
+                    ):
+                        conflict_kind = (
+                            "path_write_overlap"
+                            if mode == "write"
+                            else "read_blocked_by_write"
+                        )
+                        conflict = CoordinationConflict(
+                            conflict_id=self._path_key("|".join(normalized)),
+                            kind=conflict_kind,
+                            session_id=session_id,
+                            other_session_id=existing.session_id,
+                            task_id=task_id,
+                            paths=[raw_path],
+                            recommended_resolution="serialize_or_split_scope",
+                        )
+                        self._write_json(
+                            self._conflict_path(conflict.conflict_id),
+                            conflict.model_dump(exclude_none=True),
+                        )
+                        refusal_payload = build_reservation_refused_payload(conflict)
+                        self._append_event(
+                            "coord.path.reservation_refused", refusal_payload
+                        )
+                        return CoordinationReservationResult(
+                            allowed=False,
+                            reservation=None,
+                            conflict=conflict,
+                            warnings=[
+                                f"Path '{raw_path}' already reserved by {existing.session_id}"
+                            ],
+                        )
 
         reservation = CoordinationPathReservation(
             session_id=session_id,

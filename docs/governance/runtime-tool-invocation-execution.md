@@ -4,7 +4,7 @@
 
 ## Purpose
 
-The execution layer bridges the runtime adapter and concrete tools (validate, search_replace), providing structured, content-light execution paths that return `RuntimeToolExecutionResult` objects.
+The execution layer bridges the runtime adapter and concrete tools (validate, search_replace, write_file, bash), providing structured, content-light execution paths that return `RuntimeToolExecutionResult` objects. Phase 3 adds `execute_runtime_exec()` as a top-level router above all four Phase 2 adapters.
 
 ## Execution Paths
 
@@ -73,6 +73,46 @@ The execution layer bridges the runtime adapter and concrete tools (validate, se
 - No lease acquisition
 - No RuntimeSupervisor integration
 - No audit persistence
+
+## Audit Persistence (Phase 3)
+
+RuntimeToolExecutionResult outcomes are persisted as 
+RuntimeAuditEvent records to an append-only JSONL store.
+Each execute_*() method in RuntimeToolExecutionRunner calls
+_persist_if_configured() before returning, writing a content-light
+audit event. Early returns (blocked, refused, failed) are also
+persisted. Persistence is best-effort: failures are silently
+ignored so audit never breaks tool execution.
+
+### RuntimeAuditEvent
+- Content-light: no raw payloads, stdout, stderr, diffs, snippets, secrets
+- Records: invocation_id, tool_name, status, tool_status, receipt_sha256,
+  runtime_result_sha256 (SHA-256 of the execution result's canonical JSON),
+  changed_paths, duration_ms, error fields, created_at
+- Context propagation (Otel-inspired): mission_id, agent_id, lease_id,
+  parent_event_id carried when available
+- Schema: `rig.relay.runtime_audit_event.v1`
+
+### RuntimeAuditPersistenceStore
+- Append-only JSONL persistence under an injected root path
+- Creates parent directories automatically
+- Uses flush + fsync for best-effort durability
+- Example: `RuntimeAuditPersistenceStore(tmp_path / "audit.jsonl")`
+
+## Supervisor Projection (Phase 3)
+
+`RuntimeSupervisorProjection` is a content-light summary derived from
+`RuntimeAuditEvent` records. It is not derived from raw tool payloads.
+
+### Projection contents
+- total_invocations: total count
+- status_counts: counts per status (completed, blocked, refused, failed)
+- recent_invocations: most recent events (capped, sorted by created_at desc)
+- changed_path_count: total changed paths across recent events
+- changed_path_hashes: SHA-256 hashes of recent runtime results
+
+Builder: `build_runtime_supervisor_projection(store_or_events)`
+Schema: `rig.relay.runtime_supervisor_projection.v1`
 
 ## Context Injection
 

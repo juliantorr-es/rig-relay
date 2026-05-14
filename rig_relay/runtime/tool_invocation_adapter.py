@@ -129,6 +129,10 @@ class RuntimeToolInvocationEnvelope(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     requested_paths: list[str] = Field(default_factory=list)
 
+    # Coordination policy
+    coordination_enabled: bool = True
+    lease_ttl_seconds: int | None = None
+
     # Refusal details
     error_kind: RuntimeToolInvocationErrorKind | None = None
     refusal_reason: str | None = None
@@ -232,6 +236,7 @@ class RuntimeToolInvocationAdapter:
         base_envelope.worktree_path = ctx.worktree_path
         base_envelope.repo_root = ctx.repo_root
         base_envelope.cwd = effective_cwd
+        base_envelope.coordination_enabled = ctx.coordination_enabled
 
         # ── Tool-specific validation ────────────────────────────────
         return self._apply_tool_policy(intent, base_envelope, ctx)

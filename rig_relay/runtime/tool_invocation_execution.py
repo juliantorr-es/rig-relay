@@ -12,13 +12,14 @@ Context injection:
   for path validation and coordination store resolution.
 
 Constraints:
-- No lease acquisition (deferred).
-- No RuntimeSupervisor integration (deferred).
-- Audit integration is optional (not wired here).
+- RuntimeSupervisor integration is deferred.
+- Lease acquisition: wired for search_replace and write_file.
+- Audit persistence: wired for all execute_* methods via RuntimeAuditPersistenceStore.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from collections.abc import AsyncGenerator
 from contextlib import contextmanager
 from enum import StrEnum
@@ -32,6 +33,11 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.runtime.context import RuntimeContextResolution
+from rig_relay.runtime.runtime_audit_event import (
+    RuntimeAuditPersistenceStore,
+    build_runtime_audit_event,
+)
+from rig_relay.coordination.lease_manager import DEFAULT_LEASE_TTL_SECONDS
 from rig_relay.runtime.tool_invocation_adapter import (
     RuntimeToolIntent,
     RuntimeToolInvocationAdapter,
@@ -102,6 +108,14 @@ class RuntimeToolExecutionResult(BaseModel):
 # ── Execution runner ──────────────────────────────────────────────────
 
 
+@dataclass
+class _LeaseClaimOutcome:
+    """Result of a lease claim attempt in the execution runner."""
+
+    blocked: RuntimeToolExecutionResult | None = None
+    lease_info: tuple[str, str, list[str]] | None = None
+
+
 class RuntimeToolExecutionRunner:
     """Executes tools through the adapter.
 
@@ -118,11 +132,13 @@ class RuntimeToolExecutionRunner:
         self,
         adapter: RuntimeToolInvocationAdapter | None = None,
         envelope_schema_path: Path | None = None,
+        audit_store: RuntimeAuditPersistenceStore | None = None,
     ) -> None:
         self._adapter = adapter or RuntimeToolInvocationAdapter()
         self._envelope_schema_path = (
             envelope_schema_path or _DEFAULT_ENVELOPE_SCHEMA_PATH
         )
+        self._audit_store = audit_store
 
     # ── Public API ─────────────────────────────────────────────────
 
@@ -139,7 +155,7 @@ class RuntimeToolExecutionRunner:
 
         # ── Refuse non-validate tools ──────────────────────────────
         if intent.tool_name != RuntimeToolName.VALIDATE:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -149,33 +165,39 @@ class RuntimeToolExecutionRunner:
                     "validate-only execution"
                 ),
             )
+            self._persist_if_configured(_result, None)
+            return _result
 
         # ── Run adapter prepare ────────────────────────────────────
         envelope = self._adapter.prepare(intent, resolution)
 
         # ── Handle blocked/refused ─────────────────────────────────
         if envelope.status == RuntimeToolInvocationStatus.BLOCKED:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.BLOCKED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind=envelope.error_kind.value if envelope.error_kind else None,
                 refusal_reason=envelope.refusal_reason,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         if envelope.status == RuntimeToolInvocationStatus.REFUSED:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind=envelope.error_kind.value if envelope.error_kind else None,
                 refusal_reason=envelope.refusal_reason,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         # ── Validate envelope against schema ───────────────────────
         schema_valid, schema_errors = self._validate_envelope_schema(envelope)
         if not schema_valid:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.FAILED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -186,12 +208,14 @@ class RuntimeToolExecutionRunner:
                 ),
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         # ── Execute validate tool ──────────────────────────────────
         try:
             result = await self._run_validate_tool(envelope)
         except Exception as e:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.FAILED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -200,6 +224,8 @@ class RuntimeToolExecutionRunner:
                 refusal_reason=str(e),
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         # ── Build receipt hash ─────────────────────────────────────
         receipt_sha256: str | None = None
@@ -245,7 +271,9 @@ class RuntimeToolExecutionRunner:
             tool_receipt_kind=receipt_kind,
             tool_receipt_schema_version=receipt_schema_version,
         )
-        return self._attach_receipt(result)
+        result = self._attach_receipt(result)
+        self._persist_if_configured(result, envelope)
+        return result
 
     async def execute_search_replace(
         self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
@@ -264,7 +292,7 @@ class RuntimeToolExecutionRunner:
 
         # ── Refuse non-search_replace tools ────────────────────────
         if intent.tool_name != RuntimeToolName.SEARCH_REPLACE:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -274,33 +302,39 @@ class RuntimeToolExecutionRunner:
                     "search_replace execution"
                 ),
             )
+            self._persist_if_configured(_result, None)
+            return _result
 
         # ── Run adapter prepare ────────────────────────────────────
         envelope = self._adapter.prepare(intent, resolution)
 
         # ── Handle blocked/refused ─────────────────────────────────
         if envelope.status == RuntimeToolInvocationStatus.BLOCKED:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.BLOCKED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind=envelope.error_kind.value if envelope.error_kind else None,
                 refusal_reason=envelope.refusal_reason,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         if envelope.status == RuntimeToolInvocationStatus.REFUSED:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind=envelope.error_kind.value if envelope.error_kind else None,
                 refusal_reason=envelope.refusal_reason,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         # ── Validate envelope against schema ───────────────────────
         schema_valid, schema_errors = self._validate_envelope_schema(envelope)
         if not schema_valid:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.FAILED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -311,12 +345,21 @@ class RuntimeToolExecutionRunner:
                 ),
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
+
+        # ── Lease acquisition ──────────────────────────────────────
+        payload = envelope.payload or {}
+        file_path = payload.get("file_path", "")
+        lease_block = self._claim_mutation_lease(envelope, file_path)
+        if lease_block is not None:
+            return lease_block
 
         # ── Execute search_replace tool ────────────────────────────
         try:
             result = await self._run_search_replace_tool(envelope)
         except Exception as e:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.FAILED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -325,6 +368,8 @@ class RuntimeToolExecutionRunner:
                 refusal_reason=str(e),
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         # ── Build receipt hash ─────────────────────────────────────
         receipt_sha256: str | None = None
@@ -374,7 +419,9 @@ class RuntimeToolExecutionRunner:
             tool_receipt_schema_version=receipt_schema_version,
             changed_paths=changed_paths,
         )
-        return self._attach_receipt(result)
+        result = self._attach_receipt(result)
+        self._persist_if_configured(result, envelope)
+        return result
 
     async def execute_write_file(
         self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
@@ -383,37 +430,43 @@ class RuntimeToolExecutionRunner:
         start = time.perf_counter()
 
         if intent.tool_name != RuntimeToolName.WRITE_FILE:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind="unsupported_tool",
                 refusal_reason=f"Tool '{intent.tool_name.value}' is not supported for write_file execution",
             )
+            self._persist_if_configured(_result, None)
+            return _result
 
         envelope = self._adapter.prepare(intent, resolution)
 
         if envelope.status == RuntimeToolInvocationStatus.BLOCKED:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.BLOCKED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind=envelope.error_kind.value if envelope.error_kind else None,
                 refusal_reason=envelope.refusal_reason,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         if envelope.status == RuntimeToolInvocationStatus.REFUSED:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind=envelope.error_kind.value if envelope.error_kind else None,
                 refusal_reason=envelope.refusal_reason,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         schema_valid, schema_errors = self._validate_envelope_schema(envelope)
         if not schema_valid:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.FAILED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -422,11 +475,20 @@ class RuntimeToolExecutionRunner:
                 refusal_reason=f"Envelope failed schema validation: {'; '.join(schema_errors)}",
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
+
+        # ── Lease acquisition ──────────────────────────────────────
+        payload = envelope.payload or {}
+        file_path = payload.get("path", "")
+        lease_block = self._claim_mutation_lease(envelope, file_path)
+        if lease_block is not None:
+            return lease_block
 
         try:
             result = await self._run_write_file_tool(envelope)
         except Exception as e:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.FAILED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -435,6 +497,8 @@ class RuntimeToolExecutionRunner:
                 refusal_reason=str(e),
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         receipt_sha256: str | None = None
         receipt: Any = None
@@ -480,7 +544,9 @@ class RuntimeToolExecutionRunner:
             tool_receipt_schema_version=receipt_schema_version,
             changed_paths=changed_paths,
         )
-        return self._attach_receipt(result)
+        result = self._attach_receipt(result)
+        self._persist_if_configured(result, envelope)
+        return result
 
     async def execute_bash(
         self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
@@ -489,37 +555,43 @@ class RuntimeToolExecutionRunner:
         start = time.perf_counter()
 
         if intent.tool_name != RuntimeToolName.BASH_LEGACY:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind="unsupported_tool",
                 refusal_reason=f"Tool '{intent.tool_name.value}' is not supported for bash execution",
             )
+            self._persist_if_configured(_result, None)
+            return _result
 
         envelope = self._adapter.prepare(intent, resolution)
 
         if envelope.status == RuntimeToolInvocationStatus.BLOCKED:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.BLOCKED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind=envelope.error_kind.value if envelope.error_kind else None,
                 refusal_reason=envelope.refusal_reason,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         if envelope.status == RuntimeToolInvocationStatus.REFUSED:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.REFUSED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
                 error_kind=envelope.error_kind.value if envelope.error_kind else None,
                 refusal_reason=envelope.refusal_reason,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         schema_valid, schema_errors = self._validate_envelope_schema(envelope)
         if not schema_valid:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.FAILED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -528,11 +600,13 @@ class RuntimeToolExecutionRunner:
                 refusal_reason=f"Envelope failed schema validation: {'; '.join(schema_errors)}",
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         try:
             result = await self._run_bash_tool(envelope)
         except Exception as e:
-            return RuntimeToolExecutionResult(
+            _result = RuntimeToolExecutionResult(
                 status=RuntimeToolExecutionStatus.FAILED,
                 intent_id=intent.intent_id,
                 tool_name=intent.tool_name.value,
@@ -541,6 +615,8 @@ class RuntimeToolExecutionRunner:
                 refusal_reason=str(e),
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
+            self._persist_if_configured(_result, envelope)
+            return _result
 
         receipt_sha256: str | None = None
         receipt: Any = None
@@ -580,7 +656,102 @@ class RuntimeToolExecutionRunner:
             tool_receipt_kind="bash",
             tool_receipt_schema_version=receipt_schema_version,
         )
-        return self._attach_receipt(result)
+        result = self._attach_receipt(result)
+        self._persist_if_configured(result, envelope)
+        return result
+
+    async def execute_runtime_exec(
+        self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
+    ) -> RuntimeToolExecutionResult:
+        """Dispatch runtime_exec to the correct Phase 2 adapter.
+
+        Reads payload["tool_name"] to determine the sub-tool, builds a
+        sub-intent with the remaining payload, and dispatches to the
+        appropriate execute_* method.
+
+        Returns REFUSED/unsupported_tool for:
+        - Non-runtime_exec tool_name
+        - Missing or unknown sub-tool name
+        - runtime_exec dispatched to itself (circular)
+        """
+        start = time.perf_counter()
+
+        if intent.tool_name != RuntimeToolName.RUNTIME_EXEC:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=intent.tool_name.value,
+                error_kind="unsupported_tool",
+                refusal_reason=(
+                    f"Tool '{intent.tool_name.value}' is not supported for "
+                    "runtime_exec dispatch"
+                ),
+            )
+
+        payload = intent.payload or {}
+        sub_tool_name_str: str = payload.get("tool_name", "")
+
+        if not sub_tool_name_str:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=RuntimeToolName.RUNTIME_EXEC.value,
+                error_kind="invalid_payload",
+                refusal_reason="runtime_exec payload requires 'tool_name'",
+                duration_ms=(time.perf_counter() - start) * 1000,
+            )
+
+        try:
+            sub_tool = RuntimeToolName(sub_tool_name_str)
+        except ValueError:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=RuntimeToolName.RUNTIME_EXEC.value,
+                error_kind="unsupported_tool",
+                refusal_reason=f"Unknown sub-tool: '{sub_tool_name_str}'",
+                duration_ms=(time.perf_counter() - start) * 1000,
+            )
+
+        if sub_tool == RuntimeToolName.RUNTIME_EXEC:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=RuntimeToolName.RUNTIME_EXEC.value,
+                error_kind="unsupported_tool",
+                refusal_reason="runtime_exec cannot dispatch to itself (circular)",
+                duration_ms=(time.perf_counter() - start) * 1000,
+            )
+
+        sub_payload = {k: v for k, v in payload.items() if k != "tool_name"}
+        sub_intent = RuntimeToolIntent(
+            intent_id=intent.intent_id,
+            tool_name=sub_tool,
+            payload=sub_payload,
+            requested_paths=intent.requested_paths,
+            require_worktree=intent.require_worktree,
+            allow_main_repo_mutation=intent.allow_main_repo_mutation,
+        )
+
+        if sub_tool == RuntimeToolName.VALIDATE:
+            return await self.execute_validate(sub_intent, resolution)
+        elif sub_tool == RuntimeToolName.SEARCH_REPLACE:
+            return await self.execute_search_replace(sub_intent, resolution)
+        elif sub_tool == RuntimeToolName.WRITE_FILE:
+            return await self.execute_write_file(sub_intent, resolution)
+        elif sub_tool == RuntimeToolName.BASH_LEGACY:
+            return await self.execute_bash(sub_intent, resolution)
+        else:
+            return RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.REFUSED,
+                intent_id=intent.intent_id,
+                tool_name=RuntimeToolName.RUNTIME_EXEC.value,
+                error_kind="unsupported_tool",
+                refusal_reason=(
+                    f"Sub-tool '{sub_tool.value}' is not available via runtime_exec"
+                ),
+                duration_ms=(time.perf_counter() - start) * 1000,
+            )
 
     # ── Internal helpers ───────────────────────────────────────────
 
@@ -774,6 +945,105 @@ class RuntimeToolExecutionRunner:
         tool = Bash(config_getter=lambda: BashToolConfig(), state=BaseToolState())
         return tool.build_receipt(result)
 
+    def _claim_mutation_lease(
+        self, envelope: RuntimeToolInvocationEnvelope, file_path: str
+    ) -> _LeaseClaimOutcome:
+        """Claim a path lease for a mutation tool.
+
+        Attempts to acquire an exclusive_write lease on the given file path.
+        Returns a _LeaseClaimOutcome with:
+        - blocked: RuntimeToolExecutionResult if the claim was blocked/refused
+        - lease_info: (session_id, task_id, [file_path]) if the claim succeeded
+
+        Coordination policy:
+        - If coordination_enabled is False on the envelope, lease is skipped
+          and execution proceeds without a lease.
+        - If coordination_enabled is True and session/task/file_path are present,
+          a lease must be acquired or the mutation is BLOCKED.
+        - Store errors do not silently allow mutation when coordination is enabled.
+        """
+        coordination_enabled = getattr(envelope, "coordination_enabled", True)
+
+        if not coordination_enabled or not envelope.session_id or not envelope.task_id or not file_path:
+            # Backward compat or coordination disabled: proceed without lease.
+            lease_info: tuple[str, str, list[str]] | None = None
+            return _LeaseClaimOutcome(blocked=None, lease_info=lease_info)
+
+        try:
+            from rig_relay.coordination.lease_manager import PathLeaseManager
+
+            manager = PathLeaseManager(self._resolve_coordination_root(envelope))
+            result = manager.claim_paths(
+                session_id=envelope.session_id,
+                task_id=envelope.task_id,
+                mode="exclusive_write",
+                paths=[file_path],
+                ttl_seconds=envelope.lease_ttl_seconds or DEFAULT_LEASE_TTL_SECONDS,
+            )
+            if result.status == "conflict":
+                blocked = RuntimeToolExecutionResult(
+                    status=RuntimeToolExecutionStatus.BLOCKED,
+                    intent_id=getattr(envelope, "invocation_id", ""),
+                    tool_name=getattr(envelope, "tool_name", "unknown"),
+                    error_kind=result.error_kind or "lease_conflict",
+                    refusal_reason=result.refusal_reason or "Path lease conflict",
+                )
+                return _LeaseClaimOutcome(blocked=blocked, lease_info=None)
+            if result.status == "granted":
+                lease_info = (envelope.session_id, envelope.task_id, [file_path])
+                return _LeaseClaimOutcome(blocked=None, lease_info=lease_info)
+            # Unexpected status — treat as blocked when coordination is enabled
+            blocked = RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.BLOCKED,
+                intent_id=getattr(envelope, "invocation_id", ""),
+                tool_name=getattr(envelope, "tool_name", "unknown"),
+                error_kind=result.error_kind or "lease_error",
+                refusal_reason=result.refusal_reason or "Lease acquisition returned unexpected status",
+            )
+            return _LeaseClaimOutcome(blocked=blocked, lease_info=None)
+        except Exception:
+            # Store exception when coordination is enabled blocks mutation
+            blocked = RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.BLOCKED,
+                intent_id=getattr(envelope, "invocation_id", ""),
+                tool_name=getattr(envelope, "tool_name", "unknown"),
+                error_kind="lease_store_error",
+                refusal_reason="Lease store error prevented lease acquisition",
+            )
+            return _LeaseClaimOutcome(blocked=blocked, lease_info=None)
+
+    @staticmethod
+    def _release_mutation_lease(
+        coordination_root: str | Path,
+        lease_info: tuple[str, str, list[str]],
+    ) -> None:
+        """Release a previously acquired mutation lease.
+
+        Best-effort: failures are silently ignored so lease release
+        never breaks tool execution or result construction.
+        """
+        session_id, task_id, paths = lease_info
+        if not session_id or not task_id or not paths:
+            return
+        try:
+            from rig_relay.coordination.lease_manager import PathLeaseManager
+
+            manager = PathLeaseManager(Path(coordination_root))
+            manager.release_paths(
+                session_id=session_id, task_id=task_id, paths=paths
+            )
+        except Exception:
+            pass
+
+    @staticmethod
+    def _resolve_coordination_root(envelope: RuntimeToolInvocationEnvelope) -> Path:
+        """Resolve the coordination store root from an envelope.
+
+        Prefers worktree_path, then repo_root, then CWD.
+        """
+        base = envelope.worktree_path or envelope.repo_root or Path.cwd().as_posix()
+        return Path(base) / ".build" / "rig-relay" / "coordination"
+
     @staticmethod
     def _build_invoke_context(envelope: RuntimeToolInvocationEnvelope) -> Any | None:
         """Build an InvokeContext from an invocation envelope.
@@ -827,6 +1097,30 @@ class RuntimeToolExecutionRunner:
         receipt_model = build_runtime_tool_invocation_receipt(result)
         result = result.model_copy(update={"receipt": receipt_model})
         return result
+
+    def _persist_if_configured(
+        self,
+        result: RuntimeToolExecutionResult,
+        envelope: RuntimeToolInvocationEnvelope | None = None,
+    ) -> None:
+        """Persist a RuntimeAuditEvent if an audit store is configured.
+
+        Best-effort: failures are silently ignored so audit persistence
+        never breaks tool execution.
+        """
+        if self._audit_store is None:
+            return
+        try:
+            event = build_runtime_audit_event(
+                result,
+                mission_id=None,
+                agent_id=None,
+                lease_id=None,
+                parent_event_id=None,
+            )
+            self._audit_store.append(event)
+        except Exception:
+            pass
 
     def _validate_envelope_schema(
         self, envelope: RuntimeToolInvocationEnvelope

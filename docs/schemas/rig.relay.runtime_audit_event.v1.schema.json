@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig.relay/schemas/runtime_audit_event.v1.json",
+  "title": "Runtime Audit Event",
+  "description": "Content-light audit event for a runtime tool execution. Contains no raw file contents, stdout, stderr, diffs, snippets, or secrets.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier",
+      "enum": ["rig.relay.runtime_audit_event.v1"]
+    },
+    "audit_event_id": {
+      "type": "string",
+      "description": "Unique audit event identifier"
+    },
+    "invocation_id": {
+      "type": "string",
+      "description": "Invocation ID from the adapter envelope"
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Name of the tool that was executed"
+    },
+    "status": {
+      "type": "string",
+      "description": "Overall execution status (completed, blocked, refused, failed)"
+    },
+    "tool_status": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Status returned by the tool"
+    },
+    "receipt_sha256": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "SHA-256 hash of the canonical JSON tool receipt"
+    },
+    "runtime_result_sha256": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "SHA-256 hash of the canonical JSON RuntimeToolExecutionResult"
+    },
+    "changed_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files affected by the tool execution"
+    },
+    "duration_ms": {
+      "oneOf": [{ "type": "number" }, { "type": "null" }],
+      "description": "Execution duration in milliseconds"
+    },
+    "error_kind": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Structured error kind"
+    },
+    "refusal_reason": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Human-readable refusal reason"
+    },
+    "tool_receipt_kind": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Kind of tool receipt (e.g. validate, search_replace, write_file)"
+    },
+    "tool_receipt_schema_version": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Schema version of the tool receipt"
+    },
+    "mission_id": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Context propagation: mission identifier"
+    },
+    "agent_id": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Context propagation: agent identifier"
+    },
+    "lease_id": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Context propagation: lease identifier"
+    },
+    "parent_event_id": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Context propagation: parent audit event identifier"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the event was created"
+    }
+  },
+  "required": ["schema_version", "audit_event_id", "invocation_id", "tool_name", "status"],
+  "additionalProperties": false
+}
