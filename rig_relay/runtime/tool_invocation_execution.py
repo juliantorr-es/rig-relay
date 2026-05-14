@@ -526,17 +526,14 @@ class RuntimeToolExecutionRunner:
     ) -> RuntimeToolExecutionResult:
         """Attach a receipt model to the execution result.
 
-        Silently continues if the receipt module or builder is unavailable.
+        Propagates any exception from receipt building.
         """
-        try:
-            from rig_relay.runtime.tool_invocation_receipt import (
-                build_runtime_tool_invocation_receipt,
-            )
+        from rig_relay.runtime.tool_invocation_receipt import (
+            build_runtime_tool_invocation_receipt,
+        )
 
-            receipt_model = build_runtime_tool_invocation_receipt(result)
-            result = result.model_copy(update={"receipt": receipt_model})
-        except Exception:
-            pass
+        receipt_model = build_runtime_tool_invocation_receipt(result)
+        result = result.model_copy(update={"receipt": receipt_model})
         return result
 
     def _validate_envelope_schema(

@@ -181,6 +181,38 @@ class TestRuntimeToolExecutionResultModel:
                 f"Found forbidden field '{forbidden}' in dump"
             )
 
+    def test_receipt_field_rejects_dict(self) -> None:
+        """RuntimeToolExecutionResult rejects a dict receipt at construction."""
+        with pytest.raises((ValueError, TypeError)):
+            RuntimeToolExecutionResult(
+                status=RuntimeToolExecutionStatus.COMPLETED,
+                intent_id="i1",
+                tool_name="validate",
+                receipt={"invocation_id": "bad"},  # type: ignore[arg-type]
+            )
+
+    def test_receipt_field_preserves_typed_instance(self) -> None:
+        """RuntimeToolExecutionResult preserves the typed receipt instance."""
+        from rig_relay.runtime.tool_invocation_receipt import (
+            RuntimeToolInvocationReceipt,
+        )
+
+        receipt = RuntimeToolInvocationReceipt(
+            invocation_id="inv-1",
+            intent_id="intent-1",
+            tool_name="validate",
+            adapter_status="completed",
+        )
+        result = RuntimeToolExecutionResult(
+            status=RuntimeToolExecutionStatus.COMPLETED,
+            intent_id="i1",
+            tool_name="validate",
+            receipt=receipt,
+        )
+        assert result.receipt is receipt
+        assert isinstance(result.receipt, RuntimeToolInvocationReceipt)
+        assert result.receipt.invocation_id == "inv-1"
+
 
 # ── Validate execution tests ──────────────────────────────────────────
 
@@ -275,6 +307,19 @@ class TestNonValidateExecution:
 
         result = await runner.execute_validate(intent, resolution)
 
+        assert result.status == RuntimeToolExecutionStatus.REFUSED
+        assert result.error_kind == "unsupported_tool"
+        assert "not supported" in (result.refusal_reason or "")
+
+
+class TestBashRouting:
+    @pytest.mark.asyncio
+    async def test_bash_returns_refused(self) -> None:
+        """Bash via execute_validate returns REFUSED (bash not wired yet)."""
+        runner = RuntimeToolExecutionRunner()
+        intent = _intent(RuntimeToolName.BASH_LEGACY, payload={"command": "echo hi"})
+        resolution = _resolved()
+        result = await runner.execute_validate(intent, resolution)
         assert result.status == RuntimeToolExecutionStatus.REFUSED
         assert result.error_kind == "unsupported_tool"
         assert "not supported" in (result.refusal_reason or "")
@@ -875,6 +920,8 @@ class TestSearchReplaceReceiptPopulation:
         assert result.receipt.adapter_status == "completed"
         assert result.receipt.changed_paths == ["test.py"]
         assert result.receipt.created_at != ""
+        assert result.receipt.tool_receipt_schema_version is not None
+        assert "search_replace" in (result.receipt.tool_receipt_schema_version or "")
 
     @pytest.mark.asyncio
     async def test_receipt_not_populated_for_blocked_search_replace(self) -> None:
