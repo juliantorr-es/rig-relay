@@ -18,14 +18,19 @@ from vibe.cli.textual_ui.rig_console.actions import RigConsoleAction
 from vibe.cli.textual_ui.rig_console.intents import DashboardActionResult
 from vibe.cli.textual_ui.rig_console.projections import DashboardProjection
 from vibe.cli.textual_ui.rig_console.providers import DashboardProjectionProvider
+from vibe.cli.textual_ui.rig_console.widgets.activity_log import ActivityLogWidget
 from vibe.cli.textual_ui.rig_console.widgets.evidence_rail import EvidenceRailWidget
 from vibe.cli.textual_ui.rig_console.widgets.fleet_panel import FleetPanelWidget
 from vibe.cli.textual_ui.rig_console.widgets.footer_status import FooterStatusWidget
+from vibe.cli.textual_ui.rig_console.widgets.help_overlay import HelpOverlayWidget
 from vibe.cli.textual_ui.rig_console.widgets.inspector_drawer import (
     InspectorDrawerWidget,
 )
 from vibe.cli.textual_ui.rig_console.widgets.mission_router_panel import (
     MissionRouterPanelWidget,
+)
+from vibe.cli.textual_ui.rig_console.widgets.notification_panel import (
+    NotificationPanelWidget,
 )
 from vibe.cli.textual_ui.rig_console.widgets.operator_header import OperatorHeaderWidget
 from vibe.cli.textual_ui.rig_console.widgets.progress_timeline import (
@@ -34,6 +39,7 @@ from vibe.cli.textual_ui.rig_console.widgets.progress_timeline import (
 from vibe.cli.textual_ui.rig_console.widgets.prompt_bar import PromptBar
 from vibe.cli.textual_ui.rig_console.widgets.queue_panel import QueuePanelWidget
 from vibe.cli.textual_ui.rig_console.widgets.session_pane import SessionPaneWidget
+from vibe.cli.textual_ui.rig_console.widgets.status_bar import StatusBarWidget
 
 
 class DashboardStatusActions:
@@ -102,6 +108,7 @@ class DashboardScreen(DashboardStatusActions, Screen):
     DEFAULT_CSS = """
 DashboardScreen {
     background: #06110B;
+    layers: base help;
 }
 
 DashboardScreen > .dashboard-activity {
@@ -174,6 +181,7 @@ DashboardScreen > InspectorDrawerWidget {
         proj = self._projection
 
         yield OperatorHeaderWidget(proj)
+        yield StatusBarWidget(proj)
         yield Horizontal(
             SessionPaneWidget(proj.session),
             EvidenceRailWidget(proj.evidence),
@@ -182,10 +190,13 @@ DashboardScreen > InspectorDrawerWidget {
         yield QueuePanelWidget(proj.queue)
         yield MissionRouterPanelWidget(proj.mission_router)
         yield PromptBar(on_submit=self._handle_queue_input)
+        yield ActivityLogWidget()
         yield FleetPanelWidget(proj.fleet)
         yield ProgressTimelineWidget(proj.execution_progress or None)
         yield InspectorDrawerWidget(proj.inspector)
         yield FooterStatusWidget(proj)
+        yield HelpOverlayWidget()
+        yield NotificationPanelWidget()
 
     def on_mount(self) -> None:
         self.focus()
@@ -345,9 +356,30 @@ DashboardScreen > InspectorDrawerWidget {
             )
 
     def action_discard_mission_plan(self) -> None:
-        """Discard the active mission plan."""
+        """Discard the active mission plan or close overlays."""
+        try:
+            help_overlay = self.query_one(HelpOverlayWidget)
+            if help_overlay.has_class("visible"):
+                help_overlay.toggle()
+                return
+        except NoMatches:
+            pass
+
+        try:
+            notif = self.query_one(NotificationPanelWidget)
+            if notif.has_class("visible"):
+                notif.clear()
+                return
+        except NoMatches:
+            pass
+
+        if self._projection.inspector.visible:
+            self.action_toggle_inspector()
+            return
+
         if not self._projection.mission_router.visible:
             return
+
         self._projection.mission_router.visible = False
         self._render_all()
         self._set_status("info", "discard_mission", "Mission plan discarded")
@@ -453,12 +485,12 @@ DashboardScreen > InspectorDrawerWidget {
         self._set_status("info", "queue", "selected item sent to inspector")
 
     def action_show_help(self) -> None:
-        """Show available keybindings in the footer."""
-        self._details_visible = True
-        self._set_feedback(
-            "show_help",
-            "Available: refresh, help, details, inspector, queue, fleet, next, prev, copy, runtime, leases, audit",
-        )
+        """Toggle the help overlay."""
+        try:
+            self.query_one(HelpOverlayWidget).toggle()
+            self._set_status("info", "help", "Help toggled")
+        except NoMatches:
+            self._set_status("error", "help", "Help overlay unavailable")
 
     def action_toggle_details(self) -> None:
         """Toggle the detail hint state without mutating backend data."""
@@ -585,6 +617,7 @@ DashboardScreen > InspectorDrawerWidget {
                 # For now, just enqueue a simple validate or similar placeholder
                 # In real use, this would call a provider method to classify/enqueue
                 self._provider.enqueue_validate()
+                self.action_clear_input()
                 self.run_worker(self.action_refresh(), exclusive=True)
 
     async def _route_mission_batch(self, text: str) -> None:
@@ -596,6 +629,7 @@ DashboardScreen > InspectorDrawerWidget {
         try:
             projection = await self._provider.route_mission_batch(text)
             self._projection.mission_router = projection
+            self.action_clear_input()
             self._render_all()
             self._set_status("ok", "mission_router", "Mission plan ready")
         except Exception as e:
@@ -642,6 +676,9 @@ DashboardScreen > InspectorDrawerWidget {
             inspector = self.query_one(InspectorDrawerWidget)
             inspector.update_projection(proj.inspector)
 
+            status_bar = self.query_one(StatusBarWidget)
+            status_bar.update_projection(proj)
+
             footer = self.query_one(FooterStatusWidget)
             footer.update_projection(proj)
         except NoMatches:
@@ -660,6 +697,14 @@ DashboardScreen > InspectorDrawerWidget {
         self._projection = self._projection.model_copy(
             update={"footer_hint": "  ".join(hint_parts)}
         )
+        try:
+            self.query_one(ActivityLogWidget).add_log(status, action_name, message)
+        except NoMatches:
+            pass
+
+        if status == "error" or status == "blocked" or status == "refused":
+            self._show_recovery_hint(action_name, message)
+
         self._render_all()
 
     def run_safe_action(self, action: RigConsoleAction) -> None:
@@ -680,3 +725,28 @@ DashboardScreen > InspectorDrawerWidget {
             self.app.notify(message, title="Rig Console", severity="information")
         except (AttributeError, Exception):
             pass
+
+    def _show_recovery_hint(self, action: str, message: str | None) -> None:
+        """Show a recovery hint for common error patterns."""
+        hint = None
+        title = "RECOVERY HINT"
+        
+        msg = (message or "").lower()
+        if "coordination_root" in msg or "root missing" in msg:
+            hint = "Check your coordination root configuration. Ensure the directory exists and is writable."
+        elif "runtime" in msg and "unavailable" in msg:
+            hint = "The runtime executor is not configured or the session is invalid."
+        elif "lease" in msg and "conflict" in msg:
+            hint = "A lease conflict was detected. Inspect the Fleet panel for active leases on these paths."
+        elif "validation" in msg and "failed" in msg:
+            hint = "Validation failed. Inspect the latest receipt in the Evidence rail for details."
+        elif "mission" in msg and "blocked" in msg:
+            hint = "Mission is blocked by conflicts. Inspect the Mission Router panel for dependency/path conflicts."
+        elif "audit" in msg and "unavailable" in msg:
+            hint = "Audit persistence failed. The action completed but history was not saved."
+        
+        if hint:
+            try:
+                self.query_one(NotificationPanelWidget).notify(title, hint)
+            except NoMatches:
+                pass

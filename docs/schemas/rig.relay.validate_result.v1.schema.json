@@ -300,6 +300,121 @@
             "type": "string"
           },
           "description": "Optional hash-safe path list"
+        },
+        "cache_status": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "hit",
+            "miss_ran",
+            "miss_changed_inputs",
+            "miss_missing_record",
+            "miss_failed_reuse_disabled",
+            "miss_force_rerun",
+            "blocked_running",
+            "error"
+          ],
+          "description": "Cache status for this check result."
+        },
+        "cache_key": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Cache key used for this check."
+        },
+        "cache_record_sha256": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA256 of the cache record for this result."
+        },
+        "input_fingerprint": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Composite input fingerprint for cache invalidation."
+        },
+        "reused_from": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Cache key of the reused record if this is a cache hit."
+        },
+        "scheduler_status": {
+          "type": "string",
+          "enum": [
+            "not_scheduled",
+            "queued",
+            "coalesced",
+            "running",
+            "completed",
+            "blocked_duplicate",
+            "policy_refused"
+          ],
+          "description": "Scheduler status for this check."
+        },
+        "parallel_status": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "enabled",
+            "not_applicable",
+            "refused"
+          ],
+          "description": "Parallel execution status for this check."
+        },
+        "worker_count": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Number of parallel workers used."
+        },
+        "distribution": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "pytest-xdist distribution mode."
+        },
+        "validation_phase": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Validation phase when this check was run."
         }
       },
       "required": [

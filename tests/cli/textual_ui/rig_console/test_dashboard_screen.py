@@ -64,7 +64,15 @@ def _make_projection(
                     tool_name="validate",
                     receipt_sha256="sha256:receipt",
                     runtime_result_sha256="sha256:result",
-                )
+                ),
+                InspectorItemProjection(
+                    item_id="fp-1:fleet",
+                    source_kind="fleet_summary",
+                    title="Fleet Summary",
+                    status="read-only",
+                    created_at="2026-05-14T15:00:00",
+                    summary="queue 0 lease 4 blockers 1 patches 7",
+                ),
             ],
         ),
     )

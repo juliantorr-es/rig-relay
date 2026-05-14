@@ -17,6 +17,37 @@ import os
 import time
 from typing import ClassVar, final
 
+from rig_relay.evidence.validation_cache import (
+    CACHE_POLICY_DISABLED,
+    CACHE_POLICY_FORCE_RERUN,
+    CACHE_STATUS_BLOCKED_RUNNING,
+    CACHE_STATUS_DISABLED,
+    CACHE_STATUS_HIT,
+    CACHE_STATUS_MISS_FAILED_REUSE_DISABLED,
+    CACHE_STATUS_MISS_FORCE_RERUN,
+    CACHE_STATUS_MISS_MISSING_RECORD,
+    CACHE_STATUS_MISS_RAN,
+    ValidationCacheRecord,
+    ValidationCacheStore,
+    compute_cache_key,
+    compute_input_fingerprint,
+    decide_cache_eligibility,
+)
+from rig_relay.evidence.validation_scheduler import (
+    PARALLEL_DISABLED,
+    PARALLEL_ENABLED,
+    PARALLEL_NOT_APPLICABLE,
+    PARALLEL_REFUSED,
+    SCHEDULER_BLOCKED_DUPLICATE,
+    SCHEDULER_COMPLETED,
+    SCHEDULER_NOT_SCHEDULED,
+    SCHEDULER_RUNNING,
+    ValidationSchedulerStore,
+    apply_parallel_policy,
+    check_lifecycle_policy,
+    resolve_cache_root,
+    resolve_scheduler_root,
+)
 from vibe.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from vibe.core.tools.base import BaseTool, BaseToolState, InvokeContext
 
@@ -29,7 +60,6 @@ from vibe.core.tools.builtins.validate_git import (
     _parse_git_status_porcelain_line,
 )
 
-# ── Re-exports from submodules ────────────────────────────────────────
 # Models
 from vibe.core.tools.builtins.validate_models import (
     DIRTY_POLICY_ALLOW_DIRTY,
@@ -118,9 +148,6 @@ __all__ = [
 ]
 
 
-# ── Tool implementation ────────────────────────────────────────────────
-
-
 class Validate(
     BaseTool[ValidateArgs, ValidateResult, ValidateToolConfig, BaseToolState],
     ToolUIData[ValidateArgs, ValidateResult],
@@ -158,11 +185,6 @@ class Validate(
 
     @final
     def build_receipt(self, result: ValidateResult) -> ValidateReceipt:
-        """Build a content-light receipt from a validate result.
-
-        The receipt contains no raw stdout/stderr — only hashes, byte counts,
-        timing, statuses, and blocker summary.
-        """
         check_receipts = [
             ValidateCheckReceipt(
                 check_id=c.check_id,
@@ -215,7 +237,6 @@ class Validate(
     def _resolve_paths(
         self, args: ValidateArgs, cwd: str
     ) -> tuple[list[str], str | None]:
-        """Resolve and normalize paths, returning refusal reason if unsafe."""
         if not args.paths:
             return [], None
         return _normalize_validate_paths(args.paths, cwd)
@@ -224,10 +245,8 @@ class Validate(
     def _build_checks(
         profile: Profile, normalized_paths: list[str]
     ) -> list[ProfileCheck]:
-        """Build check list with optional dynamic checks for path scoping."""
         checks = list(profile.checks)
         if normalized_paths and profile.name == "quick":
-            # Only add scoped ruff if at least one path is Python-relevant
             if any(_is_python_path(p) for p in normalized_paths):
                 checks.append(
                     ProfileCheck(
@@ -241,7 +260,6 @@ class Validate(
 
     @staticmethod
     def _skipped_result(check: ProfileCheck) -> ValidateCheckResult:
-        """Create a skipped ValidateCheckResult for a check."""
         fp = _compute_fingerprint(check.argv)
         return ValidateCheckResult(
             check_id=check.check_id,
@@ -255,6 +273,69 @@ class Validate(
         )
 
     @staticmethod
+    def _build_cached_result(
+        check: ProfileCheck,
+        cache_status: str,
+        cache_key: str,
+        input_fingerprint: str,
+        record: ValidationCacheRecord | None,
+    ) -> ValidateCheckResult:
+        fp = _compute_fingerprint(check.argv)
+        if record is not None:
+            return ValidateCheckResult(
+                check_id=check.check_id,
+                command_kind=check.command_kind,
+                command_display=check.display,
+                command_fingerprint=fp,
+                status=record.status,
+                exit_code=record.exit_code,
+                duration_ms=record.duration_ms,
+                stdout_sha256=record.stdout_sha256,
+                stderr_sha256=record.stderr_sha256,
+                stdout_bytes=record.stdout_bytes,
+                stderr_bytes=record.stderr_bytes,
+                failure_kind=record.failure_kind,
+                cache_status=cache_status,
+                cache_key=cache_key,
+                cache_record_sha256=record.record_sha256(),
+                input_fingerprint=input_fingerprint,
+                scheduler_status=SCHEDULER_COMPLETED,
+            )
+        return ValidateCheckResult(
+            check_id=check.check_id,
+            command_kind=check.command_kind,
+            command_display=check.display,
+            command_fingerprint=fp,
+            status="skipped",
+            cache_status=cache_status,
+            cache_key=cache_key,
+            input_fingerprint=input_fingerprint,
+            scheduler_status=SCHEDULER_COMPLETED,
+        )
+
+    @staticmethod
+    def _build_blocked_result(
+        check: ProfileCheck,
+        reason: str,
+        cache_key: str | None = None,
+        input_fingerprint: str | None = None,
+        cache_status: str = CACHE_STATUS_BLOCKED_RUNNING,
+    ) -> ValidateCheckResult:
+        fp = _compute_fingerprint(check.argv)
+        return ValidateCheckResult(
+            check_id=check.check_id,
+            command_kind=check.command_kind,
+            command_display=check.display,
+            command_fingerprint=fp,
+            status="blocked",
+            failure_kind=reason,
+            cache_status=cache_status,
+            cache_key=cache_key,
+            input_fingerprint=input_fingerprint,
+            scheduler_status=SCHEDULER_BLOCKED_DUPLICATE,
+        )
+
+    @staticmethod
     def _build_run_result(
         results: list[ValidateCheckResult],
         profile: Profile,
@@ -262,7 +343,6 @@ class Validate(
         before_git_state: ValidateGitState | None = None,
         after_git_state: ValidateGitState | None = None,
     ) -> ValidateResult:
-        """Build overall ValidateResult from check results."""
         total_ms = (time.perf_counter() - start) * 1000
         passed = sum(1 for r in results if r.status == "passed")
         failed = sum(1 for r in results if r.status == "failed")
@@ -303,8 +383,8 @@ class Validate(
         self, args: ValidateArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | ValidateResult, None]:
         start = time.perf_counter()
+        scheduler_warnings: list[str] = []
 
-        # ── Resolve profile ──
         profile = get_profile(args.profile)
         if profile is None:
             known = ", ".join(list_profiles())
@@ -318,7 +398,6 @@ class Validate(
             )
             return
 
-        # ── Check mutation policy ──
         if not args.allow_mutation and profile.allow_mutation:
             yield ValidateResult(
                 status="refused",
@@ -331,7 +410,6 @@ class Validate(
             )
             return
 
-        # ── Check network policy ──
         if not args.allow_network and profile.allow_network:
             yield ValidateResult(
                 status="refused",
@@ -344,18 +422,27 @@ class Validate(
             )
             return
 
-        # ── Compute output cap ──
         output_cap = args.output_cap_bytes or self.config.default_output_cap
         output_cap = min(output_cap, MAX_CAP_BYTES)
 
-        # ── Resolve cwd ──
         cwd = args.workspace_root
         if cwd is None and ctx and ctx.session_dir:
             cwd = str(ctx.session_dir.parent.parent.resolve())
         if cwd is None:
             cwd = os.getcwd()
 
-        # ── Resolve path scopes ──
+        cache_root = resolve_cache_root(args.cache_root, cwd)
+        scheduler_root = resolve_scheduler_root(None, cwd)
+        cache_store = ValidationCacheStore(cache_root)
+        scheduler_store = ValidationSchedulerStore(scheduler_root)
+        cache_enabled = args.cache_policy != CACHE_POLICY_DISABLED
+        scheduler_enabled = args.scheduler_policy != "disabled"
+
+        for check in profile.checks:
+            scheduler_warnings.extend(
+                check_lifecycle_policy(args.validation_phase, args.profile, check.argv)
+            )
+
         normalized_paths, refusal = self._resolve_paths(args, cwd)
         if refusal:
             yield ValidateResult(
@@ -366,10 +453,8 @@ class Validate(
             )
             return
 
-        # ── Collect git state ──
         before_git_state = await _collect_git_state(cwd)
 
-        # ── Enforce dirty policy via _check_dirty_policy ──
         policy_reason = _check_dirty_policy(
             before_git_state, args.expected_dirty_policy, normalized_paths
         )
@@ -384,17 +469,14 @@ class Validate(
             )
             return
 
-        # ── Build check list ──
         checks = self._build_checks(profile, normalized_paths)
 
-        # ── Run checks ──
         timeout = args.timeout_seconds or profile.default_timeout
         results: list[ValidateCheckResult] = []
 
         for check in checks:
             check_timeout = min(timeout, 600)
 
-            # Scope argv when paths are provided
             if normalized_paths:
                 scoped_argv, should_run = _scope_check_argv(check, normalized_paths)
                 if not should_run:
@@ -404,21 +486,106 @@ class Validate(
             else:
                 run_argv = check.argv
 
-            # Skip mutation/network checks if not allowed
             if (check.allow_mutation and not args.allow_mutation) or (
                 check.allow_network and not args.allow_network
             ):
                 results.append(self._skipped_result(check))
                 continue
 
+            cmd_fp = _compute_fingerprint(run_argv)
+            input_fp, file_fps = compute_input_fingerprint(
+                cwd, cmd_fp, check.command_kind
+            )
+            ck = compute_cache_key(
+                check.check_id, check.command_kind, cmd_fp, input_fp, cwd, cwd
+            )
+
+            if cache_enabled and args.cache_policy != "force_rerun":
+                lookup = cache_store.lookup(ck)
+                cache_status, _reason = decide_cache_eligibility(
+                    args.cache_policy, lookup, args.allow_failed_cache_reuse
+                )
+                if cache_status == CACHE_STATUS_HIT and lookup.record is not None:
+                    results.append(
+                        self._build_cached_result(
+                            check, cache_status, ck, input_fp, lookup.record
+                        )
+                    )
+                    continue
+
+            if scheduler_enabled and args.lock_running_checks:
+                acquired, _blocking_key = scheduler_store.acquire_lock(ck)
+                if not acquired:
+                    results.append(
+                        self._build_blocked_result(
+                            check,
+                            reason="validation_already_running",
+                            cache_key=ck,
+                            input_fingerprint=input_fp,
+                        )
+                    )
+                    continue
+
+            modified_argv, parallel_status, parallel_warning = apply_parallel_policy(
+                run_argv,
+                args.parallel_policy,
+                args.max_workers,
+                args.xdist_distribution,
+            )
+            if parallel_warning:
+                scheduler_warnings.append(parallel_warning)
+
             cr = await _run_check(
-                run_argv, output_cap=output_cap, timeout=check_timeout, cwd=cwd
+                modified_argv, output_cap=output_cap, timeout=check_timeout, cwd=cwd
             )
             if normalized_paths:
                 cr.affected_paths = list(normalized_paths)
+
+            cr.cache_status = (
+                CACHE_STATUS_MISS_RAN if cache_enabled else CACHE_STATUS_DISABLED
+            )
+            cr.cache_key = ck
+            cr.input_fingerprint = input_fp
+            cr.scheduler_status = (
+                SCHEDULER_RUNNING if scheduler_enabled else SCHEDULER_NOT_SCHEDULED
+            )
+            cr.parallel_status = parallel_status
+            cr.validation_phase = args.validation_phase
+
+            if parallel_status == PARALLEL_ENABLED:
+                cr.worker_count = args.max_workers or 4
+                cr.distribution = args.xdist_distribution
+
             results.append(cr)
 
-        # ── Build result ──
+            if cache_enabled and cr.status in ("passed", "failed"):
+                record = ValidationCacheRecord(
+                    cache_key=ck,
+                    check_id=check.check_id,
+                    command_kind=check.command_kind,
+                    command_fingerprint=cmd_fp,
+                    input_fingerprint=input_fp,
+                    input_file_fingerprints=file_fps,
+                    status=cr.status,
+                    exit_code=cr.exit_code,
+                    duration_ms=cr.duration_ms,
+                    stdout_sha256=cr.stdout_sha256,
+                    stderr_sha256=cr.stderr_sha256,
+                    stdout_bytes=cr.stdout_bytes,
+                    stderr_bytes=cr.stderr_bytes,
+                    failure_kind=cr.failure_kind,
+                    created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    validation_phase=args.validation_phase,
+                    worker_count=cr.worker_count,
+                    distribution=cr.distribution,
+                    warnings=list(scheduler_warnings),
+                )
+                cr.cache_record_sha256 = record.record_sha256()
+                cache_store.store(record)
+
+            if scheduler_enabled:
+                scheduler_store.release_lock(ck)
+
         after_git_state = await _collect_git_state(cwd)
         yield self._build_run_result(
             results,

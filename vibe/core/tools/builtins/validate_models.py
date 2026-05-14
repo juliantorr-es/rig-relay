@@ -81,6 +81,24 @@ class Profile:
 
 
 class ValidateArgs(BaseModel):
+    """Invocation arguments for a validate profile run.
+
+    Cache policy (cache_policy):
+      - enabled: cache hits return without execution
+      - disabled: bypass cache, always run
+      - force_rerun: bypass cache and rerun even if cached
+
+    Scheduler policy (scheduler_policy):
+      - enabled: use running locks to prevent duplicate execution
+      - disabled: bypass scheduler, skip lock
+
+    Validation phase (validation_phase):
+      - edit: conservative warnings for full-suite runs
+      - pre_report: normal validation
+      - cleanup: normal with cache
+      - final: normal with cache
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     profile: str
@@ -95,11 +113,33 @@ class ValidateArgs(BaseModel):
     expected_dirty_policy: str | None = None
     output_cap_bytes: int | None = None
 
+    # ── Cache policy ──────────────────────────────────────────
+    cache_policy: str = "enabled"
+    allow_failed_cache_reuse: bool = False
+    cache_root: str | None = None
+
+    # ── Scheduler policy ──────────────────────────────────────
+    scheduler_policy: str = "enabled"
+    lock_running_checks: bool = True
+    validation_phase: str = "pre_report"
+
+    # ── Parallel policy ───────────────────────────────────────
+    parallel_policy: str = "auto"
+    max_workers: int | None = None
+    xdist_distribution: str = "loadfile"
+
 
 # ── Check result model ────────────────────────────────────────────────
 
 
 class ValidateCheckResult(BaseModel):
+    """Result for one validate check with cache and scheduler metadata.
+
+    Content-light: no raw stdout/stderr in long-lived fields.
+    Cache/scheduler/parallel metadata describes the policy decisions
+    that produced this result.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     check_id: str
@@ -118,6 +158,20 @@ class ValidateCheckResult(BaseModel):
     parsed_summary: dict[str, Any] | None = None
     failure_kind: str | None = None
     affected_paths: list[str] = Field(default_factory=list)
+
+    # ── Cache metadata ────────────────────────────────────────
+    cache_status: str = "disabled"
+    cache_key: str | None = None
+    cache_record_sha256: str | None = None
+    input_fingerprint: str | None = None
+    reused_from: str | None = None
+
+    # ── Scheduler metadata ────────────────────────────────────
+    scheduler_status: str = "not_scheduled"
+    parallel_status: str = "not_applicable"
+    worker_count: int | None = None
+    distribution: str | None = None
+    validation_phase: str | None = None
 
 
 # ── Content-light receipt models ──────────────────────────────────────

@@ -18,36 +18,36 @@ class PromptBar(Horizontal):
 
     Uses Textual Input (not TextArea) for simplicity.
     Enter submits the input. Empty/whitespace does nothing.
-    Successful queue clears the input.
+    Styling is optimized for high visibility and clear focus.
     """
 
     DEFAULT_CSS = """
 PromptBar {
     width: 100%;
-    height: auto;
+    height: 3;
     padding: 0 1;
-    margin: 0 0 1 0;
+    margin: 1 0;
     background: $surface;
-    border: solid $border;
+    border: tall $accent;
 }
 
 PromptBar > .prompt-input {
     width: 1fr;
-    height: auto;
+    height: 1;
+    border: none;
+    background: transparent;
+    color: $text;
 }
 
-PromptBar > .prompt-status {
-    width: auto;
-    height: auto;
-    margin-left: 1;
-    color: $text-muted;
+PromptBar:focus-within {
+    border: tall $accent-lighten-2;
 }
 """
 
     def __init__(
         self,
         on_submit: Callable[[str], None] | None = None,
-        placeholder: str = "Queue instruction…",
+        placeholder: str = "Type mission or instruction; Enter to plan/queue...",
         disabled: bool = False,
     ) -> None:
         super().__init__()
@@ -55,7 +55,6 @@ PromptBar > .prompt-status {
         self._placeholder = placeholder
         self._disabled = disabled
         self._input: Input | None = None
-        self._status: Static | None = None
 
     def compose(self) -> ComposeResult:
         self._input = Input(
@@ -64,8 +63,6 @@ PromptBar > .prompt-status {
             disabled=self._disabled,
         )
         yield self._input
-        self._status = Static("", classes="prompt-status")
-        yield self._status
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle Enter in the input field."""
@@ -75,23 +72,17 @@ PromptBar > .prompt-status {
             return
         if self._on_submit is not None:
             self._on_submit(text)
-            self.clear_input()
-            self.set_status("Queued")
+            # We don't auto-clear here; the screen handles it on success
+            # to avoid losing input on transient routing errors.
 
     def clear_input(self) -> None:
         if self._input is not None:
             self._input.value = ""
 
-    def set_status(self, status: str) -> None:
-        if self._status is not None:
-            self._status.update(status)
-
-    def set_disabled(self, disabled: bool, status: str | None = None) -> None:
+    def set_disabled(self, disabled: bool) -> None:
         self._disabled = disabled
         if self._input is not None:
             self._input.disabled = disabled
-        if status is not None:
-            self.set_status(status)
 
     def focus_input(self) -> None:
         if self._input is not None and not self._input.disabled:

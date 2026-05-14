@@ -19,23 +19,30 @@ class InspectorDrawerWidget(Vertical):
 InspectorDrawerWidget {
     width: 100%;
     height: auto;
-    padding: 0 1;
-    margin: 0 0 1 0;
+    padding: 1 1;
+    margin: 1 0;
     background: $surface;
-    border: solid $border;
+    border: solid $accent;
+    display: none;
+}
+
+InspectorDrawerWidget.visible {
+    display: block;
 }
 
 InspectorDrawerWidget > .inspector-title {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: $text;
+    color: $accent;
+    margin-bottom: 0;
 }
 
 InspectorDrawerWidget > .inspector-state {
     width: 100%;
     height: auto;
     color: $text-muted;
+    margin-bottom: 1;
 }
 
 InspectorDrawerWidget > .inspector-detail {
@@ -59,14 +66,16 @@ InspectorDrawerWidget > .inspector-detail {
         self._projection = projection
 
     def compose(self) -> ComposeResult:
-        yield Static("Inspector", classes="inspector-title")
+        if self._projection.visible:
+            self.add_class("visible")
+        yield Static("ITEM INSPECTOR", classes="inspector-title")
         yield Static(self._build_state_text(), classes="inspector-state")
         yield Static(self._build_detail_text(), classes="inspector-detail")
 
     def update_projection(self, projection: InspectorProjection) -> None:
         self._projection = projection
+        self.set_class(projection.visible, "visible")
         self._render_all()
-        self.post_message(self.Updated(projection))
 
     def _render_all(self) -> None:
         self._update_static("inspector-state", self._build_state_text())
@@ -82,44 +91,48 @@ InspectorDrawerWidget > .inspector-detail {
     def _build_state_text(self) -> str:
         proj = self._projection
         if not proj.visible:
-            return "Inspector closed"
+            return "Closed"
         if not proj.items:
             return proj.empty_state
         selected = proj.selected_item
         if selected is None:
             return proj.empty_state
         position = min(proj.selected_index + 1, len(proj.items))
-        return f"{selected.source_kind}  {position}/{len(proj.items)}"
+        return f"[dim]{selected.source_kind.upper()}[/]  -  {position} of {len(proj.items)}"
 
     def _build_detail_text(self) -> str:
         proj = self._projection
         if not proj.visible:
-            return "Press i to open the inspector."
+            return "Press 'i' to open inspector."
         item = proj.selected_item
         if item is None:
             return proj.empty_state
 
-        lines = [f"{item.title}", f"id: {item.item_id}", f"source: {item.source_kind}"]
+        lines = [
+            f"[bold]Title:[/]   {item.title}",
+            f"[bold]ID:[/]      {item.item_id}",
+        ]
         if item.status:
-            lines.append(f"status: {item.status}")
+            lines.append(f"[bold]Status:[/]  {item.status}")
         if item.tool_name:
-            lines.append(f"tool: {item.tool_name}")
+            lines.append(f"[bold]Tool:[/]    {item.tool_name}")
         if item.created_at:
-            lines.append(f"created: {item.created_at}")
+            lines.append(f"[bold]Created:[/] {item.created_at}")
         if item.duration_ms is not None:
-            lines.append(f"duration: {item.duration_ms:.0f}ms")
+            lines.append(f"[bold]Time:[/]    {item.duration_ms:.0f}ms")
         if item.changed_paths:
-            lines.append(f"paths: {', '.join(item.changed_paths[:3])}")
+            lines.append(f"[bold]Paths:[/]   {', '.join(item.changed_paths[:3])}")
         if item.receipt_sha256:
-            lines.append(f"receipt: {item.receipt_sha256}")
+            lines.append(f"[bold]Receipt:[/] {item.receipt_sha256}")
         if item.runtime_result_sha256:
-            lines.append(f"result: {item.runtime_result_sha256}")
+            lines.append(f"[bold]Result:[/]  {item.runtime_result_sha256}")
         if item.error_kind:
-            lines.append(f"error: {item.error_kind}")
+            lines.append(f"[bold]Error:[/]   [red]{item.error_kind}[/]")
         if item.refusal_reason:
-            lines.append(f"refusal: {item.refusal_reason}")
+            lines.append(f"[bold]Refusal:[/] [red]{item.refusal_reason}[/]")
         if item.summary:
-            lines.append(f"summary: {item.summary}")
+            lines.append(f"\n[bold]Summary:[/]\n{item.summary}")
+        
         return "\n".join(lines)
 
 

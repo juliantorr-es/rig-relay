@@ -137,37 +137,33 @@ class FleetPanelWidget(Vertical):
     """Render fleet coordination state from a FleetProjection.
 
     Read-only display. No keybindings for mutation.
-
-    States:
-    - Empty: projection is None → single line "Fleet panel: no data"
-    - All zero: all summaries show dim "no X" labels
-    - Active data: colored counts per subsystem
     """
 
     DEFAULT_CSS = """
 FleetPanelWidget {
     width: 100%;
     height: auto;
-    padding: 0 1;
-    margin: 0 0 1 0;
+    padding: 1 1;
+    margin: 1 0;
     background: $surface;
-    border: solid $border;
+    border: solid $accent;
+    display: none;
+}
+
+FleetPanelWidget.visible {
+    display: block;
 }
 
 FleetPanelWidget > .fleet-header {
     width: 100%;
     height: auto;
     text-style: bold;
-    color: $text;
+    color: $accent;
+    margin-bottom: 1;
 }
 
 FleetPanelWidget > .fleet-row {
     width: 100%;
-    height: auto;
-}
-
-FleetPanelWidget > .fleet-row > Static {
-    width: 1fr;
     height: auto;
 }
 """
@@ -177,80 +173,47 @@ FleetPanelWidget > .fleet-row > Static {
         self._projection = projection
 
     def compose(self) -> ComposeResult:
-        yield Static("Fleet Panel", classes="fleet-header")
-        if self._projection is None:
-            yield Static("[dim]no fleet data[/]", classes="fleet-row")
-            return
-
-        proj = self._projection
-
-        with Horizontal(classes="fleet-row"):
-            yield Static(f"Queue: {_format_queue(proj.queue)}")
-        with Horizontal(classes="fleet-row"):
-            yield Static(f"Leases: {_format_leases(proj.leases)}")
-        with Horizontal(classes="fleet-row"):
-            yield Static(f"Blockers: {_format_blockers(proj.blockers)}")
-        with Horizontal(classes="fleet-row"):
-            yield Static(f"Patches: {_format_patches(proj)}")
-        with Horizontal(classes="fleet-row"):
-            yield Static(f"Agents: {_format_agents(proj)}")
-        next_text = _format_next_item(proj.queue)
-        if next_text:
-            with Horizontal(classes="fleet-row"):
-                yield Static(f"Next: {next_text}")
-        replay_text = _format_replay(proj.queue)
-        if replay_text:
-            with Horizontal(classes="fleet-row"):
-                yield Static(f"Replay: {replay_text}")
-        if proj.recent_event_count:
-            yield Static(
-                f"Recent events: {proj.recent_event_count}", classes="fleet-row"
-            )
+        if self._projection:
+            self.add_class("visible")
+        yield Static("FLEET COORDINATION", classes="fleet-header")
+        for widget in self._build_widgets():
+            yield widget
 
     def update_projection(self, projection: FleetProjection | None) -> None:
         """Replace the projection and re-render."""
         self._projection = projection
+        if projection:
+            self.add_class("visible")
+        else:
+            self.remove_class("visible")
         self.remove_children()
-        self.mount_all(self.compose() if False else [])
-        # Rebuild via compose
-        for widget in list(self.children):
-            widget.remove()
-        for child in self._build_widgets():
-            self.mount(child)
+        self.mount(Static("FLEET COORDINATION", classes="fleet-header"))
+        self.mount_all(self._build_widgets())
 
-    def _build_widgets(self) -> list:
-        """Build widget list from current projection.
-
-        Returns flat list of Static widgets. The with Horizontal(...)
-        wrappers used in compose() are omitted here because they require
-        an active Textual app context. update_projection() mounts these
-        widgets directly.
-        """
-        widgets: list = [Static("Fleet Panel", classes="fleet-header")]
+    def _build_widgets(self) -> list[Static]:
         if self._projection is None:
-            widgets.append(Static("[dim]no fleet data[/]", classes="fleet-row"))
-            return widgets
+            return [Static("[dim]no fleet data[/]", classes="fleet-row")]
 
         proj = self._projection
-        widgets.append(
-            Static(f"Queue: {_format_queue(proj.queue)}", classes="fleet-row")
-        )
-        widgets.append(
-            Static(f"Leases: {_format_leases(proj.leases)}", classes="fleet-row")
-        )
-        widgets.append(
-            Static(f"Blockers: {_format_blockers(proj.blockers)}", classes="fleet-row")
-        )
-        widgets.append(Static(f"Patches: {_format_patches(proj)}", classes="fleet-row"))
-        widgets.append(Static(f"Agents: {_format_agents(proj)}", classes="fleet-row"))
+        widgets = [
+            Static(f"QUEUE:    {_format_queue(proj.queue)}", classes="fleet-row"),
+            Static(f"LEASES:   {_format_leases(proj.leases)}", classes="fleet-row"),
+            Static(f"BLOCKERS: {_format_blockers(proj.blockers)}", classes="fleet-row"),
+            Static(f"PATCHES:  {_format_patches(proj)}", classes="fleet-row"),
+            Static(f"AGENTS:   {_format_agents(proj)}", classes="fleet-row"),
+        ]
+        
         next_text = _format_next_item(proj.queue)
         if next_text:
-            widgets.append(Static(f"Next: {next_text}", classes="fleet-row"))
+            widgets.append(Static(f"NEXT:     {next_text}", classes="fleet-row"))
+            
         replay_text = _format_replay(proj.queue)
         if replay_text:
-            widgets.append(Static(f"Replay: {replay_text}", classes="fleet-row"))
+            widgets.append(Static(f"REPLAY:   {replay_text}", classes="fleet-row"))
+            
         if proj.recent_event_count:
-            widgets.append(
-                Static(f"Recent events: {proj.recent_event_count}", classes="fleet-row")
-            )
+            widgets.append(Static(f"EVENTS:   {proj.recent_event_count} recent", classes="fleet-row"))
+            
         return widgets
+
+__all__ = ["FleetPanelWidget"]

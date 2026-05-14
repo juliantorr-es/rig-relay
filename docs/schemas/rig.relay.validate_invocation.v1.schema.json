@@ -94,6 +94,89 @@
         }
       ],
       "description": "Output cap per-check before truncation"
+    },
+    "cache_policy": {
+      "type": "string",
+      "enum": [
+        "enabled",
+        "disabled",
+        "force_rerun"
+      ],
+      "description": "Cache policy for validation results. enabled: cache hits return without execution. disabled: bypass cache. force_rerun: bypass cache and rerun.",
+      "default": "enabled"
+    },
+    "allow_failed_cache_reuse": {
+      "type": "boolean",
+      "description": "If true, reuse cache records from failed runs (default: false)",
+      "default": false
+    },
+    "cache_root": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Optional override for validation cache directory"
+    },
+    "scheduler_policy": {
+      "type": "string",
+      "enum": [
+        "enabled",
+        "disabled"
+      ],
+      "description": "Scheduler policy for duplicate detection. enabled: use running locks. disabled: bypass.",
+      "default": "enabled"
+    },
+    "lock_running_checks": {
+      "type": "boolean",
+      "description": "If true, prevent duplicate execution of same check (default: true)",
+      "default": true
+    },
+    "validation_phase": {
+      "type": "string",
+      "enum": [
+        "edit",
+        "pre_report",
+        "cleanup",
+        "final"
+      ],
+      "description": "Validation lifecycle phase. edit: warn on full suite. pre_report: normal.",
+      "default": "pre_report"
+    },
+    "parallel_policy": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "disabled",
+        "force"
+      ],
+      "description": "Parallel execution policy for pytest suites.",
+      "default": "auto"
+    },
+    "max_workers": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Maximum parallel workers. Default: min(4, cpu_count)"
+    },
+    "xdist_distribution": {
+      "type": "string",
+      "enum": [
+        "loadfile",
+        "loadscope",
+        "load"
+      ],
+      "description": "pytest-xdist distribution mode.",
+      "default": "loadfile"
     }
   },
   "required": [
