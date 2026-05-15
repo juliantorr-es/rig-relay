@@ -59,6 +59,7 @@ class AgentProfile:
     agent_type: AgentType = AgentType.AGENT
     overrides: dict[str, Any] = field(default_factory=dict)
     install_required: bool = False
+    patch_proposal_mode: bool = False
 
     def apply_to_config(self, base: VibeConfig) -> VibeConfig:
         from rig_relay.core.config import VibeConfig as VC

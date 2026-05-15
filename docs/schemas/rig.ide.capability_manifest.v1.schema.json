@@ -16,18 +16,33 @@
         "properties": {
           "plane": {
             "type": "string",
-            "enum": ["ide", "ui", "core"],
+            "enum": [
+              "ide",
+              "ui",
+              "core"
+            ],
             "description": "Which subsystem owns this capability: ide=editor APIs, ui=user interface actions, core=rig-internal"
           },
           "risk": {
             "type": "string",
-            "enum": ["low", "medium", "high"],
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
             "description": "Risk level for user approval and auditing"
           },
           "mutates": {
             "oneOf": [
-              {"type": "boolean"},
-              {"type": "string", "enum": ["possible"]}
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "possible"
+                ]
+              }
             ],
             "description": "Whether this capability can mutate workspace state. 'possible' means it depends on context."
           },
@@ -55,10 +70,22 @@
           "implemented_in": {
             "type": "object",
             "properties": {
-              "vscode": {"type": "boolean", "default": false},
-              "sidecar": {"type": "boolean", "default": false},
-              "jetbrains": {"type": "boolean", "default": false},
-              "zed": {"type": "boolean", "default": false}
+              "vscode": {
+                "type": "boolean",
+                "default": false
+              },
+              "sidecar": {
+                "type": "boolean",
+                "default": false
+              },
+              "jetbrains": {
+                "type": "boolean",
+                "default": false
+              },
+              "zed": {
+                "type": "boolean",
+                "default": false
+              }
             },
             "additionalProperties": false,
             "description": "Which IDE platforms have implemented this capability"
@@ -68,11 +95,20 @@
             "description": "Human-readable description of what this capability does"
           }
         },
-        "required": ["plane", "risk", "mutates", "default_policy", "description"],
+        "required": [
+          "plane",
+          "risk",
+          "mutates",
+          "default_policy",
+          "description"
+        ],
         "additionalProperties": false
       }
     }
   },
-  "required": ["schema_version", "capabilities"],
+  "required": [
+    "schema_version",
+    "capabilities"
+  ],
   "additionalProperties": false
 }

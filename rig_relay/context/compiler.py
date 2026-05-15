@@ -1,722 +1,339 @@
-"""Context compiler — deterministic prompt enrichment for Rig Console.
+"""Context compiler — the core logic for rig.get_context.
 
-Phase 3: DuckDB-backed RepoContextIndex for constrained retrieval. Maps
-files to tests, docs, schemas, and related paths. No embeddings.
+Takes a ContextRequest, builds a ContextPacket by composing repo_map,
+work_map, and optional receipt/symbol scans. Produces structured output,
+hash-stable receipts, and content-light metadata.
 
-Dependency contracts (canonical):
-  - RepoContextIndex [OPTIONAL]: If None, RelevantTestsPack and
-    RelatedFilesPack degrade gracefully to empty results.
-    No crash, no error — the packs simply produce no output.
-  - ReceiptStore [OPTIONAL]: If None, CompactionHistoryPack produces
-    "(no compaction history)" and context envelope receipts are not
-    persisted. All silence is explicit.
-  - ContextPack._cached_fingerprint: Persists across build_envelope()
-    calls within a single ContextCompiler instance. New compiler =
-    fresh cache. Fingerprints are session-scoped.
-  - RecentTranscriptPack: Requires either snapshot (transcript object)
-    or messages (list[LLMMessage]) to produce output. Without either,
-    renders "(no transcript)" explicitly.
+This is the front door for the rig.get_context built-in tool.
 """
 
 from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-import re
-import subprocess
+import time
 from typing import Any
 
-from rig_relay.context.models import ContextEnvelopeReceipt, ContextSection
-from rig_relay.context.repo_index import RepoContextIndex
-from rig_relay.context.symbol_codec import compress_with_manifest
-from rig_relay.evidence.receipt_envelope import (
-    ReceiptActor,
-    ReceiptActorKind,
-    ReceiptDecision,
-    ReceiptSubject,
-    ReceiptSubjectKind,
-    build_receipt_envelope,
+from rig_relay.context.models import (
+    ContextEnvelopeReceipt,
+    ContextPacket,
+    ContextReceipt,
+    ContextRequest,
+    PathRecommendation,
+    ReceiptEntry,
 )
-from rig_relay.evidence.receipt_store import ReceiptStore
-
-# ── Helpers ────────────────────────────────────────────────────────
-
-
-def _hash(*components: str) -> str:
-    return hashlib.sha256("|".join(components).encode()).hexdigest()[:16]
-
-
-def _read_safe(path: Path) -> str:
-    try:
-        if path.is_file():
-            return path.read_text(encoding="utf-8")
-    except Exception:
-        pass
-    return ""
-
-
-def _git(*args: str, cwd: Path | None = None) -> str:
-    try:
-        return subprocess.check_output(
-            ["git", *args], text=True, stderr=subprocess.DEVNULL, cwd=cwd or Path.cwd()
-        ).strip()
-    except Exception:
-        return ""
-
-
-_COMPRESSIBLE_PACKS = {
-    # Sources that benefit from symbol codec compression (saves tokens):
-    "git_state",          # Short, repetitive branch/HEAD strings
-    "dirty_files",        # File paths, short status lines
-    "dirty_ownership",    # Similar to dirty_files
-    "active_file_focus",  # File content excerpts — high repetition
-    "related_files",      # File paths and metadata
-}
-
-_NON_COMPRESSIBLE_PACKS = {
-    # Sources that should NOT be symbol-compressed:
-    "agents_md",          # Rules/instructions — must be verbatim
-    "relevant_tests",     # Test code — must be verbatim
-    "recent_transcript",  # Conversation context — must be verbatim
-    "compaction_history", # Receipt IDs and rationales — short, no benefit
-}
-
-
-def _symbol_receipt_payload(
-    receipt: Any | None,
-) -> dict[str, str | int | bool | None] | None:
-    if receipt is None:
-        return None
-    return {
-        "codec_name": getattr(receipt, "codec_name", ""),
-        "codec_version": getattr(receipt, "codec_version", ""),
-        "input_sha256": getattr(receipt, "input_sha256", ""),
-        "output_sha256": getattr(receipt, "output_sha256", ""),
-        "manifest_sha256": getattr(receipt, "manifest_sha256", ""),
-        "estimated_tokens_before": getattr(receipt, "estimated_tokens_before", 0),
-        "estimated_tokens_after": getattr(receipt, "estimated_tokens_after", 0),
-        "replacement_count": getattr(receipt, "replacement_count", 0),
-        "reversible": getattr(receipt, "reversible", True),
-        "lossy": getattr(receipt, "lossy", False),
-        "refused_reason": getattr(receipt, "refused_reason", None),
-    }
-
-
-def _build_envelope_parts(
-    root: Path, packs: list[ContextPack]
-) -> tuple[
-    list[ContextSection],
-    list[str],
-    list[str],
-    str,
-    Any | None,
-    dict[str, str | int | bool | None] | None,
-]:
-    sections: list[ContextSection] = []
-    omitted: list[str] = []
-    compressible_parts: list[str] = []
-    protected_parts: list[str] = []
-    symbol_manifest = None
-    symbol_codec_receipt = None
-
-    for pack in packs:
-        section = pack.build(root)
-        if section is None:
-            omitted.append(pack.name)
-            continue
-
-        sections.append(section)
-        source = pack.get_source(root)
-        if not source:
-            continue
-
-        # Classification contract: every pack must be in compressible or non-compressible
-        part = f'<context name="{pack.name}">\n{source}\n</context>'
-        if pack.name in _COMPRESSIBLE_PACKS:
-            compressible_parts.append(part)
-        else:
-            # Default to protected (non-compressible) for safety
-            protected_parts.append(part)
-
-    compressed_prompt = "\n\n".join(compressible_parts)
-    rendered_parts: list[str]
-    if compressed_prompt:
-        result = compress_with_manifest(compressed_prompt)
-        compressed_prompt = result.compressed_text
-        symbol_manifest = result.manifest
-        symbol_codec_receipt = _symbol_receipt_payload(result.receipt)
-        protected_parts.append(
-            '<context name="symbol_codec">\n'
-            f"codec={result.receipt.codec_name if result.receipt else 'rig.symbol.v1'}\n"
-            f"manifest_sha256={result.manifest.manifest_sha256 if result.manifest else ''}\n"
-            f"estimated_tokens_before={result.receipt.estimated_tokens_before if result.receipt else 0}\n"
-            f"estimated_tokens_after={result.receipt.estimated_tokens_after if result.receipt else 0}\n"
-            f"replacement_count={result.receipt.replacement_count if result.receipt else 0}\n"
-            "</context>"
-        )
-        rendered_parts = [
-            f'<context name="compressed_navigation">\n{compressed_prompt}\n</context>'
-        ] + protected_parts
-    else:
-        rendered_parts = protected_parts
-
-    return (
-        sections,
-        omitted,
-        rendered_parts,
-        compressed_prompt,
-        symbol_manifest,
-        symbol_codec_receipt,
-    )
-
-
-# ── Base pack ──────────────────────────────────────────────────────
-
-
-class ContextPack:
-    """A single context pack with its own fingerprint cache.
-
-    Subclasses define ``_fingerprint_sources(root)`` and
-    ``_render(root)``. The ``build(root)`` method checks the fingerprint
-    before re-rendering and returns None if unchanged.
-    """
-
-    name: str = ""
-    _cached_fingerprint: str = ""
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        return ()
-
-    def _render(self, root: Path) -> str:
-        return ""
-
-    def _summary(self, root: Path) -> str:
-        return ""
-
-    def build(self, root: Path) -> ContextSection | None:
-        src = self._fingerprint_sources(root)
-        if not src or all(not s for s in src):
-            return None
-        fp = _hash(self.name, *src)
-        if fp == self._cached_fingerprint:
-            return None
-        self._cached_fingerprint = fp
-        return ContextSection(
-            name=self.name, fingerprint=fp, summary=self._summary(root)
-        )
-
-    def get_source(self, root: Path) -> str:
-        return self._render(root)
-
-    def reset_cache(self) -> None:
-        self._cached_fingerprint = ""
-
-
-# ── Concrete packs ─────────────────────────────────────────────────
-
-
-class AgentsMdPack(ContextPack):
-    name = "agents_md"
-
-    def _find(self, root: Path) -> Path | None:
-        for candidate in [root / "AGENTS.md", root / "CLAUDE.md"]:
-            if candidate.is_file():
-                return candidate
-        return None
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        f = self._find(root)
-        return (_read_safe(f),) if f else ("",)
-
-    def _render(self, root: Path) -> str:
-        f = self._find(root)
-        return _read_safe(f) if f else ""
-
-    def _summary(self, root: Path) -> str:
-        f = self._find(root)
-        if f:
-            c = _read_safe(f)
-            return f"Agent rules ({f.name}, {len(c.splitlines())} lines)" if c else ""
-        return "No agent rules"
-
-
-class GitStatePack(ContextPack):
-    name = "git_state"
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        branch = _git("rev-parse", "--abbrev-ref", "HEAD", cwd=root)
-        head = _git("rev-parse", "HEAD", cwd=root)
-        if not branch and not head:
-            return ("no-git",)
-        return (branch or "no-branch", head or "no-head")
-
-    def _render(self, root: Path) -> str:
-        branch = _git("rev-parse", "--abbrev-ref", "HEAD", cwd=root)
-        head = _git("rev-parse", "HEAD", cwd=root)
-        status = _git("status", "--short", cwd=root)
-        return (
-            f"Branch: {branch or 'unknown'}\n"
-            f"HEAD: {head or 'unknown'}\n"
-            f"Status:\n{status or '(clean)'}"
-        )
-
-    def _summary(self, root: Path) -> str:
-        b = _git("rev-parse", "--abbrev-ref", "HEAD", cwd=root) or "?"
-        h = (_git("rev-parse", "HEAD", cwd=root) or "?")[:12]
-        return f"Branch: {b} @ {h}"
-
-
-class DirtyFilesPack(ContextPack):
-    name = "dirty_files"
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        s = _git("status", "--short", cwd=root)
-        return (s or "clean",)
-
-    def _render(self, root: Path) -> str:
-        return _git("status", "--short", cwd=root) or "(clean)"
-
-    def _summary(self, root: Path) -> str:
-        s = _git("status", "--short", cwd=root)
-        if not s:
-            return "No dirty files"
-        return f"Dirty files: {len([l for l in s.splitlines() if l.strip()])} changed/untracked"
-
-
-class DirtyOwnershipPack(ContextPack):
-    name = "dirty_ownership"
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        s = _git("status", "--short", cwd=root)
-        return (s or "clean",)
-
-    def _render(self, root: Path) -> str:
-        status = _git("status", "--short", cwd=root)
-        if not status:
-            return "(no dirty files)"
-        return "Files that need attention:\n" + "\n".join(
-            f"  {l.strip()}" for l in status.splitlines() if l.strip()
-        )
-
-    def _summary(self, root: Path) -> str:
-        s = _git("status", "--short", cwd=root)
-        count = len([l for l in s.splitlines() if l.strip()]) if s else 0
-        return f"Dirty ownership: {count} files need attention"
-
-
-class RecentTranscriptPack(ContextPack):
-    name = "recent_transcript"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._snapshot: Any | None = None
-        self._messages: list[Any] | None = None
-
-    def set_snapshot(self, snapshot: Any | None) -> None:
-        self._snapshot = snapshot
-
-    def set_messages(self, messages: list[Any]) -> None:
-        self._messages = messages
-
-    def _items(self) -> list:
-        if self._snapshot is None and self._messages is None:
-            return []
-        if self._messages is not None:
-            # Use LLM messages directly — extract last 5 non-system messages
-            recent = [m for m in self._messages if getattr(m, 'role', None) and str(m.role) != 'system'][-5:]
-            return [
-                type('TranscriptItem', (), {
-                    'kind': str(getattr(m, 'role', 'unknown')),
-                    'title': (getattr(m, 'content', '') or '')[:80],
-                    'body_text': getattr(m, 'content', '') or '',
-                })()
-                for m in recent
-            ]
-        items = getattr(self._snapshot, "transcript", None)
-        return getattr(items, "items", []) or [] if items else []
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        items = self._items()
-        if not items:
-            return ("",)
-        text = "; ".join(f"[{i.kind}] {i.title}" for i in items[-5:])
-        return (text,)
-
-    def _render(self, root: Path) -> str:
-        items = self._items()
-        if not items:
-            return "(no transcript)"
-        recent = items[-5:]
-        lines = [
-            f"[{i.kind}] {i.title}: {i.body_text or ''}"
-            for i in recent
-            if i.kind not in {"turn_status", "context_envelope"}
-        ]
-        return "\n".join(lines) if lines else "(transcript available)"
-
-    def _summary(self, root: Path) -> str:
-        items = self._items()
-        count = len(items)
-        if not count:
-            return "No transcript items"
-        names = "; ".join(f"[{i.kind}] {i.title}" for i in items[-5:])
-        return f"Recent transcript: {count} items, last 5: {names[:120]}"
-
-
-class RelevantTestsPack(ContextPack):
-    name = "relevant_tests"
-
-    def __init__(self, repo_index: RepoContextIndex | None = None) -> None:
-        super().__init__()
-        self._changed_paths: list[str] = []
-        self._repo_index = repo_index
-
-    def set_changed_paths(self, paths: list[str]) -> None:
-        self._changed_paths = paths
-
-    def _find_tests(self, root: Path) -> list[Path]:
-        if self._repo_index is not None and self._repo_index.is_available:
-            rel = self._repo_index.find_tests(self._changed_paths[:10])
-            return [root / p for p in rel[:5] if (root / p).is_file()]
-        found: list[Path] = []
-        for cp in self._changed_paths[:10]:
-            p = root / cp
-            stem = p.stem
-            for pattern in [
-                root / "tests" / f"test_{stem}.py",
-                root / "tests" / f"{stem}_test.py",
-                root / "tests" / f"test_{cp.replace('/', '_')}",
-            ]:
-                if pattern.is_file() and pattern not in found:
-                    found.append(pattern)
-        return found[:5]
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        tests = self._find_tests(root)
-        if not tests:
-            return ("",)
-        return tuple(str(t) for t in tests)
-
-    def _render(self, root: Path) -> str:
-        tests = self._find_tests(root)
-        if not tests:
-            return "(no relevant tests found)"
-        parts: list[str] = []
-        for t in tests:
-            content = _read_safe(t)
-            if content:
-                rel = t.relative_to(root) if t.is_relative_to(root) else t
-                parts.append(f"--- {rel} ---\n{content[:2000]}")
-        return "\n\n".join(parts) if parts else "(no test content)"
-
-    def _summary(self, root: Path) -> str:
-        tests = self._find_tests(root)
-        return f"Relevant tests: {len(tests)} files" if tests else "No relevant tests"
-
-
-class RelatedFilesPack(ContextPack):
-    name = "related_files"
-
-    def __init__(self, repo_index: RepoContextIndex | None = None) -> None:
-        super().__init__()
-        self._user_text: str = ""
-        self._repo_index = repo_index
-
-    def set_user_text(self, text: str) -> None:
-        self._user_text = text
-
-    def _extract_paths(self, root: Path) -> list[str]:
-        candidates = re.findall(r"[\w/\\\-]+\.\w{1,4}", self._user_text)
-        return [p for p in candidates if (root / Path(p)).is_file()][:5]
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        if self._repo_index is None or not self._repo_index.is_available:
-            return ("",)
-        paths = self._extract_paths(root)
-        if not paths:
-            return ("",)
-        related = self._repo_index.find_related(paths)
-        parts: list[str] = []
-        for k in ("test", "doc", "schema"):
-            for p in related.get(k, []):
-                parts.append(p)
-        return tuple(parts) if parts else ("",)
-
-    def _render(self, root: Path) -> str:
-        if self._repo_index is None or not self._repo_index.is_available:
-            return "(no repo index available)"
-        paths = self._extract_paths(root)
-        if not paths:
-            return "(no file references detected)"
-        related = self._repo_index.find_related(paths)
-        if not related:
-            return "(no related files found)"
-        lines: list[str] = []
-        for p in paths:
-            lines.append(f"References to: {p}")
-            for rel_type in ("test", "doc", "schema", "same_package"):
-                items = related.get(rel_type, [])
-                if items:
-                    lines.append(f"  {rel_type}: {', '.join(items[:3])}")
-            idx_summary = self._repo_index.summary()
-            if idx_summary.get("available"):
-                lines.append(
-                    f"  index: {idx_summary['file_count']} files, {idx_summary['relation_count']} relations"
-                )
-        return "\n".join(lines)
-
-    def _summary(self, root: Path) -> str:
-        paths = self._extract_paths(root)
-        if not paths or self._repo_index is None or not self._repo_index.is_available:
-            return "No related files"
-        return f"Related files: {len(paths)} source files indexed"
-
-
-class ActiveFocusPack(ContextPack):
-    name = "active_file_focus"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._user_text: str = ""
-
-    def set_user_text(self, text: str) -> None:
-        self._user_text = text
-
-    def _extract_paths(self, root: Path) -> list[str]:
-        candidates = re.findall(r"[\w/\\\-]+\.\w{1,4}", self._user_text)
-        return [p for p in candidates if (root / Path(p)).is_file()][:5]
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        paths = self._extract_paths(root)
-        return tuple(paths) if paths else ("",)
-
-    def _render(self, root: Path) -> str:
-        paths = self._extract_paths(root)
-        if not paths:
-            return "(no file references detected)"
-        parts: list[str] = []
-        for p in paths:
-            f = root / Path(p)
-            content = _read_safe(f)
-            if content:
-                lines = content.splitlines()
-                parts.append(
-                    f"--- {p} ({len(lines)} lines) ---\n" + "\n".join(lines[:30])
-                )
-        return "\n\n".join(parts) if parts else "(files mentioned not found)"
-
-    def _summary(self, root: Path) -> str:
-        paths = self._extract_paths(root)
-        return (
-            f"Active file focus: {len(paths)} files referenced"
-            if paths
-            else "No file focus"
-        )
-
-
-# ── Compaction history pack ──────────────────────────────────────────
-
-
-class CompactionHistoryPack(ContextPack):
-    name = "compaction_history"
-
-    def __init__(self, receipt_store: ReceiptStore | None = None) -> None:
-        super().__init__()
-        self._receipt_store = receipt_store
-        self._session_id: str = ""
-
-    def set_session_id(self, session_id: str) -> None:
-        self._session_id = session_id
-
-    def _recent_compaction_receipts(self) -> list:
-        if not self._receipt_store or not self._session_id:
-            return []
-        try:
-            receipts = self._receipt_store.list_by_session(self._session_id, limit=5)
-            return [r for r in receipts if r.receipt_kind == "compaction"]
-        except Exception:
-            return []
-
-    def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
-        compact = self._recent_compaction_receipts()
-        if not compact:
-            return ("",)
-        return tuple(r.envelope_id for r in compact)
-
-    def _render(self, root: Path) -> str:
-        compact = self._recent_compaction_receipts()
-        if not compact:
-            return "(no compaction history)"
-        lines = ["Recent transcript prunes:"]
-        for r in compact:
-            text = (
-                r.decision.rationale
-                if r.decision and r.decision.rationale
-                else f"dropped items (receipt {r.envelope_id[:8]})"
-            )
-            lines.append(f"  - {text}")
-        return "\n".join(lines)
-
-    def _summary(self, root: Path) -> str:
-        compact = self._recent_compaction_receipts()
-        if not compact:
-            return "No compaction history"
-        return f"Compaction receipts: {len(compact)}"
-
-
-# ── The compiler ────────────────────────────────────────────────────
+from rig_relay.context.repo_index import RepoContextIndex
+from rig_relay.context.repo_map import build_repo_info, build_subsystem_map
+from rig_relay.context.work_map import build_active_work
 
 
 class ContextCompiler:
-    """Pack-based context compiler.
+    """Builds prompt envelopes from workspace state for the agent loop.
 
-    Holds a registry of ``ContextPack`` instances. Before each turn, calls
-    ``build_envelope()`` which iterates all packs, checks fingerprints,
-    and includes only those that changed. The envelope receipt records
-    what was included and omitted.
+    Constructs a ContextEnvelopeReceipt with a rendered system prompt
+    containing repo topology, dirty state, collision warnings, and
+    relevant receipts. Plugs into AgentLoop._build_context_envelope().
     """
 
     def __init__(
         self,
+        *,
         session_id: str,
         workspace_root: Path | None = None,
-        receipt_store: ReceiptStore | None = None,
+        receipt_store: Any | None = None,
         repo_index: RepoContextIndex | None = None,
     ) -> None:
         self._session_id = session_id
         self._workspace_root = (workspace_root or Path.cwd()).resolve()
         self._receipt_store = receipt_store
         self._repo_index = repo_index
-        self._packs: list[ContextPack] | None = None
-
-    def _default_packs(self, user_text: str, snapshot: Any | None, messages: list[Any] | None = None) -> list[ContextPack]:
-        packs: list[ContextPack] = []
-        packs.append(AgentsMdPack())
-        packs.append(GitStatePack())
-        packs.append(DirtyFilesPack())
-
-        tp = RecentTranscriptPack()
-        tp.set_snapshot(snapshot)
-        if messages is not None:
-            tp.set_messages(messages)
-        packs.append(tp)
-
-        packs.append(DirtyOwnershipPack())
-
-        rtp = RelevantTestsPack(repo_index=self._repo_index)
-        changed: list[str] = []
-        rtp.set_changed_paths(changed)
-        packs.append(rtp)
-
-        fp = ActiveFocusPack()
-        fp.set_user_text(user_text)
-        packs.append(fp)
-
-        rfp = RelatedFilesPack(repo_index=self._repo_index)
-        rfp.set_user_text(user_text)
-        packs.append(rfp)
-
-        chp = CompactionHistoryPack(self._receipt_store)
-        chp.set_session_id(self._session_id)
-        packs.append(chp)
-
-        return packs
 
     def build_envelope(
         self,
-        user_text: str,
+        user_text: str = "",
         snapshot: Any | None = None,
-        packs: list[ContextPack] | None = None,
         messages: list[Any] | None = None,
     ) -> ContextEnvelopeReceipt:
-        if packs is None:
-            if self._packs is None:
-                self._packs = self._default_packs(user_text, snapshot, messages)
-            else:
-                # Refresh mutable pack data for this turn
-                for pack in self._packs:
-                    if isinstance(pack, RecentTranscriptPack):
-                        pack.set_snapshot(snapshot)
-                        if messages is not None:
-                            pack.set_messages(messages)
-                    elif isinstance(pack, ActiveFocusPack):
-                        pack.set_user_text(user_text)
-                    elif isinstance(pack, RelatedFilesPack):
-                        pack.set_user_text(user_text)
-                    elif isinstance(pack, RelevantTestsPack):
-                        pass  # Changed paths not yet tracked
-            packs = self._packs
+        """Build a context envelope for injection into the message list.
 
-        root = self._workspace_root
-        (
-            sections,
-            omitted,
-            rendered_parts,
-            compressed_prompt,
-            symbol_manifest,
-            symbol_codec_receipt,
-        ) = _build_envelope_parts(root, packs)
-        rendered_parts.append(f"<user_prompt>\n{user_text}\n</user_prompt>")
-        rendered = "\n\n".join(rendered_parts)
+        Returns a ContextEnvelopeReceipt with rendered_prompt populated
+        from workspace scans. Best-effort: failures return an empty
+        envelope rather than raising.
+        """
+        sections: list[str] = []
+        dirty_count = 0
+        collision_count = 0
 
-        receipt = ContextEnvelopeReceipt(
-            rendered_prompt=rendered,
-            compressed_prompt=compressed_prompt,
-            sections=sections,
-            sections_omitted=omitted,
-            envelope_sha256=_hash(rendered),
-            cache_key=_hash(*(s.fingerprint for s in sections)),
+        try:
+            repo = build_repo_info(self._workspace_root)
+            head = repo.head or "unknown"
+            branch = repo.branch or "unknown"
+            dirty_summary = getattr(repo, "dirty_summary", {}) or {}
+            dirty_count = dirty_summary.get("modified", 0)
+
+            sections.append(
+                f"## Repository\n"
+                f"- Root: {self._workspace_root}\n"
+                f"- Branch: {branch} @ {head[:12] if len(head) > 12 else head}\n"
+                f"- Dirty files: {dirty_summary.get('modified', 0)} modified, "
+                f"{dirty_summary.get('untracked', 0)} untracked, "
+                f"{dirty_summary.get('staged', 0)} staged"
+            )
+
+            if snapshot is not None:
+                sections.append(f"## Snapshot\n{snapshot}")
+
+            active = build_active_work(self._workspace_root, [])
+            lanes = active.get("lanes", [])
+            if lanes:
+                sections.append(
+                    f"## Active Work\n"
+                    f"{len(lanes)} lane(s) active"
+                )
+
+            collisions = active.get("collision_warnings", [])
+            collision_count = len(collisions)
+            if collisions:
+                sections.append(
+                    "## Collision Warnings\n"
+                    + "\n".join(
+                        f"- {c.get('path', '?')}: {c.get('reason', '')[:120]}"
+                        for c in collisions[:10]
+                    )
+                )
+
+            if messages:
+                tail = [
+                    m for m in messages
+                    if hasattr(m, "role") and getattr(m, "role", None) not in ("system",)
+                ][-6:]
+                if tail:
+                    sections.append(
+                        "## Recent Messages\n"
+                        + "\n".join(
+                            f"- [{getattr(m, 'role', '?')}]: {str(getattr(m, 'content', ''))[:120]}"
+                            for m in tail
+                        )
+                    )
+
+        except Exception:
+            pass
+
+        rendered = "\n\n".join(sections) if sections else ""
+        receipt_sha256 = ""
+        if rendered:
+            receipt_sha256 = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+
+        return ContextEnvelopeReceipt(
             session_id=self._session_id,
-            symbol_manifest=symbol_manifest,
-            symbol_codec_receipt=symbol_codec_receipt,
+            rendered_prompt=rendered,
+            section_count=len(sections),
+            estimated_tokens=max(1, len(rendered) // 4),
+            dirty_file_count=dirty_count,
+            collision_warnings=collision_count,
+            receipt_sha256=receipt_sha256,
         )
 
-        if self._receipt_store is not None:
+
+
+def execute(request: ContextRequest, workspace_root: Path | None = None) -> ContextPacket:
+    """Execute a get_context request and return a ContextPacket.
+
+    Args:
+        request: The validated ContextRequest.
+        workspace_root: Optional workspace root. Defaults to CWD.
+
+    Returns:
+        A ContextPacket with all fields populated per the request mode.
+    """
+    start = time.perf_counter()
+    root = (workspace_root or Path.cwd()).resolve()
+
+    # Check findings lifecycle
+    try:
+        from rig_relay.governance.findings_lifecycle import compute_findings_summary
+
+        _findings_summary = compute_findings_summary()
+        if _findings_summary.get("stale_findings"):
+            pass  # Available for correlation; not yet surfaced in packet
+    except Exception:
+        pass
+
+    # Compute request hash
+    req_json = request.model_dump_json(exclude_none=True)
+    request_sha256 = hashlib.sha256(req_json.encode("utf-8")).hexdigest()
+
+    # Build repo info (always)
+    repo = build_repo_info(root)
+
+    # Build subsystem map (always for map mode)
+    subsystems = build_subsystem_map(root)
+
+    # Build active work map
+    active_work = build_active_work(root, request.scope.paths)
+
+    # Build recommended context
+    recommended = _build_recommended_context(subsystems)
+
+    # Build do-not-touch list from collision warnings
+    do_not_touch = _build_do_not_touch(active_work.get("collision_warnings", []))
+
+    # Build receipt entries if requested
+    receipts: list[ReceiptEntry] = []
+    if request.scope.include_receipts:
+        receipts = _scan_receipts(root)
+
+    # Build summary text
+    summary = _build_summary(repo, subsystems, active_work)
+
+    # Compute packet hash
+    packet = ContextPacket(
+        mode=request.mode,
+        request_sha256=request_sha256,
+        repo=repo,
+        subsystems=subsystems,
+        active_work=active_work,
+        recommended_context=recommended,
+        do_not_touch=do_not_touch,
+        receipts=receipts,
+        summary_text=summary,
+        canonical_packet_sha256=None,
+        optimized_packet_sha256=None,
+        substitution_table_sha256=None,
+    )
+
+    packet_json = packet.model_dump_json(exclude_none=True)
+    packet_sha256 = hashlib.sha256(packet_json.encode("utf-8")).hexdigest()
+
+    # Store hashes
+    packet.canonical_packet_sha256 = packet_sha256
+    packet.optimized_packet_sha256 = packet_sha256
+
+    packet.duration_ms = (time.perf_counter() - start) * 1000
+
+    return packet
+
+
+def build_receipt(packet: ContextPacket) -> ContextReceipt:
+    """Build a content-light receipt from a completed packet."""
+    # Check findings lifecycle
+    open_count = 0
+    stale_count = 0
+    try:
+        from rig_relay.governance.findings_lifecycle import compute_findings_summary
+
+        _fs = compute_findings_summary()
+        open_count = _fs.get("by_status", {}).get("open", 0)
+        stale_count = len(_fs.get("stale_findings", []))
+    except Exception:
+        pass
+
+    return ContextReceipt(
+        context_id=packet.context_id,
+        mode=packet.mode.value,
+        request_sha256=packet.request_sha256,
+        packet_sha256=packet.canonical_packet_sha256 or "",
+        subsystem_count=len(packet.subsystems),
+        active_lane_count=len(packet.active_work.get("lanes", [])),
+        collision_warning_count=len(packet.active_work.get("collision_warnings", [])),
+        receipt_count=len(packet.receipts),
+        dirty_file_count=packet.repo.dirty_summary.get("modified", 0),
+        symbol_count=len(packet.symbol_map.get("symbols", [])),
+        open_finding_count=open_count,
+        stale_finding_count=stale_count,
+        estimated_tokens=_estimate_tokens(packet),
+        duration_ms=packet.duration_ms,
+    )
+
+
+def _build_recommended_context(subsystems: list) -> list[PathRecommendation]:
+    """Build a list of recommended context files from the subsystem map."""
+    recommendations: list[PathRecommendation] = []
+
+    for sub in subsystems[:5]:
+        if sub.config_files:
+            recommendations.append(PathRecommendation(
+                path=sub.config_files[0],
+                reason=f"Core configuration for {sub.name} subsystem",
+            ))
+        if sub.docs:
+            recommendations.append(PathRecommendation(
+                path=sub.docs[0],
+                reason=f"Documentation for {sub.name} subsystem",
+            ))
+
+    return recommendations[:10]
+
+
+def _build_do_not_touch(collisions: list[dict]) -> list[PathRecommendation]:
+    """Build a do-not-touch list from collision warnings."""
+    return [
+        PathRecommendation(path=c.get("path", ""), reason=c.get("reason", ""))
+        for c in collisions
+    ]
+
+
+def _scan_receipts(root: Path) -> list[ReceiptEntry]:
+    """Scan for recent receipt files in the build directory."""
+    receipts_dir = root / ".build" / "rig-relay" / "coordination" / "receipts"
+    if not receipts_dir.is_dir():
+        return []
+    entries: list[ReceiptEntry] = []
+    for f in sorted(receipts_dir.iterdir(), reverse=True)[:10]:
+        if f.is_file():
+            import hashlib as _hl
+
             try:
-                envelope = build_receipt_envelope(
-                    receipt_kind="context_envelope",
-                    actor=ReceiptActor(
-                        actor_id="compiler", actor_kind=ReceiptActorKind.RUNTIME
-                    ),
-                    subject=ReceiptSubject(
-                        subject_id=self._session_id,
-                        subject_kind=ReceiptSubjectKind.SESSION,
-                        session_id=self._session_id,
-                    ),
-                    receipt_payload={
-                        "section_count": receipt.section_count,
-                        "sections": [s.name for s in sections],
-                        "omitted": omitted,
-                        "cache_key": receipt.cache_key,
-                        "symbol_codec": receipt.symbol_codec_receipt,
-                    },
-                    decision=ReceiptDecision(
-                        decision="included" if sections else "empty",
-                        rationale=f"{receipt.section_count} sections · {'cached' if receipt.is_cached else 'fresh'}",
-                    ),
-                )
-                self._receipt_store.append(envelope)
-            except Exception as exc:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "audit.context.receipt_write_failed session_id=%s error=%s",
-                    self._session_id,
-                    exc,
-                )
-
-        return receipt
+                data = f.read_bytes()
+                sha = _hl.sha256(data).hexdigest()
+            except Exception:
+                sha = ""
+            entries.append(ReceiptEntry(
+                kind=f.suffix.lstrip(".") or "receipt",
+                path=str(f.relative_to(root)) if f.is_relative_to(root) else str(f),
+                sha256=f"sha256:{sha[:16]}" if sha else "",
+            ))
+    return entries
 
 
-__all__ = [
-    "ActiveFocusPack",
-    "AgentsMdPack",
-    "CompactionHistoryPack",
-    "ContextCompiler",
-    "ContextPack",
-    "DirtyFilesPack",
-    "DirtyOwnershipPack",
-    "GitStatePack",
-    "RecentTranscriptPack",
-    "RelatedFilesPack",
-    "RelevantTestsPack",
-]
+def _build_summary(repo: Any, subsystems: list, active_work: dict) -> str:
+    """Build a human-readable summary text from the context data."""
+    lines: list[str] = []
+    lines.append(f"Repository: {repo.root}")
+    lines.append(f"Branch: {repo.branch} @ {repo.head}")
+    lines.append(f"Dirty files: {repo.dirty_summary.get('modified', 0)} modified, "
+                 f"{repo.dirty_summary.get('untracked', 0)} untracked, "
+                 f"{repo.dirty_summary.get('staged', 0)} staged")
+    lines.append("")
+
+    if subsystems:
+        lines.append(f"Subsystems ({len(subsystems)}):")
+        for sub in subsystems[:10]:
+            lines.append(f"  {sub.name}: {len(sub.paths)} files")
+            if sub.entry_points:
+                lines.append(f"    Entry: {', '.join(sub.entry_points[:3])}")
+            if sub.schemas:
+                lines.append(f"    Schemas: {len(sub.schemas)}")
+        lines.append("")
+
+    lanes = active_work.get("lanes", [])
+    if lanes:
+        lines.append(f"Active work ({len(lanes)} lanes):")
+        for lane in lanes:
+            lines.append(f"  {lane.get('agent_id', '?')}: {lane.get('status', '?')} "
+                         f"({len(lane.get('claimed_paths', []))} claimed paths)")
+        lines.append("")
+
+    collisions = active_work.get("collision_warnings", [])
+    if collisions:
+        lines.append(f"Collision warnings ({len(collisions)}):")
+        for c in collisions[:5]:
+            lines.append(f"  ! {c.get('path', '?')}: {c.get('reason', '')[:80]}")
+
+    return "\n".join(lines)
+
+
+def _estimate_tokens(packet: ContextPacket) -> int:
+    """Rough token estimate from the packet JSON length."""
+    raw = packet.model_dump_json(exclude_none=True)
+    return max(1, len(raw) // 4)

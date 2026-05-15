@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.context_request.v1.schema.json",
+  "title": "Rig Context Request",
+  "description": "Request schema for the rig.get_context built-in tool. Agents request context by mode and scope; Rig compiles the correct view. The tool is read-only and receipt-backed.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.context_request.v1"
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Optional mission identifier for scoping context to a specific mission."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Optional agent identifier for scoping context to a specific agent's work."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["map", "packet", "handoff", "collision", "symbols"],
+      "description": "Context mode: map=fast topology, packet=heavy mission-ready, handoff=agent transfer, collision=path conflict check, symbols=symbol alias table."
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "paths": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Optional path prefixes to scope the context."
+        },
+        "symbols": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Optional symbol names to include definitions for."
+        },
+        "include_tests": {
+          "type": "boolean",
+          "default": true
+        },
+        "include_docs": {
+          "type": "boolean",
+          "default": true
+        },
+        "include_receipts": {
+          "type": "boolean",
+          "default": true
+        },
+        "include_other_agents": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include active work from other agents in the output."
+        }
+      },
+      "additionalProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "max_tokens": {
+          "type": "integer",
+          "default": 60000,
+          "description": "Maximum estimated tokens for the context output."
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["none", "light", "symbol_substitution", "aggressive"],
+          "default": "none",
+          "description": "Compression mode for optimizing packet size."
+        },
+        "detail": {
+          "type": "string",
+          "enum": ["summary", "standard", "deep"],
+          "default": "standard"
+        }
+      },
+      "additionalProperties": false
+    },
+    "freshness": {
+      "type": "object",
+      "properties": {
+        "require_git_status": {
+          "type": "boolean",
+          "default": true
+        },
+        "require_worktree_scan": {
+          "type": "boolean",
+          "default": true
+        },
+        "require_receipt_scan": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["json", "markdown", "context_packet"],
+          "default": "json"
+        },
+        "include_resource_links": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["mode"],
+  "additionalProperties": false
+}

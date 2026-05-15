@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.context_packet.v1.schema.json",
+  "title": "Rig Context Packet",
+  "description": "Output schema for the rig.get_context tool. Structured context packet containing repo map, active work map, symbol table, receipts, and collision warnings. The canonical view before any substitution or compression.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.context_packet.v1"
+    },
+    "context_id": {
+      "type": "string",
+      "description": "Unique identifier for this context packet."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["map", "packet", "handoff", "collision", "symbols"],
+      "description": "The mode that was requested."
+    },
+    "request_sha256": {
+      "type": "string",
+      "description": "SHA256 of the canonical JSON-serialized request."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of packet creation."
+    },
+    "repo": {
+      "type": "object",
+      "properties": {
+        "root": {"type": "string"},
+        "head": {"type": "string"},
+        "branch": {"type": "string"},
+        "dirty_summary": {
+          "type": "object",
+          "properties": {
+            "modified": {"type": "integer"},
+            "untracked": {"type": "integer"},
+            "staged": {"type": "integer"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["root", "head", "branch"],
+      "additionalProperties": false
+    },
+    "repo_map": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "paths": {"type": "array", "items": {"type": "string"}},
+          "description": {"type": "string"},
+          "risk_areas": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["name", "paths"],
+        "additionalProperties": false
+      }
+    },
+    "subsystems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "paths": {"type": "array", "items": {"type": "string"}},
+          "entry_points": {"type": "array", "items": {"type": "string"}},
+          "config_files": {"type": "array", "items": {"type": "string"}},
+          "schemas": {"type": "array", "items": {"type": "string"}},
+          "docs": {"type": "array", "items": {"type": "string"}},
+          "tests": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
+    "active_work": {
+      "type": "object",
+      "properties": {
+        "lanes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "agent_id": {"type": "string"},
+              "mission_id": {"type": "string"},
+              "worktree_path": {"type": "string"},
+              "claimed_paths": {"type": "array", "items": {"type": "string"}},
+              "dirty_paths": {"type": "array", "items": {"type": "string"}},
+              "status": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "collision_warnings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"},
+              "claimed_by": {"type": "string"},
+              "reason": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "symbol_map": {
+      "type": "object",
+      "properties": {
+        "aliases": {
+          "type": "object",
+          "description": "Symbol substitution table: short alias → full name/path. Used for optional compact output.",
+          "additionalProperties": {"type": "string"}
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "kind": {"type": "string"},
+              "paths": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Symbol table for substitution. canonical_packet_sha256 is the pre-substitution hash; optimized_packet_sha256 is the post-substitution hash. Both are the same when compression=none."
+    },
+    "receipts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {"type": "string"},
+          "path": {"type": "string"},
+          "sha256": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "recommended_context": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string"},
+          "reason": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "do_not_touch": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string"},
+          "reason": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary_text": {
+      "type": "string",
+      "description": "Human-readable text summary of the context."
+    },
+    "canonical_packet_sha256": {
+      "type": "string",
+      "description": "SHA256 of the canonical (pre-substitution) JSON packet. Present when compression != none."
+    },
+    "optimized_packet_sha256": {
+      "type": "string",
+      "description": "SHA256 of the optimized (post-substitution) JSON packet. Same as canonical when compression=none."
+    },
+    "substitution_table_sha256": {
+      "type": "string",
+      "description": "SHA256 of the substitution table. Present when compression != none."
+    }
+  },
+  "required": [
+    "schema_version", "context_id", "mode", "request_sha256",
+    "generated_at", "repo", "summary_text"
+  ],
+  "additionalProperties": false
+}

@@ -162,6 +162,7 @@ function renderPanelColumn() {
   // Widget assignments per mode
   const assignments = {
     operator: ['operatorHeader', 'safetyState', 'nextAction',
+               'ralphScout',
                'validationSummary', 'storageBudget', 'intentResult',
                'providerHealth', 'council', 'providerDock',
                'workspaceStatus', 'fleetStatus'],

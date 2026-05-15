@@ -983,3 +983,189 @@ registerWidget('providerDock', function(container, level) {
   renderStandardCard(container, 'Providers', html, 'providerDock',
     configured > 0 ? 'ok' : 'warn');
 });
+
+// ── Ralph Scout widget ───────────────────────────────────────────────
+
+registerWidget('ralphScout', function(container, level) {
+  const ralph = state.ralph;
+  const panel = ralph.panel;
+
+  if (!panel) {
+    if (level === 'compact') return;
+    const html = '<div style="padding:8px">' +
+      '<p style="color:var(--text-muted);margin:0 0 8px 0">No scan results yet.</p>' +
+      '<button onclick="window.RigRelay.dispatchIntent(\'ralph_scan\')">Scan</button>' +
+      '</div>';
+    renderStandardCard(container, 'Ralph Scout', html, 'ralphScout', '');
+    return;
+  }
+
+  const lastIntent = ralph.lastIntent;
+  const summary = panel.summary || {};
+  const top = panel.top_candidate;
+  const mission = panel.mission_candidate;
+  const approval = panel.approval_state || 'not_requested';
+
+  if (level === 'compact') {
+    let statusCls = approval === 'approved' ? 'ok' : approval === 'declined' ? 'error' : 'warn';
+    let label = approval === 'approved' ? 'Approved' : approval === 'declined' ? 'Declined' : (top ? top.score.toFixed(0) + 'pts' : 'idle');
+    renderCompactChip(container, 'Ralph', function() {
+      return { text: label, cls: statusCls };
+    });
+    return;
+  }
+
+  if (level === 'expanded') {
+    renderRalphExpanded(container, panel, ralph);
+    return;
+  }
+
+  var html = '';
+
+  // Status bar
+  var statusCls = approval === 'approved' ? 'ok' : approval === 'declined' ? 'error' : approval === 'pending' ? 'warn' : '';
+  var decisionTag = panel.decision_required
+    ? '<span class="widget-chip ' + statusCls + '"><span class="dot"></span>' + escapeHtml(approval) + '</span>'
+    : '<span class="widget-chip">idle</span>';
+
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+    '<span style="font-weight:600">' + escapeHtml(panel.status || 'idle') + '</span>' +
+    decisionTag +
+    '</div>';
+
+  // Top candidate summary
+  if (top) {
+    html += '<div style="margin-bottom:6px">' +
+      '<div style="font-size:var(--font-size-sm);font-weight:600;margin-bottom:2px">' + escapeHtml(top.title.substring(0, 80)) + '</div>';
+    if (top.score_components) {
+      var sc = top.score_components;
+      html += '<div style="font-size:var(--font-size-xs);color:var(--text-muted)">' +
+        'Score: ' + sc.total_score.toFixed(0) +
+        ' (sev=' + sc.severity_weight.toFixed(0) +
+        ' kind=' + sc.kind_weight.toFixed(0) +
+        ' ev=' + sc.evidence_bonus.toFixed(0) + ')' +
+        '</div>';
+    }
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-muted)">' +
+      'Source: ' + escapeHtml(top.source_kind) +
+      ' | Policy: ' + escapeHtml(top.ranking_policy_version) +
+      '</div>';
+  }
+
+  // Mission candidate summary
+  if (mission) {
+    html += '<div style="margin-top:6px;font-size:var(--font-size-xs)">' +
+      '<span style="color:var(--text-muted)">Mission:</span> ' + escapeHtml(mission.mission_kind) +
+      ' | <span style="color:var(--text-muted)">Approval:</span> ' + (mission.requires_approval ? 'required' : 'not required') +
+      '</div>';
+  }
+
+  // Last intent result
+  if (lastIntent) {
+    var resultCls = lastIntent.status === 'completed' ? 'ok' : lastIntent.status === 'failed' ? 'error' : '';
+    html += '<div class="widget-chip ' + resultCls + '" style="margin-top:4px;font-size:var(--font-size-xs)">' +
+      escapeHtml(lastIntent.name + ': ' + (lastIntent.summary || lastIntent.status).substring(0, 60)) +
+      '</div>';
+  }
+
+  // Actions
+  html += '<div class="widget-actions" style="margin-top:6px">' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'ralph_scan\')">Scan</button>';
+
+  if (panel.decision_required && panel.panel_sha256 && panel.mission_candidate_sha256) {
+    html +=
+      '<button onclick="window.RigRelay.dispatchIntent(\'ralph_approve\', {' +
+      '\'run_id\':\'' + (panel.run_id || '') + '\',' +
+      '\'scan_id\':\'' + (panel.scan_id || '') + '\',' +
+      '\'panel_sha256\':\'' + panel.panel_sha256 + '\',' +
+      '\'mission_candidate_sha256\':\'' + panel.mission_candidate_sha256 + '\'' +
+      '})">Approve</button>' +
+      '<button onclick="window.RigRelay.dispatchIntent(\'ralph_decline\', {' +
+      '\'run_id\':\'' + (panel.run_id || '') + '\',' +
+      '\'scan_id\':\'' + (panel.scan_id || '') + '\',' +
+      '\'panel_sha256\':\'' + panel.panel_sha256 + '\',' +
+      '\'mission_candidate_sha256\':\'' + panel.mission_candidate_sha256 + '\'' +
+      '})">Decline</button>';
+  }
+
+  html += '<button onclick="window.RigRelay.dispatchIntent(\'ralph_rescan\')">Rescan</button>' +
+    '</div>';
+
+  // Hashes (compact)
+  if (panel.panel_sha256) {
+    html += '<div style="margin-top:4px;font-size:var(--font-size-xs);color:var(--text-muted);font-family:monospace">' +
+      'SHA: ' + panel.panel_sha256.substring(0, 12) + '...</div>';
+  }
+
+  var cardStatus = approval === 'approved' ? 'ok' : approval === 'declined' ? 'error' :
+    (panel.decision_required ? 'warn' : '');
+  renderStandardCard(container, 'Ralph Scout', html, 'ralphScout', cardStatus);
+});
+
+function renderRalphExpanded(container, panel, ralph) {
+  const top = panel.top_candidate;
+  const mission = panel.mission_candidate;
+  const summary = panel.summary || {};
+
+  var html = '<div style="max-width:700px;margin:0 auto">';
+
+  html += '<h3 style="margin:0 0 12px 0">Ralph Scout — Full Report</h3>';
+  html += '<table class="kv-table">' +
+    row('Status', escapeHtml(panel.status)) +
+    row('Candidates', String(summary.candidate_count || 0)) +
+    row('Top Score', String(summary.top_score || 0)) +
+    row('Input Source', escapeHtml(summary.input_source || 'unknown')) +
+    row('Approval', escapeHtml(panel.approval_state || 'not_requested')) +
+    row('Decision Req.', panel.decision_required ? 'Yes' : 'No') +
+    row('Policy', escapeHtml(summary.ranking_policy_version || '')) +
+    '</table>';
+
+  if (top) {
+    html += '<h4 style="margin:16px 0 8px 0">Top Candidate</h4>';
+    html += '<table class="kv-table">' +
+      row('ID', escapeHtml(top.candidate_id)) +
+      row('Title', escapeHtml(top.title)) +
+      row('Kind', escapeHtml(top.source_kind)) +
+      row('Severity', escapeHtml(top.severity)) +
+      row('Score', top.score_components
+        ? 'sev=' + top.score_components.severity_weight.toFixed(0) +
+          ' kind=' + top.score_components.kind_weight.toFixed(0) +
+          ' ev=' + top.score_components.evidence_bonus.toFixed(0) +
+          ' total=' + top.score_components.total_score.toFixed(0)
+        : String(top.score)) +
+      row('Source ID', escapeHtml(top.source_finding_id || '')) +
+      row('Reason', escapeHtml((top.reason || '').substring(0, 120))) +
+      '</table>';
+  }
+
+  if (mission) {
+    html += '<h4 style="margin:16px 0 8px 0">Mission Candidate</h4>';
+    html += '<table class="kv-table">' +
+      row('Mission', escapeHtml(mission.mission_kind)) +
+      row('Allowed', (mission.allowed_actions || []).join(', ')) +
+      row('Forbidden', (mission.forbidden_actions || []).slice(0, 3).join(', ')) +
+      row('Approval', mission.requires_approval ? 'Required' : 'Not required') +
+      row('Tier', 'Tier ' + String(mission.required_autonomy_tier || 0)) +
+      '</table>';
+  }
+
+  if (panel.ranked_candidates && panel.ranked_candidates.length > 1) {
+    html += '<h4 style="margin:16px 0 8px 0">All Candidates (' + panel.ranked_candidates.length + ')</h4>';
+    panel.ranked_candidates.forEach(function(c, i) {
+      html += '<div style="font-size:var(--font-size-sm);margin-bottom:4px">' +
+        (i + 1) + '. [' + escapeHtml(c.severity) + '] ' + escapeHtml(c.title.substring(0, 60)) +
+        ' (' + c.score.toFixed(0) + ')</div>';
+    });
+  }
+
+  html += '<h4 style="margin:16px 0 8px 0">Hashes</h4>';
+  html += '<div style="font-family:monospace;font-size:var(--font-size-xs);color:var(--text-muted);word-break:break-all">' +
+    'panel: ' + (panel.panel_sha256 || '—') + '<br>' +
+    'mission: ' + (panel.mission_candidate_sha256 || '—') + '<br>' +
+    'input: ' + (panel.input_snapshot_sha256 || '—') +
+    '</div>';
+
+  html += '</div>';
+
+  renderExpandedWidget(container, 'Ralph Scout — Full Report', html);
+}

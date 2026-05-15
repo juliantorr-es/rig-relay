@@ -4,79 +4,31 @@ import asyncio
 from collections.abc import AsyncGenerator, Callable, Generator
 import contextlib
 import copy
-import hashlib
 import os
 from pathlib import Path
 import threading
 from threading import Thread
 import time
-from typing import TYPE_CHECKING, Any, Literal
-from uuid import uuid4
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry import trace
 from pydantic import BaseModel
 
-from rig_relay.core.agents.manager import AgentManager
 from rig_relay.core.agents.models import AgentProfile, BuiltinAgentName
-from rig_relay.core.config import ModelConfig, ProviderConfig, VibeConfig
+from rig_relay.core.config import VibeConfig
 from rig_relay.core.guard import DirtyGuardFailurePolicy, GuardCaptureReason, get_guard
-from rig_relay.core.hooks.manager import HooksManager
 from rig_relay.core.hooks.models import HookConfigResult, HookType, HookUserMessage
 from rig_relay.core.llm.backend.factory import BACKEND_FACTORY
-from rig_relay.core.llm.format import (
-    APIToolFormatHandler,
-    FailedToolCall,
-    ResolvedMessage,
-    ResolvedToolCall,
-)
+from rig_relay.core.llm.format import FailedToolCall, ResolvedMessage, ResolvedToolCall
 from rig_relay.core.llm.types import BackendLike
 from rig_relay.core.logger import logger
-from rig_relay.core.middleware import (
-    CHAT_AGENT_EXIT,
-    CHAT_AGENT_REMINDER,
-    PLAN_AGENT_EXIT,
-    AutoCompactMiddleware,
-    ContextWarningMiddleware,
-    ConversationContext,
-    MiddlewareAction,
-    MiddlewarePipeline,
-    MiddlewareResult,
-    PriceLimitMiddleware,
-    ReadOnlyAgentMiddleware,
-    ResetReason,
-    TurnLimitMiddleware,
-    make_plan_agent_reminder,
-)
-from rig_relay.core.paths._vibe_home import (
-    SESSIONS_ROOT,
-    resolve_evidence_root_resolution,
-)
-from rig_relay.core.plan_session import PlanSession
+from rig_relay.core.middleware import MiddlewareAction, ResetReason
 from rig_relay.core.prompts import UtilityPrompt
-from rig_relay.core.rewind import RewindManager
-from rig_relay.core.scratchpad import init_scratchpad
 from rig_relay.core.session.session_id import extract_suffix, generate_session_id
-from rig_relay.core.session.session_logger import SessionLogger
 from rig_relay.core.session.session_migration import migrate_sessions_entrypoint
 from rig_relay.core.skills.manager import SkillManager
 from rig_relay.core.system_prompt import get_universal_system_prompt
-from rig_relay.core.telemetry.build_metadata import build_request_metadata
-from rig_relay.core.telemetry.local import dump_canonical_json
-from rig_relay.core.telemetry.manifest import write_session_manifest
-from rig_relay.core.telemetry.receipts import write_session_receipts
-from rig_relay.core.telemetry.runtime import collect_startup_provenance
-from rig_relay.core.telemetry.send import TelemetryClient
-from rig_relay.core.telemetry.tool_contract import (
-    ToolDeterminismClass,
-    ToolMutationClass,
-    ToolOutputKind,
-)
-from rig_relay.core.telemetry.types import (
-    EntrypointMetadata,
-    TelemetryCallType,
-    TelemetryRequestMetadata,
-)
-from rig_relay.core.terminal_detect import detect_terminal
+from rig_relay.core.telemetry.types import EntrypointMetadata
 
 _TRUNCATION_PROMPT_BYTES = 64_000
 from rig_relay.context.compiler import ContextCompiler
@@ -95,16 +47,8 @@ from rig_relay.core.tools.base import (
 )
 from rig_relay.core.tools.connectors import ConnectorRegistry, connectors_enabled
 from rig_relay.core.tools.manager import ToolManager
-from rig_relay.core.tools.mcp import MCPRegistry
-from rig_relay.core.tools.mcp_sampling import MCPSamplingHandler
-from rig_relay.core.tools.permissions import (
-    ApprovedRule,
-    PermissionContext,
-    RequiredPermission,
-)
-from rig_relay.core.tools.utils import wildcard_match
-from rig_relay.core.tracing import agent_span, set_tool_result, tool_span
-from rig_relay.core.trusted_folders import has_agents_md_file
+from rig_relay.core.tools.permissions import ApprovedRule, RequiredPermission
+from rig_relay.core.tracing import agent_span, tool_span
 from rig_relay.core.types import (
     AgentProfileChangedEvent,
     AgentStats,
@@ -112,14 +56,7 @@ from rig_relay.core.types import (
     ApprovalResponse,
     AssistantEvent,
     BaseEvent,
-    CompactEndEvent,
-    CompactStartEvent,
-    ContextTooLongError,
-    LLMChunk,
     LLMMessage,
-    LLMUsage,
-    MessageList,
-    RateLimitError,
     ReasoningEvent,
     Role,
     ToolCall,
@@ -132,10 +69,8 @@ from rig_relay.core.types import (
 from rig_relay.core.utils import (
     CANCELLATION_TAG,
     TOOL_ERROR_TAG,
-    VIBE_STOP_EVENT_TAG,
     CancellationReason,
     get_server_url_from_api_base,
-    get_user_agent,
     get_user_cancellation_message,
     is_user_cancellation_event,
 )
@@ -157,22 +92,42 @@ if TYPE_CHECKING:
 
 
 
-from rig_relay.core._agent_helpers import (
-    _is_context_too_long_error,
-    _is_non_retryable_error,
-    _should_raise_rate_limit_error,
-    requires_init,
-)
+from rig_relay.core._agent_helpers import requires_init
+from rig_relay.core._agent_init import InitHelpersMixin
 from rig_relay.core._agent_models import ToolDecision, ToolExecutionResponse
+from rig_relay.core._context_envelope import ContextEnvelopeMixin
 from rig_relay.core._errors import (
     AgentLoopError,
     AgentLoopLLMResponseError,
     TeleportError,
 )
+from rig_relay.core._governance import GovernanceMixin
+from rig_relay.core._llm_call import LLMCallMixin
+from rig_relay.core._middleware_metadata import MiddlewareMetadataMixin
+from rig_relay.core._patch_gating import PatchGatingMixin
+from rig_relay.core._session_lifecycle import SessionLifecycleMixin
+from rig_relay.core._telemetry import TelemetryMixin
+from rig_relay.core._tool_response import ToolResponseMixin
+from rig_relay.core.conversation_turn import (
+    ConversationTurnRuntime,
+    TurnOutcome,
+    TurnPhase,
+)
+from rig_relay.core.runtime_state import AgentRuntimeState, ReadinessState
 
 
-class AgentLoop:
-    def __init__(  # noqa: PLR0913, PLR0915
+class AgentLoop(
+    LLMCallMixin,
+    ToolResponseMixin,
+    PatchGatingMixin,
+    InitHelpersMixin,
+    SessionLifecycleMixin,
+    GovernanceMixin,
+    TelemetryMixin,
+    ContextEnvelopeMixin,
+    MiddlewareMetadataMixin,
+):
+    def __init__(
         self,
         config: VibeConfig,
         *,
@@ -187,9 +142,12 @@ class AgentLoop:
         defer_heavy_init: bool = False,
         headless: bool = False,
         hook_config_result: HookConfigResult | None = None,
+        workspace_root: Path | None = None,
     ) -> None:
         self._base_config = config
         self._headless = headless
+        self._workspace_root = (workspace_root or Path.cwd()).resolve()
+        self._worktree_id: str | None = None
 
         self._defer_heavy_init = defer_heavy_init
         self._deferred_init_thread: threading.Thread | None = None
@@ -198,59 +156,16 @@ class AgentLoop:
         self._init_start_time = time.monotonic()
         self._init_duration_ms: int | None = None
 
-        self.mcp_registry = MCPRegistry()
-        self.connector_registry = self._create_connector_registry()
-        self.agent_manager = AgentManager(
-            lambda: self._base_config,
-            initial_agent=agent_name,
-            allow_subagent=is_subagent,
-        )
-        self.tool_manager = ToolManager(
-            lambda: self.config,
-            mcp_registry=self.mcp_registry,
-            connector_registry=self.connector_registry,
-            defer_mcp=defer_heavy_init,
-        )
-        self.skill_manager = SkillManager(lambda: self.config)
         self.message_observer = message_observer
         self._max_turns = max_turns
         self._max_price = max_price
-        self._plan_session = PlanSession()
-
-        self.format_handler = APIToolFormatHandler()
-
         self.backend_factory = lambda: backend or self._select_backend()
         self.backend = self.backend_factory()
-        self._sampling_handler = MCPSamplingHandler(
-            backend_getter=lambda: self.backend,
-            config_getter=lambda: self.config,
-            metadata_getter=lambda: self._build_backend_metadata(
-                call_type="secondary_call"
-            ).model_dump(exclude_none=True),
-            extra_headers_getter=self._get_extra_headers,
-        )
-
         self.enable_streaming = enable_streaming
-        self.middleware_pipeline = MiddlewarePipeline()
-        self._setup_middleware()
 
-        self.session_id = generate_session_id()
-        self.parent_session_id: str | None = None
-        self.scratchpad_dir = (
-            init_scratchpad(self.session_id) if not is_subagent else None
+        self._init_core_managers(
+            config, agent_name, is_subagent, defer_heavy_init
         )
-
-        system_prompt = get_universal_system_prompt(
-            self.tool_manager,
-            self.config,
-            self.skill_manager,
-            self.agent_manager,
-            include_git_status=not defer_heavy_init,
-            scratchpad_dir=self.scratchpad_dir,
-            headless=self._headless,
-        )
-        system_message = LLMMessage(role=Role.system, content=system_prompt)
-        self.messages = MessageList(initial=[system_message], observer=message_observer)
 
         self.stats = AgentStats()
         self.approval_callback: ApprovalCallback | None = None
@@ -265,66 +180,20 @@ class AgentLoop:
             pass
 
         self._current_user_message_id: str | None = None
+        self._current_turn: ConversationTurnRuntime | None = None
         self._current_context_envelope: ContextEnvelopeReceipt | None = None
         self._is_user_prompt_call: bool = False
 
-        # Context compiler: builds prompt envelope from workspace state
-        self._repo_index: RepoContextIndex | None = None
-        self._context_compiler: ContextCompiler | None = None
-        if not defer_heavy_init:
-            try:
-                repo_index = RepoContextIndex(workspace_root=Path.cwd())
-                if repo_index.is_available:
-                    repo_index.populate()
-                    self._repo_index = repo_index
-            except Exception:
-                self._repo_index = None
-            self._context_compiler = ContextCompiler(
-                session_id=self.session_id,
-                workspace_root=Path.cwd(),
-                receipt_store=None,
-                repo_index=self._repo_index,
-            )
+        self._init_ambient_context_packet()
+        self._init_context_compiler(defer_heavy_init)
 
         self._session_rules: list[ApprovedRule] = []
         self._approval_lock = asyncio.Lock()
 
-        self.telemetry_client = TelemetryClient(
-            config_getter=lambda: self.config,
-            session_id_getter=lambda: self.session_id,
-            parent_session_id_getter=lambda: self.parent_session_id,
-            entrypoint_metadata_getter=lambda: self.entrypoint_metadata,
+        self._init_telemetry_and_guard(
+            config, entrypoint_metadata, is_subagent, hook_config_result
         )
-        self.session_logger = SessionLogger(config.session_logging, self.session_id)
 
-        # ── dirty-file guard: snapshot protected files before any tool call ──
-        try:
-            policy = (
-                DirtyGuardFailurePolicy.FAIL_CLOSED_FOR_MUTATION
-                if is_subagent
-                else DirtyGuardFailurePolicy.WARN_ALLOW
-            )
-            reason = (
-                GuardCaptureReason.FORK_CHILD
-                if is_subagent
-                else GuardCaptureReason.AGENT_LOOP_INIT
-            )
-            get_guard().capture(reason=reason, failure_policy=policy)
-        except Exception:
-            pass
-
-        self._hook_config_result = hook_config_result
-        self._hooks_manager = (
-            HooksManager(hook_config_result.hooks) if hook_config_result else None
-        )
-        self.hook_config_issues = (
-            hook_config_result.issues if hook_config_result else []
-        )
-        self.rewind_manager = RewindManager(
-            messages=self.messages,
-            save_messages=self._save_messages,
-            reset_session=self._reset_session,
-        )
         self._teleport_service: TeleportService | None = None
 
         Thread(
@@ -379,16 +248,20 @@ class AgentLoop:
             # Initialize context compiler (including DuckDB repo index)
             if self._context_compiler is None:
                 try:
-                    repo_index = RepoContextIndex(workspace_root=Path.cwd())
+                    repo_index = RepoContextIndex(workspace_root=self._workspace_root)
                     if repo_index.is_available:
                         repo_index.populate()
                         self._repo_index = repo_index
                 except Exception:
                     self._repo_index = None
+                from rig_relay.evidence.receipt_store import FilesystemReceiptStore
+
                 self._context_compiler = ContextCompiler(
                     session_id=self.session_id,
-                    workspace_root=Path.cwd(),
-                    receipt_store=None,
+                    workspace_root=self._workspace_root,
+                    receipt_store=FilesystemReceiptStore(
+                        self._workspace_root / ".rig" / "relay" / "receipts"
+                    ),
                     repo_index=self._repo_index,
                 )
 
@@ -426,127 +299,59 @@ class AgentLoop:
     def bypass_tool_permissions(self) -> bool:
         return self.config.bypass_tool_permissions
 
+    def build_runtime_state(self) -> AgentRuntimeState:
+        """Build a structured snapshot of current AgentLoop runtime state."""
+        readiness = ReadinessState.UNKNOWN
+        if self._init_error is not None:
+            readiness = ReadinessState.FAILED
+        elif self.is_initialized:
+            readiness = ReadinessState.READY
+        elif self._defer_heavy_init:
+            readiness = ReadinessState.INITIALIZING
+
+        return AgentRuntimeState(
+            session_id=self.session_id,
+            parent_session_id=self.parent_session_id,
+            agent_profile_name=self.agent_profile.name,
+            workspace_root=str(self._workspace_root),
+            current_turn_id=self._current_user_message_id,
+            current_context_receipt_id=(
+                self._current_context_envelope.envelope_id
+                if self._current_context_envelope
+                else None
+            ),
+            is_user_prompt_call=self._is_user_prompt_call,
+            readiness=readiness,
+            init_duration_ms=self._init_duration_ms,
+            init_error=str(self._init_error) if self._init_error else None,
+            deferred_init=self._defer_heavy_init,
+            max_turns=self._max_turns,
+            max_price=self._max_price,
+            session_rules_count=len(self._session_rules),
+            bypass_tool_permissions=self.bypass_tool_permissions,
+            enable_local_observability=self.config.enable_local_observability,
+            enable_streaming=self.enable_streaming,
+            steps=self.stats.steps,
+            context_tokens=self.stats.context_tokens,
+            tool_calls_succeeded=self.stats.tool_calls_succeeded,
+            tool_calls_failed=self.stats.tool_calls_failed,
+            tool_calls_agreed=self.stats.tool_calls_agreed,
+            tool_calls_rejected=self.stats.tool_calls_rejected,
+            last_turn_duration=self.stats.last_turn_duration,
+            input_price_per_million=self.stats.input_price_per_million,
+            output_price_per_million=self.stats.output_price_per_million,
+            active_model=(
+                self.config.active_model
+                if hasattr(self.config, 'active_model')
+                else ""
+            ),
+            active_provider=self.config.get_active_provider().name,
+            context_packet_available=self._context_packet is not None,
+        )
+
     def refresh_config(self) -> None:
         self._base_config = VibeConfig.load()
         self.agent_manager.invalidate_config()
-
-    def set_approval_callback(self, callback: ApprovalCallback) -> None:
-        self.approval_callback = callback
-
-    def set_user_input_callback(self, callback: UserInputCallback) -> None:
-        self.user_input_callback = callback
-
-    def set_tool_permission(
-        self, tool_name: str, permission: ToolPermission, save_permanently: bool = False
-    ) -> None:
-        if save_permanently:
-            VibeConfig.save_updates({
-                "tools": {tool_name: {"permission": permission.value}}
-            })
-
-        if tool_name not in self.config.tools:
-            self.config.tools[tool_name] = {}
-
-        self.config.tools[tool_name]["permission"] = permission.value
-
-    def _add_session_rule(self, rule: ApprovedRule) -> None:
-        self._session_rules.append(rule)
-
-    def _is_permission_covered(self, tool_name: str, rp: RequiredPermission) -> bool:
-        return any(
-            rule.tool_name == tool_name
-            and rule.scope == rp.scope
-            and wildcard_match(rp.invocation_pattern, rule.session_pattern)
-            for rule in self._session_rules
-        )
-
-    def approve_always(
-        self,
-        tool_name: str,
-        required_permissions: list[RequiredPermission] | None,
-        save_permanently: bool = False,
-    ) -> None:
-        """Handle 'Allow Always' approval: add session rules or set tool-level permission."""
-        if required_permissions:
-            for rp in required_permissions:
-                self._add_session_rule(
-                    ApprovedRule(
-                        tool_name=tool_name,
-                        scope=rp.scope,
-                        session_pattern=rp.session_pattern,
-                    )
-                )
-            if save_permanently:
-                self.config.add_tool_allowlist_patterns(
-                    tool_name, [rp.session_pattern for rp in required_permissions]
-                )
-        else:
-            self.set_tool_permission(
-                tool_name, ToolPermission.ALWAYS, save_permanently=save_permanently
-            )
-
-    def emit_new_session_telemetry(self) -> None:
-        entrypoint = (
-            self.entrypoint_metadata.agent_entrypoint
-            if self.entrypoint_metadata
-            else "unknown"
-        )
-        client_name = (
-            self.entrypoint_metadata.client_name if self.entrypoint_metadata else None
-        )
-        client_version = (
-            self.entrypoint_metadata.client_version
-            if self.entrypoint_metadata
-            else None
-        )
-        has_agents_md = has_agents_md_file(Path.cwd())
-        nb_skills = len(self.skill_manager.available_skills)
-        nb_mcp_servers = len(self.config.mcp_servers)
-        nb_models = len(self.config.models)
-
-        terminal_emulator = None
-        if entrypoint == "cli":
-            terminal_emulator = detect_terminal().value
-
-        self.telemetry_client.send_new_session(
-            has_agents_md=has_agents_md,
-            nb_skills=nb_skills,
-            nb_mcp_servers=nb_mcp_servers,
-            nb_models=nb_models,
-            entrypoint=entrypoint,
-            client_name=client_name,
-            client_version=client_version,
-            terminal_emulator=terminal_emulator,
-            evidence_root_mode=resolve_evidence_root_resolution().mode.value,
-            evidence_root_source=resolve_evidence_root_resolution().source,
-        )
-
-        # Log runtime provenance at startup for debugging stale installs
-        provenance = collect_startup_provenance()
-        logger.info(
-            "session_id=%s package_path=%s python=%s git_head=%s version=%s",
-            self.session_id,
-            provenance.get("package_path"),
-            provenance.get("python_executable"),
-            provenance.get("git_head"),
-            provenance.get("installed_version"),
-        )
-
-    def emit_ready_telemetry(self, init_duration_ms: int) -> None:
-        self.telemetry_client.send_ready(init_duration_ms=init_duration_ms)
-
-    def emit_session_closed_telemetry(self) -> None:
-        self.telemetry_client.send_session_closed()
-        try:
-            session_path = SESSIONS_ROOT.path / self.session_id
-            write_session_manifest(session_path, self.session_id)
-            write_session_receipts(session_path, self.session_id)
-        except Exception as e:
-            logger.warning(
-                "Failed to write evidence manifest/receipts for session %s: %s",
-                self.session_id,
-                e,
-            )
 
     async def aclose(self) -> None:
         with contextlib.suppress(Exception):
@@ -623,6 +428,7 @@ class AgentLoop:
                     yield event
             finally:
                 self._current_context_envelope = previous_context_envelope
+                self._current_turn = None
 
     @property
     def teleport_service(self) -> TeleportService:
@@ -695,142 +501,15 @@ class AgentLoop:
             telemetry_tracker.send_failure_if_needed()
             self._teleport_service = None
 
-    def _setup_middleware(self) -> None:
-        """Configure middleware pipeline for this conversation."""
-        self.middleware_pipeline.clear()
-
-        if self._max_turns is not None:
-            self.middleware_pipeline.add(TurnLimitMiddleware(self._max_turns))
-
-        if self._max_price is not None:
-            self.middleware_pipeline.add(PriceLimitMiddleware(self._max_price))
-
-        self.middleware_pipeline.add(AutoCompactMiddleware())
-        if self.config.context_warnings:
-            self.middleware_pipeline.add(ContextWarningMiddleware(0.5))
-
-        self.middleware_pipeline.add(
-            ReadOnlyAgentMiddleware(
-                lambda: self.agent_profile,
-                BuiltinAgentName.PLAN,
-                lambda: make_plan_agent_reminder(
-                    self._plan_session.plan_file_path_str,
-                    has_ask_user_question="ask_user_question"
-                    in self.tool_manager.available_tools,
-                    has_exit_plan_mode="exit_plan_mode"
-                    in self.tool_manager.available_tools,
-                ),
-                PLAN_AGENT_EXIT,
-            )
-        )
-        self.middleware_pipeline.add(
-            ReadOnlyAgentMiddleware(
-                lambda: self.agent_profile,
-                BuiltinAgentName.CHAT,
-                CHAT_AGENT_REMINDER,
-                CHAT_AGENT_EXIT,
-            )
-        )
-
-    async def _handle_middleware_result(
-        self, result: MiddlewareResult
-    ) -> AsyncGenerator[BaseEvent]:
-        match result.action:
-            case MiddlewareAction.STOP:
-                yield AssistantEvent(
-                    content=f"<{VIBE_STOP_EVENT_TAG}>{result.reason}</{VIBE_STOP_EVENT_TAG}>",
-                    stopped_by_middleware=True,
-                )
-
-            case MiddlewareAction.INJECT_MESSAGE:
-                if result.message:
-                    injected_message = LLMMessage(
-                        role=Role.user, content=result.message, injected=True
-                    )
-                    self.messages.append(injected_message)
-
-            case MiddlewareAction.COMPACT:
-                old_tokens = result.metadata.get(
-                    "old_tokens", self.stats.context_tokens
-                )
-                threshold = result.metadata.get(
-                    "threshold", self.config.get_active_model().auto_compact_threshold
-                )
-                old_session_id = self.session_id
-                old_parent_session_id = self.parent_session_id
-                tool_call_id = str(uuid4())
-
-                yield CompactStartEvent(
-                    tool_call_id=tool_call_id,
-                    current_context_tokens=old_tokens,
-                    threshold=threshold,
-                )
-
-                compact_status: Literal["success", "failure", "cancelled"] = "success"
-                new_tokens = self.stats.context_tokens
-                try:
-                    summary = await self.compact()
-                except asyncio.CancelledError:
-                    compact_status = "cancelled"
-                    raise
-                except Exception:
-                    compact_status = "failure"
-                    raise
-                finally:
-                    new_tokens = self.stats.context_tokens
-                    self.telemetry_client.send_auto_compact_triggered(
-                        nb_context_tokens_before=old_tokens,
-                        nb_context_tokens_after=new_tokens,
-                        auto_compact_threshold=threshold,
-                        status=compact_status,
-                        session_id=old_session_id,
-                        parent_session_id=old_parent_session_id,
-                    )
-
-                yield CompactEndEvent(
-                    tool_call_id=tool_call_id,
-                    old_context_tokens=old_tokens,
-                    new_context_tokens=new_tokens,
-                    summary_length=len(summary),
-                    old_session_id=old_session_id,
-                    new_session_id=self.session_id,
-                )
-
-            case MiddlewareAction.CONTINUE:
-                pass
-
-    def _get_context(self) -> ConversationContext:
-        return ConversationContext(
-            messages=self.messages, stats=self.stats, config=self.config
-        )
-
-    def _build_backend_metadata(
-        self, call_type: TelemetryCallType | None = None
-    ) -> TelemetryRequestMetadata:
-        return build_request_metadata(
-            entrypoint_metadata=self.entrypoint_metadata,
-            session_id=self.session_id,
-            parent_session_id=self.parent_session_id,
-            call_type=(
-                call_type
-                if call_type is not None
-                else ("main_call" if self._is_user_prompt_call else "secondary_call")
-            ),
-            message_id=self._current_user_message_id,
-        )
-
-    def _get_extra_headers(
-        self, provider: ProviderConfig | None = None
-    ) -> dict[str, str]:
-        provider = self.config.get_active_provider() if provider is None else provider
-        headers: dict[str, str] = {**provider.extra_headers}
-        headers["user-agent"] = get_user_agent(provider.backend)
-        headers["x-affinity"] = self.session_id
-        return headers
-
     async def _conversation_loop(
         self, user_msg: str, client_message_id: str | None = None
     ) -> AsyncGenerator[BaseEvent]:
+        turn = ConversationTurnRuntime(
+            session_id=self.session_id,
+            user_message_id=client_message_id,
+            user_message_text=user_msg,
+        )
+        self._current_turn = turn
         user_message = LLMMessage(
             role=Role.user, content=user_msg, message_id=client_message_id
         )
@@ -866,11 +545,14 @@ class AgentLoop:
                     self._is_user_prompt_call = True
                     first_llm_turn = False
 
-                    # Build context envelope on the first LLM turn.
-                    # The envelope enriches the prompt with workspace context
-                    # (AGENTS.md, git state, dirty files, relevant tests, etc.)
-                    # and establishes the symbol manifest for tool call expansion.
+                    turn.advance(TurnPhase.CONTEXT_BUILDING)
                     await self._build_context_envelope(user_msg)
+                    if self._current_context_envelope:
+                        turn.context_envelope_id = self._current_context_envelope.envelope_id
+                        turn.context_section_count = self._current_context_envelope.section_count
+                    turn.advance(TurnPhase.CONTEXT_READY)
+
+                turn.advance(TurnPhase.MODEL_CALLING)
 
                 async for event in self._perform_llm_turn():
                     if is_user_cancellation_event(event):
@@ -883,6 +565,8 @@ class AgentLoop:
                 should_break_loop = last_message.role != Role.tool
 
                 if user_cancelled:
+                    turn.advance(TurnPhase.FINALIZING)
+                    turn.mark_outcome(TurnOutcome.USER_CANCELLED, "user cancelled")
                     return
 
                 if should_break_loop and self._hooks_manager:
@@ -904,6 +588,9 @@ class AgentLoop:
                         )
                         should_break_loop = False
 
+            turn.advance(TurnPhase.FINALIZING)
+            turn.mark_outcome(TurnOutcome.SUCCESS)
+
         finally:
             await self._save_messages()
 
@@ -921,12 +608,23 @@ class AgentLoop:
         parsed = self.format_handler.parse_message(last_message)
         resolved = self.format_handler.resolve_tool_calls(parsed, self.tool_manager)
 
+        if (turn := getattr(self, '_current_turn', None)) is not None:
+            turn.advance(TurnPhase.ASSISTANT_PARSED)
+            if last_message.content:
+                turn.assistant_content_length = len(last_message.content)
+
         if not resolved.tool_calls and not resolved.failed_calls:
             return
+
+        if (turn := getattr(self, '_current_turn', None)) is not None:
+            turn.tool_call_count = len(resolved.tool_calls) + len(resolved.failed_calls)
+            turn.advance(TurnPhase.TOOL_CALLS_RUNNING)
 
         profile_before = self.agent_profile.name
         async for event in self._handle_tool_calls(resolved):
             yield event
+        if (turn := getattr(self, '_current_turn', None)) is not None:
+            turn.advance(TurnPhase.TOOL_CALLS_COMPLETED)
         if self.agent_profile.name != profile_before:
             yield AgentProfileChangedEvent(agent_name=self.agent_profile.name)
 
@@ -1032,7 +730,41 @@ class AgentLoop:
             }
         return args
 
-    async def _execute_tool_call(  # noqa: PLR0912, PLR0914, PLR0915
+    def _check_tool_result_cache(
+        self, tool_call: ResolvedToolCall
+    ) -> ToolResultEvent | None:
+        """Check the deterministic tool result cache. Returns cached result event or None."""
+        determinism_cls = getattr(
+            tool_call.tool_class, "determinism_class", None
+        )
+        if determinism_cls is None:
+            return None
+
+        from rig_relay.core.tools.cache import get_cached_result
+
+        determinism_str = str(determinism_cls.value)
+        if determinism_str not in {"DETERMINISTIC_PURE", "DETERMINISTIC_REPO_STATE"}:
+            return None
+
+        cached = get_cached_result(
+            tool_name=tool_call.tool_name,
+            args_dict=tool_call.args_dict,
+            determinism_class=determinism_str,
+        )
+        if cached is None:
+            return None
+
+        _args_model, _result_model_cls = tool_call.tool_class._get_type_hints()
+        result_model = _result_model_cls(**cached)
+        return ToolResultEvent(
+            tool_name=tool_call.tool_name,
+            tool_class=tool_call.tool_class,
+            result=result_model,
+            cached=True,
+            tool_call_id=tool_call.call_id,
+        )
+
+    async def _execute_tool_call(
         self, span: trace.Span, tool_call: ResolvedToolCall
     ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
         try:
@@ -1042,38 +774,27 @@ class AgentLoop:
             yield self._tool_failure_event(tool_call, error_msg, span=span)
             return
 
-        # ── Tool result cache check ────────────────────────────────
-        determinism_cls = getattr(
-            tool_call.tool_class, "determinism_class", None
-        )
-        if determinism_cls is not None:
-            from rig_relay.core.tools.cache import get_cached_result
-
-            determinism_str = str(determinism_cls.value)
-            if determinism_str in {"DETERMINISTIC_PURE", "DETERMINISTIC_REPO_STATE"}:
-                cached = get_cached_result(
-                    tool_name=tool_call.tool_name,
-                    args_dict=tool_call.args_dict,
-                    determinism_class=determinism_str,
-                )
-                if cached is not None:
-                    _args_model, _result_model_cls = tool_call.tool_class._get_type_hints()
-                    result_model = _result_model_cls(**cached)
-                    yield ToolResultEvent(
-                        tool_name=tool_call.tool_name,
-                        tool_class=tool_call.tool_class,
-                        result=result_model,
-                        cached=True,
-                        tool_call_id=tool_call.call_id,
-                    )
-                    self.stats.tool_calls_succeeded += 1
-                    return
+        cached_result = self._check_tool_result_cache(tool_call)
+        if cached_result is not None:
+            yield cached_result
+            self.stats.tool_calls_succeeded += 1
+            return
 
         decision: ToolDecision | None = None
         try:
             decision = await self._should_execute_tool(
                 tool_instance, tool_call.validated_args, tool_call.call_id
             )
+
+            # ── Patch proposal gating ─────────────────────────────
+            if decision.verdict == ToolExecutionResponse.EXECUTE:
+                gating = self._check_patch_proposal_gating(
+                    tool_call, tool_instance
+                )
+                if gating:
+                    yield gating
+                    self.stats.tool_calls_rejected += 1
+                    return
 
             if decision.verdict == ToolExecutionResponse.SKIP:
                 self.stats.tool_calls_rejected += 1
@@ -1089,6 +810,9 @@ class AgentLoop:
                     skip_reason=skip_reason,
                     cancelled=f"<{CANCELLATION_TAG}>" in skip_reason,
                     tool_call_id=tool_call.call_id,
+                )
+                self._emit_context_observation(
+                    tool_call, "skipped", tool_call.args_dict, blocked_by_policy=False
                 )
                 self._handle_tool_response(
                     tool_call, skip_reason, "skipped", decision, span=span
@@ -1168,6 +892,9 @@ class AgentLoop:
                     )
 
             # Store in cache if deterministic and read-only
+            determinism_cls = getattr(
+                tool_call.tool_class, "determinism_class", None
+            )
             if determinism_cls is not None:
                 from rig_relay.core.tools.cache import set_cached_result
 
@@ -1193,11 +920,19 @@ class AgentLoop:
             )
             self.stats.tool_calls_succeeded += 1
 
+            # ── Context observation telemetry ───────────────────
+            self._emit_context_observation(
+                tool_call, "succeeded", tool_call.args_dict, blocked_by_policy=False
+            )
+
         except asyncio.CancelledError:
             cancel = str(
                 get_user_cancellation_message(CancellationReason.TOOL_INTERRUPTED)
             )
             self.stats.tool_calls_failed += 1
+            self._emit_context_observation(
+                tool_call, "failed", tool_call.args_dict, blocked_by_policy=False
+            )
             yield self._tool_failure_event(
                 tool_call, cancel, decision, cancelled=True, span=span
             )
@@ -1288,584 +1023,44 @@ class AgentLoop:
                 with contextlib.suppress(asyncio.CancelledError):
                     await monitor
 
-    def _handle_tool_response(
-        self,
-        tool_call: ResolvedToolCall,
-        text: str,
-        status: Literal["success", "failure", "skipped"],
-        decision: ToolDecision | None = None,
-        result: dict[str, Any] | None = None,
-        span: trace.Span | None = None,
-        duration_ms: float | None = None,
-    ) -> None:
-        from rig_relay.core.telemetry.artifacts import (
-            ToolOutputArtifactWriter,
-            should_artifact_tool_result,
-        )
-
-        # Self-Dogfood Tool Evidence calculation
-        input_json = dump_canonical_json(tool_call.args_dict)
-        input_sha256 = hashlib.sha256(input_json.encode("utf-8")).hexdigest()
-        output_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-        output_kind = ToolOutputKind.INLINE
-        if status == "failure":
-            output_kind = ToolOutputKind.ERROR
-        elif not text:
-            output_kind = ToolOutputKind.EMPTY
-        elif should_artifact_tool_result(text):
-            output_kind = ToolOutputKind.ARTIFACTED
-
-        display_text = text
-        if should_artifact_tool_result(text):
-            writer = ToolOutputArtifactWriter(self.session_id)
-            artifact = writer.write_artifact(
-                tool_name=tool_call.tool_name,
-                raw_output=text,
-                sequence=len(self.messages),
-            )
-            display_text = artifact.prompt_excerpt or ""
-            session_root = SESSIONS_ROOT.path / self.session_id
-            artifact_relative_path = (
-                Path(artifact.path).relative_to(session_root).as_posix()
-            )
-
-            self.telemetry_client.send_artifact_written(
-                session_id=self.session_id,
-                artifact_id=artifact.artifact_id,
-                artifact_path=artifact_relative_path,
-                tool_name=artifact.tool_name,
-                raw_byte_size=artifact.byte_size,
-                prompt_visible_byte_size=len(display_text.encode("utf-8")),
-                payload_sha256=artifact.payload_sha256,
-                artifact_record_sha256=artifact.artifact_record_sha256,
-                truncated=artifact.truncated_for_prompt,
-                evidence_relative_path=artifact_relative_path,
-                evidence_sha256=artifact.artifact_record_sha256
-                or artifact.payload_sha256,
-            )
-
-        self.messages.append(
-            LLMMessage.model_validate(
-                self.format_handler.create_tool_response_message(
-                    tool_call, display_text
-                )
-            )
-        )
-
-        if span is not None:
-            set_tool_result(span, text)
-        self.telemetry_client.send_tool_call_finished(
-            tool_call=tool_call,
-            agent_profile_name=self.agent_profile.name,
-            model=self.config.active_model,
-            status=status,
-            decision=decision,
-            result=result,
-            message_id=self._current_user_message_id,
-            input_sha256=input_sha256,
-            output_sha256=output_sha256,
-            output_kind=output_kind,
-            mutation_class=getattr(
-                tool_call.tool_class, "mutation_class", ToolMutationClass.UNKNOWN
-            ),
-            determinism_class=getattr(
-                tool_call.tool_class, "determinism_class", ToolDeterminismClass.UNKNOWN
-            ),
-        )
-
-        # Emit reasoning trace (latency + byte metrics, no hidden CoT)
-        determinism_class_str = getattr(
-            tool_call.tool_class, "determinism_class", ToolDeterminismClass.UNKNOWN
-        )
-        mutation_class_str = getattr(
-            tool_call.tool_class, "mutation_class", ToolMutationClass.UNKNOWN
-        )
-        text_bytes = len(text.encode("utf-8"))
-        self.telemetry_client.send_tool_reasoning_trace(
-            session_id=self.session_id,
-            tool_name=tool_call.tool_name,
-            tool_call_id=tool_call.call_id,
-            message_id=self._current_user_message_id,
-            normalized_input_sha256=input_sha256,
-            tool_output_sha256=f"sha256:{output_sha256}",
-            tool_output_kind=output_kind.value,
-            output_kind_enum=output_kind,
-            latency_ms=duration_ms or 0.0,
-            input_bytes=len(input_json.encode("utf-8")),
-            output_bytes=text_bytes,
-            inline_output_bytes=text_bytes
-            if output_kind == ToolOutputKind.INLINE
-            else 0,
-            artifacted_output_bytes=text_bytes
-            if output_kind == ToolOutputKind.ARTIFACTED
-            else 0,
-            truncated=text_bytes > _TRUNCATION_PROMPT_BYTES,
-            determinism_class=str(determinism_class_str),
-            mutation_class=str(mutation_class_str),
-        )
-
-        self._capture_model_observation_for_tool_response(
-            tool_call, status, duration_ms
-        )
-
-    def _tool_failure_event(
-        self,
-        tool_call: ResolvedToolCall,
-        error_msg: str,
-        decision: ToolDecision | None = None,
-        cancelled: bool = False,
-        span: trace.Span | None = None,
-    ) -> ToolResultEvent:
-        """Create a ToolResultEvent for a failed tool and record the failure."""
-        self._handle_tool_response(tool_call, error_msg, "failure", decision, span=span)
-        return ToolResultEvent(
-            tool_name=tool_call.tool_name,
-            tool_class=tool_call.tool_class,
-            error=error_msg,
-            cancelled=cancelled,
-            tool_call_id=tool_call.call_id,
-        )
-
-    def _capture_model_observation_for_tool_response(
-        self,
-        tool_call: ResolvedToolCall,
-        status: Literal["success", "failure", "skipped"],
-        duration_ms: float | None = None,
-    ) -> None:
-        """Build and persist a content-light ModelObservation for a completed tool call.
-
-        Gated on:
-        - status != "skipped" (skipped tools are not observed)
-        - enable_local_observability (config-level gate)
-        - observation_allowed_by_consent() (user-level consent gate)
-
-        Observation failures are caught and logged without breaking tool execution.
-        The task fingerprint is a SHA256 of the canonical-JSON serialized args,
-        namespaced with ``rig-relay-tool-args-v1:`` to prevent preimage confusion.
-        Raw tool args are never written to the observability event.
-        """
-        if status == "skipped" or not self.config.enable_local_observability:
-            return
-
-        try:
-            from rig_relay.evidence.model_observations import observe_tool_call
-            from rig_relay.identity.consent_store import ConsentStore
-            from rig_relay.identity.telemetry_consent import (
-                observation_allowed_by_consent,
-            )
-
-            active_model = self.config.get_active_model()
-            active_provider = self.config.get_active_provider()
-
-            provider_backend_str = str(getattr(active_provider, "backend", "generic"))
-            is_local = provider_backend_str in {"mlx", "llama_cpp", "ollama"}
-            provider_kind = "local" if is_local else "cloud"
-            obs_backend = {"mlx": "mlx", "llama_cpp": "llama_cpp"}.get(
-                provider_backend_str, "api"
-            )
-
-            # Consent gate — skip observation if consent denies the kind
-            observation_kind = "local_model" if is_local else "provider"
-            consent_record = ConsentStore().get()
-            if not observation_allowed_by_consent(consent_record, observation_kind):
-                return
-
-            success = 1 if status == "success" else 0
-            failure = 1 if status == "failure" else 0
-            preimage = "rig-relay-tool-args-v1:" + dump_canonical_json(
-                tool_call.args_dict
-            )
-            task_fingerprint = hashlib.sha256(preimage.encode("utf-8")).hexdigest()
-
-            observe_tool_call(
-                session_id=self.session_id,
-                task_kind=self.agent_profile.name,
-                task_fingerprint=task_fingerprint,
-                provider_kind=provider_kind,
-                provider_name=active_provider.name,
-                model_id=active_model.name,
-                backend=obs_backend,
-                tool_call_count=1,
-                tool_success_count=success,
-                failure_count=failure,
-                latency_ms=duration_ms,
-            )
-        except Exception:
-            logger.warning(
-                "Failed to capture model observation for %s",
-                tool_call.tool_name,
-                exc_info=True,
-            )
-
     async def _maybe_auto_gc(self) -> None:
-        """Passive garbage collection after tool execution.
-
-        Checks the build artifact storage budget. If usage exceeds 80% of
-        the warning threshold, prunes stale leases and old artifacts
-        without requiring an explicit GC tool call.
-
-        Best-effort: failures are logged and don't affect tool execution.
-        Only runs when local observability is enabled.
-        """
         if not self.config.enable_local_observability:
             return
 
         try:
             from rig_relay.evidence.storage_lifecycle import compute_storage_summary
-            from scripts.rig_relay_gc_artifacts import run_gc
 
-            repo_root = Path(__file__).resolve().parent.parent.parent
-            build_root = repo_root / ".build" / "rig-relay"
-            if not build_root.is_dir():
-                return
-
-            summary = compute_storage_summary(build_root=build_root)
+            summary = compute_storage_summary(
+                self._workspace_root / ".rig" / "relay",
+            )
             budget_status = summary.get("budget_status", "ok")
 
-            # Only act when over warning threshold
             if budget_status not in {"warn", "over_budget", "fleet_blocked"}:
                 return
 
-            # Gentle GC: only clean stale leases and coordination artifacts
-            # that are past retention; never touch protected files
-            result = run_gc(root=build_root, confirm=True)
-            deleted = result.get("summary", {}).get("deleted", 0)
-            freed_mb = result.get("summary", {}).get("freed_mb", 0.0)
-            if deleted > 0:
-                self.stats.gc_deleted_count = (
-                    getattr(self.stats, "gc_deleted_count", 0) + deleted
+            try:
+                from rig_relay.evidence.storage_lifecycle import run_artifact_gc
+
+                result = run_artifact_gc(
+                    root=self._workspace_root / ".rig" / "relay",
+                    budget=summary,
+                    confirm=True,
                 )
-                logger.info(
-                    "Auto-GC: removed %d artifacts (%.1f MB) after tool execution",
-                    deleted,
-                    freed_mb,
-                )
+                deleted = result.get("summary", {}).get("deleted", 0)
+                freed_mb = result.get("summary", {}).get("freed_mb", 0.0)
+                if deleted > 0:
+                    self.stats.gc_deleted_count = (
+                        getattr(self.stats, "gc_deleted_count", 0) + deleted
+                    )
+                    logger.info(
+                        "Auto-GC: removed %d artifacts (%.1f MB) after tool execution",
+                        deleted,
+                        freed_mb,
+                    )
+            except ImportError:
+                pass
         except Exception:
             logger.warning("Auto-GC failed", exc_info=True)
-
-    async def _build_context_envelope(self, user_msg: str) -> None:
-        """Build a context envelope and inject it into the message list.
-
-        Uses the ContextCompiler to build a prompt envelope from workspace
-        state (AGENTS.md, git state, dirty files, relevant tests, etc.) and
-        inserts it as an injected system message before the latest user message.
-        The envelope also carries a symbol manifest used by ``_expand_tool_call_args``.
-
-        This is best-effort: failures are logged but never crash the turn.
-        """
-        compiler = self._context_compiler
-        if compiler is None:
-            return
-
-        try:
-            envelope = compiler.build_envelope(
-                user_text=user_msg,
-                snapshot=None,
-                messages=list(self.messages),
-            )
-            self._current_context_envelope = envelope
-
-            if envelope.rendered_prompt and envelope.section_count > 0:
-                context_block = LLMMessage(
-                    role=Role.system,
-                    content=envelope.rendered_prompt,
-                    injected=True,
-                )
-                # Insert right before the last user message
-                if self.messages and self.messages[-1].role == Role.user:
-                    self.messages.insert(-1, context_block)
-                else:
-                    self.messages.append(context_block)
-        except Exception:
-            from rig_relay.core.logger import logger
-
-            logger.warning("Failed to build context envelope", exc_info=True)
-
-    async def _report_context_assembly(self, active_model: ModelConfig) -> None:
-        if not self.config.enable_local_observability:
-            return
-
-        try:
-            from rig_relay.context.assembler import (
-                build_context_assembly_report,
-                build_shadow_request_report,
-                load_latest_layout,
-                plan_context_layout,
-                write_assembly_report,
-                write_layout_plan,
-                write_shadow_request_report,
-            )
-
-            tool_manager_info = None
-            if self.tool_manager.available_tools:
-                tool_manager_info = {
-                    tool_name: tool_class.get_parameters()
-                    for tool_name, tool_class in self.tool_manager.available_tools.items()
-                }
-
-            report = build_context_assembly_report(
-                session_id=self.session_id,
-                messages=list(self.messages),
-                model=active_model.alias,
-                tool_manager_info=tool_manager_info,
-            )
-
-            assembly_path = await write_assembly_report(report)
-
-            # Plan layout
-            prev_layout = await load_latest_layout(self.session_id)
-            layout = plan_context_layout(report, prev_layout)
-            layout_path = await write_layout_plan(layout)
-            session_root = SESSIONS_ROOT.path / self.session_id
-            assembly_relative_path = assembly_path.relative_to(session_root).as_posix()
-            layout_relative_path = layout_path.relative_to(session_root).as_posix()
-            assembly_hash = (
-                f"sha256:{hashlib.sha256(assembly_path.read_bytes()).hexdigest()}"
-            )
-            layout_hash = (
-                f"sha256:{hashlib.sha256(layout_path.read_bytes()).hexdigest()}"
-            )
-
-            self.telemetry_client.send_context_assembly_reported(
-                session_id=self.session_id,
-                report_id=report.report_id,
-                total_bytes=report.total_bytes,
-                total_estimated_tokens=report.total_estimated_tokens,
-                stable_prefix_bytes=report.stable_prefix_bytes,
-                dynamic_suffix_bytes=report.dynamic_suffix_bytes,
-                cache_candidate_bytes=report.cache_candidate_bytes,
-                stable_prefix_fingerprint=report.stable_prefix_fingerprint,
-                dynamic_suffix_fingerprint=report.dynamic_suffix_fingerprint,
-                largest_blocks=report.largest_blocks,
-                optimization_hints=report.optimization_hints,
-                evidence_relative_path=assembly_relative_path,
-                evidence_sha256=assembly_hash,
-            )
-
-            self.telemetry_client.send_context_layout_planned(
-                session_id=self.session_id,
-                layout_id=layout.layout_id,
-                stable_prefix_fingerprint=layout.stable_prefix_fingerprint,
-                dynamic_suffix_fingerprint=layout.dynamic_suffix_fingerprint,
-                stable_prefix_fingerprint_short=layout.stable_prefix_fingerprint_short
-                or "",
-                dynamic_suffix_fingerprint_short=layout.dynamic_suffix_fingerprint_short
-                or "",
-                stable_prefix_bytes=layout.stable_prefix_bytes,
-                dynamic_suffix_bytes=layout.dynamic_suffix_bytes,
-                ephemeral_bytes=layout.ephemeral_bytes,
-                cache_candidate_bytes=layout.cache_candidate_bytes,
-                cacheability_ratio=layout.cacheability_ratio,
-                prefix_stability_status=layout.prefix_stability_status,
-                prefix_change_reasons=layout.prefix_change_reasons,
-                optimization_hints=layout.optimization_hints,
-                layout_path=layout_relative_path,
-                layout_hash=layout_hash,
-                evidence_relative_path=layout_relative_path,
-                evidence_sha256=layout_hash,
-            )
-            try:
-                shadow_report = build_shadow_request_report(
-                    session_id=self.session_id,
-                    messages=list(self.messages),
-                    report=report,
-                    layout=layout,
-                )
-                shadow_path = await write_shadow_request_report(shadow_report)
-                shadow_relative_path = shadow_path.relative_to(session_root).as_posix()
-                shadow_hash = (
-                    f"sha256:{hashlib.sha256(shadow_path.read_bytes()).hexdigest()}"
-                )
-                self.telemetry_client.send_shadow_request_assembled(
-                    session_id=self.session_id,
-                    actual_message_count=shadow_report.actual_message_count,
-                    shadow_message_count=shadow_report.shadow_message_count,
-                    actual_estimated_tokens=shadow_report.actual_estimated_tokens,
-                    shadow_estimated_tokens=shadow_report.shadow_estimated_tokens,
-                    stable_prefix_bytes=shadow_report.stable_prefix_bytes,
-                    dynamic_suffix_bytes=shadow_report.dynamic_suffix_bytes,
-                    cache_candidate_bytes=shadow_report.cache_candidate_bytes,
-                    estimated_token_delta=shadow_report.estimated_token_delta,
-                    byte_delta=shadow_report.byte_delta,
-                    unchanged_stable_prefix=shadow_report.unchanged_stable_prefix,
-                    shadow_diff_summary=shadow_report.shadow_diff_summary,
-                    stable_prefix_fingerprint=shadow_report.stable_prefix_fingerprint,
-                    dynamic_suffix_fingerprint=shadow_report.dynamic_suffix_fingerprint,
-                    evidence_relative_path=shadow_relative_path,
-                    evidence_sha256=shadow_hash,
-                )
-            except Exception:
-                pass
-        except Exception as e:
-            from rig_relay.core.logger import logger
-
-            logger.warning("Failed to generate context assembly report: %s", e)
-
-    async def _chat(
-        self, max_tokens: int | None = None, model_override: ModelConfig | None = None
-    ) -> LLMChunk:
-        active_model = model_override or self.config.get_active_model()
-        provider = self.config.get_provider_for_model(active_model)
-        backend_metadata = self._build_backend_metadata()
-
-        available_tools = self.format_handler.get_available_tools(self.tool_manager)
-        tool_choice = self.format_handler.get_tool_choice()
-
-        last_user_message = next(
-            (
-                m
-                for m in reversed(self.messages)
-                if m.role == Role.user and not m.injected
-            ),
-            None,
-        )
-        self.telemetry_client.send_request_sent(
-            model=active_model.alias,
-            nb_context_chars=sum(len(m.content or "") for m in self.messages),
-            nb_context_messages=len(self.messages),
-            nb_prompt_chars=len(last_user_message.content or "")
-            if last_user_message
-            else 0,
-            call_type=backend_metadata.call_type,
-            message_id=backend_metadata.message_id,
-            messages=self.messages,
-        )
-
-        await self._report_context_assembly(active_model)
-
-        try:
-            start_time = time.perf_counter()
-            result = await self.backend.complete(
-                model=active_model,
-                messages=self.messages,
-                temperature=active_model.temperature,
-                tools=available_tools,
-                tool_choice=tool_choice,
-                extra_headers=self._get_extra_headers(provider),
-                max_tokens=max_tokens,
-                metadata=backend_metadata.model_dump(exclude_none=True),
-            )
-            end_time = time.perf_counter()
-            # ...
-
-            if result.usage is None:
-                raise AgentLoopLLMResponseError(
-                    "Usage data missing in non-streaming completion response"
-                )
-            self._update_stats(usage=result.usage, time_seconds=end_time - start_time)
-
-            if result.correlation_id:
-                self.telemetry_client.last_correlation_id = result.correlation_id
-
-            processed_message = self.format_handler.process_api_response_message(
-                result.message
-            )
-            self.messages.append(processed_message)
-            return LLMChunk(message=processed_message, usage=result.usage)
-
-        except Exception as e:
-            if _should_raise_rate_limit_error(e):
-                raise RateLimitError(provider.name, active_model.name) from e
-            if _is_context_too_long_error(e):
-                raise ContextTooLongError(provider.name, active_model.name) from e
-            if _is_non_retryable_error(e):
-                raise
-
-            raise RuntimeError(
-                f"API error from {provider.name} (model: {active_model.name}): {e}"
-            ) from e
-
-    async def _chat_streaming(
-        self, max_tokens: int | None = None
-    ) -> AsyncGenerator[LLMChunk]:
-        active_model = self.config.get_active_model()
-        provider = self.config.get_active_provider()
-        backend_metadata = self._build_backend_metadata()
-
-        available_tools = self.format_handler.get_available_tools(self.tool_manager)
-        tool_choice = self.format_handler.get_tool_choice()
-
-        last_user_message = next(
-            (
-                m
-                for m in reversed(self.messages)
-                if m.role == Role.user and not m.injected
-            ),
-            None,
-        )
-        self.telemetry_client.send_request_sent(
-            model=active_model.alias,
-            nb_context_chars=sum(len(m.content or "") for m in self.messages),
-            nb_context_messages=len(self.messages),
-            nb_prompt_chars=len(last_user_message.content or "")
-            if last_user_message
-            else 0,
-            call_type=backend_metadata.call_type,
-            message_id=backend_metadata.message_id,
-            messages=self.messages,
-        )
-
-        await self._report_context_assembly(active_model)
-
-        try:
-            start_time = time.perf_counter()
-            usage = LLMUsage()
-            chunk_agg: LLMChunk | None = None
-            async for chunk in self.backend.complete_streaming(
-                model=active_model,
-                messages=self.messages,
-                temperature=active_model.temperature,
-                tools=available_tools,
-                tool_choice=tool_choice,
-                extra_headers=self._get_extra_headers(),
-                max_tokens=max_tokens,
-                metadata=backend_metadata.model_dump(exclude_none=True),
-            ):
-                if chunk.correlation_id:
-                    self.telemetry_client.last_correlation_id = chunk.correlation_id
-                processed_message = self.format_handler.process_api_response_message(
-                    chunk.message
-                )
-                processed_chunk = LLMChunk(message=processed_message, usage=chunk.usage)
-                chunk_agg = (
-                    processed_chunk
-                    if chunk_agg is None
-                    else chunk_agg + processed_chunk
-                )
-                usage += chunk.usage or LLMUsage()
-                yield processed_chunk
-            end_time = time.perf_counter()
-
-            if chunk_agg is None or chunk_agg.usage is None:
-                raise AgentLoopLLMResponseError(
-                    "Usage data missing in final chunk of streamed completion"
-                )
-            self._update_stats(usage=usage, time_seconds=end_time - start_time)
-
-            self.messages.append(chunk_agg.message)
-
-        except Exception as e:
-            if _should_raise_rate_limit_error(e):
-                raise RateLimitError(provider.name, active_model.name) from e
-            if _is_context_too_long_error(e):
-                raise ContextTooLongError(provider.name, active_model.name) from e
-            if _is_non_retryable_error(e):
-                raise
-
-            raise RuntimeError(
-                f"API error from {provider.name} (model: {active_model.name}): {e}"
-            ) from e
-
-    def _update_stats(self, usage: LLMUsage, time_seconds: float) -> None:
-        self.stats.last_turn_duration = time_seconds
-        self.stats.last_turn_prompt_tokens = usage.prompt_tokens
-        self.stats.last_turn_completion_tokens = usage.completion_tokens
-        self.stats.session_prompt_tokens += usage.prompt_tokens
-        self.stats.session_completion_tokens += usage.completion_tokens
-        self.stats.context_tokens = usage.prompt_tokens + usage.completion_tokens
-        if time_seconds > 0 and usage.completion_tokens > 0:
-            self.stats.tokens_per_second = usage.completion_tokens / time_seconds
 
     async def _should_execute_tool(
         self, tool: BaseTool, args: BaseModel, tool_call_id: str
@@ -1875,42 +1070,6 @@ class AgentLoop:
                 verdict=ToolExecutionResponse.EXECUTE,
                 approval_type=ToolPermission.ALWAYS,
             )
-
-        async with self._approval_lock:
-            tool_name = tool.get_name()
-            ctx = tool.resolve_permission(args)
-
-            if ctx is None:
-                config_perm = self.tool_manager.get_tool_config(tool_name).permission
-                ctx = PermissionContext(permission=config_perm)
-
-            match ctx.permission:
-                case ToolPermission.ALWAYS:
-                    return ToolDecision(
-                        verdict=ToolExecutionResponse.EXECUTE,
-                        approval_type=ToolPermission.ALWAYS,
-                    )
-                case ToolPermission.NEVER:
-                    return ToolDecision(
-                        verdict=ToolExecutionResponse.SKIP,
-                        approval_type=ToolPermission.NEVER,
-                        feedback=ctx.reason
-                        or f"Tool '{tool_name}' is permanently disabled",
-                    )
-                case _:
-                    uncovered = [
-                        rp
-                        for rp in ctx.required_permissions
-                        if not self._is_permission_covered(tool_name, rp)
-                    ]
-                    if ctx.required_permissions and not uncovered:
-                        return ToolDecision(
-                            verdict=ToolExecutionResponse.EXECUTE,
-                            approval_type=ToolPermission.ALWAYS,
-                        )
-                    return await self._ask_approval(
-                        tool_name, args, tool_call_id, uncovered
-                    )
 
     async def _ask_approval(
         self,
@@ -1939,77 +1098,6 @@ class AgentLoop:
             verdict=verdict, approval_type=ToolPermission.ASK, feedback=feedback
         )
 
-    def _clean_message_history(self) -> None:
-        ACCEPTABLE_HISTORY_SIZE = 2
-        if len(self.messages) < ACCEPTABLE_HISTORY_SIZE:
-            return
-        self._fill_missing_tool_responses()
-
-    def _fill_missing_tool_responses(self) -> None:
-        i = 1
-        while i < len(self.messages):  # noqa: PLR1702
-            msg = self.messages[i]
-
-            if msg.role == "assistant" and msg.tool_calls:
-                expected_responses = len(msg.tool_calls)
-
-                if expected_responses > 0:
-                    responded_ids: set[str] = set()
-                    j = i + 1
-                    while j < len(self.messages) and self.messages[j].role == "tool":
-                        tool_call_id = self.messages[j].tool_call_id
-                        if tool_call_id is not None:
-                            responded_ids.add(tool_call_id)
-                        j += 1
-
-                    if len(responded_ids) < expected_responses:
-                        insertion_point = j
-
-                        for tool_call_data in msg.tool_calls:
-                            if (tool_call_data.id or "") in responded_ids:
-                                continue
-
-                            empty_response = LLMMessage(
-                                role=Role.tool,
-                                tool_call_id=tool_call_data.id or "",
-                                name=(
-                                    (tool_call_data.function.name or "")
-                                    if tool_call_data.function
-                                    else ""
-                                ),
-                                content=str(
-                                    get_user_cancellation_message(
-                                        CancellationReason.TOOL_NO_RESPONSE
-                                    )
-                                ),
-                            )
-
-                            self.messages.insert(insertion_point, empty_response)
-                            insertion_point += 1
-
-                    i = i + 1 + expected_responses
-                    continue
-
-            i += 1
-
-    def _reset_session(self, keep_parent: bool = True) -> None:
-        old_session_id = self.session_id
-        self.emit_session_closed_telemetry()
-        suffix = extract_suffix(self.session_id)
-        self.session_id = generate_session_id(suffix=suffix)
-        parent_session_id = old_session_id if keep_parent else None
-        self.parent_session_id = parent_session_id
-        self.session_logger.reset_session(
-            self.session_id, parent_session_id=parent_session_id
-        )
-        self.emit_new_session_telemetry()
-
-        # ── dirty-file guard: new session baseline ──
-        try:
-            get_guard().recapture(reason=GuardCaptureReason.RESET_SESSION)
-        except Exception:
-            pass
-
     async def fork(self, message_id: str | None = None) -> AgentLoop:
         messages = self._messages_for_fork(message_id)
         forked = AgentLoop(
@@ -2019,6 +1107,7 @@ class AgentLoop:
             entrypoint_metadata=self.entrypoint_metadata,
             defer_heavy_init=True,
             hook_config_result=self._hook_config_result,
+            workspace_root=self._workspace_root,
         )
         forked.session_id = generate_session_id(suffix=extract_suffix(self.session_id))
         forked.parent_session_id = self.session_id
@@ -2044,33 +1133,6 @@ class AgentLoop:
             forked.agent_profile,
         )
         return forked
-
-    def _messages_for_fork(self, message_id: str | None) -> list[LLMMessage]:
-        source_messages = [m for m in self.messages if m.role != Role.system]
-        if message_id is None:
-            return [m.model_copy(deep=True) for m in source_messages]
-
-        anchor_index = next(
-            (i for i, m in enumerate(source_messages) if message_id == m.message_id),
-            None,
-        )
-        if anchor_index is None:
-            raise ValueError(f"Cannot fork from unknown message_id: {message_id}")
-
-        if source_messages[anchor_index].role != Role.user:
-            raise ValueError("Fork from message_id is only supported for user messages")
-
-        next_turn_index = next(
-            (
-                i
-                for i, m in enumerate(
-                    source_messages[anchor_index + 1 :], start=anchor_index + 1
-                )
-                if m.role == Role.user
-            ),
-            len(source_messages),
-        )
-        return [m.model_copy(deep=True) for m in source_messages[:next_turn_index]]
 
     @requires_init
     async def clear_history(self) -> None:

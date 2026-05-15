@@ -28,6 +28,13 @@ export const state = {
   // Identity / consent caching
   identity: null,
   consent: null,
+
+  // Ralph: pywebview-visible approval loop
+  ralph: {
+    panel: null,        // RalphPanel model dump
+    runState: null,     // RalphRunState model dump
+    lastIntent: null,   // { name, status, summary }
+  },
 };
 
 // Per-mode default disclosures
@@ -37,6 +44,7 @@ const modeDefaults = {
     safetyState: 'compact',
     nextAction: 'compact',
     providerHealth: 'compact',
+    ralphScout: 'standard',
     validationSummary: 'compact',
     storageBudget: 'compact',
     intentResult: 'compact',

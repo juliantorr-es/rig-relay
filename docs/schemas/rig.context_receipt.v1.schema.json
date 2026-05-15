@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.context_receipt.v1.schema.json",
+  "title": "Rig Context Receipt",
+  "description": "Receipt emitted by rig.get_context. Content-light: no file contents, only hashes, paths, counts, and timestamps.",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "rig.context.receipt.v1"
+    },
+    "context_id": {
+      "type": "string",
+      "description": "Corresponds to the context_id in the packet."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["map", "packet", "handoff", "collision", "symbols"]
+    },
+    "request_sha256": {
+      "type": "string",
+      "description": "SHA256 of the canonical JSON request."
+    },
+    "packet_sha256": {
+      "type": "string",
+      "description": "SHA256 of the canonical JSON output packet."
+    },
+    "subsystem_count": {
+      "type": "integer"
+    },
+    "active_lane_count": {
+      "type": "integer"
+    },
+    "collision_warning_count": {
+      "type": "integer"
+    },
+    "receipt_count": {
+      "type": "integer"
+    },
+    "dirty_file_count": {
+      "type": "integer"
+    },
+    "symbol_count": {
+      "type": "integer"
+    },
+    "estimated_tokens": {
+      "type": "integer",
+      "description": "Estimated token count of the output packet."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Time spent building the context packet in milliseconds."
+    }
+  },
+  "required": [
+    "kind", "context_id", "mode", "request_sha256",
+    "packet_sha256", "generated_at"
+  ],
+  "additionalProperties": false
+}

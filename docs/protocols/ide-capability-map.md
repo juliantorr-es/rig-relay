@@ -20,12 +20,12 @@ Canonical capability registry for Rig Relay IDE bridges. Generated from `etc/rig
 | `ide.debug.sessions` | 🟢 Low | No | Allow | — | ✅ VS Code • ✅ Sidecar |
 | `ide.debug.stack` | 🟢 Low | No | Allow | — | ✅ VS Code • ✅ Sidecar |
 | `ide.debug.variables` | 🟡 Medium | No | Ask once/session | — | ✅ VS Code • ✅ Sidecar |
-| `ide.definition.goto` | 🟡 Medium | No | Allow | — | ✅ Sidecar |
+| `ide.definition.goto` | 🟡 Medium | No | Allow (trusted) | Required | ✅ Sidecar |
 | `ide.diagnostics.file` | 🟢 Low | No | Allow | — | ✅ VS Code • ✅ Sidecar |
 | `ide.diagnostics.range` | 🟢 Low | No | Allow | — | ⬜ Not implemented |
 | `ide.diagnostics.workspace` | 🟢 Low | No | Allow | — | ✅ Sidecar |
 | `ide.quickfixes.list` | 🟢 Low | No | Allow | — | ⬜ Not implemented |
-| `ide.references.find` | 🟡 Medium | No | Allow | — | ✅ VS Code • ✅ Sidecar |
+| `ide.references.find` | 🟡 Medium | No | Allow (trusted) | Required | ✅ VS Code • ✅ Sidecar |
 | `ide.rename_preview` | 🟡 Medium | No | Ask once/session | — | ⬜ Not implemented |
 | `ide.symbols.document` | 🟢 Low | No | Allow | — | ✅ VS Code • ✅ Sidecar |
 | `ide.symbols.workspace` | 🟡 Medium | No | Allow (trusted) | — | ✅ Sidecar |

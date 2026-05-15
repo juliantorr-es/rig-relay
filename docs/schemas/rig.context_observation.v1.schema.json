@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.context_observation.v1.schema.json",
+  "title": "Rig Context Observation",
+  "description": "Content-light record correlating a tool call with the context packet that was active at the time. Observations are telemetry, not policy — they never block tool execution. Emitted by the context correlation layer after each tool call completes.",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "rig.context.observation.v1"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Optional session identifier."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Optional agent identifier."
+    },
+    "context_id": {
+      "type": "string",
+      "description": "Context packet identifier at time of tool call, if available."
+    },
+    "tool_call_id": {
+      "type": "string",
+      "description": "Optional tool call identifier."
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Name of the tool that was called."
+    },
+    "target_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Normalized relative paths extracted from the tool call arguments."
+    },
+    "mutation_class": {
+      "type": "string",
+      "enum": ["read_only", "writes_workspace", "writes_evidence_only", "writes_temp_only", "mutates_git_state", "external_side_effect", "unknown"],
+      "description": "Mutation class of the tool."
+    },
+    "context_available": {
+      "type": "boolean",
+      "description": "Whether a context packet was available for correlation."
+    },
+    "matched_recommended_context": {
+      "type": "boolean",
+      "description": "Whether target paths appear in the recommended_context list."
+    },
+    "overlapped_active_work": {
+      "type": "boolean",
+      "description": "Whether target paths overlap active lanes or collision warnings."
+    },
+    "touched_dirty_path": {
+      "type": "boolean",
+      "description": "Whether target paths were dirty at context capture time."
+    },
+    "touched_soft_warning": {
+      "type": "boolean",
+      "description": "Whether target paths were in the soft_warnings / coordination_risks section."
+    },
+    "touched_hard_denied_path": {
+      "type": "boolean",
+      "description": "Whether target paths were in the hard_denies / do_not_touch section."
+    },
+    "tool_status": {
+      "type": "string",
+      "enum": ["pending", "succeeded", "failed", "refused", "skipped"],
+      "description": "Outcome status of the tool call."
+    },
+    "blocked_by_policy": {
+      "type": "boolean",
+      "description": "Whether the tool call was blocked by policy (separate from observation)."
+    },
+    "observation_only": {
+      "type": "boolean",
+      "const": true,
+      "description": "Always true. This record is observation-only telemetry, never a policy decision."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of observation creation."
+    }
+  },
+  "required": [
+    "kind", "tool_name", "context_available",
+    "matched_recommended_context", "overlapped_active_work",
+    "touched_dirty_path", "touched_soft_warning", "touched_hard_denied_path",
+    "tool_status", "blocked_by_policy", "observation_only", "created_at"
+  ],
+  "additionalProperties": false
+}

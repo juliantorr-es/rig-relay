@@ -4,6 +4,7 @@
 import { dispatchIntent, clearChat, cancelChat, sendChatMessage } from './chat.js';
 import { sendMessage } from './transport.js';
 import { el } from './utils.js';
+import { state } from './state.js';
 
 // Command table: prefix -> { execute, help, category }
 const COMMANDS = {
@@ -189,6 +190,46 @@ const COMMANDS = {
     },
     help: 'Show available commands',
     category: 'Help',
+  },
+  '/ralph': {
+    execute: function(args) {
+      if (!args) return 'Usage: /ralph <scan|approve|decline|rescan>';
+      const parts = args.split(/\s+/);
+      const sub = parts[0];
+      if (sub === 'scan') {
+        dispatchIntent('ralph_scan');
+        return null;
+      }
+      if (sub === 'approve') {
+        const panel = state.ralph.panel;
+        if (!panel) return 'No Ralph scan found. Run /ralph scan first.';
+        dispatchIntent('ralph_approve', {
+          run_id: state.ralph.runState ? state.ralph.runState.run_id : '',
+          scan_id: panel.scan_id || '',
+          panel_sha256: panel.panel_sha256,
+          mission_candidate_sha256: panel.mission_candidate_sha256
+        });
+        return null;
+      }
+      if (sub === 'decline') {
+        const panel = state.ralph.panel;
+        if (!panel) return 'No Ralph scan found. Run /ralph scan first.';
+        dispatchIntent('ralph_decline', {
+          run_id: state.ralph.runState ? state.ralph.runState.run_id : '',
+          scan_id: panel.scan_id || '',
+          panel_sha256: panel.panel_sha256,
+          mission_candidate_sha256: panel.mission_candidate_sha256
+        });
+        return null;
+      }
+      if (sub === 'rescan') {
+        dispatchIntent('ralph_rescan');
+        return null;
+      }
+      return 'Unknown subcommand: ' + sub + '. Use scan, approve, decline, or rescan.';
+    },
+    help: 'Ralph maintenance loop. /ralph <scan|approve|decline|rescan>',
+    category: 'Ralph',
   },
 };
 

@@ -121,31 +121,21 @@ def _try_validate_schema(
 
 
 def _extract_sidecar_capabilities(text: str) -> dict:
-    """Extract capability entries from the sidecar's _CAPABILITY_REGISTRY.
+    """Extract capability entries from the sidecar's runtime registry.
 
-    This is a best-effort parse — the registry is a Python dict literal
-    in the source file. We scan for capability name strings followed by
-    risk/mutates fields.
+    The sidecar no longer has a hardcoded registry — it loads from the
+    manifest at runtime. So we import it directly.
     """
-    import re
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from rig_relay.cli.ide_sidecar import _CAPABILITY_REGISTRY
 
     caps: dict[str, dict] = {}
-    # Match patterns like 'ide.workspace.describe': { 'risk': 'low', ... }
-    pattern = re.compile(
-        r"'(?P<name>ide\.\w+\.\w+)'\s*:\s*\{[^}]*'risk':\s*'(?P<risk>\w+)'[^}]*'mutates':\s*(?P<mutates>false|true|'possible')",
-        re.DOTALL,
-    )
-
-    for m in pattern.finditer(text):
-        name = m.group("name")
-        risk = m.group("risk")
-        mutates_raw = m.group("mutates")
-        if mutates_raw == "'possible'":
-            mutates = "possible"
-        else:
-            mutates = mutates_raw == "true"
-        caps[name] = {"risk": risk, "mutates": mutates}
-
+    for name, info in _CAPABILITY_REGISTRY.items():
+        caps[name] = {
+            "risk": info.get("risk", "unknown"),
+            "mutates": info.get("mutates", False),
+        }
     return caps
 
 

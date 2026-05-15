@@ -87,9 +87,33 @@ export function handleChatState(data) {
 
 export function handleIntentResult(msg) {
   const result = msg.result || msg;
+  const name = result.intent_kind || result.intent_name || 'Intent';
   const status = result.status || 'unknown';
-  const name = result.intent_name || 'Intent';
-  const summary = result.summary || '';
+  const summary = result.message || result.summary || '';
+
+  if (name.startsWith('ralph_')) {
+    if (result.status !== 'refused' && result.ralph && result.ralph.panel) {
+      state.ralph.panel = result.ralph.panel;
+    }
+    if (result.ralph && result.ralph.run_state) {
+      state.ralph.runState = result.ralph.run_state;
+    }
+    if (result.approval_state && state.ralph.panel) {
+      state.ralph.panel.approval_state = result.approval_state;
+    }
+    var refusalText = result.status === 'refused'
+      ? (result.error_code || 'refused') + ': ' + (result.message || '')
+      : '';
+    state.ralph.lastIntent = {
+      name: name,
+      status: status,
+      summary: refusalText || summary,
+      error_code: result.error_code || null
+    };
+    renderWidget('ralphScout');
+    return;
+  }
+
   updateIntentResult(status, name, summary);
 }
 

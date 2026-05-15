@@ -100,6 +100,20 @@ jobs:
       - name: Run tests
         run: uv run pytest --ignore tests/snapshots
 
+      - name: Validate IDE capability manifest
+        run: uv run python scripts/rig_relay_validate_ide_manifest.py
+
+      - name: Validate IDE sidecar protocol fixtures
+        run: uv run pytest tests/ide_sidecar/ -n0
+
+      - name: Check IDE capability map is up-to-date
+        run: |
+          uv run python scripts/rig_relay_generate_ide_capability_map.py
+          git diff --exit-code docs/protocols/ide-capability-map.md || {
+            echo "❌ Generated capability map is stale. Run: uv run python scripts/rig_relay_generate_ide_capability_map.py"
+            exit 1
+          }
+
   snapshot-tests:
     name: Snapshot Tests
     runs-on: ubuntu-latest

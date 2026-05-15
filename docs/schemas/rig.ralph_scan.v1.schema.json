@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.github.io/schemas/rig.ralph_scan.v1.schema.json",
+  "title": "Ralph Scan Result v1",
+  "description": "Output of a single Ralph background maintenance scan. v0.5 includes input snapshot, score components, and mission candidate contract.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "scan_id",
+    "created_at",
+    "mode",
+    "stop_reason",
+    "inputs",
+    "ranking_policy_version",
+    "total_findings_inspected",
+    "candidates_considered",
+    "ranked_candidates"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.ralph_scan.v1"
+    },
+    "scan_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "mode": { "type": "string", "const": "observe_only" },
+    "stop_reason": {
+      "type": "string",
+      "enum": [
+        "no_projections_found",
+        "no_candidates_after_ranking",
+        "scan_completed",
+        "max_time_exceeded",
+        "malformed_projection_input"
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "findings_path": { "type": "string" },
+        "findings_sha256": { "type": "string" },
+        "report_summary_path": { "type": "string" },
+        "report_diagnostics_path": { "type": "string" },
+        "candidate_findings_path": { "type": "string" },
+        "open_raw_reports_path": { "type": "string" }
+      }
+    },
+    "input_snapshot": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "type": "string" },
+        "input_source": { "type": "string" },
+        "projection_paths": { "type": "array", "items": { "type": "string" } },
+        "input_hashes": { "type": "object" },
+        "projection_metadata": { "type": "object" },
+        "canonical_fallback_used": { "type": "boolean" },
+        "malformed_projection_count": { "type": "integer" }
+      }
+    },
+    "ranking_policy_version": {
+      "type": "string",
+      "const": "ralph.ranking.v0"
+    },
+    "total_findings_inspected": { "type": "integer" },
+    "candidates_considered": { "type": "integer" },
+    "ranked_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["candidate_id", "source_kind", "title", "severity", "score", "score_components", "risk_tier"],
+        "properties": {
+          "candidate_id": { "type": "string" },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "projection_corruption", "security_concern", "data_race",
+              "stale_canonical_finding", "candidate_finding_with_evidence",
+              "duplicate_cluster", "validation_gap", "architecture_seam",
+              "implementation_seam", "low_risk_docs", "low_risk_projection",
+              "diagnostic_warning"
+            ]
+          },
+          "source_finding_id": { "type": "string" },
+          "title": { "type": "string" },
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "none"] },
+          "status": { "type": "string" },
+          "reason": { "type": "string" },
+          "score": { "type": "number" },
+          "score_components": {
+            "type": "object",
+            "properties": {
+              "severity_weight": { "type": "number" },
+              "kind_weight": { "type": "number" },
+              "evidence_bonus": { "type": "number" },
+              "staleness_weight": { "type": "number" },
+              "diagnostic_weight": { "type": "number" },
+              "total_score": { "type": "number" }
+            }
+          },
+          "ranking_policy_version": { "type": "string" },
+          "recommended_mission_kind": { "type": "string" },
+          "risk_tier": { "type": "integer", "minimum": 0, "maximum": 5 },
+          "requires_approval_for_execution": { "type": "boolean" },
+          "related_files": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "mission_candidate": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "type": "string" },
+        "candidate_id": { "type": "string" },
+        "title": { "type": "string" },
+        "mission_kind": { "type": "string" },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string" },
+              "id": { "type": "string" },
+              "path": { "type": "string" }
+            }
+          }
+        },
+        "allowed_actions": { "type": "array", "items": { "type": "string" } },
+        "forbidden_actions": { "type": "array", "items": { "type": "string" } },
+        "requires_approval": { "type": "boolean" },
+        "required_autonomy_tier": { "type": "integer" },
+        "success_criteria": { "type": "array", "items": { "type": "string" } },
+        "stop_conditions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "stop_conditions_violated": { "type": "array", "items": { "type": "string" } },
+    "scan_duration_ms": { "type": "number" }
+  }
+}

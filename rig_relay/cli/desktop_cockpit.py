@@ -158,6 +158,7 @@ class CockpitAPI:
                 entrypoint_metadata=entrypoint_metadata,
                 defer_heavy_init=True,
                 hook_config_result=hook_config_result,
+                workspace_root=Path.cwd(),
             )
             self._adapter = ChatAgentAdapter(
                 agent_loop=self._agent_loop,
@@ -191,7 +192,13 @@ class CockpitAPI:
             )
 
     def get_projection(self) -> dict:
-        return build_projection(build_root=BUILD_ROOT)
+        projection = build_projection(build_root=BUILD_ROOT)
+        try:
+            from rig_relay.desktop.ralph_intents import build_ralph_projection
+            projection["ralph"] = build_ralph_projection()
+        except Exception:
+            pass
+        return projection
 
     def refresh_projection(self) -> dict:
         return build_projection(build_root=BUILD_ROOT)
@@ -409,11 +416,48 @@ class CockpitAPI:
         Returns:
             Content-light intent result dict.
         """
+        intent_name = intent_request.get("intent_name", "")
+
+        if intent_name.startswith("ralph_"):
+            from rig_relay.desktop.ralph_intents import execute_ralph_intent
+
+            return execute_ralph_intent(
+                intent_name=intent_name,
+                params=intent_request.get("parameters", {}),
+            )
+
         from rig_relay.desktop.intents import execute_desktop_intent
 
-        return execute_desktop_intent(
+        result = execute_desktop_intent(
             request=intent_request, chat_state_provider=self.get_chat_state
         )
+
+        # Route council/important intent results to chat adapter for visibility
+        if result.get("status") == "completed" and self._adapter:
+            intent_name = intent_request.get("intent_name", "")
+            if intent_name == "council_consult":
+                from rig_relay.core._receipt_events import CouncilFindingsEvent
+
+                self._adapter.notify_council_findings(
+                    CouncilFindingsEvent(
+                        receipt_id=result.get("request_id", ""),
+                        provider_count=len(result.get("providers", [])),
+                        decision="proceed",
+                    )
+                )
+            elif intent_name == "fleet_orchestrate":
+                from rig_relay.core._receipt_events import DesktopIntentEvent
+
+                self._adapter.notify_desktop_intent(
+                    DesktopIntentEvent(
+                        intent_id=result.get("intent_id", ""),
+                        intent_kind=intent_name,
+                        status=result.get("status", "unknown"),
+                        summary=result.get("summary", "")[:120],
+                    )
+                )
+
+        return result
 
     def mint_authorization_receipt_dev(
         self, action: str, ttl_seconds: int = 300, reason: str = ""

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.report_event.v1.schema.json",
+  "title": "Rig Report Event",
+  "description": "Write event envelope for the rig.report event ledger. Each event represents a lifecycle transition: report created, duplicate detected, triaged, accepted, promoted, etc. The event ledger is the source of truth; projections are derived read models.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.report_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier. Generated deterministically from content."
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "report.created",
+        "report.duplicate_detected",
+        "report.triaged",
+        "report.accepted_as_finding",
+        "report.rejected",
+        "report.superseded",
+        "report.linked_to_mission",
+        "report.resolved",
+        "report.revalidated",
+        "report.promoted_to_docs"
+      ],
+      "description": "Kind of lifecycle event."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when the event occurred."
+    },
+    "report_id": {
+      "type": "string",
+      "description": "Report identifier this event relates to."
+    },
+    "report_sha256": {
+      "type": "string",
+      "description": "SHA256 of the canonical report payload at time of event."
+    },
+    "event_sha256": {
+      "type": "string",
+      "description": "SHA256 of this event envelope (self-hash)."
+    },
+    "previous_event_sha256": {
+      "type": ["string", "null"],
+      "description": "SHA256 of the previous event in the ledger chain. Null for the first event in the ledger."
+    },
+    "actor": {
+      "type": "object",
+      "properties": {
+        "agent_id": { "type": "string" },
+        "session_id": { "type": "string" },
+        "mission_id": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event payload — contains the report envelope for report.created, or decision metadata for lifecycle events. Content varies by event_kind."
+    }
+  },
+  "required": [
+    "schema_version", "event_id", "event_kind", "occurred_at",
+    "report_id", "report_sha256", "event_sha256"
+  ],
+  "additionalProperties": false
+}

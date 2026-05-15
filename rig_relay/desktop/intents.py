@@ -146,6 +146,14 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
         "affects_projection": True,
         "parameters": {},
     },
+    "council_consult": {
+        "description": "Consult external providers for adversarial review of the current mission.",
+        "affects_projection": False,
+        "parameters": {
+            "question": {"type": "string", "default": ""},
+            "providers": {"type": "array", "items": {"type": "string"}, "default": []},
+        },
+    },
     "run_validation_suite": {
         "description": "Run the validation suite: ruff check, format check, pyright, schema validation, storage audit, desktop cockpit dry run.",
         "affects_projection": False,
@@ -812,6 +820,7 @@ def _execute_allowed_intent(
             workspace_id=str(params.get("workspace_id", "")),
         ),
         # ── Fleet Orchestrator ──
+        "council_consult": _execute_council_consult(intent_id, params),
         "fleet_orchestrate": lambda: _execute_fleet_orchestrate(intent_id),
     }
     handler = handlers.get(intent_name)
@@ -2561,6 +2570,42 @@ def _execute_workspace_init(intent_id: str, workspace_id: str = "") -> dict[str,
             "workspace_init", intent_id, "failed",
             error_code="execution_error",
             summary=f"Workspace init failed: {e}",
+        )
+
+
+def _execute_council_consult(intent_id: str, params: dict) -> dict[str, Any]:
+    """Execute a Council consultation across specified providers."""
+    question = str(params.get("question", ""))
+    providers = list(params.get("providers", ["claude", "chatgpt"]))
+
+    if not question:
+        return _build_result(
+            "council_consult", intent_id, "failed",
+            error_code="missing_parameter",
+            summary="Parameter 'question' is required",
+        )
+
+    try:
+        from rig_relay.coordination.council import Council
+
+        council = Council(provider_bridge=None)
+        request = council.create_request(
+            mission_id="desktop-session",
+            packet_sha256="placeholder",
+            question=question,
+            providers=providers,
+        )
+
+        return _build_result(
+            "council_consult", intent_id, "completed",
+            summary=f"Council request created: {request.request_id} for {len(providers)} providers",
+            request_id=request.request_id,
+            providers=providers,
+        )
+    except Exception as e:
+        return _build_result(
+            "council_consult", intent_id, "failed",
+            summary=f"Council consultation failed: {e}",
         )
 
 

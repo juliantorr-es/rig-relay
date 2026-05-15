@@ -71,3 +71,18 @@ def compute_storage_summary(build_root: Path | None = None) -> dict[str, Any]:
         "recommendations": result.get("recommendations", []),
         "warnings": result.get("_warnings", []),
     }
+
+
+def run_artifact_gc(
+    root: Path,
+    budget: dict[str, Any] | None = None,
+    confirm: bool = False,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Run artifact garbage collection.
+
+    Delegates to rig_relay.evidence.artifact_gc which owns the GC logic.
+    """
+    from rig_relay.evidence.artifact_gc import run_artifact_gc as _run
+
+    return _run(root=root, budget=budget, confirm=confirm, force=force)

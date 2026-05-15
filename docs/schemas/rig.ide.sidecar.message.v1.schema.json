@@ -8,20 +8,57 @@
       "title": "Extension → Sidecar: workspace_snapshot",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "workspace_snapshot" },
-        "roots": { "type": "array", "items": { "type": "string" } },
-        "active_file": { "type": ["string", "null"] },
-        "open_tabs": { "type": "array", "items": { "type": "string" } },
+        "type": {
+          "type": "string",
+          "const": "workspace_snapshot"
+        },
+        "roots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "active_file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "open_tabs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "selection": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "properties": {
-            "file": { "type": "string" },
-            "startLine": { "type": "integer" },
-            "startCol": { "type": "integer" },
-            "endLine": { "type": "integer" },
-            "endCol": { "type": "integer" }
+            "file": {
+              "type": "string"
+            },
+            "startLine": {
+              "type": "integer"
+            },
+            "startCol": {
+              "type": "integer"
+            },
+            "endLine": {
+              "type": "integer"
+            },
+            "endCol": {
+              "type": "integer"
+            }
           },
-          "required": ["file", "startLine", "startCol", "endLine", "endCol"],
+          "required": [
+            "file",
+            "startLine",
+            "startCol",
+            "endLine",
+            "endCol"
+          ],
           "additionalProperties": false
         },
         "visible_ranges": {
@@ -29,107 +66,265 @@
           "items": {
             "type": "object",
             "properties": {
-              "file": { "type": "string" },
-              "startLine": { "type": "integer" },
-              "endLine": { "type": "integer" }
+              "file": {
+                "type": "string"
+              },
+              "startLine": {
+                "type": "integer"
+              },
+              "endLine": {
+                "type": "integer"
+              }
             },
-            "required": ["file", "startLine", "endLine"],
+            "required": [
+              "file",
+              "startLine",
+              "endLine"
+            ],
             "additionalProperties": false
           }
         },
         "editor_state": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "properties": {
-            "language": { "type": "string" },
-            "lineCount": { "type": "integer" },
-            "eol": { "type": "string", "enum": ["LF", "CRLF"] },
-            "isUntitled": { "type": "boolean" },
-            "isDirty": { "type": "boolean" }
+            "language": {
+              "type": "string"
+            },
+            "lineCount": {
+              "type": "integer"
+            },
+            "eol": {
+              "type": "string",
+              "enum": [
+                "LF",
+                "CRLF"
+              ]
+            },
+            "isUntitled": {
+              "type": "boolean"
+            },
+            "isDirty": {
+              "type": "boolean"
+            }
           },
-          "required": ["language", "lineCount", "eol", "isUntitled", "isDirty"],
+          "required": [
+            "language",
+            "lineCount",
+            "eol",
+            "isUntitled",
+            "isDirty"
+          ],
           "additionalProperties": false
         }
       },
-      "required": ["type", "roots", "open_tabs"],
+      "required": [
+        "type",
+        "roots",
+        "open_tabs"
+      ],
       "additionalProperties": false
     },
     {
       "title": "Extension → Sidecar: approval_response",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "approval_response" },
-        "id": { "type": "string" },
-        "approved": { "type": "boolean" }
+        "type": {
+          "type": "string",
+          "const": "approval_response"
+        },
+        "id": {
+          "type": "string"
+        },
+        "approved": {
+          "type": "boolean"
+        }
       },
-      "required": ["type", "id", "approved"],
+      "required": [
+        "type",
+        "id",
+        "approved"
+      ],
       "additionalProperties": false
     },
     {
       "title": "Sidecar → Extension: ack",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "ack" },
-        "status": { "type": "string" },
-        "capabilities": { "type": "object" }
+        "type": {
+          "type": "string",
+          "const": "ack"
+        },
+        "status": {
+          "type": "string"
+        },
+        "capabilities": {
+          "type": "object"
+        }
       },
-      "required": ["type", "status"],
+      "required": [
+        "type",
+        "status"
+      ],
       "additionalProperties": false
     },
     {
       "title": "Sidecar → Extension: capability_response",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "capability_response" },
-        "id": { "type": "string" },
-        "capability": { "type": "string" },
-        "status": { "type": "string", "enum": ["ok", "error", "refused"] },
+        "type": {
+          "type": "string",
+          "const": "capability_response"
+        },
+        "id": {
+          "type": "string"
+        },
+        "capability": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "error",
+            "refused"
+          ]
+        },
         "result": {},
-        "error": { "type": "string" }
+        "error": {
+          "type": "string"
+        }
       },
-      "required": ["type", "id", "capability", "status"],
+      "required": [
+        "type",
+        "id",
+        "capability",
+        "status"
+      ],
       "additionalProperties": false
     },
     {
       "title": "Sidecar → Extension: approval_request",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "approval_request" },
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "description": { "type": "string" },
-        "capability": { "type": "string" },
-        "risk": { "type": "string", "enum": ["low", "medium", "high"] },
-        "mutates": { "oneOf": [{ "type": "boolean" }, { "type": "string", "enum": ["possible"] }] }
+        "type": {
+          "type": "string",
+          "const": "approval_request"
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "capability": {
+          "type": "string"
+        },
+        "risk": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "mutates": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "possible"
+              ]
+            }
+          ]
+        }
       },
-      "required": ["type", "id", "title", "description", "capability", "risk", "mutates"],
+      "required": [
+        "type",
+        "id",
+        "title",
+        "description",
+        "capability",
+        "risk",
+        "mutates"
+      ],
       "additionalProperties": false
     },
     {
       "title": "Sidecar → Extension: status",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "status" },
-        "status": { "type": "string", "enum": ["ready", "busy", "error", "disconnected"] },
-        "message": { "type": "string" }
+        "type": {
+          "type": "string",
+          "const": "status"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "busy",
+            "error",
+            "disconnected"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
       },
-      "required": ["type", "status"],
+      "required": [
+        "type",
+        "status"
+      ],
       "additionalProperties": false
     },
     {
       "title": "Sidecar → Extension: receipt",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "receipt" },
-        "kind": { "type": "string" },
-        "capability": { "type": "string" },
-        "input_sha256": { "type": "string" },
-        "output_sha256": { "type": "string" },
-        "agent_id": { "type": "string" },
-        "mission_id": { "type": "string" },
-        "user_approved": { "type": "boolean" },
-        "mutated_workspace": { "type": "boolean" }
+        "type": {
+          "type": "string",
+          "const": "receipt"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "capability": {
+          "type": "string"
+        },
+        "input_sha256": {
+          "type": "string"
+        },
+        "output_sha256": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "mission_id": {
+          "type": "string"
+        },
+        "user_approved": {
+          "type": "boolean"
+        },
+        "mutated_workspace": {
+          "type": "boolean"
+        }
       },
-      "required": ["type", "kind", "capability", "input_sha256", "output_sha256"],
+      "required": [
+        "type",
+        "kind",
+        "capability",
+        "input_sha256",
+        "output_sha256"
+      ],
       "additionalProperties": false
     }
   ]

@@ -6,6 +6,11 @@ import hashlib
 from typing import TYPE_CHECKING, Any
 
 from rig_relay.desktop.chat_state import ChatMessage, ChatRole
+from rig_relay.core._receipt_events import (
+    CouncilFindingsEvent,
+    DesktopIntentEvent,
+    ReceiptEvent,
+)
 from rig_relay.core.logger import logger
 from rig_relay.core.types import (
     AssistantEvent,
@@ -25,8 +30,12 @@ if TYPE_CHECKING:
 class ChatAgentAdapter:
     """Adapter to route desktop chat messages to the AgentLoop and update ChatStore.
 
-    This class bridges the async stream of events from AgentLoop.act() to the
-    persistent ChatStore and triggers UI updates via a broadcast callback.
+    Bridges the async stream of events from AgentLoop.act() to the persistent
+    ChatStore and triggers UI updates via a broadcast callback.
+
+    Receipt-aware: tool results surface receipt IDs, council findings appear
+    as status messages, and desktop intent results are routed to the evidence
+    panel.
     """
 
     def __init__(
@@ -36,11 +45,10 @@ class ChatAgentAdapter:
         self._store = store
         self._on_update = on_update
         self._active_task: asyncio.Task[None] | None = None
-        self._status = "idle"  # idle, running, cancelling
+        self._status = "idle"
 
     @property
     def status(self) -> str:
-        """Current lifecycle status."""
         if self._active_task is None or self._active_task.done():
             return "idle"
         return self._status
@@ -50,7 +58,6 @@ class ChatAgentAdapter:
         return self.status != "idle"
 
     async def process_message(self, text: str, client_message_id: str) -> None:
-        """Process a user message through the agent loop."""
         if self.is_running:
             logger.warning(
                 "Message ignored: agent loop is already running (status=%s)",
@@ -62,17 +69,88 @@ class ChatAgentAdapter:
         self._active_task = asyncio.create_task(self._run_loop(text, client_message_id))
 
     def cancel(self) -> bool:
-        """Cancel the active agent loop task.
-
-        Returns:
-            True if a task was signalled for cancellation, False if idle.
-        """
         if self._active_task and not self._active_task.done():
             self._status = "cancelling"
             self._active_task.cancel()
             logger.info("Agent loop task signalled for cancellation")
             return True
         return False
+
+    def notify_receipt(self, event: ReceiptEvent) -> None:
+        """Surface a tool receipt in chat state."""
+        state = self._store.load_state()
+        receipt_msg = ChatMessage(
+            role=ChatRole.STATUS,
+            content=f"Receipt: {event.receipt_kind} ({event.receipt_id[:16]}...)",
+            status="receipt",
+            metadata={
+                "receipt_id": event.receipt_id,
+                "receipt_kind": event.receipt_kind,
+                "tool_name": event.tool_name,
+                "tool_call_id": event.tool_call_id,
+            },
+        )
+        state.messages.append(receipt_msg)
+        self._store.append_event(
+            "receipt.created",
+            message=receipt_msg,
+            receipt_id=event.receipt_id,
+            receipt_kind=event.receipt_kind,
+        )
+        self._store.save_state(state)
+        self._on_update()
+
+    def notify_council_findings(self, event: CouncilFindingsEvent) -> None:
+        """Surface Council consultation results in chat state."""
+        state = self._store.load_state()
+        findings = (
+            f"Council: {event.provider_count} providers consulted. "
+            f"Consensus: {len(event.consensus_findings)} findings, "
+            f"Disagreements: {len(event.disagreement_findings)}. "
+            f"Decision: {event.decision}"
+        )
+        council_msg = ChatMessage(
+            role=ChatRole.STATUS,
+            content=findings,
+            status="council",
+            metadata={
+                "receipt_id": event.receipt_id,
+                "decision": event.decision,
+                "provider_count": str(event.provider_count),
+            },
+        )
+        state.messages.append(council_msg)
+        self._store.append_event(
+            "council.findings",
+            message=council_msg,
+            receipt_id=event.receipt_id,
+            decision=event.decision,
+        )
+        self._store.save_state(state)
+        self._on_update()
+
+    def notify_desktop_intent(self, event: DesktopIntentEvent) -> None:
+        """Surface desktop intent results in chat state."""
+        state = self._store.load_state()
+        intent_msg = ChatMessage(
+            role=ChatRole.STATUS,
+            content=f"Intent: {event.intent_kind} — {event.status}: {event.summary}",
+            status="intent",
+            metadata={
+                "intent_id": event.intent_id,
+                "intent_kind": event.intent_kind,
+                "status": event.status,
+            },
+        )
+        state.messages.append(intent_msg)
+        self._store.append_event(
+            "desktop.intent.completed",
+            message=intent_msg,
+            intent_kind=event.intent_kind,
+            receipt_ids=event.receipt_ids,
+        )
+        self._store.save_state(state)
+        self._on_update()
 
     async def _run_loop(self, text: str, client_message_id: str) -> None:
         try:
@@ -93,8 +171,6 @@ class ChatAgentAdapter:
             self._on_update()
 
     async def _handle_event(self, event: BaseEvent) -> None:
-        """Map AgentLoop events to ChatStore updates."""
-        # Load current state
         state = self._store.load_state()
         state.pending_response = True
 
@@ -119,7 +195,6 @@ class ChatAgentAdapter:
         elif isinstance(event, ToolStreamEvent):
             self._handle_tool_stream(state, event)
 
-        # Save and broadcast
         self._store.save_state(state)
         self._on_update()
 
@@ -139,7 +214,6 @@ class ChatAgentAdapter:
             self._store.append_event("chat.message.created", message=user_msg)
 
     def _handle_tool_call(self, state: Any, event: ToolCallEvent) -> None:
-        # Show tool calling status
         status_msg = ChatMessage(
             role=ChatRole.STATUS,
             content=f"Calling tool: {event.tool_name}...",
@@ -150,7 +224,6 @@ class ChatAgentAdapter:
         self._store.append_event("chat.status.created", message=status_msg)
 
     def _handle_tool_result(self, state: Any, event: ToolResultEvent) -> None:
-        # Finalize tool status with summary
         for msg in reversed(state.messages):
             if msg.metadata.get("tool_call_id") == event.tool_call_id:
                 if event.error:
@@ -168,26 +241,20 @@ class ChatAgentAdapter:
                 break
 
     def _handle_tool_stream(self, state: Any, event: ToolStreamEvent) -> None:
-        # Progress update for a tool
         for msg in reversed(state.messages):
             if msg.metadata.get("tool_call_id") == event.tool_call_id:
                 progress_preview = self._sanitize_tool_output(event.message, limit=120)
                 msg.content = f"Tool {event.tool_name} progress: {progress_preview}..."
                 break
 
-    def _sanitize_tool_output(self, text: str, limit: int) -> str:
-        """Strip raw stdout/stderr/diff/source/secrets from tool output."""
-        # Replace newlines with spaces for single-line preview
+    @staticmethod
+    def _sanitize_tool_output(text: str, limit: int) -> str:
         clean = text.replace("\n", " ").replace("\r", " ")
-
-        # Heuristic: strip anything that looks like a raw shell output or diff
-        # (This is a lightweight preview-only sanitizer)
         if "--- " in clean and "+++ " in clean:
             clean = "[diff content omitted]"
         elif "Traceback (most recent call last):" in clean:
             clean = "[stack trace omitted]"
 
-        # Truncate
         if len(clean) > limit:
             return clean[:limit].rstrip()
         return clean
@@ -200,14 +267,12 @@ class ChatAgentAdapter:
         role: ChatRole,
         status: str | None = None,
     ) -> None:
-        """Helper to append content to an existing message or create a new one."""
         if message_id:
             for msg in reversed(state.messages):
                 if msg.message_id == message_id:
                     msg.content += content
                     return
 
-        # Not found, create new
         new_msg = ChatMessage(
             role=role,
             content=content,
@@ -221,13 +286,11 @@ class ChatAgentAdapter:
         state = self._store.load_state()
         state.pending_response = False
 
-        # Log event for failures
         if status == "error":
             self._store.append_event("chat.response.error")
         elif status == "cancelled":
             self._store.append_event("chat.response.cancelled")
 
-        # Update any 'running' or 'thinking' status messages to the final status if provided
         updated = False
         if status:
             for msg in state.messages:
@@ -235,7 +298,6 @@ class ChatAgentAdapter:
                     msg.status = status
                     updated = True
 
-            # If nothing was updated and we have an error, add a generic error message
             if not updated and status == "error":
                 error_msg = ChatMessage(
                     role=ChatRole.STATUS,
