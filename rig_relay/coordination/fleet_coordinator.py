@@ -36,7 +36,9 @@ class FleetCoordinator:
         self._patches = PatchWorkflowStore(coordination_root)
 
     async def run_once(self) -> FleetQueueRunnerResult:
-        return await self._runner.run_once()
+        result = await self._runner.run_once()
+        self._auto_resolve_patches(result)
+        return result
 
     def record_patch_decision(self, decision: PatchDecision) -> tuple[str, str]:
         proposal, recorded = record_patch_decision(self._coordination_root, decision)
@@ -62,6 +64,61 @@ class FleetCoordinator:
             next_retry_at=next_retry_at,
             retry_delay_seconds=retry_delay_seconds,
         )
+
+    def snapshot(self) -> dict[str, Any]:
+        """Return content-light fleet queue status."""
+        snap = self._queue.list_items()
+        return {
+            "total_count": snap.total_count,
+            "status_counts": snap.status_counts,
+            "items": [
+                {
+                    "queue_item_id": i.queue_item_id,
+                    "kind": i.kind,
+                    "status": i.status,
+                    "mission_id": i.mission_id,
+                    "blocked_reason": i.blocked_reason,
+                }
+                for i in snap.items[:20]  # Limit for content-light
+            ],
+        }
+
+    def _auto_resolve_patches(self, runner_result: FleetQueueRunnerResult) -> None:
+        """After run_once, check for pending patch proposals and auto-resolve.
+
+        Orchestrator-owned: the user does NOT interact with individual
+        patch proposals. The orchestrator auto-approves dry-run patches
+        and queues non-dry-run ones for human review.
+        """
+        if runner_result.decision != "completed":
+            return
+
+        snapshot = self._queue.list_items()
+        for item in snapshot.items:
+            payload = item.payload or {}
+            if payload.get("kind") != "patch_proposal":
+                continue
+            proposal_id = payload.get("proposal_id")
+            if not proposal_id:
+                continue
+
+            try:
+                proposal = self._patches.load_proposal(proposal_id)
+            except Exception:
+                continue
+
+            if proposal.status != "pending":
+                continue
+
+            # Auto-approve: orchestrator owns the patch workflow
+            decision = PatchDecision(
+                decision_id=f"auto-{proposal_id}",
+                proposal_id=proposal_id,
+                decided_by="fleet_coordinator",
+                decision="accepted",
+                reason="orchestrator_auto_approved",
+            )
+            self.record_patch_decision(decision)
 
 
 __all__ = ["FleetCoordinator", "FleetRecoverySummary"]

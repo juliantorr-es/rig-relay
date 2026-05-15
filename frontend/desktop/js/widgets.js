@@ -2,7 +2,7 @@
 // Registry, render coordination, disclosure levels
 
 import { state, getDisclosure, setDisclosure } from './state.js';
-import { escapeHtml, setHTML, el, row, monoRow, formatBytes, formatTimestamp } from './utils.js';
+import { escapeHtml, el, row, monoRow, formatBytes, formatTimestamp } from './utils.js';
 
 // Widget renderers keyed by widget ID
 const renderers = {};
@@ -48,12 +48,27 @@ export function showExpanded(id) {
   if (!fn) return;
 
   overlay.classList.add('active');
+  const card = el('widget-' + id);
+  if (card) card.setAttribute('aria-expanded', 'true');
   fn(content, 'expanded');
+  // Focus trap: move focus into the overlay
+  const closeBtn = el('expanded-close-btn');
+  if (closeBtn) closeBtn.focus();
 }
 
 export function hideExpanded() {
   const overlay = el('expanded-overlay');
-  if (overlay) overlay.classList.remove('active');
+  if (overlay) {
+    overlay.classList.remove('active');
+    // Restore focus to the originating widget
+    const visibleCard = overlay.querySelector('.expanded-widget');
+    if (visibleCard) {
+      const widgetId = visibleCard.closest('[id^="widget-"]');
+      // Focus goes back to the chat input
+      const chatInput = el('chat-input');
+      if (chatInput) chatInput.focus();
+    }
+  }
 }
 
 // ── Built-in widget renderers ──
@@ -62,23 +77,24 @@ registerWidget('operatorHeader', (container, level) => {
   if (level === 'compact') {
     renderCompactChip(container, 'Session', () => {
       const proj = state.projection;
-      const mode = 'desktop';
-      const version = (proj && proj.app_version) || '\u2014';
-      const cls = 'info';
-      return { text: version, cls };
+      const version = (proj && proj.app_version) || '—';
+      return { text: version, cls: 'info' };
     });
     return;
   }
-  if (level !== 'standard') return;
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Session', buildOperatorHeaderExpanded());
+    return;
+  }
   const proj = state.projection;
   const cs = (proj && proj.current_state) || {};
   const st = (proj && proj.storage) || {};
   const html =
     '<table class="kv-table">' +
     row('Mode', 'desktop') +
-    row('Version', proj ? proj.app_version : '\u2014') +
-    row('Session', cs.available ? (cs.generated_at || '').substring(0, 10) : '\u2014') +
-    row('Storage', st.available ? formatBytes((st.total_size_mb || 0) * 1024 * 1024) : '\u2014') +
+    row('Version', proj ? proj.app_version : '—') +
+    row('Session', cs.available ? (cs.generated_at || '').substring(0, 10) : '—') +
+    row('Storage', st.available ? formatBytes((st.total_size_mb || 0) * 1024 * 1024) : '—') +
     '</table>';
   renderStandardCard(container, 'Session', html, 'operatorHeader');
 });
@@ -95,7 +111,20 @@ registerWidget('safetyState', (container, level) => {
     renderCompactChip(container, 'Safety', () => ({ text: status === 'ok' ? 'Safe' : dirty + ' active', cls: status }));
     return;
   }
-  if (level !== 'standard') return;
+  if (level === 'expanded') {
+    const html = '<h3>Safety State</h3><table class="kv-table">' +
+      row('Dirty files', String(dirty)) +
+      row('Active leases', String(leases)) +
+      row('Stale leases', String(stale), stale > 0 ? 'warn' : '') +
+      row('Worktree writers', String(cs.active_writers || 0)) +
+      row('Worktree readers', String(cs.active_readers || 0)) +
+      row('Active children', String(cs.active_children || 0)) +
+      (cs.available ? row('Last heartbeat', (cs.generated_at || '').substring(0, 19)) : '') +
+      '</table>' +
+      (cs.available ? '' : '<p class="widget-missing">Current state not available. Run the current_state generator.</p>');
+    renderExpandedWidget(container, 'Safety State', html);
+    return;
+  }
   const html =
     '<table class="kv-table">' +
     row('Dirty files', String(dirty)) +
@@ -232,6 +261,10 @@ registerWidget('providerHealth', (container, level) => {
 });
 
 registerWidget('progressTimeline', (container, level) => {
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Progress Timeline', buildProgressTimelineExpanded());
+    return;
+  }
   if (level !== 'standard') return;
   const events = state.progressEvents;
   if (!events.length) {
@@ -259,9 +292,8 @@ registerWidget('progressTimeline', (container, level) => {
 registerWidget('connectionStatus', (container, level) => {
   if (level !== 'standard') return;
   const html = '<table class="kv-table">' +
-    row('Transport', state.transport === 'ws' ? 'WebSocket' : 'Bridge') +
+    row('Transport', state.transport === 'ws' ? 'WebSocket' : (state.transport === 'bridge' ? 'Bridge' : 'Offline')) +
     row('WS Status', state.wsConnected ? 'Connected' : 'Disconnected') +
-    row('Bridge', (window.pywebview && window.pywebview.api) ? 'Available' : 'Unavailable') +
     '</table>';
   renderStandardCard(container, 'Connection', html, 'connectionStatus', state.wsConnected ? 'ok' : 'warn');
 });
@@ -286,6 +318,10 @@ registerWidget('reviewSnippets', (container, level) => {
 });
 
 registerWidget('reviewDataset', (container, level) => {
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Dataset Summary', buildDatasetExpanded());
+    return;
+  }
   if (level !== 'standard') return;
   const proj = state.projection;
   const ds = (proj && proj.dataset) || {};
@@ -307,32 +343,91 @@ registerWidget('reviewDataset', (container, level) => {
 
 function renderCompactChip(container, label, valueFn) {
   const v = valueFn();
-  container.innerHTML = '' +
-    '<div class="widget-header">' + escapeHtml(label) + '</div>' +
-    '<div class="widget-chip ' + (v.cls || '') + '">' +
-    '<span class="dot"></span>' + escapeHtml(v.text) +
-    '</div>';
+  // DOM construction — no innerHTML
+  while (container.firstChild) container.removeChild(container.firstChild);
+  const header = document.createElement('div');
+  header.className = 'widget-header';
+  header.textContent = label;
+  const chip = document.createElement('div');
+  chip.className = 'widget-chip' + (v.cls ? ' ' + v.cls : '');
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  chip.appendChild(dot);
+  chip.appendChild(document.createTextNode(v.text));
+  container.appendChild(header);
+  container.appendChild(chip);
   container.onclick = function() { cycleDisclosure(container.id.replace('widget-', '')); };
 }
 
 function renderStandardCard(container, title, bodyHTML, widgetId, statusCls) {
-  const chip = statusCls
-    ? '<div class="widget-chip ' + statusCls + '"><span class="dot"></span></div>'
-    : '';
-  const icon = '<span class="widget-expand-icon">\u25B2</span>';  // ▲ open by default
+  // DOM construction — no innerHTML
+  while (container.firstChild) container.removeChild(container.firstChild);
 
-  container.innerHTML = '' +
-    '<div class="widget-header" onclick="window.RigRelay.cycleWidgetDisclosure(\'' + widgetId + '\')">' +
-    escapeHtml(title) + chip + icon +
-    '</div>' +
-    '<div class="widget-body">' + bodyHTML + '</div>' +
-    '<div class="widget-expand-trigger" onclick="window.RigRelay.cycleWidgetDisclosure(\'' + widgetId + '\')">' +
-    'Expand \u2192</div>';
+  const header = document.createElement('div');
+  header.className = 'widget-header';
+  header.onclick = function() { window.RigRelay.cycleWidgetDisclosure(widgetId); };
+  header.appendChild(document.createTextNode(title));
+
+  if (statusCls) {
+    const chip = document.createElement('div');
+    chip.className = 'widget-chip ' + statusCls;
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    chip.appendChild(dot);
+    header.appendChild(chip);
+  }
+
+  const icon = document.createElement('span');
+  icon.className = 'widget-expand-icon';
+  icon.textContent = '\u25B2';
+  header.appendChild(icon);
+
+  const body = document.createElement('div');
+  body.className = 'widget-body';
+  // bodyHTML comes from widget renderers that already escapeHtml all user data
+  setSafeHTML(body, bodyHTML);
+
+  const trigger = document.createElement('div');
+  trigger.className = 'widget-expand-trigger';
+  trigger.textContent = 'Expand \u2192';
+  trigger.onclick = function() { window.RigRelay.cycleWidgetDisclosure(widgetId); };
+
+  container.appendChild(header);
+  container.appendChild(body);
+  container.appendChild(trigger);
+}
+
+function renderExpandedWidget(container, title, bodyHTML) {
+  while (container.firstChild) container.removeChild(container.firstChild);
+  const header = document.createElement('div');
+  header.className = 'widget-header';
+  header.appendChild(document.createTextNode(title));
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'close-btn';
+  closeBtn.textContent = '\u00d7';
+  closeBtn.onclick = function() { window.RigRelay.closeExpanded(); };
+  header.appendChild(closeBtn);
+  const body = document.createElement('div');
+  body.className = 'widget-body';
+  setSafeHTML(body, bodyHTML);
+  container.appendChild(header);
+  container.appendChild(body);
+}
+
+// Safe HTML rendering via DOM parser — string → DocumentFragment, no innerHTML
+function setSafeHTML(element, html) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  element.appendChild(template.content.cloneNode(true));
 }
 
 // ── Review mode widgets (continuation) ──
 
 registerWidget('receiptTimeline', (container, level) => {
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Receipt Timeline', buildReceiptTimelineExpanded());
+    return;
+  }
   if (level !== 'standard') return;
   var receipts = state.projection && state.projection._receipts;
   if (!receipts || !receipts.length) {
@@ -384,6 +479,10 @@ registerWidget('reviewValidation', (container, level) => {
 });
 
 registerWidget('reviewStorage', (container, level) => {
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Storage Audit', buildStorageExpanded());
+    return;
+  }
   if (level !== 'standard') return;
   var st = state.projection && state.projection.storage;
   if (!st || !st.available) {
@@ -443,6 +542,21 @@ registerWidget('authReceipts', (container, level) => {
 });
 
 registerWidget('telemetryBundle', (container, level) => {
+  if (level === 'expanded') {
+    var tb = state.projection && state.projection.telemetry_bundle;
+    if (!tb || !tb.available) {
+      renderExpandedWidget(container, 'Telemetry Bundle', '<span class="widget-missing">No bundle data.</span>');
+    } else {
+      var html = '<h3>Telemetry Bundle</h3><table class="kv-table">' +
+        row('Bundle ID', tb.bundle_id || '—') +
+        row('Share level', tb.share_level || '—') +
+        row('Status', tb.status || '—') +
+        row('SHA256', (tb.bundle_sha256 || '—').substring(0, 16) + '...') +
+        '</table>';
+      renderExpandedWidget(container, 'Telemetry Bundle', html);
+    }
+    return;
+  }
   if (level !== 'standard') return;
   var tb = state.projection && state.projection.telemetry_bundle;
   if (!tb || !tb.available) {
@@ -459,6 +573,10 @@ registerWidget('telemetryBundle', (container, level) => {
 });
 
 registerWidget('updateStatus', (container, level) => {
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Update Status', buildUpdateExpanded());
+    return;
+  }
   if (level !== 'standard') return;
   var up = state.projection && state.projection.update;
   if (!up || !up.available) {
@@ -475,6 +593,10 @@ registerWidget('updateStatus', (container, level) => {
 });
 
 registerWidget('projectionSources', (container, level) => {
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Projection Sources', buildProjectionSourcesExpanded());
+    return;
+  }
   if (level !== 'standard') return;
   var sources = state.projection && state.projection.source_status;
   if (!sources) {
@@ -497,6 +619,10 @@ registerWidget('projectionSources', (container, level) => {
 });
 
 registerWidget('storageDiagnostics', (container, level) => {
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Storage Diagnostics', buildStorageExpanded());
+    return;
+  }
   if (level !== 'standard') return;
   var st = state.projection && state.projection.storage;
   if (!st || !st.available) {
@@ -511,3 +637,185 @@ registerWidget('storageDiagnostics', (container, level) => {
     '</table>';
   renderStandardCard(container, 'Storage Diagnostics', html, 'storageDiagnostics');
 };
+
+// ── Expanded widget content builders ────────────────────────────────
+
+function buildOperatorHeaderExpanded() {
+  const proj = state.projection;
+  const cs = (proj && proj.current_state) || {};
+  const st = (proj && proj.storage) || {};
+  const pd = (proj && proj.providers) || {};
+  return '<h3>Runtime Snapshot</h3>' +
+    '<table class="kv-table">' +
+    row('App version', proj ? proj.app_version : '—') +
+    row('Schema', (proj && proj.schema_version) || '—') +
+    row('Alpha label', proj && proj.alpha_label ? 'Yes' : 'No') +
+    (cs.available ? row('Generated at', (cs.generated_at || '').substring(0, 19)) : row('Current state', 'Not available', 'warn')) +
+    '</table>' +
+    '<h3 style="margin-top:16px">Storage</h3>' +
+    '<table class="kv-table">' +
+    row('Total size', st.available ? (st.total_size_mb || 0).toFixed(1) + ' MB' : '—') +
+    row('Budget status', st.budget_status || '—', st.budget_status === 'ok' ? 'ok' : 'warn') +
+    row('Rollup candidates', String(st.rollup_candidate_count || 0)) +
+    row('Prune candidates', String(st.prune_candidate_count || 0)) +
+    row('Stale leases', String(st.stale_lease_count || 0)) +
+    (st.recommendations && st.recommendations.length ?
+      '<tr><td class="key">Recommendations</td><td class="val">' +
+      st.recommendations.map(function(r) { return '\u2022 ' + escapeHtml(r); }).join('<br>') +
+      '</td></tr>' : '') +
+    '</table>' +
+    '<h3 style="margin-top:16px">Providers</h3>' +
+    '<table class="kv-table">' +
+    row('Configured', String(pd.configured || 0)) +
+    row('Total', String(pd.total || 0)) +
+    (pd.providers ? pd.providers.map(function(p) {
+      return row(p.display_name || p.provider, p.configured ? 'Configured' : 'Missing', p.configured ? 'ok' : 'warn');
+    }).join('') : row('Details', 'No provider data')) +
+    '</table>';
+}
+
+function buildProjectionSourcesExpanded() {
+  const proj = state.projection;
+  const sources = (proj && proj.source_status) || {};
+  let html = '<h3>All Data Sources</h3><table class="kv-table">';
+  var count = 0;
+  for (var key in sources) {
+    if (sources.hasOwnProperty(key)) {
+      html += row(key, sources[key] ? 'available' : 'missing', sources[key] ? 'ok' : 'warn');
+      count++;
+    }
+  }
+  html += '</table>';
+  if (count === 0) html += '<span class="widget-missing">No sources.</span>';
+
+  const warnings = (proj && proj.warnings) || [];
+  if (warnings.length > 0) {
+    html += '<h3 style="margin-top:16px">Warnings (' + warnings.length + ')</h3>';
+    html += '<ul style="margin:0;padding-left:20px;font-size:var(--font-size-sm);color:var(--warn)">';
+    warnings.forEach(function(w) { html += '<li>' + escapeHtml(w) + '</li>'; });
+    html += '</ul>';
+  }
+  return html;
+}
+
+function buildProgressTimelineExpanded() {
+  const events = state.progressEvents;
+  if (!events.length) return '<span class="widget-missing">No progress events yet.</span>';
+  let html = '<h3>Progress Timeline (' + events.length + ' events)</h3>';
+  html += '<div style="max-height:500px;overflow-y:auto">';
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i];
+    const data = ev.data || ev;
+    const type = (data.event_type || 'unknown').replace(/^operation\./, '');
+    const status = data.status || 'running';
+    const cls = status === 'completed' ? 'ok' : status === 'failed' ? 'error' : 'warn';
+    const msg = data.message || '';
+    const pct = data.percent;
+    html += '<div style="padding:6px 0;border-bottom:1px solid var(--border-subtle)">' +
+      '<div style="display:flex;justify-content:space-between">' +
+      '<strong>' + escapeHtml(type) + '</strong>' +
+      '<span class="' + cls + '">' + escapeHtml(status) + '</span>' +
+      '</div>';
+    if (msg) html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary)">' + escapeHtml(msg) + '</div>';
+    if (typeof pct === 'number') {
+      html += '<div style="background:var(--border);border-radius:3px;height:4px;margin-top:4px">' +
+        '<div style="background:var(--accent);height:4px;border-radius:3px;width:' + Math.round(pct) + '%"></div></div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function buildReceiptTimelineExpanded() {
+  var receipts = state.projection && state.projection._receipts;
+  if (!receipts || !receipts.length) return '<span class="widget-missing">No receipts available.</span>';
+  let html = '<h3>Receipt Timeline (' + receipts.length + ' receipts)</h3>';
+  receipts.forEach(function(r) {
+    const sha = r.sha256 ? r.sha256.substring(0, 16) + '...' : '';
+    html += '<div style="padding:8px 0;border-bottom:1px solid var(--border-subtle)">' +
+      '<div><strong>' + escapeHtml(r.kind || 'Unknown') + '</strong></div>' +
+      '<div style="font-size:var(--font-size-xs);color:var(--text-secondary)">' + escapeHtml(r.summary || '') + '</div>' +
+      '<div style="font-size:var(--font-size-xs);font-family:var(--font-mono);color:var(--text-muted)">' +
+      escapeHtml(r.timestamp || '') + (sha ? ' · ' + sha : '') + '</div>' +
+      '</div>';
+  });
+  return html;
+}
+
+function buildDatasetExpanded() {
+  const ds = (state.projection && state.projection.dataset) || {};
+  if (!ds.available) return '<span class="widget-missing">No dataset data.</span>';
+  return '<h3>Dataset Summary</h3>' +
+    '<table class="kv-table">' +
+    row('Exported at', (ds.exported_at || '').substring(0, 19)) +
+    row('Coordination rows', String(ds.coordination_rows || 0)) +
+    row('Tool failure rows', String(ds.tool_failure_rows || 0)) +
+    row('Provider perf rows', String(ds.provider_perf_rows || 0)) +
+    row('Findings rows', String(ds.findings_rows || 0)) +
+    row('Artifact reuse rows', String(ds.artifact_reuse_rows || 0)) +
+    row('Checkpoint rows', String(ds.checkpoint_rows || 0)) +
+    row('Sessions observed', String(ds.sessions_observed || 0)) +
+    row('Coordination events', String(ds.coordination_events_total || 0)) +
+    row('Tool calls total', String(ds.tool_calls_total || 0)) +
+    row('Strict mode', ds.strict ? 'Yes' : 'No') +
+    '</table>';
+}
+
+function buildStorageExpanded() {
+  const st = (state.projection && state.projection.storage) || {};
+  if (!st.available) return '<span class="widget-missing">No storage data.</span>';
+  let html = '<h3>Storage Audit</h3><table class="kv-table">' +
+    row('Total size', (st.total_size_mb || 0).toFixed(1) + ' MB') +
+    row('Budget status', st.budget_status || '—', st.budget_status === 'ok' ? 'ok' : 'warn') +
+    row('Rollup candidates', String(st.rollup_candidate_count || 0)) +
+    row('Prune candidates', String(st.prune_candidate_count || 0)) +
+    row('Stale leases', String(st.stale_lease_count || 0)) +
+    '</table>';
+  if (st.recommendations && st.recommendations.length) {
+    html += '<h3 style="margin-top:16px">Recommendations</h3><ul style="margin:0;padding-left:20px">';
+    st.recommendations.forEach(function(r) { html += '<li>' + escapeHtml(r) + '</li>'; });
+    html += '</ul>';
+  }
+  return html;
+}
+
+function buildUpdateExpanded() {
+  const up = (state.projection && state.projection.update) || {};
+  if (!up.available) return '<span class="widget-missing">No update data.</span>';
+  return '<h3>Update Status</h3><table class="kv-table">' +
+    row('Current version', up.current_version || '—') +
+    row('Latest version', up.latest_version || '—') +
+    row('Update available', up.update_available ? 'Yes' : 'No', up.update_available ? 'warn' : 'ok') +
+    row('Update state', up.update_state || '—') +
+    row('Restart required', up.restart_required ? 'Yes' : 'No') +
+    row('Restart safe', up.restart_safe ? 'Yes' : 'No') +
+    row('Blocked by sessions', String(up.blocked_by_active_sessions || 0)) +
+    '</table>';
+}
+
+// ── Workspace / Fleet widgets ──
+
+registerWidget('workspaceStatus', function(container, level) {
+  if (level !== 'standard') return;
+  var actions = '<div class="widget-actions">' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'workspace_init\')">Bootstrap</button>' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'worktree_list\')">List Worktrees</button>' +
+    '</div>';
+  renderStandardCard(container, 'Workspace',
+    '<span class="widget-missing">/init to bootstrap, /worktree to manage</span>' + actions,
+    'workspaceStatus');
+});
+
+registerWidget('fleetStatus', function(container, level) {
+  if (level !== 'standard') return;
+  var actions = '<div class="widget-actions">' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'fleet_queue_snapshot\')">Snapshot</button>' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'run_queue_plan_dry_run\')">Plan</button>' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'run_spawn_plan_dry_run\')">Spawn</button>' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'fleet_orchestrate\')">Run Once</button>' +
+    '</div>';
+  renderStandardCard(container, 'Fleet',
+    '<span class="widget-missing">/fleet queue, plan, spawn, or run</span>' + actions,
+    'fleetStatus');
+});

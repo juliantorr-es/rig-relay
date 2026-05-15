@@ -4,11 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator, Callable, Generator
 import contextlib
 import copy
-from enum import StrEnum, auto
-from functools import wraps
 import hashlib
-from http import HTTPStatus
-import inspect
 import os
 from pathlib import Path
 import threading
@@ -20,7 +16,6 @@ from uuid import uuid4
 from opentelemetry import trace
 from pydantic import BaseModel
 
-from rig_relay.core.terminal_detect import detect_terminal
 from rig_relay.core.agents.manager import AgentManager
 from rig_relay.core.agents.models import AgentProfile, BuiltinAgentName
 from rig_relay.core.config import ModelConfig, ProviderConfig, VibeConfig
@@ -28,7 +23,6 @@ from rig_relay.core.guard import DirtyGuardFailurePolicy, GuardCaptureReason, ge
 from rig_relay.core.hooks.manager import HooksManager
 from rig_relay.core.hooks.models import HookConfigResult, HookType, HookUserMessage
 from rig_relay.core.llm.backend.factory import BACKEND_FACTORY
-from rig_relay.core.llm.exceptions import BackendError
 from rig_relay.core.llm.format import (
     APIToolFormatHandler,
     FailedToolCall,
@@ -53,7 +47,10 @@ from rig_relay.core.middleware import (
     TurnLimitMiddleware,
     make_plan_agent_reminder,
 )
-from rig_relay.core.paths._vibe_home import SESSIONS_ROOT, resolve_evidence_root_resolution
+from rig_relay.core.paths._vibe_home import (
+    SESSIONS_ROOT,
+    resolve_evidence_root_resolution,
+)
 from rig_relay.core.plan_session import PlanSession
 from rig_relay.core.prompts import UtilityPrompt
 from rig_relay.core.rewind import RewindManager
@@ -79,9 +76,12 @@ from rig_relay.core.telemetry.types import (
     TelemetryCallType,
     TelemetryRequestMetadata,
 )
+from rig_relay.core.terminal_detect import detect_terminal
 
 _TRUNCATION_PROMPT_BYTES = 64_000
+from rig_relay.context.compiler import ContextCompiler
 from rig_relay.context.models import ContextEnvelopeReceipt
+from rig_relay.context.repo_index import RepoContextIndex
 from rig_relay.context.symbol_codec import expand_aliases
 from rig_relay.core.teleport.errors import ServiceTeleportError
 from rig_relay.core.teleport.telemetry import TeleportTelemetryTracker
@@ -150,13 +150,26 @@ except ImportError:
 
 if TYPE_CHECKING:
     from rig_relay.core.teleport.teleport import TeleportService
-    from rig_relay.core.teleport.types import TeleportPushResponseEvent, TeleportYieldEvent
+    from rig_relay.core.teleport.types import (
+        TeleportPushResponseEvent,
+        TeleportYieldEvent,
+    )
 
 
 
-from rig_relay.core._agent_helpers import _is_context_too_long_error, _is_non_retryable_error, _should_raise_rate_limit_error, requires_init
+from rig_relay.core._agent_helpers import (
+    _is_context_too_long_error,
+    _is_non_retryable_error,
+    _should_raise_rate_limit_error,
+    requires_init,
+)
 from rig_relay.core._agent_models import ToolDecision, ToolExecutionResponse
-from rig_relay.core._errors import AgentLoopError, AgentLoopStateError, AgentLoopLLMResponseError, TeleportError
+from rig_relay.core._errors import (
+    AgentLoopError,
+    AgentLoopLLMResponseError,
+    TeleportError,
+)
+
 
 class AgentLoop:
     def __init__(  # noqa: PLR0913, PLR0915
@@ -255,6 +268,24 @@ class AgentLoop:
         self._current_context_envelope: ContextEnvelopeReceipt | None = None
         self._is_user_prompt_call: bool = False
 
+        # Context compiler: builds prompt envelope from workspace state
+        self._repo_index: RepoContextIndex | None = None
+        self._context_compiler: ContextCompiler | None = None
+        if not defer_heavy_init:
+            try:
+                repo_index = RepoContextIndex(workspace_root=Path.cwd())
+                if repo_index.is_available:
+                    repo_index.populate()
+                    self._repo_index = repo_index
+            except Exception:
+                self._repo_index = None
+            self._context_compiler = ContextCompiler(
+                session_id=self.session_id,
+                workspace_root=Path.cwd(),
+                receipt_store=None,
+                repo_index=self._repo_index,
+            )
+
         self._session_rules: list[ApprovedRule] = []
         self._approval_lock = asyncio.Lock()
 
@@ -328,7 +359,7 @@ class AgentLoop:
         return thread is not None and not thread.is_alive()
 
     def _complete_init(self) -> None:
-        """Run deferred heavy I/O: MCP and connector discovery.
+        """Run deferred heavy I/O: MCP, connector discovery, and context compiler.
 
         Intended to be called from a background thread when
         ``defer_heavy_init=True`` was passed to ``__init__``.
@@ -344,6 +375,23 @@ class AgentLoop:
                 headless=self._headless,
             )
             self.messages.update_system_prompt(system_prompt)
+
+            # Initialize context compiler (including DuckDB repo index)
+            if self._context_compiler is None:
+                try:
+                    repo_index = RepoContextIndex(workspace_root=Path.cwd())
+                    if repo_index.is_available:
+                        repo_index.populate()
+                        self._repo_index = repo_index
+                except Exception:
+                    self._repo_index = None
+                self._context_compiler = ContextCompiler(
+                    session_id=self.session_id,
+                    workspace_root=Path.cwd(),
+                    receipt_store=None,
+                    repo_index=self._repo_index,
+                )
+
             self._init_duration_ms = int(
                 (time.monotonic() - self._init_start_time) * 1000
             )
@@ -817,6 +865,13 @@ class AgentLoop:
                 if first_llm_turn:
                     self._is_user_prompt_call = True
                     first_llm_turn = False
+
+                    # Build context envelope on the first LLM turn.
+                    # The envelope enriches the prompt with workspace context
+                    # (AGENTS.md, git state, dirty files, relevant tests, etc.)
+                    # and establishes the symbol manifest for tool call expansion.
+                    await self._build_context_envelope(user_msg)
+
                 async for event in self._perform_llm_turn():
                     if is_user_cancellation_event(event):
                         user_cancelled = True
@@ -1132,6 +1187,10 @@ class AgentLoop:
         async for event in self._run_tools_concurrently(resolved.tool_calls):
             yield event
 
+        # Passive GC: after tool execution, check storage budget
+        # and prune stale artifacts if over threshold.
+        await self._maybe_auto_gc()
+
     async def _execute_tool_to_queue(
         self,
         tc: ResolvedToolCall,
@@ -1394,6 +1453,89 @@ class AgentLoop:
                 tool_call.tool_name,
                 exc_info=True,
             )
+
+    async def _maybe_auto_gc(self) -> None:
+        """Passive garbage collection after tool execution.
+
+        Checks the build artifact storage budget. If usage exceeds 80% of
+        the warning threshold, prunes stale leases and old artifacts
+        without requiring an explicit GC tool call.
+
+        Best-effort: failures are logged and don't affect tool execution.
+        Only runs when local observability is enabled.
+        """
+        if not self.config.enable_local_observability:
+            return
+
+        try:
+            from rig_relay.evidence.storage_lifecycle import compute_storage_summary
+            from scripts.rig_relay_gc_artifacts import run_gc
+
+            repo_root = Path(__file__).resolve().parent.parent.parent
+            build_root = repo_root / ".build" / "rig-relay"
+            if not build_root.is_dir():
+                return
+
+            summary = compute_storage_summary(build_root=build_root)
+            budget_status = summary.get("budget_status", "ok")
+
+            # Only act when over warning threshold
+            if budget_status not in {"warn", "over_budget", "fleet_blocked"}:
+                return
+
+            # Gentle GC: only clean stale leases and coordination artifacts
+            # that are past retention; never touch protected files
+            result = run_gc(root=build_root, confirm=True)
+            deleted = result.get("summary", {}).get("deleted", 0)
+            freed_mb = result.get("summary", {}).get("freed_mb", 0.0)
+            if deleted > 0:
+                self.stats.gc_deleted_count = (
+                    getattr(self.stats, "gc_deleted_count", 0) + deleted
+                )
+                logger.info(
+                    "Auto-GC: removed %d artifacts (%.1f MB) after tool execution",
+                    deleted,
+                    freed_mb,
+                )
+        except Exception:
+            logger.warning("Auto-GC failed", exc_info=True)
+
+    async def _build_context_envelope(self, user_msg: str) -> None:
+        """Build a context envelope and inject it into the message list.
+
+        Uses the ContextCompiler to build a prompt envelope from workspace
+        state (AGENTS.md, git state, dirty files, relevant tests, etc.) and
+        inserts it as an injected system message before the latest user message.
+        The envelope also carries a symbol manifest used by ``_expand_tool_call_args``.
+
+        This is best-effort: failures are logged but never crash the turn.
+        """
+        compiler = self._context_compiler
+        if compiler is None:
+            return
+
+        try:
+            envelope = compiler.build_envelope(
+                user_text=user_msg,
+                snapshot=None,
+            )
+            self._current_context_envelope = envelope
+
+            if envelope.rendered_prompt and envelope.section_count > 0:
+                context_block = LLMMessage(
+                    role=Role.system,
+                    content=envelope.rendered_prompt,
+                    injected=True,
+                )
+                # Insert right before the last user message
+                if self.messages and self.messages[-1].role == Role.user:
+                    self.messages.insert(-1, context_block)
+                else:
+                    self.messages.append(context_block)
+        except Exception:
+            from rig_relay.core.logger import logger
+
+            logger.warning("Failed to build context envelope", exc_info=True)
 
     async def _report_context_assembly(self, active_model: ModelConfig) -> None:
         if not self.config.enable_local_observability:

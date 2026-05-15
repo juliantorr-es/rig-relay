@@ -3,7 +3,7 @@
 Verifies that:
 - ``pyproject.toml`` maps ``rig-relay`` to ``rig_relay.cli.entrypoint:main``.
 - Dispatcher module imports and exposes a callable ``main``.
-- No-arg dispatch routes to the Desktop Cockpit.
+- No-arg dispatch routes to the desktop shell.
 - ``rig-relay --help`` prints the cockpit description.
 """
 
@@ -114,4 +114,4 @@ def test_rig_relay_acp_help_succeeds():
 def test_rig_relay_help_mentions_cockpit():
     proc = _run_help("rig-relay")
     assert proc.returncode == 0, f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
-    assert "Desktop Cockpit" in proc.stdout
+    assert "Desktop Shell" in proc.stdout

@@ -23,6 +23,7 @@ class SystemPrompt(Prompt):
     EXPLORE = auto()
     TESTS = auto()
     LEAN = auto()
+    ORCHESTRATOR = auto()
 
 
 class UtilityPrompt(Prompt):

@@ -62,6 +62,7 @@ from typing import Any
 from rig_relay.desktop.intents import execute_desktop_intent, validate_intent_request
 from rig_relay.desktop.progress_events import ProgressEventBuffer
 from rig_relay.desktop.projection import READ_ONLY_ACTIONS, build_projection
+from rig_relay.core.logger import logger
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 9876
@@ -92,6 +93,59 @@ DEFAULT_RATE_LIMIT_PER_MINUTE = 60
 DEFAULT_MAX_CONNECTIONS = 10
 DEFAULT_WS_ORIGINS: frozenset[str] = frozenset({"127.0.0.1", "localhost", "file://", "null"})
 _RATE_WINDOW_SECONDS = 60
+
+# Per-message-type rate limit multipliers.
+# Values > 1.0 mean stricter (fewer allowed), < 1.0 mean looser.
+# The base rate limit is _rate_limit_per_minute. The effective limit
+# for a message type is floor(base / multiplier).
+_RATE_LIMIT_BY_TYPE: dict[str, float] = {
+    "auth": 3.0,             # Strict: 20/min at base 60
+    "send_chat_message": 4.0,  # Very strict: 15/min at base 60
+    "desktop_intent": 4.0,
+    "desktop_intent_request": 4.0,
+    "subscribe": 6.0,          # Most strict: 10/min
+    "get_projection": 0.5,     # Loose: 120/min
+}
+
+# JSON schema: required fields and types per message type.
+_MESSAGE_SCHEMA: dict[str, dict[str, Any]] = {
+    "auth": {"token": str},
+    "send_chat_message": {"text": str},
+    "clear_chat": {},
+    "cancel_chat_response": {},
+    "get_projection": {},
+    "get_available_actions": {},
+    "get_chat_state": {},
+    "get_progress_events": {},
+    "subscribe": {"interval": (int, float)},
+    "unsubscribe": {},
+    "ping": {},
+}
+
+
+def _validate_message_shape(msg_type: str, message: dict[str, Any]) -> list[str]:
+    """Validate that required fields exist and have correct types.
+
+    Returns a list of error strings, empty if valid.
+    """
+    schema = _MESSAGE_SCHEMA.get(msg_type)
+    if schema is None:
+        return []  # Unknown types are handled by the dispatch switch
+
+    errors = []
+    for field, expected in schema.items():
+        if field not in message:
+            errors.append(f"missing required field '{field}'")
+        elif expected is not None and not isinstance(message[field], expected):
+            type_name = (
+                " | ".join(t.__name__ for t in expected)
+                if isinstance(expected, tuple)
+                else expected.__name__
+            )
+            errors.append(
+                f"field '{field}' must be {type_name}, got {type(message[field]).__name__}"
+            )
+    return errors
 
 
 class ProjectionWebSocketError(Exception):
@@ -293,6 +347,7 @@ class ProjectionWebSocketServer:
         await asyncio.sleep(self._auth_timeout)
         async with self._lock:
             self._auth_timeout_count += 1
+        logger.warning("audit.auth.timeout")
         try:
             await _send_json(
                 websocket, {"type": "auth_timeout", "message": "Authentication timeout"}
@@ -313,6 +368,9 @@ class ProjectionWebSocketServer:
             if len(self._connections) >= self._max_connections:
                 self._rejected_count += 1
                 self._last_rejection_reason = "max_connections"
+                logger.warning(
+                    "audit.connection.server_full max=%s", self._max_connections
+                )
                 await _send_json(
                     websocket,
                     {
@@ -353,14 +411,36 @@ class ProjectionWebSocketServer:
                         rate_window_start = 0.0
                     continue
 
+                # Validate message shape before dispatch
+                msg_type = message.get("type", "")
+                shape_errors = _validate_message_shape(msg_type, message)
+                if shape_errors:
+                    logger.warning(
+                        "audit.message.invalid_shape msg_type=%s errors=%s",
+                        msg_type,
+                        shape_errors,
+                    )
+                    await _send_json(
+                        websocket,
+                        self._make_error(
+                            "invalid_message_shape",
+                            "; ".join(shape_errors),
+                        ),
+                    )
+                    continue
+
                 import time
                 now = time.monotonic()
                 if now - rate_window_start > _RATE_WINDOW_SECONDS:
                     message_count = 0
                     rate_window_start = now
 
+                # Per-type rate limit multiplier
+                msg_multiplier = _RATE_LIMIT_BY_TYPE.get(msg_type, 1.0)
+                effective_limit = max(1, int(self._rate_limit_per_minute / msg_multiplier))
+
                 message_count += 1
-                if message_count > self._rate_limit_per_minute:
+                if message_count > effective_limit:
                     await self._reject_rate_limited(websocket)
                     break
 
@@ -384,6 +464,9 @@ class ProjectionWebSocketServer:
     async def _reject_oversized(self, websocket: Any) -> None:
         async with self._lock:
             self._oversized_message_count += 1
+        logger.warning(
+            "audit.rate.oversized max_bytes=%s", self._max_message_bytes
+        )
         await _send_json(
             websocket,
             {
@@ -396,6 +479,7 @@ class ProjectionWebSocketServer:
     async def _reject_rate_limited(self, websocket: Any) -> None:
         async with self._lock:
             self._rate_limited_count += 1
+        logger.warning("audit.rate.limited")
         await _send_json(
             websocket,
             {"type": "rate_limited", "message": "Message rate limit exceeded"},
@@ -418,6 +502,7 @@ class ProjectionWebSocketServer:
             async with self._lock:
                 self._rejected_count += 1
                 self._last_rejection_reason = "invalid_token"
+            logger.warning("audit.auth.invalid_token")
             await _send_json(
                 websocket, {"type": "auth_error", "message": "Invalid token"}
             )
@@ -425,6 +510,7 @@ class ProjectionWebSocketServer:
         async with self._lock:
             self._rejected_count += 1
             self._last_rejection_reason = "auth_required"
+        logger.warning("audit.auth.required")
         await _send_json(websocket, {"type": "auth_required"})
         return False
 

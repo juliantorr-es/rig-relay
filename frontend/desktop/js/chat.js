@@ -2,9 +2,10 @@
 // Chat rendering, input handling, intent dispatch
 
 import { state } from './state.js';
-import { escapeHtml, setHTML, el } from './utils.js';
-import { sendMessage, bridgeCall } from './transport.js';
+import { escapeHtml, el } from './utils.js';
+import { sendMessage } from './transport.js';
 import { renderAllWidgets } from './widgets.js';
+import { isCommand, executeCommand, getAutocompleteMatches } from './commands.js';
 
 let streamingMsgId = null;
 
@@ -20,7 +21,7 @@ export function renderChat(data) {
   const transcript = el('chat-transcript');
   if (!transcript) return;
 
-  transcript.innerHTML = '';
+  while (transcript.firstChild) transcript.removeChild(transcript.firstChild);
   data.messages.forEach(function(msg) {
     appendMessageToDOM(transcript, msg);
   });
@@ -57,9 +58,22 @@ function scrollToBottom() {
 export function sendChatMessage() {
   const input = el('chat-input');
   if (!input || !input.value.trim()) return;
-  if (!state.chat.backendWired) return;
 
   const text = input.value.trim();
+
+  // Slash command — execute locally, don't send to backend
+  if (isCommand(text)) {
+    const result = executeCommand(text);
+    if (result) {
+      appendMessage('system', result);
+    }
+    input.value = '';
+    updateCharCount();
+    return;
+  }
+
+  if (!state.chat.backendWired) return;
+
   input.value = '';
   updateCharCount();
 
@@ -74,16 +88,16 @@ export function sendChatMessage() {
   });
 
   if (!sentWS) {
-    bridgeCall('send_chat_message', text).catch(function() {
-      appendMessage('error', 'Failed to send message. Backend unavailable.');
-    });
+    appendMessage('error', 'WebSocket not connected. Cannot send message.');
   }
 }
 
 export function clearChat() {
   sendMessage({ type: 'clear_chat' });
   const transcript = el('chat-transcript');
-  if (transcript) transcript.innerHTML = '';
+  if (transcript) {
+    while (transcript.firstChild) transcript.removeChild(transcript.firstChild);
+  }
 }
 
 export function cancelChat() {
@@ -93,8 +107,21 @@ export function cancelChat() {
 export function updateCharCount() {
   const input = el('chat-input');
   const count = el('char-count');
-  if (input && count) {
-    count.textContent = input.value.length + '/4000';
+  if (!input || !count) return;
+
+  const text = input.value;
+
+  if (isCommand(text)) {
+    const matches = getAutocompleteMatches(text);
+    if (matches.length === 1 && text === matches[0]) {
+      count.textContent = matches[0] + ' ✓';
+    } else if (matches.length > 0) {
+      count.textContent = matches.slice(0, 3).join('  ') + (matches.length > 3 ? ' ...' : '');
+    } else {
+      count.textContent = text.length + ' — type /help';
+    }
+  } else {
+    count.textContent = text.length + '/4000';
   }
 }
 
@@ -107,12 +134,6 @@ export function dispatchIntent(name, params) {
   });
 
   if (!sentWS) {
-    bridgeCall('execute_intent', JSON.stringify({
-      intent_name: name,
-      parameters: params || {},
-      dry_run: true
-    })).catch(function(e) {
-      console.warn('Intent dispatch failed:', e);
-    });
+    console.warn('Intent dispatch failed: WebSocket not connected');
   }
 }

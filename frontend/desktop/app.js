@@ -859,11 +859,19 @@ function handleIdentityIntentResult(result, resultElementId) {
     html += '<div class="detail-line">' + escapeHtml(result.summary) + '</div>';
   }
 
-  // Show auth URL if present
+  // Show auth URL if present — offer in-app browser or system browser
   var extra = result.extra_fields || {};
-  if (extra.auth_url) {
+  if (extra.auth_url && extra.loopback_port) {
+    html += '<div class="detail-line">';
+    var providerName = extra.provider || 'github';
+    html += '<button class="auth-btn" onclick="window.RigRelay.openInAppAuth(\'' + escapeHtml(extra.auth_url) + '\', ' + escapeHtml(String(extra.loopback_port)) + ', \'' + escapeHtml(extra.state_hash || '') + '\', \'' + escapeHtml(providerName) + '\')">Sign in in-app</button>';
+    html += ' <a href="' + escapeHtml(extra.auth_url) + '" target="_blank" class="auth-link">Open system browser</a>';
+    html += '</div>';
+    html += '<div class="detail-line small-note">Or copy the code from the provider page and paste below:</div>';
+    html += '<div class="detail-line"><input id="oauth-code-input" type="text" placeholder="Paste authorization code here" style="width:60%"> ';
+    html += '<button onclick="window.RigRelay.submitOAuthCode()">Submit</button></div>';
+  } else if (extra.auth_url) {
     html += '<div class="detail-line"><a href="' + escapeHtml(extra.auth_url) + '" target="_blank" class="auth-link">Open browser to sign in</a></div>';
-    html += '<div class="detail-line small-note">Redirects to localhost:' + escapeHtml(String(extra.loopback_port || '')) + '</div>';
   }
   if (extra.configured === false) {
     html += '<div class="detail-line warning">Provider not configured. Set credentials and retry.</div>';

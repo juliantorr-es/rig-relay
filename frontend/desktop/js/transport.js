@@ -5,18 +5,20 @@
 
 import { state } from './state.js';
 import { ProjectionWebSocketClient } from '../websocket.js';
+import { auditLog, audit } from './audit.js';
 
 let _wsClient = null;
 
 export function initTransport(wsUrl, token, onMessage) {
-  // Try WebSocket first if available
   if (typeof WebSocket === 'undefined') {
-    state.transport = 'bridge';
+    state.transport = 'none';
+    if (onMessage) onMessage({ type: '_transport', status: 'offline' });
     return;
   }
 
   if (!token) {
-    state.transport = 'bridge';
+    state.transport = 'none';
+    if (onMessage) onMessage({ type: '_transport', status: 'offline' });
     return;
   }
 
@@ -35,27 +37,26 @@ export function initTransport(wsUrl, token, onMessage) {
         _wsClient.send({ type: 'get_chat_state' });
       } else if (status === 'auth_failed') {
         state.wsConnected = false;
-        state.transport = 'bridge';
+        audit.auth.failed(detail || 'unknown');
         if (onMessage) onMessage({ type: '_transport', status: 'auth_failed', detail });
       } else if (status === 'disconnected' || status === 'closed') {
         state.wsConnected = false;
-        state.transport = 'bridge';
+        audit.transport.disconnected();
         if (onMessage) onMessage({ type: '_transport', status: 'offline' });
       } else if (status === 'reconnecting') {
         state.wsConnected = false;
-        state.transport = 'bridge';
+        audit.transport.reconnecting(detail, attempts);
         if (onMessage) onMessage({ type: '_transport', status: 'reconnecting', delay: detail, attempts });
       } else if (status === 'offline') {
         state.wsConnected = false;
-        state.transport = 'bridge';
         if (onMessage) onMessage({ type: '_transport', status: 'offline' });
       }
     },
     onError(msg) {
-      console.warn('WS error:', msg);
+      auditLog('transport', 'error', { msg: msg });
     },
     onAuthFailed(msg) {
-      console.warn('WS auth failed:', msg);
+      audit.auth.failed(msg);
     },
     onMessage(msg) {
       // Forward all other messages (chat_state, intent_result, progress_event, etc.)
@@ -73,16 +74,4 @@ export function sendMessage(msg) {
 
 export function isConnected() {
   return state.transport === 'ws' && state.wsConnected;
-}
-
-// Bridge fallback — call pywebview API
-export async function bridgeCall(method, ...args) {
-  if (window.pywebview && window.pywebview.api && window.pywebview.api[method]) {
-    return window.pywebview.api[method](...args);
-  }
-  throw new Error('Bridge unavailable');
-}
-
-export function hasBridge() {
-  return !!(window.pywebview && window.pywebview.api);
 }

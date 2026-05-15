@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from rig_relay.core.context.assembler import (
+from rig_relay.context.assembler import (
     build_context_assembly_report,
     build_shadow_request_report,
     plan_context_layout,

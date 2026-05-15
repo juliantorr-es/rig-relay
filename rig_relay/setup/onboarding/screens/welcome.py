@@ -12,10 +12,13 @@ def show_welcome() -> str | None:
     rprint()
     welcome = Panel(
         Text.from_markup(
-            "[bold cyan]Welcome to Rig Relay[/]\n\n"
-            "Rig Relay is an agent-runtime product for governed local coding assistance.\n\n"
-            "This quick setup will help you configure your API key.\n"
-            "You can skip this and configure later in your config file."
+            "[bold cyan]👋  Welcome to Rig Relay[/]\n\n"
+            "Rig Relay is a governed local coding assistant.\n\n"
+            "This quick setup will help you:\n"
+            "  • Pick an LLM provider (DeepSeek, OpenAI, Claude, Gemini, ...)\n"
+            "  • Get an API key from their dashboard\n"
+            "  • Save it so Rig Relay can start helping you code\n\n"
+            "Your key stays local in ~/.rig/relay/.env — never leaves your machine."
         ),
         border_style="cyan",
     )

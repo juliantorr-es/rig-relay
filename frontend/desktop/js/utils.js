@@ -13,10 +13,6 @@ export function setText(el, text) {
   if (el) el.textContent = String(text ?? '');
 }
 
-export function setHTML(el, html) {
-  if (el) el.innerHTML = html;
-}
-
 export function row(label, value, cls) {
   return '<tr><td class="key">' + escapeHtml(label) +
          '</td><td class="val' + (cls ? ' ' + cls : '') + '">' +

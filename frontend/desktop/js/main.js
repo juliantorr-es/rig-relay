@@ -2,13 +2,14 @@
 // Bootstrap, wiring, event loop
 
 import { state, setMode, applyModeDefaults } from './state.js';
-import { initTransport, sendMessage, bridgeCall } from './transport.js';
+import { initTransport, sendMessage } from './transport.js';
 import { renderStatusBar } from './status.js';
 import { renderAllWidgets, cycleDisclosure, hideExpanded } from './widgets.js';
 import { handleProjection, handleChatState, handleIntentResult,
          handleProgressEvent, handleProgressEvents } from './projection.js';
 import { sendChatMessage, clearChat, cancelChat, dispatchIntent,
          updateCharCount } from './chat.js';
+import { getAutocompleteMatches } from './commands.js';
 import { setText, el } from './utils.js';
 
 // Window API for HTML onclick handlers
@@ -16,17 +17,62 @@ window.RigRelay = {
   cycleWidgetDisclosure: cycleDisclosure,
   dispatchIntent: dispatchIntent,
   closeExpanded: hideExpanded,
+
+  // In-app OAuth: navigate the pywebview window to the auth URL
+  // and poll for the callback code.
+  openInAppAuth(authUrl, loopbackPort, stateHash, providerName) {
+    if (window.pywebview && window.pywebview.api) {
+      window.pywebview.api.open_auth_window(authUrl, loopbackPort, stateHash)
+        .then(() => {
+          // Navigate the webview to the auth URL
+          if (window.location && typeof window.location.href !== 'undefined') {
+            window.location.href = authUrl;
+          }
+          // Start polling for the callback
+          const pollInterval = setInterval(() => {
+            window.pywebview.api.poll_oauth_callback().then((cbResult) => {
+              if (cbResult.status === 'completed') {
+                clearInterval(pollInterval);
+                // Navigate back to the app
+                window.location.href = window.location.origin + window.location.pathname;
+                // Trigger the exchange intent with the captured code
+                const exchangeName = providerName === 'google'
+                  ? 'sign_in_google_exchange'
+                  : 'sign_in_github_exchange';
+                dispatchIntent(exchangeName, {
+                  auth_url: authUrl,
+                  loopback_port: Number(loopbackPort),
+                  state_hash: stateHash,
+                  redirect_uri: 'http://127.0.0.1:' + loopbackPort + '/callback',
+                });
+              } else if (cbResult.status === 'error') {
+                clearInterval(pollInterval);
+                console.warn('OAuth error:', cbResult.message);
+                window.location.href = window.location.origin + window.location.pathname;
+              }
+            });
+          }, 1000);
+        });
+    } else {
+      // Fallback: open system browser
+      window.open(authUrl, '_blank');
+    }
+  },
+
+  submitOAuthCode() {
+    const input = document.getElementById('oauth-code-input');
+    if (!input || !input.value) return;
+    dispatchIntent('manual_code', { code: input.value });
+  },
 };
 
 function handleMessage(msg) {
   switch (msg.type) {
     case '_transport':
       renderStatusBar();
-      loadFromBridge();
       break;
     case 'auth_error':
     case 'auth_required':
-      loadFromBridge();
       break;
     case 'projection':
       handleProjection(msg.data || msg);
@@ -36,6 +82,8 @@ function handleMessage(msg) {
       handleChatState(msg.data || msg);
       break;
     case 'chat_message_accepted':
+    case 'chat_cleared':
+    case 'chat_cancelled':
       handleChatState(msg.chat_state || msg);
       break;
     case 'desktop_intent_result':
@@ -50,17 +98,6 @@ function handleMessage(msg) {
   }
 }
 
-async function loadFromBridge() {
-  try {
-    const proj = await bridgeCall('get_projection');
-    if (proj) handleProjection(proj);
-    const chat = await bridgeCall('get_chat_state');
-    if (chat) handleChatState(chat);
-  } catch (e) {
-    console.warn('Bridge fallback:', e);
-  }
-}
-
 function switchMode(mode) {
   setMode(mode);
   const grid = el('main-grid');
@@ -68,7 +105,9 @@ function switchMode(mode) {
 
   // Update active button
   document.querySelectorAll('.mode-option').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.mode === mode);
+    const isActive = b.dataset.mode === mode;
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-selected', String(isActive));
   });
 
   // Clear and rebuild panel column based on mode widgets
@@ -84,7 +123,7 @@ function renderPanelColumn() {
   const assignments = {
     operator: ['operatorHeader', 'safetyState', 'nextAction',
                'validationSummary', 'storageBudget', 'intentResult',
-               'providerHealth'],
+               'providerHealth', 'workspaceStatus', 'fleetStatus'],
     review: ['progressTimeline', 'receiptTimeline', 'refinementBacklog',
              'reviewValidation', 'reviewStorage', 'reviewSnippets', 'reviewDataset'],
     system: ['identity', 'modelProviders', 'telemetryConsent',
@@ -96,12 +135,15 @@ function renderPanelColumn() {
 
   const widgets = assignments[state.mode] || [];
 
-  panel.innerHTML = '';
-  widgets.forEach(function(id) {
+  while (panel.firstChild) panel.removeChild(panel.firstChild);
+  widgets.forEach(function(id, index) {
     const card = document.createElement('div');
     card.id = 'widget-' + id;
     card.className = 'widget-card';
     card.setAttribute('data-disclosure', 'compact');
+    // Staggered entrance
+    card.style.animationDelay = index * 50 + 'ms';
+    card.classList.add('card-entering');
     panel.appendChild(card);
   });
 }
@@ -114,6 +156,20 @@ async function init() {
   el('clear-chat-btn').addEventListener('click', clearChat);
   el('chat-input').addEventListener('input', updateCharCount);
   el('chat-input').addEventListener('keydown', function(e) {
+    // Tab: autocomplete slash command
+    if (e.key === 'Tab' && !e.shiftKey) {
+      const input = el('chat-input');
+      if (input && input.value.startsWith('/')) {
+        e.preventDefault();
+        const matches = getAutocompleteMatches(input.value);
+        if (matches.length === 1) {
+          input.value = matches[0] + ' ';
+          updateCharCount();
+        }
+        return;
+      }
+    }
+    // Enter: send
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendChatMessage();
@@ -133,37 +189,16 @@ async function init() {
   // Build initial panel
   renderPanelColumn();
 
-  // Determine transport config — token delivered through pywebview bridge only.
-  // URL query parameters are NOT used to carry ws_token as that exposes the
-  // token to browser history, referrer headers, and browser extensions.
-  let wsConfig = {
+  // Read WS config from inline script injected by Python backend.
+  // No bridge call needed — the token arrives in the HTML payload.
+  const config = window.__RIG_RELAY_WS_CONFIG__ || {
     host: '127.0.0.1',
     port: 9876,
     token: '',
   };
 
-  if (window.pywebview && window.pywebview.api) {
-    try {
-      wsConfig = await bridgeCall('get_ws_config');
-    } catch (e) {
-      // Use defaults (no token — will fall back to bridge transport)
-    }
-  }
-
-  const wsUrl = 'ws://' + wsConfig.host + ':' + wsConfig.port;
-  initTransport(wsUrl, wsConfig.token, handleMessage);
-
-  // Initial load from bridge if no WS
-  if (!state.wsConnected) {
-    setTimeout(loadFromBridge, 500);
-  }
-
-  // Periodic bridge fallback refresh — only when WebSocket is not connected
-  setInterval(function() {
-    if (!state.wsConnected && window.pywebview && window.pywebview.api) {
-      loadFromBridge();
-    }
-  }, 15000);
+  const wsUrl = 'ws://' + config.host + ':' + config.port;
+  initTransport(wsUrl, config.token, handleMessage);
 }
 
 document.addEventListener('DOMContentLoaded', init);

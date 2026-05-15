@@ -10,12 +10,34 @@
   transition: grid-column var(--transition-layout),
               grid-row var(--transition-layout),
               border-color var(--transition-fast),
-              box-shadow var(--transition-fast);
+              box-shadow var(--transition-fast),
+              transform var(--transition-fast);
 }
 
 .widget-card:hover {
   border-color: var(--border-active);
   box-shadow: var(--shadow-card);
+  transform: translateY(-1px);
+}
+
+.widget-card:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Staggered entrance when switching modes */
+.widget-card {
+  animation: cardEnter var(--transition-slow) ease both;
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stagger delay via JS — applied per-card with style attribute */
+.widget-card.card-entering {
+  animation: cardEnter var(--transition-slow) ease both;
 }
 
 /* ── Disclosure: Level 1 — Compact ── */
@@ -231,6 +253,12 @@
 .widget-actions button.danger:hover,
 .action-btn.danger:hover {
   background: var(--error-bg);
+}
+
+.widget-actions button:focus-visible,
+.action-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* ── Missing / empty state ── */

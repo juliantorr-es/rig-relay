@@ -103,6 +103,49 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
         "affects_projection": False,
         "parameters": {},
     },
+    "worktree_list": {
+        "description": "List all tracked worktrees under .rig/relay/worktrees.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "worktree_create": {
+        "description": "Create a new git worktree for an isolated workspace.",
+        "affects_projection": False,
+        "parameters": {
+            "workspace_id": {"type": "string"},
+            "branch_name": {"type": "string"},
+        },
+    },
+    "worktree_remove": {
+        "description": "Remove a tracked worktree (refuses dirty worktrees).",
+        "affects_projection": False,
+        "parameters": {
+            "workspace_id": {"type": "string"},
+            "force": {"type": "boolean", "default": False},
+        },
+    },
+    "fleet_queue_snapshot": {
+        "description": "Return current fleet queue snapshot (content-light).",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "fleet_run_once": {
+        "description": "Execute one fleet queue runner cycle (dry-run by default).",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "workspace_init": {
+        "description": "Bootstrap an uninitialized workspace: check repo state, suggest worktree name, validate git.",
+        "affects_projection": False,
+        "parameters": {
+            "workspace_id": {"type": "string", "default": ""},
+        },
+    },
+    "fleet_orchestrate": {
+        "description": "Run one fleet orchestrator cycle: pick next queue item, execute, auto-resolve patches.",
+        "affects_projection": True,
+        "parameters": {},
+    },
     "run_validation_suite": {
         "description": "Run the validation suite: ruff check, format check, pyright, schema validation, storage audit, desktop cockpit dry run.",
         "affects_projection": False,
@@ -168,6 +211,50 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
         "affects_projection": False,
         "parameters": {},
     },
+    "sign_in_github_exchange": {
+        "description": "Exchange OAuth code for GitHub access token. Starts loopback server to capture callback, exchanges code, stores token. Returns provider status.",
+        "affects_projection": False,
+        "parameters": {
+            "auth_url": {
+                "type": "string",
+                "description": "Auth URL from sign_in_github_start.",
+            },
+            "redirect_uri": {
+                "type": "string",
+                "description": "Redirect URI from sign_in_github_start.",
+            },
+            "loopback_port": {
+                "type": "integer",
+                "description": "Loopback port from sign_in_github_start.",
+            },
+            "state_hash": {
+                "type": "string",
+                "description": "State hash from sign_in_github_start.",
+            },
+        },
+    },
+    "sign_in_google_exchange": {
+        "description": "Exchange OAuth code for Google access token. Starts loopback server to capture callback, exchanges code, stores token. Returns provider status.",
+        "affects_projection": False,
+        "parameters": {
+            "auth_url": {
+                "type": "string",
+                "description": "Auth URL from sign_in_google_start.",
+            },
+            "redirect_uri": {
+                "type": "string",
+                "description": "Redirect URI from sign_in_google_start.",
+            },
+            "loopback_port": {
+                "type": "integer",
+                "description": "Loopback port from sign_in_google_start.",
+            },
+            "state_hash": {
+                "type": "string",
+                "description": "State hash from sign_in_google_start.",
+            },
+        },
+    },
     "sign_out_provider": {
         "description": "Sign out of an identity provider. Removes local provider metadata/token if present.",
         "affects_projection": False,
@@ -177,6 +264,28 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
                 "enum": ["github", "google"],
                 "description": "Provider to sign out of.",
             }
+        },
+    },
+    # ── Google Drive Upload Intent ──
+    "telemetry_upload_google": {
+        "description": "Upload a telemetry bundle to Google Drive. Requires Google sign-in with drive.file scope.",
+        "affects_projection": False,
+        "parameters": {
+            "bundle_path": {
+                "type": "string",
+                "default": "",
+                "description": "Path to telemetry bundle zip. Uses latest bundle if empty.",
+            },
+            "target_folder_id": {
+                "type": "string",
+                "default": "",
+                "description": "Optional Drive folder ID. Uses default telemetry folder if empty.",
+            },
+            "copy_to_personal": {
+                "type": "boolean",
+                "default": False,
+                "description": "Also upload a copy to the user's personal Drive root.",
+            },
         },
     },
     # ── Telemetry Consent Intents ──
@@ -652,7 +761,17 @@ def _execute_allowed_intent(
         "sign_in_google_start": lambda: _execute_sign_in_start(
             intent_id, "google", params
         ),
+        "sign_in_github_exchange": lambda: _execute_sign_in_exchange(
+            intent_id, "github", params
+        ),
+        "sign_in_google_exchange": lambda: _execute_sign_in_exchange(
+            intent_id, "google", params
+        ),
         "sign_out_provider": lambda: _execute_sign_out_provider(intent_id, params),
+        # ── Google Drive Upload Handler ──
+        "telemetry_upload_google": lambda: _execute_telemetry_upload_google(
+            intent_id, params
+        ),
         # ── Telemetry Consent Handlers ──
         "telemetry_consent_status": lambda: _execute_telemetry_consent_status(
             intent_id, params
@@ -674,6 +793,26 @@ def _execute_allowed_intent(
         "provider_health_check": lambda: _execute_provider_health_check(
             intent_id, params
         ),
+        # ── Worktree Handlers ──
+        "worktree_list": lambda: _execute_worktree_list(intent_id),
+        "worktree_create": lambda: _execute_worktree_create(
+            intent_id,
+            workspace_id=str(params.get("workspace_id", "")),
+            branch_name=str(params.get("branch_name", "")),
+        ),
+        "worktree_remove": lambda: _execute_worktree_remove(
+            intent_id,
+            workspace_id=str(params.get("workspace_id", "")),
+            force=bool(params.get("force", False)),
+        ),
+        # ── Fleet / Workspace Handlers ──
+        "fleet_queue_snapshot": lambda: _execute_fleet_queue_snapshot(intent_id),
+        "workspace_init": lambda: _execute_workspace_init(
+            intent_id,
+            workspace_id=str(params.get("workspace_id", "")),
+        ),
+        # ── Fleet Orchestrator ──
+        "fleet_orchestrate": lambda: _execute_fleet_orchestrate(intent_id),
     }
     handler = handlers.get(intent_name)
     if handler is None:
@@ -1575,6 +1714,185 @@ def _execute_sign_out_provider(
         )
 
 
+def _execute_sign_in_exchange(
+    intent_id: str, provider_name: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Exchange OAuth code for an access token.
+
+    Starts the loopback callback server on the port from sign_in_*_start,
+    opens the browser to the auth URL, captures the callback, exchanges
+    the code for a token, and stores it in the token store.
+
+    Args:
+        intent_id: Unique intent execution ID.
+        provider_name: "github" or "google".
+        params: Dict with auth_url, redirect_uri, loopback_port, state_hash
+            from sign_in_*_start result.
+
+    Returns:
+        Content-light result with provider status after exchange.
+    """
+    try:
+        import hashlib
+        import webbrowser
+
+        from rig_relay.identity.models import IdentityProviderKind
+        from rig_relay.identity.oauth_loopback import start_loopback_server
+        from rig_relay.identity.token_store import DevFileTokenStore
+
+        auth_url = str(params.get("auth_url", ""))
+        redirect_uri = str(params.get("redirect_uri", ""))
+        loopback_port = int(params.get("loopback_port", 0))
+        expected_state_hash = str(params.get("state_hash", ""))
+
+        if not auth_url or not redirect_uri or not loopback_port:
+            return _build_result(
+                f"sign_in_{provider_name}_exchange",
+                intent_id,
+                "failed",
+                error_code="missing_parameters",
+                summary=f"Missing parameters. Call sign_in_{provider_name}_start first.",
+            )
+
+        if provider_name == "github":
+            from rig_relay.identity.github import GitHubIdentityProvider
+
+            provider = GitHubIdentityProvider()
+            provider_kind = IdentityProviderKind.GITHUB
+        elif provider_name == "google":
+            from rig_relay.identity.google import GoogleIdentityProvider
+
+            provider = GoogleIdentityProvider()
+            provider_kind = IdentityProviderKind.GOOGLE
+        else:
+            return _build_result(
+                f"sign_in_{provider_name}_exchange",
+                intent_id,
+                "failed",
+                error_code="invalid_provider",
+                summary=f"Unknown provider: {provider_name}",
+            )
+
+        if not provider.is_configured():
+            return _build_result(
+                f"sign_in_{provider_name}_exchange",
+                intent_id,
+                "refused",
+                error_code="not_configured",
+                summary=f"{provider_name} credentials not configured. "
+                f"Set environment variables and retry.",
+            )
+
+        # Open browser to auth URL
+        webbrowser.open(auth_url)
+
+        # Start loopback server to capture OAuth callback
+        callback_result = start_loopback_server(loopback_port, timeout=120.0)
+
+        error = callback_result.get("error")
+        if error:
+            if error == "timeout":
+                return _build_result(
+                    f"sign_in_{provider_name}_exchange",
+                    intent_id,
+                    "failed",
+                    error_code="auth_timeout",
+                    summary=f"{provider_name} sign-in timed out after 120s. No callback received.",
+                )
+            return _build_result(
+                f"sign_in_{provider_name}_exchange",
+                intent_id,
+                "failed",
+                error_code="auth_error",
+                summary=f"{provider_name} sign-in error: {error}",
+            )
+
+        code = str(callback_result.get("code", ""))
+        state = str(callback_result.get("state", ""))
+        state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
+
+        # Verify state hash matches what we sent
+        if expected_state_hash and state_hash != expected_state_hash:
+            return _build_result(
+                f"sign_in_{provider_name}_exchange",
+                intent_id,
+                "refused",
+                error_code="state_mismatch",
+                summary=f"{provider_name} sign-in refused: state mismatch (possible CSRF).",
+            )
+
+        if not code:
+            return _build_result(
+                f"sign_in_{provider_name}_exchange",
+                intent_id,
+                "failed",
+                error_code="missing_code",
+                summary=f"No authorization code received from {provider_name}.",
+            )
+
+        # Exchange code for token
+        token_data = provider.exchange_code(code, redirect_uri)
+
+        access_token = token_data.get("access_token", "")
+        if not access_token:
+            return _build_result(
+                f"sign_in_{provider_name}_exchange",
+                intent_id,
+                "failed",
+                error_code="exchange_failed",
+                summary=f"{provider_name} code exchange returned no access token. "
+                f"Response: {token_data.get('error', 'unknown')}",
+            )
+
+        # Store token locally
+        store = DevFileTokenStore()
+        store.put(
+            provider=provider_kind,
+            token_bundle={
+                "access_token": access_token,
+                "refresh_token": token_data.get("refresh_token", ""),
+                "expires_in": token_data.get("expires_in", 3600),
+                "account_id": token_data.get("account_id", ""),
+                "display_name": token_data.get("display_name", ""),
+                "email": token_data.get("email", ""),
+            },
+            scopes=token_data.get("scopes", provider.default_scopes()),
+        )
+
+        # Refresh metadata via store
+        statuses = store.all_statuses()
+        provider_status = statuses.get(provider_name, {})
+        summary_detail = (
+            f"Signed in to {provider_name} as "
+            f"{token_data.get('display_name', 'unknown')}. "
+            f"Scopes: {', '.join(provider.default_scopes())}."
+        )
+
+        return _build_result(
+            f"sign_in_{provider_name}_exchange",
+            intent_id,
+            "completed",
+            result_kind="identity_status",
+            summary=summary_detail,
+            extra_fields={
+                "provider": provider_name,
+                "status": provider_status.get("status", "signed_in"),
+                "display_name": token_data.get("display_name", ""),
+                "account_id": token_data.get("account_id", ""),
+                "scopes": provider.default_scopes(),
+                "email": token_data.get("email", ""),
+            },
+        )
+    except Exception as e:
+        return _build_result(
+            f"sign_in_{provider_name}_exchange",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"{provider_name} sign-in failed: {e}",
+        )
+
+
 # ── Telemetry Consent Intent Handlers ────────────────────────────────
 
 
@@ -1906,4 +2224,243 @@ def _execute_provider_health_check(
             "failed",
             error_code="execution_error",
             summary=f"Health check failed: {e}",
+        )
+
+
+# ── Worktree Intents ──────────────────────────────────────────────────
+
+
+def _execute_worktree_list(intent_id: str) -> dict[str, Any]:
+    try:
+        from rig_relay.coordination.worktree_manager import WorktreeManager
+
+        repo_root = Path.cwd()
+        mgr = WorktreeManager(repo_root)
+        records = mgr.list_worktrees()
+
+        if not records:
+            return _build_result(
+                "worktree_list", intent_id, "completed",
+                result_kind="summary",
+                summary="No worktrees found.",
+            )
+
+        lines = [f"{r.workspace_id}: {r.status} @ {r.path}" for r in records]
+        return _build_result(
+            "worktree_list", intent_id, "completed",
+            result_kind="summary",
+            summary="\n".join(lines),
+        )
+    except Exception as e:
+        return _build_result(
+            "worktree_list", intent_id, "failed",
+            error_code="execution_error",
+            summary=f"Worktree list failed: {e}",
+        )
+
+
+def _execute_worktree_create(intent_id: str, workspace_id: str = "", branch_name: str = "") -> dict[str, Any]:
+    if not workspace_id or not branch_name:
+        return _build_result(
+            "worktree_create", intent_id, "refused",
+            error_code="missing_parameters",
+            summary="workspace_id and branch_name are required.",
+        )
+    try:
+        from rig_relay.coordination.worktree_manager import WorktreeManager
+
+        repo_root = Path.cwd()
+        mgr = WorktreeManager(repo_root)
+        result = mgr.create(workspace_id=workspace_id, branch_name=branch_name)
+
+        if result.status == "created":
+            return _build_result(
+                "worktree_create", intent_id, "completed",
+                result_kind="summary",
+                summary=f"Created worktree '{workspace_id}' at {result.record.path if result.record else '—'}.",
+            )
+        return _build_result(
+            "worktree_create", intent_id, "failed",
+            error_code="creation_failed",
+            summary=f"Failed to create worktree: {result.refusal_reason or result.status}.",
+        )
+    except Exception as e:
+        return _build_result(
+            "worktree_create", intent_id, "failed",
+            error_code="execution_error",
+            summary=f"Worktree create failed: {e}",
+        )
+
+
+def _execute_worktree_remove(intent_id: str, workspace_id: str = "", force: bool = False) -> dict[str, Any]:
+    if not workspace_id:
+        return _build_result(
+            "worktree_remove", intent_id, "refused",
+            error_code="missing_parameters",
+            summary="workspace_id is required.",
+        )
+    try:
+        from rig_relay.coordination.worktree_manager import WorktreeManager
+
+        repo_root = Path.cwd()
+        mgr = WorktreeManager(repo_root)
+        result = mgr.remove(workspace_id=workspace_id, force=force)
+
+        if result.status == "removed":
+            return _build_result(
+                "worktree_remove", intent_id, "completed",
+                summary=f"Removed worktree '{workspace_id}'.",
+            )
+        return _build_result(
+            "worktree_remove", intent_id, "failed",
+            error_code="removal_failed",
+            summary=f"Failed to remove worktree: {result.refusal_reason or result.status}.",
+        )
+    except Exception as e:
+        return _build_result(
+            "worktree_remove", intent_id, "failed",
+            error_code="execution_error",
+            summary=f"Worktree remove failed: {e}",
+        )
+
+
+# ── Fleet Intents ─────────────────────────────────────────────────────
+
+
+def _execute_fleet_queue_snapshot(intent_id: str) -> dict[str, Any]:
+    try:
+        from rig_relay.coordination.fleet_queue import FleetQueue
+
+        coord_root = DEFAULT_BUILD_ROOT / "coordination"
+        queue_path = coord_root / "queue" / "events.jsonl"
+
+        if not queue_path.exists():
+            return _build_result(
+                "fleet_queue_snapshot", intent_id, "completed",
+                result_kind="summary",
+                summary="No fleet queue events file found. Queue is empty.",
+            )
+
+        queue = FleetQueue(queue_path)
+        snapshot = queue.list_items()
+        status_str = ", ".join(
+            f"{k}: {v}" for k, v in sorted(snapshot.status_counts.items())
+        )
+        return _build_result(
+            "fleet_queue_snapshot", intent_id, "completed",
+            result_kind="summary",
+            summary=f"Fleet queue: {snapshot.total_count} items ({status_str}).",
+        )
+    except Exception as e:
+        return _build_result(
+            "fleet_queue_snapshot", intent_id, "failed",
+            error_code="execution_error",
+            summary=f"Fleet queue snapshot failed: {e}",
+        )
+
+
+def _execute_workspace_init(intent_id: str, workspace_id: str = "") -> dict[str, Any]:
+    """Bootstrap an uninitialized workspace.
+
+    Checks git repo state, suggests a unique workspace_id, and validates
+    that the repo is in a workable state for creating a new worktree.
+    """
+    try:
+        import subprocess
+
+        cwd = Path.cwd()
+
+        # Check we're in a git repo
+        try:
+            subprocess.run(
+                ["git", "rev-parse", "--git-dir"],
+                capture_output=True, text=True, check=True, cwd=str(cwd),
+            )
+        except subprocess.CalledProcessError:
+            return _build_result(
+                "workspace_init", intent_id, "failed",
+                error_code="not_a_git_repo",
+                summary="Current directory is not a git repository.",
+            )
+
+        # Check for uncommitted changes
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True, cwd=str(cwd),
+        )
+        dirty_files = status.stdout.strip()
+
+        # Suggest a workspace_id if none provided
+        if not workspace_id:
+            branch = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True, text=True, cwd=str(cwd),
+            ).stdout.strip()
+            workspace_id = f"workspace-{branch or 'main'}"
+
+        # Check if worktree already exists
+        werk_root = cwd / ".rig" / "relay" / "worktrees"
+        existing = werk_root / workspace_id
+
+        lines = [f"Repo root: {cwd}"]
+        if dirty_files:
+            dirty_count = len(dirty_files.split("\n"))
+            lines.append(f"Dirty files: {dirty_count} (commit or stash before creating worktrees)")
+        else:
+            lines.append("Working tree: clean")
+        lines.append(f"Suggested workspace ID: {workspace_id}")
+        if existing.exists():
+            lines.append(f"Warning: worktree '{workspace_id}' already exists.")
+        else:
+            lines.append(f"Worktree '{workspace_id}' does not exist — ready to create.")
+        lines.append(f"Next: /worktree create {workspace_id}")
+
+        return _build_result(
+            "workspace_init", intent_id, "completed",
+            result_kind="summary",
+            summary="\n".join(lines),
+        )
+    except Exception as e:
+        return _build_result(
+            "workspace_init", intent_id, "failed",
+            error_code="execution_error",
+            summary=f"Workspace init failed: {e}",
+        )
+
+
+def _execute_fleet_orchestrate(intent_id: str) -> dict[str, Any]:
+    """Run one fleet orchestrator cycle."""
+    try:
+        from rig_relay.coordination.fleet_coordinator import FleetCoordinator
+        from rig_relay.runtime.tool_invocation_execution import (
+            RuntimeToolExecutionRunner,
+        )
+
+        coord_root = DEFAULT_BUILD_ROOT / "coordination"
+
+        executor = RuntimeToolExecutionRunner()
+        coordinator = FleetCoordinator(coord_root, executor)
+        result = asyncio.run(coordinator.run_once())
+
+        lines = [
+            f"Decision: {result.decision}",
+            f"Queue item: {result.queue_item_id or 'none'}",
+        ]
+        if result.error_kind:
+            lines.append(f"Error: {result.error_kind}")
+        if result.reason:
+            lines.append(f"Reason: {result.reason}")
+        if result.tool_name:
+            lines.append(f"Tool: {result.tool_name}")
+
+        return _build_result(
+            "fleet_orchestrate", intent_id, "completed",
+            result_kind="summary",
+            summary="\n".join(lines),
+        )
+    except Exception as e:
+        return _build_result(
+            "fleet_orchestrate", intent_id, "failed",
+            error_code="execution_error",
+            summary=f"Fleet orchestration failed: {e}",
         )

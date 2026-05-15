@@ -43,6 +43,11 @@ class BuiltinAgentName(StrEnum):
     AUTO_APPROVE = "auto-approve"
     EXPLORE = "explore"
     LEAN = "lean"
+    # Fleet subagent profiles
+    ORCHESTRATOR = "orchestrator"
+    CLEANER = "cleaner"
+    BUILDER = "builder"
+    BUG_EXTERMINATOR = "bug-exterminator"
 
 
 @dataclass(frozen=True)
@@ -198,6 +203,85 @@ LEAN = AgentProfile(
     },
 )
 
+# ── Fleet Subagent Profiles ────────────────────────────────────────────
+
+ORCHESTRATOR = AgentProfile(
+    name=BuiltinAgentName.ORCHESTRATOR,
+    display_name="Orchestrator",
+    description="Fleet orchestrator: plans roadmap, scopes sprints, dispatches subagents, commits to preproduction. Only agent allowed to run git commands.",
+    safety=AgentSafety.DESTRUCTIVE,
+    agent_type=AgentType.AGENT,
+    overrides={
+        "enabled_tools": [
+            "grep", "read_file", "task", "ask_user_question",
+            "write_file", "search_replace", "git",
+        ],
+        "tools": {
+            "git": {"permission": "always"},
+            "write_file": {"permission": "ask"},
+            "search_replace": {"permission": "ask"},
+        },
+        "base_disabled": ["bash", "exit_plan_mode"],
+    },
+)
+
+CLEANER = AgentProfile(
+    name=BuiltinAgentName.CLEANER,
+    display_name="Cleaner",
+    description="Post-build subagent: runs validations, patches builder aftermath, resolves simple merge conflicts. No git access.",
+    safety=AgentSafety.NEUTRAL,
+    agent_type=AgentType.SUBAGENT,
+    overrides={
+        "enabled_tools": [
+            "grep", "read_file", "write_file", "search_replace",
+            "validate", "run_validation_suite",
+        ],
+        "tools": {
+            "write_file": {"permission": "always"},
+            "search_replace": {"permission": "always"},
+        },
+        "base_disabled": ["bash", "git", "exit_plan_mode", "checkpoint"],
+    },
+)
+
+BUILDER = AgentProfile(
+    name=BuiltinAgentName.BUILDER,
+    display_name="Builder",
+    description="Build subagent: applies proposed patches to scratch worktree, writes new code. No git access.",
+    safety=AgentSafety.DESTRUCTIVE,
+    agent_type=AgentType.SUBAGENT,
+    overrides={
+        "enabled_tools": [
+            "grep", "read_file", "write_file", "search_replace",
+            "task",
+        ],
+        "tools": {
+            "write_file": {"permission": "always"},
+            "search_replace": {"permission": "always"},
+        },
+        "base_disabled": ["bash", "git", "exit_plan_mode", "checkpoint"],
+    },
+)
+
+BUG_EXTERMINATOR = AgentProfile(
+    name=BuiltinAgentName.BUG_EXTERMINATOR,
+    display_name="Bug Exterminator",
+    description="Advanced subagent: resolves hard aggregate patch merge conflicts. Has specialized tools beyond cleaner. No git access.",
+    safety=AgentSafety.NEUTRAL,
+    agent_type=AgentType.SUBAGENT,
+    overrides={
+        "enabled_tools": [
+            "grep", "read_file", "write_file", "search_replace",
+            "validate", "run_validation_suite", "task",
+        ],
+        "tools": {
+            "write_file": {"permission": "always"},
+            "search_replace": {"permission": "always"},
+        },
+        "base_disabled": ["bash", "git", "exit_plan_mode", "checkpoint"],
+    },
+)
+
 BUILTIN_AGENTS: dict[str, AgentProfile] = {
     BuiltinAgentName.DEFAULT: DEFAULT,
     BuiltinAgentName.PLAN: PLAN,
@@ -205,4 +289,8 @@ BUILTIN_AGENTS: dict[str, AgentProfile] = {
     BuiltinAgentName.AUTO_APPROVE: AUTO_APPROVE,
     BuiltinAgentName.EXPLORE: EXPLORE,
     BuiltinAgentName.LEAN: LEAN,
+    BuiltinAgentName.ORCHESTRATOR: ORCHESTRATOR,
+    BuiltinAgentName.CLEANER: CLEANER,
+    BuiltinAgentName.BUILDER: BUILDER,
+    BuiltinAgentName.BUG_EXTERMINATOR: BUG_EXTERMINATOR,
 }

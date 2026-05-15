@@ -1,8 +1,18 @@
 // Rig Relay — Status
 // Top bar: connection indicator, session info, safety summary
+// All DOM construction — no innerHTML
 
 import { state } from './state.js';
-import { setText, el } from './utils.js';
+import { el } from './utils.js';
+
+function setChip(chip, className, text) {
+  while (chip.firstChild) chip.removeChild(chip.firstChild);
+  chip.className = 'header-chip ' + (className || '');
+  const dot = document.createElement('span');
+  dot.className = 'header-dot';
+  chip.appendChild(dot);
+  chip.appendChild(document.createTextNode(text));
+}
 
 export function renderStatusBar() {
   renderConnection();
@@ -13,9 +23,8 @@ export function renderStatusBar() {
 export function renderConnection() {
   const chip = el('status-connection');
   if (!chip) return;
-  chip.className = 'header-chip ' + (state.wsConnected ? 'ok' : 'warn');
-  chip.innerHTML = '<span class="header-dot"></span>' +
-    (state.wsConnected ? 'Connected' : 'Bridge');
+  setChip(chip, state.wsConnected ? 'ok' : 'warn',
+    state.wsConnected ? 'Connected' : 'Offline');
 }
 
 export function renderSession() {
@@ -25,12 +34,9 @@ export function renderSession() {
 
   if (proj && proj.current_state && proj.current_state.available) {
     const cs = proj.current_state;
-    chip.className = 'header-chip ok';
-    chip.innerHTML = '<span class="header-dot"></span>Session ' +
-      (cs.generated_at || '').substring(0, 10);
+    setChip(chip, 'ok', 'Session ' + (cs.generated_at || '').substring(0, 10));
   } else {
-    chip.className = 'header-chip';
-    chip.innerHTML = '<span class="header-dot"></span>No session';
+    setChip(chip, '', 'No session');
   }
 }
 
@@ -45,14 +51,11 @@ export function renderSafety() {
     const stale = cs.stale_leases || 0;
 
     if (writers > 0 || stale > 0) {
-      chip.className = 'header-chip warn';
-      chip.innerHTML = '<span class="header-dot"></span>' + writers + ' writers, ' + stale + ' stale';
+      setChip(chip, 'warn', writers + ' writers, ' + stale + ' stale');
     } else {
-      chip.className = 'header-chip ok';
-      chip.innerHTML = '<span class="header-dot"></span>Safe';
+      setChip(chip, 'ok', 'Safe');
     }
   } else {
-    chip.className = 'header-chip';
-    chip.innerHTML = '<span class="header-dot"></span>Unknown';
+    setChip(chip, '', 'Unknown');
   }
 }

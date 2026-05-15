@@ -1,77 +1,80 @@
 from __future__ import annotations
 
-# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
-import sys
-from typing import override
-
-import pytest
-from textual.app import App
-
 from rig_relay.setup import onboarding
+from rig_relay.setup.onboarding.screens import api_key, welcome
 
 
-class StubApp(App[str | None]):
-    def __init__(self, return_value: str | None) -> None:
-        super().__init__()
-        self._return_value = return_value
+class TestWelcomeScreen:
+    def test_returns_continue_on_enter(self, monkeypatch):
+        monkeypatch.setattr("builtins.input", lambda: "")
+        result = welcome.show_welcome()
+        assert result == "continue"
 
-    @override
-    def run(self, *args: object, **kwargs: object) -> str | None:
-        return self._return_value
+    def test_returns_none_on_skip(self, monkeypatch):
+        monkeypatch.setattr("builtins.input", lambda: "skip")
+        result = welcome.show_welcome()
+        assert result is None
 
-
-def _exit_raiser(code: int = 0) -> None:
-    raise SystemExit(code)
-
-
-def test_exits_on_cancel(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setattr(sys, "exit", _exit_raiser)
-
-    with pytest.raises(SystemExit) as excinfo:
-        onboarding.run_onboarding(StubApp(None))
-
-    assert excinfo.value.code == 0
-    out = capsys.readouterr().out
-    assert "Setup cancelled. See you next time!" in out
+    def test_returns_continue_on_other_input(self, monkeypatch):
+        monkeypatch.setattr("builtins.input", lambda: "hello")
+        result = welcome.show_welcome()
+        assert result == "continue"
 
 
-def test_warns_on_save_error(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setattr(sys, "exit", _exit_raiser)
+class TestApiKeyScreen:
+    def test_returns_none_on_skip(self, monkeypatch):
+        monkeypatch.setattr(api_key, "show_provider_picker", lambda: None)
+        result = api_key.run_api_key_screen()
+        assert result is None
 
-    onboarding.run_onboarding(StubApp("save_error:disk full"))
-
-    out = capsys.readouterr().out
-    assert "Could not save provider key" in out
-    assert "disk full" in out
-
-
-def test_exits_on_invalid_api_key_env_var(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setattr(sys, "exit", _exit_raiser)
-
-    with pytest.raises(SystemExit) as excinfo:
-        onboarding.run_onboarding(StubApp("env_var_error:BAD=NAME"))
-
-    assert excinfo.value.code == 1
-    out = capsys.readouterr().out
-    assert "Could not save the provider key" in out
-    assert "environment variable name" in out
-    assert "BAD=NAME" in out
-    assert "The key was not saved for this session." in out
-    assert "set for this session only" not in out
+    def test_returns_provider_selected_for_llamacpp(self, monkeypatch):
+        monkeypatch.setattr(
+            api_key,
+            "show_provider_picker",
+            lambda: {
+                "slug": "llamacpp",
+                "env_var": "",
+                "display": "Local",
+                "key_url": "",
+                "key_label": "",
+            },
+        )
+        result = api_key.run_api_key_screen()
+        assert result == "provider_selected:llamacpp"
 
 
-def test_successfully_completes(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setattr(sys, "exit", _exit_raiser)
+class TestOnboarding:
+    def test_returns_false_on_skip(self, monkeypatch):
+        monkeypatch.setattr(onboarding, "show_welcome", lambda: None)
+        result = onboarding.run_onboarding()
+        assert result is False
 
-    onboarding.run_onboarding(StubApp("completed"))
+    def test_returns_false_on_provider_skip(self, monkeypatch):
+        monkeypatch.setattr(onboarding, "show_welcome", lambda: "continue")
+        monkeypatch.setattr(onboarding, "run_api_key_screen", lambda: None)
+        result = onboarding.run_onboarding()
+        assert result is False
 
-    out = capsys.readouterr().out
-    assert 'Setup complete. Run "rig-relay" to start using Rig Relay.' in out
+    def test_returns_true_on_completed(self, monkeypatch):
+        monkeypatch.setattr(onboarding, "show_welcome", lambda: "continue")
+        monkeypatch.setattr(
+            onboarding,
+            "run_api_key_screen",
+            lambda: "completed:deepseek:DEEPSEEK_API_KEY",
+        )
+        result = onboarding.run_onboarding()
+        assert result is True
+
+    def test_returns_true_on_save_error(self, monkeypatch):
+        monkeypatch.setattr(onboarding, "show_welcome", lambda: "continue")
+        monkeypatch.setattr(
+            onboarding, "run_api_key_screen", lambda: "save_error:disk full"
+        )
+        result = onboarding.run_onboarding()
+        assert result is True
+
+    def test_returns_false_on_unknown_result(self, monkeypatch):
+        monkeypatch.setattr(onboarding, "show_welcome", lambda: "continue")
+        monkeypatch.setattr(onboarding, "run_api_key_screen", lambda: "weird_result")
+        result = onboarding.run_onboarding()
+        assert result is False

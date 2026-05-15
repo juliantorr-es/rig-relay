@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Relay</title>
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
+  connect-src ws://127.0.0.1:* ws://localhost:*;
+  img-src 'self' data:;
+  font-src 'self';
+">
 <link rel="stylesheet" href="css/variables.css">
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/header.css">
@@ -12,48 +20,49 @@
 </head>
 <body>
 
-  <header id="top-header">
-    <span class="header-title">Rig Relay</span>
-    <span id="status-session" class="header-chip"><span class="header-dot"></span>No session</span>
+  <header id="top-header" role="banner">
+    <span class="header-title" aria-label="Rig Relay — Desktop Console">Rig Relay</span>
+    <span id="status-session" class="header-chip" role="status" aria-live="polite" aria-label="Session status"><span class="header-dot" aria-hidden="true"></span>No session</span>
     <span class="header-spacer"></span>
-    <span id="status-safety" class="header-chip"><span class="header-dot"></span>Unknown</span>
-    <span id="status-connection" class="header-chip warn"><span class="header-dot"></span>Disconnected</span>
+    <span id="status-safety" class="header-chip" role="status" aria-live="polite" aria-label="Safety status"><span class="header-dot" aria-hidden="true"></span>Unknown</span>
+    <span id="status-connection" class="header-chip warn" role="status" aria-live="polite" aria-label="Connection status"><span class="header-dot" aria-hidden="true"></span>Disconnected</span>
   </header>
 
-  <div id="mode-bar">
-    <button class="mode-option active" data-mode="operator">Operator</button>
-    <button class="mode-option" data-mode="review">Review</button>
-    <button class="mode-option" data-mode="system">System</button>
+  <div id="mode-bar" role="tablist" aria-label="Layout mode">
+    <button class="mode-option active" data-mode="operator" role="tab" aria-selected="true" aria-controls="main-grid">Operator</button>
+    <button class="mode-option" data-mode="review" role="tab" aria-selected="false" aria-controls="main-grid">Review</button>
+    <button class="mode-option" data-mode="system" role="tab" aria-selected="false" aria-controls="main-grid">System</button>
+    <button class="mode-option" data-mode="technical" role="tab" aria-selected="false" aria-controls="main-grid">Technical</button>
   </div>
 
-  <div id="main-grid" data-mode="operator">
-    <div id="chat-column">
+  <div id="main-grid" data-mode="operator" role="main" aria-label="Content area">
+    <div id="chat-column" role="complementary" aria-label="Chat">
       <div id="chat-surface">
-        <div id="chat-transcript">
-          <div class="chat-message system">Rig Relay ready. Type a message to begin.</div>
+        <div id="chat-transcript" role="log" aria-live="polite" aria-label="Chat transcript" aria-relevant="additions">
+          <div class="chat-message system" role="status">Rig Relay ready. Type a message to begin.</div>
         </div>
-        <div id="chat-composer">
-          <textarea id="chat-input" placeholder="Type a message..." maxlength="4000" rows="1"></textarea>
-          <button id="send-btn" disabled>Send</button>
+        <div id="chat-composer" role="form" aria-label="Message composer">
+          <textarea id="chat-input" placeholder="Type a message..." maxlength="4000" rows="1" aria-label="Chat message input" autocapitalize="off" spellcheck="false"></textarea>
+          <button id="send-btn" disabled aria-label="Send message">Send</button>
         </div>
         <div id="composer-footer">
-          <span id="char-count">0/4000</span>
-          <button id="clear-chat-btn">Clear</button>
+          <span id="char-count" aria-live="polite" aria-label="Character count and command hints">0/4000</span>
+          <button id="clear-chat-btn" aria-label="Clear chat">Clear</button>
         </div>
       </div>
     </div>
-    <div id="panel-column"></div>
+    <div id="panel-column" role="complementary" aria-label="Widgets panel"></div>
   </div>
 
-  <div id="expanded-overlay">
-    <button id="expanded-close-btn" class="close-btn">&times;</button>
+  <div id="expanded-overlay" role="dialog" aria-label="Expanded widget" aria-modal="true">
+    <button id="expanded-close-btn" class="close-btn" aria-label="Close expanded view">&times;</button>
     <div id="expanded-content" class="expanded-widget"></div>
   </div>
 
-  <footer id="footer-bar">
+  <footer id="footer-bar" role="contentinfo" aria-label="Footer">
     <span>Rig Relay</span>
     <span class="header-spacer"></span>
-    <span>Local authority. Content-light sharing. Read-only remote.</span>
+    <span aria-label="Privacy notice">Local authority. Content-light sharing. Read-only remote.</span>
   </footer>
 
   <script type="module" src="js/main.js"></script>

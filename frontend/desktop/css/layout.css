@@ -165,7 +165,10 @@ body {
   background: var(--bg-card-hover);
 }
 
-.mode-option.active {
+.mode-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
   color: var(--accent);
   background: var(--accent-subtle);
   border-color: var(--accent);

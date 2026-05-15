@@ -224,3 +224,5 @@ class ProjectionWebSocketClient {
     this.onError(message);
   }
 }
+
+export { ProjectionWebSocketClient };

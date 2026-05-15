@@ -459,6 +459,34 @@ DEFAULT_PROVIDERS = [
         backend=Backend.MISTRAL,
     ),
     ProviderConfig(
+        name="openai",
+        api_base="https://api.openai.com/v1",
+        api_key_env_var="OPENAI_API_KEY",
+        api_style="openai",
+        backend=Backend.GENERIC,
+    ),
+    ProviderConfig(
+        name="anthropic",
+        api_base="https://api.anthropic.com/v1",
+        api_key_env_var="ANTHROPIC_API_KEY",
+        api_style="anthropic",
+        backend=Backend.GENERIC,
+    ),
+    ProviderConfig(
+        name="google",
+        api_base="https://generativelanguage.googleapis.com/v1beta",
+        api_key_env_var="GOOGLE_API_KEY",
+        api_style="google",
+        backend=Backend.GENERIC,
+    ),
+    ProviderConfig(
+        name="openrouter",
+        api_base="https://openrouter.ai/api/v1",
+        api_key_env_var="OPENROUTER_API_KEY",
+        api_style="openai",
+        backend=Backend.GENERIC,
+    ),
+    ProviderConfig(
         name="llamacpp",
         api_base="http://127.0.0.1:8080/v1",
         api_key_env_var="",  # NOTE: if you wish to use --api-key in llama-server, change this value
@@ -493,6 +521,25 @@ DEFAULT_MODELS = [
         alias="devstral-small",
         input_price=0.1,
         output_price=0.3,
+    ),
+    ModelConfig(name="gpt-4o", provider="openai", alias="gpt-4o", temperature=0.7),
+    ModelConfig(
+        name="claude-sonnet-4-20250514",
+        provider="anthropic",
+        alias="claude-sonnet-4",
+        temperature=0.7,
+    ),
+    ModelConfig(
+        name="gemini-2.0-flash",
+        provider="google",
+        alias="gemini-2.0-flash",
+        temperature=0.7,
+    ),
+    ModelConfig(
+        name="openai/gpt-4o",
+        provider="openrouter",
+        alias="openrouter-gpt-4o",
+        temperature=0.7,
     ),
     ModelConfig(
         name="devstral",

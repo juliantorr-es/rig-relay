@@ -15,6 +15,13 @@ import secrets
 import threading
 from typing import Any
 
+from rig_relay import __version__
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.config.harness_files import init_harness_files_manager
+from rig_relay.core.hooks.config import load_hooks_from_fs
+from rig_relay.core.logger import logger
+from rig_relay.core.telemetry.build_metadata import build_entrypoint_metadata
 from rig_relay.desktop.chat_agent_adapter import ChatAgentAdapter
 from rig_relay.desktop.chat_state import ChatMessage, ChatRole
 from rig_relay.desktop.chat_store import ChatStore
@@ -23,13 +30,6 @@ from rig_relay.desktop.websocket_server import (
     DEFAULT_PORT as DEFAULT_WS_PORT,
     ProjectionWebSocketServer,
 )
-from rig_relay import __version__
-from rig_relay.core.agent_loop import AgentLoop
-from rig_relay.core.config import VibeConfig
-from rig_relay.core.config.harness_files import init_harness_files_manager
-from rig_relay.core.hooks.config import load_hooks_from_fs
-from rig_relay.core.logger import logger
-from rig_relay.core.telemetry.build_metadata import build_entrypoint_metadata
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
@@ -321,13 +321,92 @@ class CockpitAPI:
 
         return mint_local_auth_receipt(action, ttl_seconds=ttl_seconds, reason=reason)
 
-    def inspect_authorization_receipt(self, authorization_receipt: dict) -> dict:
-        from rig_relay.desktop.authorization_receipts import inspect_receipt
+    _pending_oauth_window: dict[str, Any] | None = None
 
-        return inspect_receipt(authorization_receipt)
+    def open_auth_window(self, auth_url: str, port: int, state_hash: str) -> dict:
+        """Navigate the pywebview window to the OAuth provider's auth URL.
+
+        The user authenticates in the app window. The provider redirects
+        to the loopback server on localhost, which captures the callback.
+        After the callback is received, the app navigates back to the
+        main UI. This avoids leaving the app entirely.
+        """
+        if not auth_url:
+            return {"error": "No auth URL provided"}
+
+        # Start the loopback server in a background thread
+        import threading
+
+        callback_holder: list[dict] = []
+
+        def _listen() -> None:
+            from rig_relay.identity.oauth_loopback import start_loopback_server
+
+            try:
+                result = start_loopback_server(port, timeout=120.0)
+                callback_holder.append(result)
+            except Exception:
+                callback_holder.append({"error": "server_error"})
+
+        thread = threading.Thread(target=_listen, daemon=True)
+        thread.start()
+
+        self._pending_oauth_window = {
+            "port": port,
+            "state_hash": state_hash,
+            "started_at": __import__("time").time(),
+            "callback_thread": thread,
+            "callback_holder": callback_holder,
+        }
+
+        return {"status": "navigating", "auth_url": auth_url}
+
+    def poll_oauth_callback(self) -> dict:
+        """Check if the OAuth callback has been received.
+
+        The frontend calls this periodically after open_auth_window.
+        Returns the captured code and state once available.
+        """
+        pending = self._pending_oauth_window
+        if pending is None:
+            return {"status": "no_pending_auth"}
+
+        callback_holder = pending.get("callback_holder", [])
+        expected_state_hash = pending.get("state_hash", "")
+
+        if not callback_holder:
+            return {"status": "waiting"}
+
+        result = callback_holder[0]
+        self._pending_oauth_window = None  # clear pending
+
+        error = result.get("error")
+        if error:
+            return {"status": "error", "message": error}
+
+        code = result.get("code", "")
+        state = result.get("state", "")
+
+        import hashlib
+
+        state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
+        if expected_state_hash and state_hash != expected_state_hash:
+            return {
+                "status": "error",
+                "message": "State mismatch (possible CSRF)",
+            }
+
+        return {"status": "completed", "code": code, "state": state}
+
+    def close_auth_window(self) -> dict:
+        """Cancel a pending OAuth flow and reset state."""
+        self._pending_oauth_window = None
+        return {"status": "cancelled"}
 
 
-def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool = False) -> None:
+def _open_window(
+    ws_port: int | None, mode: str = "runtime", server_only: bool = False
+) -> None:
     """Open pywebview window with optional WebSocket stream."""
     import time
 
@@ -437,22 +516,34 @@ def _open_window(ws_port: int | None, mode: str = "runtime", server_only: bool =
     if not hasattr(webview, "__version__"):  # type: ignore[reportAttributeAccessIssue]
         webview.__version__ = "6.2.1"  # type: ignore[reportAttributeAccessIssue]
 
+    # Read the index.html and inject WS config as an inline script.
+    # No bridge needed — the config is delivered via the HTML payload.
+    index_html = index_path.read_text()
+    ws_config_script = (
+        '<script>'
+        f'window.__RIG_RELAY_WS_CONFIG__ = {{'
+        f'host: "127.0.0.1", port: {ws_port or DEFAULT_WS_PORT}, token: "{ws_token or ""}"'
+        f'}};'
+        '</script>'
+    )
+    index_html = index_html.replace(
+        '</body>', ws_config_script + '\n</body>'
+    )
+
     webview.create_window(
         title="Rig Relay",
-        url=str(index_path),
+        html=index_html,
         js_api=api,
         width=1200,
         height=800,
         resizable=True,
         min_size=(800, 600),
     )
-    webview.start(gui='cocoa')
+    webview.start(gui="cocoa")
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Rig Relay Desktop Shell"
-    )
+    parser = argparse.ArgumentParser(description="Rig Relay Desktop Shell")
     parser.add_argument(
         "--mode",
         choices=["runtime", "fixture"],
