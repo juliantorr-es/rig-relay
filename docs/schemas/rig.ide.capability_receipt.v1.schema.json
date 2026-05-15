@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.ide.capability_receipt.v1.schema.json",
+  "title": "Rig IDE Capability Receipt",
+  "description": "Receipt for every IDE capability execution. Emitted by the capability broker after execution, regardless of success or failure. All fields content-light — no raw buffer content, secrets, or diffs.",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "rig.ide.capability.receipt.v1"
+    },
+    "workspace": {
+      "type": "string",
+      "description": "Workspace path hash (SHA256 prefix, 16 chars). Not the full path."
+    },
+    "capability": {
+      "type": "string",
+      "description": "Capability name from the manifest (e.g. ide.workspace.describe)"
+    },
+    "input_sha256": {
+      "type": "string",
+      "description": "SHA256 of the canonical JSON-serialized input arguments"
+    },
+    "output_sha256": {
+      "type": "string",
+      "description": "SHA256 of the canonical JSON-serialized output result"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Agent identifier that requested the capability, if available"
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Mission identifier, if available"
+    },
+    "user_approved": {
+      "type": "boolean",
+      "description": "Whether the user explicitly approved this execution"
+    },
+    "approval_method": {
+      "type": "string",
+      "enum": ["auto_allow", "workspace_trusted", "ask_approved", "ask_denied", "denied_by_policy", "timeout"],
+      "description": "How the approval decision was reached"
+    },
+    "mutated_workspace": {
+      "type": "boolean",
+      "description": "Whether this execution mutated workspace state"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "error", "refused"],
+      "description": "Execution status"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if status is error or refused"
+    },
+    "workspace_trusted": {
+      "type": "boolean",
+      "description": "Whether the workspace was trusted at time of execution"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Execution duration in milliseconds"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of receipt creation"
+    }
+  },
+  "required": [
+    "kind", "workspace", "capability",
+    "input_sha256", "output_sha256",
+    "user_approved", "approval_method", "mutated_workspace",
+    "status", "workspace_trusted", "created_at"
+  ],
+  "additionalProperties": false
+}

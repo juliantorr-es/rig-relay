@@ -100,6 +100,7 @@ include = ["vibe/", "rig_relay/"]
 rig-relay = "rig_relay.cli.entrypoint:main"
 rig-relay-acp = "rig_relay.cli.acp_entrypoint:main"
 rig-relay-cockpit = "rig_relay.cli.desktop_cockpit:main"
+rig-relay-ide-sidecar = "rig_relay.cli.ide_sidecar:main"
 
 
 [tool.uv]
@@ -185,6 +186,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/evidence/google_drive_upload.py" = ["PLR"]
 "rig_relay/core/tools/builtins/github_ci_cd.py" = ["PLR"]
 "rig_relay/core/tools/reroute.py" = ["PLR"]
+"rig_relay/cli/ide_sidecar.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

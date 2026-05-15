@@ -1,0 +1,347 @@
+{
+  "schema_version": "rig.ide.capability_manifest.v1",
+  "capabilities": {
+    "ide.workspace.describe": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Describe current workspace state: roots, active file, open tabs, editor state.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.workspace.active_file": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get the currently active editor file path.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.workspace.selection": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get the current text selection range and content.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.workspace.open_tabs": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "List all currently open editor tabs.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.workspace.visible_ranges": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get visible ranges in the active editor.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.buffer.read": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow_if_workspace_trusted",
+      "requires_workspace_trust": true,
+      "description": "Read full file content from editor buffer (includes unsaved changes). Not disk.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.buffer.read_range": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow_if_workspace_trusted",
+      "requires_workspace_trust": true,
+      "description": "Read a range of text from the editor buffer. Line-range bounded.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.buffer.get_unsaved_changes": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow_if_workspace_trusted",
+      "description": "Get unsaved buffer changes relative to disk state.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.buffer.apply_preview_patch": {
+      "plane": "ide",
+      "risk": "high",
+      "mutates": true,
+      "default_policy": "always_ask",
+      "requires_workspace_trust": true,
+      "receipt_kind": "rig.ide.mutation.receipt.v1",
+      "description": "Apply a preview patch to the editor buffer. Requires explicit user approval.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.buffer.show_diff": {
+      "plane": "ui",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Show a diff in the editor.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.diagnostics.workspace": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get all workspace diagnostics (errors, warnings, info).",
+      "implemented_in": { "vscode": false, "sidecar": true }
+    },
+    "ide.diagnostics.file": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get diagnostics for a specific file.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.diagnostics.range": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get diagnostics within a specific range.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.quickfixes.list": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "List available quick fixes for diagnostics.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.symbols.document": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get document symbols (functions, classes, variables).",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.symbols.workspace": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow_if_workspace_trusted",
+      "description": "Search workspace symbols.",
+      "implemented_in": { "vscode": false, "sidecar": true }
+    },
+    "ide.definition.goto": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Go to definition of a symbol.",
+      "implemented_in": { "vscode": false, "sidecar": true }
+    },
+    "ide.references.find": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Find references to a symbol.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.call_hierarchy": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get call hierarchy for a symbol.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.type_hierarchy": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get type hierarchy for a symbol.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.rename_preview": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "ask_once_per_session",
+      "description": "Preview a rename operation without applying it.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.tests.discover": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Discover tests in the workspace.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.tests.run_at_cursor": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": "possible",
+      "default_policy": "ask_once_per_session",
+      "requires_workspace_trust": true,
+      "description": "Run the test at cursor position. Test execution can run arbitrary project code.",
+      "implemented_in": { "vscode": false, "sidecar": true }
+    },
+    "ide.tests.run_file": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": "possible",
+      "default_policy": "ask_once_per_session",
+      "requires_workspace_trust": true,
+      "description": "Run all tests in a file. Test execution can run arbitrary project code.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.tests.run_failed": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": "possible",
+      "default_policy": "ask_once_per_session",
+      "description": "Re-run failed tests.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.tasks.list": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "List available tasks.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.debug.sessions": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "List active debug sessions.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.debug.breakpoints.list": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "List all breakpoints.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.debug.stack": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get current call stack in active debug session.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.debug.variables": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "ask_once_per_session",
+      "description": "Read debug variables. May include sensitive runtime data.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.debug.evaluate_readonly": {
+      "plane": "ide",
+      "risk": "high",
+      "mutates": "possible",
+      "default_policy": "always_ask",
+      "description": "Evaluate a read-only expression in debug context. Intended read-only but evaluation side effects are possible.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.vcs.status": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get VCS status for the workspace.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.vcs.diff_file": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get diff for a specific file.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.vcs.diff_selection": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Get diff for the current selection.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.vcs.changed_files": {
+      "plane": "ide",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "List changed files in the workspace.",
+      "implemented_in": { "vscode": false, "sidecar": true }
+    },
+    "ide.vcs.annotate": {
+      "plane": "ide",
+      "risk": "medium",
+      "mutates": false,
+      "default_policy": "allow_if_workspace_trusted",
+      "description": "Get blame/annotation for a file.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.ui.show_diff": {
+      "plane": "ui",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Show a diff view in the editor.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.ui.show_receipt": {
+      "plane": "ui",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Show a receipt in the evidence panel.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.ui.show_context_packet": {
+      "plane": "ui",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Show a context packet preview before export.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.ui.show_consult_result": {
+      "plane": "ui",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Show a consult result from a provider council.",
+      "implemented_in": { "vscode": false, "sidecar": false }
+    },
+    "ide.ui.request_approval": {
+      "plane": "ui",
+      "risk": "high",
+      "mutates": false,
+      "default_policy": "always_ask",
+      "description": "Request user approval for an operation. This capability itself should not auto-approve.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    },
+    "ide.ui.notify": {
+      "plane": "ui",
+      "risk": "low",
+      "mutates": false,
+      "default_policy": "allow",
+      "description": "Show a notification to the user.",
+      "implemented_in": { "vscode": true, "sidecar": true }
+    }
+  }
+}

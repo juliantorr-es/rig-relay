@@ -4,288 +4,46 @@ Exposes Rig's mission envelopes, receipts, worktree state, and evidence
 as MCP resources and tools. Read-only by default. Mutation tools are
 gated behind receipt-backed authorization.
 
+Tool tiers:
+  Tier 0 — Read-only context (safe by default)
+  Tier 1 — Analysis / packet generation (non-mutating, produces artifacts)
+  Tier 2 — Validation / bounded execution (known validators, audits)
+  Tier 3 — Patch proposal (generates diffs, does NOT apply)
+  Tier 4 — Mutation (requires explicit Rig approval gate)
+  Tier 5 — Git / release / publish (denied by default)
+
 Transport: stdio (local) or Streamable HTTP (remote).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import StrEnum
+import hashlib
+import json
+from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
 
-
-# ═══ JSON-RPC 2.0 Base ═════════════════════════════════════════════════
-
-class JSONRPCRequest(BaseModel):
-    jsonrpc: str = "2.0"
-    id: str | int | None = None
-    method: str
-    params: dict[str, Any] | None = None
-
-
-class JSONRPCResponse(BaseModel):
-    jsonrpc: str = "2.0"
-    id: str | int | None = None
-    result: Any | None = None
-    error: dict[str, Any] | None = None
-
-
-class JSONRPCNotification(BaseModel):
-    jsonrpc: str = "2.0"
-    method: str
-    params: dict[str, Any] | None = None
-
-
-JSONRPC_ERROR_CODES = {
-    -32700: "Parse error",
-    -32600: "Invalid Request",
-    -32601: "Method not found",
-    -32602: "Invalid params",
-    -32603: "Internal error",
-    -32000: "Server error",
-}
-
-
-# ═══ MCP Lifecycle ═══════════════════════════════════════════════════════
-
-
-@dataclass
-class ServerCapabilities:
-    tools: dict[str, Any] = field(default_factory=dict)
-    resources: dict[str, Any] = field(default_factory=dict)
-    prompts: dict[str, Any] = field(default_factory=dict)
-
-
-class MCPServerInfo(BaseModel):
-    name: str = "rig-relay"
-    version: str = "0.1.0"
-    protocol_version: str = "2024-11-05"
-
-
-# ═══ MCP Resources ══════════════════════════════════════════════════════
-
-class MCPResource(BaseModel):
-    uri: str
-    name: str
-    description: str = ""
-    mime_type: str = "application/json"
-
-
-READ_ONLY_RESOURCES: list[MCPResource] = [
-    MCPResource(
-        uri="rig://mission/current",
-        name="Current Mission",
-        description="The active mission envelope with scope, sprint, and task assignments.",
-    ),
-    MCPResource(
-        uri="rig://receipts/latest",
-        name="Latest Receipts",
-        description="Recent coordination receipts (checkpoints, leases, patches).",
-    ),
-    MCPResource(
-        uri="rig://worktree/status",
-        name="Worktree Status",
-        description="Git worktree state: branch, HEAD, dirty files, active leases.",
-    ),
-    MCPResource(
-        uri="rig://schemas/mission-envelope",
-        name="Mission Envelope Schema",
-        description="JSON Schema for Rig mission envelopes.",
-    ),
-    MCPResource(
-        uri="rig://projection/current",
-        name="Current Projection",
-        description="Content-light desktop projection snapshot.",
-    ),
-    MCPResource(
-        uri="rig://council/findings",
-        name="Council Findings",
-        description="Latest council consultation receipt with provider opinions.",
-    ),
-]
-
-
-# ═══ MCP Tools ══════════════════════════════════════════════════════════
-
-class MCPTool(BaseModel):
-    name: str
-    description: str
-    input_schema: dict[str, Any] = Field(default_factory=dict)
-
-
-READ_ONLY_TOOLS: list[MCPTool] = [
-    MCPTool(
-        name="rig.search_evidence",
-        description="Search Rig's evidence ledger for receipts, findings, and coordination events.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "Search query"},
-                "kind": {"type": "string", "description": "Receipt kind filter"},
-                "limit": {"type": "integer", "default": 10},
-            },
-            "required": ["query"],
-        },
-    ),
-    MCPTool(
-        name="rig.read_receipt",
-        description="Read a specific receipt by ID. Content-light: returns summary + hashes.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "receipt_id": {"type": "string"},
-            },
-            "required": ["receipt_id"],
-        },
-    ),
-    MCPTool(
-        name="rig.build_context_packet",
-        description="Build a content-light mission context packet for external consultation.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "mission_id": {"type": "string"},
-                "redaction_mode": {
-                    "type": "string",
-                    "enum": ["minimal", "standard", "full", "paranoid"],
-                    "default": "standard",
-                },
-            },
-            "required": ["mission_id"],
-        },
-    ),
-    MCPTool(
-        name="rig.create_consult_packet",
-        description="Create a structured consultation packet for adversarial review.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "question": {"type": "string"},
-                "providers": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                },
-                "redaction_mode": {
-                    "type": "string",
-                    "enum": ["minimal", "standard", "full", "paranoid"],
-                    "default": "standard",
-                },
-            },
-            "required": ["question"],
-        },
-    ),
-    MCPTool(
-        name="rig.run_readonly_doctor",
-        description="Run a read-only diagnostics check: git state, worktree health, lease status.",
-        input_schema={
-            "type": "object",
-            "properties": {},
-        },
-    ),
-    MCPTool(
-        name="rig.summarize_dirty_state",
-        description="Summarize dirty files with path hashes only. No file contents.",
-        input_schema={
-            "type": "object",
-            "properties": {},
-        },
-    ),
-    MCPTool(
-        name="rig.read_council_findings",
-        description="Read council consultation findings: consensus, disagreements, risks.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "receipt_id": {"type": "string"},
-            },
-        },
-    ),
-]
-
-# Gated mutation tools — require authorization receipt
-GATED_TOOLS: list[MCPTool] = [
-    MCPTool(
-        name="rig.propose_patch",
-        description="Propose a patch for review. Does NOT apply — creates a PatchProposal receipt.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "title": {"type": "string"},
-                "summary": {"type": "string"},
-                "touched_paths": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": ["title", "summary"],
-        },
-    ),
-    MCPTool(
-        name="rig.run_validator",
-        description="Run a named validator suite. Read-only — produces a validation receipt.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "validator": {"type": "string", "default": "pytest"},
-            },
-        },
-    ),
-    MCPTool(
-        name="rig.request_user_approval",
-        description="Request user approval for a gated action. Returns an authorization receipt.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "action": {"type": "string"},
-                "rationale": {"type": "string"},
-            },
-            "required": ["action"],
-        },
-    ),
-]
-
-
-# ═══ MCP Prompts ════════════════════════════════════════════════════════
-
-class MCPPrompt(BaseModel):
-    name: str
-    description: str
-    arguments: list[dict[str, Any]] = Field(default_factory=list)
-
-
-PROMPTS: list[MCPPrompt] = [
-    MCPPrompt(
-        name="rig.mission_review",
-        description="Review the current mission and recommend next slice.",
-        arguments=[
-            {"name": "mission_id", "description": "Mission to review", "required": True},
-        ],
-    ),
-    MCPPrompt(
-        name="rig.consultation_request",
-        description="Create a structured consultation request for external providers.",
-        arguments=[
-            {"name": "question", "description": "Question for providers", "required": True},
-            {"name": "providers", "description": "Provider list", "required": False},
-        ],
-    ),
-    MCPPrompt(
-        name="rig.adversarial_review",
-        description="Adversarial patch review: find risks, blockers, and do-not-dos.",
-        arguments=[
-            {"name": "patch_proposal_id", "description": "Proposal to review", "required": True},
-        ],
-    ),
-]
-
-
-# ═══ MCP Server ═════════════════════════════════════════════════════════
+from rig_relay.coordination.council import ConsultationRequest, RedactionMode
+from rig_relay.protocols.mcp.models import (
+    GATED_TOOLS,
+    MCPPrompt,
+    MCPResource,
+    MCPTool,
+    MCPToolTier,
+    PROMPTS,
+    READ_ONLY_RESOURCES,
+    READ_ONLY_TOOLS,
+    ServerCapabilities,
+)
 
 
 class RigMCPServer:
     """MCP server exposing Rig's governed tools, resources, and prompts.
 
-    Read-only by default. Gated tools require authorization receipts.
-    Uses stdio transport for local use, Streamable HTTP for remote.
+    Tiered exposure: Antigravity and other clients see only the tools
+    appropriate for their authorization level. Every dangerous tool
+    returns approval_required + receipt_id instead of doing the action.
 
     Usage:
         server = RigMCPServer()
@@ -294,7 +52,6 @@ class RigMCPServer:
 
     def __init__(self) -> None:
         self._initialized = False
-        self._server_info = MCPServerInfo()
         self._capabilities = ServerCapabilities(
             tools={"listChanged": True},
             resources={"subscribe": False, "listChanged": True},
@@ -305,12 +62,11 @@ class RigMCPServer:
     def capabilities(self) -> ServerCapabilities:
         return self._capabilities
 
-    @property
-    def server_info(self) -> MCPServerInfo:
-        return self._server_info
-
-    def list_tools(self) -> list[MCPTool]:
-        return READ_ONLY_TOOLS + GATED_TOOLS
+    def list_tools(self, tier: MCPToolTier | None = None) -> list[MCPTool]:
+        all_tools = READ_ONLY_TOOLS + GATED_TOOLS
+        if tier is None:
+            return all_tools
+        return [t for t in all_tools if t.tier == tier]
 
     def list_resources(self) -> list[MCPResource]:
         return READ_ONLY_RESOURCES
@@ -318,93 +74,256 @@ class RigMCPServer:
     def list_prompts(self) -> list[MCPPrompt]:
         return PROMPTS
 
-    async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        """Dispatch a tool call. Read-only tools execute immediately.
-        Gated tools require authorization receipt in arguments."""
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         all_tools = {t.name: t for t in self.list_tools()}
-        if name not in all_tools:
-            return {"error": f"Unknown tool: {name}"}
+        tool = all_tools.get(name)
+        if tool is None:
+            return {"error": f"Unknown tool: {name}", "code": -32601}
 
-        gated_names = {t.name for t in GATED_TOOLS}
-        if name in gated_names:
+        # Tier 4+ tools require authorization receipt
+        if tool.tier and tool.tier.value >= 4:
             receipt = arguments.get("authorization_receipt")
             if not receipt:
                 return {
-                    "error": "Authorization required",
-                    "code": "AUTHORIZATION_REQUIRED",
+                    "status": "blocked_pending_approval",
                     "tool": name,
+                    "message": "Authorization receipt required for mutation.",
+                    "approval_required": True,
                 }
 
-        if name == "rig.search_evidence":
-            return await self._search_evidence(arguments)
-        if name == "rig.read_receipt":
-            return await self._read_receipt(arguments)
-        if name == "rig.build_context_packet":
-            return await self._build_context_packet(arguments)
-        if name == "rig.create_consult_packet":
-            return await self._create_consult_packet(arguments)
-        if name == "rig.run_readonly_doctor":
-            return await self._run_readonly_doctor(arguments)
-        if name == "rig.summarize_dirty_state":
-            return await self._summarize_dirty_state(arguments)
-        if name == "rig.read_council_findings":
-            return await self._read_council_findings(arguments)
+        return await self._dispatch(tool.name, arguments)
 
-        return {"error": f"Tool not implemented: {name}"}
+    async def _dispatch(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        dispatch = {
+            "rig.search_evidence": self._search_evidence,
+            "rig.read_receipt": self._read_receipt,
+            "rig.build_context_packet": self._build_context_packet,
+            "rig.create_consult_packet": self._create_consult_packet,
+            "rig.run_readonly_doctor": self._run_readonly_doctor,
+            "rig.summarize_dirty_state": self._summarize_dirty_state,
+            "rig.read_council_findings": self._read_council_findings,
+            "rig.list_worktrees": self._list_worktrees,
+            "rig.current_mission": self._current_mission,
+            "rig.inspect_schema": self._inspect_schema,
+            "rig.propose_patch": self._propose_patch,
+            "rig.run_validator": self._run_validator,
+            "rig.request_user_approval": self._request_approval,
+            "rig.check_merge_friendly": self._check_merge_friendly,
+            "rig.audit_dirty_state": self._audit_dirty_state,
+            "rig.compare_provider_opinions": self._compare_provider_opinions,
+        }
+        handler = dispatch.get(name)
+        if handler is None:
+            return {"error": f"Tool not implemented: {name}", "code": -32601}
+        return await handler(args)
 
-    def read_resource(self, uri: str) -> Any:
-        """Read a resource by URI."""
-        resources = {r.uri: r for r in READ_ONLY_RESOURCES}
-        if uri not in resources:
-            return {"error": f"Unknown resource: {uri}"}
-        return {"uri": uri, "name": resources[uri].name}
+    # ═══ Tier 0 — Read-only context ═════════════════════════════════════
 
-    # ── Tool implementations (stubs — wire to Rig internals) ──────────
+    async def _current_mission(self, args: dict) -> dict:
+        return {"status": "ok", "mission": None, "message": "No active mission"}
+
+    async def _inspect_schema(self, args: dict) -> dict:
+        schema_name = args.get("schema", "mission-envelope")
+        return {"status": "ok", "schema": schema_name, "version": "v1"}
+
+    async def _list_worktrees(self, args: dict) -> dict:
+        try:
+            from rig_relay.coordination.worktree_manager import WorktreeManager
+            mgr = WorktreeManager(Path.cwd())
+            records = mgr.list_worktrees()
+            return {
+                "status": "ok",
+                "worktrees": [
+                    {
+                        "workspace_id": r.workspace_id,
+                        "path": r.path,
+                        "status": str(r.status),
+                        "head_sha": r.head_sha,
+                    }
+                    for r in records
+                ],
+                "count": len(records),
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    # ═══ Tier 0 — Search / read ═════════════════════════════════════════
 
     async def _search_evidence(self, args: dict) -> dict:
-        return {"status": "ok", "query": args.get("query"), "results": []}
-
-    async def _read_receipt(self, args: dict) -> dict:
-        return {"status": "ok", "receipt_id": args.get("receipt_id")}
-
-    async def _build_context_packet(self, args: dict) -> dict:
         return {
             "status": "ok",
-            "mission_id": args.get("mission_id"),
-            "redaction_mode": args.get("redaction_mode", "standard"),
-            "packet_sha256": "",
+            "query": args.get("query"),
+            "kind": args.get("kind"),
+            "results": [],
+            "count": 0,
+        }
+
+    async def _read_receipt(self, args: dict) -> dict:
+        receipt_id = args.get("receipt_id", "")
+        return {
+            "status": "ok",
+            "receipt_id": receipt_id,
+            "found": False,
+        }
+
+    async def _read_council_findings(self, args: dict) -> dict:
+        return {
+            "status": "ok",
+            "receipt_id": args.get("receipt_id"),
+            "findings": [],
+        }
+
+    # ═══ Tier 1 — Analysis / packet generation ══════════════════════════
+
+    async def _build_context_packet(self, args: dict) -> dict:
+        mission_id = args.get("mission_id", "")
+        redaction = args.get("redaction_mode", "standard")
+        packet = json.dumps({
+            "mission_id": mission_id,
+            "redaction_mode": redaction,
+        }, sort_keys=True).encode()
+        return {
+            "status": "ok",
+            "mission_id": mission_id,
+            "redaction_mode": redaction,
+            "packet_sha256": hashlib.sha256(packet).hexdigest(),
         }
 
     async def _create_consult_packet(self, args: dict) -> dict:
+        question = args.get("question", "")
+        providers = args.get("providers", [])
+        redaction = RedactionMode(args.get("redaction_mode", "standard"))
         return {
             "status": "ok",
-            "question": args.get("question"),
-            "providers": args.get("providers", []),
+            "question": question,
+            "providers": providers,
+            "redaction_mode": str(redaction),
+            "message": "Consultation packet created. Use /send_to <provider> in Rig Relay to dispatch.",
         }
 
+    async def _compare_provider_opinions(self, args: dict) -> dict:
+        return {
+            "status": "ok",
+            "providers_compared": args.get("providers", []),
+            "consensus": [],
+            "disagreements": [],
+        }
+
+    # ═══ Tier 2 — Validation / bounded execution ════════════════════════
+
     async def _run_readonly_doctor(self, args: dict) -> dict:
-        return {"status": "ok", "git_repo": True, "worktrees": 0, "leases": 0}
+        try:
+            import subprocess
+            cwd = Path.cwd()
+            is_git = subprocess.run(
+                ["git", "rev-parse", "--git-dir"],
+                capture_output=True, text=True, cwd=str(cwd),
+            ).returncode == 0
+            return {
+                "status": "ok",
+                "git_repo": is_git,
+                "cwd": str(cwd),
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
     async def _summarize_dirty_state(self, args: dict) -> dict:
-        return {"status": "ok", "dirty_files": 0, "path_hashes": []}
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True, text=True, cwd=str(Path.cwd()),
+            )
+            dirty = result.stdout.strip()
+            if not dirty:
+                return {"status": "ok", "dirty_files": 0, "path_hashes": [], "message": "Clean working tree"}
+            lines = [l.strip() for l in dirty.split("\n") if l.strip()]
+            path_hashes = [
+                hashlib.sha256(l.split(None, 1)[-1].encode()).hexdigest()[:12]
+                for l in lines if len(l.split(None, 1)) > 1
+            ]
+            return {
+                "status": "ok",
+                "dirty_files": len(lines),
+                "path_hashes": path_hashes,
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
-    async def _read_council_findings(self, args: dict) -> dict:
-        return {"status": "ok", "receipt_id": args.get("receipt_id"), "findings": []}
+    async def _run_validator(self, args: dict) -> dict:
+        validator = args.get("validator", "")
+        if not validator:
+            return {"status": "error", "message": "validator name required"}
+        receipt_id = f"rec-val-{hashlib.sha256(validator.encode()).hexdigest()[:12]}"
+        return {
+            "status": "blocked_pending_approval",
+            "receipt_id": receipt_id,
+            "validator": validator,
+            "message": f"Validator '{validator}' requires approval. Use rig.request_user_approval first.",
+            "approval_required": True,
+        }
+
+    async def _check_merge_friendly(self, args: dict) -> dict:
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True, text=True, cwd=str(Path.cwd()),
+            )
+            dirty = bool(result.stdout.strip())
+            return {
+                "status": "ok",
+                "merge_friendly": not dirty,
+                "dirty_files": len(result.stdout.strip().split("\n")) if dirty else 0,
+                "recommendation": "Clean working tree. Safe to proceed." if not dirty else "Dirty tree. Commit or stash before merging.",
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    async def _audit_dirty_state(self, args: dict) -> dict:
+        summary = await self._summarize_dirty_state(args)
+        summary["audit_kind"] = "dirty_state_audit"
+        summary["recommendation"] = (
+            "Clean tree. No action needed." if summary.get("dirty_files", 0) == 0
+            else f"{summary['dirty_files']} files dirty. Consider checkpointing before proceeding."
+        )
+        return summary
+
+    # ═══ Tier 3 — Patch proposal ════════════════════════════════════════
+
+    async def _propose_patch(self, args: dict) -> dict:
+        mission_id = args.get("mission_id", "")
+        rationale = args.get("rationale", "")
+        target_files = args.get("target_files", [])
+        proposed_changes = args.get("proposed_changes", "")
+
+        receipt_id = f"rec-patch-{hashlib.sha256(json.dumps(args, sort_keys=True).encode()).hexdigest()[:12]}"
+
+        return {
+            "status": "blocked_pending_approval",
+            "receipt_id": receipt_id,
+            "patch_proposal_created": True,
+            "mission_id": mission_id,
+            "target_files": target_files,
+            "rationale": rationale,
+            "next_action": "approve_in_rig",
+            "message": f"Patch proposal created ({receipt_id}). User approval required before workspace mutation.",
+            "approval_required": True,
+        }
+
+    # ═══ Tier 4 — Mutation (requires approval gate) ═════════════════════
+
+    async def _request_approval(self, args: dict) -> dict:
+        action = args.get("action", "")
+        rationale = args.get("rationale", "")
+        receipt_id = f"rec-auth-{hashlib.sha256(action.encode()).hexdigest()[:12]}"
+        return {
+            "status": "approval_requested",
+            "receipt_id": receipt_id,
+            "action": action,
+            "rationale": rationale,
+            "message": f"Approval requested for '{action}'. Awaiting user confirmation in Rig Relay.",
+        }
 
 
-__all__ = [
-    "GATED_TOOLS",
-    "JSONRPC_ERROR_CODES",
-    "JSONRPCNotification",
-    "JSONRPCRequest",
-    "JSONRPCResponse",
-    "MCPPrompt",
-    "MCPResource",
-    "MCPServerInfo",
-    "MCPTool",
-    "PROMPTS",
-    "READ_ONLY_RESOURCES",
-    "READ_ONLY_TOOLS",
-    "RigMCPServer",
-    "ServerCapabilities",
-]
+__all__ = ["RigMCPServer"]

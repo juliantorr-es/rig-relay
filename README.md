@@ -3,272 +3,127 @@
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/release/python-3120/)
 [![License](https://img.shields.io/github/license/juliantorr-es/rig-relay)](https://github.com/juliantorr-es/rig-relay/blob/main/LICENSE)
 
+**Rig Relay — a governed local coding harness.**
+
+A desktop cockpit for governed agentic development. Chat-first interface,
+receipt-backed evidence, worktree isolation, multi-provider consultation
+(Council), and fleet orchestration. Exposes MCP tools for Antigravity,
+VS Code, and Zed, and speaks ACP for editor-integrated agent sessions.
+
+## Quick Start
+
+```bash
+git clone https://github.com/juliantorr-es/rig-relay
+cd rig-relay
+uv sync
+uv run rig-relay
 ```
-██████████████████░░
-██████████████████░░
-████  ██████  ████░░
-████    ██    ████░░
-████          ████░░
-████  ██  ██  ████░░
-██      ██      ██░░
-██████████████████░░
-██████████████████░░
-```
 
-**Rig Relay v0.1.0-alpha.1 — a governed local coding harness for Rig.**
-
-Rig Relay is a Relay-native local agent cockpit with a CLI compatibility
-surface. It provides a governed control plane, desktop cockpit, and durable
-local evidence for safe development work. The legacy Textual TUI remains only
-for development compatibility and is being retired.
-
-> [!WARNING]
-> Rig Relay works on Windows, but we officially support and target UNIX environments.
-
-## Current Status
-
-Rig Relay is a standalone, provider-neutral local coding harness with a different runtime home, primary executable names, and default operational posture. It is being shaped into a governed control plane suitable for Rig workflows.
-
-## Install
-
-### From source
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/juliantorr-es/rig-relay
-   cd rig-relay
-   ```
-
-2. Sync dependencies using [uv](https://github.com/astral-sh/uv):
-   ```bash
-   uv sync
-   ```
-
-3. Run from source:
-   ```bash
-   uv run rig-relay
-   ```
-
-### Global install
-
-Preferred:
+On first launch, Rig Relay will walk you through provider setup — pick a
+provider, get an API key, and you're ready. No API key? Rig Relay still
+starts in dry-run mode with full projection and WebSocket available.
 
 ```bash
 uv tool install git+https://github.com/juliantorr-es/rig-relay.git --force
 ```
 
-Local checkout:
+## Current Path
 
-```bash
-cd ~/Developer/GitHub/rig-relay
-uv tool install . --force
+Rig Relay is a standalone desktop application built with pywebview. The
+primary surface is a chat-first console with widget panels for workspace
+state, fleet status, provider health, and Council (multi-provider
+adversarial review).
+
+```
+uv run rig-relay
 ```
 
-Confirm:
+### Desktop Cockpit
+
+Operator, Review, System, and Technical layout modes. Widgets at three
+disclosure levels: compact chips, standard cards, and full-page expanded
+views. Chat sends to AgentLoop → LLM → tools → response. WebSocket
+streams projections and chat state to the frontend.
 
 ```bash
-which rig-relay
-rig-relay --version
-rig-relay --help
+uv run rig-relay --dry-run       # projection dump, no window
+uv run rig-relay --server-only   # WebSocket + URL, headless
 ```
 
-4. (Optional) Install as a global tool:
-   ```bash
-   uv tool install .
-   ```
+## Protocol Surfaces
 
-## Configure DeepSeek
+Rig Relay exposes four protocol surfaces for different integration patterns:
 
-Rig Relay needs a provider key before it can run model turns. DeepSeek is the default backend in the current distribution.
+| Surface | Role | Description |
+|---|---|---|
+| **ACP Agent** | Editor ↔ Agent | Rig presents as a governed coding agent to Zed, JetBrains, VS Code. Sessions, progress events, edit proposals, permission gating. |
+| **MCP Client** | Rig ↔ External Tools | Rig consumes external MCP servers for additional tools and context. |
+| **MCP Server** | Host ↔ Rig | Rig exposes governed tools, resources, and prompts to Antigravity, Claude Desktop, Cursor, and other MCP hosts. Tiered: read-only → analysis → validation → patch proposal → mutation. |
+| **WebSocket** | Cockpit ↔ Backend | Local projection stream for the desktop cockpit. Token-gated, localhost-only, content-light. |
 
-1. Obtain an API key from [platform.deepseek.com](https://platform.deepseek.com).
-2. Set the environment variable:
-   ```bash
-   export DEEPSEEK_API_KEY="your_api_key_here"
-   ```
-   Or run `rig-relay --setup` to configure it interactively.
+See [docs/protocol-surfaces.md](docs/protocol-surfaces.md) for details.
 
-## Run Rig Relay
+## Legacy Path
 
-### Interactive Mode
-
-Run the primary executable to start the governed cockpit in your current
-directory:
-```bash
-rig-relay
-```
-
-`rig-relay` now opens the primary cockpit workflow by default. Legacy
-compatibility commands remain available explicitly:
+Rig Relay is a derivative of mistralai/mistral-vibe. The `vibe` command
+and legacy Textual TUI are retained for compatibility during migration
+but are not the product identity.
 
 ```bash
-rig-relay legacy
+rig-relay legacy          # legacy CLI
+rig-relay legacy --agent plan
 ```
 
-### Programmatic Mode
+Legacy config paths (`.vibe/`, `~/.vibe/`) are read as compatibility
+fallbacks. Set `RIG_RELAY_DISABLE_LEGACY_CONFIG=1` to require the new
+paths.
 
-Use the `--prompt` (or `-p`) flag for non-interactive tasks:
-```bash
-rig-relay --prompt "Analyze the project structure and summarize the core modules."
-```
+## Agent Profiles
+
+Rig Relay ships with built-in agent profiles. Select with `--agent`:
+
+| Profile | Type | Tools | Use |
+|---|---|---|---|
+| `default` | Agent | Standard | Normal development with approval gates |
+| `orchestrator` | Agent | Git, task dispatch, consult | Fleet orchestration, roadmap planning |
+| `plan` | Agent | Read-only | Exploration and planning |
+| `explorer` | Subagent | grep, read_file | Codebase exploration |
+| `builder` | Subagent | write_file, search_replace, task | Patch application in scratch worktrees |
+| `cleaner` | Subagent | validate, validation_suite | Post-build validation and cleanup |
+| `bug-exterminator` | Subagent | cleaner tools + task | Hard merge conflict resolution |
 
 ## Features
 
-- **Interactive Chat**: Conversational agent loop for codebase exploration and controlled edits.
-- **Powerful Toolset**: File, search, git, and shell tools with explicit permissions and evidence capture.
-- **Project-Aware Context**: Scans trusted project structure and git state for relevant context.
-- **Highly Configurable**: Customize models, providers, and tool permissions through `config.toml`.
-- **Safety First**: Tool execution approval and a trust-based folder system.
-
-### Built-in Agents
-
-Rig Relay includes several built-in agent profiles:
-
-- **`default`**: Standard agent requiring approval for tool executions.
-- **`plan`**: Read-only agent for exploration and planning.
-- **`accept-edits`**: Auto-approves file edits only.
-- **`auto-approve`**: Legacy compatibility profile that auto-approves tool executions. Use with caution.
-
-Select an agent with the `--agent` flag:
-```bash
-rig-relay --agent plan
-```
-
-## Desktop Cockpit
-
-Rig Relay's primary human operator surface is the pywebview desktop cockpit.
-The legacy Textual TUI is retained only as a compatibility shim during
-migration and should not be treated as the product UI.
-
-```bash
-uv run python scripts/rig_relay_desktop_cockpit.py
-```
-
-The desktop cockpit remains the primary graphical operator surface:
-
-```bash
-uv run python scripts/rig_relay_desktop_cockpit.py
-```
-
-Use `--dry-run` for a non-mutating projection dump:
-
-```bash
-uv run python scripts/rig_relay_desktop_cockpit.py --dry-run
-```
-
-### Textual Rig Console
-
-The Textual Rig Console is deprecated and retained only for developer
-compatibility. Do not use it as the primary workflow surface.
-
-Fixture mode is the safe default. It renders canned projections and is useful
-for smoke testing the layout without any runtime roots.
-
-Runtime mode reads existing projection, audit, and coordination artifacts in a
-read-only way:
-
-```bash
-uv run rig-console \
-  --mode runtime \
-  --session-id <session-id> \
-  --session-path <path> \
-  --workspace-root <path> \
-  --coordination-root <path> \
-  --audit-root <path>
-```
-
-The Textual console is read-only at startup. It shows session identity, runtime
-adapter state, recent execution events, progress, active blockers or leases,
-evidence receipts, validation summaries, and a safe footer with keybindings.
-It does not display raw stdout, stderr, prompts, diffs, patches, secrets, or
-other raw tool payloads.
+- **Chat-first console** — Operator, Review, System, Technical layout modes with adaptive widget grids
+- **Council** — Multi-provider adversarial review with structured opinions and receipt-backed findings
+- **Fleet orchestration** — Roadmap planning, sprint scoping, mission dispatch to subagents on isolated worktrees
+- **Receipt-backed evidence** — Every tool call, checkpoint, and consultation produces a receipt
+- **Worktree isolation** — Agents operate in git worktrees under `.rig/relay/worktrees`
+- **Slash commands** — `/init`, `/worktree`, `/fleet`, `/council`, `/orchestrator`, `/provider`, and more
+- **Provider onboarding** — Interactive setup for DeepSeek, OpenAI, Anthropic, Google, Mistral, OpenRouter
+- **MCP server** — 16 governed tools across 5 tiers, exposed for Antigravity/VS Code/Zed
+- **ACP agent** — Editor-integrated session control with progress streaming and permission gating
 
 ## Configuration
 
-### Configuration File Location
+Rig Relay looks for configuration at:
+1. `./.rig/relay/config.toml` (project-specific)
+2. `~/.rig/relay/config.toml` (user-global)
 
-Rig Relay looks for its configuration in the following order:
-1. `./.rig/relay/config.toml` (Project-specific)
-2. `./.rig-relay/config.toml` (Legacy project-specific)
-3. `./.vibe/config.toml` (Legacy project-specific, compatibility fallback)
-4. `~/.rig/relay/config.toml` (User-global)
-5. `~/.rig-relay/config.toml` (Legacy user-global)
-6. `~/.vibe/config.toml` (Legacy user-global, compatibility fallback)
+API keys are stored in `~/.rig/relay/.env`. On first launch with no key
+configured, the onboarding wizard walks through provider selection and
+key setup.
 
-### Rig Relay Home Directory
-
-By default, Rig Relay stores its configuration, logs, and history in `~/.rig/relay/`. You can override this by setting the `RIG_RELAY_HOME` environment variable:
+## Development
 
 ```bash
-export RIG_RELAY_HOME="/path/to/custom/home"
+uv run pytest                  # full suite
+uv run pyright                 # type check
+uv run ruff check --fix .      # lint
+uv run ruff format .           # format
 ```
 
-Recommended env:
+## License
 
-```bash
-export RIG_RELAY_HOME="$HOME/.rig/relay"
-export RIG_RELAY_DISABLE_LEGACY_CONFIG=1
-export DEEPSEEK_API_KEY="sk-..."
-```
-
-If upstream Mistral Vibe is also installed, use `rig-relay` instead of `vibe` to avoid command ambiguity.
-
-### Brand direction
-
-- Rig Relay is the product; providers are interchangeable backends.
-- Visual direction: Bauhaus structure plus green phosphor terminal nostalgia.
-- Animation should stay small, decorative, and automation-safe.
-- Evidence, manifests, receipts, and doctor output stay first-class and legible.
-
-## Maintenance and Updates
-
-Rig Relay **disables automatic updates and remote version checks by design**. As a forked derivative, Rig Relay must be updated manually to ensure local enhancements and governance policies are preserved.
-
-To update Rig Relay:
-1. Fetch latest changes from the origin:
-   ```bash
-   git fetch origin
-   ```
-2. Inspect and merge manually:
-   ```bash
-   git merge origin/main
-   ```
-
-Do **not** use `uv tool upgrade mistral-vibe` or similar upstream commands, as they will replace Rig Relay with the upstream product.
-
-## Legacy Compatibility
-
-Rig Relay maintains backward compatibility for users transitioning from Mistral Vibe.
-`vibe` remains a legacy compatibility alias, not the product identity.
-
-### Commands
-- `rig-relay` is the primary executable and launches the Textual cockpit.
-- `rig-relay-acp` is the primary ACP executable.
-- `vibe` is a legacy compatibility alias for `rig-relay`.
-- `vibe-acp` is a legacy compatibility alias for `rig-relay-acp`.
-- `rig-relay legacy` and `rig-relay run` explicitly invoke the legacy CLI.
-
-## Upstream and License
-
-Rig Relay is a derivative work of [mistralai/mistral-vibe](https://github.com/mistralai/mistral-vibe), originally licensed under the Apache License, Version 2.0. 
-
-This project is an independent derivative and is not affiliated with, endorsed by, or sponsored by Mistral AI. We have modified the upstream codebase to create a neutral, standalone agent harness.
-
-For more details on the project's origin and third-party attributions, please see:
-- [UPSTREAM.md](UPSTREAM.md)
-- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-
-### License
-
-Copyright 2025 Mistral AI
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the [LICENSE](LICENSE) file for the full license text.
+Apache 2.0. Derivative of [mistralai/mistral-vibe](https://github.com/mistralai/mistral-vibe).
+See [LICENSE](LICENSE) and [UPSTREAM.md](UPSTREAM.md).

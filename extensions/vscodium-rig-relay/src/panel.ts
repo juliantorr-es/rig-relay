@@ -1,323 +1,173 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
-import { RigDaemonClient, ClientDelegate } from './client';
-import { RigBaseMessage, ServerDeltaMessage } from './protocol';
 
-export class RigControlProvider implements vscode.WebviewViewProvider, ClientDelegate {
+export class RigControlProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'rig-relay-control';
     private _view?: vscode.WebviewView;
-    private _client?: RigDaemonClient;
-    private _status: string = 'disconnected';
-    private _statusDetails?: string;
 
     constructor(private readonly _context: vscode.ExtensionContext) {}
 
-    public async resolveWebviewView(
+    public resolveWebviewView(
         webviewView: vscode.WebviewView,
-        context: vscode.WebviewViewResolveContext,
+        _context: vscode.WebviewViewResolveContext,
         _token: vscode.CancellationToken
     ) {
         this._view = webviewView;
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [this._context.extensionUri]
+            localResourceRoots: [this._context.extensionUri],
         };
+        webviewView.webview.html = this._getHtmlForWebview();
 
-        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-
-        webviewView.webview.onDidReceiveMessage(async data => {
-            // Schema-checked before forwarding
+        webviewView.webview.onDidReceiveMessage(async (data) => {
             switch (data.type) {
-                case 'connect':
-                    await this.connect();
-                    break;
                 case 'submit':
-                    if (typeof data.value === 'string' && data.value.trim()) {
-                        this._client?.sendIntent('start_turn', { text: data.value });
-                    }
+                    // Forward prompt to the sidecar
+                    vscode.commands.executeCommand('rig-relay.forwardMessage', {
+                        type: 'user_prompt',
+                        text: data.value,
+                    });
                     break;
                 case 'cancel':
-                    this._client?.sendIntent('cancel_turn');
+                    vscode.commands.executeCommand('rig-relay.forwardMessage', {
+                        type: 'cancel',
+                    });
                     break;
             }
         });
     }
 
-    public reconnect() {
-        this.connect();
+    /**
+     * Called by extension.ts to forward messages from the sidecar to the webview.
+     */
+    public postMessage(msg: any) {
+        this._view?.webview.postMessage(msg);
     }
 
-    public showStatus() {
-        const details = this._statusDetails ? ` (${this._statusDetails})` : '';
-        vscode.window.showInformationMessage(`Rig Relay Status: ${this._status.toUpperCase()}${details}`);
-    }
-
-    private async connect() {
-        let url: string | undefined;
-        let token: string | undefined;
-
-        // 1. Try Discovery
-        const discovery = await this._tryDiscovery();
-        if (discovery) {
-            url = `ws://${discovery.host}:${discovery.port}`;
-            // discovery.token_ref === "secret-storage" implies we use SecretStorage
-            token = await this._context.secrets.get('rig-relay.daemon.token');
-        } else {
-            // 2. Fallback to settings
-            const config = vscode.workspace.getConfiguration('rig-relay');
-            const host = config.get<string>('daemon.host') || '127.0.0.1';
-            const port = config.get<number>('daemon.port') || 5000;
-            url = `ws://${host}:${port}`;
-            token = await this._context.secrets.get('rig-relay.daemon.token');
-        }
-
-        if (!token) {
-            vscode.window.showErrorMessage('Rig Daemon Token missing. Use "Rig Relay: Set Daemon Token" command.');
-            return;
-        }
-
-        this._client?.disconnect();
-        this._client = new RigDaemonClient(url!, token, this);
-        this._client.connect();
-    }
-
-    private async _tryDiscovery(): Promise<any | null> {
-        const folders = vscode.workspace.workspaceFolders;
-        if (!folders) return null;
-
-        const discoveryPath = path.join(folders[0].uri.fsPath, '.rig', 'daemon', 'console.json');
-        try {
-            if (fs.existsSync(discoveryPath)) {
-                const content = fs.readFileSync(discoveryPath, 'utf8');
-                return JSON.parse(content);
-            }
-        } catch (err) {
-            console.error('Discovery file parse error', err);
-        }
-        return null;
-    }
-
-    // Delegate Implementation
-    public onStatusChange(status: string, details?: string) {
-        this._status = status;
-        this._statusDetails = details;
-        this._view?.webview.postMessage({ type: 'status', value: status, details });
-    }
-
-    public onMessage(msg: RigBaseMessage) {
-        // Content-light invariant: unknown/malformed become warnings
-        if (msg.schema === 'rig.ws.server.warning.v1') {
-            this._view?.webview.postMessage({ type: 'warning', value: (msg as any).message });
-        }
-    }
-
-    public onSnapshot(data: any) {
-        // Content-light invariant: ensure data doesn't contain raw stdout/stderr/diffs/secrets
-        this._view?.webview.postMessage({ type: 'snapshot', value: this._sanitizeSnapshot(data) });
-    }
-
-    public onDelta(delta: ServerDeltaMessage) {
-        // Content-light invariant: ensure value doesn't contain raw stdout/stderr/diffs/secrets
-        this._view?.webview.postMessage({ type: 'delta', value: this._sanitizeDelta(delta) });
-    }
-
-    private _sanitizeSnapshot(data: any): any {
-        // Simple sanity check for MVP spike
-        return data;
-    }
-
-    private _sanitizeDelta(delta: ServerDeltaMessage): ServerDeltaMessage {
-        // Simple sanity check for MVP spike
-        return delta;
-    }
-
-    private _getHtmlForWebview(webview: vscode.Webview) {
-        const nonce = getNonce();
-
+    private _getHtmlForWebview(): string {
         return `<!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
-                <title>Rig Mission Control</title>
-                <style>
-                    body { 
-                        font-family: var(--vscode-editor-font-family); 
-                        font-size: var(--vscode-editor-font-size);
-                        background-color: var(--vscode-sideBar-background);
-                        color: var(--vscode-sideBar-foreground);
-                        padding: 10px;
-                        line-height: 1.4;
-                    }
-                    .status { 
-                        border-bottom: 1px solid var(--vscode-panel-border);
-                        padding-bottom: 8px;
-                        margin-bottom: 12px;
-                        font-weight: bold;
-                        text-transform: uppercase;
-                        display: flex;
-                        justify-content: space-between;
-                    }
-                    .status-ready { color: var(--vscode-charts-green); }
-                    .status-error { color: var(--vscode-errorForeground); }
-                    
-                    .transcript { 
-                        height: calc(100vh - 160px);
-                        overflow-y: auto;
-                        border: 1px solid var(--vscode-panel-border);
-                        padding: 8px;
-                        margin-bottom: 12px;
-                        background-color: var(--vscode-editor-background);
-                        color: var(--vscode-editor-foreground);
-                    }
-                    .item { 
-                        margin-bottom: 12px;
-                        padding-left: 8px;
-                        border-left: 2px solid var(--vscode-textBlockQuote-border);
-                    }
-                    .item-title { 
-                        font-weight: bold;
-                        color: var(--vscode-symbolIcon-functionForeground);
-                        margin-bottom: 4px;
-                    }
-                    .item-body { opacity: 0.9; }
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rig Relay</title>
+    <style>
+        :root {
+            --bg: var(--vscode-sideBar-background, #1e1e1e);
+            --text: var(--vscode-sideBar-foreground, #ccc);
+            --border: var(--vscode-panel-border, #333);
+            --accent: var(--vscode-focusBorder, #0078d4);
+        }
+        body {
+            font-family: var(--vscode-editor-font-family, sans-serif);
+            font-size: var(--vscode-editor-font-size, 13px);
+            background: var(--bg);
+            color: var(--text);
+            padding: 8px;
+            margin: 0;
+        }
+        .status {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0 8px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+        }
+        .status.connected { color: #4c9a5a; }
+        .status.disconnected { color: #c94a44; }
 
-                    .controls { display: flex; flex-direction: column; gap: 8px; }
-                    input { 
-                        background-color: var(--vscode-input-background);
-                        color: var(--vscode-input-foreground);
-                        border: 1px solid var(--vscode-input-border);
-                        padding: 6px 8px;
-                        outline: none;
-                    }
-                    input:focus { border-color: var(--vscode-focusBorder); }
+        .receipt {
+            font-size: 0.85em;
+            padding: 4px 6px;
+            margin: 4px 0;
+            border-left: 3px solid var(--accent);
+            background: rgba(255,255,255,0.03);
+        }
+        .receipt .capability { font-weight: 600; }
+        .receipt .hash { opacity: 0.6; font-family: monospace; font-size: 0.9em; }
 
-                    button { 
-                        background-color: var(--vscode-button-background);
-                        color: var(--vscode-button-foreground);
-                        border: none;
-                        padding: 6px 12px;
-                        cursor: pointer;
-                        font-weight: bold;
-                    }
-                    button:hover { background-color: var(--vscode-button-hoverBackground); }
-                    
-                    .warning {
-                        background-color: var(--vscode-inputValidation-warningBackground);
-                        color: var(--vscode-inputValidation-warningForeground);
-                        border: 1px solid var(--vscode-inputValidation-warningBorder);
-                        padding: 4px 8px;
-                        margin-bottom: 8px;
-                        font-size: 0.9em;
-                    }
+        #transcript {
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+        .entry {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .entry .title { font-weight: 600; }
+        .entry .body { opacity: 0.85; white-space: pre-wrap; font-size: 0.95em; }
+    </style>
+</head>
+<body>
+    <div class="status disconnected" id="status-bar">
+        <span>RIG RELAY</span>
+        <span id="status-text">DISCONNECTED</span>
+    </div>
+    <div id="receipts"></div>
+    <div id="transcript"></div>
 
-                    /* Optional Terminal Accent Mode */
-                    body.terminal-accent {
-                        background-color: #000;
-                        color: #0f0;
-                        font-family: 'Courier New', Courier, monospace;
-                    }
-                    body.terminal-accent .item-title { color: #0a0; }
-                    body.terminal-accent .transcript { background-color: #050505; color: #0f0; border-color: #0f0; }
-                    body.terminal-accent .status { border-color: #0f0; }
-                </style>
-            </head>
-            <body>
-                <div class="status">
-                    <span>RIG RELAY</span>
-                    <span id="status-text">DISCONNECTED</span>
-                </div>
-                <div id="warning-container"></div>
-                <div class="transcript" id="transcript"></div>
-                <div class="controls">
-                    <input type="text" id="prompt" placeholder="Enter prompt...">
-                    <button id="submit">SUBMIT</button>
-                    <button id="cancel">CANCEL</button>
-                    <button id="reconnect">RECONNECT</button>
-                </div>
-                <script nonce="${nonce}">
-                    const vscode = acquireVsCodeApi();
-                    const statusText = document.getElementById('status-text');
-                    const transcript = document.getElementById('transcript');
-                    const prompt = document.getElementById('prompt');
-                    const warningContainer = document.getElementById('warning-container');
+    <script>
+        const vscode = acquireVsCodeApi();
+        const statusBar = document.getElementById('status-bar');
+        const statusText = document.getElementById('status-text');
+        const transcript = document.getElementById('transcript');
+        const receipts = document.getElementById('receipts');
 
-                    document.getElementById('submit').onclick = () => {
-                        const val = prompt.value.trim();
-                        if (val) {
-                            vscode.postMessage({ type: 'submit', value: val });
-                            prompt.value = '';
-                        }
-                    };
-                    document.getElementById('cancel').onclick = () => vscode.postMessage({ type: 'cancel' });
-                    document.getElementById('reconnect').onclick = () => vscode.postMessage({ type: 'connect' });
+        window.addEventListener('message', event => {
+            const msg = event.data;
+            switch (msg.type) {
+                case 'status':
+                    statusText.innerText = (msg.value || 'UNKNOWN').toUpperCase();
+                    statusBar.className = 'status ' + (msg.value || 'disconnected');
+                    break;
 
-                    window.addEventListener('message', event => {
-                        const message = event.data;
-                        switch (message.type) {
-                            case 'status':
-                                statusText.innerText = message.value;
-                                statusText.className = 'status-' + message.value;
-                                break;
-                            case 'snapshot':
-                                renderSnapshot(message.value);
-                                break;
-                            case 'delta':
-                                appendDelta(message.value);
-                                break;
-                            case 'warning':
-                                showWarning(message.value);
-                                break;
-                        }
-                    });
+                case 'receipt':
+                    addReceipt(msg);
+                    break;
 
-                    function renderSnapshot(data) {
-                        transcript.innerHTML = '';
-                        warningContainer.innerHTML = '';
-                        if (data.transcript && data.transcript.items) {
-                            data.transcript.items.forEach(appendItem);
-                        }
-                    }
+                case 'capability_result':
+                    addTranscript('capability', msg.capability + ': ' + (msg.status || 'unknown'));
+                    break;
 
-                    function appendDelta(delta) {
-                        if (delta.op === 'append' && delta.path === '/transcript') {
-                            appendItem(delta.value);
-                        }
-                    }
+                case 'user_prompt':
+                    addTranscript('user', msg.text);
+                    break;
 
-                    function appendItem(item) {
-                        const div = document.createElement('div');
-                        div.className = 'item';
-                        div.innerHTML = \`<div class="item-title">\${escapeHtml(item.title)}</div><div class="item-body">\${escapeHtml(item.body_text || '')}</div>\`;
-                        transcript.appendChild(div);
-                        transcript.scrollTop = transcript.scrollHeight;
-                    }
+                case 'agent_response':
+                    addTranscript('agent', msg.text);
+                    break;
 
-                    function showWarning(msg) {
-                        const div = document.createElement('div');
-                        div.className = 'warning';
-                        div.innerText = msg;
-                        warningContainer.appendChild(div);
-                    }
+                default:
+                    if (msg.text) addTranscript('system', msg.text);
+            }
+        });
 
-                    function escapeHtml(text) {
-                        const div = document.createElement('div');
-                        div.innerText = text;
-                        return div.innerHTML;
-                    }
-                </script>
-            </body>
-            </html>`;
+        function addTranscript(type, text) {
+            const div = document.createElement('div');
+            div.className = 'entry';
+            div.innerHTML = '<div class="title">' + escapeHtml(type) + '</div>' +
+                '<div class="body">' + escapeHtml(text) + '</div>';
+            transcript.appendChild(div);
+            transcript.scrollTop = transcript.scrollHeight;
+        }
+
+        function addReceipt(r) {
+            const div = document.createElement('div');
+            div.className = 'receipt';
+            div.innerHTML = '<div class="capability">' + escapeHtml(r.capability || r.kind || 'receipt') + '</div>' +
+                '<div class="hash">' + escapeHtml((r.input_sha256 || '').slice(0, 16)) + ' &rarr; ' +
+                escapeHtml((r.output_sha256 || '').slice(0, 16)) + '</div>';
+            receipts.appendChild(div);
+        }
+
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return String(str);
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+    </script>
+</body>
+</html>`;
     }
-}
-
-function getNonce() {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < 32; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
 }

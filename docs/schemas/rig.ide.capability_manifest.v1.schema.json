@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.ide.capability_manifest.v1.schema.json",
+  "title": "Rig IDE Capability Manifest",
+  "description": "Canonical, single-source-of-truth capability registry for IDE bridges. Used to generate both the Python sidecar permission table and the TypeScript capability broker. All registries MUST be validated against this manifest — drift between TypeScript and Python implementations is a validation failure.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.ide.capability_manifest.v1"
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "plane": {
+            "type": "string",
+            "enum": ["ide", "ui", "core"],
+            "description": "Which subsystem owns this capability: ide=editor APIs, ui=user interface actions, core=rig-internal"
+          },
+          "risk": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Risk level for user approval and auditing"
+          },
+          "mutates": {
+            "oneOf": [
+              {"type": "boolean"},
+              {"type": "string", "enum": ["possible"]}
+            ],
+            "description": "Whether this capability can mutate workspace state. 'possible' means it depends on context."
+          },
+          "default_policy": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "allow_if_workspace_trusted",
+              "ask_once_per_session",
+              "always_ask",
+              "deny"
+            ],
+            "description": "Default approval policy. allow=no prompt, ask=prompt user, deny=blocked"
+          },
+          "requires_workspace_trust": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, this capability only works in trusted workspaces (VS Code Workspace Trust)"
+          },
+          "receipt_kind": {
+            "type": "string",
+            "default": "rig.ide.capability.receipt.v1",
+            "description": "Receipt schema kind for this capability execution"
+          },
+          "implemented_in": {
+            "type": "object",
+            "properties": {
+              "vscode": {"type": "boolean", "default": false},
+              "sidecar": {"type": "boolean", "default": false},
+              "jetbrains": {"type": "boolean", "default": false},
+              "zed": {"type": "boolean", "default": false}
+            },
+            "additionalProperties": false,
+            "description": "Which IDE platforms have implemented this capability"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of what this capability does"
+          }
+        },
+        "required": ["plane", "risk", "mutates", "default_policy", "description"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version", "capabilities"],
+  "additionalProperties": false
+}

@@ -1,0 +1,23 @@
+{
+  "type": "workspace_snapshot",
+  "roots": ["/home/user/project"],
+  "active_file": "/home/user/project/src/main.py",
+  "open_tabs": ["/home/user/project/src/main.py", "/home/user/project/src/utils.py"],
+  "selection": {
+    "file": "/home/user/project/src/main.py",
+    "startLine": 42,
+    "startCol": 0,
+    "endLine": 42,
+    "endCol": 15
+  },
+  "visible_ranges": [
+    { "file": "/home/user/project/src/main.py", "startLine": 30, "endLine": 60 }
+  ],
+  "editor_state": {
+    "language": "python",
+    "lineCount": 200,
+    "eol": "LF",
+    "isUntitled": false,
+    "isDirty": false
+  }
+}
