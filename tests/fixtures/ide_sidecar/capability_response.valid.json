@@ -1,0 +1,17 @@
+{
+  "type": "capability_response",
+  "id": "req_abc123",
+  "capability": "ide.diagnostics.file",
+  "status": "ok",
+  "result": {
+    "diagnostics": [
+      {
+        "severity": "error",
+        "message": "Undefined variable 'x'",
+        "range": { "startLine": 10, "startCol": 5, "endLine": 10, "endCol": 6 },
+        "source": "pyright",
+        "code": "undefined-variable"
+      }
+    ]
+  }
+}

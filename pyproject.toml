@@ -187,6 +187,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/core/tools/builtins/github_ci_cd.py" = ["PLR"]
 "rig_relay/core/tools/reroute.py" = ["PLR"]
 "rig_relay/cli/ide_sidecar.py" = ["PLR"]
+"scripts/rig_relay_generate_ide_capability_map.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

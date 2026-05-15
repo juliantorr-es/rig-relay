@@ -19,8 +19,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import sys
 from pathlib import Path
+import sys
 from typing import Any
 
 # ── Canonical manifest path ──────────────────────────────────────
@@ -71,7 +71,6 @@ def main() -> None:
 
 async def _run_sidecar(args: argparse.Namespace) -> None:
     """Run the sidecar: ACP agent + IPC handler."""
-
     acp_task = asyncio.create_task(_run_acp_agent())
     stdin_task = asyncio.create_task(_process_stdin())
 
@@ -90,8 +89,9 @@ async def _run_sidecar(args: argparse.Namespace) -> None:
 
 async def _run_acp_agent() -> None:
     """Run the Rig Relay ACP agent. Side task; IPC handler is primary."""
-    from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
     from acp import run_agent
+
+    from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
     from rig_relay.acp.acp_logger import acp_message_observer
     from rig_relay.core.config import load_dotenv_values
     from rig_relay.core.config.harness_files import init_harness_files_manager

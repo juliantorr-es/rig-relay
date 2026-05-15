@@ -1,0 +1,1 @@
+{"kind":"rig.ide.capability.receipt.v1","workspace":"sha256:a1b2c3d4e5f6","capability":"ide.ui.request_approval","input_sha256":"sha256:7777","output_sha256":"sha256:8888","user_approved":false,"approval_method":"timeout","mutated_workspace":false,"status":"refused","error":"Approval timed out","workspace_trusted":true,"created_at":"2026-05-15T00:00:00Z"}
