@@ -196,6 +196,8 @@ class CockpitAPI:
         try:
             from rig_relay.desktop.ralph_intents import build_ralph_projection
             projection["ralph"] = build_ralph_projection()
+            from rig_relay.ralph.lifecycle_projection import build_lifecycle_projection
+            projection["ralph_lifecycle"] = build_lifecycle_projection().model_dump(mode="json")
         except Exception:
             pass
         return projection

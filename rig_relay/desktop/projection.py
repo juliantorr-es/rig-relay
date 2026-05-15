@@ -286,6 +286,20 @@ def _build_telemetry_bundle(build_root: Path) -> dict[str, Any]:
     }
 
 
+def _build_tool_runtime_summary() -> dict[str, Any]:
+    """Build tool runtime summary from in-memory ledger."""
+    try:
+        from rig_relay.core.tool_runtime_projection import build_summary
+
+        summary = build_summary()
+        return {
+            "available": summary.total_executions > 0,
+            **summary.model_dump(mode="json"),
+        }
+    except Exception:
+        return {"available": False}
+
+
 def _build_storage(build_root: Path) -> dict[str, Any]:
     """Compute storage summary from build artifacts."""
     summary = compute_storage_summary(build_root=build_root)
@@ -425,6 +439,7 @@ def build_projection(  # noqa: PLR0914
     storage = _build_storage(root)
     providers = _build_providers()
     integrity = _build_integrity(root)
+    tool_runtime_summary = _build_tool_runtime_summary()
 
     source_status = {
         "current_state": current_state["available"],
@@ -436,6 +451,7 @@ def build_projection(  # noqa: PLR0914
         "storage": storage["available"],
         "provider_status": providers["total"] > 0,
         "integrity": integrity is not None,
+        "tool_runtime_summary": tool_runtime_summary.get("available", False),
     }
 
     warnings: list[str] = []
@@ -460,6 +476,7 @@ def build_projection(  # noqa: PLR0914
         "storage": storage,
         "providers": providers,
         "integrity": integrity,
+        "tool_runtime_summary": tool_runtime_summary,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

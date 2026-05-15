@@ -200,6 +200,21 @@ const COMMANDS = {
         dispatchIntent('ralph_scan');
         return null;
       }
+      if (sub === 'lifecycle') {
+        const lc = state.ralph.lifecycle;
+        if (!lc) return 'No lifecycle data. Run ralph_scan first.';
+        return 'Background: ' + (lc.background_enabled ? 'ON' : 'OFF') +
+          ' | Active lanes: ' + (lc.active_lane_count || 0) +
+          ' | Completed: ' + (lc.completed_lane_count || 0) +
+          ' | Merge: ' + (lc.merge_enabled ? 'allowed' : 'gated') +
+          ' | Push: ' + (lc.push_enabled ? 'allowed' : 'gated');
+      }
+      if (sub === 'background') {
+        const toggle = parts[1];
+        if (toggle === 'on') { dispatchIntent('ralph_background_toggle_on'); return null; }
+        if (toggle === 'off') { dispatchIntent('ralph_background_toggle_off'); return null; }
+        return 'Usage: /ralph background <on|off>';
+      }
       if (sub === 'approve') {
         const panel = state.ralph.panel;
         if (!panel) return 'No Ralph scan found. Run /ralph scan first.';

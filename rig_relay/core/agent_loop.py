@@ -186,6 +186,7 @@ class AgentLoop(
         self._init_ambient_context_packet()
         self._init_context_compiler(defer_heavy_init)
         self._tool_runtime: ToolRuntime | None = None
+        self._tool_result_sink = self._make_result_sink()
 
         self._session_rules: list[ApprovedRule] = []
         self._approval_lock = asyncio.Lock()
@@ -1068,6 +1069,7 @@ class AgentLoop(
                 )
                 if (turn := getattr(self, '_current_turn', None)) is not None:
                     turn.tool_success_count += 1
+                _record_tool_result(result)
                 yield cached_event
                 return
 
@@ -1120,6 +1122,7 @@ class AgentLoop(
                 )
                 if (turn := getattr(self, '_current_turn', None)) is not None:
                     turn.tool_success_count += 1
+                _record_tool_result(result)
                 return
 
             case ToolRuntimeStatus.REFUSED:
@@ -1139,6 +1142,7 @@ class AgentLoop(
                 self._handle_tool_response(
                     tool_call, reason, "skipped", None, span=span
                 )
+                _record_tool_result(result)
                 return
 
             case ToolRuntimeStatus.FAILED:
@@ -1151,6 +1155,7 @@ class AgentLoop(
                 yield self._tool_failure_event(
                     tool_call, error_msg, None, span=span
                 )
+                _record_tool_result(result)
                 return
 
             case _:

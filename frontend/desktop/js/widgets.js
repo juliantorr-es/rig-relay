@@ -1169,3 +1169,144 @@ function renderRalphExpanded(container, panel, ralph) {
 
   renderExpandedWidget(container, 'Ralph Scout — Full Report', html);
 }
+
+// ── Ralph Lifecycle widget ──────────────────────────────────────────
+
+registerWidget('ralphLifecycle', function(container, level) {
+  const lifecycle = state.ralph.lifecycle;
+
+  if (!lifecycle) {
+    if (level === 'compact') return;
+    renderStandardCard(container, 'Background Lanes', '<p style="color:var(--text-muted);margin:0;padding:8px">No lifecycle data available.</p>', 'ralphLifecycle', '');
+    return;
+  }
+
+  if (level === 'compact') {
+    const count = lifecycle.active_lane_count || 0;
+    const label = lifecycle.background_enabled
+      ? (count > 0 ? count + ' active' : 'ON (idle)')
+      : 'OFF';
+    const cls = lifecycle.background_enabled ? (count > 0 ? 'ok' : '') : '';
+    renderCompactChip(container, 'Lanes', function() {
+      return { text: label, cls: cls };
+    });
+    return;
+  }
+
+  if (level === 'expanded') {
+    renderRalphLifecycleExpanded(container, lifecycle);
+    return;
+  }
+
+  var html = '';
+
+  // Status header
+  var bgCls = lifecycle.background_enabled ? 'ok' : '';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+    '<span style="font-weight:600">Background Lanes</span>' +
+    '<span class="widget-chip ' + bgCls + '"><span class="dot"></span>' +
+    (lifecycle.background_enabled ? 'ON' : 'OFF') + '</span>' +
+    '</div>';
+
+  // Execution scopes
+  html += '<table class="kv-table" style="margin-bottom:4px">' +
+    '<tr><td>Lane execution</td><td><span class="widget-chip ' + (lifecycle.isolated_lane_execution_enabled ? 'ok' : '') + '">' +
+    (lifecycle.isolated_lane_execution_enabled ? 'allowed' : 'blocked') + '</span></td></tr>' +
+    '<tr><td>Runtime mutation</td><td><span class="widget-chip">blocked</span></td></tr>' +
+    '<tr><td>Merge</td><td><span class="widget-chip ' + (lifecycle.merge_enabled ? 'ok' : 'warn') + '">' +
+    (lifecycle.merge_enabled ? 'allowed' : 'requires adoption approval') + '</span></td></tr>' +
+    '<tr><td>Push</td><td><span class="widget-chip ' + (lifecycle.push_enabled ? 'ok' : 'warn') + '">' +
+    (lifecycle.push_enabled ? 'allowed' : 'requires preproduction approval') + '</span></td></tr>' +
+    '</table>';
+
+  // Counts
+  html += '<div style="font-size:var(--font-size-sm);margin-bottom:6px">' +
+    '<span>Active: <strong>' + (lifecycle.active_lane_count || 0) + '</strong></span>' +
+    ' &middot; <span>Completed: <strong>' + (lifecycle.completed_lane_count || 0) + '</strong></span>' +
+    ' &middot; <span>Pending review: <strong>' + (lifecycle.pending_review_count || 0) + '</strong></span>' +
+    '</div>';
+
+  // Latest lane
+  if (lifecycle.latest_lane) {
+    var ll = lifecycle.latest_lane;
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:4px">' +
+      '<div>Latest: <span style="font-family:monospace">' + escapeHtml(ll.branch_name || ll.lane_id || '—') + '</span></div>' +
+      '<div>Status: ' + escapeHtml(ll.status || '—');
+    if (ll.latest_commit_sha) html += ' | Commit: ' + ll.latest_commit_sha.substring(0, 8);
+    html += '</div></div>';
+  }
+
+  // Latest adoption
+  if (lifecycle.latest_adoption_proposal) {
+    var ap = lifecycle.latest_adoption_proposal;
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:4px">' +
+      '<div>Adoption: ' + escapeHtml(ap.status || '—') + ' → ' + escapeHtml(ap.target_kind || '—') + '</div></div>';
+  }
+
+  // Gates
+  if (lifecycle.gates && lifecycle.gates.length > 0) {
+    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">';
+    lifecycle.gates.forEach(function(g) {
+      var gCls = g.allowed ? 'ok' : (g.label.indexOf('requires') >= 0 ? 'warn' : '');
+      html += '<span class="widget-chip ' + gCls + '" title="' + escapeHtml(g.requires || '') + '">' + escapeHtml(g.label) + '</span>';
+    });
+    html += '</div>';
+  }
+
+  // Actions
+  html += '<div class="widget-actions" style="margin-top:6px">' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'ralph_scan\')">Scan</button>' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'ralph_background_toggle_on\')">Enable</button>' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'ralph_background_toggle_off\')">Disable</button>' +
+    '</div>';
+
+  renderStandardCard(container, 'Background Lanes', html, 'ralphLifecycle', lifecycle.active_lane_count > 0 ? 'ok' : '');
+});
+
+function renderRalphLifecycleExpanded(container, lc) {
+  var html = '<div style="max-width:700px;margin:0 auto">';
+  html += '<h3 style="margin:0 0 12px 0">Background Lane Lifecycle</h3>';
+  html += '<table class="kv-table">' +
+    '<tr><td>Background</td><td>' + (lc.background_enabled ? 'ON' : 'OFF') + '</td></tr>' +
+    '<tr><td>Active lanes</td><td>' + (lc.active_lane_count || 0) + '</td></tr>' +
+    '<tr><td>Completed lanes</td><td>' + (lc.completed_lane_count || 0) + '</td></tr>' +
+    '<tr><td>Pending review</td><td>' + (lc.pending_review_count || 0) + '</td></tr>' +
+    '</table>';
+
+  html += '<h4 style="margin:16px 0 8px 0">Execution Scopes</h4>';
+  html += '<table class="kv-table">' +
+    '<tr><td>Isolated lane execution</td><td>' + (lc.isolated_lane_execution_enabled ? '✅ Allowed' : '❌ Blocked') + '</td></tr>' +
+    '<tr><td>Live runtime mutation</td><td>❌ Blocked</td></tr>' +
+    '<tr><td>Merge</td><td>' + (lc.merge_enabled ? '✅ Allowed' : '❌ Requires adoption approval') + '</td></tr>' +
+    '<tr><td>Push to preproduction</td><td>' + (lc.push_enabled ? '✅ Allowed' : '❌ Requires preproduction approval') + '</td></tr>' +
+    '</table>';
+
+  html += '<h4 style="margin:16px 0 8px 0">Gates</h4>';
+  html += '<table class="kv-table">';
+  (lc.gates || []).forEach(function(g) {
+    html += '<tr><td>' + escapeHtml(g.name) + '</td><td>' +
+      (g.allowed ? '✅ Allowed' : '❌ ' + escapeHtml(g.label)) + '</td></tr>';
+  });
+  html += '</table>';
+
+  if (lc.active_lanes && lc.active_lanes.length > 0) {
+    html += '<h4 style="margin:16px 0 8px 0">Active Lanes</h4>';
+    lc.active_lanes.forEach(function(l) {
+      html += '<div style="font-size:var(--font-size-sm);margin-bottom:2px;font-family:monospace">' +
+        escapeHtml(l.branch_name || l.lane_id) + ' [' + escapeHtml(l.status) + ']</div>';
+    });
+  }
+
+  if (lc.completed_lanes && lc.completed_lanes.length > 0) {
+    html += '<h4 style="margin:16px 0 8px 0">Completed Lanes</h4>';
+    lc.completed_lanes.forEach(function(l) {
+      html += '<div style="font-size:var(--font-size-sm);margin-bottom:2px">' +
+        escapeHtml(l.lane_id) + ' [' + escapeHtml(l.status) + '] ' +
+        (l.review_bundle_sha256 ? '(bundle: ' + l.review_bundle_sha256.substring(0, 8) + ')' : '') +
+        '</div>';
+    });
+  }
+
+  html += '</div>';
+  renderExpandedWidget(container, 'Background Lane Lifecycle', html);
+}

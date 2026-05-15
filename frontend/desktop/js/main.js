@@ -11,6 +11,7 @@ import { sendChatMessage, clearChat, cancelChat, dispatchIntent,
          updateCharCount } from './chat.js';
 import { getAutocompleteMatches } from './commands.js';
 import { setText, el } from './utils.js';
+import { initToolRuntimeWidget } from './tool_runtime_widget.js';
 
 // Window API for HTML onclick handlers
 window.RigRelay = {
@@ -162,7 +163,7 @@ function renderPanelColumn() {
   // Widget assignments per mode
   const assignments = {
     operator: ['operatorHeader', 'safetyState', 'nextAction',
-               'ralphScout',
+               'ralphScout', 'ralphLifecycle',
                'validationSummary', 'storageBudget', 'intentResult',
                'providerHealth', 'council', 'providerDock',
                'workspaceStatus', 'fleetStatus'],
@@ -192,6 +193,9 @@ function renderPanelColumn() {
 
 async function init() {
   applyModeDefaults();
+
+  // Register widget renderers (must happen before first projection)
+  initToolRuntimeWidget();
 
   // Register event listeners
   el('send-btn').addEventListener('click', sendChatMessage);

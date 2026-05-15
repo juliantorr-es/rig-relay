@@ -147,6 +147,8 @@ def execute_ralph_intent(
         "ralph_approve": lambda: _handle_ralph_approve(params),
         "ralph_decline": lambda: _handle_ralph_decline(params),
         "ralph_rescan": lambda: _handle_ralph_rescan(params),
+        "ralph_background_toggle_on": lambda: _handle_background_toggle(True),
+        "ralph_background_toggle_off": lambda: _handle_background_toggle(False),
     }
 
     handler = handlers.get(intent_name)
@@ -394,6 +396,27 @@ def _handle_ralph_decline(params: dict[str, Any]) -> dict[str, Any]:
 def _handle_ralph_rescan(params: dict[str, Any]) -> dict[str, Any]:
     _RALPH_STATE.clear()
     return _handle_ralph_scan(params)
+
+
+def _handle_background_toggle(enabled: bool) -> dict[str, Any]:
+    """Toggle Ralph background lanes on/off. Contract-only — no lane execution."""
+    action = "ralph_background_toggle_on" if enabled else "ralph_background_toggle_off"
+    from rig_relay.ralph.background_policy import demo_policy, default_policy
+
+    policy = demo_policy() if enabled else default_policy()
+    stored_policy = {
+        "enabled": policy.enabled,
+        "isolated_lane_execution_enabled": policy.allow_isolated_lane_execution if enabled else False,
+        "live_runtime_mutation_enabled": False,
+        "merge_enabled": False,
+        "push_enabled": False,
+    }
+
+    return _ok(
+        action,
+        message=f"Ralph background lanes {'enabled' if enabled else 'disabled'}.",
+        ralph_panel=stored_policy,
+    )
 
 
 def _store_state(panel: Any, run_state: Any, run_id: str, scan_id: str) -> None:

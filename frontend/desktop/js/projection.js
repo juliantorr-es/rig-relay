@@ -66,16 +66,18 @@ function getDigest(data) {
 // ── Public API ───────────────────────────────────────────────────────
 
 export function handleProjection(data) {
-  // Strip server digest meta-field before storing
   const serverDigest = (data && data.digest) || '';
   const projection = data || {};
 
-  // Skip if digest hasn't changed (server-side dedup or redundant poll)
   const effectiveDigest = serverDigest || computeDigest(projection);
   if (effectiveDigest && effectiveDigest === _lastDigest) {
     return;
   }
   _lastDigest = effectiveDigest;
+
+  if (projection.ralph_lifecycle) {
+    state.ralph.lifecycle = projection.ralph_lifecycle;
+  }
 
   scheduleRender(projection);
 }
