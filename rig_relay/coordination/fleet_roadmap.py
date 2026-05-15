@@ -9,6 +9,7 @@ No raw file contents, no diffs, no patches, no secrets.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -73,3 +74,18 @@ class FleetRoadmap(BaseModel):
     status: Literal["draft", "active", "completed", "cancelled"] = "draft"
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+
+def save_roadmap(roadmap: FleetRoadmap, store_root: Path) -> Path:
+    path = store_root / "roadmaps" / f"{roadmap.roadmap_id}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    roadmap.updated_at = datetime.now(UTC).isoformat()
+    path.write_text(roadmap.model_dump_json(indent=2), encoding="utf-8")
+    return path
+
+
+def load_roadmap(roadmap_id: str, store_root: Path) -> FleetRoadmap | None:
+    path = store_root / "roadmaps" / f"{roadmap_id}.json"
+    if not path.is_file():
+        return None
+    return FleetRoadmap.model_validate_json(path.read_text(encoding="utf-8"))

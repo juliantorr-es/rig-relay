@@ -13,7 +13,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.core.guard import get_guard
 from rig_relay.core.scratchpad import is_scratchpad_path
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.arity import build_session_pattern
 from rig_relay.core.tools.base import (
     BaseTool,
@@ -51,20 +54,21 @@ def _get_shell_executable() -> str | None:
 
 
 def _get_base_env() -> dict[str, str]:
-    base_env = {**os.environ, "CI": "true", "NONINTERACTIVE": "1", "NO_TTY": "1"}
+    """Build a safe base environment for subprocess execution.
 
-    if is_windows():
-        base_env["GIT_PAGER"] = "more"
-        base_env["PAGER"] = "more"
-    else:
-        base_env["TERM"] = "dumb"
-        base_env["DEBIAN_FRONTEND"] = "noninteractive"
-        base_env["GIT_PAGER"] = "cat"
-        base_env["PAGER"] = "cat"
-        base_env["LESS"] = "-FX"
-        base_env["LC_ALL"] = "en_US.UTF-8"
+    Strips sensitive env vars (API keys, tokens) and sets
+    CI-safe defaults for terminal programs.
+    """
+    from rig_relay.core.tools.security import sanitize_env_for_subprocess
 
-    return base_env
+    return sanitize_env_for_subprocess()
+
+
+# Sensitive paths that should never be read via bash cat/head/etc.
+_SENSITIVE_READ_PATTERNS: list[str] = [
+    str(Path.home() / ".rig" / "relay" / "identity"),
+    str(Path.home() / ".rig" / "relay" / "credentials"),
+]
 
 
 def _get_default_allowlist() -> list[str]:
@@ -212,6 +216,10 @@ class BashToolConfig(BaseToolConfig):
     )
     default_timeout: int = Field(
         default=300, description="Default timeout for commands in seconds."
+    )
+    max_concurrent_processes: int = Field(
+        default=4,
+        description="Maximum number of concurrent subprocesses across all sessions.",
     )
     allowlist: list[str] = Field(
         default_factory=_get_default_allowlist,
@@ -383,8 +391,29 @@ class Bash(
     def _resolve_guardrail_permission(
         self, command_parts: list[str]
     ) -> PermissionContext | None:
+        from rig_relay.core.tools.ast_search import detect_dangerous_bash_patterns
+
         find_execution_required: list[RequiredPermission] = []
         seen_find_execution: set[str] = set()
+
+        full_command = " ".join(command_parts)
+
+        # Check for dangerous patterns that bypass allowlists
+        safety_warnings = detect_dangerous_bash_patterns(full_command)
+        if safety_warnings:
+            return PermissionContext(
+                permission=ToolPermission.NEVER,
+                reason="; ".join(safety_warnings),
+            )
+
+        # Check for sensitive file reads (token store, credentials)
+        for sensitive_path in _SENSITIVE_READ_PATTERNS:
+            if sensitive_path in full_command:
+                return PermissionContext(
+                    permission=ToolPermission.NEVER,
+                    reason=f"Command references sensitive path '{sensitive_path}'. "
+                    f"Use the built-in tools for operations on credential files.",
+                )
 
         for part in command_parts:
             if matched := self._find_denylist_match(part):
@@ -677,6 +706,19 @@ class Bash(
         self, args: BashArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | BashResult, None]:
         start = time.perf_counter()
+
+        # ── Command rerouting ─────────────────────────────────
+        # Check if the command is better handled by a dedicated tool
+        from rig_relay.core.tools.reroute import try_reroute
+
+        rerouted, result_model, events = await try_reroute(
+            args.command, ctx
+        )
+        if rerouted:
+            for event in events:
+                yield event
+            return
+
         guard = get_guard()
         is_destructive, reason = guard.is_destructive_git_command(args.command)
         if is_destructive:

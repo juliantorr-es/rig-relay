@@ -10,14 +10,17 @@ import time
 from typing import ClassVar, NamedTuple, final
 
 import anyio
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from rig_relay.coordination.store import CoordinationStore
 from rig_relay.core.guard import get_guard
 from rig_relay.core.rewind.manager import FileSnapshot
 from rig_relay.core.scratchpad import is_scratchpad_path
 from rig_relay.core.telemetry.artifacts import ToolOutputArtifactWriter
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -25,7 +28,10 @@ from rig_relay.core.tools.base import (
     InvokeContext,
     ToolError,
 )
-from rig_relay.core.tools.determinism import normalize_tool_path, require_path_within_workdir
+from rig_relay.core.tools.determinism import (
+    normalize_tool_path,
+    require_path_within_workdir,
+)
 from rig_relay.core.tools.permissions import PermissionContext
 from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from rig_relay.core.tools.utils import resolve_file_tool_permission, sha256_file_bytes
@@ -107,6 +113,21 @@ class SearchReplaceArgs(BaseModel):
 
     file_path: str
     content: str
+
+    @classmethod
+    def _validate_utf8(cls, v: str) -> str:
+        """Validate that the content is valid UTF-8 before proceeding."""
+        try:
+            v.encode("utf-8").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError) as e:
+            raise ValueError(
+                f"Content is not valid UTF-8: {e}. "
+                "Use bash with iconv or similar tools for non-UTF-8 files."
+            )
+        return v
+
+    _validate_content = field_validator("content")(_validate_utf8)
+
     expected_before_sha256: str | None = Field(
         default=None,
         description=(

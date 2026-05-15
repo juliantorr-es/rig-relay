@@ -13,7 +13,10 @@ from pydantic import BaseModel, Field
 
 from rig_relay.coordination._canonical_json import dump_canonical_json
 from rig_relay.coordination.store import CoordinationStore
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -29,6 +32,7 @@ ValidationStepKind = Literal[
     "ruff_check",
     "ruff_format_check",
     "pyright",
+    "pyrefly",
     "pytest",
     "schema_validation",
     "storage_audit",
@@ -415,7 +419,7 @@ def _base_env() -> dict[str, str]:
 
 def _default_paths(kind: str) -> list[str]:
     match kind:
-        case "ruff_check" | "ruff_format_check" | "ruff_format_fix" | "pyright":
+        case "ruff_check" | "ruff_format_check" | "ruff_format_fix" | "pyright" | "pyrefly":
             return ["vibe/core/tools/builtins/validation_suite.py"]
         case "pytest":
             return ["tests/coordination/test_tool.py"]
@@ -434,6 +438,8 @@ def _step_command(kind: str, paths: list[str]) -> list[str]:
             command = ["uv", "run", "ruff", "format", *paths]
         case "pyright":
             command = ["uv", "run", "pyright", *paths]
+        case "pyrefly":
+            command = ["uv", "run", "pyrefly", "check", *paths]
         case "pytest":
             command = ["uv", "run", "pytest", "-n0", *paths]
         case "schema_validation":
@@ -464,6 +470,7 @@ _ALLOWLISTED_STEP_KINDS = {
     "ruff_check",
     "ruff_format_check",
     "pyright",
+    "pyrefly",
     "pytest",
     "schema_validation",
     "storage_audit",

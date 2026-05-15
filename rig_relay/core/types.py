@@ -399,6 +399,7 @@ class ToolResultEvent(BaseEvent):
     skipped: bool = False
     skip_reason: str | None = None
     cancelled: bool = False
+    cached: bool = False
     duration: float | None = None
     tool_call_id: str
 

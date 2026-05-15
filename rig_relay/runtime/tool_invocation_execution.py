@@ -19,7 +19,6 @@ Constraints:
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
@@ -33,6 +32,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.coordination.lease_manager import DEFAULT_LEASE_TTL_SECONDS
+from rig_relay.core.logger import logger
 from rig_relay.runtime.context import RuntimeContextResolution
 from rig_relay.runtime.runtime_audit_event import (
     RuntimeAuditPersistenceStore,
@@ -45,7 +45,6 @@ from rig_relay.runtime.tool_invocation_adapter import (
     RuntimeToolInvocationStatus,
     RuntimeToolName,
 )
-from rig_relay.core.logger import logger
 
 # ── Constants ──────────────────────────────────────────────────────────
 
@@ -140,7 +139,10 @@ def _build_tool_receipt(tool_name: str, result: Any) -> Any:
                 config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
             )
         case "write_file":
-            from rig_relay.core.tools.builtins.write_file import WriteFile, WriteFileConfig
+            from rig_relay.core.tools.builtins.write_file import (
+                WriteFile,
+                WriteFileConfig,
+            )
 
             tool = WriteFile(
                 config_getter=lambda: WriteFileConfig(), state=BaseToolState()
@@ -811,9 +813,8 @@ class RuntimeToolExecutionRunner:
     async def _run_validate_tool(self, envelope: RuntimeToolInvocationEnvelope) -> Any:
         """Run the validate tool and extract the final result.
 
-        The validate tool's run() method is an AsyncGenerator that yields
-        ToolStreamEvent | ValidateResult. The final yielded value is the
-        ValidateResult, which we extract via anext().
+        Iterates the async generator to capture streaming events
+        (ToolStreamEvent) as well as the final result model.
         """
         from rig_relay.core.tools.base import BaseToolState
         from rig_relay.core.tools.builtins.validate import Validate, ValidateArgs
@@ -829,14 +830,9 @@ class RuntimeToolExecutionRunner:
 
         config = ValidateToolConfig()
         tool = Validate(config_getter=lambda: config, state=BaseToolState())
-        agen: AsyncGenerator[Any, None] = tool.run(args)
         result: Any = None
-        while True:
-            try:
-                item = await anext(agen)  # type: ignore[arg-type]
-                result = item
-            except StopAsyncIteration:
-                break
+        async for item in tool.run(args):
+            result = item
 
         return result
 
@@ -875,14 +871,9 @@ class RuntimeToolExecutionRunner:
         tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
 
         with self._cwd_for_envelope(envelope):
-            agen: AsyncGenerator[Any, None] = tool.run(args, ctx=invoke_ctx)
             result: Any = None
-            while True:
-                try:
-                    item = await anext(agen)  # type: ignore[arg-type]
-                    result = item
-                except StopAsyncIteration:
-                    break
+            async for item in tool.run(args, ctx=invoke_ctx):
+                result = item
 
         return result
 
@@ -912,14 +903,9 @@ class RuntimeToolExecutionRunner:
         tool = WriteFile(config_getter=lambda: config, state=BaseToolState())
 
         with self._cwd_for_envelope(envelope):
-            agen: AsyncGenerator[Any, None] = tool.run(args, ctx=invoke_ctx)
             result: Any = None
-            while True:
-                try:
-                    item = await anext(agen)
-                    result = item
-                except StopAsyncIteration:
-                    break
+            async for item in tool.run(args, ctx=invoke_ctx):
+                result = item
 
         return result
 
@@ -943,14 +929,9 @@ class RuntimeToolExecutionRunner:
         tool = Bash(config_getter=lambda: config, state=BaseToolState())
 
         with self._cwd_for_envelope(envelope):
-            agen: AsyncGenerator[Any, None] = tool.run(args, ctx=invoke_ctx)
             result: Any = None
-            while True:
-                try:
-                    item = await anext(agen)
-                    result = item
-                except StopAsyncIteration:
-                    break
+            async for item in tool.run(args, ctx=invoke_ctx):
+                result = item
 
         return result
 

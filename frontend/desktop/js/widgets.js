@@ -814,8 +814,172 @@ registerWidget('fleetStatus', function(container, level) {
     '<button onclick="window.RigRelay.dispatchIntent(\'run_queue_plan_dry_run\')">Plan</button>' +
     '<button onclick="window.RigRelay.dispatchIntent(\'run_spawn_plan_dry_run\')">Spawn</button>' +
     '<button onclick="window.RigRelay.dispatchIntent(\'fleet_orchestrate\')">Run Once</button>' +
-    '</div>';
+    '</div>' +
+    '<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border-subtle);font-size:var(--font-size-xs);color:var(--text-muted)">' +
+    '/orchestrator to plan roadmap, /fleet run to execute</div>';
   renderStandardCard(container, 'Fleet',
     '<span class="widget-missing">/fleet queue, plan, spawn, or run</span>' + actions,
     'fleetStatus');
+});
+
+// ── Provider Dock widget ─────────────────────────────────────────────
+
+registerWidget('providerDock', function(container, level) {
+  if (level === 'expanded') {
+    renderProviderDockExpanded(container);
+    return;
+  }
+  if (level !== 'standard') return;
+  var proj = state.projection;
+  var pd = (proj && proj.providers) || {};
+  var providerList = (pd.providers || []);
+  var configured = pd.configured || 0;
+  var total = pd.total || 0;
+
+  var html = '';
+  if (providerList.length > 0) {
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">';
+    providerList.forEach(function(p) {
+      var cls = p.configured ? 'ok' : 'warn';
+      html += '<div class="widget-chip ' + cls + '" style="cursor:default">' +
+        '<span class="dot"></span>' +
+        escapeHtml(p.display_name || p.provider) +
+        '</div>';
+    });
+    html += '</div>';
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:6px">' +
+      configured + '/' + total + ' configured</div>';
+  } else {
+    html += '<span class="widget-missing">Run provider_status to load.</span>';
+  }
+
+  html += '<div class="widget-actions" style="flex-wrap:wrap">' +
+    '<button onclick="window.RigRelay.openProvider(\'chatgpt\')">ChatGPT</button>' +
+    '<button onclick="window.RigRelay.openProvider(\'claude\')">Claude</button>' +
+    '<button onclick="window.RigRelay.openProvider(\'gemini\')">Gemini</button>' +
+    '<button onclick="window.RigRelay.openProvider(\'deepseek\')">DeepSeek</button>' +
+    '<button onclick="window.RigRelay.openProvider(\'mistral\')">Mistral</button>' +
+    '</div>' +
+    '<div style="margin-top:6px;font-size:var(--font-size-xs);color:var(--text-muted)">' +
+    'Opens provider in companion window. /provider, /send_to, /read_from in chat.</div>';
+
+  renderStandardCard(container, 'Provider Dock', html, 'providerDock',
+    configured > 0 ? 'ok' : 'warn');
+});
+
+function renderProviderDockExpanded(container) {
+  var proj = state.projection;
+  var pd = (proj && proj.providers) || {};
+  var providerList = (pd.providers || []);
+
+  // Provider capability table — content-light reference
+  var providers = [
+    { id: 'chatgpt', name: 'OpenAI ChatGPT', model: 'GPT-4o', context: '128K', strengths: 'multimodal, function calling, JSON mode', pricing: 'Pay-per-token', url: 'https://chatgpt.com' },
+    { id: 'claude', name: 'Anthropic Claude', model: 'Claude 3.5 Sonnet', context: '200K', strengths: 'long context, safety, reasoning, code', pricing: 'Pay-per-token', url: 'https://claude.ai' },
+    { id: 'gemini', name: 'Google Gemini', model: 'Gemini 2.5 Pro', context: '2M', strengths: 'largest context, multimodal, search grounding', pricing: 'Pay-per-token + free tier', url: 'https://gemini.google.com' },
+    { id: 'deepseek', name: 'DeepSeek', model: 'DeepSeek-V3', context: '128K', strengths: 'MoE architecture, strong reasoning, generous free tier', pricing: 'Pay-per-token + free tier', url: 'https://chat.deepseek.com' },
+    { id: 'mistral', name: 'Mistral AI', model: 'Mistral Large 2', context: '128K', strengths: 'frontier European, function calling, JSON mode', pricing: 'Pay-per-token', url: 'https://chat.mistral.ai' },
+    { id: 'perplexity', name: 'Perplexity', model: 'Sonar', context: '128K', strengths: 'web search built-in, citations, real-time data', pricing: 'Freemium + Pro plan', url: 'https://perplexity.ai' },
+    { id: 'openrouter', name: 'OpenRouter', model: '300+ models', context: 'varies', strengths: 'unified API, model routing, no subscriptions', pricing: 'Pay-per-token', url: 'https://openrouter.ai' },
+  ];
+
+  var html = '<h3>Provider Capabilities</h3>';
+  html += '<div style="overflow-x:auto">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:var(--font-size-xs)">';
+  html += '<thead><tr style="border-bottom:1px solid var(--border)">' +
+    '<th style="text-align:left;padding:4px 8px">Provider</th>' +
+    '<th style="text-align:left;padding:4px 8px">Model</th>' +
+    '<th style="text-align:left;padding:4px 8px">Context</th>' +
+    '<th style="text-align:left;padding:4px 8px">Strengths</th>' +
+    '<th style="text-align:left;padding:4px 8px">Pricing</th>' +
+    '</tr></thead><tbody>';
+
+  providers.forEach(function(p) {
+    var configured = providerList.some(function(pl) {
+      return (pl.provider || '').toLowerCase() === p.id ||
+             (pl.display_name || '').toLowerCase().includes(p.id);
+    });
+    var rowCls = configured ? ' style="background:var(--ok-bg)"' : '';
+    html += '<tr' + rowCls + '>' +
+      '<td style="padding:6px 8px;border-bottom:1px solid var(--border-subtle);white-space:nowrap">' +
+      '<a href="' + escapeHtml(p.url) + '" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:500">' +
+      escapeHtml(p.name) + '</a></td>' +
+      '<td style="padding:6px 8px;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:var(--font-size-xs)">' + escapeHtml(p.model) + '</td>' +
+      '<td style="padding:6px 8px;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:var(--font-size-xs)">' + escapeHtml(p.context) + '</td>' +
+      '<td style="padding:6px 8px;border-bottom:1px solid var(--border-subtle)">' + escapeHtml(p.strengths) + '</td>' +
+      '<td style="padding:6px 8px;border-bottom:1px solid var(--border-subtle);white-space:nowrap">' + escapeHtml(p.pricing) + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  // API key status from projection
+  if (providerList.length > 0) {
+    html += '<h3 style="margin-top:16px">Your Configuration</h3>';
+    html += '<table class="kv-table">';
+    providerList.forEach(function(p) {
+      var cls = p.configured ? 'ok' : 'warn';
+      var status = p.configured ? 'Configured' : (p.key_source === 'env' ? 'Key set' : 'Missing');
+      html += row(p.display_name || p.provider, status, cls);
+    });
+    html += '</table>';
+  }
+
+  html += '<div style="margin-top:12px;font-size:var(--font-size-xs);color:var(--text-muted)">' +
+    'None of these providers allow iframe embedding. Click a provider name to open their web app in your browser.<br>' +
+    'Rig Relay connects to all providers via API — configure keys in System → Model Providers.</div>';
+
+  renderExpandedWidget(container, 'Provider Capabilities', html);
+}
+
+// ── Council widget ───────────────────────────────────────────────────
+
+registerWidget('council', function(container, level) {
+  if (level !== 'standard') return;
+  var html = '<span class="widget-missing">External adversarial review.</span>' +
+    '<div class="widget-actions" style="flex-wrap:wrap">' +
+    '<button onclick="window.RigRelay.openProvider(\'chatgpt\')">ChatGPT</button>' +
+    '<button onclick="window.RigRelay.openProvider(\'claude\')">Claude</button>' +
+    '<button onclick="window.RigRelay.openProvider(\'gemini\')">Gemini</button>' +
+    '<button onclick="window.RigRelay.openProvider(\'deepseek\')">DeepSeek</button>' +
+    '<button onclick="window.RigRelay.openProvider(\'mistral\')">Mistral</button>' +
+    '</div>' +
+    '<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border-subtle)">' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'council_consult\')" ' +
+    'style="width:100%">Send to All Open Providers</button>' +
+    '</div>' +
+    '<div style="margin-top:4px;font-size:var(--font-size-xs);color:var(--text-muted)">' +
+    'External adversarial review with receipts.<br>' +
+    '/council, /send_to, /read_from in chat.</div>';
+  renderStandardCard(container, 'Council', html, 'council');
+});
+
+// ── Provider Dock widget ─────────────────────────────────────────────
+
+registerWidget('providerDock', function(container, level) {
+  if (level !== 'standard') return;
+  var proj = state.projection;
+  var pd = (proj && proj.providers) || {};
+  var configured = pd.configured || 0;
+  var total = pd.total || 0;
+  var providerList = (pd.providers || []);
+
+  var html = '';
+  if (providerList.length > 0) {
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">';
+    providerList.forEach(function(p) {
+      var cls = p.configured ? 'ok' : 'warn';
+      html += '<div class="widget-chip ' + cls + '">' +
+        '<span class="dot"></span>' + escapeHtml(p.display_name || p.provider) + '</div>';
+    });
+    html += '</div>';
+  }
+  html += '<div class="widget-actions">' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'provider_status\')">Refresh</button>' +
+    '<button onclick="window.RigRelay.cycleWidgetDisclosure(\'providerDock\')">Capabilities →</button>' +
+    '</div>';
+  html += '<div style="margin-top:4px;font-size:var(--font-size-xs);color:var(--text-muted)">' +
+    '/provider &lt;name&gt; to open companion windows</div>';
+  renderStandardCard(container, 'Providers', html, 'providerDock',
+    configured > 0 ? 'ok' : 'warn');
 });

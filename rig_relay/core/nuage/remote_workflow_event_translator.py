@@ -8,6 +8,11 @@ from jsonpatch import JsonPatch, JsonPatchException  # type: ignore[import-untyp
 from pydantic import BaseModel, ValidationError
 
 from rig_relay.core.logger import logger
+from rig_relay.core.nuage._input_events import InputEventsMixin
+from rig_relay.core.nuage._json_helpers import JsonHelpersMixin
+from rig_relay.core.nuage._output_normalization import OutputNormalizationMixin
+from rig_relay.core.nuage._tool_events import ToolEventsMixin
+from rig_relay.core.nuage._working_events import WorkingEventsMixin
 from rig_relay.core.nuage.agent_models import AgentCompletionState
 from rig_relay.core.nuage.events import (
     CustomTaskCanceled,

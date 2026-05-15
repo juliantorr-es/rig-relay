@@ -136,6 +136,7 @@ class CockpitAPI:
         self._loop_holder = loop_holder
         self._server_holder = server_holder
         self._mode = mode
+        self._provider_windows: dict[str, Any] = {}
 
         if mode == "fixture":
             self._agent_loop = None
@@ -214,6 +215,113 @@ class CockpitAPI:
 
     def get_chat_state(self) -> dict:
         return self._chat_state.model_dump(mode="json")
+
+    def open_provider_web(self, provider: str) -> dict:
+        """Open a provider's web app in a pywebview companion window.
+
+        pywebview IS a full browser (WebKit on macOS). It renders HTML,
+        executes JavaScript, stores cookies. The companion window shares
+        Safari's cookie jar on macOS — if the user is logged into the
+        provider in Safari, the session carries over automatically.
+
+        Provider keys: chatgpt, claude, gemini, deepseek, mistral, perplexity.
+        Falls back to webbrowser.open() if pywebview window creation fails.
+        """
+        urls = {
+            "chatgpt": "https://chatgpt.com",
+            "claude": "https://claude.ai",
+            "gemini": "https://gemini.google.com",
+            "deepseek": "https://chat.deepseek.com",
+            "mistral": "https://chat.mistral.ai",
+            "perplexity": "https://perplexity.ai",
+        }
+        url = urls.get(provider)
+        if not url:
+            return {"status": "error", "message": f"Unknown provider: {provider}"}
+
+        try:
+            import webview  # type: ignore[import-untyped]
+            webview.create_window(
+                title=provider.title(),
+                url=url,
+                width=900,
+                height=700,
+                resizable=True,
+                min_size=(400, 300),
+            )
+            return {"status": "opened", "provider": provider, "url": url}
+        except Exception:
+            import webbrowser
+            webbrowser.open(url)
+            return {"status": "opened", "provider": provider, "url": url, "fallback": "browser"}
+
+    def send_to_provider(self, provider: str, text: str) -> dict:
+        """Inject text into an open provider companion window's input."""
+        import webview  # type: ignore[import-untyped]
+
+        selectors = {
+            "chatgpt": '#prompt-textarea',
+            "claude": 'div[contenteditable="true"]',
+            "gemini": 'div[contenteditable="true"]',
+            "deepseek": '#chat-input, textarea',
+            "mistral": 'textarea, div[contenteditable="true"]',
+            "perplexity": 'textarea',
+        }
+        selector = selectors.get(provider, 'textarea, div[contenteditable="true"]')
+
+        try:
+            for w in webview.windows:
+                wtitle = str(getattr(w, 'title', '')).lower()
+                if provider in wtitle:
+                    w.evaluate_js(f"""
+                        (function() {{
+                            const el = document.querySelector("{selector}");
+                            if (!el) return "no_input";
+                            if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {{
+                                el.value = {json.dumps(text)};
+                                el.dispatchEvent(new Event("input", {{ bubbles: true }}));
+                            }} else {{
+                                el.innerText = {json.dumps(text)};
+                                el.dispatchEvent(new Event("input", {{ bubbles: true }}));
+                            }}
+                            return "ok";
+                        }})()
+                    """)
+                    return {"status": "sent", "provider": provider}
+            return {"status": "error", "message": f"No {provider} window found. Open with /provider {provider} first."}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def read_from_provider(self, provider: str) -> dict:
+        """Read the last assistant response from a provider companion window."""
+        import webview  # type: ignore[import-untyped]
+
+        selectors = {
+            "chatgpt": '[data-message-author-role="assistant"]',
+            "claude": '.font-claude-message, .prose',
+            "gemini": '.model-response-text, .prose',
+            "deepseek": '.ds-markdown, .markdown',
+            "mistral": '.prose',
+            "perplexity": '.prose, .markdown',
+        }
+        selector = selectors.get(provider, '.prose, .markdown')
+
+        try:
+            for w in webview.windows:
+                wtitle = str(getattr(w, 'title', '')).lower()
+                if provider in wtitle:
+                    text = w.evaluate_js(f"""
+                        (function() {{
+                            const els = document.querySelectorAll("{selector}");
+                            if (!els.length) return "";
+                            const last = els[els.length - 1];
+                            return last ? last.innerText : "";
+                        }})()
+                    """)
+                    return {"status": "read", "provider": provider, "text": str(text or "")}
+            return {"status": "error", "message": f"No {provider} window found"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
     def send_chat_message(
         self, text: str, client_message_id: str | None = None
@@ -321,6 +429,101 @@ class CockpitAPI:
 
         return mint_local_auth_receipt(action, ttl_seconds=ttl_seconds, reason=reason)
 
+    def onboarding_required(self) -> dict:
+        """Check if API key onboarding is needed.
+
+        The frontend calls this on load. If True, the frontend
+        shows the onboarding screen instead of the chat interface.
+        """
+        try:
+            from rig_relay.core.config import VibeConfig
+
+            VibeConfig.load()
+            return {"onboarding_required": False}
+        except Exception:
+            return {"onboarding_required": True}
+
+    def save_api_key(self, provider: str, api_key: str) -> dict:
+        """Save a provider API key to the system keychain.
+
+        Uses the macOS Keychain (via `keyring`). Falls back to `.env`
+        file if keychain is unavailable.
+
+        Args:
+            provider: Provider name (e.g. "openai", "deepseek", "anthropic").
+            api_key: The API key to store.
+
+        Returns:
+            Dict with success status, backend used, or error message.
+        """
+        if not provider or not api_key:
+            return {"error": "Provider name and API key are required"}
+
+        env_var_map = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "google": "GOOGLE_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
+            "mistral": "MISTRAL_API_KEY",
+        }
+        env_var = env_var_map.get(provider.lower())
+        if not env_var:
+            return {"error": f"Unknown provider: {provider}"}
+
+        saved_to_keychain = False
+        keychain_warning = ""
+        try:
+            import keyring
+
+            keyring.set_password("rig-relay", env_var, api_key)
+            saved_to_keychain = True
+        except Exception as keyring_err:
+            keychain_warning = str(keyring_err)
+
+        import os as _os
+        _os.environ[env_var] = api_key
+
+        if saved_to_keychain:
+            return {"status": "saved", "provider": provider, "backend": "keychain"}
+
+        try:
+            from rig_relay.core.paths import GLOBAL_ENV_FILE
+
+            env_path = GLOBAL_ENV_FILE.path
+            env_path.parent.mkdir(parents=True, exist_ok=True)
+
+            existing = ""
+            if env_path.is_file():
+                existing = env_path.read_text(encoding="utf-8")
+
+            lines = existing.splitlines()
+            found = False
+            new_lines = []
+            for line in lines:
+                if line.startswith(f"{env_var}="):
+                    new_lines.append(f"{env_var}={api_key}")
+                    found = True
+                else:
+                    new_lines.append(line)
+            if not found:
+                new_lines.append(f"{env_var}={api_key}")
+
+            env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+            return {
+                "status": "saved",
+                "provider": provider,
+                "backend": "env_file",
+                "warning": (
+                    f"OS keychain unavailable: {keychain_warning}. "
+                    "Saved to .env file instead. "
+                    "On Linux, install gnome-keyring or libsecret to enable keychain storage."
+                ),
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
     _pending_oauth_window: dict[str, Any] | None = None
 
     def open_auth_window(self, auth_url: str, port: int, state_hash: str) -> dict:
@@ -404,6 +607,107 @@ class CockpitAPI:
         return {"status": "cancelled"}
 
 
+class _OnboardingAPI:
+    """Minimal API for the onboarding flow when no API key is configured.
+
+    The frontend calls these methods to check if onboarding is needed
+    and to save the API key. Once saved, the user is prompted to restart.
+    """
+
+    def onboarding_required(self) -> dict:
+        return {"onboarding_required": True}
+
+    def save_api_key(self, provider: str, api_key: str) -> dict:
+        """Save a provider API key to the OS-native credential store.
+
+        Platform backends (via the `keyring` library):
+          - macOS: Keychain
+          - Windows: Credential Manager
+          - Linux: Secret Service (libsecret/gnome-keyring)
+
+        Falls back to `.env` file if no keyring backend is available.
+        """
+        if not provider or not api_key:
+            return {"error": "Provider name and API key are required"}
+
+        env_var_map = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "google": "GOOGLE_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
+            "mistral": "MISTRAL_API_KEY",
+        }
+        env_var = env_var_map.get(provider.lower())
+        if not env_var:
+            return {"error": f"Unknown provider: {provider}"}
+
+        saved_to_keychain = False
+        keychain_warning = ""
+        try:
+            import keyring
+            keyring.set_password("rig-relay", env_var, api_key)
+            saved_to_keychain = True
+        except Exception as keyring_err:
+            keychain_warning = str(keyring_err)
+
+        import os as _os
+        _os.environ[env_var] = api_key
+
+        if saved_to_keychain:
+            return {"status": "saved", "provider": provider, "backend": "keychain"}
+
+        # Log warning to stderr so it shows in terminal
+        import sys as _sys
+        _sys.stderr.write(
+            "\n"
+            "[rig-relay] Warning: could not save API key to OS keychain.\n"
+            f"[rig-relay] {keychain_warning}\n"
+            "[rig-relay] Saved to ~/.rig/relay/.env instead.\n"
+            "[rig-relay] Linux: install gnome-keyring or libsecret for keychain storage.\n"
+            "[rig-relay] Windows/macOS: works out of the box.\n"
+            "\n"
+        )
+
+        # Fallback: .env file
+        try:
+            from rig_relay.core.paths import GLOBAL_ENV_FILE
+
+            env_path = GLOBAL_ENV_FILE.path
+            env_path.parent.mkdir(parents=True, exist_ok=True)
+
+            existing = ""
+            if env_path.is_file():
+                existing = env_path.read_text(encoding="utf-8")
+
+            lines = existing.splitlines()
+            found = False
+            new_lines = []
+            for line in lines:
+                if line.startswith(f"{env_var}="):
+                    new_lines.append(f"{env_var}={api_key}")
+                    found = True
+                else:
+                    new_lines.append(line)
+            if not found:
+                new_lines.append(f"{env_var}={api_key}")
+
+            env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+            return {
+                "status": "saved",
+                "provider": provider,
+                "backend": "env_file",
+                "warning": (
+                    f"OS keychain unavailable: {keychain_warning}. "
+                    "Saved to .env file instead. "
+                    "On Linux, install gnome-keyring or libsecret to enable keychain storage."
+                ),
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+
 def _open_window(
     ws_port: int | None, mode: str = "runtime", server_only: bool = False
 ) -> None:
@@ -422,6 +726,7 @@ def _open_window(
     loop_holder: list[asyncio.AbstractEventLoop] = [None]  # type: ignore[list-item]
     server_holder: list[ProjectionWebSocketServer] = [None]  # type: ignore[list-item]
 
+    onboarding_mode = False
     try:
         api = CockpitAPI(
             ws_token=ws_token,
@@ -434,36 +739,17 @@ def _open_window(
         from rig_relay.core.config._settings import MissingAPIKeyError
 
         if isinstance(exc, MissingAPIKeyError):
-            print(f"\n{exc}")
-            print("Starting one-time setup to configure your API key...\n")
-            from rig_relay.setup.onboarding import run_onboarding
-
-            success = run_onboarding()
-            if not success:
-                print("\nFalling back to dry-run mode...\n")
-                _dry_run(ws_port or DEFAULT_WS_PORT)
-                return
-
-            print("\nRestarting with new configuration...\n")
-            try:
-                api = CockpitAPI(
-                    ws_token=ws_token,
-                    ws_port=ws_port,
-                    loop_holder=loop_holder,
-                    server_holder=server_holder,
-                    mode=mode,
-                )
-            except Exception as retry_exc:
-                print(f"Still failed after onboarding: {retry_exc}")
-                print("Falling back to dry-run mode...")
-                _dry_run(ws_port or DEFAULT_WS_PORT)
-                return
+            # Onboarding is deferred to the webview.
+            onboarding_mode = True
+            api = _OnboardingAPI()  # type: ignore[assignment]
         else:
             print(f"Failed to start desktop API: {exc}")
             print("Falling back to dry-run mode...")
             _dry_run(ws_port or DEFAULT_WS_PORT)
             return
 
+    # WebSocket server runs in all modes — including onboarding —
+    # so the frontend can call bridge methods (save_api_key, etc.)
     def _chat_dispatcher(action: str, **kwargs: Any) -> dict:
         if action == "send_chat_message":
             return api.send_chat_message(
@@ -484,7 +770,7 @@ def _open_window(
                 "127.0.0.1",
                 ws_port,
                 ws_token,
-                api.get_chat_state,
+                api.get_chat_state if not onboarding_mode else (lambda: {"messages": []}),
                 _chat_dispatcher,
                 loop_holder,
                 server_holder,
@@ -516,19 +802,23 @@ def _open_window(
     if not hasattr(webview, "__version__"):  # type: ignore[reportAttributeAccessIssue]
         webview.__version__ = "6.2.1"  # type: ignore[reportAttributeAccessIssue]
 
-    # Read the index.html and inject WS config as an inline script.
-    # No bridge needed — the config is delivered via the HTML payload.
-    index_html = index_path.read_text()
-    ws_config_script = (
+    # Read and inject WS config + onboarding flag.
+    # We inject a <base> tag so relative CSS/JS paths resolve from
+    # the frontend/desktop directory when loading via html= in pywebview.
+    onboarding_flag = "true" if onboarding_mode else "false"
+    config_script = (
         '<script>'
         f'window.__RIG_RELAY_WS_CONFIG__ = {{'
-        f'host: "127.0.0.1", port: {ws_port or DEFAULT_WS_PORT}, token: "{ws_token or ""}"'
+        f'host: "127.0.0.1", port: {ws_port or DEFAULT_WS_PORT}, '
+        f'token: "{ws_token or ""}", onboarding: {onboarding_flag}'
         f'}};'
         '</script>'
     )
-    index_html = index_html.replace(
-        '</body>', ws_config_script + '\n</body>'
-    )
+    base_tag = f'<base href="file://{FRONTEND_DIR}/">'
+    index_html = index_path.read_text(encoding="utf-8")
+    # Inject base tag after <head>, config before </body>
+    index_html = index_html.replace('<head>', f'<head>{base_tag}')
+    index_html = index_html.replace('</body>', f'{config_script}\n</body>')
 
     webview.create_window(
         title="Rig Relay",
@@ -574,9 +864,47 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _load_keychain_keys() -> None:
+    """Load API keys from the OS credential store into the environment.
+
+    Platform backends:
+      - macOS: Keychain
+      - Windows: Credential Manager
+      - Linux: Secret Service (libsecret/gnome-keyring)
+
+    Runs before VibeConfig.load() so that configured providers
+    are detected without the user needing a .env file.
+    Best-effort: failures are silently ignored.
+    """
+    import os
+
+    env_vars = [
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GOOGLE_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "OPENROUTER_API_KEY",
+        "MISTRAL_API_KEY",
+    ]
+    for env_var in env_vars:
+        if env_var in os.environ:
+            continue  # Already set, don't override
+        try:
+            import keyring
+
+            value = keyring.get_password("rig-relay", env_var)
+            if value:
+                os.environ[env_var] = value
+        except Exception:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     init_harness_files_manager("user", "project")
+
+    # Load keys from system keychain before config
+    _load_keychain_keys()
 
     ws_port: int | None = None if args.no_ws else args.ws_port
 

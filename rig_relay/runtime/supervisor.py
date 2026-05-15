@@ -27,7 +27,6 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import hashlib
-import os
 from pathlib import Path
 import time
 
@@ -37,6 +36,7 @@ from rig_relay.coordination.execution_lease import (
     ExecutionLeaseStatus,
     ExecutionLeaseStore,
 )
+from rig_relay.core.tools.security import sanitize_env_for_subprocess
 from rig_relay.evidence.audit_trail import (
     AuditActionKind,
     AuditDecisionKind,
@@ -369,7 +369,10 @@ class RuntimeSupervisor:
                 return
 
         # ── Build env ───────────────────────────────────────────────
-        env = {**os.environ, **request.env_overlay}
+        # Strip sensitive env vars (API keys, tokens) before passing
+        # to the subprocess.
+        base_env = sanitize_env_for_subprocess()
+        env = {**base_env, **request.env_overlay}
 
         # ── Emit starting status ────────────────────────────────────
         yield RuntimeStatusEvent(

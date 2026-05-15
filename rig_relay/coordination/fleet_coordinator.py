@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import logging
 from pathlib import Path
 
 from rig_relay.coordination.fleet_queue import FleetQueue
@@ -15,6 +16,9 @@ from rig_relay.coordination.patch_workflow import (
     record_patch_decision,
 )
 from rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionRunner
+from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,32 @@ class FleetCoordinator:
     def record_patch_decision(self, decision: PatchDecision) -> tuple[str, str]:
         proposal, recorded = record_patch_decision(self._coordination_root, decision)
         return proposal.proposal_id, recorded.decision_id
+
+    def enqueue_mission(self, mission_id: str, agent_profile: str, payload: dict[str, Any] | None = None) -> str:
+        from rig_relay.coordination.fleet_queue import FleetQueueItemKind
+
+        queue_item_id = self._queue.enqueue_item(
+            kind=FleetQueueItemKind.RUNTIME_EXEC,
+            mission_id=mission_id,
+            agent_id=agent_profile,
+            payload=payload or {},
+        )
+        item_id = queue_item_id.queue_item_id
+        logger.info(
+            "audit.fleet.enqueued mission_id=%s agent=%s queue_item_id=%s",
+            mission_id, agent_profile, item_id,
+        )
+        return item_id
+
+    def enqueue_message(self, message: str, mission_id: str | None = None) -> str:
+        from rig_relay.coordination.fleet_queue import FleetQueueItemKind
+
+        queue_event = self._queue.enqueue_item(
+            kind=FleetQueueItemKind.MESSAGE,
+            mission_id=mission_id,
+            payload={"message": message},
+        )
+        return queue_event.queue_item_id
 
     def recovery_summary(self) -> FleetRecoverySummary:
         snapshot = self._queue.list_items()
@@ -104,7 +134,12 @@ class FleetCoordinator:
 
             try:
                 proposal = self._patches.load_proposal(proposal_id)
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "audit.patch.load_failed proposal_id=%s error=%s",
+                    proposal_id,
+                    exc,
+                )
                 continue
 
             if proposal.status != "pending":

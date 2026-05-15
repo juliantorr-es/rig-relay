@@ -18,6 +18,46 @@ window.RigRelay = {
   dispatchIntent: dispatchIntent,
   closeExpanded: hideExpanded,
 
+  openProvider: function(provider) {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.open_provider_web) {
+      window.pywebview.api.open_provider_web(provider);
+    } else {
+      window.open({
+        'chatgpt': 'https://chatgpt.com',
+        'claude': 'https://claude.ai',
+        'gemini': 'https://gemini.google.com',
+        'deepseek': 'https://chat.deepseek.com',
+        'mistral': 'https://chat.mistral.ai',
+      }[provider] || 'about:blank', '_blank');
+    }
+  },
+
+  sendToProvider: function(provider) {
+    var input = document.getElementById('chat-input');
+    var text = input ? input.value.trim() : '';
+    if (!text) return;
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_provider) {
+      window.pywebview.api.send_to_provider(provider, text);
+    }
+  },
+
+  readFromProvider: function(provider) {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.read_from_provider) {
+      window.pywebview.api.read_from_provider(provider).then(function(result) {
+        if (result && result.text) {
+          var transcript = document.getElementById('chat-transcript');
+          if (transcript) {
+            var div = document.createElement('div');
+            div.className = 'chat-message system';
+            div.textContent = '[' + provider + '] ' + result.text.substring(0, 800);
+            transcript.appendChild(div);
+            transcript.scrollTop = transcript.scrollHeight;
+          }
+        }
+      });
+    }
+  },
+
   // In-app OAuth: navigate the pywebview window to the auth URL
   // and poll for the callback code.
   openInAppAuth(authUrl, loopbackPort, stateHash, providerName) {
@@ -123,7 +163,8 @@ function renderPanelColumn() {
   const assignments = {
     operator: ['operatorHeader', 'safetyState', 'nextAction',
                'validationSummary', 'storageBudget', 'intentResult',
-               'providerHealth', 'workspaceStatus', 'fleetStatus'],
+               'providerHealth', 'council', 'providerDock',
+               'workspaceStatus', 'fleetStatus'],
     review: ['progressTimeline', 'receiptTimeline', 'refinementBacklog',
              'reviewValidation', 'reviewStorage', 'reviewSnippets', 'reviewDataset'],
     system: ['identity', 'modelProviders', 'telemetryConsent',

@@ -25,7 +25,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from rig_relay.core.logger import logger
 from rig_relay.core.rewind.manager import FileSnapshot
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.types import ToolStreamEvent
 from rig_relay.core.utils.io import read_safe
 
@@ -35,7 +38,11 @@ if TYPE_CHECKING:
     from rig_relay.core.telemetry.types import EntrypointMetadata
     from rig_relay.core.tools.mcp_sampling import MCPSamplingHandler
     from rig_relay.core.tools.permissions import PermissionContext
-    from rig_relay.core.types import ApprovalCallback, SwitchAgentCallback, UserInputCallback
+    from rig_relay.core.types import (
+        ApprovalCallback,
+        SwitchAgentCallback,
+        UserInputCallback,
+    )
 
 ARGS_COUNT = 4
 
@@ -56,6 +63,7 @@ class InvokeContext:
     switch_agent_callback: SwitchAgentCallback | None = field(default=None)
     skill_manager: SkillManager | None = field(default=None)
     scratchpad_dir: Path | None = field(default=None)
+    tool_manager: Any | None = field(default=None)
 
 
 class ToolError(Exception):

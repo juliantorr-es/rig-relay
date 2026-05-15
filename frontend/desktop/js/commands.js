@@ -110,6 +110,68 @@ const COMMANDS = {
     help: 'Fleet operations. /fleet <queue|plan|spawn|run>',
     category: 'Fleet',
   },
+  '/orchestrator': {
+    execute: function() {
+      // The orchestrator agent is activated via agent profile switch.
+      // When the user types /orchestrator, we tell them to use the
+      // backend agent command or start a conversation about the roadmap.
+      return 'Orchestrator agent ready. Tell me about your project:\n' +
+        '  • What do you want to build? (scope)\n' +
+        '  • What stack should be used?\n' +
+        '  • New project or existing codebase?\n' +
+        '  • How many sprints?';
+    },
+    help: 'Start a roadmap conversation with the fleet orchestrator',
+    category: 'Fleet',
+  },
+  '/provider': {
+    execute: function(args) {
+      var valid = ['chatgpt','claude','gemini','deepseek','mistral','perplexity','copilot'];
+      if (!args || valid.indexOf(args) < 0) {
+        return 'Usage: /provider <chatgpt|claude|gemini|deepseek|mistral|perplexity|copilot>\n'
+          + 'Opens the provider web app in your browser.';
+      }
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.open_provider_web) {
+        window.pywebview.api.open_provider_web(args);
+        return 'Opening ' + args + ' in your browser...';
+      }
+      return args + ' web app: open in your browser manually.';
+    },
+    help: 'Open a provider web app. /provider <chatgpt|claude|gemini|deepseek|mistral|perplexity|copilot>',
+    category: 'Providers',
+  },
+  '/send_to': {
+    execute: function(args) {
+      var valid = ['chatgpt','claude','gemini','deepseek','mistral','perplexity'];
+      if (!args || valid.indexOf(args) < 0) {
+        return 'Usage: /send_to <chatgpt|claude|gemini|deepseek|mistral|perplexity>';
+      }
+      window.RigRelay.sendToProvider(args);
+      return 'Sent to ' + args + '.';
+    },
+    help: 'Push chat text to a provider companion window. /send_to <provider>',
+    category: 'Providers',
+  },
+  '/read_from': {
+    execute: function(args) {
+      var valid = ['chatgpt','claude','gemini','deepseek','mistral','perplexity'];
+      if (!args || valid.indexOf(args) < 0) {
+        return 'Usage: /read_from <chatgpt|claude|gemini|deepseek|mistral|perplexity>';
+      }
+      window.RigRelay.readFromProvider(args);
+      return null;
+    },
+    help: 'Read response from a provider companion window. /read_from <provider>',
+    category: 'Providers',
+  },
+  '/council': {
+    execute: function(args) {
+      dispatchIntent('council_consult', { question: args || '' });
+      return 'Council: sending structured consultation to all open provider windows...';
+    },
+    help: 'Send structured consultation to all open providers. /council [question]',
+    category: 'Providers',
+  },
   '/help': {
     execute: function() {
       let out = '';

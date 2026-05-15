@@ -114,7 +114,14 @@ class DevFileTokenStore(TokenStore):
             "warning": self.DEV_STORE_WARNING,
             "metadata": metadata.model_dump(mode="json"),
             # Raw tokens stored in dev-only plaintext — will be removed in production
-            "_raw_token_placeholder": token_bundle.get("access_token", "")[:8] + "...",
+            # Both GitHub CI/CD tool and Google Drive uploader read from this field.
+            "token_bundle": {
+                "access_token": token_bundle.get("access_token", ""),
+                "refresh_token": token_bundle.get("refresh_token", ""),
+                "account_id": token_bundle.get("account_id", ""),
+                "display_name": token_bundle.get("display_name", ""),
+                "email": token_bundle.get("email", ""),
+            },
         }
 
         path = self._path(provider)

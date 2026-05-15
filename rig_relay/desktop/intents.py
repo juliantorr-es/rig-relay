@@ -2099,6 +2099,126 @@ def _execute_provider_status(intent_id: str) -> dict[str, Any]:
         )
 
 
+def _execute_telemetry_upload_google(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Upload a telemetry bundle to Google Drive.
+
+    Requires Google sign-in with drive.file scope. Uploads to the
+    configured telemetry folder first. Optionally also copies to
+    the user's personal Drive root.
+    """
+    try:
+        from pathlib import Path
+
+        from rig_relay.evidence.google_drive_upload import upload_bundle
+
+        bundle_path_str = str(params.get("bundle_path", ""))
+        target_folder_id = str(params.get("target_folder_id", "")) or None
+        copy_to_personal = bool(params.get("copy_to_personal", False))
+
+        # Find the latest bundle if no path given
+        if not bundle_path_str:
+            repo_root = Path(__file__).resolve().parent.parent.parent
+            bundle_dir = repo_root / ".build" / "rig-relay" / "telemetry-bundles"
+            if not bundle_dir.is_dir():
+                return _build_result(
+                    "telemetry_upload_google",
+                    intent_id,
+                    "failed",
+                    error_code="no_bundle_found",
+                    summary="No telemetry bundles found. Create one first.",
+                )
+            bundles = sorted(
+                bundle_dir.iterdir(),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            if not bundles:
+                return _build_result(
+                    "telemetry_upload_google",
+                    intent_id,
+                    "failed",
+                    error_code="no_bundle_found",
+                    summary="No telemetry bundles found. Create one first.",
+                )
+            latest_bundle = bundles[0]
+            # Find the zip file inside the bundle directory
+            zip_files = list(latest_bundle.rglob("*.zip"))
+            if zip_files:
+                bundle_path = zip_files[0]
+            else:
+                return _build_result(
+                    "telemetry_upload_google",
+                    intent_id,
+                    "failed",
+                    error_code="no_zip_in_bundle",
+                    summary=f"No zip found in latest bundle: {latest_bundle.name}",
+                )
+        else:
+            bundle_path = Path(bundle_path_str)
+            if not bundle_path.is_file():
+                return _build_result(
+                    "telemetry_upload_google",
+                    intent_id,
+                    "failed",
+                    error_code="bundle_not_found",
+                    summary=f"Bundle not found: {bundle_path}",
+                )
+
+        # Upload to the predefined telemetry folder
+        import asyncio
+
+        result = asyncio.run(upload_bundle(bundle_path, target_folder_id))
+
+        warnings: list[str] = []
+        uploads = [result]
+
+        # Copy to personal Drive if requested
+        if copy_to_personal:
+            try:
+                personal_result = asyncio.run(
+                    upload_bundle(bundle_path, target_folder_id="root")
+                )
+                uploads.append(personal_result)
+                warnings.append(
+                    f"Personal copy uploaded: {personal_result.get('file_id', '')[:16]}..."
+                )
+            except Exception as e:
+                warnings.append(f"Personal copy failed: {e}")
+
+        file_id = result.get("file_id", "")
+        web_link = result.get("web_view_link", "")
+
+        return _build_result(
+            "telemetry_upload_google",
+            intent_id,
+            "completed",
+            result_kind="drive_upload",
+            summary=(
+                f"Uploaded {bundle_path.name} to Google Drive. "
+                f"{'Personal copy also uploaded. ' if copy_to_personal else ''}"
+                f"File ID: {file_id[:16] if file_id else 'unknown'}..."
+            ),
+            extra_fields={
+                "file_id": file_id,
+                "file_name": result.get("name", bundle_path.name),
+                "size_bytes": result.get("size_bytes", 0),
+                "web_view_link": web_link,
+                "uploads": uploads,
+            },
+            warnings=warnings,
+        )
+    except Exception as e:
+        return _build_result(
+            "telemetry_upload_google",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Google Drive upload failed: {e}",
+        )
+
+
 def _execute_provider_onboarding_save_key(
     intent_id: str, params: dict[str, Any]
 ) -> dict[str, Any]:
@@ -2267,9 +2387,25 @@ def _execute_worktree_create(intent_id: str, workspace_id: str = "", branch_name
             summary="workspace_id and branch_name are required.",
         )
     try:
-        from rig_relay.coordination.worktree_manager import WorktreeManager
+        import subprocess
 
         repo_root = Path.cwd()
+
+        # Pre-flight check: refuse if working tree is dirty
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True, cwd=str(repo_root),
+        )
+        if status.stdout.strip():
+            dirty_count = len(status.stdout.strip().split("\n"))
+            return _build_result(
+                "worktree_create", intent_id, "refused",
+                error_code="dirty_working_tree",
+                summary=f"Working tree has {dirty_count} dirty files. Commit or stash before creating a worktree.",
+            )
+
+        from rig_relay.coordination.worktree_manager import WorktreeManager
+
         mgr = WorktreeManager(repo_root)
         result = mgr.create(workspace_id=workspace_id, branch_name=branch_name)
 
@@ -2442,9 +2578,15 @@ def _execute_fleet_orchestrate(intent_id: str) -> dict[str, Any]:
         coordinator = FleetCoordinator(coord_root, executor)
         result = asyncio.run(coordinator.run_once())
 
+        snap = coordinator.snapshot()
+        status_str = ", ".join(
+            f"{k}: {v}" for k, v in sorted(snap["status_counts"].items())
+        )
+
         lines = [
             f"Decision: {result.decision}",
             f"Queue item: {result.queue_item_id or 'none'}",
+            f"Queue status: {snap['total_count']} items ({status_str})",
         ]
         if result.error_kind:
             lines.append(f"Error: {result.error_kind}")

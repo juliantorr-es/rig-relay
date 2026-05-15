@@ -223,17 +223,22 @@ def build_context_assembly_report(
         stability, cacheable = classify_block_stability(kind)
         blocks.append(_make_block(kind, stability, cacheable, schemas, source_index=-1))
 
-    # 2. Conversation & Tool Results
+    # 2. Conversation & Tool Results — explicit role classification
     for i, msg in enumerate(messages):
         if msg.role == Role.system:
             continue
 
-        kind = ContextBlockKind.CONVERSATION_TAIL
-        if msg.role == Role.tool:
+        kind: ContextBlockKind
+        if msg.role == Role.user:
+            kind = ContextBlockKind.CONVERSATION_TAIL
+        elif msg.role == Role.assistant:
+            kind = ContextBlockKind.CONVERSATION_TAIL
+        elif msg.role == Role.tool:
             kind = ContextBlockKind.TOOL_EXCERPT
-            # Check for artifact references in the content
             if "[TRUNCATED]" in (msg.content or ""):
                 kind = ContextBlockKind.ARTIFACT_REFERENCE
+        else:
+            kind = ContextBlockKind.CONVERSATION_TAIL
 
         stability, cacheable = classify_block_stability(kind)
         content = msg.content or ""

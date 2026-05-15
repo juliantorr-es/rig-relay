@@ -2,6 +2,20 @@
 
 Phase 3: DuckDB-backed RepoContextIndex for constrained retrieval. Maps
 files to tests, docs, schemas, and related paths. No embeddings.
+
+Dependency contracts (canonical):
+  - RepoContextIndex [OPTIONAL]: If None, RelevantTestsPack and
+    RelatedFilesPack degrade gracefully to empty results.
+    No crash, no error — the packs simply produce no output.
+  - ReceiptStore [OPTIONAL]: If None, CompactionHistoryPack produces
+    "(no compaction history)" and context envelope receipts are not
+    persisted. All silence is explicit.
+  - ContextPack._cached_fingerprint: Persists across build_envelope()
+    calls within a single ContextCompiler instance. New compiler =
+    fresh cache. Fingerprints are session-scoped.
+  - RecentTranscriptPack: Requires either snapshot (transcript object)
+    or messages (list[LLMMessage]) to produce output. Without either,
+    renders "(no transcript)" explicitly.
 """
 
 from __future__ import annotations
@@ -51,11 +65,20 @@ def _git(*args: str, cwd: Path | None = None) -> str:
 
 
 _COMPRESSIBLE_PACKS = {
-    "git_state",
-    "dirty_files",
-    "dirty_ownership",
-    "active_file_focus",
-    "related_files",
+    # Sources that benefit from symbol codec compression (saves tokens):
+    "git_state",          # Short, repetitive branch/HEAD strings
+    "dirty_files",        # File paths, short status lines
+    "dirty_ownership",    # Similar to dirty_files
+    "active_file_focus",  # File content excerpts — high repetition
+    "related_files",      # File paths and metadata
+}
+
+_NON_COMPRESSIBLE_PACKS = {
+    # Sources that should NOT be symbol-compressed:
+    "agents_md",          # Rules/instructions — must be verbatim
+    "relevant_tests",     # Test code — must be verbatim
+    "recent_transcript",  # Conversation context — must be verbatim
+    "compaction_history", # Receipt IDs and rationales — short, no benefit
 }
 
 
@@ -107,10 +130,12 @@ def _build_envelope_parts(
         if not source:
             continue
 
+        # Classification contract: every pack must be in compressible or non-compressible
         part = f'<context name="{pack.name}">\n{source}\n</context>'
         if pack.name in _COMPRESSIBLE_PACKS:
             compressible_parts.append(part)
         else:
+            # Default to protected (non-compressible) for safety
             protected_parts.append(part)
 
     compressed_prompt = "\n\n".join(compressible_parts)
@@ -285,15 +310,30 @@ class RecentTranscriptPack(ContextPack):
     def __init__(self) -> None:
         super().__init__()
         self._snapshot: Any | None = None
+        self._messages: list[Any] | None = None
 
     def set_snapshot(self, snapshot: Any | None) -> None:
         self._snapshot = snapshot
 
+    def set_messages(self, messages: list[Any]) -> None:
+        self._messages = messages
+
     def _items(self) -> list:
-        if self._snapshot is None:
+        if self._snapshot is None and self._messages is None:
             return []
-        t = getattr(self._snapshot, "transcript", None)
-        return getattr(t, "items", []) or [] if t else []
+        if self._messages is not None:
+            # Use LLM messages directly — extract last 5 non-system messages
+            recent = [m for m in self._messages if getattr(m, 'role', None) and str(m.role) != 'system'][-5:]
+            return [
+                type('TranscriptItem', (), {
+                    'kind': str(getattr(m, 'role', 'unknown')),
+                    'title': (getattr(m, 'content', '') or '')[:80],
+                    'body_text': getattr(m, 'content', '') or '',
+                })()
+                for m in recent
+            ]
+        items = getattr(self._snapshot, "transcript", None)
+        return getattr(items, "items", []) or [] if items else []
 
     def _fingerprint_sources(self, root: Path) -> tuple[str, ...]:
         items = self._items()
@@ -547,8 +587,9 @@ class ContextCompiler:
         self._workspace_root = (workspace_root or Path.cwd()).resolve()
         self._receipt_store = receipt_store
         self._repo_index = repo_index
+        self._packs: list[ContextPack] | None = None
 
-    def _default_packs(self, user_text: str, snapshot: Any | None) -> list[ContextPack]:
+    def _default_packs(self, user_text: str, snapshot: Any | None, messages: list[Any] | None = None) -> list[ContextPack]:
         packs: list[ContextPack] = []
         packs.append(AgentsMdPack())
         packs.append(GitStatePack())
@@ -556,6 +597,8 @@ class ContextCompiler:
 
         tp = RecentTranscriptPack()
         tp.set_snapshot(snapshot)
+        if messages is not None:
+            tp.set_messages(messages)
         packs.append(tp)
 
         packs.append(DirtyOwnershipPack())
@@ -584,9 +627,25 @@ class ContextCompiler:
         user_text: str,
         snapshot: Any | None = None,
         packs: list[ContextPack] | None = None,
+        messages: list[Any] | None = None,
     ) -> ContextEnvelopeReceipt:
         if packs is None:
-            packs = self._default_packs(user_text, snapshot)
+            if self._packs is None:
+                self._packs = self._default_packs(user_text, snapshot, messages)
+            else:
+                # Refresh mutable pack data for this turn
+                for pack in self._packs:
+                    if isinstance(pack, RecentTranscriptPack):
+                        pack.set_snapshot(snapshot)
+                        if messages is not None:
+                            pack.set_messages(messages)
+                    elif isinstance(pack, ActiveFocusPack):
+                        pack.set_user_text(user_text)
+                    elif isinstance(pack, RelatedFilesPack):
+                        pack.set_user_text(user_text)
+                    elif isinstance(pack, RelevantTestsPack):
+                        pass  # Changed paths not yet tracked
+            packs = self._packs
 
         root = self._workspace_root
         (
@@ -637,8 +696,13 @@ class ContextCompiler:
                     ),
                 )
                 self._receipt_store.append(envelope)
-            except Exception:
-                pass
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "audit.context.receipt_write_failed session_id=%s error=%s",
+                    self._session_id,
+                    exc,
+                )
 
         return receipt
 

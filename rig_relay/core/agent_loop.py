@@ -1032,7 +1032,7 @@ class AgentLoop:
             }
         return args
 
-    async def _execute_tool_call(  # noqa: PLR0915
+    async def _execute_tool_call(  # noqa: PLR0912, PLR0914, PLR0915
         self, span: trace.Span, tool_call: ResolvedToolCall
     ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
         try:
@@ -1041,6 +1041,33 @@ class AgentLoop:
             error_msg = f"Error getting tool '{tool_call.tool_name}': {exc}"
             yield self._tool_failure_event(tool_call, error_msg, span=span)
             return
+
+        # ── Tool result cache check ────────────────────────────────
+        determinism_cls = getattr(
+            tool_call.tool_class, "determinism_class", None
+        )
+        if determinism_cls is not None:
+            from rig_relay.core.tools.cache import get_cached_result
+
+            determinism_str = str(determinism_cls.value)
+            if determinism_str in {"DETERMINISTIC_PURE", "DETERMINISTIC_REPO_STATE"}:
+                cached = get_cached_result(
+                    tool_name=tool_call.tool_name,
+                    args_dict=tool_call.args_dict,
+                    determinism_class=determinism_str,
+                )
+                if cached is not None:
+                    _args_model, _result_model_cls = tool_call.tool_class._get_type_hints()
+                    result_model = _result_model_cls(**cached)
+                    yield ToolResultEvent(
+                        tool_name=tool_call.tool_name,
+                        tool_class=tool_call.tool_class,
+                        result=result_model,
+                        cached=True,
+                        tool_call_id=tool_call.call_id,
+                    )
+                    self.stats.tool_calls_succeeded += 1
+                    return
 
         decision: ToolDecision | None = None
         try:
@@ -1091,6 +1118,7 @@ class AgentLoop:
                     switch_agent_callback=self.switch_agent,
                     skill_manager=self.skill_manager,
                     scratchpad_dir=self.scratchpad_dir,
+                    tool_manager=self.tool_manager,
                 ),
                 **expanded_args,
             ):
@@ -1138,6 +1166,22 @@ class AgentLoop:
                         tool_call.tool_name,
                         exc_info=True,
                     )
+
+            # Store in cache if deterministic and read-only
+            if determinism_cls is not None:
+                from rig_relay.core.tools.cache import set_cached_result
+
+                determinism_str = str(determinism_cls.value)
+                if determinism_str in {"DETERMINISTIC_PURE", "DETERMINISTIC_REPO_STATE"}:
+                    try:
+                        set_cached_result(
+                            tool_name=tool_call.tool_name,
+                            args_dict=tool_call.args_dict,
+                            result_dict=result_model.model_dump(mode="json"),
+                            determinism_class=determinism_str,
+                        )
+                    except Exception:
+                        pass
 
             yield ToolResultEvent(
                 tool_name=tool_call.tool_name,
@@ -1518,6 +1562,7 @@ class AgentLoop:
             envelope = compiler.build_envelope(
                 user_text=user_msg,
                 snapshot=None,
+                messages=list(self.messages),
             )
             self._current_context_envelope = envelope
 
@@ -1552,10 +1597,12 @@ class AgentLoop:
                 write_shadow_request_report,
             )
 
-            tool_manager_info = {
-                tool_name: tool_class.get_parameters()
-                for tool_name, tool_class in self.tool_manager.available_tools.items()
-            }
+            tool_manager_info = None
+            if self.tool_manager.available_tools:
+                tool_manager_info = {
+                    tool_name: tool_class.get_parameters()
+                    for tool_name, tool_class in self.tool_manager.available_tools.items()
+                }
 
             report = build_context_assembly_report(
                 session_id=self.session_id,

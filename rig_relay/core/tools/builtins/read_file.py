@@ -9,7 +9,10 @@ from pydantic import BaseModel, Field
 
 from rig_relay.core.config.harness_files import get_harness_files_manager
 from rig_relay.core.scratchpad import is_scratchpad_path
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -18,8 +21,16 @@ from rig_relay.core.tools.base import (
     ToolError,
     ToolPermission,
 )
-from rig_relay.core.tools.determinism import normalize_tool_path, require_path_within_workdir
+from rig_relay.core.tools.determinism import (
+    normalize_tool_path,
+    require_path_within_workdir,
+)
 from rig_relay.core.tools.permissions import PermissionContext
+from rig_relay.core.tools.security import (
+    MAX_TEXT_FILE_BYTES,
+    is_binary_extension,
+    is_likely_binary,
+)
 from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from rig_relay.core.tools.utils import resolve_file_tool_permission
 from rig_relay.core.types import ToolStreamEvent
@@ -148,6 +159,15 @@ class ReadFile(
             bytes_read = 0
             was_truncated = True
 
+            # Quick binary content check on the first chunk
+            async with await anyio.Path(file_path).open("rb") as preview_f:
+                header = await preview_f.read(8192)
+                if is_likely_binary(header):
+                    raise ToolError(
+                        f"Refusing to read '{file_path.name}': content appears to be binary. "
+                        "Use bash with appropriate tools (e.g., xxd, strings) for binary files."
+                    )
+
             async with await anyio.Path(file_path).open("rb") as f:
                 line_index = 0
                 while raw_line := await f.readline():
@@ -199,6 +219,21 @@ class ReadFile(
             raise ToolError(f"File not found at: {file_path}")
         if resolved_path.is_dir():
             raise ToolError(f"Path is a directory, not a file: {file_path}")
+
+        # Block binary files by extension
+        if is_binary_extension(resolved_path):
+            raise ToolError(
+                f"Refusing to read '{resolved_path.name}': file appears to be binary. "
+                "Use bash with appropriate tools (e.g., xxd, strings) for binary files."
+            )
+
+        # Enforce max file size
+        file_size = resolved_path.stat().st_size
+        if file_size > MAX_TEXT_FILE_BYTES:
+            raise ToolError(
+                f"Refusing to read '{resolved_path.name}': file is "
+                f"{file_size / 1_048_576:.1f} MB, which exceeds the {MAX_TEXT_FILE_BYTES // 1_048_576} MB limit."
+            )
 
     @classmethod
     def format_call_display(cls, args: ReadFileArgs) -> ToolCallDisplay:

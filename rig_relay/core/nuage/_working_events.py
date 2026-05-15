@@ -11,7 +11,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from rig_relay.core.logger import logger
-from rig_relay.core.nuage.agent_models import (
+from rig_relay.core.nuage.remote_workflow_event_models import (
     WaitForInputPayload,
     PredefinedAnswersState,
 )

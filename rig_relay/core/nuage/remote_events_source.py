@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 
-from rig_relay.core.agent_loop import AgentLoopStateError
+from rig_relay.core._errors import AgentLoopStateError
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.logger import logger
 from rig_relay.core.nuage.agent_models import (

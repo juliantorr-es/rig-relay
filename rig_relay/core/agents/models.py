@@ -214,14 +214,23 @@ ORCHESTRATOR = AgentProfile(
     overrides={
         "enabled_tools": [
             "grep", "read_file", "task", "ask_user_question",
-            "write_file", "search_replace", "git",
+            "write_file", "search_replace", "git_status", "git_diff",
+            "git_branch", "git_log", "git_show", "git_ls_files",
+            "consult_provider",
         ],
         "tools": {
-            "git": {"permission": "always"},
+            "git_status": {"permission": "always"},
+            "git_diff": {"permission": "always"},
+            "git_branch": {"permission": "always"},
+            "git_log": {"permission": "always"},
+            "git_show": {"permission": "always"},
+            "git_ls_files": {"permission": "always"},
             "write_file": {"permission": "ask"},
             "search_replace": {"permission": "ask"},
         },
         "base_disabled": ["bash", "exit_plan_mode"],
+        "system_prompt_id": "orchestrator",
+        "worktree_root": ".rig/relay/worktrees",
     },
 )
 
@@ -234,7 +243,7 @@ CLEANER = AgentProfile(
     overrides={
         "enabled_tools": [
             "grep", "read_file", "write_file", "search_replace",
-            "validate", "run_validation_suite",
+            "validate", "validation_suite",
         ],
         "tools": {
             "write_file": {"permission": "always"},
@@ -272,7 +281,7 @@ BUG_EXTERMINATOR = AgentProfile(
     overrides={
         "enabled_tools": [
             "grep", "read_file", "write_file", "search_replace",
-            "validate", "run_validation_suite", "task",
+            "validate", "validation_suite", "task",
         ],
         "tools": {
             "write_file": {"permission": "always"},

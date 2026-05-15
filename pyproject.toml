@@ -72,6 +72,8 @@ dependencies = [
     "pywebview>=4.10",
     "zstandard>=0.25.0",
     "pyobjc-framework-LocalAuthentication; sys_platform == 'darwin'",
+    "pyrefly>=0.64.0",
+    "ast-grep-py>=0.42.1",
 ]
 
 [project.optional-dependencies]
@@ -180,6 +182,9 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/desktop/websocket_server.py" = ["PLR"]
 "rig_relay/desktop/intents.py" = ["PLR"]
 "rig_relay/providers/model_capabilities.py" = ["PLR"]
+"rig_relay/evidence/google_drive_upload.py" = ["PLR"]
+"rig_relay/core/tools/builtins/github_ci_cd.py" = ["PLR"]
+"rig_relay/core/tools/reroute.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
