@@ -254,6 +254,7 @@ async function init() {
       local_mode: true,
       merge_enabled: false,
       push_enabled: false,
+      token: '',
     };
   }
 

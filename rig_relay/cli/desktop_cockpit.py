@@ -744,7 +744,9 @@ class _OnboardingAPI:
     def onboarding_required(self) -> dict:
         return {"onboarding_required": True}
 
-    def send_chat_message(self, text: str, client_message_id: str | None = None) -> dict:
+    def send_chat_message(
+        self, text: str, client_message_id: str | None = None
+    ) -> dict:
         return {"error": "Chat unavailable in onboarding mode"}
 
     def clear_chat_view(self) -> dict:
@@ -875,7 +877,7 @@ class _OnboardingAPI:
 def _open_window(
     ws_port: int | None, mode: str = "runtime", server_only: bool = False
 ) -> None:
-    """Open pywebview window with optional WebSocket stream."""
+    """Open pywebview window with single bridge server for HTTPS + WSS."""
     import time
 
     index_path = FRONTEND_DIR / "index.html"
@@ -895,75 +897,117 @@ def _open_window(
         else None
     )
 
-    ws_token: str | None = None
-    if ws_port is not None:
-        ws_token = _generate_ws_token()
+    ws_token = _generate_ws_token()
+    bridge_port = ws_port or DEFAULT_WS_PORT
 
-    loop_holder: list[asyncio.AbstractEventLoop] = [None]  # type: ignore[list-item]
-    server_holder: list[ProjectionWebSocketServer] = [None]  # type: ignore[list-item]
+    # ── Start single bridge server ───────────────────────────────────
+    from rig_relay.desktop.bridge_diagnostics import BridgeProbeReport
+    from rig_relay.desktop.bridge_server import DesktopBridgeConfig, DesktopBridgeServer
 
-    onboarding_mode = False
+    bridge_debug = os.getenv("RIG_RELAY_BRIDGE_DEBUG", "1")
+    bridge_verbose = bridge_debug in ("1", "true", "yes")
+    bridge_probe = BridgeProbeReport(mode="source", tls_enabled=tls_config.enabled)
+
+    bridge_config = DesktopBridgeConfig(
+        host="127.0.0.1",
+        port=bridge_port,
+        frontend_dir=FRONTEND_DIR,
+        auth_token=ws_token,
+        ssl_context=ssl_context,
+        tls_mode=tls_config.cert_mode,
+        cert_fingerprint_sha256=(
+            tls_config.material.fingerprint_sha256
+            if tls_config.material is not None
+            else None
+        ),
+        build_root=BUILD_ROOT,
+    )
+
+    bridge = DesktopBridgeServer(bridge_config, probe_report=bridge_probe, debug=bridge_verbose)
+
+    # Start bridge in a background thread with its own event loop
+    bridge_loop: asyncio.AbstractEventLoop | None = None
+    bridge_started = threading.Event()
+    bridge_error: Exception | None = None
+
+    def _run_bridge() -> None:
+        nonlocal bridge_loop, bridge_error
+        bridge_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(bridge_loop)
+        try:
+            bridge_loop.run_until_complete(bridge.start())
+            bridge_started.set()
+            bridge_loop.run_forever()
+        except Exception as exc:
+            bridge_error = exc
+            bridge_started.set()
+        finally:
+            try:
+                bridge_loop.run_until_complete(bridge.stop())
+            except Exception:
+                pass
+            bridge_loop.close()
+
+    bridge_thread = threading.Thread(target=_run_bridge, daemon=True)
+    bridge_thread.start()
+    bridge_started.wait(timeout=10)
+
+    if bridge_error is not None:
+        print(f"Failed to start bridge server: {bridge_error}")
+        bridge_probe.print_terminal(verbose=bridge_verbose)
+        _dry_run(bridge_port)
+        return
+
+    # ── Print bridge probe ladder ───────────────────────────────────
+    if bridge_verbose:
+        print()
+        print("=== Desktop Bridge Startup ===")
+        bridge_probe.print_terminal(verbose=bridge_verbose)
+        print()
+        print(f"   Frontend: {bridge_probe.frontend_url}")
+        print(f"   WebSocket: {bridge_probe.ws_url}")
+        if not bridge_probe.ok:
+            print(f"   ⚠️  {len(bridge_probe.failed_step_ids)} probe(s) failed: {', '.join(bridge_probe.failed_step_ids)}")
+        print()
+
+    # ── Write probe report to app support logs ───────────────────────
+    try:
+        logs_dir = resources.app_support_dir() / "logs"
+        bridge_probe.write_json(logs_dir / "bridge_probe.json")
+        bridge_probe.write_text_log(logs_dir / "bridge.log")
+    except Exception:
+        pass
+
+    runtime_config = bridge.runtime_config.to_dict()
+
+    # ── Build API object ────────────────────────────────────────────
     try:
         api = CockpitAPI(
             ws_token=ws_token,
-            ws_port=ws_port,
-            loop_holder=loop_holder,
-            server_holder=server_holder,
+            ws_port=bridge.runtime_config.bridge_port,
+            loop_holder=[bridge_loop],  # type: ignore[list-item]
+            server_holder=[None],  # type: ignore[list-item]
             mode=mode,
         )
     except Exception as exc:
         from rig_relay.core.config._settings import MissingAPIKeyError
 
         if isinstance(exc, MissingAPIKeyError):
-            # Onboarding is deferred to the webview.
-            onboarding_mode = True
             api = _OnboardingAPI()  # type: ignore[assignment]
         else:
             print(f"Failed to start desktop API: {exc}")
             print("Falling back to dry-run mode...")
-            _dry_run(ws_port or DEFAULT_WS_PORT)
+            _dry_run(bridge_port)
+            if bridge_loop is not None:
+                bridge_loop.call_soon_threadsafe(bridge_loop.stop)
             return
 
-    # WebSocket server runs in all modes — including onboarding —
-    # so the frontend can call bridge methods (save_api_key, etc.)
-    def _chat_dispatcher(action: str, **kwargs: Any) -> dict:
-        if onboarding_mode:
-            return {"error": "Chat unavailable in onboarding mode"}
-        if action == "send_chat_message":
-            return api.send_chat_message(
-                text=kwargs.get("text", ""),
-                client_message_id=kwargs.get("client_message_id"),
-            )
-        if action == "clear_chat":
-            return api.clear_chat_view()
-        if action == "cancel_chat_response":
-            return api.cancel_chat_response()
-        return {"error": f"Unknown action: {action}"}
-
-    if ws_port is not None:
-        ws_thread = threading.Thread(
-            target=_run_ws_server,
-            args=(
-                BUILD_ROOT,
-                "127.0.0.1",
-                ws_port,
-                ws_token,
-                api.get_chat_state
-                if not onboarding_mode
-                else (lambda: {"messages": []}),
-                _chat_dispatcher,
-                loop_holder,
-                server_holder,
-                ssl_context,
-            ),
-            daemon=True,
-        )
-        ws_thread.start()
-        time.sleep(0.5)
+    if hasattr(api, "set_runtime_config"):
+        api.set_runtime_config(runtime_config)
 
     if server_only:
-        print("Server-only mode. WebSocket is running.")
-        print(f"URL: file://{index_path}")
+        print("Server-only mode. Bridge is running.")
+        print(f"URL: {runtime_config['frontend_url']}")
         print(f"WebSocket Token: {ws_token}")
         print("Press Ctrl+C to exit.")
         try:
@@ -971,49 +1015,36 @@ def _open_window(
                 time.sleep(1)
         except KeyboardInterrupt:
             print("Exiting...")
+            if bridge_loop is not None:
+                bridge_loop.call_soon_threadsafe(bridge_loop.stop)
             return
 
+    # ── Open pywebview window ───────────────────────────────────────
     try:
         import webview  # type: ignore[import-untyped]
     except ImportError:
         print("pywebview not available. Install with: uv add pywebview")
         print("Running dry-run instead...")
-        _dry_run(ws_port or DEFAULT_WS_PORT)
+        _dry_run(bridge_port)
         return
     if not hasattr(webview, "__version__"):  # type: ignore[reportAttributeAccessIssue]
         webview.__version__ = "6.2.1"  # type: ignore[reportAttributeAccessIssue]
 
-    runtime_config = {
-        "schema_version": "rig.desktop.runtime_config.v1",
-        "frontend_origin": "https://127.0.0.1" if ssl_context is not None else "http://127.0.0.1",
-        "ws_url": f"{'wss' if ssl_context is not None else 'ws'}://127.0.0.1:{ws_port or DEFAULT_WS_PORT}",
-        "ws_protocol": "wss" if ssl_context is not None else "ws",
-        "static_protocol": "https" if ssl_context is not None else "http",
-        "tls_enabled": ssl_context is not None,
-        "cert_mode": tls_config.cert_mode,
-        "local_mode": True,
-        "merge_enabled": False,
-        "push_enabled": False,
-        "packaged": packaged,
-        "app_version": __version__,
-        "insecure_local_transport": not tls_config.enabled,
-        "reason": tls_config.reason,
-        "token": ws_token or "",
-    }
-    if hasattr(api, "set_runtime_config"):
-        api.set_runtime_config(runtime_config)
-
     webview.create_window(
         title="Rig Relay",
-        url=str(index_path),
+        url=runtime_config["frontend_url"],
         js_api=api,
         width=1200,
         height=800,
         resizable=True,
         min_size=(800, 600),
     )
-    # Use http_server=True to avoid file:// CORS issues
-    webview.start(gui="cocoa", http_server=True, ssl=ssl_context is not None)
+    # Do NOT use http_server=True — the bridge server handles all HTTP
+    webview.start(gui="cocoa")
+
+    # Clean up bridge on window close
+    if bridge_loop is not None:
+        bridge_loop.call_soon_threadsafe(bridge_loop.stop)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:

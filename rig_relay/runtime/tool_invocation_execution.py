@@ -747,7 +747,11 @@ class RuntimeToolExecutionRunner:
                 workspace_id=meta.get("workspace_id"),
                 agent_id=meta.get("actor"),
             )
-            result = await self._run_bash_tool(envelope)
+            invoke_ctx = self._build_invoke_context(envelope)
+            subprocess_runner = meta.get("subprocess_runner")
+            if invoke_ctx is not None and subprocess_runner is not None:
+                invoke_ctx.subprocess_runner = subprocess_runner
+            result = await self._run_bash_tool(envelope, invoke_ctx)
             yield result
             return
         raise RuntimeError(f"Unsupported runtime tool: {tool_name}")
@@ -917,7 +921,11 @@ class RuntimeToolExecutionRunner:
 
         return result
 
-    async def _run_bash_tool(self, envelope: RuntimeToolInvocationEnvelope) -> Any:
+    async def _run_bash_tool(
+        self,
+        envelope: RuntimeToolInvocationEnvelope,
+        invoke_ctx: Any | None = None,
+    ) -> Any:
         """Run the bash tool with runtime context injected."""
         from rig_relay.core.tools.base import BaseToolState
         from rig_relay.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
@@ -932,7 +940,8 @@ class RuntimeToolExecutionRunner:
             max_stderr_bytes=payload.get("max_stderr_bytes"),
         )
 
-        invoke_ctx = self._build_invoke_context(envelope)
+        if invoke_ctx is None:
+            invoke_ctx = self._build_invoke_context(envelope)
         config = BashToolConfig()
         tool = Bash(config_getter=lambda: config, state=BaseToolState())
 

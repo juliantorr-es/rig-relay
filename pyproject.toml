@@ -226,6 +226,21 @@ ignore_decorators = ["@*"]
 [tool.pytest.ini_options]
 addopts = "-vvvv -q -n auto --durations=10 --import-mode=importlib --maxschedchunk=1"
 timeout = 10
+markers = [
+    "smoke: fastest confidence checks; must pass before demo/share",
+    "contract: domain contract/unit tests",
+    "integration: crosses multiple components/processes/filesystems",
+    "e2e: broad-stack or full flow",
+    "packaging: packaged app / installer / bundle checks",
+    "slow: intentionally slow",
+    "legacy: retained but not part of default suite",
+    "flaky: known nondeterministic, must not run in default suite",
+    "network: requires external network",
+    "provider: requires external model/provider/API",
+    "destructive: mutates worktrees/branches/files beyond temp dirs",
+    "migration: test being relocated during test layout canonicalization",
+    "quarantine: quarantined test, runs only in dedicated quarantine job",
+]
 filterwarnings = [
     # (e2e) streaming mock server is started in a thread; and the cli is spawn in a fork
     "ignore:This process \\(pid=.*\\) is multi-threaded, use of forkpty\\(\\) may lead to deadlocks in the child\\.:DeprecationWarning",

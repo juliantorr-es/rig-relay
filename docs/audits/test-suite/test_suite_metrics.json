@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-05-16T00:00:00Z",
+  "branch": "main",
+  "head": "8d0b13c",
+  "baseline": {
+    "collected_tests": 6085,
+    "collection_errors": 0,
+    "total_test_files": 325,
+    "root_level_warnings": 23,
+    "scripts_mis_scope_warnings": 11,
+    "duplicate_pair_warnings": 2,
+    "relocation_pending": 51,
+    "relocation_moved": 0,
+    "relocation_resolved": 2,
+    "relocation_allowlisted": 1
+  },
+  "after": {
+    "collected_tests": 6085,
+    "collection_errors": 0,
+    "total_test_files": 325,
+    "root_level_warnings": 15,
+    "scripts_mis_scope_warnings": 3,
+    "duplicate_pair_warnings": 2,
+    "relocation_pending": 33,
+    "relocation_moved": 18,
+    "relocation_resolved": 2,
+    "relocation_allowlisted": 1
+  },
+  "files_moved": 18,
+  "files_deleted": 0,
+  "path_fixes_applied": 2,
+  "pre_existing_failures": 20
+}

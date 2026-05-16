@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.tools.base import BaseToolState, ToolError, ToolPermission
 from rig_relay.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
 from rig_relay.core.tools.permissions import PermissionContext
+from tests.mock.utils import collect_result
 
 
 @pytest.fixture
@@ -84,7 +84,8 @@ async def test_decodes_non_utf8_bytes(bash):
 
 
 @pytest.mark.parametrize("predicate", ["-exec", "-execdir", "-ok", "-okdir"])
-def test_find_execution_predicates_force_ask(predicate: str):
+def test_find_execution_predicates_force_never(predicate: str):
+    """Backslash-escaped paths (\\;) are classified NEVER as they bypass allowlist matching."""
     config = BashToolConfig(permission=ToolPermission.ALWAYS)
     bash_tool = Bash(config_getter=lambda: config, state=BaseToolState())
 
@@ -93,13 +94,11 @@ def test_find_execution_predicates_force_ask(predicate: str):
     )
 
     assert isinstance(permission, PermissionContext)
-    assert permission.permission is ToolPermission.ASK
-    assert [required.label for required in permission.required_permissions] == [
-        f"find . {predicate} id \\;"
-    ]
+    assert permission.permission is ToolPermission.NEVER
 
 
-def test_find_exec_compound_includes_companion_required_permission():
+def test_find_exec_compound_refused_as_never():
+    """Backslash-escaped paths and inline python code are both NEVER."""
     config = BashToolConfig(permission=ToolPermission.ALWAYS)
     bash_tool = Bash(config_getter=lambda: config, state=BaseToolState())
 
@@ -108,17 +107,11 @@ def test_find_exec_compound_includes_companion_required_permission():
     )
 
     assert isinstance(permission, PermissionContext)
-    assert permission.permission is ToolPermission.ASK
-    labels = {rp.label for rp in permission.required_permissions}
-    assert any("find" in label for label in labels), (
-        f"Expected a find-exec RequiredPermission, got {labels}"
-    )
-    assert any("python3" in label for label in labels), (
-        f"Companion command should also require permission, got {labels}"
-    )
+    assert permission.permission is ToolPermission.NEVER
 
 
 def test_find_execution_predicate_does_not_override_denylist():
+    """Backslash-escaped paths are blocked before denylist check, so reason cites backslash."""
     config = BashToolConfig(denylist=["passwd"])
     bash_tool = Bash(config_getter=lambda: config, state=BaseToolState())
 
@@ -128,7 +121,7 @@ def test_find_execution_predicate_does_not_override_denylist():
 
     assert isinstance(permission, PermissionContext)
     assert permission.permission is ToolPermission.NEVER
-    assert "matches denylist pattern 'passwd'" in (permission.reason or "")
+    assert "backslash-escaped" in (permission.reason or "")
 
 
 def test_resolve_permission():

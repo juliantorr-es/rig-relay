@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from rig_relay.cli.desktop_cockpit import CockpitAPI
 from rig_relay.desktop.chat_state import ChatMessage, ChatRole, ChatState
 from rig_relay.desktop.chat_store import ChatStore
-from scripts.rig_relay_desktop_cockpit import CockpitAPI
 
 
 @pytest.fixture

@@ -227,11 +227,15 @@ class TestArchitectureBoundaries:
 def test_ledger_reset_clears_entries():
     from rig_relay.core.tool_runtime_ledger import (
         InMemoryToolRuntimeResultLedger,
-        set_active_ledger,
         get_active_ledger,
         reset_active_ledger,
+        set_active_ledger,
     )
-    from rig_relay.core.tool_runtime_models import ToolRuntimeResult, ToolRuntimeStatus, ToolRuntimeCacheStatus
+    from rig_relay.core.tool_runtime_models import (
+        ToolRuntimeCacheStatus,
+        ToolRuntimeResult,
+        ToolRuntimeStatus,
+    )
 
     ledger = InMemoryToolRuntimeResultLedger()
     set_active_ledger(ledger)
@@ -257,11 +261,14 @@ def test_ledger_reset_clears_entries():
 
 def test_cross_session_no_leakage():
     from rig_relay.core.tool_runtime_ledger import (
-        set_active_ledger,
         get_active_ledger,
         reset_active_ledger,
     )
-    from rig_relay.core.tool_runtime_models import ToolRuntimeResult, ToolRuntimeStatus, ToolRuntimeCacheStatus
+    from rig_relay.core.tool_runtime_models import (
+        ToolRuntimeCacheStatus,
+        ToolRuntimeResult,
+        ToolRuntimeStatus,
+    )
 
     reset_active_ledger()
     ledger1 = get_active_ledger()
@@ -280,6 +287,10 @@ def test_cross_session_no_leakage():
 
 
 def test_singleton_documented_as_temporary():
-    source = open("rig_relay/core/tool_runtime_ledger.py").read()
+    import rig_relay.core.tool_runtime_ledger
+    source_file = rig_relay.core.tool_runtime_ledger.__file__
+    assert source_file is not None
+    with open(source_file) as f:
+        source = f.read()
     assert "temporary bridge" in source or "not a durable" in source.lower()
     assert "reset_active_ledger" in source

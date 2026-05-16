@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from pydantic import BaseModel, ValidationError
 import pytest
 
-from tests.conftest import build_test_vibe_config
-from rig_relay.core.agent_loop import AgentLoopStateError
+from rig_relay.core._errors import AgentLoopStateError
 from rig_relay.core.nuage.exceptions import ErrorCode, WorkflowsException
 from rig_relay.core.nuage.remote_events_source import RemoteEventsSource
 from rig_relay.core.nuage.streaming import StreamEvent
+from tests.conftest import build_test_vibe_config
 
 _SESSION_ID = "test-session"
 
@@ -294,7 +294,9 @@ def test_consume_workflow_event_validation_error_is_logged_and_ignored() -> None
 
     source._translator.consume_workflow_event = MagicMock(side_effect=exc_info.value)
 
-    with patch("vibe.core.nuage.remote_events_source.logger.warning") as mock_warning:
+    with patch(
+        "rig_relay.core.nuage.remote_events_source.logger.warning"
+    ) as mock_warning:
         events = source._consume_workflow_event(MagicMock())
 
     assert events == []

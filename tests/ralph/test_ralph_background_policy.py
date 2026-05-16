@@ -44,7 +44,12 @@ def test_valid_capabilities_pass():
 
 
 def test_max_active_lanes_enforced():
-    policy = RalphBackgroundPolicy(enabled=True, max_active_lanes=2)
+    policy = RalphBackgroundPolicy(
+        enabled=True,
+        max_active_lanes=2,
+        allow_isolated_lane_execution=True,
+        allow_isolated_worktree_creation=True,
+    )
     assert policy.active_lanes_allowed(1) is True
     assert policy.active_lanes_allowed(2) is False
 

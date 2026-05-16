@@ -18,31 +18,14 @@ TESTS = HERE.parent
 
 # ── Known duplicate pairs (canonical, shadow) ─────────────────
 KNOWN_DUPLICATES: list[tuple[str, str]] = [
-    ("tests/tools/test_validate.py", "tests/tools/test_validate_git_state.py"),
-    (
-        "tests/ralph/test_ralph_background_policy.py",
-        "tests/ralph/test_background_policy_v2.py",
-    ),
+    ("tests/telemetry/test_observability.py", "tests/telemetry/test_observability_e2e.py"),
+    ("tests/tools/test_bash.py", "tests/tools/test_bash_hardening.py"),
 ]
 
 # ── Root-level test files allowed (explicit singletons) ───────
 ALLOWED_ROOT = {
-    "test_agents.py",
-    "test_agent_tool_call.py",
-    "test_agent_backend.py",
-    "test_agent_observer_streaming.py",
-    "test_agent_override_resolve_permission.py",
-    "test_agent_auto_compact.py",
-    "test_agent_stats.py",
-    "test_deferred_init.py",
-    "test_reasoning_content.py",
-    "test_approve_always_permanent.py",
-    "test_cli_programmatic_preload.py",
-    "test_middleware.py",
-    "test_system_prompt.py",
-    "test_tracing.py",
-    "test_history_manager.py",
-    "test_turn_summary.py",
+    "test_install_script.py",
+    "test_conftest_hygiene.py",
 }
 
 # ── scripts/ test files allowed (target IS scripts/) ──────────
@@ -86,8 +69,13 @@ def test_layout_audit() -> None:
             violations.append(f"duplicate pair: {canonical} ↔ {shadow}")
 
     if violations:
-        print("\n⚠️  Test layout warnings:")
+        msg = (
+            f"Test layout violations ({len(violations)}): "
+            + "; ".join(violations[:5])
+            + ("..." if len(violations) > 5 else "")
+        )
+        print(f"\n⚠️  {msg}\n")
         for v in violations:
             print(f"  • {v}")
         print(f"  ({len(violations)} total)\n")
-    # No assertion — report-only for now
+    # No assertion — report-only. Enforce after relocation is complete.

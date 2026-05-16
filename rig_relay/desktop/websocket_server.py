@@ -60,6 +60,8 @@ import secrets
 import ssl
 from typing import Any
 
+from collections.abc import Callable
+
 from rig_relay.core.logger import logger
 from rig_relay.desktop.intents import execute_desktop_intent, validate_intent_request
 from rig_relay.desktop.progress_events import ProgressEventBuffer
@@ -211,6 +213,7 @@ class ProjectionWebSocketServer:
         chat_state_provider: Any | None = None,
         chat_message_handler: Any | None = None,
         ssl_context: ssl.SSLContext | None = None,
+        probe_callback: Callable[[str, str, dict[str, Any]], None] | None = None,
     ) -> None:
         self._build_root = build_root
         self._host = host
@@ -227,6 +230,7 @@ class ProjectionWebSocketServer:
         self._chat_state_provider = chat_state_provider
         self._chat_message_handler = chat_message_handler
         self._ssl_context = ssl_context
+        self._probe_callback = probe_callback
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
         self._server: Any = None
@@ -241,6 +245,13 @@ class ProjectionWebSocketServer:
         self._oversized_message_count = 0
         self._rate_limited_count = 0
         self._lock = asyncio.Lock()
+
+    def _emit_probe(self, step_id: str, label: str, details: dict[str, Any]) -> None:
+        if self._probe_callback is not None:
+            try:
+                self._probe_callback(step_id, label, details)
+            except Exception:
+                pass
 
     @property
     def port(self) -> int:
@@ -501,6 +512,10 @@ class ProjectionWebSocketServer:
         msg_type = message.get("type")
         if msg_type == "auth":
             provided = message.get("token", "")
+            self._emit_probe(
+                "bridge:15", "websocket auth message received",
+                {"token_present": bool(provided)},
+            )
             if provided == self._token:
                 async with self._lock:
                     self._connection_count += 1
@@ -509,11 +524,19 @@ class ProjectionWebSocketServer:
                 await _send_json(websocket, {"type": "auth_ok"})
                 async with self._lock:
                     self._connections.add(websocket)
+                self._emit_probe(
+                    "bridge:16", "websocket auth accepted",
+                    {"token_present": True},
+                )
                 return True
             async with self._lock:
                 self._rejected_count += 1
                 self._last_rejection_reason = "invalid_token"
             logger.warning("audit.auth.invalid_token")
+            self._emit_probe(
+                "bridge:16", "websocket auth refused",
+                {"reason": "invalid_token", "token_present": bool(provided)},
+            )
             await _send_json(
                 websocket, {"type": "auth_error", "message": "Invalid token"}
             )
