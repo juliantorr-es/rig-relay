@@ -4,16 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mission Envelope Spine Design — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay does not need the full ADR/Sprint/Mission hierarchy wired into the executable path before it can have governed runtime context.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/mission-envelope-spine-design.html">
+<meta property="og:title" content="Mission Envelope Spine Design">
+<meta property="og:description" content="Rig Relay does not need the full ADR/Sprint/Mission hierarchy wired into the executable path before it can have governed runtime context.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/mission-envelope-spine-design.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Mission Envelope Spine Design">
+<meta name="twitter:description" content="Rig Relay does not need the full ADR/Sprint/Mission hierarchy wired into the executable path before it can have governed runtime context.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>Mission Envelope Spine Design</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay does not need the full ADR/Sprint/Mission hierarchy wired into the executable path before it can have governed runtime context.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/mission-envelope-spine-design.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Mission Envelope Spine Design</a></li>
+<li><a href="#h2-2">Summary</a></li>
+<li><a href="#h2-6">Why Mission-First</a></li>
+<li><a href="#h2-10">Minimal Envelope Contract</a></li>
+<li><a href="#h2-13">Context Packet Compilation</a></li>
+<li><a href="#h2-16">Receipt First</a></li>
+<li><a href="#h2-20">Relationship to Later Hierarchy</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Mission Envelope Spine Design</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
@@ -58,6 +94,7 @@
 
 <p id="p-22" class="disclosure-standard" data-disclosure-level="standard">That keeps the bridge stable while the higher-level orchestration matures.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/mission-envelope-spine-design.v1.json</code></p>

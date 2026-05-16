@@ -4,16 +4,54 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Evidence Validation — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay stores evidence under a selected evidence root. A session is one">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/validation.html">
+<meta property="og:title" content="Evidence Validation">
+<meta property="og:description" content="Rig Relay stores evidence under a selected evidence root. A session is one">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/validation.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Evidence Validation">
+<meta name="twitter:description" content="Rig Relay stores evidence under a selected evidence root. A session is one">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Evidence</p>
   <h1>Evidence Validation</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay stores evidence under a selected evidence root. A session is one</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/evidence/validation.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Evidence Validation</a></li>
+<li><a href="#h2-2">Evidence Model</a></li>
+<li><a href="#h2-6">Evidence Root Modes</a></li>
+<li><a href="#h2-11">Doctor CLI</a></li>
+<li><a href="#h2-21">Smoke Workflow</a></li>
+<li><a href="#h2-25">Manifest Semantics</a></li>
+<li><a href="#h2-33">Artifact Hash Semantics</a></li>
+<li><a href="#h2-37">Partial Evidence Behavior</a></li>
+<li><a href="#h2-40">Next Layer</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Evidence Validation</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Evidence Model</h2>
@@ -97,6 +135,7 @@ rig-relay doctor evidence --evidence-root &lt;path&gt; --session &lt;session-id&
 
 <p id="p-41" class="disclosure-standard" data-disclosure-level="standard">The current validator and manifest give us a local integrity gate: selected session, file presence, relative-path safety, hash checks, and event/file parity. The next layer is a receipt-chain or Merkle-backed design that adds chained integrity across events and finalization receipts. That layer should build on the validator and manifest instead of replacing them.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/evidence/validation.v1.json</code></p>

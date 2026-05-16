@@ -4,16 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WriteFile Receipt Gap Closure — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="WriteFile has partial hardening: structured args, structured result, coordination blocking, dirty guard, before/after hashes, path safety. But before this closure, it was missing:">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/write-file-receipt-gap-closure.html">
+<meta property="og:title" content="WriteFile Receipt Gap Closure">
+<meta property="og:description" content="WriteFile has partial hardening: structured args, structured result, coordination blocking, dirty guard, before/after hashes, path safety. But before this closure, it was missing:">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/write-file-receipt-gap-closure.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="WriteFile Receipt Gap Closure">
+<meta name="twitter:description" content="WriteFile has partial hardening: structured args, structured result, coordination blocking, dirty guard, before/after hashes, path safety. But before this closure, it was missing:">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Tool Hardening</p>
   <h1>WriteFile Receipt Gap Closure</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">WriteFile has partial hardening: structured args, structured result, coordination blocking, dirty guard, before/after hashes, path safety. But before this closure, it was missing:</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/tool-hardening/write-file-receipt-gap-closure.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">WriteFile Receipt Gap Closure</a></li>
+<li><a href="#h2-2">Current State</a></li>
+<li><a href="#h2-5">Gaps Closed</a></li>
+<li><a href="#h2-7">WriteFileReceipt Fields</a></li>
+<li><a href="#h2-9">`build_receipt()` Behavior</a></li>
+<li><a href="#h2-11">Remaining Gaps</a></li>
+<li><a href="#h2-13">Schema Validation</a></li>
+<li><a href="#h2-15">Test Coverage</a></li>
+<li><a href="#h2-18">Atomic Write Implementation</a></li>
+<li><a href="#h3-21">Atomicity Tests</a></li>
+<li><a href="#h2-23">Recommended Next Slice</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">WriteFile Receipt Gap Closure</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Current State</h2>
@@ -112,6 +152,7 @@
 
 <p id="p-24" class="disclosure-standard" data-disclosure-level="standard">1. **Stage 4 — Shared Mutation Tool Test Matrix**: **COMPLETED** — see `docs/audits/tool-hardening/mutation-tool-contract-matrix.md` and `tests/tools/test_mutation_tool_contracts.py`. 2. **Duration tracking**: **COMPLETED** — `before_bytes`, `after_bytes`, and `duration_ms` fields added to `WriteFileResult` and `WriteFileReceipt`. 3. **ToolError closure**: **COMPLETED** — 4 deterministic ToolError bypass paths (dir, size, exists, parent-missing) now yield structured `WriteFileResult(status=&quot;refused&quot;)`. Internal write errors and path safety violations remain as ToolError (abnormal). See `docs/audits/tool-hardening/write-file-legacy-result-content-audit.md` for the caller audit.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/tool-hardening/write-file-receipt-gap-closure.v1.json</code></p>

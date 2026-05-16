@@ -4,16 +4,67 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ExecutionProgressProjection — Design — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Phase P4a implemented.** Defines the content-light read model for">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/execution-progress-projection.html">
+<meta property="og:title" content="ExecutionProgressProjection — Design">
+<meta property="og:description" content="**Phase P4a implemented.** Defines the content-light read model for">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/execution-progress-projection.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ExecutionProgressProjection — Design">
+<meta name="twitter:description" content="**Phase P4a implemented.** Defines the content-light read model for">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>ExecutionProgressProjection — Design</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Phase P4a implemented.** Defines the content-light read model for</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/execution-progress-projection.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">ExecutionProgressProjection — Design</a></li>
+<li><a href="#h2-2">Status</a></li>
+<li><a href="#h2-4">Motivation</a></li>
+<li><a href="#h2-8">Fields</a></li>
+<li><a href="#h3-10">Forbidden fields</a></li>
+<li><a href="#h2-13">Aggregation Behavior</a></li>
+<li><a href="#h3-14">Signature (future implementation)</a></li>
+<li><a href="#h3-16">Rules</a></li>
+<li><a href="#h3-25">Edge cases</a></li>
+<li><a href="#h2-27">Projection-Integrity Relationship</a></li>
+<li><a href="#h2-31">UI Behavior Rules</a></li>
+<li><a href="#h3-32">Textual (Legacy TUI)</a></li>
+<li><a href="#h3-34">Desktop (pywebview)</a></li>
+<li><a href="#h3-36">Content-light enforcement</a></li>
+<li><a href="#h2-39">Relationship to Existing Widget Taxonomy</a></li>
+<li><a href="#h2-41">Implementation Status</a></li>
+<li><a href="#h3-43">Implemented</a></li>
+<li><a href="#h3-45">Deferred (next phases)</a></li>
+<li><a href="#h3-47">Content-light proof (P4a + P4b.1)</a></li>
+<li><a href="#h2-50">Implementation Phases</a></li>
+<li><a href="#h2-52">Cross-References</a></li>
+<li><a href="#h2-54">Recommended Implementation Slice</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ExecutionProgressProjection — Design</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
@@ -210,6 +261,7 @@
 
 <p id="p-55" class="disclosure-standard" data-disclosure-level="standard">**P4b.1 — Wire aggregation into `build_projection()`.** Delivers the integration seam (`runtime_events` parameter) and schema update (optional `execution_progress` field). No UI changes. Next slice should be P4b.2 (cockpit caller passes runtime events) or P4d (pywebview widget).</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/execution-progress-projection.v1.json</code></p>

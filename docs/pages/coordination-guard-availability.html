@@ -4,16 +4,78 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coordination Guard Availability Audit — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Audit target: why governed edit tools are being blocked by the coordination guard and whether the cause is real active protection, stale leases, overly broad reservations, missing expiry, broken path ">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/coordination-guard-availability.html">
+<meta property="og:title" content="Coordination Guard Availability Audit">
+<meta property="og:description" content="Audit target: why governed edit tools are being blocked by the coordination guard and whether the cause is real active protection, stale leases, overly broad reservations, missing expiry, broken path ">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/coordination-guard-availability.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Coordination Guard Availability Audit">
+<meta name="twitter:description" content="Audit target: why governed edit tools are being blocked by the coordination guard and whether the cause is real active protection, stale leases, overly broad reservations, missing expiry, broken path ">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Coordination Guard Availability Audit</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Audit target: why governed edit tools are being blocked by the coordination guard and whether the cause is real active protection, stale leases, overly broad reservations, missing expiry, broken path </p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/coordination-guard-availability.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Coordination Guard Availability Audit</a></li>
+<li><a href="#h2-2">Scope</a></li>
+<li><a href="#h2-5">Git State</a></li>
+<li><a href="#h2-7">Coordination Guard Layout</a></li>
+<li><a href="#h2-11">Guard Mechanics Observed</a></li>
+<li><a href="#h3-12">Dirty-file protection</a></li>
+<li><a href="#h3-15">Coordination reservations</a></li>
+<li><a href="#h2-18">Inventory Summary</a></li>
+<li><a href="#h2-22">Blocked Tool Names</a></li>
+<li><a href="#h2-26">Blocked Paths</a></li>
+<li><a href="#h2-32">Active vs Stale Classification</a></li>
+<li><a href="#h3-33">Active protection</a></li>
+<li><a href="#h3-35">Stale lease</a></li>
+<li><a href="#h3-39">Broad scope risk</a></li>
+<li><a href="#h3-42">Path normalization risk</a></li>
+<li><a href="#h2-45">Root Cause Assessment</a></li>
+<li><a href="#h3-46">Correct active protection</a></li>
+<li><a href="#h3-50">Stale lease</a></li>
+<li><a href="#h3-54">Overly broad lease scope</a></li>
+<li><a href="#h3-58">Missing lease expiry</a></li>
+<li><a href="#h3-62">Broken path normalization</a></li>
+<li><a href="#h3-66">Tool integration bug</a></li>
+<li><a href="#h2-70">Minimal Fix Recommendation</a></li>
+<li><a href="#h2-72">Structured Blocking Implementation</a></li>
+<li><a href="#h3-74">Changes to `write_file`</a></li>
+<li><a href="#h3-81">Changes to `search_replace`</a></li>
+<li><a href="#h3-85">Error Kind Taxonomy</a></li>
+<li><a href="#h3-87">Design Decisions</a></li>
+<li><a href="#h3-91">Tests Added</a></li>
+<li><a href="#h3-95">Validation</a></li>
+<li><a href="#h3-97">Remaining Issues (deferred)</a></li>
+<li><a href="#h2-99">Safe Stale-Lease Cleanup Command</a></li>
+<li><a href="#h2-104">Validation</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Coordination Guard Availability Audit</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Scope</h2>
@@ -248,6 +310,7 @@
 
 <p id="p-107" class="disclosure-standard" data-disclosure-level="standard">No files under `/Users/user/.rig/relay` were modified.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/coordination-guard-availability.v1.json</code></p>

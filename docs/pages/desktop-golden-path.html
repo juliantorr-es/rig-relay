@@ -4,16 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Desktop Golden Path — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/desktop-golden-path.html">
+<meta property="og:title" content="Desktop Golden Path">
+<meta property="og:description" content="The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/desktop-golden-path.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Desktop Golden Path">
+<meta name="twitter:description" content="The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Demo</p>
   <h1>Desktop Golden Path</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/demo/desktop-golden-path.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Desktop Golden Path</a></li>
+<li><a href="#h2-3">Source Mode</a></li>
+<li><a href="#h3-4">Command</a></li>
+<li><a href="#h3-6">Expected Probe Ladder (18 steps)</a></li>
+<li><a href="#h3-8">Expected UI</a></li>
+<li><a href="#h2-10">Packaged Mode</a></li>
+<li><a href="#h3-11">Steps</a></li>
+<li><a href="#h3-13">Requirements</a></li>
+<li><a href="#h2-15">Log Files</a></li>
+<li><a href="#h3-16">Source Mode</a></li>
+<li><a href="#h3-18">Packaged Mode</a></li>
+<li><a href="#h2-20">Config Flow</a></li>
+<li><a href="#h2-22">Troubleshooting by Bridge Step</a></li>
+<li><a href="#h2-24">Protocol Verification</a></li>
+<li><a href="#h2-26">Regression Tests</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Desktop Golden Path</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.</p>
@@ -125,6 +169,7 @@ ws.send({&quot;type&quot;: &quot;get_projection&quot;})
 <pre id="code-27"><code class="language-bash">uv run pytest tests/desktop/test_golden_path.py -v
 # 6 tests: config token, fallback tokenless, WS auth, WS projection, healthz, probe ladder</code></pre>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/demo/desktop-golden-path.v1.json</code></p>

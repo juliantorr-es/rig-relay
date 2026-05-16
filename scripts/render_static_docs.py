@@ -291,17 +291,89 @@ def _render_block(block: dict, doc_disc: dict | None = None) -> str:  # noqa: PL
     )
 
 
-def _render_page(data: dict) -> str:
+def _render_page(data: dict, site_manifest: dict | None = None) -> str:
     title = html.escape(str(data.get("title", "Untitled")))
     summary = html.escape(str(data.get("summary", "")))
-    # document_id available via data(str(data.get("document_id", "")))
+    did = str(data.get("document_id", ""))
     status = html.escape(str(data.get("status", "draft")))
     updated = html.escape(str(data.get("updated_at", data.get("created_at", ""))))
+    source_path = str(data.get("_source_path", data.get("canonical_path", "")))
     doc_disc = data.get("disclosure", {})
+
+    # Derive base_url and base_path from site manifest
+    base_url = ""
+    base_path = "/rig-relay"
+    if site_manifest:
+        base_url = str(site_manifest.get("base_url", ""))
+        base_path = str(site_manifest.get("base_path", "/rig-relay"))
+
+    canonical_url = f"{base_url}/pages/{did}.html" if base_url else ""
+
+    # Find collection context (breadcrumb)
+    collection_title = ""
+    if site_manifest:
+        for col in site_manifest.get("collections", []):
+            for doc in col.get("documents", []):
+                if doc.get("document_id") == did:
+                    collection_title = str(col.get("title", ""))
+                    break
+            if collection_title:
+                break
+
+    # Document-level disclosure data attrs
+    render_strategy = doc_disc.get("render_strategy", "linear")
+    default_level = doc_disc.get("default_level", "standard")
+    initial_mode = doc_disc.get("initial_mode", "reviewer")
+    show_toc = doc_disc.get("show_table_of_contents", False)
+
+    # Table of contents from headings
+    toc_html = ""
+    if show_toc:
+        headings = []
+        for s in data.get("sections", []):
+            if s.get("type") == "heading":
+                hlevel = s.get("level", 2)
+                hcontent = str(s.get("content", ""))
+                hid = str(s.get("block_id", ""))
+                if hcontent and hid:
+                    headings.append((hlevel, hcontent, hid))
+        if headings:
+            toc_items = "\n".join(
+                f'<li><a href="#{html.escape(h[2], quote=True)}">{html.escape(h[1])}</a></li>'
+                for h in headings
+            )
+            toc_html = (
+                f'<nav class="doc-toc" aria-label="Table of contents">\n'
+                f"  <h2>On this page</h2>\n"
+                f"  <ol>\n{toc_items}\n  </ol>\n"
+                f"</nav>\n"
+            )
 
     sections_html = "\n".join(
         _render_block(s, doc_disc) for s in data.get("sections", [])
     )
+
+    og_tags = ""
+    if canonical_url:
+        og_tags = f"""<meta property="og:title" content="{title}">
+<meta property="og:description" content="{summary}">
+<meta property="og:type" content="article">
+<meta property="og:url" content="{canonical_url}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{title}">
+<meta name="twitter:description" content="{summary}">
+"""
+
+    theme_color = "#1e3a5f"
+    if site_manifest and site_manifest.get("metadata", {}).get("theme_color"):
+        theme_color = site_manifest["metadata"]["theme_color"]
+
+    canonical_link = f'<link rel="canonical" href="{canonical_url}">' if canonical_url else ""
+
+    breadcrumb = ""
+    if collection_title:
+        site_title = html.escape(site_manifest.get("site_title", "Docs")) if site_manifest else "Docs"
+        breadcrumb = f'<p class="eyebrow"><a href="{base_path}/">{site_title}</a> / {html.escape(collection_title)}</p>\n'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -309,20 +381,37 @@ def _render_page(data: dict) -> str:
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title} — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="{summary}">
+{canonical_link}
+{og_tags}<meta name="theme-color" content="{theme_color}">
+<link rel="stylesheet" href="{base_path}/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
-  <h1>{title}</h1>
-  <p class="meta">Status: {status} | Updated: {updated}</p>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="{base_path}/">{html.escape(site_manifest.get("site_title", "Rig Relay Docs")) if site_manifest else "Rig Relay Docs"}</a>
+  </nav>
+  {breadcrumb}  <h1>{title}</h1>
+  <p class="doc-summary">{summary}</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>{status}</dd>
+    {"<dt>Updated</dt><dd>" + updated + "</dd>" if updated else ""}
+    {"<dt>Source</dt><dd><code>" + html.escape(source_path) + "</code></dd>" if source_path else ""}
+  </dl>
 </header>
-<main>
-{sections_html}
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="{render_strategy}"
+  data-default-disclosure-level="{default_level}"
+  data-initial-mode="{initial_mode}">
+  <article>
+{toc_html}{sections_html}
+  </article>
 </main>
 <footer>
-  <p>Generated from <code>{html.escape(data.get("canonical_path", ""))}</code></p>
+  {"<p>Generated from <code>" + html.escape(source_path) + "</code></p>" if source_path else ""}
   <p>Rig Relay — AGPL-3.0-or-later</p>
 </footer>
 </body>
@@ -330,7 +419,7 @@ def _render_page(data: dict) -> str:
 """
 
 
-def _render_code_schema(data: dict, source_path: str) -> str:
+def _render_code_schema(data: dict, source_path: str, site_manifest: dict | None = None) -> str:
     title = html.escape(str(data.get("title", "Untitled")))
     summary = html.escape(str(data.get("summary", "")))
     status = html.escape(str(data.get("status", "draft")))
@@ -338,6 +427,25 @@ def _render_code_schema(data: dict, source_path: str) -> str:
     schema_id = html.escape(str(data.get("schema_id", "")))
     change_kind = html.escape(str(data.get("change_kind", "")))
     model_summary = html.escape(str(data.get("model_facing_summary", "")))
+
+    base_url = ""
+    base_path = "/rig-relay"
+    if site_manifest:
+        base_url = str(site_manifest.get("base_url", ""))
+        base_path = str(site_manifest.get("base_path", "/rig-relay"))
+
+    canonical_url = f"{base_url}/pages/{data.get('document_id', '')}.html" if base_url else ""
+    og_tags = ""
+    if canonical_url:
+        og_tags = f"""<meta property="og:title" content="{title}">
+<meta property="og:description" content="{summary}">
+<meta property="og:type" content="article">
+<meta property="og:url" content="{canonical_url}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{title}">
+<meta name="twitter:description" content="{summary}">
+"""
+    canonical_link = f'<link rel="canonical" href="{canonical_url}">' if canonical_url else ""
 
     def _list(items: object) -> str:
         if not isinstance(items, list) or not items:
@@ -352,17 +460,27 @@ def _render_code_schema(data: dict, source_path: str) -> str:
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title} — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="{summary}">
+{canonical_link}
+{og_tags}<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="{base_path}/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="{base_path}/">{html.escape(site_manifest.get("site_title", "Rig Relay Docs")) if site_manifest else "Rig Relay Docs"}</a>
+  </nav>
   <h1>{title}</h1>
-  <p class="meta">Status: {status} | Updated: {updated}</p>
+  <p class="doc-summary">{summary}</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>{status}</dd>
+    {"<dt>Updated</dt><dd>" + updated + "</dd>" if updated else ""}
+    <dt>Source</dt><dd><code>{html.escape(source_path)}</code></dd>
+  </dl>
 </header>
-<main>
-  <section>
+<main id="main" class="doc-page">
+  <article>
     <h2>Metadata</h2>
     <table>
       <tr><th>Schema ID</th><td>{schema_id}</td></tr>
@@ -419,6 +537,7 @@ def _render_code_schema(data: dict, source_path: str) -> str:
     <h3>Exclude Patterns</h3>
     <ul>{_list(context_pack.get('exclude_patterns', []))}</ul>
   </section>
+</article>
 </main>
 <footer>
   <p>Generated from <code>{html.escape(data.get("canonical_path", source_path))}</code></p>
@@ -442,20 +561,36 @@ def _load_site_manifest() -> dict:
 def _render_index(manifest: dict) -> str:
     title = html.escape(str(manifest.get("site_title", "Rig Relay Docs")))
     desc = html.escape(str(manifest.get("site_description", "")))
+    base_url = str(manifest.get("base_url", ""))
+    base_path = str(manifest.get("base_path", "/rig-relay"))
+
+    canonical_url = f"{base_url}/" if base_url else ""
+    og_tags = ""
+    if canonical_url:
+        og_tags = f"""<meta property="og:title" content="{title}">
+<meta property="og:description" content="{desc}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{canonical_url}">
+<meta name="twitter:card" content="summary">
+"""
 
     collections_html = ""
     for col in manifest.get("collections", []):
         col_title = html.escape(str(col.get("title", "")))
+        col_desc = html.escape(str(col.get("description", "")))
         docs_html = ""
         for doc in col.get("documents", []):
             did = html.escape(str(doc.get("document_id", "")))
             dtitle = html.escape(str(doc.get("title_override", did)))
-            docs_html += (
-                f'<li><a href="/rig-relay/pages/{did}.html">{dtitle}</a></li>\n'
-            )
+            docs_html += f'<li><a href="{base_path}/pages/{did}.html">{dtitle}</a></li>\n'
         collections_html += (
-            f"<section><h2>{col_title}</h2><ul>{docs_html}</ul></section>\n"
+            f'<section class="collection-card"><h2>{col_title}</h2>'
+            f'{"<p>" + col_desc + "</p>" if col_desc else ""}'
+            f'<ul>{docs_html}</ul></section>\n'
         )
+
+    theme_color = manifest.get("metadata", {}).get("theme_color", "#1e3a5f") if manifest.get("metadata") else "#1e3a5f"
+    canonical_link = f'<link rel="canonical" href="{canonical_url}">' if canonical_url else ""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -463,15 +598,18 @@ def _render_index(manifest: dict) -> str:
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title}</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="{desc}">
+{canonical_link}
+{og_tags}<meta name="theme-color" content="{theme_color}">
+<link rel="stylesheet" href="{base_path}/assets/site.css">
 </head>
 <body>
-<header>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
   <h1>{title}</h1>
-  <p>{desc}</p>
+  <p class="doc-summary">{desc}</p>
 </header>
-<main>
+<main id="main">
 {collections_html}
 </main>
 <footer>
@@ -505,7 +643,7 @@ def _render_manifest(pages: list[dict], git_sha: str) -> str:
                 {
                     "document_id": p.get("document_id", ""),
                     "title": p.get("title", ""),
-                    "source": p.get("_source_path", ""),
+                    "source_json_path": p.get("_source_path", ""),
                 }
                 for p in pages
             ],
@@ -514,10 +652,41 @@ def _render_manifest(pages: list[dict], git_sha: str) -> str:
     )
 
 
-_CSS = """body{font-family:system-ui,sans-serif;max-width:900px;margin:0 auto;padding:1rem;line-height:1.6;color:#1a1a1a;background:#fafafa}
-header{border-bottom:2px solid #2563eb;padding-bottom:.5rem;margin-bottom:2rem}
-nav a{color:#2563eb;text-decoration:none;font-weight:600}
-h1,h2,h3{color:#1e3a5f}
+_CSS = """body{font-family:system-ui,sans-serif;max-width:900px;margin:0 auto;padding:1rem;line-height:1.6;color:#111827;background:#f9fafb}
+a{color:#1d4ed8}
+a:focus-visible,summary:focus-visible,button:focus-visible{outline:3px solid #2563eb;outline-offset:3px;border-radius:2px}
+.skip-link{position:absolute;top:-100px;left:0;background:#1e3a5f;color:#fff;padding:.5rem 1rem;z-index:100;border-radius:0 0 .25rem 0}
+.skip-link:focus{top:0}
+.site-header{border-bottom:2px solid #2563eb;padding-bottom:.5rem;margin-bottom:2rem}
+.site-header nav a{color:#2563eb;text-decoration:none;font-weight:600;margin-right:1.5rem}
+.eyebrow{font-size:.85rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem}
+.eyebrow a{color:#6b7280;text-decoration:none}
+.eyebrow a:hover{text-decoration:underline}
+h1{color:#1e3a5f;margin-top:0}
+h2,h3,h4{color:#1e3a5f}
+.doc-summary{color:#374151;font-size:1.05rem;margin-bottom:1rem}
+.doc-meta{display:grid;grid-template-columns:auto 1fr;gap:.25rem 1rem;font-size:.9rem;color:#6b7280;margin:1rem 0}
+.doc-meta dt{font-weight:600}
+.doc-meta dd{margin:0}
+.doc-toc{background:#f3f4f6;padding:.75rem 1rem;border-radius:.25rem;margin-bottom:1.5rem}
+.doc-toc h2{font-size:1rem;margin-top:0}
+.doc-toc ol{padding-left:1.5rem;margin-bottom:0}
+.doc-toc a{text-decoration:none}
+.collection-card{background:#fff;border:1px solid #e5e7eb;border-radius:.25rem;padding:1rem;margin-bottom:1rem}
+.collection-card h2{margin-top:0;font-size:1.1rem}
+.collection-card ul{list-style:none;padding-left:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.25rem}
+.collection-card li{margin:0}
+.disclosure-collapsible{margin:.5rem 0}
+.disclosure-collapsible summary{cursor:pointer;padding:.25rem 0;color:#1d4ed8;font-weight:500}
+.disclosure-collapsible summary:hover{text-decoration:underline}
+.disclosure-standard{border-left:3px solid #d1d5db;padding-left:1rem}
+.disclosure-detailed{border-left:3px solid #2563eb;padding-left:1rem}
+.disclosure-exhaustive{border-left:3px solid #1e3a5f;padding-left:1rem;font-size:.95rem}
+.render-variant-risk_panel{background:#fef2f2;border-left:4px solid #dc2626}
+.render-variant-evidence_panel{background:#eff6ff;border-left:4px solid #2563eb}
+.render-variant-decision_panel{background:#ecfdf5;border-left:4px solid #059669}
+.emphasis-important{font-weight:600}
+.emphasis-subtle{font-size:.95rem;color:#6b7280}
 .callout{padding:.75rem 1rem;border-left:4px solid;margin:1rem 0;border-radius:0 .25rem .25rem 0}
 .callout-info{background:#dbeafe;border-color:#2563eb}
 .callout-warning{background:#fef3c7;border-color:#d97706}
@@ -527,7 +696,7 @@ pre{background:#1e293b;color:#e2e8f0;padding:1rem;border-radius:.25rem;overflow-
 code{font-family:monospace;font-size:.9rem}
 table{border-collapse:collapse;width:100%;margin:1rem 0}
 th,td{border:1px solid #d1d5db;padding:.5rem;text-align:left}
-th{background:#f3f4f6}
+th{background:#f3f4f6;font-weight:600}
 footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #d1d5db;font-size:.85rem;color:#6b7280}
 .meta{color:#6b7280;font-size:.9rem}
 .risk,.decision,.test_evidence{padding:.75rem 1rem;margin:1rem 0;border-radius:.25rem}
@@ -555,6 +724,9 @@ def main() -> int:
 
     seen_ids: set[str] = set()
 
+    # Load manifest for metadata and navigation
+    manifest = _load_site_manifest()
+
     for jf in json_files:
         try:
             data = _load_json(jf)
@@ -578,7 +750,7 @@ def main() -> int:
             data["_source_path"] = str(jf.relative_to(REPO_ROOT))
             pages.append(data)
 
-            html_content = _render_page(data)
+            html_content = _render_page(data, manifest)
             out_path = PAGES_OUT / f"{did}.html"
             out_path.write_text(html_content, encoding="utf-8")
             continue
@@ -601,7 +773,7 @@ def main() -> int:
                 }
             )
 
-            html_content = _render_code_schema(data, str(jf.relative_to(REPO_ROOT)))
+            html_content = _render_code_schema(data, str(jf.relative_to(REPO_ROOT)), manifest)
             out_path = PAGES_OUT / f"{did}.html"
             out_path.write_text(html_content, encoding="utf-8")
 
@@ -612,7 +784,6 @@ def main() -> int:
         return 1
 
     # Render index
-    manifest = _load_site_manifest()
     index_html = _render_index(manifest)
     (DOCS_OUT / "index.html").write_text(index_html, encoding="utf-8")
 

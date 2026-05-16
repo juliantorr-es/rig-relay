@@ -4,16 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Frontend Security Audit — Rig Relay Desktop — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bu">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/frontend-security-audit-2026-05-14.html">
+<meta property="og:title" content="Frontend Security Audit — Rig Relay Desktop">
+<meta property="og:description" content="The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bu">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/frontend-security-audit-2026-05-14.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Frontend Security Audit — Rig Relay Desktop">
+<meta name="twitter:description" content="The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bu">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Frontend Security Audit — Rig Relay Desktop</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bu</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/frontend-security-audit-2026-05-14.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Frontend Security Audit — Rig Relay Desktop</a></li>
+<li><a href="#h2-3">Overview</a></li>
+<li><a href="#h2-5">Audit Summary</a></li>
+<li><a href="#h2-7">Findings detail</a></li>
+<li><a href="#h3-8">1. `innerHTML` eliminated (✅)</a></li>
+<li><a href="#h3-11">2. No Content-Security-Policy (❌ Medium)</a></li>
+<li><a href="#h3-13">3. WS token delivery (✅)</a></li>
+<li><a href="#h3-17">4. No TLS (⚠️ Accept)</a></li>
+<li><a href="#h3-19">5. Bridge removal (✅)</a></li>
+<li><a href="#h3-21">6. Widget data flow (✅)</a></li>
+<li><a href="#h3-23">7. Command injection (✅ Mild)</a></li>
+<li><a href="#h3-25">8. Mode switching (✅)</a></li>
+<li><a href="#h2-27">Remaining Reinforcement Opportunities</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Frontend Security Audit — Rig Relay Desktop</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Generated: 2026-05-14 | Scope: `frontend/desktop/` HTML/CSS/JS</p>
@@ -85,6 +127,7 @@
 
 <p id="p-28" class="disclosure-standard" data-disclosure-level="standard">1. **CSP header**: ✅ Implemented — `&lt;meta&gt;` tag in `index.html` with restrictive policy 2. **WebSocket auth rotation**: ⚠️ Documented — token is static per session. Rotation requires protocol-level change (token refresh endpoint). Consider for future. 3. **Message validation**: ✅ Implemented — `_validate_message_shape()` checks required fields and types per message kind. Logs `audit.message.invalid_shape` on violation. 4. **Rate limiting granularity**: ✅ Implemented — `_RATE_LIMIT_BY_TYPE` applies per-message-type multipliers. Auth (2x stricter), chat (3x), subscribe (4x), ping (0.2x looser). 5. **Audit log**: ✅ Implemented — Server-side: structured `logger.warning(&quot;audit.&lt;domain&gt;.&lt;event&gt;&quot;)` calls with templated args. Client-side: `audit.js` module with `console.warn` format. Covers auth failures, rate limits, oversized messages, connection drops, message shape violations.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/frontend-security-audit-2026-05-14.v1.json</code></p>

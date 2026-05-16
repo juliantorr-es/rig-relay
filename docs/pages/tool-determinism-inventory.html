@@ -4,16 +4,51 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tool Determinism Inventory — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-d">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/tool-determinism-inventory.html">
+<meta property="og:title" content="Tool Determinism Inventory">
+<meta property="og:description" content="This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-d">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/tool-determinism-inventory.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Tool Determinism Inventory">
+<meta name="twitter:description" content="This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-d">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Tool Determinism Inventory</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-d</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/tool-determinism-inventory.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Tool Determinism Inventory</a></li>
+<li><a href="#h2-5">Reasoning Traces</a></li>
+<li><a href="#h2-9">Inventory</a></li>
+<li><a href="#h2-11">Refinement Backlog Linkage</a></li>
+<li><a href="#h2-13">Determinism Classes</a></li>
+<li><a href="#h2-15">Mutation Classes</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Tool Determinism Inventory</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).</p>
@@ -64,6 +99,7 @@
 
 <p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- `read_only`: No side effects. - `writes_workspace`: Modifies files in the user&#x27;s working directory. - `writes_evidence_only`: Only modifies Rig Relay telemetry/evidence logs. - `writes_temp_only`: Only modifies temporary files. - `mutates_git_state`: Modifies the Git repository (index, commits, etc.). - `external_side_effect`: Modifies external systems (API calls, etc.). - `unknown`: Classification pending.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/tool-determinism-inventory.v1.json</code></p>

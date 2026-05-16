@@ -4,16 +4,84 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Fleet Coordination Plane — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05). Phase 0 — Mission Router (Complete, 2026-05).**">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/fleet-coordination-plane.html">
+<meta property="og:title" content="Rig Fleet Coordination Plane">
+<meta property="og:description" content="**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05). Phase 0 — Mission Router (Complete, 2026-05).**">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/fleet-coordination-plane.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Fleet Coordination Plane">
+<meta name="twitter:description" content="**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05). Phase 0 — Mission Router (Complete, 2026-05).**">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Rig Fleet Coordination Plane</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05). Phase 0 — Mission Router (Complete, 2026-05).**</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/fleet-coordination-plane.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Fleet Coordination Plane</a></li>
+<li><a href="#h2-3">1. Vision</a></li>
+<li><a href="#h2-6">2. Coordination Model</a></li>
+<li><a href="#h3-8">Concept Mapping</a></li>
+<li><a href="#h3-10">Core Entities</a></li>
+<li><a href="#h2-12">3. Lease Semantics</a></li>
+<li><a href="#h2-15">4. Orchestrator Authority</a></li>
+<li><a href="#h2-18">5. Operations</a></li>
+<li><a href="#h2-20">6. Event Semantics</a></li>
+<li><a href="#h2-23">7.5 Fleet Queue (Phase 0)</a></li>
+<li><a href="#h3-25">Queue Item Kinds</a></li>
+<li><a href="#h3-27">Item State Machine</a></li>
+<li><a href="#h3-30">Ordering Rules</a></li>
+<li><a href="#h3-32">Storage</a></li>
+<li><a href="#h3-34">Content-Light</a></li>
+<li><a href="#h3-36">Phase 0 Queue Runner (2026-05)</a></li>
+<li><a href="#h3-39">Phase 0 Limitations</a></li>
+<li><a href="#h2-41">7.6 Fleet Projection / Read Model (Phase 0)</a></li>
+<li><a href="#h3-43">Data Sources</a></li>
+<li><a href="#h3-46">Sub-models</a></li>
+<li><a href="#h3-48">Worker Functions</a></li>
+<li><a href="#h3-50">Content-Light Enforcement</a></li>
+<li><a href="#h3-52">TUI Integration</a></li>
+<li><a href="#h3-54">Tests</a></li>
+<li><a href="#h3-56">Schema</a></li>
+<li><a href="#h2-58">7.7 Mission Router (Phase 0)</a></li>
+<li><a href="#h3-60">Key Responsibilities</a></li>
+<li><a href="#h3-62">Content-Light Boundary</a></li>
+<li><a href="#h3-64">Phase 0 Limitations</a></li>
+<li><a href="#h2-66">8. Storage Design</a></li>
+<li><a href="#h2-68">9. Failure Behavior</a></li>
+<li><a href="#h2-70">10. UI/Projections</a></li>
+<li><a href="#h2-72">11. Phase 0 — Patch Proposal Workflow</a></li>
+<li><a href="#h3-75">Models</a></li>
+<li><a href="#h3-78">Proposal Status Lifecycle</a></li>
+<li><a href="#h3-80">Content-Light Boundary</a></li>
+<li><a href="#h3-82">Relationship to Path Leases</a></li>
+<li><a href="#h3-84">Orchestrator Authority</a></li>
+<li><a href="#h3-86">Deferred Features (Post-Phase 0)</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Fleet Coordination Plane</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05). Phase 0 — Mission Router (Complete, 2026-05).**</p>
@@ -274,6 +342,7 @@
 
 <p id="p-87" class="disclosure-standard" data-disclosure-level="standard">- **Patch application**: No code applies proposals to the worktree. Only models exist. - **Lease integration**: No automatic lease acquisition on proposal acceptance. - **Orchestrator loop**: No runtime loop that polls for pending proposals and auto-decides. - **Revisions**: No `needs_revision` → resubmit → re-decide cycle enforcement. - **Supersede propagation**: No automatic cascading of superseded status to dependent proposals. - **TUI panel**: No queue or proposal review panel in the cockpit.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/fleet-coordination-plane.v1.json</code></p>

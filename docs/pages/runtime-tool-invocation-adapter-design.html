@@ -4,16 +4,59 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Runtime Tool Invocation Adapter Design — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Status: Phase 1 implemented** — adapter models, schema, and 38 tests complete.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/runtime-tool-invocation-adapter-design.html">
+<meta property="og:title" content="Runtime Tool Invocation Adapter Design">
+<meta property="og:description" content="**Status: Phase 1 implemented** — adapter models, schema, and 38 tests complete.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/runtime-tool-invocation-adapter-design.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Runtime Tool Invocation Adapter Design">
+<meta name="twitter:description" content="**Status: Phase 1 implemented** — adapter models, schema, and 38 tests complete.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>Runtime Tool Invocation Adapter Design</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Status: Phase 1 implemented** — adapter models, schema, and 38 tests complete.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/runtime-tool-invocation-adapter-design.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Runtime Tool Invocation Adapter Design</a></li>
+<li><a href="#h2-3">Design Summary</a></li>
+<li><a href="#h2-6">Input</a></li>
+<li><a href="#h2-8">Output</a></li>
+<li><a href="#h2-10">Canonical Behavior</a></li>
+<li><a href="#h2-12">Tool-Specific Mapping</a></li>
+<li><a href="#h3-13">WriteFile</a></li>
+<li><a href="#h3-15">SearchReplace</a></li>
+<li><a href="#h3-17">Validate</a></li>
+<li><a href="#h3-19">Bash / Runtime Execution</a></li>
+<li><a href="#h2-21">Refusal Taxonomy</a></li>
+<li><a href="#h2-23">Dependencies</a></li>
+<li><a href="#h2-25">Dry-Run Integration</a></li>
+<li><a href="#h2-30">Future Schemas</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Adapter Design</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status: Phase 1 implemented** — adapter models, schema, and 38 tests complete.</p>
@@ -80,6 +123,7 @@
 
 <p id="p-33" class="disclosure-standard" data-disclosure-level="standard">These should remain content-light and should not carry raw prompts, raw stdout/stderr, raw diffs, or file bodies.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/runtime-tool-invocation-adapter-design.v1.json</code></p>

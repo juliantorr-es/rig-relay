@@ -4,16 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validate Tool Contract — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="`validate` is a deterministic, read-only validation surface for repeated command families that currently run through bash.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/validate-tool-contract.html">
+<meta property="og:title" content="Validate Tool Contract">
+<meta property="og:description" content="`validate` is a deterministic, read-only validation surface for repeated command families that currently run through bash.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/validate-tool-contract.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Validate Tool Contract">
+<meta name="twitter:description" content="`validate` is a deterministic, read-only validation surface for repeated command families that currently run through bash.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Validate Tool</p>
   <h1>Validate Tool Contract</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">`validate` is a deterministic, read-only validation surface for repeated command families that currently run through bash.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/validate-tool/validate-tool-contract.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Validate Tool Contract</a></li>
+<li><a href="#h2-2">Purpose</a></li>
+<li><a href="#h2-7">Proposed Models</a></li>
+<li><a href="#h3-8">ValidateArgs</a></li>
+<li><a href="#h3-10">ValidateCheckResult</a></li>
+<li><a href="#h3-12">ValidateResult</a></li>
+<li><a href="#h3-14">ValidateReceipt</a></li>
+<li><a href="#h2-20">Path Representation Policy</a></li>
+<li><a href="#h2-24">Contract Rules</a></li>
+<li><a href="#h2-26">Stage 2 Implementation Status ✅</a></li>
+<li><a href="#h2-32">Stage 3 Implementation Status ✅</a></li>
+<li><a href="#h2-36">Output Policy</a></li>
+<li><a href="#h2-38">Deterministic Result Envelope</a></li>
+<li><a href="#h2-41">Stage 5 Implementation Status ✅</a></li>
+<li><a href="#h3-43">ValidateGitState Fields</a></li>
+<li><a href="#h3-45">expected_dirty_policy Behavior</a></li>
+<li><a href="#h3-50">worktree-readiness Profile</a></li>
+<li><a href="#h3-53">Receipt Content-Light Behavior</a></li>
+<li><a href="#h3-55">Known Limitations</a></li>
+<li><a href="#h2-57">Current Repository Fit</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validate Tool Contract</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
@@ -230,6 +279,7 @@
 
 <p id="p-60" class="disclosure-standard" data-disclosure-level="standard">`validate` should compose those patterns rather than invent a second ad hoc convention.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/validate-tool/validate-tool-contract.v1.json</code></p>

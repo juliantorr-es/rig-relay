@@ -4,16 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Storage Retention Policy — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Retention policy for local Rig Relay storage including sessions, artifacts, telemetry, and traces.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/storage-retention-policy.html">
+<meta property="og:title" content="Storage Retention Policy">
+<meta property="og:description" content="Retention policy for local Rig Relay storage including sessions, artifacts, telemetry, and traces.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/storage-retention-policy.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Storage Retention Policy">
+<meta name="twitter:description" content="Retention policy for local Rig Relay storage including sessions, artifacts, telemetry, and traces.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Storage Retention Policy</h1>
-  <p class="meta">Status: active | Updated: 2026-05-18</p>
+  <p class="doc-summary">Retention policy for local Rig Relay storage including sessions, artifacts, telemetry, and traces.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/storage_retention_policy.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#title">Storage Retention Policy</a></li>
+<li><a href="#scope">Scope</a></li>
+<li><a href="#defaults">Default Retention Periods</a></li>
+<li><a href="#gc">Garbage Collection</a></li>
+<li><a href="#env">Configuration</a></li>
+<li><a href="#privacy">Privacy</a></li>
+<li><a href="#budget">Storage Budget</a></li>
+  </ol>
+</nav>
 <h1 id="title" class="disclosure-standard" data-disclosure-level="standard">Storage Retention Policy</h1>
 
 <div class="callout callout-info disclosure-standard" id="status-callout" data-disclosure-level="standard">
@@ -70,6 +106,7 @@
 
 <p id="budget-content" class="disclosure-standard" data-disclosure-level="standard">compute_storage_summary() checks total artifact size against a configurable budget. Status values: ok (under budget), warn (approaching limit), over_budget (GC triggered), fleet_blocked (no new sessions until GC completes).</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/storage_retention_policy.v1.json</code></p>

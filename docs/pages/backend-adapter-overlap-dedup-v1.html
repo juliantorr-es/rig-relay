@@ -4,16 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Backend Adapter Overlap Dedup v1 — Audit — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Date**: 2026-05-17">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/backend-adapter-overlap-dedup-v1.html">
+<meta property="og:title" content="Backend Adapter Overlap Dedup v1 — Audit">
+<meta property="og:description" content="**Date**: 2026-05-17">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/backend-adapter-overlap-dedup-v1.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Backend Adapter Overlap Dedup v1 — Audit">
+<meta name="twitter:description" content="**Date**: 2026-05-17">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Backend</p>
   <h1>Backend Adapter Overlap Dedup v1 — Audit</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Date**: 2026-05-17</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/backend/backend-adapter-overlap-dedup-v1.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Backend Adapter Overlap Dedup v1 — Audit</a></li>
+<li><a href="#h2-3">Overlap Inventory</a></li>
+<li><a href="#h3-6">Behavior Matrix</a></li>
+<li><a href="#h2-8">Extraction Decision</a></li>
+<li><a href="#h2-12">Test Consolidation</a></li>
+<li><a href="#h3-13">Before</a></li>
+<li><a href="#h3-15">After</a></li>
+<li><a href="#h3-18">Lines Changed</a></li>
+<li><a href="#h3-20">Provider-Specific Seams</a></li>
+<li><a href="#h3-22">Risks</a></li>
+<li><a href="#h3-24">Validation</a></li>
+<li><a href="#h2-26">Deferred</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Backend Adapter Overlap Dedup v1 — Audit</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-17</p>
@@ -98,6 +139,7 @@
 
 <p id="p-27" class="disclosure-standard" data-disclosure-level="standard">No remaining adapter overlap. The Anthropic ↔ Vertex Anthropic relationship is cleanly modeled as inheritance. Future Anthropic-family adapters (e.g., AWS Bedrock Anthropic) can follow the same pattern.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/backend/backend-adapter-overlap-dedup-v1.v1.json</code></p>

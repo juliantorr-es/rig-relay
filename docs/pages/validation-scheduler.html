@@ -4,16 +4,66 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validation Scheduler — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="The Validation Scheduler is a Phase 0 control-plane system built into the Validate tool. It owns three responsibilities that parallel agents cannot reliably manage themselves: **caching**, **request c">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/validation-scheduler.html">
+<meta property="og:title" content="Validation Scheduler">
+<meta property="og:description" content="The Validation Scheduler is a Phase 0 control-plane system built into the Validate tool. It owns three responsibilities that parallel agents cannot reliably manage themselves: **caching**, **request c">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/validation-scheduler.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Validation Scheduler">
+<meta name="twitter:description" content="The Validation Scheduler is a Phase 0 control-plane system built into the Validate tool. It owns three responsibilities that parallel agents cannot reliably manage themselves: **caching**, **request c">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Validation Scheduler</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">The Validation Scheduler is a Phase 0 control-plane system built into the Validate tool. It owns three responsibilities that parallel agents cannot reliably manage themselves: **caching**, **request c</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/validation-scheduler.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Validation Scheduler</a></li>
+<li><a href="#h2-2">Overview</a></li>
+<li><a href="#h2-5">Cache</a></li>
+<li><a href="#h3-6">How it works</a></li>
+<li><a href="#h3-10">Cache invalidation</a></li>
+<li><a href="#h3-12">Reuse policy</a></li>
+<li><a href="#h2-14">Scheduler / Coalescing</a></li>
+<li><a href="#h3-15">Running lock</a></li>
+<li><a href="#h3-18">Behavior</a></li>
+<li><a href="#h3-20">Phase 0 limitation</a></li>
+<li><a href="#h2-22">Bounded Parallelism</a></li>
+<li><a href="#h3-23">Policy</a></li>
+<li><a href="#h3-26">Worker limits</a></li>
+<li><a href="#h3-28">Why not `-n auto`</a></li>
+<li><a href="#h2-30">Validation Phases</a></li>
+<li><a href="#h2-33">Content-Light Records</a></li>
+<li><a href="#h2-36">End-to-End Integration</a></li>
+<li><a href="#h3-39">Test coverage (216 tests passing)</a></li>
+<li><a href="#h3-42">Pre-existing bug fix</a></li>
+<li><a href="#h2-44">Phase 0 Limitations</a></li>
+<li><a href="#h2-46">Configuration</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validation Scheduler</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
@@ -158,6 +208,7 @@ Check C requested X → lock free → runs normally</code></pre>
 </tbody>
 </table>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/validation-scheduler.v1.json</code></p>

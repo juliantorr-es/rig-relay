@@ -4,16 +4,54 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mutation Tool Contract Matrix — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This matrix documents how the two mutation primitives (`write_file` and `search_replace`) satisfy the same high-level deterministic evidence guarantees. It is not a mandate to force identical implemen">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/mutation-tool-contract-matrix.html">
+<meta property="og:title" content="Mutation Tool Contract Matrix">
+<meta property="og:description" content="This matrix documents how the two mutation primitives (`write_file` and `search_replace`) satisfy the same high-level deterministic evidence guarantees. It is not a mandate to force identical implemen">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/mutation-tool-contract-matrix.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Mutation Tool Contract Matrix">
+<meta name="twitter:description" content="This matrix documents how the two mutation primitives (`write_file` and `search_replace`) satisfy the same high-level deterministic evidence guarantees. It is not a mandate to force identical implemen">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Tool Hardening</p>
   <h1>Mutation Tool Contract Matrix</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This matrix documents how the two mutation primitives (`write_file` and `search_replace`) satisfy the same high-level deterministic evidence guarantees. It is not a mandate to force identical implemen</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/tool-hardening/mutation-tool-contract-matrix.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Mutation Tool Contract Matrix</a></li>
+<li><a href="#h2-2">Overview</a></li>
+<li><a href="#h2-4">Grades</a></li>
+<li><a href="#h2-6">Matrix</a></li>
+<li><a href="#h2-8">Summary</a></li>
+<li><a href="#h2-10">Gaps by Tool</a></li>
+<li><a href="#h3-11">write_file gaps</a></li>
+<li><a href="#h3-13">search_replace gaps</a></li>
+<li><a href="#h2-15">What Tests Now Enforce</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Mutation Tool Contract Matrix</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
@@ -85,6 +123,7 @@
 
 <p id="p-18" class="disclosure-standard" data-disclosure-level="standard">ToolError bypass tests were updated in `tests/tools/test_hardened_tools.py`: - `test_write_file_rejects_directory_target` → expects structured `refused`/`path_is_directory` instead of `ToolError` - `test_write_file_overwrite_false_on_existing_does_not_emit_hash` → expects structured `refused`/`overwrite_required` instead of `ToolError`</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/tool-hardening/mutation-tool-contract-matrix.v1.json</code></p>

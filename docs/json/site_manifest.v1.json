@@ -3,62 +3,1383 @@
   "site_title": "Rig Relay Documentation",
   "site_description": "Local governed runtime for agent work — architecture, governance, policies, and proofs.",
   "base_url": "https://juliantorr-es.github.io/rig-relay",
+  "base_path": "/rig-relay",
   "collections": [
+    {
+      "collection_id": "architecture",
+      "title": "Architecture",
+      "description": "Documentation in architecture",
+      "order": 1,
+      "documents": [
+        {
+          "document_id": "rig-integration-contract",
+          "path": "docs/json/architecture/rig-integration-contract.v1.json",
+          "title_override": "Rig Integration Contract"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits",
+      "title": "Audits",
+      "description": "Documentation in audits",
+      "order": 2,
+      "documents": [
+        {
+          "document_id": "artifact-schema-doctrine",
+          "path": "docs/json/audits/artifact-schema-doctrine.v1.json",
+          "title_override": "Artifact Schema Doctrine"
+        },
+        {
+          "document_id": "brand-refresh-bauhaus-phosphor",
+          "path": "docs/json/audits/brand-refresh-bauhaus-phosphor.v1.json",
+          "title_override": "Rig Relay Brand Refresh Audit"
+        },
+        {
+          "document_id": "config-root-resolution-policy",
+          "path": "docs/json/audits/config-root-resolution-policy.v1.json",
+          "title_override": "Audit: Config Root Resolution Policy"
+        },
+        {
+          "document_id": "coordination-guard-availability",
+          "path": "docs/json/audits/coordination-guard-availability.v1.json",
+          "title_override": "Coordination Guard Availability Audit"
+        },
+        {
+          "document_id": "coordination-migration-inventory",
+          "path": "docs/json/audits/coordination-migration-inventory.v1.json",
+          "title_override": "Coordination Migration Inventory"
+        },
+        {
+          "document_id": "current-built-in-tools",
+          "path": "docs/json/audits/current-built-in-tools.v1.json",
+          "title_override": "Current Built-In Tool Inventory"
+        },
+        {
+          "document_id": "deep-research-report1",
+          "path": "docs/json/audits/deep-research-report1.v1.json",
+          "title_override": "Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy"
+        },
+        {
+          "document_id": "deep-research-report2",
+          "path": "docs/json/audits/deep-research-report2.v1.json",
+          "title_override": "Rig Relay audit of the context-caching assessment"
+        },
+        {
+          "document_id": "deep-research-report3",
+          "path": "docs/json/audits/deep-research-report3.v1.json",
+          "title_override": "Context Engineering and Context Caching"
+        },
+        {
+          "document_id": "determinism-maturity-matrix",
+          "path": "docs/json/audits/determinism-maturity-matrix.v1.json",
+          "title_override": "Audit: Determinism Maturity Matrix"
+        },
+        {
+          "document_id": "evidence-contract-inventory",
+          "path": "docs/json/audits/evidence-contract-inventory.v1.json",
+          "title_override": "Audit: Evidence Contract Inventory"
+        },
+        {
+          "document_id": "evidence-manifest-receipt-chain-design",
+          "path": "docs/json/audits/evidence-manifest-receipt-chain-design.v1.json",
+          "title_override": "Audit: Evidence Manifest and Receipt Chain Design"
+        },
+        {
+          "document_id": "evidence-root-policy-doctrine",
+          "path": "docs/json/audits/evidence-root-policy-doctrine.v1.json",
+          "title_override": "Audit: Evidence Root Product Semantics and Policy Doctrine"
+        },
+        {
+          "document_id": "evidence-security-privacy-boundary",
+          "path": "docs/json/audits/evidence-security-privacy-boundary.v1.json",
+          "title_override": "Audit: Evidence Security and Privacy Boundary"
+        },
+        {
+          "document_id": "frontend-security-audit-2026-05-14",
+          "path": "docs/json/audits/frontend-security-audit-2026-05-14.v1.json",
+          "title_override": "Frontend Security Audit — Rig Relay Desktop"
+        },
+        {
+          "document_id": "provider-adapter-contract-design",
+          "path": "docs/json/audits/provider-adapter-contract-design.v1.json",
+          "title_override": "Audit: Provider Adapter Contract Design"
+        },
+        {
+          "document_id": "provider-boundary-adapter-contract-map",
+          "path": "docs/json/audits/provider-boundary-adapter-contract-map.v1.json",
+          "title_override": "Audit: Provider Boundary and Adapter Contract Map"
+        },
+        {
+          "document_id": "relay-entry-point-authority",
+          "path": "docs/json/audits/relay-entry-point-authority.v1.json",
+          "title_override": "Relay Entry Point Authority Audit"
+        },
+        {
+          "document_id": "relay-smoke-validation-doctrine",
+          "path": "docs/json/audits/relay-smoke-validation-doctrine.v1.json",
+          "title_override": "Audit: Relay Smoke and Validation Doctrine"
+        },
+        {
+          "document_id": "relay-validation-gates-roadmap",
+          "path": "docs/json/audits/relay-validation-gates-roadmap.v1.json",
+          "title_override": "Audit: Relay Validation Gates and Doctor Roadmap"
+        },
+        {
+          "document_id": "rig-intake-cannibalization-plan",
+          "path": "docs/json/audits/rig-intake-cannibalization-plan.v1.json",
+          "title_override": "Rig + Intake Cannibalization Plan for Rig Relay"
+        },
+        {
+          "document_id": "session-lifecycle-state-machine",
+          "path": "docs/json/audits/session-lifecycle-state-machine.v1.json",
+          "title_override": "Audit: Session Lifecycle State Machine"
+        },
+        {
+          "document_id": "tool-determinism-inventory",
+          "path": "docs/json/audits/tool-determinism-inventory.v1.json",
+          "title_override": "Tool Determinism Inventory"
+        },
+        {
+          "document_id": "tool-execution-artifact-safety-boundary",
+          "path": "docs/json/audits/tool-execution-artifact-safety-boundary.v1.json",
+          "title_override": "Audit: Tool Execution and Artifact Safety Boundary"
+        },
+        {
+          "document_id": "vibe-cli-purge-inventory",
+          "path": "docs/json/audits/vibe-cli-purge-inventory.v1.json",
+          "title_override": "Vibe CLI Purge Inventory"
+        },
+        {
+          "document_id": "vibe-legacy-boundary-inventory",
+          "path": "docs/json/audits/vibe-legacy-boundary-inventory.v1.json",
+          "title_override": "Vibe Legacy Boundary Inventory"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-agent-loop",
+      "title": "Audits/Agent Loop",
+      "description": "Documentation in audits/agent-loop",
+      "order": 3,
+      "documents": [
+        {
+          "document_id": "agent-loop-ownership-audit",
+          "path": "docs/json/audits/agent-loop/agent-loop-ownership-audit.v1.json",
+          "title_override": "AgentLoop Ownership Audit"
+        },
+        {
+          "document_id": "architecture-guards-proposal",
+          "path": "docs/json/audits/agent-loop/architecture-guards-proposal.v1.json",
+          "title_override": "Architecture guard tests — proposed (not implemented)"
+        },
+        {
+          "document_id": "conversation-runtime-extraction-plan",
+          "path": "docs/json/audits/agent-loop/conversation-runtime-extraction-plan.v1.json",
+          "title_override": "ConversationRuntime extraction plan"
+        },
+        {
+          "document_id": "conversation-runtime-phase-2a-decision-policy",
+          "path": "docs/json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json",
+          "title_override": "ConversationRuntime Phase 2A — Decision Policy Inventory"
+        },
+        {
+          "document_id": "conversation-runtime-phase-2b-decision-policy",
+          "path": "docs/json/audits/agent-loop/conversation-runtime-phase-2b-decision-policy.v1.json",
+          "title_override": "ConversationRuntime Phase 2B — Hook/Tool/Budget Decision Policy"
+        },
+        {
+          "document_id": "phase3-readiness-reconciliation",
+          "path": "docs/json/audits/agent-loop/phase3-readiness-reconciliation.v1.json",
+          "title_override": "Phase 3 Readiness Reconciliation — Canonical All-Lanes Truth Table"
+        },
+        {
+          "document_id": "phase4-architecture-map",
+          "path": "docs/json/audits/agent-loop/phase4-architecture-map.v1.json",
+          "title_override": "Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1"
+        },
+        {
+          "document_id": "subagent-runtime-toolruntime-v2",
+          "path": "docs/json/audits/agent-loop/subagent-runtime-toolruntime-v2.v1.json",
+          "title_override": "SubagentRuntime Governed Tool Path — Verification"
+        },
+        {
+          "document_id": "subagent-runtime-v1",
+          "path": "docs/json/audits/agent-loop/subagent-runtime-v1.v1.json",
+          "title_override": "SubagentRuntime v1 — Evidence and Tool Execution Mode"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-backend",
+      "title": "Audits/Backend",
+      "description": "Documentation in audits/backend",
+      "order": 4,
+      "documents": [
+        {
+          "document_id": "backend-adapter-overlap-dedup-v1",
+          "path": "docs/json/audits/backend/backend-adapter-overlap-dedup-v1.v1.json",
+          "title_override": "Backend Adapter Overlap Dedup v1 — Audit"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-ci",
+      "title": "Audits/Ci",
+      "description": "Documentation in audits/ci",
+      "order": 5,
+      "documents": [
+        {
+          "document_id": "ci-gate-architecture",
+          "path": "docs/json/audits/ci/ci-gate-architecture.v1.json",
+          "title_override": "CI Gate Architecture"
+        },
+        {
+          "document_id": "ci-implementation-roadmap",
+          "path": "docs/json/audits/ci/ci-implementation-roadmap.v1.json",
+          "title_override": "CI Implementation Roadmap"
+        },
+        {
+          "document_id": "ci-path-trigger-map",
+          "path": "docs/json/audits/ci/ci-path-trigger-map.v1.json",
+          "title_override": "CI Path Trigger Map"
+        },
+        {
+          "document_id": "ci-surface-audit",
+          "path": "docs/json/audits/ci/ci-surface-audit.v1.json",
+          "title_override": "CI Surface Audit"
+        },
+        {
+          "document_id": "ci-validate-alignment",
+          "path": "docs/json/audits/ci/ci-validate-alignment.v1.json",
+          "title_override": "CI–Validate Alignment"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-context",
+      "title": "Audits/Context",
+      "description": "Documentation in audits/context",
+      "order": 6,
+      "documents": [
+        {
+          "document_id": "context-assembler-completion-plan",
+          "path": "docs/json/audits/context/context-assembler-completion-plan.v1.json",
+          "title_override": "Context Assembler — Completion Plan"
+        },
+        {
+          "document_id": "context-assembler-final-reconciliation",
+          "path": "docs/json/audits/context/context-assembler-final-reconciliation.v1.json",
+          "title_override": "Context Assembler Final Reconciliation"
+        },
+        {
+          "document_id": "context-assembler-gap-inventory",
+          "path": "docs/json/audits/context/context-assembler-gap-inventory.v1.json",
+          "title_override": "Context Assembler — Gap Inventory"
+        },
+        {
+          "document_id": "context-assembler-stable-v1",
+          "path": "docs/json/audits/context/context-assembler-stable-v1.v1.json",
+          "title_override": "Context Assembler Stable v1"
+        },
+        {
+          "document_id": "context-assembly-plan-v1",
+          "path": "docs/json/audits/context/context-assembly-plan-v1.v1.json",
+          "title_override": "ContextAssemblyPlan Contract Spine v1"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-context-gap-reports",
+      "title": "Audits/Context/Gap Reports",
+      "description": "Documentation in audits/context/gap-reports",
+      "order": 7,
+      "documents": [
+        {
+          "document_id": "lane-a-compiler-renderer-gaps",
+          "path": "docs/json/audits/context/gap-reports/lane-a-compiler-renderer-gaps.v1.json",
+          "title_override": "Lane A — Compiler-Renderer Reconciliation Gaps"
+        },
+        {
+          "document_id": "lane-b-planner-gaps",
+          "path": "docs/json/audits/context/gap-reports/lane-b-planner-gaps.v1.json",
+          "title_override": "Lane B — Planner Failure Warnings, RepoIndex Reality, Budget Semantics"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-desktop",
+      "title": "Audits/Desktop",
+      "description": "Documentation in audits/desktop",
+      "order": 8,
+      "documents": [
+        {
+          "document_id": "desktop-golden-path-proof",
+          "path": "docs/json/audits/desktop/desktop-golden-path-proof.v1.json",
+          "title_override": "Desktop Golden Path — Audit Proof"
+        },
+        {
+          "document_id": "single-bridge-before-state",
+          "path": "docs/json/audits/desktop/single-bridge-before-state.v1.json",
+          "title_override": "Desktop Transport — Before State (Split Pywebview + WebSocket)"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-global-rig-declutter",
+      "title": "Audits/Global Rig Declutter",
+      "description": "Documentation in audits/global-rig-declutter",
+      "order": 9,
+      "documents": [
+        {
+          "document_id": "declutter-plan",
+          "path": "docs/json/audits/global-rig-declutter/declutter-plan.v1.json",
+          "title_override": "Declutter Plan"
+        },
+        {
+          "document_id": "inventory",
+          "path": "docs/json/audits/global-rig-declutter/inventory.v1.json",
+          "title_override": "Global Rig Declutter Inventory"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-rig-runtime-port",
+      "title": "Audits/Rig Runtime Port",
+      "description": "Documentation in audits/rig-runtime-port",
+      "order": 10,
+      "documents": [
+        {
+          "document_id": "audit-trail-tamper-evidence-design",
+          "path": "docs/json/audits/rig-runtime-port/audit-trail-tamper-evidence-design.v1.json",
+          "title_override": "Audit Trail Tamper-Evidence Design Audit"
+        },
+        {
+          "document_id": "concept-map",
+          "path": "docs/json/audits/rig-runtime-port/concept-map.v1.json",
+          "title_override": "Rig-to-Relay Runtime Concept Map"
+        },
+        {
+          "document_id": "execution-progress-projection-design",
+          "path": "docs/json/audits/rig-runtime-port/execution-progress-projection-design.v1.json",
+          "title_override": "ExecutionProgress Projection Design — Audit Record"
+        },
+        {
+          "document_id": "fleet-coordination-design",
+          "path": "docs/json/audits/rig-runtime-port/fleet-coordination-design.v1.json",
+          "title_override": "Fleet Coordination Plane — Design Audit"
+        },
+        {
+          "document_id": "mission-context-duckdb-design",
+          "path": "docs/json/audits/rig-runtime-port/mission-context-duckdb-design.v1.json",
+          "title_override": "Mission Context DuckDB Design"
+        },
+        {
+          "document_id": "mission-envelope-spine-design",
+          "path": "docs/json/audits/rig-runtime-port/mission-envelope-spine-design.v1.json",
+          "title_override": "Mission Envelope Spine Design"
+        },
+        {
+          "document_id": "port-roadmap",
+          "path": "docs/json/audits/rig-runtime-port/port-roadmap.v1.json",
+          "title_override": "Rig Runtime Port Roadmap"
+        },
+        {
+          "document_id": "rig-to-relay-runtime-audit",
+          "path": "docs/json/audits/rig-runtime-port/rig-to-relay-runtime-audit.v1.json",
+          "title_override": "Rig Runtime Port Audit — Rig to Rig Relay"
+        },
+        {
+          "document_id": "runtime-tool-convergence-followup",
+          "path": "docs/json/audits/rig-runtime-port/runtime-tool-convergence-followup.v1.json",
+          "title_override": "Runtime Tool Convergence Follow-up"
+        },
+        {
+          "document_id": "runtime-tool-invocation-adapter-design",
+          "path": "docs/json/audits/rig-runtime-port/runtime-tool-invocation-adapter-design.v1.json",
+          "title_override": "Runtime Tool Invocation Adapter Design"
+        },
+        {
+          "document_id": "runtime-tool-invocation-result-contract-audit",
+          "path": "docs/json/audits/rig-runtime-port/runtime-tool-invocation-result-contract-audit.v1.json",
+          "title_override": "Runtime Tool Invocation Result Contract Audit"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-runtime",
+      "title": "Audits/Runtime",
+      "description": "Documentation in audits/runtime",
+      "order": 11,
+      "documents": [
+        {
+          "document_id": "runtime-evidence-spine-v1",
+          "path": "docs/json/audits/runtime/runtime-evidence-spine-v1.v1.json",
+          "title_override": "Runtime Evidence Spine v1"
+        },
+        {
+          "document_id": "runtime-supervisor-result-envelope-v1",
+          "path": "docs/json/audits/runtime/runtime-supervisor-result-envelope-v1.v1.json",
+          "title_override": "RuntimeSupervisor Result Envelope v1"
+        },
+        {
+          "document_id": "state-machine-candidate-audit",
+          "path": "docs/json/audits/runtime/state_machine_candidate_audit.v1.json",
+          "title_override": "Rig Relay Runtime Architecture Audit: State Machines & Event Triggers"
+        },
+        {
+          "document_id": "tool-runtime-evidence-adoption-v1",
+          "path": "docs/json/audits/runtime/tool-runtime-evidence-adoption-v1.v1.json",
+          "title_override": "ToolRuntime Direct Path Envelope Population v1 — Audit"
+        },
+        {
+          "document_id": "tracing-v0",
+          "path": "docs/json/audits/runtime/tracing-v0.v1.json",
+          "title_override": "Tracing v0 — Audit"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-test-suite",
+      "title": "Audits/Test Suite",
+      "description": "Documentation in audits/test-suite",
+      "order": 12,
+      "documents": [
+        {
+          "document_id": "default-suite-tiering-report",
+          "path": "docs/json/audits/test-suite/default_suite_tiering_report.v1.json",
+          "title_override": "Test Suite Tiering Report"
+        },
+        {
+          "document_id": "deleted-module-collection-errors",
+          "path": "docs/json/audits/test-suite/deleted_module_collection_errors.v1.json",
+          "title_override": "Deleted Module Collection Errors — Audit"
+        },
+        {
+          "document_id": "duplicate-test-audit",
+          "path": "docs/json/audits/test-suite/duplicate_test_audit.v1.json",
+          "title_override": "Duplicate Test Audit"
+        },
+        {
+          "document_id": "test-dedup-phase1-note",
+          "path": "docs/json/audits/test-suite/test_dedup_phase1_note.v1.json",
+          "title_override": "Test Deduplication Phase 1 — Doctrine Note"
+        },
+        {
+          "document_id": "test-dedup-phase2-note",
+          "path": "docs/json/audits/test-suite/test_dedup_phase2_note.v1.json",
+          "title_override": "Test Deduplication Phase 2 — normalize high-value AST duplicate clusters"
+        },
+        {
+          "document_id": "test-layout-canonicalization-report",
+          "path": "docs/json/audits/test-suite/test_layout_canonicalization_report.v1.json",
+          "title_override": "Test Layout Canonicalization Report"
+        },
+        {
+          "document_id": "test-purge-acceptance-gate",
+          "path": "docs/json/audits/test-suite/test_purge_acceptance_gate.v1.json",
+          "title_override": "Test Purge Pass 1 — Acceptance Gate"
+        },
+        {
+          "document_id": "test-purge-pass-1-report",
+          "path": "docs/json/audits/test-suite/test_purge_pass_1_report.v1.json",
+          "title_override": "Test Purge Pass 1 Report"
+        },
+        {
+          "document_id": "test-quality-summary",
+          "path": "docs/json/audits/test-suite/test_quality_summary.v1.json",
+          "title_override": "Test Quality Audit Summary"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-tests",
+      "title": "Audits/Tests",
+      "description": "Documentation in audits/tests",
+      "order": 13,
+      "documents": [
+        {
+          "document_id": "test-cleanup-roadmap",
+          "path": "docs/json/audits/tests/test-cleanup-roadmap.v1.json",
+          "title_override": "Test Cleanup Roadmap"
+        },
+        {
+          "document_id": "test-quality-taxonomy",
+          "path": "docs/json/audits/tests/test-quality-taxonomy.v1.json",
+          "title_override": "Test Quality Taxonomy"
+        },
+        {
+          "document_id": "test-suite-quality-audit",
+          "path": "docs/json/audits/tests/test-suite-quality-audit.v1.json",
+          "title_override": "Test Suite Quality Audit"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-tool-hardening",
+      "title": "Audits/Tool Hardening",
+      "description": "Documentation in audits/tool-hardening",
+      "order": 14,
+      "documents": [
+        {
+          "document_id": "bash-deterministic-envelope",
+          "path": "docs/json/audits/tool-hardening/bash-deterministic-envelope.v1.json",
+          "title_override": "Bash Deterministic Tool Envelope"
+        },
+        {
+          "document_id": "mutation-tool-contract-matrix",
+          "path": "docs/json/audits/tool-hardening/mutation-tool-contract-matrix.v1.json",
+          "title_override": "Mutation Tool Contract Matrix"
+        },
+        {
+          "document_id": "orchestration-tool-hardening-gaps",
+          "path": "docs/json/audits/tool-hardening/orchestration-tool-hardening-gaps.v1.json",
+          "title_override": "Orchestration Tool Hardening Gaps"
+        },
+        {
+          "document_id": "read-only-inspection-tool-gaps",
+          "path": "docs/json/audits/tool-hardening/read-only-inspection-tool-gaps.v1.json",
+          "title_override": "Read-Only Inspection Tool Gaps"
+        },
+        {
+          "document_id": "search-replace-final-gaps",
+          "path": "docs/json/audits/tool-hardening/search-replace-final-gaps.v1.json",
+          "title_override": "SearchReplace Final Gaps"
+        },
+        {
+          "document_id": "search-replace-patch-contract",
+          "path": "docs/json/audits/tool-hardening/search-replace-patch-contract.v1.json",
+          "title_override": "SearchReplace Patch Contract"
+        },
+        {
+          "document_id": "tool-hardening-implementation-roadmap",
+          "path": "docs/json/audits/tool-hardening/tool-hardening-implementation-roadmap.v1.json",
+          "title_override": "Tool Hardening Implementation Roadmap"
+        },
+        {
+          "document_id": "tool-hardening-roadmap-audit",
+          "path": "docs/json/audits/tool-hardening/tool-hardening-roadmap-audit.v1.json",
+          "title_override": "Tool Hardening Roadmap Audit"
+        },
+        {
+          "document_id": "write-file-final-gaps",
+          "path": "docs/json/audits/tool-hardening/write-file-final-gaps.v1.json",
+          "title_override": "WriteFile Hardening State"
+        },
+        {
+          "document_id": "write-file-legacy-result-content-audit",
+          "path": "docs/json/audits/tool-hardening/write-file-legacy-result-content-audit.v1.json",
+          "title_override": "WriteFile Legacy Result Content Audit"
+        },
+        {
+          "document_id": "write-file-receipt-gap-closure",
+          "path": "docs/json/audits/tool-hardening/write-file-receipt-gap-closure.v1.json",
+          "title_override": "WriteFile Receipt Gap Closure"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-tool-usage-analysis",
+      "title": "Audits/Tool Usage Analysis",
+      "description": "Documentation in audits/tool-usage-analysis",
+      "order": 15,
+      "documents": [
+        {
+          "document_id": "schema-gaps",
+          "path": "docs/json/audits/tool-usage-analysis/schema-gaps.v1.json",
+          "title_override": "Schema Gaps"
+        },
+        {
+          "document_id": "tool-hardening-priority",
+          "path": "docs/json/audits/tool-usage-analysis/tool-hardening-priority.v1.json",
+          "title_override": "Tool Hardening Priority"
+        },
+        {
+          "document_id": "tool-usage-summary",
+          "path": "docs/json/audits/tool-usage-analysis/tool-usage-summary.v1.json",
+          "title_override": "Local Relay Tool Usage Summary"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-ui",
+      "title": "Audits/Ui",
+      "description": "Documentation in audits/ui",
+      "order": 16,
+      "documents": [
+        {
+          "document_id": "textual-rig-console-maturity-audit",
+          "path": "docs/json/audits/ui/textual-rig-console-maturity-audit.v1.json",
+          "title_override": "Textual Rig Console Maturity Audit"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-validate-tool",
+      "title": "Audits/Validate Tool",
+      "description": "Documentation in audits/validate-tool",
+      "order": 17,
+      "documents": [
+        {
+          "document_id": "bash-usage-audit",
+          "path": "docs/json/audits/validate-tool/bash-usage-audit.v1.json",
+          "title_override": "Bash Usage Audit for Validate Design"
+        },
+        {
+          "document_id": "validate-blocker-taxonomy",
+          "path": "docs/json/audits/validate-tool/validate-blocker-taxonomy.v1.json",
+          "title_override": "Validate Blocker Taxonomy"
+        },
+        {
+          "document_id": "validate-convergence-audit",
+          "path": "docs/json/audits/validate-tool/validate-convergence-audit.v1.json",
+          "title_override": "Validate Workstream Convergence Audit"
+        },
+        {
+          "document_id": "validate-implementation-roadmap",
+          "path": "docs/json/audits/validate-tool/validate-implementation-roadmap.v1.json",
+          "title_override": "Validate Implementation Roadmap"
+        },
+        {
+          "document_id": "validate-profile-taxonomy",
+          "path": "docs/json/audits/validate-tool/validate-profile-taxonomy.v1.json",
+          "title_override": "Validate Profile Taxonomy"
+        },
+        {
+          "document_id": "validate-tool-contract",
+          "path": "docs/json/audits/validate-tool/validate-tool-contract.v1.json",
+          "title_override": "Validate Tool Contract"
+        }
+      ]
+    },
+    {
+      "collection_id": "audits-vscodium-shell-lane",
+      "title": "Audits/Vscodium Shell Lane",
+      "description": "Documentation in audits/vscodium-shell-lane",
+      "order": 18,
+      "documents": [
+        {
+          "document_id": "architecture-options",
+          "path": "docs/json/audits/vscodium-shell-lane/architecture-options.v1.json",
+          "title_override": "Architecture Options: VSCodium Shell Lane"
+        },
+        {
+          "document_id": "compatibility-with-chatgpt-macos",
+          "path": "docs/json/audits/vscodium-shell-lane/compatibility-with-chatgpt-macos.v1.json",
+          "title_override": "ChatGPT macOS Compatibility Audit"
+        },
+        {
+          "document_id": "current-rig-reuse-map",
+          "path": "docs/json/audits/vscodium-shell-lane/current-rig-reuse-map.v1.json",
+          "title_override": "Current Rig Reuse Map"
+        },
+        {
+          "document_id": "effort-estimate",
+          "path": "docs/json/audits/vscodium-shell-lane/effort-estimate.v1.json",
+          "title_override": "Effort Estimate: VSCodium Shell Lane"
+        },
+        {
+          "document_id": "executive-summary",
+          "path": "docs/json/audits/vscodium-shell-lane/executive-summary.v1.json",
+          "title_override": "Executive Summary: VSCodium Shell Lane for Rig Relay"
+        },
+        {
+          "document_id": "extension-api-study",
+          "path": "docs/json/audits/vscodium-shell-lane/extension-api-study.v1.json",
+          "title_override": "VSCodium Extension API Study"
+        },
+        {
+          "document_id": "extension-spike-results",
+          "path": "docs/json/audits/vscodium-shell-lane/extension-spike-results.v1.json",
+          "title_override": "Audit: VSCodium Extension Feasibility Spike Results"
+        },
+        {
+          "document_id": "final-recommendation",
+          "path": "docs/json/audits/vscodium-shell-lane/final-recommendation.v1.json",
+          "title_override": "Final Recommendation: VSCodium Shell Lane"
+        },
+        {
+          "document_id": "product-surface",
+          "path": "docs/json/audits/vscodium-shell-lane/product-surface.v1.json",
+          "title_override": "Product Surface: Rig MVP for VSCodium"
+        },
+        {
+          "document_id": "protocol-design",
+          "path": "docs/json/audits/vscodium-shell-lane/protocol-design.v1.json",
+          "title_override": "Protocol Design: Extension ↔ Rig Daemon"
+        },
+        {
+          "document_id": "risk-register",
+          "path": "docs/json/audits/vscodium-shell-lane/risk-register.v1.json",
+          "title_override": "Risk Register: VSCodium Shell Lane"
+        }
+      ]
+    },
+    {
+      "collection_id": "conversations",
+      "title": "Conversations",
+      "description": "Documentation in conversations",
+      "order": 19,
+      "documents": [
+        {
+          "document_id": "2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary",
+          "path": "docs/json/conversations/2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.v1.json",
+          "title_override": "Conversation Summary: Test Suite Quality Audit"
+        },
+        {
+          "document_id": "2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary",
+          "path": "docs/json/conversations/2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.v1.json",
+          "title_override": "2026-05-13 — Phase 1: Receipt-Gated Protected Intents"
+        },
+        {
+          "document_id": "2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port",
+          "path": "docs/json/conversations/2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.v1.json",
+          "title_override": "Desktop Projection Shell Pattern Port"
+        },
+        {
+          "document_id": "2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary",
+          "path": "docs/json/conversations/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.v1.json",
+          "title_override": "Rig Relay — Phase 3: Facade Extraction & Tool Hardening (search_replace)"
+        },
+        {
+          "document_id": "2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary",
+          "path": "docs/json/conversations/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.v1.json",
+          "title_override": "Rig Relay — Complete Conversation Summary"
+        },
+        {
+          "document_id": "2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary",
+          "path": "docs/json/conversations/2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.v1.json",
+          "title_override": "Comprehensive Conversation Summary"
+        },
+        {
+          "document_id": "2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary",
+          "path": "docs/json/conversations/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.v1.json",
+          "title_override": "Untitled"
+        },
+        {
+          "document_id": "2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary",
+          "path": "docs/json/conversations/2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.v1.json",
+          "title_override": "Fleet Coordination Completion — Phases 3–5"
+        },
+        {
+          "document_id": "2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary",
+          "path": "docs/json/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.v1.json",
+          "title_override": "Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval"
+        },
+        {
+          "document_id": "2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff",
+          "path": "docs/json/conversations/2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.v1.json",
+          "title_override": "Rig Relay — Conversation Summary"
+        },
+        {
+          "document_id": "conversations-readme",
+          "path": "docs/json/conversations/README.v1.json",
+          "title_override": "Conversation Summaries"
+        }
+      ]
+    },
+    {
+      "collection_id": "demo",
+      "title": "Demo",
+      "description": "Documentation in demo",
+      "order": 20,
+      "documents": [
+        {
+          "document_id": "desktop-golden-path",
+          "path": "docs/json/demo/desktop-golden-path.v1.json",
+          "title_override": "Desktop Golden Path"
+        },
+        {
+          "document_id": "mcp-night-demo",
+          "path": "docs/json/demo/mcp-night-demo.v1.json",
+          "title_override": "MCP Night Demo — Fresh-Clone Walkthrough"
+        },
+        {
+          "document_id": "mcp-night-development-harness-demo",
+          "path": "docs/json/demo/mcp-night-development-harness-demo.v1.json",
+          "title_override": "MCP Night — Rig Relay Development Harness Demo"
+        }
+      ]
+    },
+    {
+      "collection_id": "dogfood",
+      "title": "Dogfood",
+      "description": "Documentation in dogfood",
+      "order": 21,
+      "documents": [
+        {
+          "document_id": "rig-relay-self-dogfood",
+          "path": "docs/json/dogfood/rig-relay-self-dogfood.v1.json",
+          "title_override": "Rig Relay Self-Dogfood Workflow"
+        }
+      ]
+    },
+    {
+      "collection_id": "evidence",
+      "title": "Evidence",
+      "description": "Documentation in evidence",
+      "order": 22,
+      "documents": [
+        {
+          "document_id": "evidence-readme",
+          "path": "docs/json/evidence/README.v1.json",
+          "title_override": "Rig Relay Evidence"
+        },
+        {
+          "document_id": "validation",
+          "path": "docs/json/evidence/validation.v1.json",
+          "title_override": "Evidence Validation"
+        }
+      ]
+    },
+    {
+      "collection_id": "findings",
+      "title": "Findings",
+      "description": "Documentation in findings",
+      "order": 23,
+      "documents": [
+        {
+          "document_id": "out-of-scope-findings",
+          "path": "docs/json/findings/out-of-scope-findings.v1.json",
+          "title_override": "Out-of-Scope Findings Registry"
+        }
+      ]
+    },
+    {
+      "collection_id": "findings-language-practices",
+      "title": "Findings/Language Practices",
+      "description": "Documentation in findings/language-practices",
+      "order": 24,
+      "documents": [
+        {
+          "document_id": "python",
+          "path": "docs/json/findings/language-practices/python.v1.json",
+          "title_override": "Python Language Practices"
+        }
+      ]
+    },
+    {
+      "collection_id": "general",
+      "title": "General",
+      "description": "Documentation in general",
+      "order": 25,
+      "documents": [
+        {
+          "document_id": "documentation-policy",
+          "path": "docs/json/documentation_policy.v1.json",
+          "title_override": "Documentation Policy"
+        }
+      ]
+    },
     {
       "collection_id": "governance",
       "title": "Governance",
-      "description": "Project policies, licensing, contribution terms, and operational doctrine.",
-      "order": 1,
+      "description": "Documentation in governance",
+      "order": 26,
       "documents": [
-        {"document_id": "repository-policy", "path": "docs/json/repository_policy.v1.json"},
-        {"document_id": "license-policy", "path": "docs/json/license_policy.v1.json"},
-        {"document_id": "contribution-policy", "path": "docs/json/contribution_policy.v1.json"},
-        {"document_id": "documentation-policy", "path": "docs/json/documentation_policy.v1.json"},
-        {"document_id": "tracing-doctrine", "path": "docs/json/governance/tracing_doctrine.v1.json"},
-        {"document_id": "test-suite-doctrine", "path": "docs/json/governance/test_suite_doctrine.v1.json"},
-        {"document_id": "storage-retention-policy", "path": "docs/json/governance/storage_retention_policy.v1.json"},
-        {"document_id": "agent-loop-boundary", "path": "docs/json/governance/agent_loop_boundary.v1.json"},
-        {"document_id": "tool-runtime-boundary", "path": "docs/json/governance/tool_runtime_boundary.v1.json"},
-        {"document_id": "orchestrator-loop-boundary", "path": "docs/json/governance/orchestrator_loop_boundary.v1.json"}
+        {
+          "document_id": "agent-loop-boundary",
+          "path": "docs/json/governance/agent_loop_boundary.v1.json",
+          "title_override": "Agent Loop Boundary"
+        },
+        {
+          "document_id": "artifact-tracking-policy",
+          "path": "docs/json/governance/artifact-tracking-policy.v1.json",
+          "title_override": "Artifact Tracking Policy"
+        },
+        {
+          "document_id": "audit-trail",
+          "path": "docs/json/governance/audit-trail.v1.json",
+          "title_override": "Audit Trail Store"
+        },
+        {
+          "document_id": "audit-trail-tamper-evidence",
+          "path": "docs/json/governance/audit-trail-tamper-evidence.v1.json",
+          "title_override": "Audit Trail Tamper-Evidence Design"
+        },
+        {
+          "document_id": "beta-telemetry-onboarding",
+          "path": "docs/json/governance/beta-telemetry-onboarding.v1.json",
+          "title_override": "Beta Telemetry Onboarding"
+        },
+        {
+          "document_id": "context-compiler",
+          "path": "docs/json/governance/context-compiler.v1.json",
+          "title_override": "Context Compiler Doctrine"
+        },
+        {
+          "document_id": "context-observability",
+          "path": "docs/json/governance/context-observability.v1.json",
+          "title_override": "Context Observability Doctrine"
+        },
+        {
+          "document_id": "context-optimization-codecs",
+          "path": "docs/json/governance/context-optimization-codecs.v1.json",
+          "title_override": "Context Optimization Codecs"
+        },
+        {
+          "document_id": "coordination-ownership-policy",
+          "path": "docs/json/governance/coordination-ownership-policy.v1.json",
+          "title_override": "Coordination Ownership Policy"
+        },
+        {
+          "document_id": "cross-session-coordination",
+          "path": "docs/json/governance/cross-session-coordination.v1.json",
+          "title_override": "Cross-Session Coordination"
+        },
+        {
+          "document_id": "debug-bundle-policy",
+          "path": "docs/json/governance/debug-bundle-policy.v1.json",
+          "title_override": "Debug Bundle Policy"
+        },
+        {
+          "document_id": "delegate-fleet-orchestration",
+          "path": "docs/json/governance/delegate-fleet-orchestration.v1.json",
+          "title_override": "Delegate/Fleet Orchestration Doctrine"
+        },
+        {
+          "document_id": "dependency-policy",
+          "path": "docs/json/governance/dependency-policy.v1.json",
+          "title_override": "Rig Relay Dependency Policy"
+        },
+        {
+          "document_id": "desktop-cockpit-ui",
+          "path": "docs/json/governance/desktop-cockpit-ui.v1.json",
+          "title_override": "Rig Relay Desktop Cockpit UI"
+        },
+        {
+          "document_id": "desktop-hitl-boundary",
+          "path": "docs/json/governance/desktop-hitl-boundary.v1.json",
+          "title_override": "Desktop HITL Boundary"
+        },
+        {
+          "document_id": "execution-progress-projection",
+          "path": "docs/json/governance/execution-progress-projection.v1.json",
+          "title_override": "ExecutionProgressProjection — Design"
+        },
+        {
+          "document_id": "fleet-coordination-plane",
+          "path": "docs/json/governance/fleet-coordination-plane.v1.json",
+          "title_override": "Rig Fleet Coordination Plane"
+        },
+        {
+          "document_id": "frontend-rendering-safety",
+          "path": "docs/json/governance/frontend-rendering-safety.v1.json",
+          "title_override": "Frontend Rendering Safety Doctrine"
+        },
+        {
+          "document_id": "future-passkey-plan",
+          "path": "docs/json/governance/future-passkey-plan.v1.json",
+          "title_override": "Future Passkey Plan"
+        },
+        {
+          "document_id": "identity-provider-policy",
+          "path": "docs/json/governance/identity-provider-policy.v1.json",
+          "title_override": "Identity Provider Policy"
+        },
+        {
+          "document_id": "mission-context-packets",
+          "path": "docs/json/governance/mission-context-packets.v1.json",
+          "title_override": "Mission Context Packets"
+        },
+        {
+          "document_id": "mission-envelope",
+          "path": "docs/json/governance/mission-envelope.v1.json",
+          "title_override": "Mission Envelope"
+        },
+        {
+          "document_id": "mission-router",
+          "path": "docs/json/governance/mission-router.v1.json",
+          "title_override": "Rig Mission Router — Phase 0"
+        },
+        {
+          "document_id": "model-observation-dataset",
+          "path": "docs/json/governance/model-observation-dataset.v1.json",
+          "title_override": "Model Observation Dataset"
+        },
+        {
+          "document_id": "orchestrator-loop-boundary",
+          "path": "docs/json/governance/orchestrator_loop_boundary.v1.json",
+          "title_override": "Orchestrator Loop Boundary"
+        },
+        {
+          "document_id": "orchestrator-subagent-model",
+          "path": "docs/json/governance/orchestrator-subagent-model.v1.json",
+          "title_override": "Orchestrator, Subagent, Model, and Ralph Roles"
+        },
+        {
+          "document_id": "provider-onboarding-policy",
+          "path": "docs/json/governance/provider-onboarding-policy.v1.json",
+          "title_override": "Provider Onboarding Policy"
+        },
+        {
+          "document_id": "ralph-background-loop",
+          "path": "docs/json/governance/ralph-background-loop.v1.json",
+          "title_override": "Ralph — Governed Background Maintenance Loop"
+        },
+        {
+          "document_id": "ralph-worktree-lanes",
+          "path": "docs/json/governance/ralph-worktree-lanes.v1.json",
+          "title_override": "Ralph Worktree Lanes — Background Isolation Model"
+        },
+        {
+          "document_id": "receipt-envelope",
+          "path": "docs/json/governance/receipt-envelope.v1.json",
+          "title_override": "Receipt Envelope"
+        },
+        {
+          "document_id": "relay-desktop-projection-contract",
+          "path": "docs/json/governance/relay-desktop-projection-contract.v1.json",
+          "title_override": "Relay Desktop Projection Contract"
+        },
+        {
+          "document_id": "relay-local-remote-boundary",
+          "path": "docs/json/governance/relay-local-remote-boundary.v1.json",
+          "title_override": "Relay Local/Remote Authority Boundary"
+        },
+        {
+          "document_id": "relay-surface-matrix",
+          "path": "docs/json/governance/relay-surface-matrix.v1.json",
+          "title_override": "Relay Surface Matrix"
+        },
+        {
+          "document_id": "reviewer-orchestrator",
+          "path": "docs/json/governance/reviewer-orchestrator.v1.json",
+          "title_override": "Reviewer Orchestrator Doctrine"
+        },
+        {
+          "document_id": "rig-to-relay-pattern-inventory",
+          "path": "docs/json/governance/rig-to-relay-pattern-inventory.v1.json",
+          "title_override": "Rig-to-Relay Pattern Inventory"
+        },
+        {
+          "document_id": "rig-to-relay-porting-doctrine",
+          "path": "docs/json/governance/rig-to-relay-porting-doctrine.v1.json",
+          "title_override": "Rig-to-Relay Porting Doctrine"
+        },
+        {
+          "document_id": "runtime-context-resolver",
+          "path": "docs/json/governance/runtime-context-resolver.v1.json",
+          "title_override": "Runtime Context Resolver"
+        },
+        {
+          "document_id": "runtime-port-status",
+          "path": "docs/json/governance/runtime-port-status.v1.json",
+          "title_override": "Runtime Port Status Normalization"
+        },
+        {
+          "document_id": "runtime-supervisor",
+          "path": "docs/json/governance/runtime-supervisor.v1.json",
+          "title_override": "RuntimeSupervisor Architecture"
+        },
+        {
+          "document_id": "runtime-tool-invocation-adapter",
+          "path": "docs/json/governance/runtime-tool-invocation-adapter.v1.json",
+          "title_override": "Runtime Tool Invocation Adapter"
+        },
+        {
+          "document_id": "runtime-tool-invocation-adapter-implementation",
+          "path": "docs/json/governance/runtime-tool-invocation-adapter-implementation.v1.json",
+          "title_override": "Runtime Tool Invocation Adapter — Implementation"
+        },
+        {
+          "document_id": "runtime-tool-invocation-dry-run",
+          "path": "docs/json/governance/runtime-tool-invocation-dry-run.v1.json",
+          "title_override": "Runtime Tool Invocation Dry-Run"
+        },
+        {
+          "document_id": "runtime-tool-invocation-execution",
+          "path": "docs/json/governance/runtime-tool-invocation-execution.v1.json",
+          "title_override": "Runtime Tool Invocation Execution"
+        },
+        {
+          "document_id": "runtime-tool-invocation-result-contract",
+          "path": "docs/json/governance/runtime-tool-invocation-result-contract.v1.json",
+          "title_override": "Runtime Tool Invocation Result Contract"
+        },
+        {
+          "document_id": "session-lifecycle-finalize-tool",
+          "path": "docs/json/governance/session-lifecycle-finalize-tool.v1.json",
+          "title_override": "Session Lifecycle Finalize Tool"
+        },
+        {
+          "document_id": "session-storage-lifecycle",
+          "path": "docs/json/governance/session-storage-lifecycle.v1.json",
+          "title_override": "Session Storage Lifecycle"
+        },
+        {
+          "document_id": "step-up-authorization",
+          "path": "docs/json/governance/step-up-authorization.v1.json",
+          "title_override": "Step-Up Authorization Doctrine"
+        },
+        {
+          "document_id": "storage-retention-policy",
+          "path": "docs/json/governance/storage_retention_policy.v1.json",
+          "title_override": "Storage Retention Policy"
+        },
+        {
+          "document_id": "telemetry-contribution-policy",
+          "path": "docs/json/governance/telemetry-contribution-policy.v1.json",
+          "title_override": "Telemetry Contribution Policy"
+        },
+        {
+          "document_id": "test-suite-doctrine",
+          "path": "docs/json/governance/test_suite_doctrine.v1.json",
+          "title_override": "Test Suite Doctrine"
+        },
+        {
+          "document_id": "textual-retirement-policy",
+          "path": "docs/json/governance/textual-retirement-policy.v1.json",
+          "title_override": "Textual TUI Retirement Policy"
+        },
+        {
+          "document_id": "textual-rig-console",
+          "path": "docs/json/governance/textual-rig-console.v1.json",
+          "title_override": "Textual Rig Console"
+        },
+        {
+          "document_id": "tool-runtime-boundary",
+          "path": "docs/json/governance/tool_runtime_boundary.v1.json",
+          "title_override": "ToolRuntime Boundary"
+        },
+        {
+          "document_id": "tracing-doctrine",
+          "path": "docs/json/governance/tracing_doctrine.v1.json",
+          "title_override": "Tracing Doctrine"
+        },
+        {
+          "document_id": "update-policy",
+          "path": "docs/json/governance/update-policy.v1.json",
+          "title_override": "Rig Relay Update Policy"
+        },
+        {
+          "document_id": "usage-data-doctrine",
+          "path": "docs/json/governance/usage-data-doctrine.v1.json",
+          "title_override": "Rig Relay Usage Data Doctrine"
+        },
+        {
+          "document_id": "validation-scheduler",
+          "path": "docs/json/governance/validation-scheduler.v1.json",
+          "title_override": "Validation Scheduler"
+        },
+        {
+          "document_id": "vibe-legacy-deprecation",
+          "path": "docs/json/governance/vibe-legacy-deprecation.v1.json",
+          "title_override": "Vibe Legacy Deprecation Doctrine"
+        },
+        {
+          "document_id": "vibe-rig-compatibility-bridge",
+          "path": "docs/json/governance/vibe-rig-compatibility-bridge.v1.json",
+          "title_override": "Vibe / Rig Compatibility Bridge"
+        },
+        {
+          "document_id": "vscodium-extension-client",
+          "path": "docs/json/governance/vscodium-extension-client.v1.json",
+          "title_override": "Governance: VSCodium Extension Client"
+        },
+        {
+          "document_id": "worktree-manager",
+          "path": "docs/json/governance/worktree-manager.v1.json",
+          "title_override": "Worktree Manager — Governance & Safety"
+        }
+      ]
+    },
+    {
+      "collection_id": "legal",
+      "title": "Legal",
+      "description": "Documentation in legal",
+      "order": 27,
+      "documents": [
+        {
+          "document_id": "privacy-notice-alpha",
+          "path": "docs/json/legal/privacy-notice-alpha.v1.json",
+          "title_override": "Privacy Notice — Alpha"
+        },
+        {
+          "document_id": "usage-data-license-alpha",
+          "path": "docs/json/legal/usage-data-license-alpha.v1.json",
+          "title_override": "Usage Data Commercial License — Alpha"
+        }
+      ]
+    },
+    {
+      "collection_id": "protocols",
+      "title": "Protocols",
+      "description": "Documentation in protocols",
+      "order": 28,
+      "documents": [
+        {
+          "document_id": "ide-capability-map",
+          "path": "docs/json/protocols/ide-capability-map.v1.json",
+          "title_override": "IDE Capability Map"
+        },
+        {
+          "document_id": "ide-sidecar-ipc",
+          "path": "docs/json/protocols/ide-sidecar-ipc.v1.json",
+          "title_override": "Rig IDE / Sidecar IPC Protocol (v1)"
+        },
+        {
+          "document_id": "mcp-context-tools",
+          "path": "docs/json/protocols/mcp-context-tools.v1.json",
+          "title_override": "MCP Context Tools"
+        }
+      ]
+    },
+    {
+      "collection_id": "publishing",
+      "title": "Publishing",
+      "description": "Documentation in publishing",
+      "order": 29,
+      "documents": [
+        {
+          "document_id": "github-pages-artifact-site",
+          "path": "docs/json/publishing/github-pages-artifact-site.v1.json",
+          "title_override": "GitHub Pages — Artifact-Rendered Documentation Site"
+        }
+      ]
+    },
+    {
+      "collection_id": "release",
+      "title": "Release",
+      "description": "Documentation in release",
+      "order": 30,
+      "documents": [
+        {
+          "document_id": "alpha-release-checklist",
+          "path": "docs/json/release/alpha-release-checklist.v1.json",
+          "title_override": "Alpha Release Checklist"
+        },
+        {
+          "document_id": "known-limitations-alpha",
+          "path": "docs/json/release/known-limitations-alpha.v1.json",
+          "title_override": "Known Limitations for Alpha"
+        },
+        {
+          "document_id": "versioning-policy",
+          "path": "docs/json/release/versioning-policy.v1.json",
+          "title_override": "Rig Relay Versioning Policy"
+        }
+      ]
+    },
+    {
+      "collection_id": "troubleshooting",
+      "title": "Troubleshooting",
+      "description": "Documentation in troubleshooting",
+      "order": 31,
+      "documents": [
+        {
+          "document_id": "runtime-provenance",
+          "path": "docs/json/troubleshooting/runtime-provenance.v1.json",
+          "title_override": "Runtime Provenance"
+        }
+      ]
+    },
+    {
+      "collection_id": "ui",
+      "title": "Ui",
+      "description": "Documentation in ui",
+      "order": 32,
+      "documents": [
+        {
+          "document_id": "textual-rig-console-progress-timeline",
+          "path": "docs/json/ui/textual-rig-console-progress-timeline.v1.json",
+          "title_override": "ProgressTimelineWidget — Design"
+        },
+        {
+          "document_id": "textual-rig-console-slice-1",
+          "path": "docs/json/ui/textual-rig-console-slice-1.v1.json",
+          "title_override": "Textual Rig Console — Slice 1: Projection-Only SessionPaneWidget"
+        },
+        {
+          "document_id": "textual-rig-console-slice-2-evidence-rail",
+          "path": "docs/json/ui/textual-rig-console-slice-2-evidence-rail.v1.json",
+          "title_override": "Textual Rig Console — Slice 2: EvidenceRailWidget"
+        },
+        {
+          "document_id": "textual-rig-console-slice-3-dashboard",
+          "path": "docs/json/ui/textual-rig-console-slice-3-dashboard.v1.json",
+          "title_override": "Textual Rig Console — Slice 3: DashboardScreen"
+        },
+        {
+          "document_id": "textual-rig-console-slice-4-action-boundary",
+          "path": "docs/json/ui/textual-rig-console-slice-4-action-boundary.v1.json",
+          "title_override": "Textual Rig Console — Slice 4: Read-Only Action Surface and Projection Provider Boundary"
+        },
+        {
+          "document_id": "textual-rig-console-slice-5-1-worker-refresh",
+          "path": "docs/json/ui/textual-rig-console-slice-5-1-worker-refresh.v1.json",
+          "title_override": "Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh"
+        },
+        {
+          "document_id": "textual-rig-console-slice-5-runtime-provider",
+          "path": "docs/json/ui/textual-rig-console-slice-5-runtime-provider.v1.json",
+          "title_override": "Textual Rig Console — Slice 5: Read-Only Runtime Dashboard Provider"
+        },
+        {
+          "document_id": "textual-rig-console-slice-6-coordination-session-enrichment",
+          "path": "docs/json/ui/textual-rig-console-slice-6-coordination-session-enrichment.v1.json",
+          "title_override": "Textual Rig Console — Slice 6: Coordination/Session Enrichment"
+        },
+        {
+          "document_id": "textual-streaming-smoothness",
+          "path": "docs/json/ui/textual-streaming-smoothness.v1.json",
+          "title_override": "Textual Streaming Smoothness — Provider Delta Coalescing"
+        }
       ]
     },
     {
       "collection_id": "code-schemas",
       "title": "Code Schemas",
-      "description": "Governed implementation contracts for recurring Rig patterns.",
-      "order": 2,
+      "description": "Implementation contracts, trace event schemas, and code-level invariants.",
+      "order": 33,
       "documents": [
-        {
-          "document_id": "frontend-trace-endpoint",
-          "path": "docs/json/code_schemas/frontend_trace_endpoint.v1.json",
-          "title_override": "Frontend Trace Endpoint"
-        },
-        {
-          "document_id": "desktop-golden-path-trace",
-          "path": "docs/json/code_schemas/desktop_golden_path_trace.v1.json",
-          "title_override": "Desktop Golden Path Trace"
-        },
-        {
-          "document_id": "json-documentation-migration",
-          "path": "docs/json/code_schemas/json_documentation_migration.v1.json",
-          "title_override": "JSON Documentation Migration"
-        },
-        {
-          "document_id": "tool-batch-execution",
-          "path": "docs/json/code_schemas/tool_batch_execution.v1.json",
-          "title_override": "Tool Batch Execution"
-        },
-        {
-          "document_id": "frontend-transport-state-reducer",
-          "path": "docs/json/code_schemas/frontend_transport_state_reducer.v1.json",
-          "title_override": "Frontend Transport State Reducer"
-        },
         {
           "document_id": "context-assembler-integration-plan",
           "path": "docs/json/code_schemas/context_assembler_integration_plan.v1.json",
           "title_override": "Context Assembler Integration Plan"
+        },
+        {
+          "document_id": "desktop-golden-path-trace",
+          "path": "docs/json/code_schemas/desktop_golden_path_trace.v1.json",
+          "title_override": "Desktop Golden Path Trace Schema"
+        },
+        {
+          "document_id": "frontend-trace-endpoint",
+          "path": "docs/json/code_schemas/frontend_trace_endpoint.v1.json",
+          "title_override": "Frontend Trace Endpoint Contract"
+        },
+        {
+          "document_id": "frontend-transport-state-reducer",
+          "path": "docs/json/code_schemas/frontend_transport_state_reducer.v1.json",
+          "title_override": "Frontend Transport State Reducer Contract"
+        },
+        {
+          "document_id": "json-documentation-migration",
+          "path": "docs/json/code_schemas/json_documentation_migration.v1.json",
+          "title_override": "JSON Documentation Migration Contract"
+        },
+        {
+          "document_id": "tool-batch-execution",
+          "path": "docs/json/code_schemas/tool_batch_execution.v1.json",
+          "title_override": "Tool Batch Execution Contract"
         }
       ]
     }
-  ]
+  ],
+  "disclosure_policy": {
+    "default_mode": "reviewer",
+    "supported_modes": [
+      "reviewer",
+      "contributor",
+      "maintainer"
+    ],
+    "navigation_density": "comfortable",
+    "show_collection_summaries": true,
+    "enable_collapsible_sections": true,
+    "enable_audience_filter": false
+  },
+  "metadata": {
+    "og_image": "",
+    "theme_color": "#1e3a5f",
+    "favicon": ""
+  }
 }

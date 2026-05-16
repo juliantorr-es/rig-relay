@@ -4,16 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Modern AI agent frameworks are increasingly engineered for **deterministic execution and efficient context reuse**. Providers and frameworks (OpenAI, Anthropic, Google, Microsoft) emphasize *prefix st">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/deep-research-report1.html">
+<meta property="og:title" content="Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy">
+<meta property="og:description" content="Modern AI agent frameworks are increasingly engineered for **deterministic execution and efficient context reuse**. Providers and frameworks (OpenAI, Anthropic, Google, Microsoft) emphasize *prefix st">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/deep-research-report1.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy">
+<meta name="twitter:description" content="Modern AI agent frameworks are increasingly engineered for **deterministic execution and efficient context reuse**. Providers and frameworks (OpenAI, Anthropic, Google, Microsoft) emphasize *prefix st">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Modern AI agent frameworks are increasingly engineered for **deterministic execution and efficient context reuse**. Providers and frameworks (OpenAI, Anthropic, Google, Microsoft) emphasize *prefix st</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/deep-research-report1.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy</a></li>
+<li><a href="#h2-2">Executive Summary</a></li>
+<li><a href="#h2-6">Industry Practices and Case Studies</a></li>
+<li><a href="#h3-7">Prefix Stability and Prompt Caching</a></li>
+<li><a href="#h3-11">Deterministic Execution and Reproducibility</a></li>
+<li><a href="#h3-15">Privacy and Security in Caching</a></li>
+<li><a href="#h3-18">Case Study Table: Determinism Techniques</a></li>
+<li><a href="#h2-21">Comparison of Tradeoffs</a></li>
+<li><a href="#h2-28">Rig Relay’s Approach vs. Best Practices</a></li>
+<li><a href="#h2-39">Mapping Rig Relay Features to Enhancements</a></li>
+<li><a href="#h2-42">Architectural Diagrams and Data Flow</a></li>
+<li><a href="#h2-46">Roadmap &amp; Recommendations</a></li>
+<li><a href="#h2-51">Conclusion</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
@@ -142,6 +184,7 @@
 
 <p id="p-52" class="disclosure-standard" data-disclosure-level="standard">In summary, **Rig Relay’s emphasis on prefix stability and exact-context caching is well-founded** and matches industry recommendations【58†L101-L110】【11†L148-L157】. These measures will pay dividends in cost and performance as LLM workloads scale. However, the *complete* picture also requires multi-tier caching and strong data hygiene. By addressing the identified gaps (privacy boundary, caching layers, write efficiency, integrity monitors), Rig Relay can fully leverage the determinism trend and become robust enough for the most demanding use cases. If implemented, its current strategy should scale effectively toward a “deterministic knowledge” agent system, turning randomness into a managed, auditable resource【49†L155-L164】【52†L324-L332】.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/deep-research-report1.v1.json</code></p>

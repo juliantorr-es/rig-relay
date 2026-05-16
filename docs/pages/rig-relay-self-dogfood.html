@@ -4,16 +4,72 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Relay Self-Dogfood Workflow — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This document outlines how to use Rig Relay to build and harden Rig Relay, using its own evidence system to identify determinism gaps and tool failures. Rig Relay is the product; providers are interch">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/rig-relay-self-dogfood.html">
+<meta property="og:title" content="Rig Relay Self-Dogfood Workflow">
+<meta property="og:description" content="This document outlines how to use Rig Relay to build and harden Rig Relay, using its own evidence system to identify determinism gaps and tool failures. Rig Relay is the product; providers are interch">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/rig-relay-self-dogfood.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay Self-Dogfood Workflow">
+<meta name="twitter:description" content="This document outlines how to use Rig Relay to build and harden Rig Relay, using its own evidence system to identify determinism gaps and tool failures. Rig Relay is the product; providers are interch">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Dogfood</p>
   <h1>Rig Relay Self-Dogfood Workflow</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This document outlines how to use Rig Relay to build and harden Rig Relay, using its own evidence system to identify determinism gaps and tool failures. Rig Relay is the product; providers are interch</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/dogfood/rig-relay-self-dogfood.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Relay Self-Dogfood Workflow</a></li>
+<li><a href="#h2-4">Operational Workflow</a></li>
+<li><a href="#h3-5">1. Starting a Self-Dogfood Session</a></li>
+<li><a href="#h3-8">2. Setting Evidence Root for Dogfood</a></li>
+<li><a href="#h3-11">3. Allowed Workflows</a></li>
+<li><a href="#h3-13">4. Disallowed Workflows</a></li>
+<li><a href="#h3-15">5. Post-Session Validation</a></li>
+<li><a href="#h3-19">6. Inspecting Tool Determinism</a></li>
+<li><a href="#h2-22">Cockpit UI</a></li>
+<li><a href="#h3-25">7. Inspecting Tool Reasoning and Latency</a></li>
+<li><a href="#h3-32">8. Cross-Session Coordination</a></li>
+<li><a href="#h2-36">Latency-First Design Principle</a></li>
+<li><a href="#h2-38">Dataset Reports</a></li>
+<li><a href="#h3-44">Dataset Export</a></li>
+<li><a href="#h3-50">Built-in Tool Refinement Report</a></li>
+<li><a href="#h3-54">Built-in Refinement Packets</a></li>
+<li><a href="#h3-58">Interactive Inspector</a></li>
+<li><a href="#h2-66">Classification Guidelines</a></li>
+<li><a href="#h2-68">Determinism Goal</a></li>
+<li><a href="#h2-70">Tool Hardening Backlog (Prioritized)</a></li>
+<li><a href="#h2-75">Future Hardening Tracks</a></li>
+<li><a href="#h2-77">Appendix: Conversation Summaries</a></li>
+<li><a href="#h2-79">Appendix: Semantic Change Snippets</a></li>
+<li><a href="#h2-81">Appendix: Version, Install, Update, and Desktop</a></li>
+<li><a href="#h2-91">Local Action Envelope</a></li>
+<li><a href="#h2-94">MCP Night Demo Readiness</a></li>
+<li><a href="#h3-98">Textual TUI Retirement</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Self-Dogfood Workflow</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document outlines how to use Rig Relay to build and harden Rig Relay, using its own evidence system to identify determinism gaps and tool failures. Rig Relay is the product; providers are interchangeable backends.</p>
@@ -229,6 +285,7 @@ print(f&quot;Found {summary.total_coordination_rows} coordination events&quot;)<
 
 <p id="p-99" class="disclosure-standard" data-disclosure-level="standard">The Textual TUI (`vibe/cli/`) is a legacy/deprecated interface. The pywebview desktop cockpit is the primary local human UX. See `docs/governance/textual-retirement-policy.md` for: - No new product features targeting Textual - Primary surface is pywebview cockpit - CLI remains for automation/scripting - Textual deletion criteria - Migration status table</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/dogfood/rig-relay-self-dogfood.v1.json</code></p>

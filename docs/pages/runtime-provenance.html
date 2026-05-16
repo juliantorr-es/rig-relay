@@ -4,16 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Runtime Provenance — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="How to verify what code Rig Relay is actually running and diagnose stale-install problems.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/runtime-provenance.html">
+<meta property="og:title" content="Runtime Provenance">
+<meta property="og:description" content="How to verify what code Rig Relay is actually running and diagnose stale-install problems.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/runtime-provenance.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Runtime Provenance">
+<meta name="twitter:description" content="How to verify what code Rig Relay is actually running and diagnose stale-install problems.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Troubleshooting</p>
   <h1>Runtime Provenance</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">How to verify what code Rig Relay is actually running and diagnose stale-install problems.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/troubleshooting/runtime-provenance.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Runtime Provenance</a></li>
+<li><a href="#h2-3">The problem</a></li>
+<li><a href="#h2-8">Dogfood install</a></li>
+<li><a href="#h2-12">Verify what code is running</a></li>
+<li><a href="#h2-19">Diagnostic commands</a></li>
+<li><a href="#h2-21">Common causes of stale runtime</a></li>
+<li><a href="#h2-26">Startup logging</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Provenance</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">How to verify what code Rig Relay is actually running and diagnose stale-install problems.</p>
@@ -95,6 +131,7 @@ uv run python -c &quot;from vibe.core.context.assembler import write_assembly_re
 
 <p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Look for this in `~/.rig/relay/logs/vibe.log` (or `$RIG_RELAY_HOME/logs/vibe.log`) to confirm which code a session actually ran.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/troubleshooting/runtime-provenance.v1.json</code></p>

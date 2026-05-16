@@ -4,16 +4,64 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CI–Validate Alignment — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="&gt; **Status**: Design Proposal">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/ci-validate-alignment.html">
+<meta property="og:title" content="CI–Validate Alignment">
+<meta property="og:description" content="&gt; **Status**: Design Proposal">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/ci-validate-alignment.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CI–Validate Alignment">
+<meta name="twitter:description" content="&gt; **Status**: Design Proposal">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Ci</p>
   <h1>CI–Validate Alignment</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">&gt; **Status**: Design Proposal</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/ci/ci-validate-alignment.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">CI–Validate Alignment</a></li>
+<li><a href="#h2-3">Principle</a></li>
+<li><a href="#h2-5">Profile Mapping</a></li>
+<li><a href="#h3-6">Validate Profile → CI Gate Tier</a></li>
+<li><a href="#h3-8">CI Gate → Validate Profile (reverse map)</a></li>
+<li><a href="#h2-10">What CI Should Do Now vs What Validate Should Own Later</a></li>
+<li><a href="#h3-11">CI owns now (before validate tool exists):</a></li>
+<li><a href="#h3-13">Validate should own later (after validate tool is implemented):</a></li>
+<li><a href="#h3-15">Migration Path</a></li>
+<li><a href="#h2-17">Consolidation Opportunities</a></li>
+<li><a href="#h2-20">Validate Profile Definitions (for CI wiring)</a></li>
+<li><a href="#h3-22">`validate quick`</a></li>
+<li><a href="#h3-24">`validate python`</a></li>
+<li><a href="#h3-26">`validate schemas`</a></li>
+<li><a href="#h3-28">`validate receipt-policy`</a></li>
+<li><a href="#h3-30">`validate tool-hardening`</a></li>
+<li><a href="#h3-32">`validate governance`</a></li>
+<li><a href="#h3-34">`validate worktree-readiness`</a></li>
+<li><a href="#h3-36">`validate promotion-readiness`</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">CI–Validate Alignment</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **Status**: Design Proposal &gt; **Date**: 2026-05-17 &gt; **Scope**: Mapping between CI gate tiers and future `validate` tool profiles.</p>
@@ -168,6 +216,7 @@ Stage 3 (validate maturity):   validate tool has profile registry, CI is thin wr
   - uv sync --locked
   - uv build</code></pre>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/ci/ci-validate-alignment.v1.json</code></p>

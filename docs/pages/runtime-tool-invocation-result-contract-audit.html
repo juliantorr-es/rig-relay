@@ -4,16 +4,69 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Runtime Tool Invocation Result Contract Audit — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Audit date:** 2026-05-17">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/runtime-tool-invocation-result-contract-audit.html">
+<meta property="og:title" content="Runtime Tool Invocation Result Contract Audit">
+<meta property="og:description" content="**Audit date:** 2026-05-17">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/runtime-tool-invocation-result-contract-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Runtime Tool Invocation Result Contract Audit">
+<meta name="twitter:description" content="**Audit date:** 2026-05-17">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>Runtime Tool Invocation Result Contract Audit</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Audit date:** 2026-05-17</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/runtime-tool-invocation-result-contract-audit.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Runtime Tool Invocation Result Contract Audit</a></li>
+<li><a href="#h2-4">1. Data Flow Summary</a></li>
+<li><a href="#h2-6">2. Layer Definitions</a></li>
+<li><a href="#h3-7">Invocation payload (in `RuntimeToolInvocationEnvelope.payload`)</a></li>
+<li><a href="#h3-9">Tool result (e.g. `ValidateResult`, `SearchReplaceResult`)</a></li>
+<li><a href="#h3-11">Tool receipt (e.g. `ValidateReceipt`, `SearchReplaceReceipt`)</a></li>
+<li><a href="#h3-13">RuntimeToolExecutionResult (adapter-level wrapper)</a></li>
+<li><a href="#h3-15">Runtime Tool Invocation Receipt (proposed — adapter-level content-light receipt)</a></li>
+<li><a href="#h3-17">ReceiptEnvelope (canonical wrapper)</a></li>
+<li><a href="#h3-19">AuditEvent (append-only trail entry)</a></li>
+<li><a href="#h2-21">3. Contract Gaps in RuntimeToolExecutionResult</a></li>
+<li><a href="#h3-22">Gap 1: No `tool_receipt_kind`</a></li>
+<li><a href="#h3-25">Gap 2: No `tool_receipt_schema_version`</a></li>
+<li><a href="#h3-28">Gap 3: No `envelope_id` linkage to ReceiptEnvelope</a></li>
+<li><a href="#h3-31">Gap 4: No `audit_event_id` linkage</a></li>
+<li><a href="#h3-34">Gap 5: `receipt_sha256` semantics ambiguous</a></li>
+<li><a href="#h3-37">Gap 6: No `changed_paths` for mutation tools</a></li>
+<li><a href="#h3-40">Gap 7: `duration_ms` only from execution start</a></li>
+<li><a href="#h2-43">4. Proposed: `runtime_tool_invocation_receipt.v1`</a></li>
+<li><a href="#h2-49">5. Content-Light Policy</a></li>
+<li><a href="#h3-50">Allowed fields across all layers</a></li>
+<li><a href="#h3-52">Forbidden fields (must never appear in execution results, receipts, receipt envelopes, or audit events)</a></li>
+<li><a href="#h2-54">6. Schema Validation Coverage</a></li>
+<li><a href="#h2-57">7. Recommended Implementation Slice</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Result Contract Audit</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Audit date:** 2026-05-17 **Auditor:** Rig Relay agent (Mission 15 — Schema Audit) **Files audited:** adapter, execution runner, dry-run runner, all tool result/receipt schemas, receipt envelope, audit trail **Status:** Findings documented, decisions recorded, future schema proposed</p>
@@ -210,6 +263,7 @@ AuditEvent                        ← schema: audit_event.v1
 
 <p id="p-58" class="disclosure-standard" data-disclosure-level="standard">**Slice: &quot;Runtime Tool Invocation Receipt&quot;** - Add `tool_receipt_kind`, `tool_receipt_schema_version`, `receipt_envelope_id`, `audit_event_id`, `changed_paths` to `RuntimeToolExecutionResult` - Create `docs/schemas/rig.relay.runtime_tool_invocation_receipt.v1.schema.json` - Update `runtime_tool_execution_result.v1.schema.json` with new optional fields - Update `test_tool_schema_contracts.py` to validate tool receipt model dumps against schemas - Wire `RuntimeToolExecutionRunner` to populate new fields per tool type - Wire audit integration to populate `audit_event_id`</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/runtime-tool-invocation-result-contract-audit.v1.json</code></p>

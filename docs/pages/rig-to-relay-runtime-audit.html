@@ -4,16 +4,62 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Runtime Port Audit — Rig to Rig Relay — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Systematic comparison of Rig and Rig Relay source trees, docs, schemas, and">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/rig-to-relay-runtime-audit.html">
+<meta property="og:title" content="Rig Runtime Port Audit — Rig to Rig Relay">
+<meta property="og:description" content="Systematic comparison of Rig and Rig Relay source trees, docs, schemas, and">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/rig-to-relay-runtime-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Runtime Port Audit — Rig to Rig Relay">
+<meta name="twitter:description" content="Systematic comparison of Rig and Rig Relay source trees, docs, schemas, and">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>Rig Runtime Port Audit — Rig to Rig Relay</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Systematic comparison of Rig and Rig Relay source trees, docs, schemas, and</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/rig-to-relay-runtime-audit.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Runtime Port Audit — Rig to Rig Relay</a></li>
+<li><a href="#h2-2">Audit Metadata</a></li>
+<li><a href="#h2-4">Method</a></li>
+<li><a href="#h3-6">Files Inspected (Rig)</a></li>
+<li><a href="#h3-8">Files Inspected (Rig Relay)</a></li>
+<li><a href="#h2-11">Decision Matrix</a></li>
+<li><a href="#h3-12">Direct Port Candidates (close 1:1 pattern match)</a></li>
+<li><a href="#h3-14">Reimplement Patterns (relay-native adaptation required)</a></li>
+<li><a href="#h3-16">Already Exists in Rig Relay (no port needed)</a></li>
+<li><a href="#h3-18">Leave Behind (Rig product domain, not applicable to Relay)</a></li>
+<li><a href="#h2-21">Gap Analysis</a></li>
+<li><a href="#h3-22">Gap 1: No Worktree Manager — ✅ **FILLED** (P1b)</a></li>
+<li><a href="#h3-25">Gap 2: No Subprocess Supervisor — ✅ **FILLED** (P2b)</a></li>
+<li><a href="#h3-28">Gap 3: No Execution Lease Model — ✅ **FILLED** (P2c)</a></li>
+<li><a href="#h3-31">Gap 4: No Runtime Provider Registry</a></li>
+<li><a href="#h3-34">Gap 5: No Projection Builder with Integrity Checks — ✅ **FILLED** (P2a)</a></li>
+<li><a href="#h2-38">Porting Priority (Weighted)</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Runtime Port Audit — Rig to Rig Relay</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Audit Metadata</h2>
@@ -199,6 +245,7 @@
 </tbody>
 </table>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/rig-to-relay-runtime-audit.v1.json</code></p>

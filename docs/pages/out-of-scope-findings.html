@@ -4,16 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Out-of-Scope Findings Registry — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="&gt; Living index of structured findings discovered during agent missions.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/out-of-scope-findings.html">
+<meta property="og:title" content="Out-of-Scope Findings Registry">
+<meta property="og:description" content="&gt; Living index of structured findings discovered during agent missions.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/out-of-scope-findings.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Out-of-Scope Findings Registry">
+<meta name="twitter:description" content="&gt; Living index of structured findings discovered during agent missions.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Findings</p>
   <h1>Out-of-Scope Findings Registry</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">&gt; Living index of structured findings discovered during agent missions.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/findings/out-of-scope-findings.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Out-of-Scope Findings Registry</a></li>
+<li><a href="#h2-3">Finding Kinds</a></li>
+<li><a href="#h2-5">Severity Levels</a></li>
+<li><a href="#h2-7">Status Values</a></li>
+<li><a href="#h2-9">Active Findings</a></li>
+<li><a href="#h3-10">Architecture Debt</a></li>
+<li><a href="#h3-12">Lifecycle Semantics</a></li>
+<li><a href="#h3-14">Telemetry Schema Gaps</a></li>
+<li><a href="#h3-16">Lint Refactor</a></li>
+<li><a href="#h3-18">Safety Guard Gaps</a></li>
+<li><a href="#h3-20">Stale Infrastructure</a></li>
+<li><a href="#h3-22">Testing Gaps</a></li>
+<li><a href="#h2-24">Schema</a></li>
+<li><a href="#h2-27">Language Practice References</a></li>
+<li><a href="#h2-30">Governance</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Out-of-Scope Findings Registry</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; Living index of structured findings discovered during agent missions. &gt; Each finding is recorded in `out-of-scope-findings.jsonl` with full structured metadata. &gt; This Markdown index provides a human-readable summary sorted by finding kind.</p>
@@ -163,6 +207,7 @@
 
 <p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- **Do not fix opportunistically.** Findings are recorded, classified, and turned into future work — not patched mid-mission. - **Append-only JSONL.** Agents append new rows to `out-of-scope-findings.jsonl`. Never edit or remove existing rows. - **Index is derived.** The Markdown index is regenerated from the JSONL. If the index is stale, regenerate it. - **Link from final reports.** Every mission final report should include a small &quot;Out-of-scope findings recorded&quot; section linking back to this registry.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/findings/out-of-scope-findings.v1.json</code></p>

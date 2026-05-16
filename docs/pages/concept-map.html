@@ -4,16 +4,75 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig-to-Relay Runtime Concept Map — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Maps each Rig runtime/control-plane concept to its Rig Relay equivalent,">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/concept-map.html">
+<meta property="og:title" content="Rig-to-Relay Runtime Concept Map">
+<meta property="og:description" content="Maps each Rig runtime/control-plane concept to its Rig Relay equivalent,">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/concept-map.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig-to-Relay Runtime Concept Map">
+<meta name="twitter:description" content="Maps each Rig runtime/control-plane concept to its Rig Relay equivalent,">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>Rig-to-Relay Runtime Concept Map</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Maps each Rig runtime/control-plane concept to its Rig Relay equivalent,</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/concept-map.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig-to-Relay Runtime Concept Map</a></li>
+<li><a href="#h2-3">Legend</a></li>
+<li><a href="#h2-6">Governance Layer</a></li>
+<li><a href="#h3-7">GateDecision</a></li>
+<li><a href="#h3-9">LocalActionEnvelope</a></li>
+<li><a href="#h3-11">DirtyFileGuard</a></li>
+<li><a href="#h2-14">Execution Plane</a></li>
+<li><a href="#h3-15">WorktreeManager</a></li>
+<li><a href="#h3-17">ExecutionLease</a></li>
+<li><a href="#h3-19">ExecutionRequest</a></li>
+<li><a href="#h3-21">RuntimeSupervisor</a></li>
+<li><a href="#h3-23">RuntimeProvider</a></li>
+<li><a href="#h3-25">RuntimeCapability</a></li>
+<li><a href="#h3-27">RuntimeContextResolver</a></li>
+<li><a href="#h3-29">MissionEnvelope</a></li>
+<li><a href="#h3-31">WorkspaceRuntime</a></li>
+<li><a href="#h2-34">Evidence / Receipts</a></li>
+<li><a href="#h3-35">ReceiptEnvelope</a></li>
+<li><a href="#h3-37">WorkspaceAuditTrail</a></li>
+<li><a href="#h3-39">ExecutionReceipt</a></li>
+<li><a href="#h2-42">Projection / UI</a></li>
+<li><a href="#h3-43">ProjectionContract</a></li>
+<li><a href="#h3-45">ProjectionBuilder</a></li>
+<li><a href="#h3-47">WidgetProjection</a></li>
+<li><a href="#h3-49">IntentDispatch</a></li>
+<li><a href="#h2-52">Queue / Jobs</a></li>
+<li><a href="#h3-53">WorkQueue</a></li>
+<li><a href="#h3-55">OrchestrationJob</a></li>
+<li><a href="#h2-58">CLI Commands</a></li>
+<li><a href="#h3-59">`rig workspace status/lanes/projection/receipts/recommend`</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig-to-Relay Runtime Concept Map</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Maps each Rig runtime/control-plane concept to its Rig Relay equivalent, porting status, and adaptation notes.</p>
@@ -143,6 +202,7 @@
 
 <p id="p-60" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** Read-only workspace control-plane status - **Relay:** No equivalent; use `relay current-state --summary` + desktop projection - **Port:** `deferred` — UI projection already provides equivalent info</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/concept-map.v1.json</code></p>

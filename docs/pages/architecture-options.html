@@ -4,16 +4,51 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Architecture Options: VSCodium Shell Lane — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="We evaluated three architectural approaches for integrating Rig Relay with VSCodium.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/architecture-options.html">
+<meta property="og:title" content="Architecture Options: VSCodium Shell Lane">
+<meta property="og:description" content="We evaluated three architectural approaches for integrating Rig Relay with VSCodium.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/architecture-options.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Architecture Options: VSCodium Shell Lane">
+<meta name="twitter:description" content="We evaluated three architectural approaches for integrating Rig Relay with VSCodium.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Vscodium Shell Lane</p>
   <h1>Architecture Options: VSCodium Shell Lane</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">We evaluated three architectural approaches for integrating Rig Relay with VSCodium.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/vscodium-shell-lane/architecture-options.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Architecture Options: VSCodium Shell Lane</a></li>
+<li><a href="#h2-3">Option A: Extension-only Control Plane (Recommended)</a></li>
+<li><a href="#h2-5">Option B: Branded VSCodium Distribution</a></li>
+<li><a href="#h2-7">Option C: Hybrid pywebview + VSCodium</a></li>
+<li><a href="#h2-9">Recommendation: Option A (Start with Extension)</a></li>
+<li><a href="#h3-11">Why not Option C?</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Architecture Options: VSCodium Shell Lane</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">We evaluated three architectural approaches for integrating Rig Relay with VSCodium.</p>
@@ -38,6 +73,7 @@
 
 <p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Rig should feel like a &quot;workbench&quot;, not a satellite. Integrating the prompt and evidence rails directly into the side-panel of the editor (Option A) provides a much tighter iteration loop for the developer.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/vscodium-shell-lane/architecture-options.v1.json</code></p>

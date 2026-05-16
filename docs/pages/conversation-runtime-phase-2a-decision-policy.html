@@ -4,16 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ConversationRuntime Phase 2A — Decision Policy Inventory — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines)">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/conversation-runtime-phase-2a-decision-policy.html">
+<meta property="og:title" content="ConversationRuntime Phase 2A — Decision Policy Inventory">
+<meta property="og:description" content="**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines)">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/conversation-runtime-phase-2a-decision-policy.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ConversationRuntime Phase 2A — Decision Policy Inventory">
+<meta name="twitter:description" content="**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines)">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Agent Loop</p>
   <h1>ConversationRuntime Phase 2A — Decision Policy Inventory</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines)</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">ConversationRuntime Phase 2A — Decision Policy Inventory</a></li>
+<li><a href="#h2-3">Current Decision Points in `_conversation_loop`</a></li>
+<li><a href="#h3-4">1. Middleware STOP (line 789)</a></li>
+<li><a href="#h3-7">2. User cancellation detection (lines 814–817 + 825–830)</a></li>
+<li><a href="#h3-10">3. Break condition: no tool calls / assistant final (line 823)</a></li>
+<li><a href="#h3-13">4. Hook retry (lines 831–848)</a></li>
+<li><a href="#h3-16">5. Tool call batch (lines 876+)</a></li>
+<li><a href="#h3-19">6. Exception/failure (lines 870–874, try/finally)</a></li>
+<li><a href="#h3-22">7. Max turns budget (line 329)</a></li>
+<li><a href="#h3-25">8. Loop termination: SUCCESS (lines 862–863)</a></li>
+<li><a href="#h2-28">Summary</a></li>
+<li><a href="#h2-30">Phase 2A Target</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ConversationRuntime Phase 2A — Decision Policy Inventory</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines) **Method**: `_conversation_loop` (lines 745–865)</p>
@@ -107,6 +148,7 @@ turn.mark_outcome(TurnOutcome.SUCCESS)</code></pre>
 
 <p id="p-32" class="disclosure-standard" data-disclosure-level="standard">Decisions 4 (hook retry) and 5 (tool batch) stay in AgentLoop for now — they involve execution state too deeply coupled to the loop.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json</code></p>

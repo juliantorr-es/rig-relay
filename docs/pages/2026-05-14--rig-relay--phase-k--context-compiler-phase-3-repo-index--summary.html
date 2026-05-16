@@ -4,16 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Date:** 2026-05-14">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.html">
+<meta property="og:title" content="Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval">
+<meta property="og:description" content="**Date:** 2026-05-14">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval">
+<meta name="twitter:description" content="**Date:** 2026-05-14">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Conversations</p>
   <h1>Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Date:** 2026-05-14</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval</a></li>
+<li><a href="#h2-3">Context</a></li>
+<li><a href="#h2-5">Outcome</a></li>
+<li><a href="#h3-6">New file: `rig_relay/context/repo_index.py`</a></li>
+<li><a href="#h3-8">Modified: `rig_relay/context/compiler.py`</a></li>
+<li><a href="#h3-10">Modified: `vibe/cli/textual_ui/rig_console/screens/dashboard.py`</a></li>
+<li><a href="#h3-12">Tests: `tests/context/test_repo_index.py`</a></li>
+<li><a href="#h3-14">Validation</a></li>
+<li><a href="#h2-16">Key Decisions</a></li>
+<li><a href="#h2-18">Delta from Phase 2</a></li>
+<li><a href="#h2-20">Cross-Session Coordination</a></li>
+<li><a href="#h2-22">Out-of-Scope Findings Recorded</a></li>
+<li><a href="#h2-24">Next Steps</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2026-05-14 **Phase:** k (prompt-first shell bridge → context compiler → repo index) **Topic:** DuckDB-backed RepoContextIndex replacing ad-hoc file discovery with deterministic constrained retrieval **Kind:** summary</p>
@@ -73,6 +115,7 @@
 
 <p id="p-25" class="disclosure-standard" data-disclosure-level="standard">- Phase 4: cross-lane context exchange (lane summaries → compiler input) - Phase 5: MCP-compatible resource exposure if warranted - Embeddings remain deferred (acceleration layer, not authority)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.v1.json</code></p>

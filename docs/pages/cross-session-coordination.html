@@ -4,16 +4,73 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cross-Session Coordination — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay sessions coordinate through typed state, not chat transcripts.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/cross-session-coordination.html">
+<meta property="og:title" content="Cross-Session Coordination">
+<meta property="og:description" content="Rig Relay sessions coordinate through typed state, not chat transcripts.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/cross-session-coordination.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Cross-Session Coordination">
+<meta name="twitter:description" content="Rig Relay sessions coordinate through typed state, not chat transcripts.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Cross-Session Coordination</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay sessions coordinate through typed state, not chat transcripts.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/cross-session-coordination.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Cross-Session Coordination</a></li>
+<li><a href="#h2-7">Evolution: Fleet Coordination</a></li>
+<li><a href="#h2-11">Coordination Events</a></li>
+<li><a href="#h3-13">Normalized Payload Contracts</a></li>
+<li><a href="#h3-17">Session Lifecycle Events</a></li>
+<li><a href="#h3-19">Task Claim Events</a></li>
+<li><a href="#h3-21">Path Reservation Events</a></li>
+<li><a href="#h3-23">Artifact Events</a></li>
+<li><a href="#h3-25">Conflict Events</a></li>
+<li><a href="#h3-27">Handoff Events</a></li>
+<li><a href="#h3-29">Lease Lifecycle Events</a></li>
+<li><a href="#h2-31">Lease Lifecycle</a></li>
+<li><a href="#h2-38">CoordinationStore Interface</a></li>
+<li><a href="#h3-43">Future Backend: Watchable Store</a></li>
+<li><a href="#h2-47">Dataset Impact</a></li>
+<li><a href="#h3-54">Derived Datasets</a></li>
+<li><a href="#h2-58">Local-First Design</a></li>
+<li><a href="#h2-62">Governed Checkpoint Commits</a></li>
+<li><a href="#h3-64">Policy</a></li>
+<li><a href="#h3-66">Checkpoint Flow</a></li>
+<li><a href="#h3-68">Refusal Conditions</a></li>
+<li><a href="#h3-70">Commit Message Format</a></li>
+<li><a href="#h3-72">Checkpoint Event Emission</a></li>
+<li><a href="#h3-76">Checkpoint Artifact</a></li>
+<li><a href="#h3-78">Dataset Reports</a></li>
+<li><a href="#h2-84">Review Packet Protocol</a></li>
+<li><a href="#h2-91">Reviewer Orchestrator Protocol</a></li>
+<li><a href="#h2-94">Governance Principle</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Cross-Session Coordination</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay sessions coordinate through typed state, not chat transcripts.</p>
@@ -305,6 +362,7 @@ Validation:
 
 <p id="p-95" class="disclosure-standard" data-disclosure-level="standard">**Agents can checkpoint. Only you publish.**</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/cross-session-coordination.v1.json</code></p>

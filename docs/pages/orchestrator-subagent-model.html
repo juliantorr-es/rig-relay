@@ -4,16 +4,54 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orchestrator, Subagent, Model, and Ralph Roles — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay uses an explicit role model to separate management, execution,">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/orchestrator-subagent-model.html">
+<meta property="og:title" content="Orchestrator, Subagent, Model, and Ralph Roles">
+<meta property="og:description" content="Rig Relay uses an explicit role model to separate management, execution,">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/orchestrator-subagent-model.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Orchestrator, Subagent, Model, and Ralph Roles">
+<meta name="twitter:description" content="Rig Relay uses an explicit role model to separate management, execution,">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Orchestrator, Subagent, Model, and Ralph Roles</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay uses an explicit role model to separate management, execution,</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/orchestrator-subagent-model.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Orchestrator, Subagent, Model, and Ralph Roles</a></li>
+<li><a href="#h2-3">Roles</a></li>
+<li><a href="#h3-5">Orchestrator</a></li>
+<li><a href="#h3-8">Subagent Profiles</a></li>
+<li><a href="#h3-11">Model/Provider Bindings</a></li>
+<li><a href="#h3-15">Ralph</a></li>
+<li><a href="#h3-18">RalphReport</a></li>
+<li><a href="#h3-20">Review Session</a></li>
+<li><a href="#h3-22">Adoption/Merge/Push Gates</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Orchestrator, Subagent, Model, and Ralph Roles</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay uses an explicit role model to separate management, execution, capability configuration, and autonomous background work.</p>
@@ -62,6 +100,7 @@ Ralph → RalphReport → Orchestrator Review → Adoption Decision</code></pre>
 
 <p id="p-23" class="disclosure-standard" data-disclosure-level="standard">All remain separately gated. Review acceptance does not execute merge. Merge requires adoption approval. Push requires preproduction approval.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/orchestrator-subagent-model.v1.json</code></p>

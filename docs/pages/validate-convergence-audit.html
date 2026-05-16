@@ -4,16 +4,75 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validate Workstream Convergence Audit — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Date:** 2026-05-13">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/validate-convergence-audit.html">
+<meta property="og:title" content="Validate Workstream Convergence Audit">
+<meta property="og:description" content="**Date:** 2026-05-13">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/validate-convergence-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Validate Workstream Convergence Audit">
+<meta name="twitter:description" content="**Date:** 2026-05-13">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Validate Tool</p>
   <h1>Validate Workstream Convergence Audit</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Date:** 2026-05-13</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/validate-tool/validate-convergence-audit.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Validate Workstream Convergence Audit</a></li>
+<li><a href="#h2-4">1. Repo State Summary</a></li>
+<li><a href="#h3-5">Dirty Files (Validate-Related)</a></li>
+<li><a href="#h3-7">Stale/Backup Files</a></li>
+<li><a href="#h2-10">2. Current Validate Feature Matrix</a></li>
+<li><a href="#h2-13">3. Inconsistencies Found</a></li>
+<li><a href="#h3-14">3A. Stage Numbering Conflicts (Critical)</a></li>
+<li><a href="#h3-20">3B. Schema Drift (Medium)</a></li>
+<li><a href="#h3-22">3C. Duplicate Test Coverage (Medium)</a></li>
+<li><a href="#h3-25">3D. `# type: ignore` Violation (Minor)</a></li>
+<li><a href="#h3-30">3E. Stale Doc References (Minor)</a></li>
+<li><a href="#h3-32">3F. Stale Artifact (Trivial)</a></li>
+<li><a href="#h2-35">4. File Size and Decomposition Needs</a></li>
+<li><a href="#h3-36">validate.py — 1538 lines, 37 functions, 10 classes</a></li>
+<li><a href="#h3-40">test_validate.py — 1797 lines, 116 tests</a></li>
+<li><a href="#h3-43">test_validate_git_state.py — 390 lines, 21 tests</a></li>
+<li><a href="#h2-46">5. Test Results (All Passing)</a></li>
+<li><a href="#h2-50">6. Cleanup Roadmap</a></li>
+<li><a href="#h3-51">Stage A — Documentation Canonicalization (safe, docs-only)</a></li>
+<li><a href="#h3-53">Stage B — Policy Cleanup (safe, targeted)</a></li>
+<li><a href="#h3-55">Stage C — Schema/Model Alignment (safe, additive)</a></li>
+<li><a href="#h3-57">Stage D — Validate Module Decomposition (risky, requires planning)</a></li>
+<li><a href="#h3-59">Stage E — Test File Decomposition (risky, depends on D)</a></li>
+<li><a href="#h3-61">Stage F — Promotion-Readiness Profile (after cleanup)</a></li>
+<li><a href="#h2-64">7. Recommended Next Implementation Slice</a></li>
+<li><a href="#h2-69">8. Cleanup Applied (Stages A–C)</a></li>
+<li><a href="#h3-70">Stage A — Documentation Canonicalization ✅</a></li>
+<li><a href="#h3-73">Stage B — Policy Cleanup ✅</a></li>
+<li><a href="#h3-76">Stage C — Schema Alignment ✅</a></li>
+<li><a href="#h3-78">Items Not Yet Applied</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validate Workstream Convergence Audit</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2026-05-13 **Branch:** main **HEAD:** 384e4860b14959769a14fbcb5b4ca27618dad861 **Scope:** Post-mission reconciliation for Stage 2/3/4/5 parallel validate work</p>
@@ -284,6 +343,7 @@ Line 373: Stage 7</code></pre>
 
 <p id="p-79" class="disclosure-standard" data-disclosure-level="standard">- Duplicate git state tests across `test_validate.py` and `test_validate_git_state.py` (1 exact + ~15 near-duplicate) — deferred to Stage E - Validate module decomposition (1538-line validate.py) — deferred to Stage D - Test file splitting (1797-line test_validate.py) — deferred to Stage E - Promotion-readiness profile — deferred to Stage F</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/validate-tool/validate-convergence-audit.v1.json</code></p>

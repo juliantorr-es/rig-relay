@@ -4,16 +4,47 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Current Rig Reuse Map — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This document maps existing Rig Relay components to their roles in the VSCodium Shell Lane.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/current-rig-reuse-map.html">
+<meta property="og:title" content="Current Rig Reuse Map">
+<meta property="og:description" content="This document maps existing Rig Relay components to their roles in the VSCodium Shell Lane.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/current-rig-reuse-map.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Current Rig Reuse Map">
+<meta name="twitter:description" content="This document maps existing Rig Relay components to their roles in the VSCodium Shell Lane.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Vscodium Shell Lane</p>
   <h1>Current Rig Reuse Map</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This document maps existing Rig Relay components to their roles in the VSCodium Shell Lane.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/vscodium-shell-lane/current-rig-reuse-map.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Current Rig Reuse Map</a></li>
+<li><a href="#h2-4">Reuse Strategy: &quot;The Governance Spine&quot;</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Current Rig Reuse Map</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document maps existing Rig Relay components to their roles in the VSCodium Shell Lane.</p>
@@ -38,6 +69,7 @@
 
 <p id="p-5" class="disclosure-standard" data-disclosure-level="standard">The reuse strategy is to keep the **Governance Spine** (DirtyGuard, AgentLoop, ReceiptStore, PatchProposal) entirely in the daemon. The VSCodium extension acts as a **Content-Light Projector**. It never performs file I/O directly for agent tasks; it merely observes the daemon performing it through the coordination layer.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/vscodium-shell-lane/current-rig-reuse-map.v1.json</code></p>

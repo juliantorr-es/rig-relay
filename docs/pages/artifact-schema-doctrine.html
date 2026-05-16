@@ -4,16 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Artifact Schema Doctrine — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay uses typed, versioned artifacts to ensure that evidence collected during dogfood sessions is analyzable, validatable, and useful for future optimization. Generic JSON blobs are avoided in fa">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/artifact-schema-doctrine.html">
+<meta property="og:title" content="Artifact Schema Doctrine">
+<meta property="og:description" content="Rig Relay uses typed, versioned artifacts to ensure that evidence collected during dogfood sessions is analyzable, validatable, and useful for future optimization. Generic JSON blobs are avoided in fa">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/artifact-schema-doctrine.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Artifact Schema Doctrine">
+<meta name="twitter:description" content="Rig Relay uses typed, versioned artifacts to ensure that evidence collected during dogfood sessions is analyzable, validatable, and useful for future optimization. Generic JSON blobs are avoided in fa">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Artifact Schema Doctrine</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay uses typed, versioned artifacts to ensure that evidence collected during dogfood sessions is analyzable, validatable, and useful for future optimization. Generic JSON blobs are avoided in fa</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/artifact-schema-doctrine.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Artifact Schema Doctrine</a></li>
+<li><a href="#h2-3">Why Typed Artifacts Matter</a></li>
+<li><a href="#h2-5">Schema Versioning</a></li>
+<li><a href="#h2-7">Naming Conventions</a></li>
+<li><a href="#h2-9">Core Architecture</a></li>
+<li><a href="#h3-10">Artifact Envelope vs. Payload</a></li>
+<li><a href="#h3-12">Canonical JSON</a></li>
+<li><a href="#h2-14">Common Fields</a></li>
+<li><a href="#h2-16">Registered Schemas</a></li>
+<li><a href="#h2-18">Tool Reasoning Traces</a></li>
+<li><a href="#h2-20">Implementation Backlog</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Artifact Schema Doctrine</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay uses typed, versioned artifacts to ensure that evidence collected during dogfood sessions is analyzable, validatable, and useful for future optimization. Generic JSON blobs are avoided in favor of strict schemas that define the structure and meaning of evidence data.</p>
@@ -75,6 +115,7 @@
 
 <p id="p-21" class="disclosure-standard" data-disclosure-level="standard">1.  **Consistent Envelope Versioning**: Update the `ToolOutputArtifactWriter` to emit `rig.relay.artifact.envelope.v1` consistently. 2.  **Tool-Result Validation**: Implement runtime validation of tool-result artifacts against their respective schemas. 3.  **Search Telemetry**: Update search tools (`grep`, `bash` when used for search) to emit typed `search_query` and `search_result` artifacts with backend/count/order evidence. 4.  **File I/O Telemetry**: Implement `file_read` and `file_write` artifact emission for all built-in file tools. 5.  **Git State Telemetry**: `git_status` emits typed repo-state evidence with branch, HEAD, dirty counts, and upstream metadata where observable. 6.  **Semantic Placement Reports**: Add artifacts for `search_replace` and other edit tools documenting why a specific placement was selected. 7.  **Task Delegation Linkage**: Add rollup tooling for `task_session_link` artifacts so parent sessions can summarize child manifest provenance without storing hidden reasoning. 8.  **Token Usage Analysis**: Build tools to analyze token waste based on artifact types and content density. The reasoning trace event (`TOOL_REASONING_TRACE`) now provides per-call inline vs artifacted byte counts and latency for this analysis. 9.  **Dataset Export Tooling**: Create a `rig-relay doctor export` command that merges typed artifacts into structured evaluation datasets.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/artifact-schema-doctrine.v1.json</code></p>

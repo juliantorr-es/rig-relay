@@ -4,16 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Runtime Evidence Spine v1 — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="- `span.start` + `span.end` = one span">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/runtime-evidence-spine-v1.html">
+<meta property="og:title" content="Runtime Evidence Spine v1">
+<meta property="og:description" content="- `span.start` + `span.end` = one span">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/runtime-evidence-spine-v1.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Runtime Evidence Spine v1">
+<meta name="twitter:description" content="- `span.start` + `span.end` = one span">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Runtime</p>
   <h1>Runtime Evidence Spine v1</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">- `span.start` + `span.end` = one span</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/runtime/runtime-evidence-spine-v1.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Runtime Evidence Spine v1</a></li>
+<li><a href="#h2-2">Trace Semantics</a></li>
+<li><a href="#h3-3">Parent/Child Span Model</a></li>
+<li><a href="#h3-5">Trace Tree Example</a></li>
+<li><a href="#h2-7">RuntimeSupervisor Trace Privacy</a></li>
+<li><a href="#h3-8">Safe Attributes</a></li>
+<li><a href="#h3-10">Redaction Proof</a></li>
+<li><a href="#h2-12">Supervisor Envelope Adoption</a></li>
+<li><a href="#h2-14">Validate Tracing v0 (deferred)</a></li>
+<li><a href="#h2-16">Desktop Trace Correlation</a></li>
+<li><a href="#h2-18">Test Diagnostics Helper</a></li>
+<li><a href="#h2-20">Duplicate Test Audit</a></li>
+<li><a href="#h2-23">Validate/Agent Command Doctrine</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Evidence Spine v1</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Trace Semantics</h2>
@@ -66,6 +108,7 @@
 
 <p id="p-24" class="disclosure-standard" data-disclosure-level="standard">1. `uv run pytest -m smoke --maxfail=1 -q` — pulse check 2. `uv run pytest -m &quot;not slow and not integration...&quot;` — fast default (4885 tests) 3. Full suite explicit only 4. Agents must not run broad pytest loops when focused validation exists 5. Duplicate tests should become parametrized behavior tables 6. Raw output/secrets never belong in traces or diagnostics</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/runtime/runtime-evidence-spine-v1.v1.json</code></p>

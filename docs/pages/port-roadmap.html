@@ -4,16 +4,61 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Runtime Port Roadmap — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Draft.** Proposed slices for porting Rig runtime/control-plane concepts into">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/port-roadmap.html">
+<meta property="og:title" content="Rig Runtime Port Roadmap">
+<meta property="og:description" content="**Draft.** Proposed slices for porting Rig runtime/control-plane concepts into">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/port-roadmap.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Runtime Port Roadmap">
+<meta name="twitter:description" content="**Draft.** Proposed slices for porting Rig runtime/control-plane concepts into">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>Rig Runtime Port Roadmap</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Draft.** Proposed slices for porting Rig runtime/control-plane concepts into</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/port-roadmap.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Runtime Port Roadmap</a></li>
+<li><a href="#h2-2">Status</a></li>
+<li><a href="#h2-4">Dependencies</a></li>
+<li><a href="#h2-7">Phase 1: Foundation (P1a+P1b+P1c)</a></li>
+<li><a href="#h3-8">P1a: Governance Engine Port</a></li>
+<li><a href="#h3-13">P1b: Worktree Manager</a></li>
+<li><a href="#h3-18">P1c: Runtime Model Types</a></li>
+<li><a href="#h2-24">Phase 2: Execution (P2a+P2b+P2c)</a></li>
+<li><a href="#h3-25">P2a: Projection Builder Upgrade</a></li>
+<li><a href="#h3-29">P2b: Subprocess Supervisor</a></li>
+<li><a href="#h3-34">P2b-follow-up: Governance Gate + Active Lease Conflict</a></li>
+<li><a href="#h3-39">P2c: Execution Lease</a></li>
+<li><a href="#h3-44">Mission Envelope Bridge</a></li>
+<li><a href="#h2-49">Phase 3: Evidence (P3a+P3b)</a></li>
+<li><a href="#h3-50">P3a: Receipt Envelope</a></li>
+<li><a href="#h3-54">P3b: Workspace Audit Trail</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Runtime Port Roadmap</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
@@ -136,6 +181,7 @@ P1c (Runtime Models) ──────┼──→ P2b (Subprocess Supervisor) 
 
 <p id="p-57" class="disclosure-standard" data-disclosure-level="standard">**Acceptance:** - Events are append-only (no mutation/delete) - Audit trail is replayable from events alone - Content-light (SHA256 of sensitive data, never raw) - Governance: `docs/governance/audit-trail.md`</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/port-roadmap.v1.json</code></p>

@@ -4,16 +4,73 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Relay — Complete Conversation Summary — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="The user is building **Rig Relay**, a Python 3.12+ CLI coding-agent harness managed with `uv`. The overarching goal is to build a **reviewer/orchestrator control plane** that enables safe autonomous m">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.html">
+<meta property="og:title" content="Rig Relay — Complete Conversation Summary">
+<meta property="og:description" content="The user is building **Rig Relay**, a Python 3.12+ CLI coding-agent harness managed with `uv`. The overarching goal is to build a **reviewer/orchestrator control plane** that enables safe autonomous m">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay — Complete Conversation Summary">
+<meta name="twitter:description" content="The user is building **Rig Relay**, a Python 3.12+ CLI coding-agent harness managed with `uv`. The overarching goal is to build a **reviewer/orchestrator control plane** that enables safe autonomous m">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Conversations</p>
   <h1>Rig Relay — Complete Conversation Summary</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">The user is building **Rig Relay**, a Python 3.12+ CLI coding-agent harness managed with `uv`. The overarching goal is to build a **reviewer/orchestrator control plane** that enables safe autonomous m</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/conversations/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Relay — Complete Conversation Summary</a></li>
+<li><a href="#h2-2">1. User&#x27;s Primary Goals and Intent</a></li>
+<li><a href="#h2-14">2. Conversation Timeline and Progress</a></li>
+<li><a href="#h3-15">Phase A (pre-conversation): Coordination Dataset Normalization, Exporter, Review Packet Protocol</a></li>
+<li><a href="#h3-17">Phase B: Review Packet Completion</a></li>
+<li><a href="#h3-19">Phase C: Reviewer Orchestrator Architecture Discussion</a></li>
+<li><a href="#h3-21">Phase D: Reviewer Orchestrator Cockpit Implementation</a></li>
+<li><a href="#h3-23">Phase E-F: Spawn Session Planner</a></li>
+<li><a href="#h3-25">Phase G-H: Current State Pulse</a></li>
+<li><a href="#h3-27">Phase I: Delegate/Fleet Orchestration Doctrine — Pending Work Queue</a></li>
+<li><a href="#h3-29">Phase J: Schema Validation and Ruff Boundary Hardening (CURRENT — COMPLETE)</a></li>
+<li><a href="#h2-31">3. Technical Context and Decisions</a></li>
+<li><a href="#h3-32">Technologies</a></li>
+<li><a href="#h3-34">Architectural Patterns</a></li>
+<li><a href="#h3-36">Key Constraints</a></li>
+<li><a href="#h3-38">Ruff Configuration (pyproject.toml)</a></li>
+<li><a href="#h3-40">All Schema Files (33 total under `docs/schemas/`)</a></li>
+<li><a href="#h2-49">4. Files and Code Changes</a></li>
+<li><a href="#h3-50">Core Coordination Module</a></li>
+<li><a href="#h3-53">Doctrine Documents</a></li>
+<li><a href="#h3-59">Scripts</a></li>
+<li><a href="#h3-65">Test Files</a></li>
+<li><a href="#h2-72">5. Active Work and Last Actions</a></li>
+<li><a href="#h2-81">6. Unresolved Issues and Pending Tasks</a></li>
+<li><a href="#h3-82">Known Blockers</a></li>
+<li><a href="#h3-85">Deferred Features (explicitly listed as non-goals)</a></li>
+<li><a href="#h3-87">Pre-existing Pyright Errors (not introduced by this work)</a></li>
+<li><a href="#h2-89">7. Immediate Next Step</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay — Complete Conversation Summary</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">1. User&#x27;s Primary Goals and Intent</h2>
@@ -232,6 +289,7 @@ exclude = [&quot;pyinstaller/&quot;, &quot;docs/schemas/&quot;]</code></pre>
 
 <p id="p-93" class="disclosure-standard" data-disclosure-level="standard">**To continue**: The next agent should verify the git state (staged files), then proceed with `queue_claim_ready` as an agent tool, followed by `spawn_session --execute` for single-child execution. The validation foundation (schema checker, regression tests, ruff exclusion, AGENTS.md rules) is in place and should be respected for all future schema work.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/conversations/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.v1.json</code></p>

@@ -4,16 +4,72 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Current Built-In Tool Inventory — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="&gt; Audit date: 2026-05-14">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/current-built-in-tools.html">
+<meta property="og:title" content="Current Built-In Tool Inventory">
+<meta property="og:description" content="&gt; Audit date: 2026-05-14">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/current-built-in-tools.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Current Built-In Tool Inventory">
+<meta name="twitter:description" content="&gt; Audit date: 2026-05-14">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Current Built-In Tool Inventory</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">&gt; Audit date: 2026-05-14</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/current-built-in-tools.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Current Built-In Tool Inventory</a></li>
+<li><a href="#h2-3">Executive Summary</a></li>
+<li><a href="#h2-5">Refinement Reports</a></li>
+<li><a href="#h3-7">Classification Summary</a></li>
+<li><a href="#h2-9">Inventory Table</a></li>
+<li><a href="#h2-11">Detailed Tool Notes</a></li>
+<li><a href="#h3-12">`bash` — Bash</a></li>
+<li><a href="#h3-21">`grep` — Grep</a></li>
+<li><a href="#h3-30">`read_file` — ReadFile</a></li>
+<li><a href="#h3-39">`search_replace` — SearchReplace</a></li>
+<li><a href="#h3-48">`git_*` — Git tools (status, diff, log, branch, show, ls_files)</a></li>
+<li><a href="#h3-57">`task` — Task (subagent delegation)</a></li>
+<li><a href="#h3-66">`web_fetch` — WebFetch</a></li>
+<li><a href="#h3-75">`web_search` — WebSearch</a></li>
+<li><a href="#h3-84">`write_file` — WriteFile</a></li>
+<li><a href="#h3-93">`skill` — Skill</a></li>
+<li><a href="#h3-97">`todo` — Todo</a></li>
+<li><a href="#h3-100">`ask_user_question` — AskUserQuestion</a></li>
+<li><a href="#h3-103">`exit_plan_mode` — ExitPlanMode</a></li>
+<li><a href="#h2-106">Annoyance Ranking</a></li>
+<li><a href="#h2-109">Hardening Priority Map</a></li>
+<li><a href="#h3-111">P0 Rationale</a></li>
+<li><a href="#h3-113">P1 Rationale</a></li>
+<li><a href="#h3-115">P2 Rationale</a></li>
+<li><a href="#h3-117">P3 Rationale</a></li>
+<li><a href="#h2-119">Recommended Next Implementation Slice</a></li>
+<li><a href="#h2-125">Cross-Links</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Current Built-In Tool Inventory</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; Audit date: 2026-05-14 &gt; Branch: main &gt; HEAD: 61b46b8 &gt; Hardened contract closure: bash, write_file, search_replace, and validate now have complete request/result/receipt model triples with corresponding JSON Schema files, schema_version fields on all receipt models, and no `exclude_none=True` workarounds in schema validation tests. &gt; Parallel test stability: `test_tool_schema_contracts.py` loads schemas via module-level `SCHEMAS_DIR` from `__file__` (safe under xdist per-process imports). `test_ui_bash_execution.py` uses `xdist_group(&quot;textual_serial_group&quot;)` to prevent Textual snapshot concurrency failures. A regression test (`test_schema_contracts_do_not_depend_on_execution_order`) validates all contract models in a single isolated test. &gt; See `docs/audits/data/current_builtin_tools.jsonl` for machine-readable records. &gt; See also: [bash replacement opportunity map](bash-replacement-opportunity-map.md) &gt; Out-of-scope findings from tool audits are recorded in the [findings registry](../findings/out-of-scope-findings.md).</p>
@@ -323,6 +379,7 @@
 
 <p id="p-126" class="disclosure-standard" data-disclosure-level="standard">- Existing inventory: [`docs/audits/tool-determinism-inventory.md`](./tool-determinism-inventory.md) — add cross-reference - JSONL data: [`docs/audits/data/current_builtin_tools.jsonl`](./data/current_builtin_tools.jsonl) - Self-dogfood docs: [`docs/dogfood/rig-relay-self-dogfood.md`](../dogfood/rig-relay-self-dogfood.md) - Tool contracts: [`vibe/core/telemetry/tool_contract.py`](../../vibe/core/telemetry/tool_contract.py) - Artifact schemas: [`docs/audits/artifact-schema-doctrine.md`](./artifact-schema-doctrine.md) - Governance: [Cross-Session Coordination](../governance/cross-session-coordination.md), [Usage Data Doctrine](../governance/usage-data-doctrine.md) - **2025-05-17**: Coordination dataset row normalization milestone — `coord.*` and checkpoint events now use normalized payload contracts. Paths salted-hashed, content-light, schema-backed. See `docs/schemas/` for four new evaluation schemas (`rig.relay.cross_session_coordination.v1`, `rig.relay.coordination_conflict.v1`, `rig.relay.artifact_reuse.v1`, `rig.relay.checkpoint_eval.v1`).</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/current-built-in-tools.v1.json</code></p>

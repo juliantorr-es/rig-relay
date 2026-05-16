@@ -4,16 +4,69 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coordination Migration Inventory — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This inventory maps the coordination seam that started in `vibe.core.coordination`">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/coordination-migration-inventory.html">
+<meta property="og:title" content="Coordination Migration Inventory">
+<meta property="og:description" content="This inventory maps the coordination seam that started in `vibe.core.coordination`">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/coordination-migration-inventory.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Coordination Migration Inventory">
+<meta name="twitter:description" content="This inventory maps the coordination seam that started in `vibe.core.coordination`">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Coordination Migration Inventory</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This inventory maps the coordination seam that started in `vibe.core.coordination`</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/coordination-migration-inventory.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Coordination Migration Inventory</a></li>
+<li><a href="#h2-3">Status</a></li>
+<li><a href="#h2-8">Current `vibe.core.coordination` Surface</a></li>
+<li><a href="#h3-9">`vibe/core/coordination/_models.py`</a></li>
+<li><a href="#h3-11">`vibe/core/coordination/_store.py`</a></li>
+<li><a href="#h3-13">`vibe/core/coordination/__init__.py`</a></li>
+<li><a href="#h2-15">Public API Summary</a></li>
+<li><a href="#h3-16">Classes</a></li>
+<li><a href="#h3-18">Functions</a></li>
+<li><a href="#h2-20">Current Import Sites</a></li>
+<li><a href="#h2-22">Tests Covering Coordination</a></li>
+<li><a href="#h2-24">Runtime Dependencies</a></li>
+<li><a href="#h2-26">Generated Artifact Locations</a></li>
+<li><a href="#h2-28">Event Names Emitted</a></li>
+<li><a href="#h2-30">Schema Dependencies</a></li>
+<li><a href="#h2-32">Migration Risk</a></li>
+<li><a href="#h2-34">Target Relay-Native Boundary</a></li>
+<li><a href="#h3-35">`rig_relay.coordination.models`</a></li>
+<li><a href="#h3-37">`rig_relay.coordination.store`</a></li>
+<li><a href="#h3-39">`rig_relay.coordination.events`</a></li>
+<li><a href="#h3-41">`rig_relay.coordination.tool`</a></li>
+<li><a href="#h2-43">Adapter Strategy</a></li>
+<li><a href="#h2-45">Dataset-Backed Motivation</a></li>
+<li><a href="#h2-49">Planning-Slice Rules</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Coordination Migration Inventory</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This inventory maps the coordination seam that started in `vibe.core.coordination` and now lives in `rig_relay.coordination.models`, `rig_relay.coordination.store`, and the Relay-native coordination tool execution helpers. `vibe.core.coordination` remains a compatibility adapter during alpha. The planning slice is inventory-first: no event-name changes, no schema changes, no payload behavior changes, and no circular imports from `rig_relay` back into `vibe`.</p>
@@ -114,6 +167,7 @@
 
 <p id="p-50" class="disclosure-standard" data-disclosure-level="standard">- No event-name changes in this slice. - No schema changes in this slice. - No payload behavior changes in this slice. - No circular imports from `rig_relay` to `vibe`.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/coordination-migration-inventory.v1.json</code></p>

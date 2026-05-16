@@ -4,16 +4,82 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Relay Entry Point Authority Audit — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Established.** Audit of the current CLI/product entry point boundary after the">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/relay-entry-point-authority.html">
+<meta property="og:title" content="Relay Entry Point Authority Audit">
+<meta property="og:description" content="**Established.** Audit of the current CLI/product entry point boundary after the">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/relay-entry-point-authority.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Relay Entry Point Authority Audit">
+<meta name="twitter:description" content="**Established.** Audit of the current CLI/product entry point boundary after the">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Relay Entry Point Authority Audit</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Established.** Audit of the current CLI/product entry point boundary after the</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/relay-entry-point-authority.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Relay Entry Point Authority Audit</a></li>
+<li><a href="#h2-2">Status</a></li>
+<li><a href="#h2-4">Session State</a></li>
+<li><a href="#h3-6">Dirty files at start</a></li>
+<li><a href="#h2-10">Governance Note: Checkpoint to `main`</a></li>
+<li><a href="#h2-16">Command Inventory</a></li>
+<li><a href="#h3-17">`pyproject.toml` Entry Points (`[project.scripts]`)</a></li>
+<li><a href="#h3-19">Entry Points Referenced But Not Registered</a></li>
+<li><a href="#h2-22">Entry Point Target Table</a></li>
+<li><a href="#h2-25">Current Dependency Map</a></li>
+<li><a href="#h2-27">Relay-Owned vs Vibe-Owned Boundary Assessment</a></li>
+<li><a href="#h3-28">Relay-Owned (Product Namespace: `rig_relay.*`)</a></li>
+<li><a href="#h3-30">Vibe-Owned (Legacy: `vibe.*`)</a></li>
+<li><a href="#h3-32">Boundary Classifications</a></li>
+<li><a href="#h2-34">Migration Risk Notes</a></li>
+<li><a href="#h3-35">Risk 1: All Primary Entry Points Point to `vibe.*`</a></li>
+<li><a href="#h3-37">Risk 2: Deprecation Warning Hardcodes Alias Names</a></li>
+<li><a href="#h3-42">Risk 3: `rig-relay-cockpit` Is Not Registered</a></li>
+<li><a href="#h3-45">Risk 4: `vibe-legacy` and `vibe-acp-legacy` Are Functionally Identical</a></li>
+<li><a href="#h3-47">Risk 5: `rig_relay/cli/` and `rig_relay/runtime/` Are Target Packages With No Content</a></li>
+<li><a href="#h2-49">Validation Commands and Results</a></li>
+<li><a href="#h2-52">Recommended Next Slices in Priority Order</a></li>
+<li><a href="#h3-53">Slice 1: Extract Relay Runtime Facade (IMMEDIATE)</a></li>
+<li><a href="#h3-61">Slice 2: Register `rig-relay-cockpit` Console Script (NEXT)</a></li>
+<li><a href="#h3-65">Slice 3: Fix Deprecation Warning Accuracy (MINOR)</a></li>
+<li><a href="#h3-67">Slice 4: Migrate Session Lifecycle Boundary (MEDIUM)</a></li>
+<li><a href="#h3-69">Slice 5: Migrate CLI Orchestrator (MEDIUM)</a></li>
+<li><a href="#h3-71">Slice 6: Block Checkpoint to Main Governance Gap</a></li>
+<li><a href="#h2-73">Out-of-scope Findings</a></li>
+<li><a href="#h2-76">Facade Implemented</a></li>
+<li><a href="#h3-79">What Changed</a></li>
+<li><a href="#h3-81">New Facade Modules</a></li>
+<li><a href="#h3-83">What Did Not Change</a></li>
+<li><a href="#h3-85">Remaining Architecture</a></li>
+<li><a href="#h3-87">Status</a></li>
+<li><a href="#h3-89">Cockpit Registration</a></li>
+<li><a href="#h3-92">Verification</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Relay Entry Point Authority Audit</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
@@ -341,6 +407,7 @@ vibe-acp-legacy ──→ vibe.acp.entrypoint (unchanged, warning printed)</code
 
 <p id="p-93" class="disclosure-standard" data-disclosure-level="standard">All validation commands pass (see validation section of the mission report).</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/relay-entry-point-authority.v1.json</code></p>

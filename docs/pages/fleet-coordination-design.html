@@ -4,16 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fleet Coordination Plane — Design Audit — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Date:** 2026-05-14">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/fleet-coordination-design.html">
+<meta property="og:title" content="Fleet Coordination Plane — Design Audit">
+<meta property="og:description" content="**Date:** 2026-05-14">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/fleet-coordination-design.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Fleet Coordination Plane — Design Audit">
+<meta name="twitter:description" content="**Date:** 2026-05-14">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>Fleet Coordination Plane — Design Audit</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Date:** 2026-05-14</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/fleet-coordination-design.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Fleet Coordination Plane — Design Audit</a></li>
+<li><a href="#h2-3">1. Context</a></li>
+<li><a href="#h2-5">2. Problem Statement</a></li>
+<li><a href="#h2-7">3. Design Principles</a></li>
+<li><a href="#h2-9">4. Assessment of Proposed Entities</a></li>
+<li><a href="#h3-10">AgentSession</a></li>
+<li><a href="#h3-12">WorkClaim &amp; PathLease</a></li>
+<li><a href="#h3-14">AgentMessage &amp; PatchProposal</a></li>
+<li><a href="#h2-16">5. Storage and Indexing</a></li>
+<li><a href="#h2-18">6. Failure Modes and Mitigation</a></li>
+<li><a href="#h2-20">7. Migration Path</a></li>
+<li><a href="#h2-22">8. Conclusion</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Fleet Coordination Plane — Design Audit</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2026-05-14 **Status:** Design Reviewed</p>
@@ -68,6 +109,7 @@
 
 <p id="p-23" class="disclosure-standard" data-disclosure-level="standard">The proposed Fleet Coordination Plane design correctly centralizes mutation authority while decentralizing thought. It avoids the scaling limits of Git worktrees by moving to a structured patch-proposal mechanism. The use of salted hashes and content-light events preserves the project&#x27;s privacy and observability standards.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/fleet-coordination-design.v1.json</code></p>

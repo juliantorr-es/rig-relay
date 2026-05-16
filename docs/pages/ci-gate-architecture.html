@@ -4,16 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CI Gate Architecture — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="&gt; **Status**: Design Proposal">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/ci-gate-architecture.html">
+<meta property="og:title" content="CI Gate Architecture">
+<meta property="og:description" content="&gt; **Status**: Design Proposal">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/ci-gate-architecture.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CI Gate Architecture">
+<meta name="twitter:description" content="&gt; **Status**: Design Proposal">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Ci</p>
   <h1>CI Gate Architecture</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">&gt; **Status**: Design Proposal</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/ci/ci-gate-architecture.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">CI Gate Architecture</a></li>
+<li><a href="#h2-3">Principles</a></li>
+<li><a href="#h2-5">Tier Definitions</a></li>
+<li><a href="#h3-6">Tier 0 — Local Smoke / Preflight</a></li>
+<li><a href="#h3-10">Tier 1 — PR Required Baseline</a></li>
+<li><a href="#h3-15">Tier 2 — Domain-Specific Required Gates</a></li>
+<li><a href="#h3-18">Tier 3 — Promotion Readiness</a></li>
+<li><a href="#h3-22">Tier 4 — Nightly / Manual Deep Audit</a></li>
+<li><a href="#h2-25">Migration from Current CI</a></li>
+<li><a href="#h3-26">Keep as-is (healthy):</a></li>
+<li><a href="#h3-28">Add (new gates):</a></li>
+<li><a href="#h3-30">Remove (stale):</a></li>
+<li><a href="#h3-32">Consider:</a></li>
+<li><a href="#h2-34">Cost Budget</a></li>
+<li><a href="#h2-36">Guard Against CI Overload</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">CI Gate Architecture</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **Status**: Design Proposal &gt; **Date**: 2026-05-17 &gt; **Scope**: Tiered gate architecture for Rig Relay CI.</p>
@@ -139,6 +183,7 @@
 
 <p id="p-37" class="disclosure-standard" data-disclosure-level="standard">1. **Cap Tier 2 gates to 3 parallel jobs max** — avoid runner starvation 2. **Tier 1 must complete within 3 minutes** — if slower, split or optimize 3. **Network-dependent tests** (Google Drive, desktop) are never PR-blocking 4. **Snapshot tests are advisory only** — they use `continue-on-error` already 5. **Validate profiles should reuse CI gate definitions**, not duplicate them</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/ci/ci-gate-architecture.v1.json</code></p>

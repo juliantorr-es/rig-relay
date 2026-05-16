@@ -4,16 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Audit: Tool Execution and Artifact Safety Boundary — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Status: Draft">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/tool-execution-artifact-safety-boundary.html">
+<meta property="og:title" content="Audit: Tool Execution and Artifact Safety Boundary">
+<meta property="og:description" content="Status: Draft">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/tool-execution-artifact-safety-boundary.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Audit: Tool Execution and Artifact Safety Boundary">
+<meta name="twitter:description" content="Status: Draft">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Audit: Tool Execution and Artifact Safety Boundary</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Status: Draft</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/tool-execution-artifact-safety-boundary.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Audit: Tool Execution and Artifact Safety Boundary</a></li>
+<li><a href="#h2-3">Executive Summary</a></li>
+<li><a href="#h2-5">Tool Output Lifecycle Map</a></li>
+<li><a href="#h2-7">Artifacting Threshold Inventory</a></li>
+<li><a href="#h2-9">Safety and Determinism Risks</a></li>
+<li><a href="#h2-11">Missing Tests</a></li>
+<li><a href="#h2-13">Recommended Future Missions</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Tool Execution and Artifact Safety Boundary</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: tools</p>
@@ -48,6 +84,7 @@
 
 <p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1.  **Mission: Binary Safety Gate**: Implement a validation step in `ArtifactWriter` to safely encode or reject binary blobs. 2.  **Mission: Normalized Artifact Metadata**: Ensure all `artifact_path` references in events are relative to the project root, not the session directory.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/tool-execution-artifact-safety-boundary.v1.json</code></p>

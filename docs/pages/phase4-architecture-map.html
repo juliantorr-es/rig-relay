@@ -4,16 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1 — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Analysis date: 2026-05-16">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/phase4-architecture-map.html">
+<meta property="og:title" content="Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1">
+<meta property="og:description" content="Analysis date: 2026-05-16">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/phase4-architecture-map.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1">
+<meta name="twitter:description" content="Analysis date: 2026-05-16">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Agent Loop</p>
   <h1>Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Analysis date: 2026-05-16</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/agent-loop/phase4-architecture-map.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1</a></li>
+<li><a href="#h2-3">Phase 3 Residual Inventory — What Still Lives in AgentLoop</a></li>
+<li><a href="#h3-5">Key insight</a></li>
+<li><a href="#h2-8">Phase 4 Objective — Chosen</a></li>
+<li><a href="#h2-13">Alternatives Considered</a></li>
+<li><a href="#h2-15">Entry Gates — Required Before Phase 4</a></li>
+<li><a href="#h2-17">Exit Gates — Definition of Done</a></li>
+<li><a href="#h2-19">Implementation Slices</a></li>
+<li><a href="#h2-22">Risk Map</a></li>
+<li><a href="#h2-24">Tests/Docs Needed</a></li>
+<li><a href="#h3-25">Tests</a></li>
+<li><a href="#h3-27">Docs</a></li>
+<li><a href="#h2-29">Recommendation</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Analysis date: 2026-05-16 Inspected HEAD: c5a31bbe Status: Phase 3 COMPLETE — split-phase tool execution landed</p>
@@ -186,6 +228,7 @@ After Phase 3, AgentLoop is a clean adapter shell delegating the while-loop to C
 
 <p id="p-32" class="disclosure-standard" data-disclosure-level="standard">This is a 1-slice gate, not a mega-phase. Build the shell first, then the evidence inside it.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/agent-loop/phase4-architecture-map.v1.json</code></p>

@@ -4,16 +4,53 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Mission Router — Phase 0 — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Status: Phase 0 — Deterministic Planning &amp; Routing (Complete).**">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/mission-router.html">
+<meta property="og:title" content="Rig Mission Router — Phase 0">
+<meta property="og:description" content="**Status: Phase 0 — Deterministic Planning &amp; Routing (Complete).**">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/mission-router.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Mission Router — Phase 0">
+<meta name="twitter:description" content="**Status: Phase 0 — Deterministic Planning &amp; Routing (Complete).**">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Rig Mission Router — Phase 0</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Status: Phase 0 — Deterministic Planning &amp; Routing (Complete).**</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/mission-router.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Mission Router — Phase 0</a></li>
+<li><a href="#h2-3">1. Vision</a></li>
+<li><a href="#h2-6">2. Core Workflow</a></li>
+<li><a href="#h2-8">3. Mission Route Types</a></li>
+<li><a href="#h2-10">4. Routing Heuristics</a></li>
+<li><a href="#h2-13">5. Content-Light Boundary</a></li>
+<li><a href="#h2-16">6. Relationship to Fleet Queue</a></li>
+<li><a href="#h2-19">7. Deferred Features (Post-Phase 0)</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Mission Router — Phase 0</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status: Phase 0 — Deterministic Planning &amp; Routing (Complete).**</p>
@@ -64,6 +101,7 @@
 
 <p id="p-20" class="disclosure-standard" data-disclosure-level="standard">*   **LLM Decomposition**: Phase 0 uses simple regex/keyword heuristics. Future phases will use LLMs for deeper semantic planning. *   **Dynamic Re-routing**: The plan is currently static at intake. Future versions will support mid-mission plan revision. *   **Agent Spawning**: Real process/container management for `delegated_agent` is deferred. *   **Patch Application**: Automatic application of patches from `patch_proposal` routes is deferred.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/mission-router.v1.json</code></p>

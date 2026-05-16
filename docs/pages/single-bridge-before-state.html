@@ -4,16 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Desktop Transport — Before State (Split Pywebview + WebSocket) — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="pywebview window">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/single-bridge-before-state.html">
+<meta property="og:title" content="Desktop Transport — Before State (Split Pywebview + WebSocket)">
+<meta property="og:description" content="pywebview window">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/single-bridge-before-state.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Desktop Transport — Before State (Split Pywebview + WebSocket)">
+<meta name="twitter:description" content="pywebview window">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Desktop</p>
   <h1>Desktop Transport — Before State (Split Pywebview + WebSocket)</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">pywebview window</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/desktop/single-bridge-before-state.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Desktop Transport — Before State (Split Pywebview + WebSocket)</a></li>
+<li><a href="#h2-2">Architecture</a></li>
+<li><a href="#h2-4">Components</a></li>
+<li><a href="#h2-10">Problems</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Desktop Transport — Before State (Split Pywebview + WebSocket)</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Architecture</h2>
@@ -47,6 +80,7 @@ Separate WebSocket server (websockets library)
 
 <p id="p-14" class="disclosure-standard" data-disclosure-level="standard">4. **http_server=True fragility**: pywebview&#x27;s internal HTTP server has platform-specific behavior. On macOS, it works; on other platforms, unknown.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/desktop/single-bridge-before-state.v1.json</code></p>

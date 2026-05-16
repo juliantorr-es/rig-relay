@@ -4,16 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mission Context DuckDB Design — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This design keeps DuckDB in the role of a rebuildable analytical index, not a canonical governance store.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/mission-context-duckdb-design.html">
+<meta property="og:title" content="Mission Context DuckDB Design">
+<meta property="og:description" content="This design keeps DuckDB in the role of a rebuildable analytical index, not a canonical governance store.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/mission-context-duckdb-design.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Mission Context DuckDB Design">
+<meta name="twitter:description" content="This design keeps DuckDB in the role of a rebuildable analytical index, not a canonical governance store.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>Mission Context DuckDB Design</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This design keeps DuckDB in the role of a rebuildable analytical index, not a canonical governance store.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/mission-context-duckdb-design.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Mission Context DuckDB Design</a></li>
+<li><a href="#h2-3">What DuckDB Is For</a></li>
+<li><a href="#h2-5">What DuckDB Is Not For</a></li>
+<li><a href="#h2-7">Rebuildability Rule</a></li>
+<li><a href="#h2-9">Compilation Rule</a></li>
+<li><a href="#h2-13">Likely Helper Boundary</a></li>
+<li><a href="#h2-16">Future Integration</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Mission Context DuckDB Design</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This design keeps DuckDB in the role of a rebuildable analytical index, not a canonical governance store.</p>
@@ -48,6 +84,7 @@
 
 <p id="p-17" class="disclosure-standard" data-disclosure-level="standard">DuckDB can later support packet source discovery, but the executable contract is the packet model and receipt schema first.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/mission-context-duckdb-design.v1.json</code></p>

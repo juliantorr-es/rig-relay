@@ -4,16 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Frontend Rendering Safety Doctrine — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Draft.** Derived from Intake&#x27;s security boundary policies and adapted for">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/frontend-rendering-safety.html">
+<meta property="og:title" content="Frontend Rendering Safety Doctrine">
+<meta property="og:description" content="**Draft.** Derived from Intake&#x27;s security boundary policies and adapted for">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/frontend-rendering-safety.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Frontend Rendering Safety Doctrine">
+<meta name="twitter:description" content="**Draft.** Derived from Intake&#x27;s security boundary policies and adapted for">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Frontend Rendering Safety Doctrine</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Draft.** Derived from Intake&#x27;s security boundary policies and adapted for</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/frontend-rendering-safety.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Frontend Rendering Safety Doctrine</a></li>
+<li><a href="#h2-2">Status</a></li>
+<li><a href="#h2-4">Purpose</a></li>
+<li><a href="#h2-6">Core Rules</a></li>
+<li><a href="#h3-7">Rule 1: No raw session tokens in storage</a></li>
+<li><a href="#h3-9">Rule 2: No raw prompts or model outputs in shared telemetry</a></li>
+<li><a href="#h3-12">Rule 3: No plaintext sensitive data in long-term frontend storage</a></li>
+<li><a href="#h3-14">Rule 4: No innerHTML for untrusted content</a></li>
+<li><a href="#h3-18">Rule 5: No eval or dynamic code execution</a></li>
+<li><a href="#h3-20">Rule 6: No public/remote mutation authority</a></li>
+<li><a href="#h3-23">Rule 7: No cloud-side subprocess or Git commands</a></li>
+<li><a href="#h3-25">Rule 8: Hash for lookup, encrypt for readable private data</a></li>
+<li><a href="#h2-27">Frontend Implementation Checklist</a></li>
+<li><a href="#h2-29">Test Requirements</a></li>
+<li><a href="#h2-31">Cross-References</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Frontend Rendering Safety Doctrine</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
@@ -98,6 +142,7 @@
 
 <p id="p-32" class="disclosure-standard" data-disclosure-level="standard">- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Desktop Projection Schema](../schemas/rig.relay.desktop_projection.v1.schema.json) - [Usage Data Doctrine](usage-data-doctrine.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/frontend-rendering-safety.v1.json</code></p>

@@ -4,16 +4,72 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RuntimeSupervisor Architecture — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="The **RuntimeSupervisor** is the relay-native subprocess execution engine. It supersedes the Rig domain&#x27;s `runtime_supervisor.py` and `runtime_stream.py` with a lease-gated, streaming-first design.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/runtime-supervisor.html">
+<meta property="og:title" content="RuntimeSupervisor Architecture">
+<meta property="og:description" content="The **RuntimeSupervisor** is the relay-native subprocess execution engine. It supersedes the Rig domain&#x27;s `runtime_supervisor.py` and `runtime_stream.py` with a lease-gated, streaming-first design.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/runtime-supervisor.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RuntimeSupervisor Architecture">
+<meta name="twitter:description" content="The **RuntimeSupervisor** is the relay-native subprocess execution engine. It supersedes the Rig domain&#x27;s `runtime_supervisor.py` and `runtime_stream.py` with a lease-gated, streaming-first design.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>RuntimeSupervisor Architecture</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">The **RuntimeSupervisor** is the relay-native subprocess execution engine. It supersedes the Rig domain&#x27;s `runtime_supervisor.py` and `runtime_stream.py` with a lease-gated, streaming-first design.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/runtime-supervisor.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">RuntimeSupervisor Architecture</a></li>
+<li><a href="#h2-3">Core Contract</a></li>
+<li><a href="#h2-6">Stream Event Lifecycle</a></li>
+<li><a href="#h2-9">Bounded Output</a></li>
+<li><a href="#h2-11">Timeout and Cancellation</a></li>
+<li><a href="#h2-15">Lease Integration</a></li>
+<li><a href="#h2-17">Content-Light Design</a></li>
+<li><a href="#h2-21">Deferred Features</a></li>
+<li><a href="#h2-23">Porting Notes</a></li>
+<li><a href="#h2-25">Governance Gate</a></li>
+<li><a href="#h3-27">Integration</a></li>
+<li><a href="#h3-29">Constructor Args</a></li>
+<li><a href="#h3-31">Behavior</a></li>
+<li><a href="#h2-33">Active Lease Conflict Detection</a></li>
+<li><a href="#h3-35">Behavior</a></li>
+<li><a href="#h2-38">Heartbeat Emission</a></li>
+<li><a href="#h3-40">Behavior</a></li>
+<li><a href="#h3-42">Constructor Args</a></li>
+<li><a href="#h2-44">Stall Detection</a></li>
+<li><a href="#h3-46">Behavior</a></li>
+<li><a href="#h3-48">Constructor Args</a></li>
+<li><a href="#h2-50">Projection Integration</a></li>
+<li><a href="#h2-52">Audit Integration (P3b)</a></li>
+<li><a href="#h3-54">Constructor Args</a></li>
+<li><a href="#h3-56">Behavior</a></li>
+<li><a href="#h3-58">Scope</a></li>
+<li><a href="#h2-60">What Remains Deferred</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor Architecture</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">The **RuntimeSupervisor** is the relay-native subprocess execution engine. It supersedes the Rig domain&#x27;s `runtime_supervisor.py` and `runtime_stream.py` with a lease-gated, streaming-first design.</p>
@@ -190,6 +246,7 @@ async for event in supervisor.execute(lease):
 
 <p id="p-62" class="disclosure-standard" data-disclosure-level="standard">1. **Dry-run mode** — Not implemented. Would validate lease and environment without spawning.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/runtime-supervisor.v1.json</code></p>

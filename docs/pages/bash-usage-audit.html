@@ -4,16 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bash Usage Audit for Validate Design — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/bash-usage-audit.html">
+<meta property="og:title" content="Bash Usage Audit for Validate Design">
+<meta property="og:description" content="This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/bash-usage-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Bash Usage Audit for Validate Design">
+<meta name="twitter:description" content="This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Validate Tool</p>
   <h1>Bash Usage Audit for Validate Design</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/validate-tool/bash-usage-audit.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Bash Usage Audit for Validate Design</a></li>
+<li><a href="#h2-2">Scope</a></li>
+<li><a href="#h2-4">Evidence Sources</a></li>
+<li><a href="#h2-6">What the Current Data Says</a></li>
+<li><a href="#h2-11">Command Categories</a></li>
+<li><a href="#h3-12">Validation / Test Execution</a></li>
+<li><a href="#h3-19">Git Introspection</a></li>
+<li><a href="#h3-26">File / Content Inspection</a></li>
+<li><a href="#h3-33">Report / Dataset Generation</a></li>
+<li><a href="#h3-40">Mutation / Destructive / Refused Commands</a></li>
+<li><a href="#h2-47">Validate Absorption Rules</a></li>
+<li><a href="#h2-52">Gaps in Current Data</a></li>
+<li><a href="#h2-54">Conclusion</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Bash Usage Audit for Validate Design</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Scope</h2>
@@ -137,6 +179,7 @@
 
 <p id="p-57" class="disclosure-standard" data-disclosure-level="standard">These are the commands most likely to benefit from deterministic profiles, structured receipts, and blocker taxonomy.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/validate-tool/bash-usage-audit.v1.json</code></p>

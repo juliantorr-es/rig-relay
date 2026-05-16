@@ -4,16 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tool Hardening Priority — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="- Risk tier: `3`">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/tool-hardening-priority.html">
+<meta property="og:title" content="Tool Hardening Priority">
+<meta property="og:description" content="- Risk tier: `3`">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/tool-hardening-priority.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Tool Hardening Priority">
+<meta name="twitter:description" content="- Risk tier: `3`">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Tool Usage Analysis</p>
   <h1>Tool Hardening Priority</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">- Risk tier: `3`</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/tool-usage-analysis/tool-hardening-priority.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Tool Hardening Priority</a></li>
+<li><a href="#h2-2">`bash` ✅ COMPLETED</a></li>
+<li><a href="#h2-4">`search_replace`</a></li>
+<li><a href="#h2-6">`write_file`</a></li>
+<li><a href="#h2-8">`coordination`</a></li>
+<li><a href="#h2-10">`read_file`</a></li>
+<li><a href="#h2-12">`grep`</a></li>
+<li><a href="#h2-14">`web_fetch`</a></li>
+<li><a href="#h2-16">`task`</a></li>
+<li><a href="#h2-18">`validate` ✅ COMPLETED (Stage 1 + Stage 2)</a></li>
+<li><a href="#h2-20">Receipt Index ✅ COMPLETED</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Tool Hardening Priority</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">`bash` ✅ COMPLETED</h2>
@@ -56,6 +96,7 @@
 
 <p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- Module: `rig_relay.evidence.receipt_index` - Model: `ToolReceiptIndexRecord` (content-light, extra=&quot;forbid&quot;) - Builder: `build_receipt_index()` reads session observability JSONL - Summary: `summarize_receipt_index()` with counts by tool/status, mutation/refusal/timeout tracking - Content-light validation: `validate_index_content_light()` checks for forbidden raw fields - CLI: `scripts/rig_relay_receipt_index.py` (read-only, JSON or --summary output, --validate mode) - Schema: `docs/schemas/rig.relay.tool_receipt_index.v1.schema.json` (additionalProperties: false) - Tests: 37 tests covering builder, summary, error handling, script, content-light validation, validate receipt indexing - Supported tools: `bash`, `search_replace`, `validate`</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/tool-usage-analysis/tool-hardening-priority.v1.json</code></p>

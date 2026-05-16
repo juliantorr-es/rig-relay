@@ -4,16 +4,97 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Relay Usage Data Doctrine — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay produces a behavioral corpus of agent workflow observability data.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/usage-data-doctrine.html">
+<meta property="og:title" content="Rig Relay Usage Data Doctrine">
+<meta property="og:description" content="Rig Relay produces a behavioral corpus of agent workflow observability data.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/usage-data-doctrine.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay Usage Data Doctrine">
+<meta name="twitter:description" content="Rig Relay produces a behavioral corpus of agent workflow observability data.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Rig Relay Usage Data Doctrine</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay produces a behavioral corpus of agent workflow observability data.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/usage-data-doctrine.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Relay Usage Data Doctrine</a></li>
+<li><a href="#h2-2">Purpose</a></li>
+<li><a href="#h2-5">Architecture</a></li>
+<li><a href="#h2-10">Retention Classes</a></li>
+<li><a href="#h3-11">Evidence-Retained (always kept locally)</a></li>
+<li><a href="#h3-14">Locally Retained (kept on disk, never exported)</a></li>
+<li><a href="#h3-17">Exportable After Redaction</a></li>
+<li><a href="#h3-22">Checkpoint Events</a></li>
+<li><a href="#h3-25">Cross-Session Coordination Datasets</a></li>
+<li><a href="#h3-36">Coordination Data Retention</a></li>
+<li><a href="#h3-44">Derived Coordination Dataset Exporter</a></li>
+<li><a href="#h3-49">Built-in Tool Refinement Reports</a></li>
+<li><a href="#h3-54">Built-in Refinement Packets</a></li>
+<li><a href="#h3-62">Normalized Coordination Event Payload Contracts</a></li>
+<li><a href="#h3-73">Fleet/Delegate Derived Metrics</a></li>
+<li><a href="#h2-76">Privacy and Security Boundaries</a></li>
+<li><a href="#h2-83">Data Layout on Disk</a></li>
+<li><a href="#h2-85">Schema Governance</a></li>
+<li><a href="#h2-92">Dataset Reports</a></li>
+<li><a href="#h3-99">Dataset Exports</a></li>
+<li><a href="#h3-109">Interactive Inspector</a></li>
+<li><a href="#h3-127">Coordination Dataset Exporter (Current)</a></li>
+<li><a href="#h2-134">Review Packet Protocol</a></li>
+<li><a href="#h3-136">Purpose</a></li>
+<li><a href="#h3-139">Packet Layout</a></li>
+<li><a href="#h3-142">Review Kinds</a></li>
+<li><a href="#h3-144">Packet Schema</a></li>
+<li><a href="#h3-148">Content-Light Safeguards</a></li>
+<li><a href="#h3-150">Usage</a></li>
+<li><a href="#h3-152">Reviewer Response Flow</a></li>
+<li><a href="#h3-154">Reviewer Response Format</a></li>
+<li><a href="#h3-156">Safety Constraints</a></li>
+<li><a href="#h2-158">Autoimprovement</a></li>
+<li><a href="#h2-160">Semantic Change Snippets</a></li>
+<li><a href="#h3-162">Design</a></li>
+<li><a href="#h3-164">Anonymization Pipeline</a></li>
+<li><a href="#h3-166">Fields</a></li>
+<li><a href="#h3-168">Privacy Guarantee</a></li>
+<li><a href="#h3-170">Current Implementation</a></li>
+<li><a href="#h3-172">Script</a></li>
+<li><a href="#h3-174">Schema</a></li>
+<li><a href="#h2-176">External Tester Telemetry Sharing</a></li>
+<li><a href="#h3-178">Three Telemetry Layers</a></li>
+<li><a href="#h3-180">What Is Never Uploaded</a></li>
+<li><a href="#h3-182">What Remote Sharing Includes (content-light only)</a></li>
+<li><a href="#h3-184">Feature Gating</a></li>
+<li><a href="#h3-187">Telemetry Budget</a></li>
+<li><a href="#h3-206">Storage Lifecycle</a></li>
+<li><a href="#h3-216">Consent and Privacy</a></li>
+<li><a href="#h3-218">Scripts</a></li>
+<li><a href="#h3-220">Onboarding</a></li>
+<li><a href="#h2-222">References</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Usage Data Doctrine</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
@@ -869,6 +950,7 @@ uv run python scripts/rig_relay_cleanup_coordination_leases.py --archive --confi
 
 <p id="p-224" class="disclosure-standard" data-disclosure-level="standard">- OpenTelemetry: traces, metrics, and logs for understanding system behavior. - LangSmith: tracing agent decisions, tool calls, retrieved context, costs, latency, failures. - OpenAI evals: define tasks, run against inputs, analyze results, iterate. - GitHub Copilot usage metrics: engagement, activity, generated code, PR lifecycle trends.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/usage-data-doctrine.v1.json</code></p>

@@ -4,16 +4,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Delegate/Fleet Orchestration Doctrine — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay&#x27;s delegate/fleet orchestration model governs how a reviewer/orchestrator agent">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/delegate-fleet-orchestration.html">
+<meta property="og:title" content="Delegate/Fleet Orchestration Doctrine">
+<meta property="og:description" content="Rig Relay&#x27;s delegate/fleet orchestration model governs how a reviewer/orchestrator agent">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/delegate-fleet-orchestration.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Delegate/Fleet Orchestration Doctrine">
+<meta name="twitter:description" content="Rig Relay&#x27;s delegate/fleet orchestration model governs how a reviewer/orchestrator agent">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Delegate/Fleet Orchestration Doctrine</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay&#x27;s delegate/fleet orchestration model governs how a reviewer/orchestrator agent</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/delegate-fleet-orchestration.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Delegate/Fleet Orchestration Doctrine</a></li>
+<li><a href="#h2-6">Desktop Intent API</a></li>
+<li><a href="#h2-9">Canonical Concepts</a></li>
+<li><a href="#h3-10">Delegate</a></li>
+<li><a href="#h3-13">Fleet</a></li>
+<li><a href="#h3-17">Reviewer / Orchestrator</a></li>
+<li><a href="#h3-21">Agents as Tools</a></li>
+<li><a href="#h3-25">Handoff</a></li>
+<li><a href="#h3-29">Supervisor Graph Semantics</a></li>
+<li><a href="#h3-32">Stateful Orchestration</a></li>
+<li><a href="#h3-35">Replay/Debug Mindset</a></li>
+<li><a href="#h3-39">Workspaces</a></li>
+<li><a href="#h3-42">Spec-Scoped Tasks</a></li>
+<li><a href="#h3-46">Human Oversight</a></li>
+<li><a href="#h3-49">Validation Stages</a></li>
+<li><a href="#h3-52">Pending Work Queue</a></li>
+<li><a href="#h2-60">Canonical Loop</a></li>
+<li><a href="#h2-62">Work Item Statuses</a></li>
+<li><a href="#h2-64">Execution Modes</a></li>
+<li><a href="#h2-66">Parallelism Policies</a></li>
+<li><a href="#h2-68">Ready Work Plan</a></li>
+<li><a href="#h2-73">Parent Convergence Report</a></li>
+<li><a href="#h2-77">Orchestration Loop Summary</a></li>
+<li><a href="#h3-80">Storage Preflight</a></li>
+<li><a href="#h2-85">References</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Delegate/Fleet Orchestration Doctrine</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s delegate/fleet orchestration model governs how a reviewer/orchestrator agent selects ready work from a durable pending work queue, dispatches bounded child missions, monitors progress through the current-state pulse, aggregates evidence from completed children, and decides the next action.</p>
@@ -281,6 +335,7 @@
 
 <p id="p-87" class="disclosure-standard" data-disclosure-level="standard">- [Reviewer Orchestrator Doctrine](reviewer-orchestrator.md) - [Cross-Session Coordination Doctrine](cross-session-coordination.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Review Packet Protocol](usage-data-doctrine.md#review-packet-protocol) - [Work Item Schema](../schemas/rig.relay.work_item.v1.schema.json) - [Work Queue Schema](../schemas/rig.relay.work_queue.v1.schema.json) - [Ready Work Plan Schema](../schemas/rig.relay.ready_work_plan.v1.schema.json) - [Parent Convergence Report Schema](../schemas/rig.relay.parent_convergence_report.v1.schema.json)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/delegate-fleet-orchestration.v1.json</code></p>

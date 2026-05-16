@@ -4,16 +4,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This document establishes the architectural audit, governance doctrine, and transition roadmap for remediating implicit loop complexity, polling pressure, and boolean flag piles across the Rig Relay r">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/state-machine-candidate-audit.html">
+<meta property="og:title" content="Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers">
+<meta property="og:description" content="This document establishes the architectural audit, governance doctrine, and transition roadmap for remediating implicit loop complexity, polling pressure, and boolean flag piles across the Rig Relay r">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/state-machine-candidate-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers">
+<meta name="twitter:description" content="This document establishes the architectural audit, governance doctrine, and transition roadmap for remediating implicit loop complexity, polling pressure, and boolean flag piles across the Rig Relay r">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Runtime</p>
   <h1>Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This document establishes the architectural audit, governance doctrine, and transition roadmap for remediating implicit loop complexity, polling pressure, and boolean flag piles across the Rig Relay r</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/runtime/state_machine_candidate_audit.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers</a></li>
+<li><a href="#h2-3">Executive Summary</a></li>
+<li><a href="#h2-7">Part A &amp; D: Candidate Inventory &amp; Priority Matrix</a></li>
+<li><a href="#h2-11">Part B: State-Machine Selection Doctrine</a></li>
+<li><a href="#h3-13">When to Introduce an Explicit State Machine</a></li>
+<li><a href="#h3-15">When NOT to Introduce a State Machine</a></li>
+<li><a href="#h3-17">Architectural Examples</a></li>
+<li><a href="#h2-20">Part C: Event-Trigger Selection Doctrine</a></li>
+<li><a href="#h3-22">When to Use Event-Triggered Transitions</a></li>
+<li><a href="#h3-24">Required Event Guardrails</a></li>
+<li><a href="#h3-26">Event-Cycle Risk &amp; Depth Prevention</a></li>
+<li><a href="#h2-30">Part E: BehaviorPatch / TDD Built-in Tool Design</a></li>
+<li><a href="#h3-33">Tool Contract &amp; Input Schema</a></li>
+<li><a href="#h3-35">Execution Workflow</a></li>
+<li><a href="#h3-37">Refusal Cases</a></li>
+<li><a href="#h2-40">Part F: State-Machine Test Style Definition</a></li>
+<li><a href="#h3-43">Example Test Skeletons</a></li>
+<li><a href="#h2-46">Part G: OpenTelemetry Tracing &amp; Instrumentation</a></li>
+<li><a href="#h3-48">Canonical Trace Spans</a></li>
+<li><a href="#h3-50">Span Attribute Schema</a></li>
+<li><a href="#h3-52">Data Minimization Doctrine</a></li>
+<li><a href="#h2-55">Part H &amp; I: Implementation &amp; Validation Summary</a></li>
+<li><a href="#h3-56">Files Created &amp; Modified</a></li>
+<li><a href="#h3-58">Validation Results &amp; Next Recommended Mission</a></li>
+<li><a href="#h3-60">Next Recommended Mission</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document establishes the architectural audit, governance doctrine, and transition roadmap for remediating implicit loop complexity, polling pressure, and boolean flag piles across the Rig Relay runtime.</p>
@@ -183,6 +237,7 @@ def test_desktop_bridge_state_machine_terminal_immutability():
 
 <p id="p-61" class="disclosure-standard" data-disclosure-level="standard">**Mission Title:** `RuntimeSupervisor Teardown Warning` **Objective:** Investigate the `BaseSubprocessTransport.__del__` pytest unraisable warning seen in the focused runtime supervisor slice. Keep the fix narrow and avoid changing subprocess semantics.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/runtime/state_machine_candidate_audit.v1.json</code></p>

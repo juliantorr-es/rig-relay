@@ -4,16 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ralph — Governed Background Maintenance Loop — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Ralph is a governed background maintenance loop for Rig Relay.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/ralph-background-loop.html">
+<meta property="og:title" content="Ralph — Governed Background Maintenance Loop">
+<meta property="og:description" content="Ralph is a governed background maintenance loop for Rig Relay.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/ralph-background-loop.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ralph — Governed Background Maintenance Loop">
+<meta name="twitter:description" content="Ralph is a governed background maintenance loop for Rig Relay.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Ralph — Governed Background Maintenance Loop</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Ralph is a governed background maintenance loop for Rig Relay.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/ralph-background-loop.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Ralph — Governed Background Maintenance Loop</a></li>
+<li><a href="#h2-3">Purpose</a></li>
+<li><a href="#h2-5">Non-goals</a></li>
+<li><a href="#h2-7">Relationship to Rig Relay</a></li>
+<li><a href="#h2-10">Autonomy tiers</a></li>
+<li><a href="#h2-13">Forbidden actions (all tiers)</a></li>
+<li><a href="#h2-15">Stop conditions</a></li>
+<li><a href="#h2-17">Input projections</a></li>
+<li><a href="#h2-19">Output events</a></li>
+<li><a href="#h2-22">Candidate ranking (v1 policy)</a></li>
+<li><a href="#h2-26">v0 behavior</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Ralph — Governed Background Maintenance Loop</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Ralph is a governed background maintenance loop for Rig Relay. Ralph reads evidence-backed state and proposes bounded maintenance missions. Ralph never silently mutates risky state.</p>
@@ -85,6 +125,7 @@ rig.report / receipts            record what Ralph observed, proposed,
 
 <p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Ralph v0: - Reads `docs/findings/out-of-scope-findings.jsonl` - Ranks open findings by score - Produces one recommended mission - Writes nothing to disk (output returned in-memory only) - Operates at Tier 0 — observe only</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/ralph-background-loop.v1.json</code></p>

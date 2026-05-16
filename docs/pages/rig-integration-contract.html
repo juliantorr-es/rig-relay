@@ -4,16 +4,55 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Integration Contract — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and m">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/rig-integration-contract.html">
+<meta property="og:title" content="Rig Integration Contract">
+<meta property="og:description" content="This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and m">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/rig-integration-contract.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Integration Contract">
+<meta name="twitter:description" content="This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and m">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Architecture</p>
   <h1>Rig Integration Contract</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and m</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/architecture/rig-integration-contract.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Integration Contract</a></li>
+<li><a href="#h2-3">1. Authority Boundaries</a></li>
+<li><a href="#h2-5">2. Mutation &amp; Policy</a></li>
+<li><a href="#h2-7">3. Worktree &amp; Lane Model</a></li>
+<li><a href="#h2-9">4. Artifact &amp; Storage Root</a></li>
+<li><a href="#h2-11">5. Event Semantics: Telemetry vs. Authority</a></li>
+<li><a href="#h2-13">6. Tool Authority &amp; Risk Classes</a></li>
+<li><a href="#h2-15">7. Context &amp; Accounting</a></li>
+<li><a href="#h2-17">8. Embedded Invocation Schema (Proposed)</a></li>
+<li><a href="#h2-20">9. Result Schema (Proposed)</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Integration Contract</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and marriage of assumptions required to ensure Rig Relay can eventually fold cleanly into the Rig ecosystem.</p>
@@ -83,6 +122,7 @@
   &quot;next_actions&quot;: []
 }</code></pre>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/architecture/rig-integration-contract.v1.json</code></p>

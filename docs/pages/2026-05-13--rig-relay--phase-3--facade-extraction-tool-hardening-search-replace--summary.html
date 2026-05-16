@@ -4,16 +4,73 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Relay — Phase 3: Facade Extraction &amp; Tool Hardening (search_replace) — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Leading a multi-phase migration and hardening of **Rig Relay** — a Python 3.12+ CLI coding-agent harness derived from Mistral Vibe CLI. Primary objectives:">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.html">
+<meta property="og:title" content="Rig Relay — Phase 3: Facade Extraction &amp; Tool Hardening (search_replace)">
+<meta property="og:description" content="Leading a multi-phase migration and hardening of **Rig Relay** — a Python 3.12+ CLI coding-agent harness derived from Mistral Vibe CLI. Primary objectives:">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay — Phase 3: Facade Extraction &amp; Tool Hardening (search_replace)">
+<meta name="twitter:description" content="Leading a multi-phase migration and hardening of **Rig Relay** — a Python 3.12+ CLI coding-agent harness derived from Mistral Vibe CLI. Primary objectives:">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Conversations</p>
   <h1>Rig Relay — Phase 3: Facade Extraction &amp; Tool Hardening (search_replace)</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Leading a multi-phase migration and hardening of **Rig Relay** — a Python 3.12+ CLI coding-agent harness derived from Mistral Vibe CLI. Primary objectives:</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/conversations/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Relay — Phase 3: Facade Extraction &amp; Tool Hardening (search_replace)</a></li>
+<li><a href="#h2-2">1. User&#x27;s Primary Goals and Intent</a></li>
+<li><a href="#h2-6">2. Conversation Timeline and Progress</a></li>
+<li><a href="#h3-7">Session 1: Vibe CLI Purge Inventory Audit</a></li>
+<li><a href="#h3-9">Session 2: Relay Entry Point Authority Audit</a></li>
+<li><a href="#h3-11">Session 3: Extract Relay Runtime Facade</a></li>
+<li><a href="#h3-13">Session 4: Bash Deterministic Envelope Verification</a></li>
+<li><a href="#h3-15">Session 5: Deterministic Envelope for search_replace (IN PROGRESS)</a></li>
+<li><a href="#h2-17">3. Technical Context and Decisions</a></li>
+<li><a href="#h3-18">Architecture</a></li>
+<li><a href="#h3-20">Patterns Established</a></li>
+<li><a href="#h3-22">Schema Files (74 total after Session 5 additions)</a></li>
+<li><a href="#h3-24">Key Files Referenced</a></li>
+<li><a href="#h2-26">4. Files and Code Changes</a></li>
+<li><a href="#h3-27">Files Created (Session 3 only)</a></li>
+<li><a href="#h3-37">Files Modified (Session 5 only)</a></li>
+<li><a href="#h2-40">5. Active Work and Last Actions</a></li>
+<li><a href="#h3-41">Last Completed Action</a></li>
+<li><a href="#h3-43">Current Bug</a></li>
+<li><a href="#h3-46">Root Cause Analysis</a></li>
+<li><a href="#h3-48">Last Bash Command Run</a></li>
+<li><a href="#h3-51">What Remains for This Session&#x27;s Work</a></li>
+<li><a href="#h3-53">Required Test Coverage (not yet written)</a></li>
+<li><a href="#h2-55">6. Unresolved Issues and Pending Tasks</a></li>
+<li><a href="#h3-56">Critical (Blocking)</a></li>
+<li><a href="#h3-58">Unresolved Issues (from prior sessions)</a></li>
+<li><a href="#h3-60">Pending Decisions</a></li>
+<li><a href="#h2-62">7. Immediate Next Step</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay — Phase 3: Facade Extraction &amp; Tool Hardening (search_replace)</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">1. User&#x27;s Primary Goals and Intent</h2>
@@ -154,6 +211,7 @@ __all__ = [&quot;main&quot;]</code></pre>
 
 <p id="p-64" class="disclosure-standard" data-disclosure-level="standard">1. Read lines 415–450 of `vibe/core/tools/builtins/search_replace.py` to examine indentation of `_classify_status_from_error_kind` and surrounding class methods. 2. The function should be at module level (no indentation). If indented, de-indent it. If the preceding method has wrong indentation on its closing, fix that. 3. After fixing, run the failing tests: ```bash uv run pytest -n0 tests/tools/test_hardened_tools.py::test_search_replace_successful_records_hashes tests/tools/test_hardened_tools.py::test_search_replace_does_not_write_when_block_fails -x --timeout=30 ``` 4. Once passing, continue writing the hardening tests and update the priority document.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/conversations/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.v1.json</code></p>

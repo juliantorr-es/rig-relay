@@ -4,16 +4,54 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agent Loop Boundary — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Defines the AgentLoop turn/session conductor boundary: what it owns, what it delegates, allowed and forbidden dependencies, and how new runtime components are added.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/agent-loop-boundary.html">
+<meta property="og:title" content="Agent Loop Boundary">
+<meta property="og:description" content="Defines the AgentLoop turn/session conductor boundary: what it owns, what it delegates, allowed and forbidden dependencies, and how new runtime components are added.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/agent-loop-boundary.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Agent Loop Boundary">
+<meta name="twitter:description" content="Defines the AgentLoop turn/session conductor boundary: what it owns, what it delegates, allowed and forbidden dependencies, and how new runtime components are added.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Agent Loop Boundary</h1>
-  <p class="meta">Status: active | Updated: 2026-05-18</p>
+  <p class="doc-summary">Defines the AgentLoop turn/session conductor boundary: what it owns, what it delegates, allowed and forbidden dependencies, and how new runtime components are added.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/agent_loop_boundary.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#title">Agent Loop Boundary</a></li>
+<li><a href="#purpose">Purpose</a></li>
+<li><a href="#components">Runtime Components</a></li>
+<li><a href="#future">Future Runtimes (Planned)</a></li>
+<li><a href="#forbidden">Forbidden Dependencies</a></li>
+<li><a href="#direction">Dependency Direction</a></li>
+<li><a href="#add-new">Adding New Runtime Components</a></li>
+<li><a href="#smell">Smell Tests</a></li>
+<li><a href="#validation">Validation Gates</a></li>
+  </ol>
+</nav>
 <h1 id="title" class="disclosure-standard" data-disclosure-level="standard">Agent Loop Boundary</h1>
 
 <h2 id="purpose" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
@@ -104,6 +142,7 @@ Tools, Config, LLM Backends, Context Compiler (inner)</code></pre>
   <li>AgentLoop and mixins must not import desktop/Ralph/scripts/DuckDB/analytics</li>
 </ul>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/agent_loop_boundary.v1.json</code></p>

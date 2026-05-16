@@ -4,16 +4,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SearchReplace Patch Contract — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="This document audits the hardening of the `search_replace` tool into a">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/search-replace-patch-contract.html">
+<meta property="og:title" content="SearchReplace Patch Contract">
+<meta property="og:description" content="This document audits the hardening of the `search_replace` tool into a">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/search-replace-patch-contract.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SearchReplace Patch Contract">
+<meta name="twitter:description" content="This document audits the hardening of the `search_replace` tool into a">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Tool Hardening</p>
   <h1>SearchReplace Patch Contract</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">This document audits the hardening of the `search_replace` tool into a</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/tool-hardening/search-replace-patch-contract.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">SearchReplace Patch Contract</a></li>
+<li><a href="#h2-2">Overview</a></li>
+<li><a href="#h2-4">Motivation</a></li>
+<li><a href="#h2-8">What Changed</a></li>
+<li><a href="#h3-9">Result Model Extensions (`SearchReplaceResult`)</a></li>
+<li><a href="#h3-13">Error Classification</a></li>
+<li><a href="#h3-18">Refusal Classification</a></li>
+<li><a href="#h3-20">Structured Block Mismatch</a></li>
+<li><a href="#h3-22">Structured Guard Refusal</a></li>
+<li><a href="#h3-24">Content-Light Receipt</a></li>
+<li><a href="#h3-26">Schema Files</a></li>
+<li><a href="#h2-29">Backward Compatibility</a></li>
+<li><a href="#h2-31">Bugs Fixed Incidentally</a></li>
+<li><a href="#h2-34">Receipt Emission Verification</a></li>
+<li><a href="#h3-35">Automatic Integration (verified)</a></li>
+<li><a href="#h3-39">Statuses That Emit Receipts</a></li>
+<li><a href="#h3-41">Receipt Fields (Content-Light Proof)</a></li>
+<li><a href="#h3-45">Remaining Risks</a></li>
+<li><a href="#h3-47">Receipt Sanitization</a></li>
+<li><a href="#h3-54">Policy Validator Integration</a></li>
+<li><a href="#h3-56">Instantiation</a></li>
+<li><a href="#h3-58">Remaining Risks</a></li>
+<li><a href="#h3-60">Existing Tests (in `tests/tools/test_hardened_tools.py`)</a></li>
+<li><a href="#h2-62">Files Changed</a></li>
+<li><a href="#h2-64">Files Created</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">SearchReplace Patch Contract</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
@@ -245,6 +299,7 @@ Debugging tips:
 
 <p id="p-65" class="disclosure-standard" data-disclosure-level="standard">- `docs/schemas/rig.relay.search_replace_invocation.v1.schema.json` - `docs/schemas/rig.relay.search_replace_result.v1.schema.json` - `docs/schemas/rig.relay.search_replace_receipt.v1.schema.json` - `docs/audits/tool-hardening/search-replace-patch-contract.md` (this file)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/tool-hardening/search-replace-patch-contract.v1.json</code></p>

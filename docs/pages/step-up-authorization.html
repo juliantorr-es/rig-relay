@@ -4,16 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Step-Up Authorization Doctrine — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Define a step-up authorization boundary for high-authority Rig Relay actions so">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/step-up-authorization.html">
+<meta property="og:title" content="Step-Up Authorization Doctrine">
+<meta property="og:description" content="Define a step-up authorization boundary for high-authority Rig Relay actions so">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/step-up-authorization.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Step-Up Authorization Doctrine">
+<meta name="twitter:description" content="Define a step-up authorization boundary for high-authority Rig Relay actions so">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Step-Up Authorization Doctrine</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Define a step-up authorization boundary for high-authority Rig Relay actions so</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/step-up-authorization.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Step-Up Authorization Doctrine</a></li>
+<li><a href="#h2-2">Purpose</a></li>
+<li><a href="#h2-4">Core Rules</a></li>
+<li><a href="#h2-11">Protected Actions</a></li>
+<li><a href="#h2-13">Authorization Methods</a></li>
+<li><a href="#h2-15">Architecture Notes</a></li>
+<li><a href="#h3-16">WebAuthn / Passkeys Are Origin-Scoped</a></li>
+<li><a href="#h2-22">Local Action Envelope (Schema Only)</a></li>
+<li><a href="#h3-27">Key design decisions</a></li>
+<li><a href="#h2-30">Implementation Order</a></li>
+<li><a href="#h2-32">Receipt Lifecycle</a></li>
+<li><a href="#h2-34">Content-Light Guarantee</a></li>
+<li><a href="#h2-36">References</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Step-Up Authorization Doctrine</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
@@ -113,6 +155,7 @@
 
 <p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- `docs/schemas/rig.relay.step_up_authorization_request.v1.schema.json` - `docs/schemas/rig.relay.step_up_authorization_receipt.v1.schema.json` - `docs/schemas/rig.relay.authorization_policy.v1.schema.json` - `scripts/rig_relay_authorization_policy.py` - FIDO Alliance: [Passkeys](https://fidoalliance.org/passkeys/) - W3C WebAuthn: [Web Authentication API](https://www.w3.org/TR/webauthn-3/) - Apple: [Passkey support](https://support.apple.com/en-us/102195)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/step-up-authorization.v1.json</code></p>

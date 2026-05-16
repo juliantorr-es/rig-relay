@@ -4,16 +4,61 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Test Suite Quality Audit — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Date:** 2025-06-13">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/test-suite-quality-audit.html">
+<meta property="og:title" content="Test Suite Quality Audit">
+<meta property="og:description" content="**Date:** 2025-06-13">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/test-suite-quality-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Test Suite Quality Audit">
+<meta name="twitter:description" content="**Date:** 2025-06-13">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Tests</p>
   <h1>Test Suite Quality Audit</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Date:** 2025-06-13</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/tests/test-suite-quality-audit.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Test Suite Quality Audit</a></li>
+<li><a href="#h2-3">Repository State</a></li>
+<li><a href="#h2-5">Test File Summary (Focus Area)</a></li>
+<li><a href="#h2-7">Duplicate/Near-Duplicate Summary</a></li>
+<li><a href="#h2-11">Primary Risk: Validate Test Overlap</a></li>
+<li><a href="#h2-15">Brittle/Low-Value Test Patterns</a></li>
+<li><a href="#h2-20">High-Value Tests to Preserve</a></li>
+<li><a href="#h2-22">High-Value Tests to Remove (after equivalent coverage confirmed)</a></li>
+<li><a href="#h2-24">Key Missing Coverage (see `data/test_coverage_gap_inventory.jsonl`)</a></li>
+<li><a href="#h2-27">Subprocess and Git Test Profile</a></li>
+<li><a href="#h2-29">Compute Pattern: `pytest from inside pytest`</a></li>
+<li><a href="#h2-31">Execution Results (Stage 2-3)</a></li>
+<li><a href="#h3-32">Stage 2 — Validate Dedup Complete</a></li>
+<li><a href="#h3-35">Stage 3 — Schema Contracts Complete</a></li>
+<li><a href="#h3-40">Remaining duplicate groups (not in scope)</a></li>
+<li><a href="#h3-42">Remaining coverage gaps (not in scope)</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Suite Quality Audit</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2025-06-13 **Branch:** main (HEAD `384e4860b14959769a14fbcb5b4ca27618dad861`) **Scope:** Focus on validate, receipt, mutation-tool, schema, and governance tests.</p>
@@ -193,6 +238,7 @@
 
 <p id="p-45" class="disclosure-standard" data-disclosure-level="standard">See `test-cleanup-roadmap.md` for staged cleanup plan.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/tests/test-suite-quality-audit.v1.json</code></p>

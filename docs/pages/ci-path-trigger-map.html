@@ -4,16 +4,62 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CI Path Trigger Map — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="&gt; **Status**: Design Proposal">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/ci-path-trigger-map.html">
+<meta property="og:title" content="CI Path Trigger Map">
+<meta property="og:description" content="&gt; **Status**: Design Proposal">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/ci-path-trigger-map.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CI Path Trigger Map">
+<meta name="twitter:description" content="&gt; **Status**: Design Proposal">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Ci</p>
   <h1>CI Path Trigger Map</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">&gt; **Status**: Design Proposal</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/ci/ci-path-trigger-map.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">CI Path Trigger Map</a></li>
+<li><a href="#h2-3">Path Pattern Syntax</a></li>
+<li><a href="#h2-5">Trigger Map</a></li>
+<li><a href="#h3-6">Core Python Changes — Tier 1 (always run)</a></li>
+<li><a href="#h3-8">Schema Changes — Tier 1 (always run when triggered)</a></li>
+<li><a href="#h3-10">Tool Hardening Changes — Tier 2</a></li>
+<li><a href="#h3-12">Receipt / Evidence Changes — Tier 2</a></li>
+<li><a href="#h3-14">Agent Loop / Telemetry Changes — Tier 1 (always run)</a></li>
+<li><a href="#h3-16">Coordination Changes — Tier 2</a></li>
+<li><a href="#h3-18">Governance / Policy Changes — Tier 2</a></li>
+<li><a href="#h3-20">Documentation Changes — Tier 2</a></li>
+<li><a href="#h3-22">Script Changes — Tier 2</a></li>
+<li><a href="#h3-24">CI Workflow Changes — Tier 1 (always run)</a></li>
+<li><a href="#h3-26">Build / Packaging Changes — Tier 3</a></li>
+<li><a href="#h3-28">Desktop Cockpit Changes — Tier 4</a></li>
+<li><a href="#h2-30">Combined Path Logic</a></li>
+<li><a href="#h2-33">Anti-Patterns</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">CI Path Trigger Map</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **Status**: Design Proposal &gt; **Date**: 2026-05-17 &gt; **Scope**: Path-based trigger rules for domain-specific CI gates.</p>
@@ -180,6 +226,7 @@ Runs:
 
 <p id="p-34" class="disclosure-standard" data-disclosure-level="standard">1. **Don&#x27;t run Tier 2 on every PR** — path-filtering must prevent this. 2. **Don&#x27;t duplicate Tier 1 checks in Tier 2** — Tier 1 always runs. 3. **Don&#x27;t gate on test file changes alone** — test changes without source changes don&#x27;t need domain-specific gates (full suite will catch them). 4. **Don&#x27;t use `paths-ignore` where `paths` is clearer** — prefer positive `paths:` over negative `paths-ignore:`.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/ci/ci-path-trigger-map.v1.json</code></p>

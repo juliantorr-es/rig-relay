@@ -4,16 +4,100 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Relay Desktop Cockpit UI — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay supports three UI modes for different use cases:">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/desktop-cockpit-ui.html">
+<meta property="og:title" content="Rig Relay Desktop Cockpit UI">
+<meta property="og:description" content="Rig Relay supports three UI modes for different use cases:">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/desktop-cockpit-ui.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay Desktop Cockpit UI">
+<meta name="twitter:description" content="Rig Relay supports three UI modes for different use cases:">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Rig Relay Desktop Cockpit UI</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay supports three UI modes for different use cases:</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/desktop-cockpit-ui.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Relay Desktop Cockpit UI</a></li>
+<li><a href="#h2-2">UI Modes</a></li>
+<li><a href="#h2-5">Design Decision</a></li>
+<li><a href="#h2-7">Architecture</a></li>
+<li><a href="#h2-10">Security Boundary</a></li>
+<li><a href="#h2-12">Read-Only Cockpit (Current)</a></li>
+<li><a href="#h3-14">Artifact Sources</a></li>
+<li><a href="#h3-16">Exposed Read-Only API Methods</a></li>
+<li><a href="#h3-19">Projection Schema</a></li>
+<li><a href="#h2-21">Future Mutation Intents</a></li>
+<li><a href="#h2-25">Content Safeguards</a></li>
+<li><a href="#h2-28">Frontend Stack</a></li>
+<li><a href="#h2-30">Cross-References</a></li>
+<li><a href="#h3-32">Step-Up Authorization</a></li>
+<li><a href="#h3-34">Authorization Metadata</a></li>
+<li><a href="#h2-37">Chat Interface (Current)</a></li>
+<li><a href="#h3-39">Chat Architecture</a></li>
+<li><a href="#h3-41">Lifecycle States</a></li>
+<li><a href="#h3-46">Content Constraints</a></li>
+<li><a href="#h3-48">Safe Backend API</a></li>
+<li><a href="#h3-50">Auth and Receipts</a></li>
+<li><a href="#h2-52">Desktop Chat Persistence and Event Stream (Current)</a></li>
+<li><a href="#h3-54">Architecture</a></li>
+<li><a href="#h3-56">Content-Light Events</a></li>
+<li><a href="#h3-58">WebSocket Protocol Extension</a></li>
+<li><a href="#h3-60">Event Types</a></li>
+<li><a href="#h3-62">Files</a></li>
+<li><a href="#h2-64">WebSocket Projection Stream (Current)</a></li>
+<li><a href="#h3-66">Architecture</a></li>
+<li><a href="#h3-69">Authentication</a></li>
+<li><a href="#h3-73">WebSocket Protocol (after authentication)</a></li>
+<li><a href="#h3-78">CLI Entry Points</a></li>
+<li><a href="#h3-85">Subscription Model</a></li>
+<li><a href="#h3-87">Files</a></li>
+<li><a href="#h3-89">Pattern Source</a></li>
+<li><a href="#h2-91">Desktop Intent API (Current)</a></li>
+<li><a href="#h3-93">Architecture</a></li>
+<li><a href="#h3-95">Allowed First-Slice Intents</a></li>
+<li><a href="#h3-97">Phase 1 Protected Intents (Receipt-Gated)</a></li>
+<li><a href="#h3-99">Still-Refused Intents (Not Yet Enabled)</a></li>
+<li><a href="#h3-102">Schemas</a></li>
+<li><a href="#h3-104">Files</a></li>
+<li><a href="#h3-106">Security Model</a></li>
+<li><a href="#h3-108">Intent Audit Trail (Current)</a></li>
+<li><a href="#h2-114">Rig Pattern Port</a></li>
+<li><a href="#h3-117">Patterns Intentionally NOT Ported</a></li>
+<li><a href="#h3-119">Projection Builder Design</a></li>
+<li><a href="#h2-123">Cockpit IA: Operate / Review / System</a></li>
+<li><a href="#h3-126">Operate (default)</a></li>
+<li><a href="#h3-129">Review</a></li>
+<li><a href="#h3-131">System</a></li>
+<li><a href="#h3-133">Progressive Disclosure Policy</a></li>
+<li><a href="#h3-135">Widget Mapping</a></li>
+<li><a href="#h3-138">Frontend Safety</a></li>
+<li><a href="#h3-140">Local Transport Troubleshooting</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Desktop Cockpit UI</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">UI Modes</h2>
@@ -464,6 +548,7 @@
 
 <p id="p-141" class="disclosure-standard" data-disclosure-level="standard">- Chrome `net::ERR_CERT_AUTHORITY_INVALID` on `127.0.0.1` means the local TLS certificate is not trusted by the OS. - Default desktop mode uses loopback HTTP/WebSocket intentionally. - Security comes from loopback binding, bridge-token auth, backend intent validation, and origin checks. - TLS mode is opt-in for development or future trusted-cert deployments via `RIG_RELAY_LOCAL_TLS=1`.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/desktop-cockpit-ui.v1.json</code></p>

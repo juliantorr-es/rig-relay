@@ -4,16 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CI Implementation Roadmap — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="&gt; **Status**: Established — Stage 1 Implemented">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/ci-implementation-roadmap.html">
+<meta property="og:title" content="CI Implementation Roadmap">
+<meta property="og:description" content="&gt; **Status**: Established — Stage 1 Implemented">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/ci-implementation-roadmap.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CI Implementation Roadmap">
+<meta name="twitter:description" content="&gt; **Status**: Established — Stage 1 Implemented">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Ci</p>
   <h1>CI Implementation Roadmap</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">&gt; **Status**: Established — Stage 1 Implemented</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/ci/ci-implementation-roadmap.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">CI Implementation Roadmap</a></li>
+<li><a href="#h2-3">Overview</a></li>
+<li><a href="#h2-6">Stage 0 — Audit and Inventory Only</a></li>
+<li><a href="#h2-14">Stage 1 — Required PR Baseline</a></li>
+<li><a href="#h2-22">Stage 2 — Path-Aware Specialized Gates</a></li>
+<li><a href="#h2-29">Stage 3 — Receipt Policy and Evidence Index Gates</a></li>
+<li><a href="#h2-36">Stage 4 — Validate-Tool Backed CI Profiles</a></li>
+<li><a href="#h2-43">Stage 5 — Promotion-Readiness Gate</a></li>
+<li><a href="#h2-50">Stage 6 — Nightly / Deep Audit Gates</a></li>
+<li><a href="#h2-57">Stage 7 — Fleet / Delegate Lane CI Integration</a></li>
+<li><a href="#h2-64">Dependency Graph</a></li>
+<li><a href="#h2-67">Recommended First Slice</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">CI Implementation Roadmap</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **Status**: Established — Stage 1 Implemented &gt; **Date**: 2026-05-17 (Stage 1: 2026-05-17) &gt; **Scope**: Staged implementation plan for CI gate architecture. &gt; **Stage 1 implemented**: See ci-surface-audit.md for CI coverage updates.</p>
@@ -166,6 +207,7 @@
 
 <p id="p-70" class="disclosure-standard" data-disclosure-level="standard">This adds approximately 30 seconds to CI time while closing the three most critical gaps: - Schema files can no longer be silently corrupted - Content-light receipt wiring is gated on every PR - Lockfile drift is detected immediately - Stale legacy infrastructure is removed</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/ci/ci-implementation-roadmap.v1.json</code></p>

@@ -4,16 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rig Relay audit of the context-caching assessment — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="I audited the code in the urlrig-relay repositoryturn2view0, focusing on `vibe/core/context/assembler.py`, `vibe/core/telemetry/context_blocks.py`, `artifacts.py`, `manifest.py`, `send.py`, and th">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/deep-research-report2.html">
+<meta property="og:title" content="Rig Relay audit of the context-caching assessment">
+<meta property="og:description" content="I audited the code in the urlrig-relay repositoryturn2view0, focusing on `vibe/core/context/assembler.py`, `vibe/core/telemetry/context_blocks.py`, `artifacts.py`, `manifest.py`, `send.py`, and th">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/deep-research-report2.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay audit of the context-caching assessment">
+<meta name="twitter:description" content="I audited the code in the urlrig-relay repositoryturn2view0, focusing on `vibe/core/context/assembler.py`, `vibe/core/telemetry/context_blocks.py`, `artifacts.py`, `manifest.py`, `send.py`, and th">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits</p>
   <h1>Rig Relay audit of the context-caching assessment</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">I audited the code in the urlrig-relay repositoryturn2view0, focusing on `vibe/core/context/assembler.py`, `vibe/core/telemetry/context_blocks.py`, `artifacts.py`, `manifest.py`, `send.py`, and th</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/deep-research-report2.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Rig Relay audit of the context-caching assessment</a></li>
+<li><a href="#h2-2">Bottom line</a></li>
+<li><a href="#h2-4">What is clearly accurate</a></li>
+<li><a href="#h2-7">What the audit understates</a></li>
+<li><a href="#h2-9">What is partly right but needs correction</a></li>
+<li><a href="#h2-12">What still looks like a real gap</a></li>
+<li><a href="#h2-16">Corrected judgment</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay audit of the context-caching assessment</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Bottom line</h2>
@@ -48,6 +84,7 @@
 
 <p id="p-17" class="disclosure-standard" data-disclosure-level="standard">If I rewrote your audit in one sentence, I would call it **mostly accurate on deterministic prefix engineering, exact-fingerprint drift detection, snapshot-based persistence, and the lack of an inspected multi-tier cache**, but **partly inaccurate on artifacting maturity, default storage locality, and the claim that no evidence-manifest or integrity mechanism exists**. The highest-value corrections are still the same in spirit, though: add redaction and path-normalization at the artifact and telemetry boundaries, then move toward content-addressed dedupe and delta-style report storage, and then add provider-aware cache observability so you can measure real reuse rather than infer it from prefix stability alone. citeturn45view0turn28view2turn21view0turn22view0turn11view0turn12view0turn43view0</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/deep-research-report2.v1.json</code></p>

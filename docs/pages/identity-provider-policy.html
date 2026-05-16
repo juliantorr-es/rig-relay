@@ -4,16 +4,66 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Identity Provider Policy — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Draft.** Identity provider scaffold for Rig Relay alpha testing.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/identity-provider-policy.html">
+<meta property="og:title" content="Identity Provider Policy">
+<meta property="og:description" content="**Draft.** Identity provider scaffold for Rig Relay alpha testing.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/identity-provider-policy.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Identity Provider Policy">
+<meta name="twitter:description" content="**Draft.** Identity provider scaffold for Rig Relay alpha testing.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Identity Provider Policy</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Draft.** Identity provider scaffold for Rig Relay alpha testing.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/identity-provider-policy.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Identity Provider Policy</a></li>
+<li><a href="#h2-2">Status</a></li>
+<li><a href="#h2-4">Doctrine</a></li>
+<li><a href="#h2-6">Identity Is Not Authority</a></li>
+<li><a href="#h2-11">Minimal Scopes by Provider</a></li>
+<li><a href="#h3-12">GitHub (identity-only)</a></li>
+<li><a href="#h3-16">Google (identity-only, OIDC)</a></li>
+<li><a href="#h2-19">Desktop OAuth Flow</a></li>
+<li><a href="#h2-22">Token Storage</a></li>
+<li><a href="#h2-26">Audit Content-Light Rules</a></li>
+<li><a href="#h2-31">Sign-In Does Not Imply Telemetry Consent</a></li>
+<li><a href="#h2-34">Telemetry Consent</a></li>
+<li><a href="#h3-37">Consent Behavior</a></li>
+<li><a href="#h3-39">Consent Scopes</a></li>
+<li><a href="#h3-42">Content-Light Guarantee</a></li>
+<li><a href="#h2-44">State Root</a></li>
+<li><a href="#h3-46">Production Default</a></li>
+<li><a href="#h3-48">Test Isolation</a></li>
+<li><a href="#h3-51">Bundle Isolation</a></li>
+<li><a href="#h3-53">State Root Helpers</a></li>
+<li><a href="#h2-56">Cross-References</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Identity Provider Policy</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
@@ -165,6 +215,7 @@ store.save(record)</code></pre>
 
 <p id="p-57" class="disclosure-standard" data-disclosure-level="standard">- [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Frontend Rendering Safety Doctrine](frontend-rendering-safety.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Identity Provider Schema](../schemas/rig.relay.identity_provider.v1.schema.json) - [Identity Session Schema](../schemas/rig.relay.identity_session.v1.schema.json) - [OAuth Callback Receipt Schema](../schemas/rig.relay.oauth_callback_receipt.v1.schema.json) - [Telemetry Consent Schema](../schemas/rig.relay.telemetry_consent.v1.schema.json) - [Telemetry Bundle Manifest Schema](../schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/identity-provider-policy.v1.json</code></p>

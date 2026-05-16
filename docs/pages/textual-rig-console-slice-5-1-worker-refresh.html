@@ -4,16 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/textual-rig-console-slice-5-1-worker-refresh.html">
+<meta property="og:title" content="Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh">
+<meta property="og:description" content="**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/textual-rig-console-slice-5-1-worker-refresh.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh">
+<meta name="twitter:description" content="**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Ui</p>
   <h1>Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/ui/textual-rig-console-slice-5-1-worker-refresh.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh</a></li>
+<li><a href="#h2-2">Status</a></li>
+<li><a href="#h2-4">Motivation</a></li>
+<li><a href="#h2-7">What Changed</a></li>
+<li><a href="#h3-8">`DashboardScreen` (`screens/dashboard.py`)</a></li>
+<li><a href="#h3-13">Worker Behavior</a></li>
+<li><a href="#h3-15">Error Sanitization</a></li>
+<li><a href="#h3-18">No-Provider Safety</a></li>
+<li><a href="#h2-20">Updates to Existing Files</a></li>
+<li><a href="#h2-22">What This Slice Intentionally Does Not Do</a></li>
+<li><a href="#h2-24">Next Slice (6)</a></li>
+<li><a href="#h2-26">Cross-References</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
@@ -83,6 +124,7 @@
 
 <p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- [Slice 5: Runtime Dashboard Provider](textual-rig-console-slice-5-runtime-provider.md) - [DashboardScreen source](../../vibe/cli/textual_ui/rig_console/screens/dashboard.py) - [Providers module](../../vibe/cli/textual_ui/rig_console/providers.py)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/ui/textual-rig-console-slice-5-1-worker-refresh.v1.json</code></p>

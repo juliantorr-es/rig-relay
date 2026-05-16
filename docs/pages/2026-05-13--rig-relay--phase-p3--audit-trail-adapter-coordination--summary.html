@@ -4,16 +4,68 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Untitled — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="The user&#x27;s overarching objective across this conversation was to implement, audit, and document the Rig Relay runtime control plane — specifically the **Runtime Tool Invocation Adapter** (Phase 1) and">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.html">
+<meta property="og:title" content="Untitled">
+<meta property="og:description" content="The user&#x27;s overarching objective across this conversation was to implement, audit, and document the Rig Relay runtime control plane — specifically the **Runtime Tool Invocation Adapter** (Phase 1) and">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Untitled">
+<meta name="twitter:description" content="The user&#x27;s overarching objective across this conversation was to implement, audit, and document the Rig Relay runtime control plane — specifically the **Runtime Tool Invocation Adapter** (Phase 1) and">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Conversations</p>
   <h1>Untitled</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">The user&#x27;s overarching objective across this conversation was to implement, audit, and document the Rig Relay runtime control plane — specifically the **Runtime Tool Invocation Adapter** (Phase 1) and</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/conversations/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h2-1">1. User&#x27;s Primary Goals and Intent</a></li>
+<li><a href="#h2-8">2. Conversation Timeline and Progress</a></li>
+<li><a href="#h3-9">Phase 1: Initial Test File Inventory</a></li>
+<li><a href="#h3-11">Phase 2: Mission Conflict — Two Missions Given Simultaneously</a></li>
+<li><a href="#h3-13">Phase 3: Audit Trail Tamper-Evidence Design (completed)</a></li>
+<li><a href="#h3-15">Phase 4: Runtime Tool Invocation Adapter (completed)</a></li>
+<li><a href="#h3-17">Phase 5: Coordination Same-Session Ownership Carve-Out (interrupted)</a></li>
+<li><a href="#h2-20">3. Technical Context and Decisions</a></li>
+<li><a href="#h3-21">Technologies and Frameworks</a></li>
+<li><a href="#h3-23">Architectural Patterns</a></li>
+<li><a href="#h3-25">Key Enums/Models Established</a></li>
+<li><a href="#h3-28">Phase System</a></li>
+<li><a href="#h2-31">4. Files and Code Changes</a></li>
+<li><a href="#h3-32">Files Created by This Conversation</a></li>
+<li><a href="#h3-34">Files Modified by This Conversation</a></li>
+<li><a href="#h3-36">Detailed Changes to `rig_relay/runtime/tool_invocation_adapter.py`</a></li>
+<li><a href="#h3-45">Files Preserved (not modified)</a></li>
+<li><a href="#h3-47">Files from Prior Sessions (pre-existing, not touched by this conversation)</a></li>
+<li><a href="#h2-50">5. Active Work and Last Actions</a></li>
+<li><a href="#h2-57">6. Unresolved Issues and Pending Tasks</a></li>
+<li><a href="#h3-58">Pending Mission: Coordination Same-Session Ownership Carve-Out</a></li>
+<li><a href="#h3-66">Pre-existing Unresolved Design Notes</a></li>
+<li><a href="#h2-69">7. Immediate Next Step</a></li>
+  </ol>
+</nav>
 <h2 id="h2-1" class="disclosure-standard" data-disclosure-level="standard">1. User&#x27;s Primary Goals and Intent</h2>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">The user&#x27;s overarching objective across this conversation was to implement, audit, and document the Rig Relay runtime control plane — specifically the **Runtime Tool Invocation Adapter** (Phase 1) and the **Audit Trail Tamper-Evidence Design**. Both missions are design-and-implement slices within the larger P3-series runtime porting effort.</p>
@@ -201,6 +253,7 @@ if allow_overwrite_protected and not expected_hash:
 
 <p id="p-75" class="disclosure-standard" data-disclosure-level="standard">5. **Validation:** ruff check, ruff format, pyright, pytest on coordination tests.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/conversations/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.v1.json</code></p>

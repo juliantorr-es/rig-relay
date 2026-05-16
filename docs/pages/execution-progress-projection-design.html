@@ -4,16 +4,59 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ExecutionProgress Projection Design — Audit Record — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="RuntimeSupervisor (P2b) now emits structured `RuntimeStreamEvent` objects">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/execution-progress-projection-design.html">
+<meta property="og:title" content="ExecutionProgress Projection Design — Audit Record">
+<meta property="og:description" content="RuntimeSupervisor (P2b) now emits structured `RuntimeStreamEvent` objects">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/execution-progress-projection-design.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ExecutionProgress Projection Design — Audit Record">
+<meta name="twitter:description" content="RuntimeSupervisor (P2b) now emits structured `RuntimeStreamEvent` objects">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Audits/Rig Runtime Port</p>
   <h1>ExecutionProgress Projection Design — Audit Record</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">RuntimeSupervisor (P2b) now emits structured `RuntimeStreamEvent` objects</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/rig-runtime-port/execution-progress-projection-design.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">ExecutionProgress Projection Design — Audit Record</a></li>
+<li><a href="#h2-2">Design Authority</a></li>
+<li><a href="#h2-4">Context</a></li>
+<li><a href="#h2-8">Design Decisions</a></li>
+<li><a href="#h3-9">Decision 1: Pure aggregation function</a></li>
+<li><a href="#h3-13">Decision 2: No new schema</a></li>
+<li><a href="#h3-17">Decision 3: No chunk_text in projection</a></li>
+<li><a href="#h3-21">Decision 4: Terminal event wins status</a></li>
+<li><a href="#h3-25">Decision 5: Existing integrity codes suffice</a></li>
+<li><a href="#h2-29">Gap Analysis</a></li>
+<li><a href="#h3-30">Gap A: No runtime event collection in projection builder</a></li>
+<li><a href="#h3-33">Gap B: ProgressTimeline widget has no renderer</a></li>
+<li><a href="#h3-36">Gap C: No session-to-execution linkage</a></li>
+<li><a href="#h2-39">Cross-References</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ExecutionProgress Projection Design — Audit Record</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Design Authority</h2>
@@ -102,6 +145,7 @@
 
 <p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- [ExecutionProgressProjection Design](../governance/execution-progress-projection.md) - [RuntimeSupervisor Architecture](../governance/runtime-supervisor.md) - [Relay Desktop Projection Contract](../governance/relay-desktop-projection-contract.md) - [Rig-to-Relay Runtime Audit](rig-to-relay-runtime-audit.md) - [Port Roadmap](port-roadmap.md) - [Concept Map](concept-map.md)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/audits/rig-runtime-port/execution-progress-projection-design.v1.json</code></p>

@@ -4,16 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reviewer Orchestrator Doctrine — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay&#x27;s reviewer orchestrator protocol defines how a manager agent reads a full">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/reviewer-orchestrator.html">
+<meta property="og:title" content="Reviewer Orchestrator Doctrine">
+<meta property="og:description" content="Rig Relay&#x27;s reviewer orchestrator protocol defines how a manager agent reads a full">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/reviewer-orchestrator.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Reviewer Orchestrator Doctrine">
+<meta name="twitter:description" content="Rig Relay&#x27;s reviewer orchestrator protocol defines how a manager agent reads a full">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Reviewer Orchestrator Doctrine</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">Rig Relay&#x27;s reviewer orchestrator protocol defines how a manager agent reads a full</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/reviewer-orchestrator.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Reviewer Orchestrator Doctrine</a></li>
+<li><a href="#h2-4">Core Principles</a></li>
+<li><a href="#h3-5">Reviewer is Orchestrator, Not Direct Editor</a></li>
+<li><a href="#h3-7">Bounded Autonomy</a></li>
+<li><a href="#h3-11">Max Parallel Sessions</a></li>
+<li><a href="#h3-14">Default Concurrency Pattern</a></li>
+<li><a href="#h3-18">Multi-Writer Requires Non-Overlapping Paths or Worktrees</a></li>
+<li><a href="#h3-20">Reviewer Must Inspect Coordination State Before Launch</a></li>
+<li><a href="#h3-23">Reviewer Must Aggregate Reports Before Follow-Up</a></li>
+<li><a href="#h3-26">Reviewer Never Bypasses Git Policy</a></li>
+<li><a href="#h2-28">Desktop Intent API</a></li>
+<li><a href="#h2-33">Packet Types</a></li>
+<li><a href="#h3-35">1. Sprint Cockpit (`rig.relay.sprint_cockpit.v1`)</a></li>
+<li><a href="#h3-40">2. Mission Packet (`rig.relay.mission_packet.v1`)</a></li>
+<li><a href="#h3-44">3. Child Session Result (`rig.relay.child_session_result.v1`)</a></li>
+<li><a href="#h3-47">4. Sprint Aggregate Report (`rig.relay.sprint_aggregate_report.v1`)</a></li>
+<li><a href="#h2-50">Security Boundaries</a></li>
+<li><a href="#h2-55">Reviewer Orchestrator Prompt</a></li>
+<li><a href="#h2-57">Bootstrap Implementation Status</a></li>
+<li><a href="#h2-60">References</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Reviewer Orchestrator Doctrine</h1>
 
 <p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s reviewer orchestrator protocol defines how a manager agent reads a full sprint cockpit, launches bounded child missions through a specialized tool, monitors coordination state, aggregates child reports, and decides the next sprint action.</p>
@@ -155,6 +204,7 @@ You must never push, merge, rebase, reset, clean, stash, or bypass checkpoint po
 
 <p id="p-62" class="disclosure-standard" data-disclosure-level="standard">- [Delegate/Fleet Orchestration Doctrine](delegate-fleet-orchestration.md) - [Cross-Session Coordination Doctrine](cross-session-coordination.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Review Packet Protocol](usage-data-doctrine.md#review-packet-protocol) - [Work Item Schema](../schemas/rig.relay.work_item.v1.schema.json) - [Work Queue Schema](../schemas/rig.relay.work_queue.v1.schema.json) - [Ready Work Plan Schema](../schemas/rig.relay.ready_work_plan.v1.schema.json) - [Git Discipline Rules](../AGENTS.md#git) - [Dirty-File Preservation](../AGENTS.md#dirty-file-preservation)</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/reviewer-orchestrator.v1.json</code></p>

@@ -4,16 +4,68 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Audit Trail Tamper-Evidence Design — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="**Design (2026-05).** Not yet implemented. See">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/audit-trail-tamper-evidence.html">
+<meta property="og:title" content="Audit Trail Tamper-Evidence Design">
+<meta property="og:description" content="**Design (2026-05).** Not yet implemented. See">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/audit-trail-tamper-evidence.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Audit Trail Tamper-Evidence Design">
+<meta name="twitter:description" content="**Design (2026-05).** Not yet implemented. See">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Audit Trail Tamper-Evidence Design</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">**Design (2026-05).** Not yet implemented. See</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/audit-trail-tamper-evidence.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Audit Trail Tamper-Evidence Design</a></li>
+<li><a href="#h2-2">Status</a></li>
+<li><a href="#h2-4">Purpose</a></li>
+<li><a href="#h2-7">Design Overview</a></li>
+<li><a href="#h3-10">Layer 1: Event Hash Chain</a></li>
+<li><a href="#h3-29">Layer 2: Checkpoint Records</a></li>
+<li><a href="#h3-39">Layer 3: Merkle Checkpoint Option</a></li>
+<li><a href="#h2-47">Verification Workflow</a></li>
+<li><a href="#h3-48">`rig-relay audit verify &lt;trail&gt;`</a></li>
+<li><a href="#h3-52">`rig-relay audit checkpoint &lt;trail&gt;`</a></li>
+<li><a href="#h3-54">`rig-relay audit inspect &lt;event_id&gt;`</a></li>
+<li><a href="#h2-56">Failure/Recovery Policy</a></li>
+<li><a href="#h2-59">Security Boundary</a></li>
+<li><a href="#h3-60">What tamper evidence detects</a></li>
+<li><a href="#h3-62">What tamper evidence does NOT detect</a></li>
+<li><a href="#h3-64">Trust model</a></li>
+<li><a href="#h3-66">Future hardening (not in v0.1)</a></li>
+<li><a href="#h3-68">Documented contract</a></li>
+<li><a href="#h2-71">Required Schema Changes</a></li>
+<li><a href="#h3-72">`AuditEvent` gains two optional fields</a></li>
+<li><a href="#h3-75">New schema: `rig.relay.audit_checkpoint.v1`</a></li>
+<li><a href="#h2-81">Implementation Phases</a></li>
+<li><a href="#h2-84">Relationship to Receipt Envelope</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit Trail Tamper-Evidence Design</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
@@ -249,6 +301,7 @@ event_count, chain_head_hash, checkpoint_sha256</code></pre>
 
 <p id="p-86" class="disclosure-standard" data-disclosure-level="standard">- If the `AuditEvent` fields are tampered with (e.g., `decision` changed from `allowed` to `blocked`), the chain detects it. - If the embedded `ReceiptEnvelope` is tampered with inside a serialized `AuditEvent`, the chain detects it (because the canonical JSON of the `AuditEvent` changes). - `ReceiptEnvelope` objects stored independently (not embedded in audit events) are not covered by the audit trail&#x27;s hash chain. They need their own integrity mechanism (deferred to future work).</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/audit-trail-tamper-evidence.v1.json</code></p>

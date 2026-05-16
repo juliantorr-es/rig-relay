@@ -4,16 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tracing Doctrine — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="Rig Relay tracing is structured runtime evidence using spans, events, and redacted attributes. Not random logging.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/tracing-doctrine.html">
+<meta property="og:title" content="Tracing Doctrine">
+<meta property="og:description" content="Rig Relay tracing is structured runtime evidence using spans, events, and redacted attributes. Not random logging.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/tracing-doctrine.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Tracing Doctrine">
+<meta name="twitter:description" content="Rig Relay tracing is structured runtime evidence using spans, events, and redacted attributes. Not random logging.">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Governance</p>
   <h1>Tracing Doctrine</h1>
-  <p class="meta">Status: active | Updated: 2026-05-18</p>
+  <p class="doc-summary">Rig Relay tracing is structured runtime evidence using spans, events, and redacted attributes. Not random logging.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/tracing_doctrine.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#title">Tracing Doctrine</a></li>
+<li><a href="#vs">Tracing vs Logging vs Receipts</a></li>
+<li><a href="#schema">Schema</a></li>
+<li><a href="#event-kinds">Event Kinds</a></li>
+<li><a href="#redaction">Redaction Rules</a></li>
+<li><a href="#paths">Default Trace Paths</a></li>
+<li><a href="#env">Environment Variables</a></li>
+<li><a href="#hot-paths">Hot Paths Instrumented (v0)</a></li>
+<li><a href="#usage">Usage</a></li>
+<li><a href="#supervisor-span">RuntimeSupervisor Span Contract</a></li>
+<li><a href="#envelope">Runtime Supervisor Result Envelope</a></li>
+<li><a href="#otel">OpenTelemetry Compatibility</a></li>
+  </ol>
+</nav>
 <h1 id="title" class="disclosure-standard" data-disclosure-level="standard">Tracing Doctrine</h1>
 
 <p id="intro" class="disclosure-standard" data-disclosure-level="standard">Rig Relay tracing is structured runtime evidence using spans, events, and redacted attributes. It is not random logging. Tracing answers: what operation happened, where, which parent caused it, how long it took, whether it passed or failed.</p>
@@ -123,6 +164,7 @@ with recorder.span(&quot;desktop.bridge.start&quot;, {&quot;host&quot;: &quot;12
 
 <p id="otel-content" class="disclosure-standard" data-disclosure-level="standard">Dotted operation names follow OpenTelemetry semantic conventions. Future exporter can translate Rig JSONL traces to OTel format. No remote exporter in v0 — local-first only.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/governance/tracing_doctrine.v1.json</code></p>

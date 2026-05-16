@@ -4,16 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Textual Streaming Smoothness — Provider Delta Coalescing — Rig Relay Docs</title>
-<link rel="stylesheet" href="/rig-relay/assets/site.css">
 <meta name="description" content="The Textual chat UI streams provider output into assistant message widgets. The">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/textual-streaming-smoothness.html">
+<meta property="og:title" content="Textual Streaming Smoothness — Provider Delta Coalescing">
+<meta property="og:description" content="The Textual chat UI streams provider output into assistant message widgets. The">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/textual-streaming-smoothness.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Textual Streaming Smoothness — Provider Delta Coalescing">
+<meta name="twitter:description" content="The Textual chat UI streams provider output into assistant message widgets. The">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
 </head>
 <body>
-<header>
-  <nav><a href="/rig-relay/">Home</a></nav>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / Ui</p>
   <h1>Textual Streaming Smoothness — Provider Delta Coalescing</h1>
-  <p class="meta">Status: active | Updated: 2026-05-16</p>
+  <p class="doc-summary">The Textual chat UI streams provider output into assistant message widgets. The</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/ui/textual-streaming-smoothness.v1.json</code></dd>
+  </dl>
 </header>
-<main>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Textual Streaming Smoothness — Provider Delta Coalescing</a></li>
+<li><a href="#h2-2">Problem</a></li>
+<li><a href="#h2-6">Solution: StreamCoalescer</a></li>
+<li><a href="#h3-8">Architecture</a></li>
+<li><a href="#h3-10">Integration Point</a></li>
+<li><a href="#h3-13">Default Configuration</a></li>
+<li><a href="#h3-16">Coalescer Behavior</a></li>
+<li><a href="#h3-18">What Is Not Coalesced</a></li>
+<li><a href="#h3-20">Instrumentation</a></li>
+<li><a href="#h3-24">Provider Trace Metrics</a></li>
+<li><a href="#h2-37">Risks and Tuning</a></li>
+<li><a href="#h3-38">Risk: Flush delay on sparse deltas</a></li>
+<li><a href="#h3-41">Risk: Flush delay on final delta</a></li>
+<li><a href="#h3-43">Risk: Reasoning stream interleaving</a></li>
+<li><a href="#h2-45">Tuning Knobs</a></li>
+<li><a href="#h2-49">Files Changed</a></li>
+<li><a href="#h2-51">Unit Tests</a></li>
+<li><a href="#h2-53">Integration Tests (TestEventBoundary)</a></li>
+<li><a href="#h2-63">Remaining Risk</a></li>
+<li><a href="#h2-65">Recommended Next Slices</a></li>
+  </ol>
+</nav>
 <h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Textual Streaming Smoothness — Provider Delta Coalescing</h1>
 
 <h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Problem</h2>
@@ -222,6 +271,7 @@ coalescer = StreamCoalescer(
 
 <p id="p-66" class="disclosure-standard" data-disclosure-level="standard">1. **Performance benchmarking:** Activate the metrics snapshot in `finalize_streaming()` and collect traces from real provider sessions. Compare `coalescing_ratio` and `average_flush_chars` across providers (OpenAI, Anthropic, DeepSeek) to tune `flush_interval_ms` and `max_buffer_chars` per provider. 2. **Debug console integration:** Surface coalescer instrumentation counters and metrics in the Rig Console evidence rail as a debug/telemetry widget. 3. **Observability JSONL integration:** Define `rig.relay.stream_coalescer.metrics` event in `EventName` and a corresponding JSON Schema for structured telemetry at `docs/schemas/rig.relay.stream_coalescer_metrics.v1.schema.json`. 4. **Reasoning event coalescing** (optional): If reasoning deltas also arrive as tiny chunks, add a second `StreamCoalescer` for the reasoning path.</p>
 
+  </article>
 </main>
 <footer>
   <p>Generated from <code>docs/json/ui/textual-streaming-smoothness.v1.json</code></p>
