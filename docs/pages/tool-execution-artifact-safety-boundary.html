@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Tool Execution and Artifact Safety Boundary — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Tool Execution and Artifact Safety Boundary</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Tool Execution and Artifact Safety Boundary</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: tools</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The boundary between tool execution and artifacting is centered on the `16KB` threshold in `AgentLoop._handle_tool_response`. While functional, the logic is highly coupled to the main agent loop and lacks explicit serialization/safety gates for binary or malformed data.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Tool Output Lifecycle Map</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">1.  **Tool Invoke**: `AgentLoop` calls `tool.run()`. 2.  **Output Capture**: Raw string/data returned to `AgentLoop`. 3.  **Threshold Check**: If `len(output) &gt; 16384` bytes, trigger artifacting. 4.  **Artifact Writing**: `ArtifactWriter` writes atomic JSON to `artifacts/tool-results/`. 5.  **Event Emission**: `ARTIFACT_WRITTEN` event sent to telemetry. 6.  **Prompt Inlining**: Truncated &quot;excerpt&quot; + &quot;artifact reference&quot; is placed in the `LLMMessage`.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Artifacting Threshold Inventory</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Setting</th><th>Default</th><th>Location</th></tr></thead>
+<tbody>
+<tr><td>`threshold_bytes`</td><td>16384</td><td>`vibe/core/telemetry/artifacts.py`</td></tr>
+<tr><td>`auto_compact_threshold`</td><td>200,000 (tokens)</td><td>`vibe/core/config/_settings.py`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Safety and Determinism Risks</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- **Binary Data**: If a tool returns raw binary data, `json.dumps` (without `ensure_ascii=False`) or string encoding may fail non-deterministically based on the byte sequence. - **Path Normalization**: Tool-produced paths in artifacts are not always absolute or normalized, which can cause breaks in evidence-reading tools if they depend on the session&#x27;s CWD. - **Failures**: Currently, tool failures (stderr/exceptions) are artifacted the same way as successes, but they may lack structured error metadata in the artifact itself.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Missing Tests</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- **Test: Binary Output**: Verify that binary tool output is handled without corrupting the JSONL. - **Test: Path Resolution**: Verify that `artifact_path` in events is correctly resolvable from the repo root. - **Test: Schema Parity**: Verify that every `ARTIFACT_WRITTEN` event has a corresponding valid file in the filesystem.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Recommended Future Missions</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1.  **Mission: Binary Safety Gate**: Implement a validation step in `ArtifactWriter` to safely encode or reject binary blobs. 2.  **Mission: Normalized Artifact Metadata**: Ensure all `artifact_path` references in events are relative to the project root, not the session directory.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-execution-artifact-safety-boundary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

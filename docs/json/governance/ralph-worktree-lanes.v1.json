@@ -1,0 +1,223 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "ralph-worktree-lanes",
+  "document_type": "governance",
+  "title": "Ralph Worktree Lanes — Background Isolation Model",
+  "summary": "Ralph may operate in background lanes under explicit policy.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/ralph-worktree-lanes.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Ralph Worktree Lanes — Background Isolation Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Ralph may operate in background lanes under explicit policy. A Ralph lane is a dedicated branch/worktree isolation boundary. One bounded Ralph mission = one Ralph lane.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Two separate approvals",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "**Lane-start approval** — governed by `RalphBackgroundPolicy`: - Authorizes lane proposal and isolated work within policy limits. - Does not authorize merge, push, or mutation of active lanes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "**Adoption approval** — governed by `RalphAdoptionProposal`: - Required before any Ralph lane work enters an orchestrator lane. - Separate human-in-the-loop decision. - Binds to exact lane state (lane_id, branch_name, review_bundle_sha256).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Lane lifecycle",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-7",
+      "type": "code",
+      "language": "text",
+      "content": "proposed → lane_start_approved → active → sealed →\n  adoption_proposed → adopted (by human/orchestrator)\n                   → rejected\n                   → expired",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Isolation guarantees",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- Ralph commits only to Ralph-owned branches (prefix: `ralph/`). - Ralph worktrees live under `.rig/worktrees/ralph/` (configurable). - Ralph must not merge into orchestrator lanes or main. - Ralph must not push remote. - Ralph must not mutate files outside its worktree scope. - Ralph must not delete untracked user files.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Background policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "See `rig_relay/ralph/background_policy.py`. Key fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- `enabled` — master toggle (default: false) - `max_active_lanes` — concurrent Ralph lane limit (default: 2) - `max_pending_review_lanes` — finished lane limit (default: 10) - `require_lane_start_approval` — require human OK before lane work - `require_adoption_approval` — require human OK before adoption",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Widget projection",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "The Ralph widget shows: - `background_enabled` — toggle state - `active_lane_count` — in-progress lanes - `finished_lane_count` — completed lanes - `pending_review_count` — lanes awaiting review - `top_adoption_proposal_id` — highest-relevance proposal",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Toggle ON authorizes only lane creation/isolated work. Toggle ON does not authorize merge, push, or adoption.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Review session",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "When the user returns and clicks review, Ralph presents a special orchestrator review session explaining: - what was done, when, and why - evidence refs and validation results - changed files and review bundle hash - adoption recommendation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "This session is contract-only in the current phase. No execution, no merge, no git commands.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Related components",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- `ToolRuntime` — future execution authority (not invoked by lanes) - `WorktreeManager` — git worktree lifecycle (lanes will plug in later) - `Analytics compiler` — consumes lane events and projections - `Desktop HITL boundary` — renders widget, sends toggle/approve intents",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/ralph-worktree-lanes.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "schema_version": "rig.code_schema.v1",
+  "document_id": "frontend-trace-endpoint",
+  "schema_id": "frontend_trace_endpoint.v1",
+  "title": "Frontend Trace Endpoint",
+  "summary": "Browser-safe trace breadcrumbs for local desktop runs without sending frontend events to /ws.",
+  "change_kind": "frontend_observability",
+  "status": "active",
+  "authority": {
+    "authority_kind": "repo_governance",
+    "trusted": true,
+    "source_path": "docs/json/governance/frontend-rendering-safety.v1.json",
+    "source_hash": "sha256:f788ef5b37e2d8cd5ac3d10dae6ab0a9c95742f4204ac811b89dbf35af3e142b",
+    "review_status": "active",
+    "last_reviewed_at": "2026-05-18"
+  },
+  "intent_patterns": [
+    "frontend breadcrumb",
+    "browser-safe trace event",
+    "trace endpoint",
+    "token leakage",
+    "frontend status rendered"
+  ],
+  "applies_when": {
+    "symptoms": [
+      "frontend events missing from trace store",
+      "browser run shows disconnected without trace breadcrumbs"
+    ],
+    "traceback_patterns": [
+      "frontend trace event ignored",
+      "unsupported event type"
+    ],
+    "file_patterns": [
+      "frontend/desktop/js/utils.js",
+      "frontend/desktop/js/status.js",
+      "rig_relay/desktop/bridge_server.py"
+    ],
+    "test_patterns": [
+      "tests/frontend/test_frontend_trace_endpoint.py",
+      "tests/desktop/test_golden_path.py"
+    ],
+    "user_prompt_patterns": [
+      "frontend trace endpoint",
+      "browser-safe breadcrumb",
+      "trace events missing"
+    ]
+  },
+  "required_invariants": [
+    "Frontend trace events use field type, not event.",
+    "Browser fallback sends only to /frontend-event.",
+    "Trace endpoint never derives from ws_url or websocket_url.",
+    "No POST /ws.",
+    "No token values are emitted in URL, body, console, trace, or debug panel.",
+    "WebSocket /ws remains WebSocket-only."
+  ],
+  "validation_commands": [
+    "uv run pytest tests/frontend/test_frontend_trace_endpoint.py tests/desktop/test_websocket_correlation.py -q",
+    "uv run pytest tests/desktop/test_golden_path_browser_integration.py -q"
+  ],
+  "forbidden_patterns": [
+    "POST to /ws",
+    "token in query string",
+    "trace sink derived from websocket_url"
+  ],
+  "required_files": [
+    "frontend/desktop/js/utils.js",
+    "rig_relay/desktop/bridge_server.py",
+    "tests/frontend/test_frontend_trace_endpoint.py"
+  ],
+  "required_tests": [
+    "tests/frontend/test_frontend_trace_endpoint.py",
+    "tests/desktop/test_golden_path.py"
+  ],
+  "required_trace_events": [
+    "frontend_transport_state",
+    "frontend_status_rendered",
+    "frontend_auth_ok"
+  ],
+  "required_receipts": [
+    "bridge_probe.json"
+  ],
+  "context_pack": {
+    "include_files": [
+      "frontend/desktop/js/utils.js",
+      "frontend/desktop/js/status.js",
+      "rig_relay/desktop/bridge_server.py"
+    ],
+    "include_docs": [
+      "docs/json/governance/frontend-rendering-safety.v1.json",
+      "docs/json/governance/relay-local-remote-boundary.v1.json"
+    ],
+    "include_schemas": [
+      "docs/schemas/rig.code_schema.v1.schema.json",
+      "docs/schemas/rig.documentation.page.v1.schema.json"
+    ],
+    "exclude_patterns": [
+      "docs/pages/**",
+      "**/*.html"
+    ],
+    "max_context_notes": 12
+  },
+  "model_facing_summary": "Use the browser-safe frontend trace sink. Emit breadcrumbs through /frontend-event with type and handshake_id. Never route frontend breadcrumbs to /ws or emit token values."
+}

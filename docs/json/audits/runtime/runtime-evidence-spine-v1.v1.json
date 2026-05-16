@@ -1,0 +1,265 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-evidence-spine-v1",
+  "document_type": "audit",
+  "title": "Runtime Evidence Spine v1",
+  "summary": "- `span.start` + `span.end` = one span",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/runtime/runtime-evidence-spine-v1.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Runtime Evidence Spine v1",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Trace Semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-3",
+      "type": "heading",
+      "level": 3,
+      "content": "Parent/Child Span Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "- `span.start` + `span.end` = one span - `span.event` = event attached to active span (parent_span_id == span_id) - Child spans get `parent_span_id` = parent's `span_id` - Sibling spans share `trace_id` but have different `span_id`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-5",
+      "type": "heading",
+      "level": 3,
+      "content": "Trace Tree Example",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-6",
+      "type": "code",
+      "language": "text",
+      "content": "tool_runtime.execute_one (trace_id=t1, span_id=s1)\n  │\n  ├── tool_runtime.cache_check (span.event, span_id=s1)\n  │\n  └── runtime.subprocess.execute (trace_id=t1, span_id=s2, parent_span_id=s1)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "RuntimeSupervisor Trace Privacy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Safe Attributes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- `executable`: argv[0] only - `argv_hash`: sha256 of joined argv (first 16 chars) - `argv_count`: len(argv) - `cwd_hash`: sha256 of cwd path (first 16 chars) - `cwd_kind`: repo | worktree | temp | app_support | unknown - `timeout_seconds`, `exit_code`, `status`, `duration_ms` - `stdout_bytes`, `stderr_bytes` (never raw content)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Redaction Proof",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- Raw CWD path with username/project never appears - Raw argv secrets never appear - Raw stdout/stderr content never appears",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Supervisor Envelope Adoption",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Subprocess-backed tool calls now preserve `RuntimeSupervisorResultEnvelope` through the ToolRuntime and adapter receipt path. Downstream consumers should read the envelope or the copied envelope fields rather than reconstructing terminal meaning from raw process handles or ad hoc status strings.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Validate Tracing v0 (deferred)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Validate profile execution tracing deferred to next pass. Current check execution goes through `validate_runner._run_check()` which uses `create_subprocess_exec`. Instrumentation will be added when validate state machine transitions are stable.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Desktop Trace Correlation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- Bridge probe ladder already emits structured events - Frontend event recorder exists - DesktopBridgeStateMachine transitions are traceable - /healthz exposes bridge_state, transition_count",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Diagnostics Helper",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "`tests/helpers/probe_report.py` — ProbeReport with structured check recording and safe assertions. Used for golden-path protocol tests. Emits no secrets.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Duplicate Test Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Scanned 5954 tests across 327 test files: - 1 exact body duplicate group - 34 normalized AST duplicate groups - 618 assert-shape duplicate groups",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Output: `docs/audits/test-suite/duplicate_test_audit.*`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Validate/Agent Command Doctrine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "1. `uv run pytest -m smoke --maxfail=1 -q` — pulse check 2. `uv run pytest -m \"not slow and not integration...\"` — fast default (4885 tests) 3. Full suite explicit only 4. Agents must not run broad pytest loops when focused validation exists 5. Duplicate tests should become parametrized behavior tables 6. Raw output/secrets never belong in traces or diagnostics",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/runtime/runtime-evidence-spine-v1.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

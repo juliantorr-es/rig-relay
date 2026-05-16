@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Storage Lifecycle — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Conservative lifecycle policy for `~/.rig/sessions`.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Session Storage Lifecycle</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Session Storage Lifecycle</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Conservative lifecycle policy for `~/.rig/sessions`.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Primary Surface</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">The primary product surface is an end-of-session agent tool:</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- `rig.relay.session_lifecycle.finalize`</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The finalize tool may optionally receive a `MissionEnvelope` and will write a mission-linked lifecycle receipt when one is provided.</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">CLI scripts remain internal/admin/recovery utilities for now.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Policy</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- `~/.rig/sessions` is hot state, not a long-term archive. - Dry-run is the default for audit, compaction, and GC tooling. - Protected classes are never deleted by default. - Active or pinned sessions are never deleted. - Shareable outputs must remain content-light.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Storage Classes</h2>
+
+<table id="table-12" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Class</th><th>Treatment</th></tr></thead>
+<tbody>
+<tr><td>Hot</td><td>Recent session state, active sessions, pinned sessions</td></tr>
+<tr><td>Warm</td><td>Compaction candidates eligible for rollups</td></tr>
+<tr><td>Cold</td><td>Archivable or pruneable candidates after retention</td></tr>
+<tr><td>Delete</td><td>Only confirmed GC candidates after safety checks</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Protected Classes</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- receipts - consent - upload_receipts - signed_envelopes - active session markers - pinned sessions</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Compaction Strategy</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- JSONL event-like files may be rolled up to Parquet when DuckDB is available. - When DuckDB is unavailable, gzip JSONL is the fallback. - No raw prompts, model outputs, source diffs, stdout, or stderr bodies are allowed in shareable rollups. - Current-session compaction may run automatically during finalization.</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">GC Strategy</h2>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- GC is dry-run first. - GC must print exact paths and sizes. - GC must refuse to delete protected classes. - GC must stop when the configured delete cap is reached. - GC may archive candidates instead of deleting them. - Confirmed deletion only happens when the operator passes the explicit confirm flag. - Cross-session GC is separate maintenance, not part of normal finalization.</p>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Recovery</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- Manual recovery requires the source session tree and the local GC receipt. - Receipts, consent, and signed envelopes remain untouched. - Nothing is uploaded.</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Manual Use</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- Do not manually delete session trees unless you understand the retention policy and the local recovery path. - Protected classes are never compacted or pruned. - Lifecycle receipts are part of the evidence trail. - Mission linkage is optional and must not require ADR or sprint metadata.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Future CLI Surface</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Future Relay CLI commands are expected to expose the same lifecycle actions:</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">- `rig relay sessions audit` - `rig relay sessions compact` - `rig relay sessions gc`</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">This is future work only. The current implementation is script-based.</p>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Tool Receipt Evidence Index</h2>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Receipt events (`rig.relay.tool_receipt.captured`) can be queried via the receipt index builder in `rig_relay.evidence.receipt_index`. The index is:</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- **Content-light**: no raw stdout, stderr, file contents, diffs, snippets, or secrets. Only metadata, SHA256 hashes, byte counts, and structured error classification. - **Read-only derived evidence**: built from session observability events, never modified. - **Audit/replay surface**: answers which tools ran, which calls mutated files, which were refused or timed out, and which produced before/after hashes.</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">Currently supported tools: `bash`, `search_replace`.</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">The CLI script `scripts/rig_relay_receipt_index.py` provides read-only inspection.</p>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- [Usage Data Doctrine](usage-data-doctrine.md) - [Storage Retention Policy](storage-retention-policy.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md) - [Telemetry Contribution Policy](telemetry-contribution-policy.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/session-storage-lifecycle.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

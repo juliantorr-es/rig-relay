@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Cleanup Roadmap — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Staged plan to reduce duplication, consolidate test files, and fill coverage gaps.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Cleanup Roadmap</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Cleanup Roadmap</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Staged plan to reduce duplication, consolidate test files, and fill coverage gaps.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Stage 0 — Audit (Complete)</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">**Goal:** Identify all duplicate, near-duplicate, brittle, and missing tests.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">**Already done:** - `docs/audits/tests/test-suite-quality-audit.md` - `docs/audits/tests/test-quality-taxonomy.md` - `docs/audits/tests/data/test_file_inventory.jsonl` (16 files) - `docs/audits/tests/data/test_duplicate_candidates.jsonl` (11 groups) - `docs/audits/tests/data/test_coverage_gap_inventory.jsonl` (11 gaps)</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">**Validation:** All 3 JSONL files validated as parseable JSONL.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Stage 1 — Test Taxonomy and Ownership</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">**Goal:** Document test-tier conventions and assign explicit ownership/labels.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**Files affected:** - `pyproject.toml` (add pytest markers: `tier0`, `tier1`, `tier2`, `slow`) - `tests/conftest.py` (register markers) - `docs/audits/tests/test-quality-taxonomy.md` (already exists)</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">**Actions:** 1. Add pytest markers to `pyproject.toml`: ``` [tool.pytest.ini_options] markers = [ &quot;tier0: runs on every file change (unit + contract)&quot;, &quot;tier1: runs on every PR (unit + contract + fast integration)&quot;, &quot;tier2: runs nightly or on demand (slow integration + git)&quot;, &quot;slow: exceeds 200ms runtime&quot;, ] ``` 2. Document tier conventions in taxonomy doc. 3. Add test ownership comments (module-level) to each major test file.</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">**Tests to preserve:** All **Tests to delete:** None **Risks:** Low — metadata only **Exit criteria:** `uv run pytest --markers` shows the 4 new markers</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Stage 2 — Validate Test Consolidation ✅ (Complete)</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">**Goal:** Remove exact and near-duplicate git-state tests from `test_validate.py` and clean up the file split.</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">**Status:** ✅ Done — 18 duplicate tests removed, 1 unique test preserved.</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">**Files affected:** - `tests/tools/test_validate.py` — 18 git-state tests removed (preserved `test_collect_git_state_porcelain_sha256` which has no equivalent in dedicated file) - `tests/tools/test_validate_git_state.py` — no changes</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">**Tests removed (18):**</p>
+
+<pre id="code-19"><code class="language-text">test_parse_git_status_branch_sets_branch
+test_parse_git_status_branch_with_ahead_behind
+test_parse_git_status_branch_detached_head
+test_parse_git_status_porcelain_line_untracked
+test_parse_git_status_porcelain_line_modified
+test_parse_git_status_porcelain_parses_full_output
+test_collect_git_state_non_repo                     [EXACT DUPLICATE]
+test_collect_git_state_empty_repo
+test_collect_git_state_detects_dirty
+test_check_dirty_policy_none_passes
+test_check_dirty_policy_allow_dirty_passes
+test_check_dirty_policy_clean_fails_when_dirty
+test_check_dirty_policy_clean_passes_when_clean
+test_check_dirty_policy_allow_listed_dirty_passes
+test_check_dirty_policy_allow_listed_dirty_fails
+test_worktree_readiness_profile_registered
+test_validate_receipt_git_summary_content_light
+test_validate_git_state_extra_forbidden</code></pre>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">**Coverage preserved:** All 18 removals fully covered by `test_validate_git_state.py` (27 tests) **Net reduction:** 308 lines, 18 tests; `test_validate.py` now 1,489 lines / 109 tests **Validation:** `uv run pytest tests/tools/test_validate_git_state.py -x` → 27 passed; `uv run pytest tests/tools/test_validate.py -x` → 109 passed</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Stage 3 — Schema/Model Contract Tests ✅ (Complete)</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">**Goal:** Add model-dump-against-schema validation for all untested schemas.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">**Status:** ✅ Done — 13 tests added covering 9 schemas across 3 tool families.</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">**Files affected (create):** - `tests/tools/test_tool_schema_contracts.py` — 13 tests for bash, search_replace, validate models</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">**Coverage added (closed gaps gap-003, gap-008, gap-009, gap-010, gap-011):**</p>
+
+<table id="table-27" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tool</th><th>Result</th><th>Receipt</th><th>Invocation</th></tr></thead>
+<tbody>
+<tr><td>Bash</td><td>✓ `BashResult` → schema</td><td>✓ `BashReceipt` → schema</td><td>✓ `BashArgs` → schema</td></tr>
+<tr><td>SearchReplace</td><td>✓ `SRResult` → schema</td><td>✓ `SRReceipt` → schema</td><td>✓ `SRArgs` → schema</td></tr>
+<tr><td>Validate</td><td>✓ `ValResult` → schema</td><td>✓ `ValReceipt` → schema</td><td>✓ `ValArgs` → schema</td></tr>
+</tbody>
+</table>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">**Schema fixes (2 stale bash schemas):** - `bash_result.v1`: renamed `exit_code`→`returncode`, added `stdout`/`stderr`, fixed nullable fields - `bash_invocation.v1`: renamed `timeout_ms`→`timeout`, removed `allow_shell`/`schema_version`, fixed nullable fields - Fixed nullable `error_kind`, `refusal_reason`, `duration_ms` across all search_replace and validate schemas</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">**Not yet covered:** WriteFile and Contribution schemas (need schema files) **Validation:** `uv run pytest tests/tools/test_tool_schema_contracts.py -x` → 13 passed; `uv run python scripts/rig_relay_validate_schemas.py` → 78/78 valid</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-31" class="disclosure-standard" data-disclosure-level="standard">Stage 4 — Mutation Tool Test Matrix</h2>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">**Goal:** Create a shared contract matrix for search_replace and write_file tests to reduce per-tool redundancy in `test_tool_receipt_emission.py`.</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">**Files affected:** - `tests/tools/test_tool_receipt_emission.py` — refactor to use shared parametrized tests - `tests/tools/test_hardened_tools.py` — no changes</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">**Actions:** 1. Create shared fixture factory that produces receipt-test matrix entries (tool class, success result, failure result, refusal result) 2. Parametrize receipt content-light tests across bash, search_replace, write_file, validate 3. Keep tool-specific tests (hashes, status fields) in dedicated files</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">**Tests to preserve:** All current behavior coverage **Tests to merge:** bash_receipt_content_light, sr_receipt_content_light, validate_receipt_content_light into single parametrized test **Net reduction:** ~100-150 lines by removing near-identical receipt assertion patterns</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">**Risks:** Low — structural refactor only; behavior assertions unchanged **Validation:** `uv run pytest tests/tools/test_tool_receipt_emission.py -x` **Exit criteria:** Receipt content-light tests are parametrized; no 3-copies-of-the-same-pattern exist</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-38" class="disclosure-standard" data-disclosure-level="standard">Stage 5 — Receipt Pipeline Integration Tests</h2>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">**Goal:** Add end-to-end receipt pipeline tests (filling gaps gap-001, gap-002, gap-005).</p>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">**Files affected (create):** - `tests/evidence/test_receipt_pipeline_integration.py`</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">**Coverage to add:** - `test_receipt_pipeline_bash`: bash run() → build_receipt → capture → policy validate → index → verify - `test_receipt_pipeline_search_replace`: same for search_replace - `test_receipt_pipeline_validate`: same for validate - `test_receipt_pipeline_write_file`: same for write_file - `test_receipt_pipeline_rejects_raw_output`: policy rejection through full pipeline - `test_validate_pipeline_e2e`: run validate profile → build_receipt → capture → verify index contents match</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">Each test should: 1. Create a temp directory and observability JSONL 2. Run the tool with controlled inputs 3. Call `build_receipt()` on the result 4. Call `capture_tool_receipt()` to write to JSONL 5. Read back the JSONL event 6. Call `validate_receipt_payload()` on the event 7. Call `build_receipt_index()` on the JSONL 8. Index contains expected tool_name, status, count fields</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">**Tests to preserve:** All existing **Tests to delete:** None **Risks:** Low — new tests only; medium complexity due to patching telemetry paths **Validation:** `uv run pytest tests/evidence/test_receipt_pipeline_integration.py -x` **Exit criteria:** All 4 core tools have a full pipeline E2E test</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-45" class="disclosure-standard" data-disclosure-level="standard">Stage 6 — Slow/Integration Tiering</h2>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">**Goal:** Mark slow tests with `@pytest.mark.slow` and configure CI to split Tier 0/1/2.</p>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">**Files affected:** - `tests/tools/test_validate.py` — add `@pytest.mark.slow` where absent (already has some `@pytest.mark.asyncio`) - `tests/tools/test_validate_git_state.py` — add `@pytest.mark.slow` and `@pytest.mark.integration` - `tests/tools/test_checkpoint.py` — add `@pytest.mark.slow` - `tests/tools/test_hardened_tools.py` — add `@pytest.mark.integration` - `tests/tools/test_bash_hardening.py` — add `@pytest.mark.integration` - `tests/tools/test_validation_suite.py` — add `@pytest.mark.integration` - `pyproject.toml` — register markers - CI workflow — split test run: `uv run pytest -m &quot;not slow and not integration&quot;` for fast CI, `uv run pytest -m &quot;slow or integration&quot;` for nightly</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">**Tests to preserve:** All **Tests to delete:** None **Risks:** Low — metadata only. Risk of incorrectly marking a fast test as slow **Validation:** `uv run pytest --co -q` shows correct test counts per marker **Exit criteria:** CI fast path runs without `@pytest.mark.slow` or `@pytest.mark.integration` tests; ~100-150 tests defer to nightly</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-50" class="disclosure-standard" data-disclosure-level="standard">Stage 7 — CI Test Tier Alignment</h2>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">**Goal:** Map all tests to Tier 0/1/2/3/4 and validate profiles.</p>
+
+<table id="table-52" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tier</th><th>Scope</th><th>Command</th><th>Target time</th></tr></thead>
+<tbody>
+<tr><td>Tier 0</td><td>Immediate (file change)</td><td>`uv run pytest -m tier0 -x`</td><td>&lt;10s</td></tr>
+<tr><td>Tier 1</td><td>PR gate</td><td>`uv run pytest -m &quot;tier0 or tier1&quot;`</td><td>&lt;60s</td></tr>
+<tr><td>Tier 2</td><td>Nightly</td><td>`uv run pytest -m &quot;tier2 or slow or integration&quot;`</td><td>&lt;300s</td></tr>
+<tr><td>Tier 3</td><td>Validate profile</td><td>`uv run rig-relay validate --profile quick`</td><td>—</td></tr>
+<tr><td>Tier 4</td><td>Full validation</td><td>`uv run rig-relay validate --profile tool-hardening`</td><td>—</td></tr>
+</tbody>
+</table>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">**Actions:** 1. Assign every test file a tier marker 2. Add CI workflow steps for each tier 3. Update `rig-relay validate` profiles to reference tier coverage 4. Add test to verify tier assignments are explicit for all test files</p>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">**Tests to preserve:** All **Tests to delete:** None **Risks:** Medium — tier mapping requires manual review of every test file for speed and dependency **Validation:** `uv run pytest -m tier0 -x` completes &lt;10s; `uv run pytest -m &quot;tier0 or tier1&quot;` completes &lt;60s **Exit criteria:** CI has separate fast/slow test paths; validate profiles reference tier coverage</p>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-56" class="disclosure-standard" data-disclosure-level="standard">Summary of Effort</h2>
+
+<table id="table-57" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Stage</th><th>Goal</th><th>Files Changed</th><th>Tests Removed</th><th>Lines Delta</th><th>Prio</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>Audit (done)</td><td>5 new</td><td>0</td><td>+2,500</td><td>—</td></tr>
+<tr><td>1</td><td>Taxonomy/tiers</td><td>3</td><td>0</td><td>+50</td><td>Medium</td></tr>
+<tr><td>2</td><td>Validate dedup ✅</td><td>1</td><td>18</td><td>-308</td><td>**High**</td></tr>
+<tr><td>3</td><td>Schema contracts ✅</td><td>1 new</td><td>0</td><td>+350</td><td>**High**</td></tr>
+<tr><td>4</td><td>Mutation matrix</td><td>1</td><td>0</td><td>-150</td><td>Medium</td></tr>
+<tr><td>5</td><td>Pipeline E2E</td><td>1 new</td><td>0</td><td>+300</td><td>**High**</td></tr>
+<tr><td>6</td><td>Slow tiering</td><td>6</td><td>0</td><td>+30</td><td>Low</td></tr>
+<tr><td>7</td><td>CI alignment</td><td>2</td><td>0</td><td>+50</td><td>Medium</td></tr>
+</tbody>
+</table>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">**Recommended next slice:** Stage 4 (Mutation tool test matrix) + Stage 5 (Receipt pipeline E2E tests). Stage 2 and 3 are complete.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tests/test-cleanup-roadmap.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

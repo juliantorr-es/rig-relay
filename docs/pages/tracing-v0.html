@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracing v0 — Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-16">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Tracing v0 — Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Tracing v0 — Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-16 **Schema**: `rig.trace_event.v1`</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Implementation Summary</h2>
+
+<h3 id="h3-4" class="disclosure-standard" data-disclosure-level="standard">Core Package (`rig_relay/tracing/`)</h3>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`__init__.py`</td><td>Public API exports</td></tr>
+<tr><td>`models.py`</td><td>`RigTraceEvent`, `TraceStatus`, `TraceEventKind`</td></tr>
+<tr><td>`context.py`</td><td>`TraceContext` with contextvars propagation</td></tr>
+<tr><td>`store.py`</td><td>`JSONLTraceStore`, `InMemoryTraceStore`, `NullTraceStore`</td></tr>
+<tr><td>`recorder.py`</td><td>`TraceRecorder` with span context manager</td></tr>
+<tr><td>`redaction.py`</td><td>`sanitize_trace_attributes()`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Tests (`tests/tracing/`)</h3>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>`test_trace_models.py`</td><td>12 tests — serialization, redaction</td></tr>
+<tr><td>`test_trace_context.py`</td><td>4 tests — propagation, clearing, async</td></tr>
+<tr><td>`test_trace_store.py`</td><td>5 tests — JSONL, in-memory, null</td></tr>
+<tr><td>`test_trace_recorder.py`</td><td>7 tests — span start/end, events, errors, nesting</td></tr>
+<tr><td>**Total**</td><td>**28 tests, all passing**</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Instrumented Hot Paths</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path</th><th>File</th><th>Events</th></tr></thead>
+<tbody>
+<tr><td>`desktop.bridge.start_begin`</td><td>`bridge_server.py`</td><td>host, port, tls_enabled</td></tr>
+<tr><td>`desktop.websocket.connection_begin`</td><td>`websocket_server.py`</td><td>—</td></tr>
+<tr><td>`desktop.websocket.auth_ok`</td><td>`websocket_server.py`</td><td>token_present, token_length</td></tr>
+<tr><td>`runtime.subprocess.execute`</td><td>`supervisor.py`</td><td>executable, argv_hash, argv_count, cwd_hash, timeout_seconds, lease_id</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Sample JSONL Event</h3>
+
+<pre id="code-11"><code class="language-json">{
+  &quot;schema_version&quot;: &quot;rig.trace_event.v1&quot;,
+  &quot;trace_id&quot;: &quot;a1b2c3d4e5f6...&quot;,
+  &quot;span_id&quot;: &quot;1a2b3c4d5e6f7g8h&quot;,
+  &quot;event_kind&quot;: &quot;span.event&quot;,
+  &quot;name&quot;: &quot;desktop.bridge.start_begin&quot;,
+  &quot;timestamp&quot;: &quot;2026-05-16T00:00:00.000Z&quot;,
+  &quot;attributes&quot;: {
+    &quot;host&quot;: &quot;127.0.0.1&quot;,
+    &quot;port&quot;: 9876,
+    &quot;tls_enabled&quot;: false
+  }
+}</code></pre>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Trace Store Paths</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mode</th><th>Path</th></tr></thead>
+<tbody>
+<tr><td>Source/Dev</td><td>`.build/rig-relay/traces/trace_events.jsonl`</td></tr>
+<tr><td>Packaged</td><td>`~/Library/Application Support/Rig Relay/traces/trace_events.jsonl`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Redaction Verified</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- `token`, `auth_token`, `api_key`, `password`, `secret` → `&lt;redacted&gt;` - `token_present`, `token_length` → allowed - Long strings truncated (&gt;1000 chars) - Bytes summarized - Nested dicts/lists sanitized recursively - Serialized output never contains raw auth token</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Skipped Instrumentation</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>AgentLoop</td><td>Dirty `agent_loop.py` SyntaxError from parallel lane</td></tr>
+<tr><td>ToolRuntime</td><td>Lower priority; can add in follow-up</td></tr>
+<tr><td>RuntimeSupervisor</td><td>Lower priority</td></tr>
+<tr><td>Validate tool</td><td>Lower priority</td></tr>
+<tr><td>Ralph/orchestrator</td><td>Lower priority</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Validation</h3>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Check</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Tracing tests (28)</td><td>All passing</td></tr>
+<tr><td>ruff</td><td>All checks passed</td></tr>
+<tr><td>pyright (tracing package)</td><td>0 errors</td></tr>
+<tr><td>Core imports</td><td>Clean</td></tr>
+<tr><td>Context propagation across async</td><td>Verified</td></tr>
+<tr><td>Nested span parent tracking</td><td>Verified</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor Follow-Up</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">`RuntimeSupervisor` tracing is now implemented under the same local trace substrate. The v0 implementation emits a parent `runtime.subprocess.execute` span plus structured child events for spawn, output, timeout, kill, exit, and result classification.</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">The implementation intentionally avoids raw stdout/stderr and raw argv material in trace payloads. Only hashes, counts, and terminal status data are recorded.</p>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor Teardown</h3>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">`RuntimeSupervisor` now performs deterministic subprocess transport cleanup through a dedicated finalizer that terminates or waits the process and then closes the underlying transport. The prior `PytestUnraisableExceptionWarning` from `BaseSubprocessTransport.__del__` was caused by subprocess transports surviving past event-loop teardown after timeout-heavy tests.</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Validation of the cleanup path is covered by `tests/runtime/test_runtime_supervisor_teardown.py`. The runtime supervisor behavior remains unchanged for success, failure, timeout, cancellation, and trace payload privacy; the only difference is that subprocess resources are now closed explicitly before the loop exits.</p>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor Result Envelope</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">`SupervisorCommandInvoker` now attaches a canonical `RuntimeSupervisorResultEnvelope` to each terminal result. The envelope is the content-light terminal evidence contract for downstream consumers such as ToolRuntime, validate, desktop diagnostics, and future SubagentRuntime paths.</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">The envelope classifies outcomes with the same vocabulary used by trace summary events:</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- `completed` - `failed` - `timed_out` - `killed` - `cancelled` - `spawn_failed` - `cleanup_failed` - `errored` - `refused`</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">The envelope stores command and cwd digests, output digests, timing facts, state projection, and safe evidence metadata only. Raw stdout, raw stderr, raw argv strings, and raw cwd values remain excluded.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/runtime/tracing-v0.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

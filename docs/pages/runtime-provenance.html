@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Provenance — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="How to verify what code Rig Relay is actually running and diagnose stale-install problems.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Provenance</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Provenance</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">How to verify what code Rig Relay is actually running and diagnose stale-install problems.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">The problem</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig Relay can be installed in two ways:</p>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Method</th><th>Command</th><th>Live-links to checkout?</th></tr></thead>
+<tbody>
+<tr><td>Project venv (development)</td><td>`uv run rig-relay`</td><td>✅ Yes (editable install)</td></tr>
+<tr><td>System tool (global)</td><td>`rig-relay`</td><td>❌ No (frozen copy)</td></tr>
+</tbody>
+</table>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Running `rig-relay` (bare) invokes a **`uv tool install`** copy, which is a frozen snapshot of the code at install time. It does **not** pick up local edits or new commits until you reinstall.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">Running `uv run rig-relay` uses the project&#x27;s `.venv` editable install, which **does** reflect the current working tree.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Dogfood install</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">For development/dogfood, install from the local checkout:</p>
+
+<pre id="code-10"><code class="language-bash">cd /path/to/rig-relay
+uv tool install --reinstall .</code></pre>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">This replaces the global tool copy with the current checkout&#x27;s code. Repeat anytime the checkout advances.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Verify what code is running</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Run the runtime doctor:</p>
+
+<pre id="code-14"><code class="language-bash">rig-relay doctor runtime</code></pre>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">This reports:</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- Python executable path - `rig-relay` command path - `vibe` package path - `agent_loop.py` and `assembler.py` paths - Git HEAD commit (if inside a checkout) - Installed version - Presence of critical symbols (`write_assembly_report`, `validate_evidence_session`, etc.) - Coherence status with warnings if paths disagree</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Use `--json` for machine-readable output:</p>
+
+<pre id="code-18"><code class="language-bash">rig-relay doctor runtime --json</code></pre>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Diagnostic commands</h2>
+
+<pre id="code-20"><code class="language-bash"># Which rig-relay is on PATH?
+which rig-relay
+
+# Is it a uv tool install?
+ls -la $(which rig-relay)
+
+# Where does the tool env point?
+cat ~/.local/share/uv/tools/rig-relay/lib/python3.12/site-packages/rig_relay-*.dist-info/direct_url.json
+
+# What git commit was the tool install built from?
+# Check direct_url.json or uv-receipt.toml
+
+# What code does uv run use?
+uv run python -c &quot;import vibe; print(vibe.__file__)&quot;
+
+# Are the module paths coherent?
+uv run python -c &quot;from vibe.core.context.assembler import write_assembly_report; print(&#x27;OK&#x27;)&quot;</code></pre>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Common causes of stale runtime</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">1. **Bare `rig-relay` vs `uv run rig-relay`** — The bare command may use an old uv tool install while `uv run` uses the project venv.</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">2. **Multiple Python environments** — System Python, homebrew Python, uv-managed Python, and pyenv Python can all have different installs.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">3. **Non-editable install** — `uv tool install .` copies the code; `uv pip install -e .` creates an editable link. Only the latter reflects local changes immediately.</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">4. **Git checkout drift** — If you run from the checkout (via `uv run`), the code matches the working tree. If you run from a tool install, you get the commit that was current when the tool was installed.</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Startup logging</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Every Rig Relay session logs a compact provenance line at startup:</p>
+
+<pre id="code-28"><code class="language-text">session_id=... package_path=... python=... git_head=... version=...</code></pre>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Look for this in `~/.rig/relay/logs/vibe.log` (or `$RIG_RELAY_HOME/logs/vibe.log`) to confirm which code a session actually ran.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/troubleshooting/runtime-provenance.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

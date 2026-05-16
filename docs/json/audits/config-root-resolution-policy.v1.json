@@ -1,0 +1,181 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "config-root-resolution-policy",
+  "document_type": "audit",
+  "title": "Audit: Config Root Resolution Policy",
+  "summary": "Status: Draft",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/config-root-resolution-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Audit: Config Root Resolution Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: config",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Executive Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Rig Relay's root resolution is \"Global-First\" by design. This audit evaluates the trade-offs of this model and confirms that centralized evidence storage in `~/.rig/relay` is the correct default for durable history, while identifying the need for better isolation semantics for tests and experiments.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Findings Matrix",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Area",
+        "Priority",
+        "Location",
+        "Current Behavior",
+        "Risk",
+        "Recommendation"
+      ],
+      "rows": [
+        [
+          "**CONF-001**",
+          "Home Resolution",
+          "P0",
+          "`_vibe_home.py`",
+          "Defaults to `~/.rig/relay`.",
+          "Large evidence files can clutter the home directory if not managed.",
+          "Maintain global default; improve `doctor` tools for history cleanup."
+        ],
+        [
+          "**CONF-002**",
+          "Legacy Fallback",
+          "P1",
+          "`_vibe_home.py`",
+          "Automatically loads `~/.vibe` if it exists.",
+          "Users may be unknowingly running with legacy Vibe config/state.",
+          "Require explicit `VIBE_HOME` or disable legacy by default in `rig-relay`."
+        ],
+        [
+          "**CONF-003**",
+          "Env Variable Shadowing",
+          "P2",
+          "`_settings.py`",
+          "Both `VIBE_` and `RIG_RELAY_` prefixes work.",
+          "Confusion over which environment variable takes precedence.",
+          "Deprecate `VIBE_` prefix in the `rig-relay` binary."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Detailed Findings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "CONF-001: Global-First Doctrine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Location: `vibe/core/paths/_vibe_home.py` Current behavior: `_get_vibe_home` checks `RIG_RELAY_HOME`, then defaults to `~/.rig/relay`. Risk: Centralized evidence simplifies history management but requires users to be aware of where data lives. Confirmed policy: Centralized history in `~/.rig/relay` is the preferred operational model. Repo-local storage is reserved for explicit isolation via `RIG_RELAY_HOME`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Backlog",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "1.  **Mission: Better Isolation Tools**: Add flags or commands to easily move sessions between global and local roots. 2.  **Mission: Diagnostic Command**: Add `rig-relay doctor` to show resolved paths and warn about legacy bleed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/config-root-resolution-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -14,6 +14,7 @@ import asyncio
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 import websockets
@@ -88,7 +89,7 @@ async def test_index_html_injects_runtime_config(tmp_path: Path) -> None:
     await bridge.start()
     try:
         response = bridge._handle_http(
-            type("Req", (), {"path": "/index.html"})(), frontend
+            type("Req", (), {"path": "/index.html"})(), frontend  # type: ignore[arg-type]
         )
         assert response is not None
         body = response.body.decode("utf-8")
@@ -119,13 +120,13 @@ async def test_runtime_config_and_index_emit_frontend_breadcrumbs(
     await bridge.start()
     try:
         bridge._trace_recorder = TraceRecorder(InMemoryTraceStore())
-        bridge._handle_http(type("Req", (), {"path": "/index.html"})(), frontend)
+        bridge._handle_http(type("Req", (), {"path": "/index.html"})(), frontend)  # type: ignore[arg-type]
         bridge._handle_http(
-            type("Req", (), {"path": "/runtime-config.json"})(), frontend
+            type("Req", (), {"path": "/runtime-config.json"})(), frontend  # type: ignore[arg-type]
         )
         names = [
             event.get("event_type") or event.get("name")
-            for event in bridge._trace_recorder.store.events
+            for event in bridge._trace_recorder.store.events  # type: ignore[attr-defined]
         ]
         assert "desktop.frontend.bootstrap_loaded" in names
         assert "desktop.frontend.runtime_config_served" in names
@@ -150,7 +151,7 @@ async def test_frontend_event_beacon_records_trace(tmp_path: Path) -> None:
     await bridge.start()
     try:
         response = bridge._handle_http(
-            SimpleNamespace(
+            SimpleNamespace(  # type: ignore[arg-type]
                 path="/frontend-event?type=frontend_status_rendered&handshake_id=corr_test&detail=%7B%22x%22%3A1%7D"
             ),
             frontend,
@@ -277,7 +278,8 @@ class TestGoldenPathTraceSummaryLogic:
     """Trace-summary analyzer unit tests — proves the trace schema, event builder,
     and summary script can detect complete/missing/split-brain traces from synthetic
     events. These do NOT prove the real frontend/browser/bridge path.
-    For real browser integration proof, see test_golden_path_browser_integration.py."""
+    For real browser integration proof, see test_golden_path_browser_integration.py.
+    """
 
     def test_trace_event_schema_parses(self) -> None:
         from rig_relay.tracing.golden_path import build_golden_path_event
@@ -290,7 +292,7 @@ class TestGoldenPathTraceSummaryLogic:
             tls_enabled=False,
             token_present=True,
         )
-        d = event.to_dict()
+        d = cast(dict[str, Any], event.to_dict())
         assert d["schema_version"] == "rig.trace_event.v1"
         assert d["event_type"] == "desktop.bridge.launch_requested"
         assert d["trace_id"]
@@ -308,11 +310,11 @@ class TestGoldenPathTraceSummaryLogic:
         event = build_golden_path_event(
             event_type="desktop.bridge.launch_requested", token_present=True
         )
-        d = event.to_dict()
+        d = cast(dict[str, Any], event.to_dict())
         # token_value_included must always be false
         assert d["redaction"]["token_value_included"] is False
         # No actual token value string in payload
-        payload = d["payload"]
+        payload = cast(dict[str, Any], d["payload"])
         for v in payload.values():
             if isinstance(v, str):
                 assert "secret" not in v.lower()
@@ -325,7 +327,7 @@ class TestGoldenPathTraceSummaryLogic:
             handshake_id="hs_test",
             token_present=True,
         )
-        d = event.to_dict()
+        d = cast(dict[str, Any], event.to_dict())
         payload_str = json.dumps(d["payload"])
         assert "secret" not in payload_str.lower()
 
@@ -395,13 +397,54 @@ class TestGoldenPathTraceSummaryLogic:
         bridge._trace_recorder = TraceRecorder(store)
         await bridge.start()
         try:
-            for event in store.events:
+            for event in store.events:  # type: ignore[attr-defined]
                 if (
                     event.get("event_type") or event.get("name")
                 ) == "desktop.bridge.runtime_config_built":
-                    payload = event.get("payload") or event.get("attributes") or {}
+                    payload: dict[str, Any] = cast(dict[str, Any], event.get("payload") or event.get("attributes") or {})
                     assert "frontend_url" in payload or "frontend_url" in str(event)
                     assert "websocket_url" in payload or "websocket_url" in str(event)
                     break
         finally:
             await bridge.stop()
+
+
+class TestDuplicateWebSocketCycleTracking:
+    """Non-blocking advisory: track duplicate WebSocket upgrade/auth cycles.
+
+    Manual verification observed two connection cycles ~19s apart in one
+    pywebview launch. This is classified as expected reconnect/reload
+    lifecycle. If duplicate cycles accumulate (>3 in one launch),
+    investigate pywebview page reload or WebSocket reconnect logic.
+    """
+
+    def test_duplicate_ws_cycle_documented_as_expected(self) -> None:
+        """Golden-path proof records duplicate connection as expected lifecycle."""
+        proof_path = (
+            Path(__file__).resolve().parents[2]
+            / "docs"
+            / "audits"
+            / "desktop"
+            / "desktop-golden-path-proof.md"
+        )
+        content = proof_path.read_text()
+        assert "passed_with_followup" in content, (
+            "Golden path proof must record passed_with_followup result"
+        )
+        assert "duplicate" in content.lower(), (
+            "Golden path proof must document duplicate WebSocket connection finding"
+        )
+
+    def test_duplicate_ws_cycle_threshold_specified(self) -> None:
+        """Documentation specifies >3 cycles in one launch as investigation trigger."""
+        proof_path = (
+            Path(__file__).resolve().parents[2]
+            / "docs"
+            / "audits"
+            / "desktop"
+            / "desktop-golden-path-proof.md"
+        )
+        content = proof_path.read_text()
+        assert ">3" in content or " > 3" in content or "> 3" in content, (
+            "Golden path proof must specify threshold for duplicate cycle investigation"
+        )

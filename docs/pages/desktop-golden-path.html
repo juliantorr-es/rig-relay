@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desktop Golden Path — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Desktop Golden Path</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Desktop Golden Path</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Source Mode</h2>
+
+<h3 id="h3-4" class="disclosure-standard" data-disclosure-level="standard">Command</h3>
+
+<pre id="code-5"><code class="language-bash">RIG_RELAY_BRIDGE_DEBUG=1 uv run rig-relay</code></pre>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Expected Probe Ladder (18 steps)</h3>
+
+<pre id="code-7"><code class="language-text">  ✅ [bridge:01] resolve frontend_dir: frontend/desktop
+  ✅ [bridge:02] resolve index.html: 3.7 KB
+  ✅ [bridge:03] verify asset files: js/main.js=11KB, css dir ok
+  ✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True
+  ✅ [bridge:05] create WS server: ProjectionWebSocketServer ready
+  ✅ [bridge:06] bind host/port: http://127.0.0.1:{port}
+  ✅ [bridge:07] probe /healthz: HTTP 200, ok=True
+  ✅ [bridge:08] probe /index.html: HTTP 200, text/html
+  ✅ [bridge:09] probe /js/main.js: HTTP 200, text/javascript
+  ✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css
+  ✅ [bridge:11] create pywebview window: window → http://127.0.0.1:{port}/index.html
+  ✅ [bridge:12] pywebview start called: webview.start(gui=cocoa)
+  ✅ [bridge:13] frontend runtime config loaded: source=pywebview_api token=present,len=32
+  ✅ [bridge:14] websocket upgrade accepted
+  ✅ [bridge:15] auth message received: token_present=true
+  ✅ [bridge:16] websocket auth accepted
+  ✅ [bridge:17] first projection sent
+  ✅ [bridge:18] first projection rendered: digest=...</code></pre>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Expected UI</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Widget</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Transport chip</td><td>**Connected** (green) or **Loopback Token Bridge**</td></tr>
+<tr><td>Mission Board</td><td>Visible with active missions</td></tr>
+<tr><td>Ralph Lifecycle</td><td>Visible with completed lanes</td></tr>
+<tr><td>ToolRuntime Summary</td><td>Visible with demo entries</td></tr>
+<tr><td>Reports</td><td>Visible</td></tr>
+<tr><td>No white screen</td><td>Rich frontend loads</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Packaged Mode</h2>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">Steps</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">1. `open &quot;dist/Rig Relay.app&quot;` 2. If macOS blocks: **System Settings → Privacy &amp; Security → Open Anyway** 3. Click **Start Demo** → wait for status update 4. Click **Run Doctor** → see 22/22 checks 5. Click **Launch Cockpit** → rich frontend opens 6. Verify **Loopback Token Bridge** connects 7. Verify projections update</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Requirements</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- No Terminal - No Python/uv - No API keys - No external network - Merge/push disabled</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Log Files</h2>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Source Mode</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- Terminal: bridge probe ladder printed live (steps 01-18) - `~/Library/Application Support/Rig Relay/logs/bridge_probe.json` - `~/Library/Application Support/Rig Relay/logs/bridge.log`</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Packaged Mode</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- SwiftUI → Reveal Logs opens logs folder - Same log paths as source mode under `~/Library/Application Support/Rig Relay/logs/`</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Config Flow</h2>
+
+<pre id="code-21"><code class="language-text">DesktopBridgeServer.start()
+  → DesktopBridgeRuntimeConfig.to_dict()
+  → includes `token_present` plus token fields for backend-only use
+  → CockpitAPI.set_runtime_config(config)
+  → pywebview.js_api = CockpitAPI instance
+  → frontend calls window.pywebview.api.get_runtime_config()
+    → returns config with token
+  → frontend opens WebSocket with token
+  → ProjectionWebSocketServer._handle_auth() validates token
+  → auth_ok → get_projection → projection rendered</code></pre>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Troubleshooting by Bridge Step</h2>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Step Fails</th><th>Symptom</th><th>Check</th></tr></thead>
+<tbody>
+<tr><td>bridge:01</td><td>frontend_dir missing</td><td>FRONTEND_DIR constant or packaging path</td></tr>
+<tr><td>bridge:02</td><td>index.html missing</td><td>frontend build step</td></tr>
+<tr><td>bridge:03</td><td>js/main.js missing</td><td>frontend build step</td></tr>
+<tr><td>bridge:04</td><td>runtime_config bad</td><td>token generation, TLS config</td></tr>
+<tr><td>bridge:06</td><td>port bind failure</td><td>port in use, try another port</td></tr>
+<tr><td>bridge:07-10</td><td>static probes fail</td><td>file serving path or MIME type</td></tr>
+<tr><td>bridge:11</td><td>pywebview import fail</td><td>`uv add pywebview`</td></tr>
+<tr><td>bridge:13</td><td>no token in config</td><td>pywebview API not ready, check RIG_RELAY_BRIDGE_DEBUG=1</td></tr>
+<tr><td>bridge:14-16</td><td>WS auth fail</td><td>token mismatch, check ws_url</td></tr>
+<tr><td>bridge:17-18</td><td>no projection</td><td>projection build error, check demo-seed</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Protocol Verification</h2>
+
+<pre id="code-25"><code class="language-python"># E2E test: WebSocket auth + projection
+ws_url = bridge.runtime_config.ws_url
+ws = websockets.connect(ws_url)
+ws.send({&quot;type&quot;: &quot;auth&quot;, &quot;token&quot;: &quot;...&quot;})
+# → {&quot;type&quot;: &quot;auth_ok&quot;}
+ws.send({&quot;type&quot;: &quot;get_projection&quot;})
+# → {&quot;type&quot;: &quot;projection&quot;, &quot;data&quot;: {...}}</code></pre>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Regression Tests</h2>
+
+<pre id="code-27"><code class="language-bash">uv run pytest tests/desktop/test_golden_path.py -v
+# 6 tests: config token, fallback tokenless, WS auth, WS projection, healthz, probe ladder</code></pre>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/demo/desktop-golden-path.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -258,6 +258,8 @@ When an agent discovers important debt, design gaps, or best-practice violations
 - `pyproject.toml` excludes `docs/schemas/` from Ruff's scope.
 - Schema files must always start with `{` and contain no Python syntax (no `from __future__ import annotations`, `import`, `def`, `class`, `# ruff:`, etc.).
 - The regression test `test_no_schema_contains_python_syntax` in `tests/coordination/test_schema_validation.py` automatically detects Python contamination.
+- When a request describes a recurring implementation pattern, govern it as a JSON code schema under `docs/json/code_schemas/` and add the canonical schema definition under `docs/schemas/`.
+- Check the relevant code schemas before editing implementation files when a task matches a known pattern, and keep the schema authority metadata explicit.
 
 ## Conversation Summary Naming
 

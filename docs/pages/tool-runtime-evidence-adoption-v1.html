@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ToolRuntime Direct Path Envelope Population v1 — Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-17">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>ToolRuntime Direct Path Envelope Population v1 — Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ToolRuntime Direct Path Envelope Population v1 — Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-17</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Current State</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Area</th><th>Before</th><th>After</th></tr></thead>
+<tbody>
+<tr><td>Desktop correlation privacy</td><td>Fixed (prior slice)</td><td>Fixed</td></tr>
+<tr><td>ToolRuntime success path envelope population</td><td>Already working (lines 449-464)</td><td>Working</td></tr>
+<tr><td>Span closure on early returns</td><td>6 of 8 paths missing `end_span()`</td><td>All 8 paths covered</td></tr>
+<tr><td>ToolRuntimeResult model fields</td><td>Present</td><td>Present</td></tr>
+<tr><td>Runtime intent path</td><td>Already working</td><td>Working</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Direct Path Envelope Population</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">The success path in `ToolRuntime._execute_governed()` already extracts and propagates supervisor envelope metadata (lines 449-464):</p>
+
+<pre id="code-7"><code class="language-python">supervisor_result_envelope_id=(
+    supervisor_result.get(&quot;result_id&quot;) if supervisor_result else None
+),
+supervisor_result_envelope_sha256=supervisor_result_sha256,
+supervisor_result_classification=supervisor_result_classification,</code></pre>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Extraction logic (lines 449-459): - `supervisor_result` from `result_model.supervisor_result_envelope` - `supervisor_result_sha256` from `result_model.supervisor_result_envelope_sha256` - `supervisor_result_classification` from `result_model.supervisor_result_classification` - Falls back to envelope dict fields if top-level attrs are None</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Span Finalization Fix</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**Before**: 6 early-return paths left trace spans open (dangling spans).</p>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Return Path</th><th>Span Closed Before</th><th>Span Closed After</th></tr></thead>
+<tbody>
+<tr><td>Cache hit</td><td>✅</td><td>✅</td></tr>
+<tr><td>Permission refused</td><td>❌</td><td>✅ (`status_str=&quot;refused&quot;`)</td></tr>
+<tr><td>Approval refused</td><td>❌</td><td>✅ (`status_str=&quot;refused&quot;`)</td></tr>
+<tr><td>Patch gate refused</td><td>❌</td><td>✅ (`status_str=&quot;refused&quot;`)</td></tr>
+<tr><td>ToolPermissionError</td><td>❌</td><td>✅ (`status_str=&quot;refused&quot;`)</td></tr>
+<tr><td>Invocation exception</td><td>❌</td><td>✅ (`status_str=&quot;error&quot;`)</td></tr>
+<tr><td>No result</td><td>❌</td><td>✅ (`status_str=&quot;error&quot;`)</td></tr>
+<tr><td>Success</td><td>✅</td><td>✅</td></tr>
+</tbody>
+</table>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">**Fix**: Added `_finalize_span()` helper (lazy evaluating, handles None trace_status cleanly). All 7 terminal return paths now call it.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Classification Mapping</h2>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Supervisor Classification</th><th>Trace Status</th><th>ToolRuntime Status</th></tr></thead>
+<tbody>
+<tr><td>`completed`</td><td>`ok`</td><td>`COMPLETED` (or `DEGRADED` if cache/context failures)</td></tr>
+<tr><td>`cancelled`</td><td>`cancelled`</td><td>`COMPLETED` (or `FAILED` if subprocess had errors)</td></tr>
+<tr><td>`timed_out`</td><td>`timed_out`</td><td>`TIMED_OUT`</td></tr>
+<tr><td>`refused`</td><td>`refused`</td><td>`REFUSED`</td></tr>
+<tr><td>`killed`</td><td>`error`</td><td>`FAILED`</td></tr>
+<tr><td>`spawn_failed`</td><td>`error`</td><td>`FAILED`</td></tr>
+<tr><td>`cleanup_failed`</td><td>`error`</td><td>`FAILED` or `DEGRADED`</td></tr>
+<tr><td>`errored`</td><td>`error`</td><td>`FAILED`</td></tr>
+<tr><td>(no supervisor)</td><td>`degraded` or `error`</td><td>`DEGRADED` or `COMPLETED`</td></tr>
+</tbody>
+</table>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Original classification preserved in `supervisor_result_classification` field regardless of mapping coarseness.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Privacy Model</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">The following fields are **never** emitted into ToolRuntime trace spans, result dicts, or receipt envelope: - Raw stdout, stderr, argv, cwd, env, shell command - Frontend paths, URLs - Auth tokens, API keys - Raw exception repr strings (truncated to 500 chars for error_message)</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Allowed in trace/receipt: envelope id, envelope sha, classification, byte counts, hashes, safe refusal/error kind, duration, tool name, tool call id.</p>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Files Changed</h2>
+
+<table id="table-20" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/core/tool_runtime.py`</td><td>Added `_finalize_span()` helper; wired to all 7 early-return paths</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Validation</h2>
+
+<table id="table-22" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Command</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>`pytest tests/core/test_tool_runtime.py -q`</td><td>13 passed</td></tr>
+<tr><td>`ruff check rig_relay/core/tool_runtime.py`</td><td>All checks passed</td></tr>
+<tr><td>`pyright rig_relay/core/tool_runtime.py`</td><td>0 errors, 0 warnings</td></tr>
+<tr><td>`demo-doctor`</td><td>22/22</td></tr>
+<tr><td>`collect-only`</td><td>6274 tests, 0 errors</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Deferred</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- **SubagentRuntime envelope consumption** — can now proceed since ToolRuntime direct path populates envelope fields. SubagentRuntime routes tool calls through ToolRuntime and will find the fields populated. - **Validate envelope consumption** — deferred. - **Frontend JS trace display** — deferred.</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Follow-up</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">**SubagentRuntime ToolRuntime Adoption v2** — route SubagentRuntime tool calls through ToolRuntime and consume envelope evidence.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/runtime/tool-runtime-evidence-adoption-v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

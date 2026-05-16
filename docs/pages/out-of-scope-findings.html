@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Out-of-Scope Findings Registry — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="&gt; Living index of structured findings discovered during agent missions.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Out-of-Scope Findings Registry</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Out-of-Scope Findings Registry</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; Living index of structured findings discovered during agent missions. &gt; Each finding is recorded in `out-of-scope-findings.jsonl` with full structured metadata. &gt; This Markdown index provides a human-readable summary sorted by finding kind.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Finding Kinds</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Kind</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`architecture_debt`</td><td>Structural design debt that constrains future work</td></tr>
+<tr><td>`lifecycle_semantics`</td><td>Session/runtime lifecycle behavior that violates intended semantics</td></tr>
+<tr><td>`telemetry_schema_gap`</td><td>Missing or incomplete observability metadata</td></tr>
+<tr><td>`lint_refactor`</td><td>Recurring lint pressure indicating function-level design issues</td></tr>
+<tr><td>`safety_guard_gap`</td><td>Gaps in dirty-file, mutation, or safety guard coverage</td></tr>
+<tr><td>`coordination_gap`</td><td>Missing or incomplete cross-session coordination primitives</td></tr>
+<tr><td>`documentation_gap`</td><td>Missing or outdated documentation</td></tr>
+<tr><td>`provider_boundary_gap`</td><td>Provider/model boundary leakage or missing abstraction</td></tr>
+<tr><td>`testing_gap`</td><td>Missing test coverage or test infrastructure</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Severity Levels</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Severity</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`critical`</td><td>Blocks safety or correctness for current features</td></tr>
+<tr><td>`high`</td><td>Blocks a planned feature or creates significant risk</td></tr>
+<tr><td>`medium`</td><td>Material constraint on future work, should be addressed within 2-3 slices</td></tr>
+<tr><td>`low`</td><td>Nuisance or maintenance drag, address opportunistically</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Status Values</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Status</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`open`</td><td>Reported, not yet triaged</td></tr>
+<tr><td>`accepted`</td><td>Triaged and acknowledged as valid debt</td></tr>
+<tr><td>`planned`</td><td>Scheduled for a specific future slice</td></tr>
+<tr><td>`in_progress`</td><td>Actively being addressed</td></tr>
+<tr><td>`resolved`</td><td>Fixed and validated</td></tr>
+<tr><td>`superseded`</td><td>Replaced by a newer finding or made irrelevant by other changes</td></tr>
+<tr><td>`wont_fix`</td><td>Acknowledged but intentionally not addressed</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Active Findings</h2>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Architecture Debt</h3>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Blocked By</th></tr></thead>
+<tbody>
+<tr><td>`finding_20260513_dirty_guard_singleton`</td><td>DirtyFileGuard singleton is shared across forked agents</td><td>medium</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Lifecycle Semantics</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Blocked By</th></tr></thead>
+<tbody>
+<tr><td>`finding_20260513_clear_history_recaptures_guard`</td><td>clear_history() recaptures guard state instead of preserving conversation-only snapshot</td><td>medium</td><td>`finding_20260513_dirty_guard_singleton`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Telemetry Schema Gaps</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Blocked By</th></tr></thead>
+<tbody>
+<tr><td>`finding_20260513_checkpoint_coordination_unknown_metadata`</td><td>checkpoint and coordination tools have UNKNOWN determinism and mutation metadata</td><td>medium</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Lint Refactor</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Blocked By</th></tr></thead>
+<tbody>
+<tr><td>`finding_20260513_search_replace_plr0914`</td><td>search_replace.py has recurring PLR0914/PLR0915 pressure</td><td>low</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Safety Guard Gaps</h3>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Blocked By</th></tr></thead>
+<tbody>
+<tr><td>`finding_20260517_validate_check_missing_dependency_bug`</td><td>validate_runner.check_missing_dependency incorrectly blocks multi-word commands like &#x27;git status&#x27;</td><td>medium</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">Stale Infrastructure</h3>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Blocked By</th></tr></thead>
+<tbody>
+<tr><td>`finding_20260517_stale_ci_workflows`</td><td>pylint.yml and python-package-conda.yml are stale legacy workflows from mistral-vibe</td><td>medium</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Testing Gaps</h3>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Blocked By</th></tr></thead>
+<tbody>
+<tr><td>`finding_20250613_validate_test_duplication`</td><td>test_validate.py and test_validate_git_state.py contain 19 duplicate/near-duplicate git-state tests</td><td>medium</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Schema</h2>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Each JSONL row conforms to `rig.relay.out_of_scope_finding.v1`:</p>
+
+<pre id="code-26"><code class="language-json">{
+  &quot;schema_version&quot;: &quot;rig.relay.out_of_scope_finding.v1&quot;,
+  &quot;finding_id&quot;: &quot;finding_&lt;date&gt;_&lt;slug&gt;&quot;,
+  &quot;created_at&quot;: &quot;ISO-8601&quot;,
+  &quot;source_session_id&quot;: &quot;session identifier&quot;,
+  &quot;source_task_id&quot;: &quot;task or mission identifier&quot;,
+  &quot;repo_area&quot;: &quot;module or subsystem path&quot;,
+  &quot;language&quot;: &quot;python | shell | ...&quot;,
+  &quot;finding_kind&quot;: &quot;architecture_debt | lifecycle_semantics | telemetry_schema_gap | lint_refactor | safety_guard_gap | coordination_gap | documentation_gap | provider_boundary_gap | testing_gap&quot;,
+  &quot;severity&quot;: &quot;low | medium | high | critical&quot;,
+  &quot;status&quot;: &quot;open | accepted | planned | in_progress | resolved | superseded | wont_fix&quot;,
+  &quot;title&quot;: &quot;One-line summary&quot;,
+  &quot;evidence&quot;: &quot;Concrete observations from the session&quot;,
+  &quot;why_it_matters&quot;: &quot;Impact if left unresolved&quot;,
+  &quot;best_practice_anchor&quot;: &quot;Reference to external standard or internal convention&quot;,
+  &quot;recommended_action&quot;: &quot;Specific fix approach&quot;,
+  &quot;suggested_slice&quot;: &quot;Human-readable name for the future mission slice&quot;,
+  &quot;related_files&quot;: [&quot;paths&quot;],
+  &quot;blocked_by&quot;: [&quot;finding_ids&quot;],
+  &quot;unblocks&quot;: [&quot;capabilities this finding gates&quot;]
+}</code></pre>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Language Practice References</h2>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Findings reference language-specific best-practice anchors documented in `docs/findings/language-practices/`:</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- [Python](language-practices/python.md)</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Governance</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- **Do not fix opportunistically.** Findings are recorded, classified, and turned into future work — not patched mid-mission. - **Append-only JSONL.** Agents append new rows to `out-of-scope-findings.jsonl`. Never edit or remove existing rows. - **Index is derived.** The Markdown index is regenerated from the JSONL. If the index is stale, regenerate it. - **Link from final reports.** Every mission final report should include a small &quot;Out-of-scope findings recorded&quot; section linking back to this registry.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/findings/out-of-scope-findings.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

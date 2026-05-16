@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Observation Dataset — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Defines the content-light observation dataset layer for ranking">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Model Observation Dataset</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Model Observation Dataset</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Defines the content-light observation dataset layer for ranking cloud providers and local models across real Rig Relay workflows.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Rig Relay uses cleaned, aggregated usage data to answer:</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">&gt; For this task, on this machine, with this budget/privacy preference, &gt; which cloud provider or local model should Rig Relay use?</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The model observation dataset is the raw material for this recommendation engine. It is content-light, consent-gated, and export-safe.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Dataset Schema</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Three schemas live in `docs/schemas/`:</p>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Schema</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`rig.relay.model_observation.v1.schema.json`</td><td>Per-invocation observation record</td></tr>
+<tr><td>`rig.relay.provider_ranking_snapshot.v1.schema.json`</td><td>Aggregated provider/model scores</td></tr>
+<tr><td>`rig.relay.local_model_comfort_score.v1.schema.json`</td><td>Local model fit assessment</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">ModelObservation Fields</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">All fields are content-light. No raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, API keys, or raw private paths.</p>
+
+<details id="table-13" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-13" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`schema_version`</td><td>string</td><td>`rig.relay.model_observation.v1`</td></tr>
+<tr><td>`observation_id`</td><td>string</td><td>Unique observation ID</td></tr>
+<tr><td>`created_at`</td><td>string (ISO 8601)</td><td>Timestamp</td></tr>
+<tr><td>`task_kind`</td><td>string</td><td>Kind of task (e.g. code_gen, chat)</td></tr>
+<tr><td>`task_fingerprint`</td><td>string</td><td>SHA256 of task content (not raw)</td></tr>
+<tr><td>`provider_kind`</td><td>enum</td><td>`cloud` or `local`</td></tr>
+<tr><td>`provider_name`</td><td>string</td><td>Provider name (e.g. openai, ollama)</td></tr>
+<tr><td>`model_id`</td><td>string</td><td>Model identifier</td></tr>
+<tr><td>`backend`</td><td>enum</td><td>`api`, `mlx`, `llama_cpp`</td></tr>
+<tr><td>`endpoint_kind`</td><td>string (optional)</td><td>chat, completion, embedding</td></tr>
+<tr><td>`machine_profile_id`</td><td>string (optional)</td><td>For local model observations</td></tr>
+<tr><td>`input_tokens`</td><td>integer (optional)</td><td>Prompt tokens</td></tr>
+<tr><td>`output_tokens`</td><td>integer (optional)</td><td>Completion tokens</td></tr>
+<tr><td>`context_tokens`</td><td>integer (optional)</td><td>Context window usage</td></tr>
+<tr><td>`latency_ms`</td><td>number (optional)</td><td>End-to-end latency</td></tr>
+<tr><td>`time_to_first_token_ms`</td><td>number (optional)</td><td>TTFT</td></tr>
+<tr><td>`prompt_eval_tps`</td><td>number (optional)</td><td>Prompt eval throughput</td></tr>
+<tr><td>`decode_tps`</td><td>number (optional)</td><td>Decode throughput</td></tr>
+<tr><td>`peak_memory_gb`</td><td>number (optional)</td><td>Peak memory usage</td></tr>
+<tr><td>`estimated_cost_usd`</td><td>number (optional)</td><td>Estimated cost</td></tr>
+<tr><td>`tool_call_count`</td><td>integer</td><td>Total tool calls</td></tr>
+<tr><td>`tool_success_count`</td><td>integer</td><td>Successful tool calls</td></tr>
+<tr><td>`retry_count`</td><td>integer</td><td>Retry attempts</td></tr>
+<tr><td>`refusal_count`</td><td>integer</td><td>Model refusals</td></tr>
+<tr><td>`failure_count`</td><td>integer</td><td>Failed calls</td></tr>
+<tr><td>`validation_status`</td><td>enum</td><td>`passed`, `failed`, `skipped`, `unknown`</td></tr>
+<tr><td>`user_outcome`</td><td>enum</td><td>`accepted`, `revised`, `rejected`, `unknown`</td></tr>
+<tr><td>`content_light_guarantee`</td><td>boolean</td><td>Always `true`</td></tr>
+<tr><td>`artifact_refs`</td><td>array</td><td>References to related artifacts (sha256 only)</td></tr>
+<tr><td>`warnings`</td><td>array</td><td>Human-readable warnings</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">ProviderRankingSnapshot Fields</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`ranking_id`</td><td>string</td><td>Unique ID</td></tr>
+<tr><td>`created_at`</td><td>string (ISO 8601)</td><td>Timestamp</td></tr>
+<tr><td>`task_kind`</td><td>string</td><td>Task kind this ranking applies to</td></tr>
+<tr><td>`sample_count`</td><td>integer</td><td>Number of observations</td></tr>
+<tr><td>`provider_scores[]`</td><td>array</td><td>Per-provider scores</td></tr>
+<tr><td>`model_scores[]`</td><td>array</td><td>Per-model scores</td></tr>
+<tr><td>`confidence_level`</td><td>enum</td><td>`low`, `medium`, `high`</td></tr>
+<tr><td>`warnings`</td><td>array</td><td>Warnings (e.g. low sample count)</td></tr>
+</tbody>
+</table>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Each score includes: - `task_success_score` (0-1) - `cost_efficiency_score` (0-1) - `latency_score` (0-1) - `tool_reliability_score` (0-1) - `privacy_score` (0-1) - `overall_score` (0-1) - `local_comfort_score` (0-1, model_scores only, optional)</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">LocalModelComfortScore Fields</h3>
+
+<details id="table-18" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-18" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`model_id`</td><td>string</td><td>Model identifier</td></tr>
+<tr><td>`backend`</td><td>enum</td><td>`mlx`, `llama_cpp`</td></tr>
+<tr><td>`quantization`</td><td>string (optional)</td><td>q4_0, q8_0, fp16</td></tr>
+<tr><td>`machine_profile_id`</td><td>string</td><td>Machine profile (e.g. m1-pro-16gb)</td></tr>
+<tr><td>`memory_headroom_score`</td><td>number (0-1)</td><td>Memory fit</td></tr>
+<tr><td>`speed_score`</td><td>number (0-1)</td><td>Inference speed</td></tr>
+<tr><td>`context_score`</td><td>number (0-1)</td><td>Context window fit</td></tr>
+<tr><td>`stability_score`</td><td>number (0-1)</td><td>Runtime stability</td></tr>
+<tr><td>`comfort_category`</td><td>enum</td><td>`comfortable`, `maybe`, `not_recommended`</td></tr>
+<tr><td>`evidence_count`</td><td>integer</td><td>Observation count supporting this score</td></tr>
+<tr><td>`warnings`</td><td>array</td><td>Warnings (e.g. zero evidence)</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Consent Gates</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Every model observation collection is gated by active telemetry consent. The `observation_allowed_by_consent()` helper checks:</p>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Observation Kind</th><th>Required Active Scope</th></tr></thead>
+<tbody>
+<tr><td>`provider`</td><td>`provider_model_benchmarking`</td></tr>
+<tr><td>`local_model`</td><td>`local_model_benchmarking`</td></tr>
+<tr><td>`commercial_export`</td><td>`commercial_dataset_license`</td></tr>
+<tr><td>`public_aggregate`</td><td>`aggregate_public_reporting`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Active Consent Semantics</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">A consent scope is considered **active** only when: 1. The consent record status is `GRANTED` (not `REVOKED`, `DENIED`, or `NOT_REQUESTED`) 2. The scope is present in the record&#x27;s `scopes` list</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">If consent is revoked or denied, `active_consent_scopes()` returns an empty list, even if scopes remain in the record. This means: - A revoked record still shows which scopes were originally granted (audit) - But no observation collection is allowed against a revoked record - The `has_commercial_dataset_license()` helper checks raw scope presence - The `has_active_commercial_dataset_license()` helper checks scope + status</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Content-Light Guarantee</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">All observation records carry `content_light_guarantee: true`. The `validate_observation_content_light()` function verifies:</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- No field keys named `raw_prompt`, `prompt`, `raw_model_output`, `model_output`, `source_code`, `diff`, `stdout`, `stderr`, `api_key`, `access_token`, `refresh_token`, or `private_path` - No raw secrets in string values (API key patterns, private keys) - The shared redaction module (`rig_relay.evidence.redaction`) classifies these same field keys as `FORBIDDEN`</p>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Confidence Labels</h2>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Early-alpha confidence levels for ranking snapshots:</p>
+
+<table id="table-30" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Sample Count</th><th>Confidence</th><th>Label</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>Low</td><td>No observations</td></tr>
+<tr><td>1-9</td><td>Low</td><td>Insufficient data</td></tr>
+<tr><td>10-29</td><td>Medium</td><td>Moderate confidence</td></tr>
+<tr><td>30+</td><td>High</td><td>Reasonable confidence</td></tr>
+</tbody>
+</table>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Local model comfort scores use three categories:</p>
+
+<table id="table-32" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Overall Score</th><th>Category</th></tr></thead>
+<tbody>
+<tr><td>0.7+</td><td>Comfortable — model runs well</td></tr>
+<tr><td>0.4-0.7</td><td>Maybe — runs but may have constraints</td></tr>
+<tr><td>&lt;0.4</td><td>Not recommended — unlikely to perform well</td></tr>
+</tbody>
+</table>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">When evidence_count is 0, a warning is emitted: &quot;No observed evidence — score is estimated, not measured.&quot;</p>
+
+<h2 id="h2-34" class="disclosure-standard" data-disclosure-level="standard">No Raw Content</h2>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">This dataset layer explicitly prohibits:</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">- Raw prompts or user messages - Raw model outputs or completions - Source code, file contents, or diffs - stdout/stderr output bodies - API keys, tokens, secrets, or passwords - Raw authorization receipt bodies - Personal identifiable information - Raw file paths or directory structures</p>
+
+<h2 id="h2-37" class="disclosure-standard" data-disclosure-level="standard">Commercial Export</h2>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Commercial/aggregate export of observation data requires: 1. The `commercial_dataset_license` scope to be **active** (granted + not revoked) 2. The `aggregate_public_reporting` scope for public reports 3. Content-light guarantee verified on all observations 4. See [Usage Data Commercial License](../legal/usage-data-license-alpha.md)</p>
+
+<h2 id="h2-39" class="disclosure-standard" data-disclosure-level="standard">Local-Only Ingestion</h2>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">Model observations are **local by default**. Every observation is written to the session&#x27;s local observability JSONL under the event name `rig.relay.model_observation.captured`. No observation data is uploaded, exported, or transmitted unless the user explicitly enables contribution flows and grants the required consent scopes.</p>
+
+<h3 id="h3-41" class="disclosure-standard" data-disclosure-level="standard">Ingestion Path</h3>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">Observations are captured in `vibe/core/agent_loop.py` via the `_capture_model_observation_for_tool_response()` helper, which is called at the end of `_handle_tool_response()` for every non-skipped tool call when `enable_local_observability` is active.</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">The helper: 1. Checks `status != &quot;skipped&quot;` and `enable_local_observability` 2. Extracts provider info from `self.config.get_active_provider()` 3. Extracts model info from `self.config.get_active_model()` 4. Computes a deterministic `task_fingerprint` as SHA256 of the namespaced preimage `rig-relay-tool-args-v1:&lt;canonical_args_json&gt;` 5. Calls `observe_tool_call()` from `rig_relay/evidence/model_observations.py` 6. Errors are caught and logged — observation failures never break tool execution</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">Only content-light fields from `ModelObservation` reach the observability log. Raw tool args, raw tool output, stdout/stderr bodies, source code, diffs, and secrets are never stored in observation events.</p>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">Guards</h3>
+
+<table id="table-46" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gate</th><th>Mechanism</th></tr></thead>
+<tbody>
+<tr><td>Config-level</td><td>`enable_local_observability` must be `True`</td></tr>
+<tr><td>Status-level</td><td>`status == &quot;skipped&quot;` produces no observation</td></tr>
+<tr><td>Consent-level</td><td>`observation_allowed_by_consent()` checked via `ConsentStore.get()` — default-deny</td></tr>
+<tr><td>Error resilience</td><td>try/except with `logger.warning`, never propagates</td></tr>
+<tr><td>Content-light</td><td>All observation fields validated by `validate_observation_content_light()`</td></tr>
+<tr><td>Fingerprint</td><td>Preimage is SHA256-hashed and namespaced — raw args never persisted</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-47" class="disclosure-standard" data-disclosure-level="standard">Default-Deny Behavior</h3>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">Model observations are **default-deny**. When no consent record exists (consent status is `NOT_REQUESTED`), `observation_allowed_by_consent()` returns `False` and the observation is silently skipped. This ensures:</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">- First-time users without any consent configuration produce no observations - Consent must be explicitly granted before any observation is captured - Revoked or denied consent is equivalent to no consent for collection purposes</p>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">The full gate stack evaluated in `_capture_model_observation_for_tool_response()`:</p>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">1. **Status gate** — `status == &quot;skipped&quot;` → return early, no consent check 2. **Config gate** — `enable_local_observability == False` → return early, no consent check 3. **Consent gate** — loads `ConsentStore().get()`, calls `observation_allowed_by_consent(record, kind)` with the derived observation kind → if `False`, return early 4. **Persistence** — calls `observe_tool_call()` to build and write the observation</p>
+
+<h3 id="h3-52" class="disclosure-standard" data-disclosure-level="standard">Backend-to-Observation-Kind Mapping</h3>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">The `_capture_model_observation_for_tool_response()` helper derives the observation kind from the active provider&#x27;s backend:</p>
+
+<table id="table-54" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Backend</th><th>Classification</th><th>Observation Kind</th></tr></thead>
+<tbody>
+<tr><td>`api`</td><td>Cloud</td><td>`provider`</td></tr>
+<tr><td>`generic`</td><td>Cloud</td><td>`provider`</td></tr>
+<tr><td>`mlx`</td><td>Local</td><td>`local_model`</td></tr>
+<tr><td>`llama_cpp`</td><td>Local</td><td>`local_model`</td></tr>
+<tr><td>`ollama`</td><td>Local</td><td>`local_model`</td></tr>
+<tr><td>Unknown/missing</td><td>Falls to cloud</td><td>`provider`</td></tr>
+</tbody>
+</table>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">The classification is purely string-based on `str(getattr(provider, &quot;backend&quot;, &quot;generic&quot;))`. Local backends are `{&quot;mlx&quot;, &quot;llama_cpp&quot;, &quot;ollama&quot;}`; everything else is cloud.</p>
+
+<h2 id="h2-56" class="disclosure-standard" data-disclosure-level="standard">Related</h2>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">- [Usage Data Doctrine](./usage-data-doctrine.md) - [Provider Onboarding Policy](./provider-onboarding-policy.md) - [Local/Remote Boundary](./relay-local-remote-boundary.md) - [Usage Data Commercial License](../legal/usage-data-license-alpha.md) - [Privacy Notice](../legal/privacy-notice-alpha.md) - [`rig_relay.evidence.model_observations`](../../rig_relay/evidence/model_observations.py) - [`rig_relay.identity.telemetry_consent`](../../rig_relay/identity/telemetry_consent.py)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/model-observation-dataset.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

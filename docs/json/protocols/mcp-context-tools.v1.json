@@ -1,0 +1,152 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "mcp-context-tools",
+  "document_type": "reference",
+  "title": "MCP Context Tools",
+  "summary": "**Status:** Planning. MCP resource/tool exposure of `rig.get_context`.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/protocols/mcp-context-tools.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "MCP Context Tools",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Status:** Planning. MCP resource/tool exposure of `rig.get_context`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "MCP Tool: `rig.get_context`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Exposed as an MCP tool with the same schema as the built-in tool. Returns a structured JSON context packet.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"name\": \"rig.get_context\",\n  \"description\": \"Get governed repository context. Read-only, receipt-backed.\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"mode\": { \"type\": \"string\", \"enum\": [\"map\", \"packet\", \"handoff\", \"collision\", \"symbols\"] },\n      \"scope_paths\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n      \"include_receipts\": { \"type\": \"boolean\" },\n      \"include_other_agents\": { \"type\": \"boolean\" },\n      \"max_tokens\": { \"type\": \"integer\" }\n    }\n  }\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "MCP Resources (future)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Resource",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`rig://context/current`",
+          "Latest context packet for this session."
+        ],
+        [
+          "`rig://repo/map`",
+          "Fast repository topology."
+        ],
+        [
+          "`rig://work/active`",
+          "Active work lanes and collision state."
+        ],
+        [
+          "`rig://receipts/latest`",
+          "Most recent receipts."
+        ],
+        [
+          "`rig://symbols/index`",
+          "Symbol substitution table."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- All context MCP surfaces are read-only. - `requires_workspace_trust: true` — semantic repo inspection requires trust. - Receipts are emitted but not persisted on the MCP side (persistence is the callers's responsibility).",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/protocols/mcp-context-tools.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

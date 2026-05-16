@@ -1,0 +1,245 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "conversations-readme",
+  "document_type": "report",
+  "title": "Conversation Summaries",
+  "summary": "Historical/reference stream for Rig Relay conversation summaries. These documents capture session-level architecture decisions, progress tracking, and operational context — distinct from audits (analy",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/conversations/README.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Conversation Summaries",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Historical/reference stream for Rig Relay conversation summaries. These documents capture session-level architecture decisions, progress tracking, and operational context — distinct from audits (analysis), dogfood (self-usage proof), or how-to guides.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Canonical Filename Pattern",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-4",
+      "type": "code",
+      "language": "text",
+      "content": "YYYY-MM-DD--project--phase-range--topic--kind.md",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- [2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md](2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md) — Reconciliation of the validation suite and implementation of Phase 1 receipt-gated intents.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Fields (separated by double hyphens `--`):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Rules",
+        "Examples"
+      ],
+      "rows": [
+        [
+          "`YYYY-MM-DD`",
+          "ISO date of the conversation/session",
+          "`2026-05-13`"
+        ],
+        [
+          "`project`",
+          "Lowercase kebab-case project key",
+          "`rig-relay`, `rig`, `anigma`, `intake`"
+        ],
+        [
+          "`phase-range`",
+          "Lowercase kebab-case phase/sprint range",
+          "`phase-a-j`, `phase-k`, `sprint-001`, `adr-0010`, `no-phase`"
+        ],
+        [
+          "`topic`",
+          "3–8 lowercase kebab-case words",
+          "`orchestration-dataset-control-plane`"
+        ],
+        [
+          "`kind`",
+          "One of: `summary`, `handoff`, `decision-log`, `incident`, `research`, `prompt-pack`",
+          "`summary`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Rules: - Use lowercase kebab-case throughout. - Use double hyphens (`--`) between fields. - Use single hyphens (`-`) inside each field. - Keep `topic` to 3–8 words. - Do not use spaces. - Do not use vague names like `summary.md`, `notes.md`, or `conversation.md`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Index",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Date",
+        "Project",
+        "Phase/Sprint",
+        "Topic",
+        "Kind",
+        "File"
+      ],
+      "rows": [
+        [
+          "2026-05-13",
+          "rig-relay",
+          "phase-a-j",
+          "orchestration dataset control plane",
+          "summary",
+          "[2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md](2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md)"
+        ],
+        [
+          "2026-05-14",
+          "rig-relay",
+          "phase-n",
+          "drive-dep-isolation-stale-lease-cleanup",
+          "handoff",
+          "[2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md](2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md)"
+        ],
+        [
+          "2026-05-13",
+          "rig-relay",
+          "phase-3",
+          "desktop-projection-shell-pattern-port",
+          "summary",
+          "[2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md](2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md)"
+        ],
+        [
+          "2026-05-13",
+          "rig-relay",
+          "phase-o-q",
+          "commercial license observations demo",
+          "summary",
+          "[2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.md](2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.md)"
+        ],
+        [
+          "2026-05-13",
+          "rig-relay",
+          "phase-3",
+          "facade extraction tool hardening search replace",
+          "summary",
+          "[2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.md](2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.md)"
+        ],
+        [
+          "2025-06-13",
+          "rig-relay",
+          "no-phase",
+          "test suite quality audit",
+          "summary",
+          "[2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md](2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md)"
+        ],
+        [
+          "2026-05-13",
+          "rig-relay",
+          "phase-p3",
+          "audit trail adapter coordination",
+          "summary",
+          "[2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md](2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md)"
+        ],
+        [
+          "2026-05-14",
+          "rig-relay",
+          "phase-3-to-5",
+          "fleet coordination completion",
+          "summary",
+          "[2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md](2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md)"
+        ],
+        [
+          "2026-05-14",
+          "rig-relay",
+          "phase-k",
+          "context compiler phase 3 repo index",
+          "summary",
+          "[2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md](2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/conversations/README.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

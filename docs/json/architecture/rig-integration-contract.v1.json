@@ -1,0 +1,246 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "rig-integration-contract",
+  "document_type": "reference",
+  "title": "Rig Integration Contract",
+  "summary": "This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and m",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/architecture/rig-integration-contract.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig Integration Contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and marriage of assumptions required to ensure Rig Relay can eventually fold cleanly into the Rig ecosystem.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Authority Boundaries",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "- **Rig owns**: The **Workspace**. The workspace is the root of authority, owning repository roots, base-branch policies, validation gates, lane registries, and durable receipts. - **Rig Relay owns**: The **Session**. A session is a single interactive run of an agent loop, managing model calls, tool executions, and local context. - **Marriage**: Rig Relay sessions must eventually attach to a Rig `workspace_id` and, optionally, an `lane_id`. The agent loop is a worker within a workspace, not an independent authority.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Mutation & Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- **Rig Doctrine**: No silent mutation of main, no auto-apply without review, and explicit validation gates. - **Relay Role**: Interactive patching and verification. Modes like `auto-approve` or `accept-edits` are local harness conveniences and must never override workspace-level policy. - **Marriage**: Relay respects the mutation model of the attached workspace. \"Agent profiles\" do not grant authority; workspace policy does.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Worktree & Lane Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- **Rig Model**: AgentLanes map to isolated Git worktrees. Each lane has one branch, one agent identity, one task identity, and explicit history. - **Relay Model**: Runs in a working directory. - **Marriage**: In embedded mode, Rig Relay accepts `repo_root`, `worktree_path`, `branch`, and `task_id` from Rig and restricts all operations to that lane.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Artifact & Storage Root",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- **Canonical Root**: `.rig/relay/` within the project root. - **Relay Artifacts**: Session logs, context accounting, and local observability events live in `.rig/relay/sessions/<session_id>/`. - **Marriage**: Rig Relay avoids creating `.rig-relay` or `.vibe` directories for new project-local state. It uses `.rig/relay/` as its primary home for local truth.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "5. Event Semantics: Telemetry vs. Authority",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- **Rig Status**: Progress streams are telemetry (informative). Receipts and projections are authority (durable truth). - **Relay Status**: Observability events are diagnostic. - **Marriage**: Rig Relay events (JSONL) are non-authoritative unless promoted to Rig receipts. Event names use `rig.relay.*` (e.g., `rig.relay.context.request_accounted`) to avoid namespace collisions and clarify intent.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "6. Tool Authority & Risk Classes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "- **Rig Safety**: Tools must advertise risk and scope. - **Relay Execution**: Tools are the primary mutation vector. - **Marriage**: Rig Relay tools categorize themselves into risk classes that Rig can govern: - `read_only`: No side effects (e.g., `read_file`, `ls`). - `workspace_write`: Local filesystem mutation in the active lane. - `git_read`: Inspection of git state (e.g., `git log`, `git diff`). - `git_mutation`: Side effects on git (e.g., `commit`, `branch`). - `network`: External requests. - `credential`: Access to secrets.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "7. Context & Accounting",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "- **Rig Role**: Aggregates and analyzes context usage across the workspace. - **Relay Role**: Instruments every request with granular character counts, fingerprints, and bloat analysis. - **Marriage**: Relay produces `request_accounted` events; Rig can analyze them later.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "8. Embedded Invocation Schema (Proposed)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "When Rig invokes Rig Relay, it provides a structured context:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-19",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"schema_version\": \"rig.relay.invocation.v1\",\n  \"workspace_id\": \"ws_...\",\n  \"lane_id\": \"lane_...\",\n  \"operation_id\": \"op_...\",\n  \"repo_root\": \"/path/to/repo\",\n  \"worktree_path\": \"/path/to/worktree\",\n  \"branch\": \"agent/task/name\",\n  \"task\": \"Fix deterministic git tools\",\n  \"mode\": \"inspect|patch|verify\",\n  \"artifact_root\": \".rig/relay/sessions/<session_id>\",\n  \"tool_policy\": {\n    \"allowed_classes\": [\"read_only\", \"git_read\", \"workspace_write\"],\n    \"forbidden_classes\": [\"destructive_git\", \"external_side_effect\"]\n  }\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "9. Result Schema (Proposed)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Relay returns its execution summary:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-22",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"schema_version\": \"rig.relay.result.v1\",\n  \"session_id\": \"relay_...\",\n  \"operation_id\": \"op_...\",\n  \"status\": \"completed|blocked|failed|cancelled\",\n  \"events_jsonl\": \".rig/relay/sessions/.../events.jsonl\",\n  \"observability_jsonl\": \".rig/relay/sessions/.../observability.jsonl\",\n  \"receipt_candidates\": [],\n  \"files_touched\": [],\n  \"next_actions\": []\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/architecture/rig-integration-contract.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

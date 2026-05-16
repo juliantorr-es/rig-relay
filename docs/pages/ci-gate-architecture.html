@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI Gate Architecture — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="&gt; **Status**: Design Proposal">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>CI Gate Architecture</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">CI Gate Architecture</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **Status**: Design Proposal &gt; **Date**: 2026-05-17 &gt; **Scope**: Tiered gate architecture for Rig Relay CI.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Principles</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">1. **Fast feedback first** — the cheapest gate that catches a regression should run first. 2. **Path-aware gating** — only run domain-specific checks when relevant paths change. 3. **Read-only by default** — mutation (build, publish) is explicitly gated behind promotion or manual triggers. 4. **Content-light** — CI artifacts (logs, receipts) must not contain raw source code or secrets. 5. **Validate-tool alignment** — each CI gate should map to a future `validate` profile. 6. **No dual gating** — avoid running duplicate checks (e.g. ruff via pre-commit AND via standalone command).</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Tier Definitions</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Tier 0 — Local Smoke / Preflight</h3>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- Fast (&lt;5s), read-only - Used by agents before handoff, by developers before commit - Future `validate quick` profile</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">**Checks:** - `git status --short --branch` — dirty state awareness - `uv run ruff check --fix &lt;changed-files&gt;` — focused lint - `uv run pytest -n0 &lt;changed-test-files&gt;` — focused unit tests - `uv lock --check` — lockfile consistency (fast)</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">**CI coverage:** None (local-only). Agents implement manually.</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Tier 1 — PR Required Baseline</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Deterministic, read-only (except forced formatting), moderate cost - **Must pass for PR merge.** If any Tier 1 check fails, PR is blocked. - Runs on **every PR to main** (not path-filtered).</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">**Checks:**</p>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Check</th><th>Command</th><th>Cost</th><th>CI Coverage Today</th></tr></thead>
+<tbody>
+<tr><td>Ruff check + format</td><td>`uv run pre-commit run --all-files` (ruff hooks)</td><td>Fast</td><td>✅ (ci.yml pre-commit job)</td></tr>
+<tr><td>Pyright typecheck</td><td>via pre-commit hook</td><td>Medium</td><td>✅ (ci.yml pre-commit job)</td></tr>
+<tr><td>TOML/YAML validity</td><td>via pre-commit hooks</td><td>Fast</td><td>✅ (ci.yml pre-commit job)</td></tr>
+<tr><td>Workflow YAML validation</td><td>action-validator via pre-commit</td><td>Fast</td><td>✅ (ci.yml pre-commit job)</td></tr>
+<tr><td>Schema validation</td><td>`uv run python scripts/rig_relay_validate_schemas.py`</td><td>Fast</td><td>❌ Missing</td></tr>
+<tr><td>Schema Python contamination</td><td>`uv run pytest tests/coordination/test_schema_validation.py -k test_no_schema_contains_python_syntax -n0`</td><td>Fast</td><td>❌ Missing</td></tr>
+<tr><td>Tool receipt emission</td><td>`uv run pytest tests/tools/test_tool_receipt_emission.py -n0`</td><td>Fast</td><td>❌ Missing</td></tr>
+<tr><td>uv lock consistency</td><td>`uv lock --check`</td><td>Fast</td><td>❌ Missing</td></tr>
+<tr><td>CLI smoke</td><td>`uv run rig-relay --help &amp;&amp; uv run rig-relay-acp --help`</td><td>Fast</td><td>✅ (ci.yml)</td></tr>
+<tr><td>Typos check</td><td>via pre-commit hook</td><td>Fast</td><td>✅ (ci.yml pre-commit job)</td></tr>
+</tbody>
+</table>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">**Not in Tier 1:** Full pytest suite, snapshot tests, build checks — too slow or environment-sensitive.</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Tier 2 — Domain-Specific Required Gates</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- Run **only when relevant paths change** (see `ci-path-trigger-map.md`) - Required for PR merge when triggered - Moderate cost (5–30 seconds)</p>
+
+<details id="table-17" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-17" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Gate</th><th>Command</th><th>Path Trigger</th></tr></thead>
+<tbody>
+<tr><td>Bash hardening</td><td>`uv run pytest tests/tools/test_bash_hardening.py tests/tools/test_bash.py -n0`</td><td>`vibe/core/tools/builtins/bash.py`, `docs/schemas/rig.relay.bash_*`</td></tr>
+<tr><td>SearchReplace hardening</td><td>`uv run pytest tests/tools/test_hardened_tools.py tests/tools/test_arity.py -n0`</td><td>`vibe/core/tools/builtins/search_replace.py`, `docs/schemas/rig.relay.search_replace_*`</td></tr>
+<tr><td>Tool determinism</td><td>`uv run pytest tests/tools/test_determinism.py -n0`</td><td>`vibe/core/tools/**`</td></tr>
+<tr><td>Receipt policy</td><td>`uv run pytest tests/evidence/ -n0`</td><td>`rig_relay/evidence/**`</td></tr>
+<tr><td>Coordination</td><td>`uv run pytest tests/coordination/ -n0`</td><td>`rig_relay/coordination/**`</td></tr>
+<tr><td>Governance tests</td><td>`uv run pytest tests/governance/ -n0`</td><td>`docs/governance/**`, `rig_relay/**`</td></tr>
+<tr><td>Evidence tests</td><td>`uv run pytest tests/evidence/ -n0`</td><td>`rig_relay/evidence/**`</td></tr>
+<tr><td>Script tests</td><td>`uv run pytest tests/scripts/ -n0` (filter network-dependent)</td><td>`scripts/**`, `tests/scripts/**`</td></tr>
+<tr><td>Artifact schema tests</td><td>`uv run pytest tests/schemas/ -n0`</td><td>`docs/schemas/rig.relay.artifact.*`</td></tr>
+<tr><td>Telemetry schema tests</td><td>`uv run pytest tests/scripts/test_telemetry_contribution_schemas.py -n0`</td><td>`docs/schemas/rig.relay.contribution_*`</td></tr>
+<tr><td>Docs tests</td><td>`uv run pytest tests/docs/ -n0`</td><td>`docs/**`</td></tr>
+<tr><td>Conversation summary names</td><td>`uv run pytest tests/docs/test_conversation_summary_names.py -n0`</td><td>`docs/conversations/**`</td></tr>
+<tr><td>Coordination schema validation</td><td>`uv run pytest tests/coordination/test_schema_validation.py -n0`</td><td>`docs/schemas/*`, `rig_relay/coordination/**`</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Tier 3 — Promotion Readiness</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- Broader gate before promotion/merge to main - Includes all Tier 1 + Tier 2 (scoped) + additional coverage - Future `validate promotion-readiness` profile</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">**Additional checks beyond Tiers 1+2:** - Full pytest suite (except snapshots, network-dependent) - Snapshot tests (separate job, continue-on-error) - Dirty workspace check (`git status --porcelain`) - `uv sync --locked` (not just lock check) - Build check: `uv build` (dry-run)</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">**Current CI coverage:** Full pytest (❌ not path-scoped), snapshot tests (✅ separate job). Build and dirty-workspace checks missing.</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Tier 4 — Nightly / Manual Deep Audit</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- Expensive or environment-sensitive checks - No PR blocking - Run on schedule or manual dispatch</p>
+
+<table id="table-24" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Check</th><th>Frequency</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>Stale coordination lease audit</td><td>Nightly</td><td>Read-only, detects lease leaks</td></tr>
+<tr><td>Full platform build matrix</td><td>Nightly or pre-release</td><td>Time-consuming (5 platforms)</td></tr>
+<tr><td>Snapshot regeneration check</td><td>Nightly</td><td>Snapshot drift detection</td></tr>
+<tr><td>Generated docs drift</td><td>Nightly</td><td>Detect stale audit data</td></tr>
+<tr><td>Desktop cockpit tests</td><td>Manual</td><td>Environment-dependent (display server)</td></tr>
+<tr><td>Cross-platform smoke tests</td><td>Pre-release</td><td>Requires build artifacts</td></tr>
+<tr><td>PyPI release</td><td>Manual (release trigger)</td><td>Mutation/write operation</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Migration from Current CI</h2>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">Keep as-is (healthy):</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- `ci.yml` pre-commit job — add schema validation and receipt emission tests to it - `ci.yml` snapshot-tests job — works as Tier 3 - `build-and-upload.yml` — healthy, stays as Tier 4 - `release.yml` — healthy, stays as manual - `issue-labeler.yml` — healthy, stays as operational</p>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Add (new gates):</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- Schema validation step to `ci.yml` pre-commit job - Schema Python contamination step to `ci.yml` pre-commit job - Tool receipt emission test step to `ci.yml` tests job - `uv lock --check` step to `ci.yml` pre-commit job - Path-aware domain-specific gates (Tier 2) as conditional jobs in `ci.yml`</p>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">Remove (stale):</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- `pylint.yml` — remove entire workflow - `python-package-conda.yml` — remove entire workflow</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Consider:</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- Restructure `ci.yml` from single `tests` job to path-filtered matrix jobs</p>
+
+<h2 id="h2-34" class="disclosure-standard" data-disclosure-level="standard">Cost Budget</h2>
+
+<table id="table-35" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tier</th><th>Estimated CI cost per PR</th></tr></thead>
+<tbody>
+<tr><td>Tier 0 (local)</td><td>0 CI minutes</td></tr>
+<tr><td>Tier 1 (baseline)</td><td>~1–2 minutes</td></tr>
+<tr><td>Tier 2 (if triggered)</td><td>~30s–2 minutes per triggered gate</td></tr>
+<tr><td>Tier 3 (promotion)</td><td>~5–10 minutes</td></tr>
+<tr><td>Tier 4 (nightly)</td><td>~20–30 minutes total</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-36" class="disclosure-standard" data-disclosure-level="standard">Guard Against CI Overload</h2>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">1. **Cap Tier 2 gates to 3 parallel jobs max** — avoid runner starvation 2. **Tier 1 must complete within 3 minutes** — if slower, split or optimize 3. **Network-dependent tests** (Google Drive, desktop) are never PR-blocking 4. **Snapshot tests are advisory only** — they use `continue-on-error` already 5. **Validate profiles should reuse CI gate definitions**, not duplicate them</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/ci/ci-gate-architecture.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

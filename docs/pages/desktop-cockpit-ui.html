@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Relay Desktop Cockpit UI — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Rig Relay supports three UI modes for different use cases:">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig Relay Desktop Cockpit UI</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Desktop Cockpit UI</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">UI Modes</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Rig Relay supports three UI modes for different use cases:</p>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mode</th><th>Name</th><th>Use Case</th></tr></thead>
+<tbody>
+<tr><td>`headless`</td><td>CLI-only</td><td>Automation, CI, worker sessions, scripting</td></tr>
+<tr><td>`legacy_tui`</td><td>Textual TUI</td><td>Diagnostics, SSH, dev fallback</td></tr>
+<tr><td>`desktop`</td><td>pywebview cockpit</td><td>**Primary local human UX (default)**</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Design Decision</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">**Textual is no longer the primary product UI.** The terminal-based Textual TUI is retained as a legacy/dev fallback for SSH/diagnostics use cases. The pywebview desktop cockpit is the default local human UX direction.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Architecture</h2>
+
+<pre id="code-8"><code class="language-text">Python runtime (backend)
+    ├── tools, guards, coordination, checkpoint
+    ├── current_state, queue, spawn, telemetry
+    └── pywebview shell
+            └── HTML/CSS/JS frontend (dumb renderer)</code></pre>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- **Backend** remains the authority for all tool execution, guards, coordination, checkpointing, telemetry, queue, and spawn operations. - **Frontend** is a dumb renderer. It displays projections and sends user intents. It does not enforce policy. - **Intents** flow frontend → backend; backend validates and executes. No mutation happens without backend approval.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Security Boundary</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Use pywebview JS bridge or local static files — no external web server. - If HTTP/WebSocket is needed, bind `localhost` only. - Use a session-unique token for API protection. - Never expose mutation APIs without backend validation. - Never let the UI bypass dirty guard, path leases, checkpoint policy, or telemetry gates.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Read-Only Cockpit (Current)</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">The first slice is a read-only cockpit that renders a **content-light projection** built from available artifacts. The projection builder reads real artifact field names and never invents data. Missing sources return `&quot;available&quot;: false`.</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Artifact Sources</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Source</th><th>Path</th><th>Schema</th></tr></thead>
+<tbody>
+<tr><td>Current State</td><td>`.build/rig-relay/current_state.json`</td><td>current_state.json summary block</td></tr>
+<tr><td>Queue Plan</td><td>`.build/rig-relay/queue/ready_plan.json`</td><td>Queue plan ready/blocked/waiting</td></tr>
+<tr><td>Dataset Summary</td><td>`.build/rig-relay/derived/export_manifest.json` + (optional) `.build/rig-relay/reports/dataset-summary.md`</td><td>export_manifest row_counts + Executive Summary table</td></tr>
+<tr><td>Semantic Snippets</td><td>`.build/rig-relay/derived/semantic_change_snippets_manifest.json`</td><td>snippet manifest fields</td></tr>
+<tr><td>Telemetry Bundle</td><td>`.build/rig-relay/telemetry-bundles/&lt;latest&gt;/telemetry_bundle_manifest.json`</td><td>bundle manifest fields</td></tr>
+<tr><td>Update Status</td><td>`.build/rig-relay/update_status.json` (or fallback to running `rig_relay_update_status.py`)</td><td>update status fields</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Exposed Read-Only API Methods</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- `get_projection()` — returns the full projection dict - `refresh_projection()` — re-reads artifacts and returns fresh projection - `get_available_actions()` — returns list of read-only action names</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">No mutation buttons. No write APIs. All APIs return content-light data only.</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Projection Schema</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">The projection follows `docs/schemas/rig.relay.desktop_projection.v1.schema.json`: - `schema_version`, `generated_at`, `app_version`, `alpha_label` - `source_status` — boolean per-source availability map - `current_state`, `queue`, `dataset`, `semantic_snippets`, `telemetry_bundle`, `update` - Each category has `available: bool` + typed fields from real artifacts - Missing sources: `&quot;available&quot;: false` only, no invented fields - `warnings` — user-actionable messages for missing sources - `read_only_actions` — list of available safe actions - `_schema_validation_errors` — present only if jsonschema validation fails (debug)</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Future Mutation Intents</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">After the read-only shell is stable, add safe intents:</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- `refresh_current_state` - `run_dataset_export` - `run_dataset_report` - `open_review_packet` - `create_spawn_plan_dry_run`</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Only after backend tools are stable: - `queue_claim_ready` - `spawn_execute` - `checkpoint_session`</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Content Safeguards</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">The desktop shell must NOT display: - Raw prompts - Raw model outputs - File contents - stdout/stderr bodies - Diffs - Secrets - Raw private paths (unless already in local-only cockpit docs and never exported)</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Prefer: counts, statuses, hashes, titles, warnings.</p>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Frontend Stack</h2>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- **HTML/CSS/JS** — no build step required - **No framework** in the first slice (vanilla JS) - CSS provides cards, status pills, tables, simple layout</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- [Install Channels](../install.md) - [Reviewer Orchestrator Doctrine](reviewer-orchestrator.md) - [Delegate/Fleet Orchestration](delegate-fleet-orchestration.md) - [Cross-Session Coordination](cross-session-coordination.md) - [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md) - [Rig-to-Relay Pattern Inventory](rig-to-relay-pattern-inventory.md)</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Step-Up Authorization</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">The desktop cockpit may prompt for step-up authorization for high-authority actions (real upload, lease cleanup). See `docs/governance/step-up-authorization.md`. Dev/local receipt minting exists for Phase 1 protected intents (`checkpoint.commit`, `lease_cleanup.archive`) and is verified. Protected execution buttons remain deferred until a real step-up provider is wired in. The next step-up path is macOS LocalAuthentication via a Python bridge (implemented and verified), not WebAuthn/passkeys yet.</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">Authorization Metadata</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Audit events and result artifacts for protected intents include non-sensitive authorization metadata: - `authorization_receipt_sha256`: Hash of the receipt used. - `authorization_action`: The authorized action. - `authorization_status`: Final verification status (`valid`, `expired`, etc.). - `authorization_expires_at`: Expiry timestamp from the receipt. - `authorization_method`: The method used (`none_dev_only`, `local_system_auth`).</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Raw receipt bodies are strictly stripped from all audit trails.</p>
+
+<h2 id="h2-37" class="disclosure-standard" data-disclosure-level="standard">Chat Interface (Current)</h2>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">The third slice adds a chat interface to the pywebview desktop shell. This is the primary human UX for interacting with Rig Relay.</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Chat Architecture</h3>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- **Backend authoritative**: The backend owns the session state, model/provider authority, tool execution, and guard logic. - **AgentLoop Adapter**: The `ChatAgentAdapter` (`rig_relay/desktop/chat_agent_adapter.py`) bridges the `AgentLoop` event stream to the persistent `ChatStore`. - **Thread-safe bridge**: Bridge methods in `scripts/rig_relay_desktop_cockpit.py` execute on a separate `pywebview` thread. They use `asyncio.run_coroutine_threadsafe` to interact with the `asyncio` event loop. - **Frontend renderer**: The chat UI is for frontend rendering only. It displays the chat transcript and sends user intents to the backend. - **Intents, not execution**: Chat messages are intents or state updates. Sending a message does not directly execute a tool unless the backend agent loop processes it through its normal governance and tool execution gates. - **Safe Rendering**: The frontend **must** render all untrusted text safely using `textContent` or similar methods to prevent XSS.</p>
+
+<h3 id="h3-41" class="disclosure-standard" data-disclosure-level="standard">Lifecycle States</h3>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">The chat response lifecycle is managed by the `ChatAgentAdapter`:</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">- `idle`: No active agent response. Ready to accept messages. - `running`: Agent loop is active and streaming events. - `cancelling`: Cancellation has been requested but the task has not yet finalized.</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">State transitions: - `idle` → `running`: When a message is processed. - `running` → `cancelling`: When `cancel_chat_response` is called. - `running`/`cancelling` → `idle`: When the task completes, is cancelled, or fails.</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">Concurrent sends: - If `send_chat_message` is called while the state is not `idle`, it is refused with an `another_response_active` error.</p>
+
+<h3 id="h3-46" class="disclosure-standard" data-disclosure-level="standard">Content Constraints</h3>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">The chat interface follows strict content-light constraints: - **Assistant content**: Text is streamed to the UI. - **Tool summaries**: Tool calls/results are summarized (status, name, hashes). - **Sanitization**: Raw `stdout`, `stderr`, `diffs`, source code, and secrets are stripped from tool status messages. - **Tracebacks**: Internal backend errors are summarized without tracebacks.</p>
+
+<h3 id="h3-48" class="disclosure-standard" data-disclosure-level="standard">Safe Backend API</h3>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">The chat interface interacts with the backend through a restricted set of safe methods: - `get_chat_state()` — returns the current chat session state - `send_chat_message(text, client_message_id)` — sends a user message (refused if active) - `clear_chat_view()` — clears the local chat transcript - `cancel_chat_response()` — requests cancellation of a pending assistant response - `run_desktop_intent(request)` — executes a governed, read-only/dry-run intent (e.g., `refresh_projection`, `run_validation_suite`) - `mint_authorization_receipt_dev(action, ttl_seconds, reason)` — mints a dev/local receipt for `checkpoint.commit` or `lease_cleanup.archive` - `mint_authorization_receipt_local(action, ttl_seconds, reason)` — mints the same receipt shape after macOS local auth succeeds - `inspect_authorization_receipt(receipt)` — returns content-light receipt metadata without exposing the raw body in audit logs</p>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">Auth and Receipts</h3>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">High-authority actions initiated through chat still require authorization receipts. The chat UI should display these receipts and request approval when necessary.</p>
+
+<h2 id="h2-52" class="disclosure-standard" data-disclosure-level="standard">Desktop Chat Persistence and Event Stream (Current)</h2>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">The fourth slice makes the desktop chat shell persistent and event-backed. This ensures chat history is preserved across cockpit restarts and provides an auditable event log.</p>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">Architecture</h3>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">- **ChatStore**: `rig_relay.desktop.chat_store` manages persistence under `.build/rig-relay/desktop/chat/`. - **Chat State**: `chat_state.json` stores the full message history in a versioned format (`rig.relay.desktop_chat_state.v1`). - **Event Log**: `chat_events.jsonl` is an append-only log of content-light chat events (messages created, cleared, etc.). - **Live Updates**: The WebSocket protocol is extended with `chat_state_updated` broadcasts, allowing the frontend to refresh the chat state in real time.</p>
+
+<h3 id="h3-56" class="disclosure-standard" data-disclosure-level="standard">Content-Light Events</h3>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">Chat events follow strict content-light safeguards: - **No full content**: Events store a SHA256 hash of message content and a short preview (120 chars max). - **Metadata**: Stores `message_id`, `client_message_id`, `role`, and `status`. - **Warnings**: Captures `warning_codes` for validation or policy violations.</p>
+
+<h3 id="h3-58" class="disclosure-standard" data-disclosure-level="standard">WebSocket Protocol Extension</h3>
+
+<table id="table-59" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Type</th><th>Fields</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`get_chat_state`</td><td>—</td><td>Request current chat session state</td></tr>
+<tr><td>`chat_state_updated`</td><td>`seq`</td><td>Server push notification that chat state has changed</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-60" class="disclosure-standard" data-disclosure-level="standard">Event Types</h3>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">- `chat.message.created` - `chat.message.refused` - `chat.message.updated` - `chat.view.cleared` - `chat.response.cancelled` - `chat.backend.stubbed`</p>
+
+<h3 id="h3-62" class="disclosure-standard" data-disclosure-level="standard">Files</h3>
+
+<table id="table-63" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/desktop/chat_store.py`</td><td>Chat persistence and event logging</td></tr>
+<tr><td>`docs/schemas/rig.relay.desktop_chat_event.v1.schema.json`</td><td>Chat event schema</td></tr>
+<tr><td>`tests/desktop/test_chat_persistence.py`</td><td>Persistence and event tests</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-64" class="disclosure-standard" data-disclosure-level="standard">WebSocket Projection Stream (Current)</h2>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">The second slice adds a local WebSocket projection stream that serves content-light projections to the frontend in real time. The frontend connects to the WebSocket server and receives push updates without polling the pywebview JS bridge.</p>
+
+<h3 id="h3-66" class="disclosure-standard" data-disclosure-level="standard">Architecture</h3>
+
+<pre id="code-67"><code class="language-text">Python runtime
+    └── ProjectionWebSocketServer (rig_relay.desktop.websocket_server)
+            └── ws://127.0.0.1:9876
+                    └── frontend/desktop/websocket.js (ProjectionWebSocketClient)
+                            └── frontend/desktop/app.js (renderProjection)</code></pre>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">- **Server**: `ProjectionWebSocketServer` binds to localhost only. Each connection is an independent session. Runs in a daemon thread when started by the cockpit. - **Client**: `ProjectionWebSocketClient` in `frontend/desktop/websocket.js` connects to the server, requests initial projection, and reconnects on disconnect with exponential backoff. - **Fallback**: If WebSocket is unavailable, the frontend falls back to the pywebview JS bridge (`window.pywebview.api.get_projection()`). - **Connection indicator**: A new `#connection-status` element in the header shows &quot;WS&quot; (WebSocket), &quot;Bridge&quot; (pywebview), or &quot;Offline&quot; (no connection).</p>
+
+<h3 id="h3-69" class="disclosure-standard" data-disclosure-level="standard">Authentication</h3>
+
+<p id="p-70" class="disclosure-standard" data-disclosure-level="standard">Every WebSocket connection **must** send an `auth` message as its first message. The server requires a valid session token before any protocol messages are processed. Authentication failures result in `auth_error` or `auth_required` responses, and the connection is closed.</p>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">**Auth flow:** 1. Client opens WebSocket connection 2. Client sends {&quot;type&quot;: &quot;auth&quot;, &quot;token&quot;: &quot;&lt;session-token&gt;&quot;} 3. Server responds with `auth_ok` on success, or `auth_error` on failure 4. After `auth_ok`, protocol messages are accepted</p>
+
+<p id="p-72" class="disclosure-standard" data-disclosure-level="standard">The session token is generated per desktop server instance via `secrets.token_hex(32)`. It is exposed to the frontend only through the pywebview JS bridge (`CockpitAPI.get_ws_config()`). The token is never printed in normal logs.</p>
+
+<h3 id="h3-73" class="disclosure-standard" data-disclosure-level="standard">WebSocket Protocol (after authentication)</h3>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">**Client → Server:**</p>
+
+<table id="table-75" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Type</th><th>Fields</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`auth`</td><td>`token` (str)</td><td>Authenticate (first message required)</td></tr>
+<tr><td>`get_projection`</td><td>—</td><td>Request full projection</td></tr>
+<tr><td>`get_available_actions`</td><td>—</td><td>Request available actions list</td></tr>
+<tr><td>`subscribe`</td><td>`interval` (int, 5–300s)</td><td>Periodic projection push</td></tr>
+<tr><td>`unsubscribe`</td><td>—</td><td>Stop periodic push</td></tr>
+<tr><td>`ping`</td><td>—</td><td>Keepalive</td></tr>
+</tbody>
+</table>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">**Server → Client:**</p>
+
+<table id="table-77" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Type</th><th>Fields</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`auth_ok`</td><td>—</td><td>Authentication succeeded</td></tr>
+<tr><td>`auth_error`</td><td>`message`</td><td>Authentication failed</td></tr>
+<tr><td>`auth_required`</td><td>—</td><td>First message was not auth</td></tr>
+<tr><td>`projection`</td><td>`data`, `seq`</td><td>Content-light projection</td></tr>
+<tr><td>`available_actions`</td><td>`actions`, `seq`</td><td>List of read-only actions</td></tr>
+<tr><td>`error`</td><td>`message`</td><td>Error description</td></tr>
+<tr><td>`pong`</td><td>—</td><td>Keepalive response</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-78" class="disclosure-standard" data-disclosure-level="standard">CLI Entry Points</h3>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">**Standalone WebSocket server:**</p>
+
+<pre id="code-80"><code class="language-text">uv run python scripts/rig_relay_desktop_websocket.py --port 9876</code></pre>
+
+<p id="p-81" class="disclosure-standard" data-disclosure-level="standard">**Cockpit with integrated WebSocket (default):**</p>
+
+<pre id="code-82"><code class="language-text">uv run python scripts/rig_relay_desktop_cockpit.py</code></pre>
+
+<p id="p-83" class="disclosure-standard" data-disclosure-level="standard">**Cockpit with JS bridge only (no WebSocket):**</p>
+
+<pre id="code-84"><code class="language-text">uv run python scripts/rig_relay_desktop_cockpit.py --no-ws</code></pre>
+
+<h3 id="h3-85" class="disclosure-standard" data-disclosure-level="standard">Subscription Model</h3>
+
+<p id="p-86" class="disclosure-standard" data-disclosure-level="standard">- Minimum interval: 5 seconds (clamped via `MIN_SUBSCRIBE_INTERVAL`) - Maximum interval: 300 seconds (clamped via `MAX_SUBSCRIBE_INTERVAL`) - Default interval: 30 seconds - Each subscribe replaces the prior subscription (only one active per connection) - Unsubscribe cancels the polling task - Connection close automatically cancels the subscription</p>
+
+<h3 id="h3-87" class="disclosure-standard" data-disclosure-level="standard">Files</h3>
+
+<table id="table-88" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/desktop/websocket_server.py`</td><td>Core WebSocket server</td></tr>
+<tr><td>`scripts/rig_relay_desktop_websocket.py`</td><td>CLI entry point</td></tr>
+<tr><td>`frontend/desktop/websocket.js`</td><td>Frontend WebSocket client</td></tr>
+<tr><td>`frontend/desktop/app.js`</td><td>Updated to use WS with fallback</td></tr>
+<tr><td>`frontend/desktop/index.html`</td><td>Added `#connection-status` + `websocket.js`</td></tr>
+<tr><td>`scripts/rig_relay_desktop_cockpit.py`</td><td>Integrated WS server thread</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-89" class="disclosure-standard" data-disclosure-level="standard">Pattern Source</h3>
+
+<p id="p-90" class="disclosure-standard" data-disclosure-level="standard">Port of Rig&#x27;s `runtime_websocket.py` (`WebSocketStreamMessage` pattern), adapted for Rig Relay&#x27;s content-light projection model. Key differences: - Token-gated session (auth message required before protocol) - Content-light only (no raw prompts, outputs, or file contents) - Polling-based push (no file-watch-driven push yet; `watchfiles` is available for future) - Single server per cockpit instance (no UIServer abstraction)</p>
+
+<h2 id="h2-91" class="disclosure-standard" data-disclosure-level="standard">Desktop Intent API (Current)</h2>
+
+<p id="p-92" class="disclosure-standard" data-disclosure-level="standard">The fifth slice adds a governed, schema-validated Intent API to the desktop WebSocket/pywebview shell. This is the first Intent API slice: all intents are read-only or dry-run. Protected mutation intents are explicitly refused.</p>
+
+<h3 id="h3-93" class="disclosure-standard" data-disclosure-level="standard">Architecture</h3>
+
+<pre id="code-94"><code class="language-text">Frontend (HTML button / WS message)
+    └── desktop_intent message (schema-validated)
+            └── rig_relay/desktop/intents.py
+                    ├── validate_intent_request() - schema check
+                    ├── ALLOWED_INTENTS registry
+                    ├── PROTECTED_INTENTS registry
+                    ├── execute_desktop_intent() - dispatch
+                    └── _build_result() - content-light response</code></pre>
+
+<h3 id="h3-95" class="disclosure-standard" data-disclosure-level="standard">Allowed First-Slice Intents</h3>
+
+<details id="table-96" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-96" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Intent</th><th>Description</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td>`refresh_projection`</td><td>Rebuild projection from artifacts</td><td>Updates projection</td></tr>
+<tr><td>`get_chat_state`</td><td>Return current chat session state</td><td>None</td></tr>
+<tr><td>`generate_refinement_report`</td><td>Generate tool refinement report</td><td>Creates report + JSONL</td></tr>
+<tr><td>`create_refinement_packets`</td><td>Create mission packets from backlog</td><td>Dry-run only</td></tr>
+<tr><td>`run_storage_audit`</td><td>Run storage audit, return budget</td><td>None</td></tr>
+<tr><td>`run_validation_suite`</td><td>Run validation suite: ruff check, format check, pyright, schema validation, storage audit, desktop cockpit dry run</td><td>Writes structured validation evidence</td></tr>
+<tr><td>`create_chatgpt_dev_bundle_dry_run`</td><td>Dry-run dev bundle creation</td><td>No zip written</td></tr>
+<tr><td>`create_telemetry_bundle_dry_run`</td><td>Dry-run telemetry bundle creation</td><td>No zip written</td></tr>
+<tr><td>`validate_telemetry_bundle`</td><td>Validate bundle content-light compliance</td><td>None</td></tr>
+<tr><td>`run_queue_plan_dry_run`</td><td>Dry-run queue planner</td><td>No state mutation</td></tr>
+<tr><td>`run_spawn_plan_dry_run`</td><td>Dry-run spawn session planner</td><td>No subprocess spawning</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-97" class="disclosure-standard" data-disclosure-level="standard">Phase 1 Protected Intents (Receipt-Gated)</h3>
+
+<table id="table-98" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Intent</th><th>Description</th><th>Authorization</th></tr></thead>
+<tbody>
+<tr><td>`checkpoint.commit`</td><td>Create a governed local checkpoint commit for session-owned files.</td><td>Required (`step-up`)</td></tr>
+<tr><td>`lease_cleanup.archive`</td><td>Archive stale coordination leases and task claims.</td><td>Required (`step-up`)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-99" class="disclosure-standard" data-disclosure-level="standard">Still-Refused Intents (Not Yet Enabled)</h3>
+
+<p id="p-100" class="disclosure-standard" data-disclosure-level="standard">`bash`, `shell`, `write_file`, `search_replace`, `remote_upload.confirm`, `lease_cleanup.remove`, `spawn.execute`, `fleet.execute`, `delegate.execute`</p>
+
+<p id="p-101" class="disclosure-standard" data-disclosure-level="standard">Refusal returns `status: refused`, `authorization_required: true`, and error code `protected_intent_not_enabled` even with a valid receipt. These will be unlocked in future phases.</p>
+
+<h3 id="h3-102" class="disclosure-standard" data-disclosure-level="standard">Schemas</h3>
+
+<p id="p-103" class="disclosure-standard" data-disclosure-level="standard">- `desktop_intent_request.v1` — `intent_name`, `parameters`, `dry_run`, `authorization_receipt` (optional) - `desktop_intent_result.v1` — `status`, `summary`, `output_refs`, `warnings`, `error_code`</p>
+
+<h3 id="h3-104" class="disclosure-standard" data-disclosure-level="standard">Files</h3>
+
+<details id="table-105" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-105" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>File</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/desktop/intents.py`</td><td>Core intent module: registry, validation, execution</td></tr>
+<tr><td>`docs/schemas/rig.relay.desktop_intent_request.v1.schema.json`</td><td>Request schema</td></tr>
+<tr><td>`docs/schemas/rig.relay.desktop_intent_result.v1.schema.json`</td><td>Result schema</td></tr>
+<tr><td>`rig_relay/desktop/websocket_server.py`</td><td>Handles `desktop_intent` WS message type</td></tr>
+<tr><td>`scripts/rig_relay_desktop_cockpit.py`</td><td>Exposes `run_desktop_intent()` via pywebview bridge</td></tr>
+<tr><td>`frontend/desktop/index.html`</td><td>Actions card with safe intent buttons</td></tr>
+<tr><td>`frontend/desktop/app.js`</td><td>`runIntent()` + `displayIntentResult()` with result_kind-based structured card rendering</td></tr>
+<tr><td>`frontend/desktop/styles.css`</td><td>`.intent-result` card styles (ok/warning/error/pending)</td></tr>
+<tr><td>`tests/frontend/test_intent_result_rendering.mjs`</td><td>21 JS rendering tests (Node.js)</td></tr>
+<tr><td>`frontend/desktop/websocket.js`</td><td>Routes `desktop_intent_result` messages</td></tr>
+<tr><td>`tests/scripts/test_desktop_intents.py`</td><td>63 tests + 21 JS rendering tests</td></tr>
+<tr><td>`rig_relay/desktop/intent_audit.py`</td><td>Audit trail module: build_event, emit_received, emit_result</td></tr>
+<tr><td>`docs/schemas/rig.relay.desktop_intent_event.v1.schema.json`</td><td>Event schema</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-106" class="disclosure-standard" data-disclosure-level="standard">Security Model</h3>
+
+<p id="p-107" class="disclosure-standard" data-disclosure-level="standard">- Intents are validated against the request schema before execution. - Only intents in ALLOWED_INTENTS are dispatched. Everything else is refused. - Protected mutation intents have explicit refusal entries with error codes. - The WebSocket `type` envelope field is stripped before schema validation. - All results are content-light: counts, statuses, hashes, refs, never raw data.</p>
+
+<h3 id="h3-108" class="disclosure-standard" data-disclosure-level="standard">Intent Audit Trail (Current)</h3>
+
+<p id="p-109" class="disclosure-standard" data-disclosure-level="standard">The sixth slice adds a durable, content-light audit trail for all intents. Every intent produces at least two audit events and an optional result artifact.</p>
+
+<table id="table-110" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Event Name</th><th>Trigger</th><th>Fields</th></tr></thead>
+<tbody>
+<tr><td>`desktop.intent.received`</td><td>Intent received</td><td>event_id, intent_id, intent_name, status, dry_run, created_at</td></tr>
+<tr><td>`desktop.intent.completed`</td><td>Successful execution</td><td>+ result_kind, output_ref_count, result_sha256</td></tr>
+<tr><td>`desktop.intent.refused`</td><td>Protected/unknown intent</td><td>+ authorization_required, error_code</td></tr>
+<tr><td>`desktop.intent.failed`</td><td>Execution error</td><td>+ result_kind, output_ref_count</td></tr>
+</tbody>
+</table>
+
+<p id="p-111" class="disclosure-standard" data-disclosure-level="standard">All events are content-light: no raw prompts, model outputs, source code, stdout/stderr bodies, diffs, secrets, or raw private paths.</p>
+
+<p id="p-112" class="disclosure-standard" data-disclosure-level="standard">- **Event log**: `.build/rig-relay/desktop/intents/intent_events.jsonl` - **Result artifacts**: `.build/rig-relay/desktop/intents/intent_results/&lt;intent_id&gt;.json` - Writes are atomic (write to `.tmp`, then rename). - Result artifacts use sorted keys for deterministic SHA256 computation.</p>
+
+<table id="table-113" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/desktop/intent_audit.py`</td><td>Audit module: build_event, emit_received, emit_result</td></tr>
+<tr><td>`docs/schemas/rig.relay.desktop_intent_event.v1.schema.json`</td><td>Event schema</td></tr>
+<tr><td>`tests/scripts/test_desktop_intents.py::TestAuditTrail`</td><td>15 audit tests</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-114" class="disclosure-standard" data-disclosure-level="standard">Rig Pattern Port</h2>
+
+<p id="p-115" class="disclosure-standard" data-disclosure-level="standard">The desktop projection pattern is ported from Rig&#x27;s domain model, inspected from:</p>
+
+<table id="table-116" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Rig File</th><th>Pattern Ported</th><th>Adaptations</th></tr></thead>
+<tbody>
+<tr><td>`src/rig/domain/projections.py`</td><td>`UIProjection` → content-light projection dict</td><td>Removed Rig-specific fields (WorkspaceHeader, ProposalLifecycle, AuditTrail, IntegrityStatusCard, ChatProjection)</td></tr>
+<tr><td>`src/rig/domain/projection_builder.py`</td><td>`build_projection()` reads snapshots, builds typed categories</td><td>Adapted for Rig Relay artifact stack; `_load_json` + `_load_markdown_summary` instead of Rig&#x27;s snapshot reader</td></tr>
+<tr><td>`src/rig/domain/intent_defs.py`</td><td>`Intent` dataclass → `read_only_actions` array</td><td>Not yet ported as intent dispatch; documented as future</td></tr>
+<tr><td>`src/rig/domain/runtime_websocket.py`</td><td>`WebSocketStreamMessage`, `RuntimeStreamProjection`</td><td>Ported to `rig_relay.desktop.websocket_server` without token auth; uses polling-based push</td></tr>
+<tr><td>`src/rig/commands_window.py`</td><td>pywebview launcher with `UIServer`</td><td>Ported to `scripts/rig_relay_desktop_cockpit.py` with integrated WS server thread</td></tr>
+<tr><td>`src/rig_tools/window_launcher.py`</td><td>Session token generation, `--dry-run`, `--browser`, `--allow-lan`</td><td>Session token paradigm documented for future WebSocket phase</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-117" class="disclosure-standard" data-disclosure-level="standard">Patterns Intentionally NOT Ported</h3>
+
+<p id="p-118" class="disclosure-standard" data-disclosure-level="standard">- **Rig-specific projections**: WorkspaceHeader, ProposalLifecycle, AuditTrail, IntegrityStatusCard — these are specific to Rig&#x27;s product domain - **Rig receipt/audit domain** — Rig Relay does not have a receipt store - **Rig job store or worktree executor** — Rig Relay uses coordination leases, not a job store - **Intake-specific auth/onboarding** — Rig Relay has its own telemetry consent and update policy - **Mutable UI-side policy** — backend remains authoritative; frontend is a dumb renderer</p>
+
+<h3 id="h3-119" class="disclosure-standard" data-disclosure-level="standard">Projection Builder Design</h3>
+
+<p id="p-120" class="disclosure-standard" data-disclosure-level="standard">`rig_relay/desktop/projection.py` follows Rig&#x27;s `projection_builder.py` pattern:</p>
+
+<p id="p-121" class="disclosure-standard" data-disclosure-level="standard">1. Read snapshots from disk (current_state.json, export_manifest.json, etc.) 2. Extract typed fields per category 3. Assemble into a single projection dict 4. Validate against schema (if jsonschema available) 5. Return with field names drawn from actual artifact schemas</p>
+
+<p id="p-122" class="disclosure-standard" data-disclosure-level="standard">Key differences from Rig: - Content-light only (counts, statuses, hashes — never raw content) - Missing sources → `&quot;available&quot;: false` (never crashes on missing data) - Schema-validated output (jsonschema Draft 7) - No Rig-specific domain fields</p>
+
+<h2 id="h2-123" class="disclosure-standard" data-disclosure-level="standard">Cockpit IA: Operate / Review / System</h2>
+
+<p id="p-124" class="disclosure-standard" data-disclosure-level="standard">The desktop cockpit is organized into three progressive-disclosure modes, adopted from the [Relay Desktop Projection Contract](relay-desktop-projection-contract.md).</p>
+
+<table id="table-125" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mode</th><th>Purpose</th><th>Shows</th></tr></thead>
+<tbody>
+<tr><td>**Operate**</td><td>Primary human interface (default)</td><td>OperatorHeader, SafetyState, NextAction, ValidationSummary, StorageBudget, LatestIntentResult, Action buttons, Operator Feed (chat)</td></tr>
+<tr><td>**Review**</td><td>Evidence and artifacts</td><td>ReceiptTimeline, RefinementBacklog, Validation History, Storage Audit, Semantic Snippets, Dataset Summary</td></tr>
+<tr><td>**System**</td><td>Advanced and diagnostics</td><td>Authorization Receipts, Connection/WebSocket status, Telemetry Bundle, Update Status, Projection Source Diagnostics, Storage Diagnostics</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-126" class="disclosure-standard" data-disclosure-level="standard">Operate (default)</h3>
+
+<p id="p-127" class="disclosure-standard" data-disclosure-level="standard">Answers three questions: - **What is happening?** — Session info, safety posture, active child sessions - **Is it safe?** — Dirty file count, active leases, stale leases, validation status - **What should I do next?** — Backend-recommended next action with rationale</p>
+
+<p id="p-128" class="disclosure-standard" data-disclosure-level="standard">Operate shows these projection widgets: - **OperatorHeader** — Mode, version, session ID - **SafetyState** — Dirty files, active leases, stale leases - **NextAction** — Backend-recommended action, rationale, blockers - **ValidationSummary** — Last validation run: passed/failed counts, run button - **StorageBudget** — Build artifact size, budget status, prune candidates - **LatestIntentResult** — Result of the last intent execution - **Action buttons** — Refresh Projection, Run Validation Suite, Storage Audit, Refinement Report, Refinement Packets - **Operator Feed** — Chat transcript for agent communication</p>
+
+<h3 id="h3-129" class="disclosure-standard" data-disclosure-level="standard">Review</h3>
+
+<p id="p-130" class="disclosure-standard" data-disclosure-level="standard">Shows evidence and artifacts for operator inspection: - **ReceiptTimeline** — Bounded list of durable evidence (checkpoints, authorizations, validations) - **RefinementBacklog** — Pending and refined built-in tool refinement items - **Validation History** — Full validation run details - **Storage Audit** — Detailed storage breakdown with recommendations - **Semantic Snippets** — Code change snippet manifest - **Dataset Summary** — Coordination, tool failure, artifact reuse rows</p>
+
+<h3 id="h3-131" class="disclosure-standard" data-disclosure-level="standard">System</h3>
+
+<p id="p-132" class="disclosure-standard" data-disclosure-level="standard">Shows advanced and diagnostic controls: - **Identity** — Sign in with GitHub / Google, view provider status, sign out. System mode only; not in Operate. - **Authorization Receipts** — Mint/inspect controls for Phase 1 protected intents (checkpoint.commit, lease_cleanup.archive) - **Connection** — WebSocket/bridge transport status - **Telemetry Bundle** — Bundle manifest and dry-run creation buttons - **Update Status** — Current/latest version, restart requirements - **Projection Sources** — Per-source availability diagnostics - **Storage Diagnostics** — Rollup candidates, prune candidates, stale leases, GC button</p>
+
+<h3 id="h3-133" class="disclosure-standard" data-disclosure-level="standard">Progressive Disclosure Policy</h3>
+
+<p id="p-134" class="disclosure-standard" data-disclosure-level="standard">1. **Operate** is the default mode. New sessions always start in Operate. 2. **Review** is one click away for evidence inspection. Receipts and artifacts are never in Operate. 3. **System** is two clicks away for diagnostics. Authorization receipt controls and mutation-adjacent features are deferred to System. 4. Protected execution buttons (checkpoint.commit, lease_cleanup.archive, bash, write_file, search_replace, spawn.execute, fleet.execute, delegate.execute) are **absent from all modes** in this slice. 5. The frontend state machine is mode + mode only. No nested submodes.</p>
+
+<h3 id="h3-135" class="disclosure-standard" data-disclosure-level="standard">Widget Mapping</h3>
+
+<p id="p-136" class="disclosure-standard" data-disclosure-level="standard">The projection builder (`rig_relay/desktop/projection.py`) produces a flat projection dict. The frontend (`frontend/desktop/app.js`) maps projection fields to widget cards depending on the active mode:</p>
+
+<details id="table-137" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-137" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Projection field</th><th>Operate widget</th><th>Review widget</th><th>System widget</th></tr></thead>
+<tbody>
+<tr><td>app_version</td><td>OperatorHeader</td><td>---</td><td>---</td></tr>
+<tr><td>current_state</td><td>SafetyState</td><td>---</td><td>---</td></tr>
+<tr><td>storage</td><td>StorageBudget</td><td>Storage Audit details</td><td>Storage Diagnostics</td></tr>
+<tr><td>_last_validation</td><td>ValidationSummary</td><td>Validation History</td><td>---</td></tr>
+<tr><td>warnings + _receipts</td><td>NextAction</td><td>ReceiptTimeline</td><td>---</td></tr>
+<tr><td>_refinement</td><td>---</td><td>RefinementBacklog</td><td>---</td></tr>
+<tr><td>semantic_snippets</td><td>---</td><td>Semantic Snippets</td><td>---</td></tr>
+<tr><td>dataset</td><td>---</td><td>Dataset Summary</td><td>---</td></tr>
+<tr><td>telemetry_bundle</td><td>---</td><td>---</td><td>Telemetry Bundle</td></tr>
+<tr><td>update</td><td>---</td><td>---</td><td>Update Status</td></tr>
+<tr><td>source_status</td><td>---</td><td>---</td><td>Projection Sources</td></tr>
+<tr><td>identity</td><td>Identity</td><td>---</td><td>Identity</td></tr>
+<tr><td>telemetry_consent</td><td>---</td><td>---</td><td>Telemetry Consent</td></tr>
+<tr><td>read_only_actions</td><td>Action buttons</td><td>---</td><td>---</td></tr>
+<tr><td>---</td><td>---</td><td>---</td><td>Identity</td></tr>
+<tr><td>---</td><td>---</td><td>---</td><td>Authorization Receipts</td></tr>
+<tr><td>progress_events</td><td>---</td><td>Progress Timeline</td><td>---</td></tr>
+<tr><td>---</td><td>---</td><td>---</td><td>Connection Status</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-138" class="disclosure-standard" data-disclosure-level="standard">Frontend Safety</h3>
+
+<p id="p-139" class="disclosure-standard" data-disclosure-level="standard">The cockpit follows the [Frontend Rendering Safety Doctrine](frontend-rendering-safety.md): - `textContent` for untrusted content (model outputs, user text, file contents) - `escapeHtml()` for all dynamic content in structured cards - `innerHTML` only for trusted backend widget HTML via `setWidgetHTML()` - No eval, no dynamic code execution - No raw session tokens in storage - No frontend mutation authority — all mutations go through backend intent API</p>
+
+<h3 id="h3-140" class="disclosure-standard" data-disclosure-level="standard">Local Transport Troubleshooting</h3>
+
+<p id="p-141" class="disclosure-standard" data-disclosure-level="standard">- Chrome `net::ERR_CERT_AUTHORITY_INVALID` on `127.0.0.1` means the local TLS certificate is not trusted by the OS. - Default desktop mode uses loopback HTTP/WebSocket intentionally. - Security comes from loopback binding, bridge-token auth, backend intent validation, and origin checks. - TLS mode is opt-in for development or future trusted-cert deployments via `RIG_RELAY_LOCAL_TLS=1`.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/desktop-cockpit-ui.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontend Trace Endpoint — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Browser-safe trace breadcrumbs for local desktop runs without sending frontend events to /ws.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Frontend Trace Endpoint</h1>
+  <p class="meta">Status: active | Updated: </p>
+</header>
+<main>
+  <section>
+    <h2>Metadata</h2>
+    <table>
+      <tr><th>Schema ID</th><td>frontend_trace_endpoint.v1</td></tr>
+      <tr><th>Change kind</th><td>frontend_observability</td></tr>
+      <tr><th>Source</th><td class="file-ref"><code>docs/json/code_schemas/frontend_trace_endpoint.v1.json</code></td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Authority</h2>
+    <table>
+      <tr><th>Authority kind</th><td>repo_governance</td></tr>
+      <tr><th>Trusted</th><td>True</td></tr>
+      <tr><th>Source path</th><td class="file-ref"><code>docs/json/governance/frontend-rendering-safety.v1.json</code></td></tr>
+      <tr><th>Review status</th><td>active</td></tr>
+      <tr><th>Last reviewed</th><td>2026-05-18</td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Model Summary</h2>
+    <p>Use the browser-safe frontend trace sink. Emit breadcrumbs through /frontend-event with type and handshake_id. Never route frontend breadcrumbs to /ws or emit token values.</p>
+  </section>
+  <section>
+    <h2>Required Invariants</h2>
+    <ul><li>Frontend trace events use field type, not event.</li>
+<li>Browser fallback sends only to /frontend-event.</li>
+<li>Trace endpoint never derives from ws_url or websocket_url.</li>
+<li>No POST /ws.</li>
+<li>No token values are emitted in URL, body, console, trace, or debug panel.</li>
+<li>WebSocket /ws remains WebSocket-only.</li></ul>
+  </section>
+  <section>
+    <h2>Forbidden Patterns</h2>
+    <ul><li>POST to /ws</li>
+<li>token in query string</li>
+<li>trace sink derived from websocket_url</li></ul>
+  </section>
+  <section>
+    <h2>Required Files</h2>
+    <ul><li>frontend/desktop/js/utils.js</li>
+<li>rig_relay/desktop/bridge_server.py</li>
+<li>tests/frontend/test_frontend_trace_endpoint.py</li></ul>
+  </section>
+  <section>
+    <h2>Required Tests</h2>
+    <ul><li>tests/frontend/test_frontend_trace_endpoint.py</li>
+<li>tests/desktop/test_golden_path.py</li></ul>
+  </section>
+  <section>
+    <h2>Required Trace Events</h2>
+    <ul><li>frontend_transport_state</li>
+<li>frontend_status_rendered</li>
+<li>frontend_auth_ok</li></ul>
+  </section>
+  <section>
+    <h2>Validation Commands</h2>
+    <ul><li>uv run pytest tests/frontend/test_frontend_trace_endpoint.py tests/desktop/test_websocket_correlation.py -q</li>
+<li>uv run pytest tests/desktop/test_golden_path_browser_integration.py -q</li></ul>
+  </section>
+  <section>
+    <h2>Context Pack</h2>
+    <h3>Include Files</h3>
+    <ul><li>frontend/desktop/js/utils.js</li>
+<li>frontend/desktop/js/status.js</li>
+<li>rig_relay/desktop/bridge_server.py</li></ul>
+    <h3>Include Docs</h3>
+    <ul><li>docs/json/governance/frontend-rendering-safety.v1.json</li>
+<li>docs/json/governance/relay-local-remote-boundary.v1.json</li></ul>
+    <h3>Include Schemas</h3>
+    <ul><li>docs/schemas/rig.code_schema.v1.schema.json</li>
+<li>docs/schemas/rig.documentation.page.v1.schema.json</li></ul>
+    <h3>Exclude Patterns</h3>
+    <ul><li>docs/pages/**</li>
+<li>**/*.html</li></ul>
+  </section>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/code_schemas/frontend_trace_endpoint.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

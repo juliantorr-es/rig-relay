@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Evidence Spine v1 — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="- `span.start` + `span.end` = one span">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Evidence Spine v1</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Evidence Spine v1</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Trace Semantics</h2>
+
+<h3 id="h3-3" class="disclosure-standard" data-disclosure-level="standard">Parent/Child Span Model</h3>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">- `span.start` + `span.end` = one span - `span.event` = event attached to active span (parent_span_id == span_id) - Child spans get `parent_span_id` = parent&#x27;s `span_id` - Sibling spans share `trace_id` but have different `span_id`</p>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">Trace Tree Example</h3>
+
+<pre id="code-6"><code class="language-text">tool_runtime.execute_one (trace_id=t1, span_id=s1)
+  │
+  ├── tool_runtime.cache_check (span.event, span_id=s1)
+  │
+  └── runtime.subprocess.execute (trace_id=t1, span_id=s2, parent_span_id=s1)</code></pre>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor Trace Privacy</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Safe Attributes</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- `executable`: argv[0] only - `argv_hash`: sha256 of joined argv (first 16 chars) - `argv_count`: len(argv) - `cwd_hash`: sha256 of cwd path (first 16 chars) - `cwd_kind`: repo | worktree | temp | app_support | unknown - `timeout_seconds`, `exit_code`, `status`, `duration_ms` - `stdout_bytes`, `stderr_bytes` (never raw content)</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Redaction Proof</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Raw CWD path with username/project never appears - Raw argv secrets never appear - Raw stdout/stderr content never appears</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Supervisor Envelope Adoption</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Subprocess-backed tool calls now preserve `RuntimeSupervisorResultEnvelope` through the ToolRuntime and adapter receipt path. Downstream consumers should read the envelope or the copied envelope fields rather than reconstructing terminal meaning from raw process handles or ad hoc status strings.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Validate Tracing v0 (deferred)</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Validate profile execution tracing deferred to next pass. Current check execution goes through `validate_runner._run_check()` which uses `create_subprocess_exec`. Instrumentation will be added when validate state machine transitions are stable.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Desktop Trace Correlation</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- Bridge probe ladder already emits structured events - Frontend event recorder exists - DesktopBridgeStateMachine transitions are traceable - /healthz exposes bridge_state, transition_count</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Test Diagnostics Helper</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">`tests/helpers/probe_report.py` — ProbeReport with structured check recording and safe assertions. Used for golden-path protocol tests. Emits no secrets.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Duplicate Test Audit</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Scanned 5954 tests across 327 test files: - 1 exact body duplicate group - 34 normalized AST duplicate groups - 618 assert-shape duplicate groups</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Output: `docs/audits/test-suite/duplicate_test_audit.*`</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Validate/Agent Command Doctrine</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">1. `uv run pytest -m smoke --maxfail=1 -q` — pulse check 2. `uv run pytest -m &quot;not slow and not integration...&quot;` — fast default (4885 tests) 3. Full suite explicit only 4. Agents must not run broad pytest loops when focused validation exists 5. Duplicate tests should become parametrized behavior tables 6. Raw output/secrets never belong in traces or diagnostics</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/runtime/runtime-evidence-spine-v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

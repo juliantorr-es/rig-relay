@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mutation Tool Contract Matrix — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This matrix documents how the two mutation primitives (`write_file` and `search_replace`) satisfy the same high-level deterministic evidence guarantees. It is not a mandate to force identical implemen">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Mutation Tool Contract Matrix</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Mutation Tool Contract Matrix</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">This matrix documents how the two mutation primitives (`write_file` and `search_replace`) satisfy the same high-level deterministic evidence guarantees. It is not a mandate to force identical implementations — each tool has legitimate domain-specific differences.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Grades</h2>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Grade</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>complete</td><td>Feature is implemented and tested</td></tr>
+<tr><td>partial</td><td>Feature exists but has known gaps</td></tr>
+<tr><td>missing</td><td>Feature is not implemented</td></tr>
+<tr><td>not_applicable</td><td>Feature does not apply to this tool</td></tr>
+<tr><td>deferred</td><td>Feature is intentionally postponed</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Matrix</h2>
+
+<details id="table-7" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-7" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Guarantee</th><th>write_file</th><th>search_replace</th></tr></thead>
+<tbody>
+<tr><td>**structured args**</td><td>complete — `WriteFileArgs` (path, content, overwrite flags, expected_before_sha256)</td><td>complete — `SearchReplaceArgs` (file_path, content, expected_before_sha256, expected_replacements, allow_multiple)</td></tr>
+<tr><td>**structured result**</td><td>complete — `WriteFileResult` (path, bytes_written, file_existed, before/after sha256, created/overwritten flags, status, error_kind, refusal_reason, duration_ms, before_bytes, after_bytes) — has legacy `content` field not removed</td><td>complete — `SearchReplaceResult` (file, blocks_applied, lines_changed, before/after sha256 dict, changed_files, failed/total blocks, replacements, before/after bytes, status, error_kind, refusal_reason, duration_ms)</td></tr>
+<tr><td>**structured status**</td><td>complete — `success`, `refused`, `blocked`</td><td>complete — `success`, `no_match`, `ambiguous_match`, `count_mismatch`, `refused`, `blocked`</td></tr>
+<tr><td>**structured error_kind**</td><td>complete — `path_reserved`, `dirty_file_protected`, `expected_hash_mismatch`, `protected_file_missing`, `path_is_directory`, `content_too_large`, `overwrite_required`, `parent_missing`</td><td>complete — `old_text_not_found`, `unchanged_replacement`, `multiple_matches_when_single_required`, `replacement_count_mismatch`, `encoding_error`, guard refusal kinds</td></tr>
+<tr><td>**structured refusal_reason**</td><td>complete — human-readable from guard, coordination, or deterministic checks</td><td>complete — human-readable from guard or coordination (sanitized for receipt)</td></tr>
+<tr><td>**path safety**</td><td>complete — `normalize_tool_path`, `require_path_within_workdir`</td><td>complete — `normalize_tool_path`, `require_path_within_workdir`, outside-workspace refusal via structured `SearchReplaceResult(status=&quot;refused&quot;, error_kind=&quot;unsafe_path&quot;)`</td></tr>
+<tr><td>**dirty-file protection**</td><td>complete — `guard.check_write_file()`, `allow_overwrite_protected` flag, `expected_before_sha256`</td><td>complete — `guard.check_search_replace()`, `expected_before_sha256`</td></tr>
+<tr><td>**coordination lease/blocking**</td><td>complete — claim_task + reserve_paths, structured `blocked` result when store available</td><td>complete — claim_task + reserve_paths, structured `blocked` result when store available</td></tr>
+<tr><td>**before_sha256**</td><td>complete — from snapshot on success path (None on refused/blocked)</td><td>complete — `before_file_sha256` dict (success and structured error paths)</td></tr>
+<tr><td>**after_sha256**</td><td>complete — from file read after write</td><td>complete — `after_file_sha256` dict</td></tr>
+<tr><td>**before_bytes**</td><td>complete — from snapshot content length on success path (0 for new files)</td><td>complete — `before_bytes` from `len(original_content)` (success) or `file_path.stat().st_size` (binary_file, parse_error); 0 for other refusal paths</td></tr>
+<tr><td>**after_bytes**</td><td>complete — from file stat after write</td><td>complete — `after_bytes` in result</td></tr>
+<tr><td>**changed/created/overwritten**</td><td>complete — `created_file`, `overwrote_existing_file`, `file_existed`, `parent_dirs_created`</td><td>complete — `blocks_applied`, `lines_changed`, `changed_files`, `replacements` (domain-specific: patches change content, not create/delete files)</td></tr>
+<tr><td>**no raw content in receipt**</td><td>complete — WriteFileReceipt excludes `content`</td><td>complete — SearchReplaceReceipt excludes `content`, `old_text`, `new_text`, diffs</td></tr>
+<tr><td>**build_receipt()**</td><td>complete — returns `WriteFileReceipt`</td><td>complete — returns `SearchReplaceReceipt`</td></tr>
+<tr><td>**receipt schema**</td><td>complete — `rig.relay.write_file_receipt.v1`</td><td>complete — `rig.relay.search_replace_receipt.v1`</td></tr>
+<tr><td>**receipt schema validation**</td><td>complete — model_dump validated in `test_tool_receipt_emission.py`</td><td>complete — model_dump validated in `test_tool_schema_contracts.py`</td></tr>
+<tr><td>**receipt policy validator**</td><td>complete — passes `validate_receipt_payload`</td><td>complete — passes `validate_receipt_payload`</td></tr>
+<tr><td>**receipt index support**</td><td>complete — `write_file` case in `receipt_index.py`, mutation tracking</td><td>complete — `search_replace` case in `receipt_index.py`, mutation tracking</td></tr>
+<tr><td>**ToolError bypasses**</td><td>complete — Dir/size/exists/parent-missing errors now yield structured `WriteFileResult(status=&quot;refused&quot;)` with domain-specific `error_kind`. Internal write errors and path safety violations remain as ToolError (abnormal).</td><td>complete — All deterministic validation errors (content_too_large, empty_content, unsafe_path, file_not_found, path_is_directory, binary_file, parse_error) yield structured `SearchReplaceResult(status=&quot;refused&quot;)` with domain-specific `error_kind`. Internal read/write errors remain as ToolError (abnormal).</td></tr>
+<tr><td>**atomicity**</td><td>complete — `_atomic_write_text` with same-directory tempfile + `os.replace()` + `os.fsync()`</td><td>not_applicable — patches modify in-place; atomicity would require proving before/after content matches patch</td></tr>
+<tr><td>**duration tracking**</td><td>complete — `duration_ms` captured in `WriteFileResult` and `WriteFileReceipt` on blocked, refused, and success paths</td><td>complete — `duration_ms` captured in `SearchReplaceResult` and `SearchReplaceReceipt`</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- **Complete**: 20/20 guarantees for write_file, 18/18 for search_replace - **Partial**: 0 for write_file, 0 for search_replace - **Missing**: 0 for write_file, 0 for search_replace - **Deferred**: 0 for write_file - **Not applicable**: 0 for write_file, 1 for search_replace (atomicity)</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Gaps by Tool</h2>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">write_file gaps</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">1. **`content` in WriteFileResult** — Legacy field. Not removed in this mission. See `docs/audits/tool-hardening/write-file-legacy-result-content-audit.md` for the full caller audit.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">search_replace gaps</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1. **before_bytes** — Only set on success path. Not populated for `no_match`/`refused`/`blocked`. 2. **ToolError bypasses** — Encoding errors before structured result path. Pre-existing.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">What Tests Now Enforce</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">See `tests/tools/test_mutation_tool_contracts.py` for shared contract tests covering:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- Both tools have `build_receipt` method - Success receipts are content-light (no forbidden fields) - Refusal/blocked receipts are content-light - Receipt schemas validate actual model dumps - Receipt policy validator passes for both success and failure - Receipt index supports both tools with mutation tracking - Index records exclude forbidden raw fields</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">ToolError bypass tests were updated in `tests/tools/test_hardened_tools.py`: - `test_write_file_rejects_directory_target` → expects structured `refused`/`path_is_directory` instead of `ToolError` - `test_write_file_overwrite_false_on_existing_does_not_emit_hash` → expects structured `refused`/`overwrite_required` instead of `ToolError`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-hardening/mutation-tool-contract-matrix.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

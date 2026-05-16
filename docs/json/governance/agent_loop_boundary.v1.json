@@ -8,73 +8,354 @@
   "created_at": "2026-05-18",
   "updated_at": "2026-05-18",
   "source_commit": "aaef6b5b",
-  "owners": ["maintainer"],
-  "tags": ["architecture", "agent-loop", "boundary", "runtime", "mixin"],
-  "audience": ["contributor", "agent", "maintainer"],
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "architecture",
+    "agent-loop",
+    "boundary",
+    "runtime",
+    "mixin"
+  ],
+  "audience": [
+    "contributor",
+    "agent",
+    "maintainer"
+  ],
   "canonical_path": "docs/json/governance/agent_loop_boundary.v1.json",
-  "render": {"toc": true, "search_index": true},
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
   "sections": [
-    {"block_id": "title", "type": "heading", "level": 1, "content": "Agent Loop Boundary"},
-    {"block_id": "purpose", "type": "heading", "level": 2, "content": "Purpose"},
-    {"block_id": "purpose-text", "type": "paragraph", "content": "AgentLoop (rig_relay/core/agent_loop.py) is the turn/session conductor, not the runtime kernel. It owns conversation topology: start session, start turn, get context, call model, delegate tools, continue or finish, save state, emit lifecycle events. Policy for each subsystem lives outside AgentLoop."},
-    {"block_id": "components", "type": "heading", "level": 2, "content": "Runtime Components"},
-    {"block_id": "components-table", "type": "table", "columns": ["Component", "Location", "Owns"], "rows": [
-      ["AgentLoop", "rig_relay/core/agent_loop.py", "Turn/session topology, public API (act(), fork(), compact(), clear_history())"],
-      ["AgentRuntimeState", "rig_relay/core/runtime_state.py", "Mutable session/turn state snapshot. Readiness, stats, limits, session identity"],
-      ["ConversationTurnRuntime", "rig_relay/core/conversation_turn.py", "One-turn phase state machine. Phase transitions, outcome, tool batch metadata"],
-      ["ConversationRuntime", "rig_relay/core/conversation_runtime/", "Turn phase event recorder, result builder, trace evidence emitter, loop decision policy (Phase 2A)"],
-      ["LLMCallMixin", "rig_relay/core/_llm_call.py", "Provider call preparation, streaming and non-streaming calls, retry/error classification"],
-      ["ToolResponseMixin", "rig_relay/core/_tool_response.py", "Tool response recording, telemetry, failure event construction"],
-      ["SessionLifecycleMixin", "rig_relay/core/_session_lifecycle.py", "Message history cleanup, missing response filling, session reset, fork message extraction"],
-      ["GovernanceMixin", "rig_relay/core/_governance.py", "Approval callbacks, tool permissions, session rules"],
-      ["TelemetryMixin", "rig_relay/core/_telemetry.py", "Session lifecycle telemetry emission, context observation"],
-      ["ContextEnvelopeMixin", "rig_relay/core/_context_envelope.py", "Context envelope construction and assembly telemetry"],
-      ["MiddlewareMetadataMixin", "rig_relay/core/_middleware_metadata.py", "Middleware pipeline setup, result handling, backend metadata"]
-    ]},
-    {"block_id": "future", "type": "heading", "level": 2, "content": "Future Runtimes (Planned)"},
-    {"block_id": "future-table", "type": "table", "columns": ["Component", "Future Location", "Will Own"], "rows": [
-      ["SessionRuntime", "rig_relay/core/session_runtime.py", "Fork, compact, reset, clear_history, switch_agent, reload_with_initial_messages"],
-      ["ApprovalRuntime", "rig_relay/core/approval_runtime.py", "Approval handoff, callbacks, permission rules"],
-      ["MissionEnvelopeBridge", "rig_relay/core/mission_envelope.py", "Mission metadata to AgentLoop context/runtime wiring"]
-    ]},
-    {"block_id": "forbidden", "type": "heading", "level": 2, "content": "Forbidden Dependencies"},
-    {"block_id": "forbidden-intro", "type": "paragraph", "content": "These must not be imported by AgentLoop or any mixin in rig_relay/core/:"},
-    {"block_id": "forbidden-table", "type": "table", "columns": ["Forbidden Import", "Reason"], "rows": [
-      ["rig_relay.desktop.*", "Desktop is a consumer of projections/intents, not runtime policy"],
-      ["rig_relay.ralph.*", "Ralph is an observe-only scanner that consumes projections"],
-      ["rig_relay.scripts.*", "Scripts are CLI entry points, not runtime policy"],
-      ["rig_relay.analytics.*", "Analytics compiler consumes events/ledgers, must not execute runtime work"],
-      ["rig_relay.reports.query", "Report query is a consumer, not runtime policy"],
-      ["rig_relay.bash.query", "Bash analytics is a consumer, not runtime policy"],
-      ["duckdb", "DuckDB is the analytical compiler substrate. Runtime must not depend on it"]
-    ]},
-    {"block_id": "direction", "type": "heading", "level": 2, "content": "Dependency Direction"},
-    {"block_id": "direction-code", "type": "code", "language": "text", "content": "Desktop / Ralph / Scripts (outer)\n        |\n        | consume projections, intents, events\n        v\nAgentLoop + Runtimes (inner)\n        |\n        | use\n        v\nTools, Config, LLM Backends, Context Compiler (inner)"},
-    {"block_id": "direction-text", "type": "paragraph", "content": "Inner runtime policy must not know outer mechanisms. Desktop, Ralph, and scripts are outer consumers. They import from core; core never imports from them."},
-    {"block_id": "add-new", "type": "heading", "level": 2, "content": "Adding New Runtime Components"},
-    {"block_id": "add-new-list", "type": "list", "ordered": true, "items": [
-      "Create the module in rig_relay/core/ (e.g. tool_runtime.py)",
-      "Add it as a mixin or standalone class depending on coupling",
-      "Wire it into AgentLoop through composition or MRO",
-      "Add to the runtime components table",
-      "Add an architecture test confirming the dependency boundary",
-      "Never import desktop, Ralph, scripts, analytics, or DuckDB from the new component"
-    ]},
-    {"block_id": "smell", "type": "heading", "level": 2, "content": "Smell Tests"},
-    {"block_id": "smell-text", "type": "paragraph", "content": "A method belongs outside AgentLoop if: it can be tested without constructing a full AgentLoop; changing its subsystem policy requires editing AgentLoop; it spends most of its code using attributes from a single domain. AgentLoop methods that survive extraction should read as coordination and delegate domain work to dedicated runtimes."},
-    {"block_id": "validation", "type": "heading", "level": 2, "content": "Validation Gates"},
-    {"block_id": "validation-items", "type": "list", "items": [
-      "tests/core/test_architecture_boundaries.py enforces dependency boundary",
-      "8 architecture boundary tests pass",
-      "AgentLoop and mixins must not import desktop/Ralph/scripts/DuckDB/analytics"
-    ]}
+    {
+      "block_id": "title",
+      "type": "heading",
+      "level": 1,
+      "content": "Agent Loop Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "purpose",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "purpose-text",
+      "type": "paragraph",
+      "content": "AgentLoop (rig_relay/core/agent_loop.py) is the turn/session conductor, not the runtime kernel. It owns conversation topology: start session, start turn, get context, call model, delegate tools, continue or finish, save state, emit lifecycle events. Policy for each subsystem lives outside AgentLoop.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "components",
+      "type": "heading",
+      "level": 2,
+      "content": "Runtime Components",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "components-table",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Location",
+        "Owns"
+      ],
+      "rows": [
+        [
+          "AgentLoop",
+          "rig_relay/core/agent_loop.py",
+          "Turn/session topology, public API (act(), fork(), compact(), clear_history())"
+        ],
+        [
+          "AgentRuntimeState",
+          "rig_relay/core/runtime_state.py",
+          "Mutable session/turn state snapshot. Readiness, stats, limits, session identity"
+        ],
+        [
+          "ConversationTurnRuntime",
+          "rig_relay/core/conversation_turn.py",
+          "One-turn phase state machine. Phase transitions, outcome, tool batch metadata"
+        ],
+        [
+          "ConversationRuntime",
+          "rig_relay/core/conversation_runtime/",
+          "Turn phase event recorder, result builder, trace evidence emitter, loop decision policy (Phase 2A)"
+        ],
+        [
+          "LLMCallMixin",
+          "rig_relay/core/_llm_call.py",
+          "Provider call preparation, streaming and non-streaming calls, retry/error classification"
+        ],
+        [
+          "ToolResponseMixin",
+          "rig_relay/core/_tool_response.py",
+          "Tool response recording, telemetry, failure event construction"
+        ],
+        [
+          "SessionLifecycleMixin",
+          "rig_relay/core/_session_lifecycle.py",
+          "Message history cleanup, missing response filling, session reset, fork message extraction"
+        ],
+        [
+          "GovernanceMixin",
+          "rig_relay/core/_governance.py",
+          "Approval callbacks, tool permissions, session rules"
+        ],
+        [
+          "TelemetryMixin",
+          "rig_relay/core/_telemetry.py",
+          "Session lifecycle telemetry emission, context observation"
+        ],
+        [
+          "ContextEnvelopeMixin",
+          "rig_relay/core/_context_envelope.py",
+          "Context envelope construction and assembly telemetry"
+        ],
+        [
+          "MiddlewareMetadataMixin",
+          "rig_relay/core/_middleware_metadata.py",
+          "Middleware pipeline setup, result handling, backend metadata"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "future",
+      "type": "heading",
+      "level": 2,
+      "content": "Future Runtimes (Planned)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "future-table",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Future Location",
+        "Will Own"
+      ],
+      "rows": [
+        [
+          "SessionRuntime",
+          "rig_relay/core/session_runtime.py",
+          "Fork, compact, reset, clear_history, switch_agent, reload_with_initial_messages"
+        ],
+        [
+          "ApprovalRuntime",
+          "rig_relay/core/approval_runtime.py",
+          "Approval handoff, callbacks, permission rules"
+        ],
+        [
+          "MissionEnvelopeBridge",
+          "rig_relay/core/mission_envelope.py",
+          "Mission metadata to AgentLoop context/runtime wiring"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "forbidden",
+      "type": "heading",
+      "level": 2,
+      "content": "Forbidden Dependencies",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "forbidden-intro",
+      "type": "paragraph",
+      "content": "These must not be imported by AgentLoop or any mixin in rig_relay/core/:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "forbidden-table",
+      "type": "table",
+      "columns": [
+        "Forbidden Import",
+        "Reason"
+      ],
+      "rows": [
+        [
+          "rig_relay.desktop.*",
+          "Desktop is a consumer of projections/intents, not runtime policy"
+        ],
+        [
+          "rig_relay.ralph.*",
+          "Ralph is an observe-only scanner that consumes projections"
+        ],
+        [
+          "rig_relay.scripts.*",
+          "Scripts are CLI entry points, not runtime policy"
+        ],
+        [
+          "rig_relay.analytics.*",
+          "Analytics compiler consumes events/ledgers, must not execute runtime work"
+        ],
+        [
+          "rig_relay.reports.query",
+          "Report query is a consumer, not runtime policy"
+        ],
+        [
+          "rig_relay.bash.query",
+          "Bash analytics is a consumer, not runtime policy"
+        ],
+        [
+          "duckdb",
+          "DuckDB is the analytical compiler substrate. Runtime must not depend on it"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "direction",
+      "type": "heading",
+      "level": 2,
+      "content": "Dependency Direction",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "direction-code",
+      "type": "code",
+      "language": "text",
+      "content": "Desktop / Ralph / Scripts (outer)\n        |\n        | consume projections, intents, events\n        v\nAgentLoop + Runtimes (inner)\n        |\n        | use\n        v\nTools, Config, LLM Backends, Context Compiler (inner)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "direction-text",
+      "type": "paragraph",
+      "content": "Inner runtime policy must not know outer mechanisms. Desktop, Ralph, and scripts are outer consumers. They import from core; core never imports from them.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "add-new",
+      "type": "heading",
+      "level": 2,
+      "content": "Adding New Runtime Components",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "add-new-list",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Create the module in rig_relay/core/ (e.g. tool_runtime.py)",
+        "Add it as a mixin or standalone class depending on coupling",
+        "Wire it into AgentLoop through composition or MRO",
+        "Add to the runtime components table",
+        "Add an architecture test confirming the dependency boundary",
+        "Never import desktop, Ralph, scripts, analytics, or DuckDB from the new component"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "smell",
+      "type": "heading",
+      "level": 2,
+      "content": "Smell Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "smell-text",
+      "type": "paragraph",
+      "content": "A method belongs outside AgentLoop if: it can be tested without constructing a full AgentLoop; changing its subsystem policy requires editing AgentLoop; it spends most of its code using attributes from a single domain. AgentLoop methods that survive extraction should read as coordination and delegate domain work to dedicated runtimes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "validation",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation Gates",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "validation-items",
+      "type": "list",
+      "items": [
+        "tests/core/test_architecture_boundaries.py enforces dependency boundary",
+        "8 architecture boundary tests pass",
+        "AgentLoop and mixins must not import desktop/Ralph/scripts/DuckDB/analytics"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
   ],
   "references": [
-    {"document_id": "tool-runtime-boundary", "title": "ToolRuntime Boundary"},
-    {"document_id": "orchestrator-loop-boundary", "title": "Orchestrator Loop Boundary"}
+    {
+      "document_id": "tool-runtime-boundary",
+      "title": "ToolRuntime Boundary"
+    },
+    {
+      "document_id": "orchestrator-loop-boundary",
+      "title": "Orchestrator Loop Boundary"
+    }
   ],
   "related_documents": [],
   "provenance": {
-    "source_files": ["docs/governance/agent-loop-boundary.md"]
+    "source_files": [
+      "docs/governance/agent-loop-boundary.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
   }
 }

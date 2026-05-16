@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effort Estimate: VSCodium Shell Lane — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This phase plan outlines the path to a testable, governed agent workbench.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Effort Estimate: VSCodium Shell Lane</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Effort Estimate: VSCodium Shell Lane</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This phase plan outlines the path to a testable, governed agent workbench.</p>
+
+<table id="table-3" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Phase</th><th>Goal</th><th>Files Touched/Created</th><th>Complexity</th><th>Exit Criteria</th></tr></thead>
+<tbody>
+<tr><td>**0: Audit**</td><td>Closure / decision gate.</td><td>`docs/audits/vscodium-shell-lane/`</td><td>S</td><td>Audit approved by stakeholders.</td></tr>
+<tr><td>**1: Skeleton**</td><td>Extension boilerplate.</td><td>`extension/`, `package.json`</td><td>S</td><td>Extension installs and shows sidebar.</td></tr>
+<tr><td>**2: Bridge**</td><td>Daemon connection.</td><td>`vibe/cli/extension_daemon.py`, `extension/src/daemon_client.ts`</td><td>M</td><td>Handshake complete; token auth working.</td></tr>
+<tr><td>**3: Turn**</td><td>Prompt turn bridge.</td><td>`vibe/cli/webview_console/backend.py` (updates)</td><td>M</td><td>&quot;Hello World&quot; prompt returns agent text.</td></tr>
+<tr><td>**4: Evidence**</td><td>Receipts + Validation.</td><td>`rig_relay/evidence/`, `extension/src/views/receipts.ts`</td><td>L</td><td>Receipt tree view populated from daemon.</td></tr>
+<tr><td>**5: Patch**</td><td>Patch governance.</td><td>`rig_relay/coordination/patch_proposal.py`, `extension/src/patch_review.ts`</td><td>L</td><td>Native diff view opens on proposed changes.</td></tr>
+<tr><td>**6: Lanes**</td><td>Worktree management.</td><td>`rig_relay/coordination/worktree_manager.py`</td><td>XL</td><td>Agents operate in isolated worktree &quot;lanes&quot;.</td></tr>
+<tr><td>**7: Bundle**</td><td>Branded VSCodium app.</td><td>`scripts/build_vscodium_bundle.sh`</td><td>XL</td><td>(Optional) Signed macOS binary available.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Dependencies</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">1.  **VSCodium**: Extension host API (v1.90+ recommended). 2.  **Node.js**: For extension development. 3.  **Python 3.12+**: For the Rig Relay daemon.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Key Risks to Schedule</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">*   **Worktree Complexity**: Managing git state across multiple lanes without corrupting the user&#x27;s main working copy is the highest technical risk. *   **VS Code API Stability**: Relying on proposed APIs (if needed) can break the extension on minor updates. *   **Mac OS Notarization**: If we pivot to Option B (Bundled App), signing will add weeks of friction.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vscodium-shell-lane/effort-estimate.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,403 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "conversation-runtime-phase-2a-decision-policy",
+  "document_type": "audit",
+  "title": "ConversationRuntime Phase 2A — Decision Policy Inventory",
+  "summary": "**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines)",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "ConversationRuntime Phase 2A — Decision Policy Inventory",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines) **Method**: `_conversation_loop` (lines 745–865)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Current Decision Points in `_conversation_loop`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-4",
+      "type": "heading",
+      "level": 3,
+      "content": "1. Middleware STOP (line 789)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "python",
+      "content": "if result.action == MiddlewareAction.STOP:\n    cr._finish(TurnOutcome.MIDDLEWARE_STOP)\n    return",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Decision: Stop loop immediately. Outcome: MIDDLEWARE_STOP.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-7",
+      "type": "heading",
+      "level": 3,
+      "content": "2. User cancellation detection (lines 814–817 + 825–830)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-8",
+      "type": "code",
+      "language": "python",
+      "content": "if is_user_cancellation_event(event):\n    user_cancelled = True\n\nif user_cancelled:\n    cr._finish(TurnOutcome.USER_CANCELLED, \"user cancelled\")\n    turn.mark_outcome(TurnOutcome.USER_CANCELLED, \"user cancelled\")\n    return",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Decision: Stop loop, outcome USER_CANCELLED.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "3. Break condition: no tool calls / assistant final (line 823)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-11",
+      "type": "code",
+      "language": "python",
+      "content": "should_break_loop = last_message.role != Role.tool",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Decision: Assistant sent a final reply (not a tool call). Loop should break.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "4. Hook retry (lines 831–848)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-14",
+      "type": "code",
+      "language": "python",
+      "content": "if should_break_loop and self._hooks_manager:\n    hook_retry = ...\n    if hook_retry is not None:\n        should_break_loop = False",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Decision: An injected hook message keeps the loop running.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "5. Tool call batch (lines 876+)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-17",
+      "type": "code",
+      "language": "python",
+      "content": "if not resolved.tool_calls and not resolved.failed_calls:\n    # no tool calls to run",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "Decision: Tool calls present → run tools. No tool calls → continue to next model turn.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "6. Exception/failure (lines 870–874, try/finally)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-20",
+      "type": "code",
+      "language": "python",
+      "content": "try:\n    ...\nfinally:\n    await self._save_messages()",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Decision: Exception propagates up to caller. No dedicated failure outcome classification here.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "7. Max turns budget (line 329)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-23",
+      "type": "code",
+      "language": "python",
+      "content": "max_turns=self._max_turns,",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Decision: Enforced elsewhere in `act()` method. Not yet in `_conversation_loop`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "8. Loop termination: SUCCESS (lines 862–863)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-26",
+      "type": "code",
+      "language": "python",
+      "content": "cr._finish(TurnOutcome.SUCCESS)\nturn.advance(TurnPhase.FINALIZING)\nturn.mark_outcome(TurnOutcome.SUCCESS)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Decision: Final outcome after loop ends normally.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-28",
+      "type": "heading",
+      "level": 2,
+      "content": "Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-29",
+      "type": "table",
+      "columns": [
+        "#",
+        "Decision Kind",
+        "Location",
+        "Currently In"
+      ],
+      "rows": [
+        [
+          "1",
+          "MIDDLEWARE_STOP",
+          "Line 789",
+          "AgentLoop"
+        ],
+        [
+          "2",
+          "USER_CANCELLED",
+          "Lines 814–830",
+          "AgentLoop"
+        ],
+        [
+          "3",
+          "Assistant final (break)",
+          "Line 823",
+          "AgentLoop"
+        ],
+        [
+          "4",
+          "Hook retry (continue)",
+          "Lines 831–848",
+          "AgentLoop"
+        ],
+        [
+          "5",
+          "Tool calls present",
+          "Line 876",
+          "AgentLoop"
+        ],
+        [
+          "6",
+          "Exception/failure",
+          "try/finally",
+          "AgentLoop"
+        ],
+        [
+          "7",
+          "Max turns budget",
+          "Line 329",
+          "AgentLoop"
+        ],
+        [
+          "8",
+          "SUCCESS outcome",
+          "Lines 862–863",
+          "AgentLoop"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-30",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 2A Target",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Move decisions 1, 2, 3, 6, 8 (the terminal and loop-control decisions) into `ConversationRuntime.decide_*()` methods. Keep execution mechanics (model call, tool batch, hook run) in AgentLoop but have the decision returned by ConversationRuntime.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "Decisions 4 (hook retry) and 5 (tool batch) stay in AgentLoop for now — they involve execution state too deeply coupled to the loop.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

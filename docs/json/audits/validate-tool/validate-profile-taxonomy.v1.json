@@ -1,0 +1,1204 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "validate-profile-taxonomy",
+  "document_type": "audit",
+  "title": "Validate Profile Taxonomy",
+  "summary": "Profiles should be stable, narrow, and named by purpose rather than by implementation detail.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/validate-tool/validate-profile-taxonomy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Validate Profile Taxonomy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Profile Principles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Profiles should be stable, narrow, and named by purpose rather than by implementation detail.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Initial Profiles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-5",
+      "type": "heading",
+      "level": 3,
+      "content": "`quick`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Purpose:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- fast sanity check for lane readiness",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Command bundle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- `git status --short --branch` - focused `ruff check` - focused `pytest`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- low",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- agent needs a quick pass/fail before deeper work",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- lane is not obviously broken - repository state is not obviously dirty beyond policy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- full suite health - type correctness - schema compliance",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "`python`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Purpose:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- Python surface sanity",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Command bundle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "- `uv run ruff check ...` - `uv run pyright ...` - focused `pytest`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "- medium",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "- validating Python code changes",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- lint - type safety - targeted test coverage",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "- schema validation - governance policy compliance",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-31",
+      "type": "heading",
+      "level": 3,
+      "content": "`schemas`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "Purpose:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "- schema and receipt correctness",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Command bundle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "- `uv run python scripts/rig_relay_validate_schemas.py` - `uv run python scripts/rig_relay_validate_tool_receipts.py ...`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "- low",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "- schemas or receipts changed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "- schema files parse - schema files validate - content-light receipts remain clean",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "- runtime behavior - tool semantics",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-44",
+      "type": "heading",
+      "level": 3,
+      "content": "`tool-hardening`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "Purpose:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "- validate deterministic tool envelopes and receipts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-47",
+      "type": "paragraph",
+      "content": "Command bundle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "- targeted tool tests - receipt policy tests - tool hardening tests",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "- medium",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "- hardening `bash`, `search_replace`, `write_file`, or similar surfaces",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "- structured statuses - refusal behavior - receipt emission - truncation behavior",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "- end-to-end promotion readiness",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-57",
+      "type": "heading",
+      "level": 3,
+      "content": "`receipt-policy`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "Purpose:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "- prove content-light receipts stay content-light",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-60",
+      "type": "paragraph",
+      "content": "Command bundle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "- receipt validator - emission tests",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-62",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "- low",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-64",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-65",
+      "type": "paragraph",
+      "content": "- any receipt or event payload changes",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-67",
+      "type": "paragraph",
+      "content": "- no raw stdout/stderr - hashes and counts are present",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-68",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-69",
+      "type": "paragraph",
+      "content": "- underlying tool correctness",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-70",
+      "type": "heading",
+      "level": 3,
+      "content": "`governance`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-71",
+      "type": "paragraph",
+      "content": "Purpose:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-72",
+      "type": "paragraph",
+      "content": "- validate policy and doctrine constraints",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-73",
+      "type": "paragraph",
+      "content": "Command bundle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-74",
+      "type": "paragraph",
+      "content": "- governance docs checks - policy scripts - targeted tests for policy edges",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-75",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-76",
+      "type": "paragraph",
+      "content": "- low to medium",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-77",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-78",
+      "type": "paragraph",
+      "content": "- governance surfaces or policy-driven tools change",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-79",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-80",
+      "type": "paragraph",
+      "content": "- policy conformance - schema alignment",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-81",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-82",
+      "type": "paragraph",
+      "content": "- core runtime functionality",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-83",
+      "type": "heading",
+      "level": 3,
+      "content": "`worktree-readiness`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-84",
+      "type": "paragraph",
+      "content": "Purpose:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-85",
+      "type": "paragraph",
+      "content": "- determine whether a lane/worktree is clean enough for handoff or aggregation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-86",
+      "type": "paragraph",
+      "content": "Command bundle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-87",
+      "type": "paragraph",
+      "content": "- git state collection (automatic in run() method) - dirty policy enforcement via expected_dirty_policy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-88",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-89",
+      "type": "paragraph",
+      "content": "- low (no lint/test/schema commands)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-90",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-91",
+      "type": "paragraph",
+      "content": "- determining workspace readiness before deeper validation - enforcing expected_dirty_policy constraints",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-92",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-93",
+      "type": "paragraph",
+      "content": "- lane cleanliness - git state availability - dirty policy compliance",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-94",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-95",
+      "type": "paragraph",
+      "content": "- full suite health - schema compliance - promotion readiness",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-96",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-97",
+      "type": "paragraph",
+      "content": "- medium",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-98",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-99",
+      "type": "paragraph",
+      "content": "- deciding whether a patch lane is clean enough for promotion",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-100",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-101",
+      "type": "paragraph",
+      "content": "- lane eligibility - blocker classification",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-102",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-103",
+      "type": "paragraph",
+      "content": "- fleet-wide health",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-104",
+      "type": "heading",
+      "level": 3,
+      "content": "`promotion-readiness` (not implemented)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-105",
+      "type": "paragraph",
+      "content": "Purpose:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-106",
+      "type": "paragraph",
+      "content": "- final gate before promotion",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-107",
+      "type": "paragraph",
+      "content": "Command bundle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-108",
+      "type": "paragraph",
+      "content": "- quick - python - schemas - governance - targeted integration tests",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-109",
+      "type": "paragraph",
+      "content": "Runtime tier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-110",
+      "type": "paragraph",
+      "content": "- high",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-111",
+      "type": "paragraph",
+      "content": "Use when:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-112",
+      "type": "paragraph",
+      "content": "- patch is candidate for promotion or merge",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-113",
+      "type": "paragraph",
+      "content": "Proves:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-114",
+      "type": "paragraph",
+      "content": "- lane is promotable - blockers are classified",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-115",
+      "type": "paragraph",
+      "content": "Does not prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-116",
+      "type": "paragraph",
+      "content": "- future changes outside the lane",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-117",
+      "type": "heading",
+      "level": 2,
+      "content": "Path Scoping Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-118",
+      "type": "paragraph",
+      "content": "All profiles support deterministic path scoping via `ValidateArgs.paths`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-119",
+      "type": "heading",
+      "level": 3,
+      "content": "Path Normalization Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-120",
+      "type": "paragraph",
+      "content": "- Paths are resolved relative to `workspace_root` (or cwd if None). - Absolute paths are accepted only if they resolve inside the workspace root. - `..` traversal outside the workspace root is refused with `unsafe_paths` error. - Nonexistent paths are refused with a blocked result (`unknown_failure` kind). - Duplicate paths are de-duplicated deterministically. - Normalized paths are sorted for stable `command_fingerprint` values.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-121",
+      "type": "heading",
+      "level": 3,
+      "content": "Per-Profile Path Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-122",
+      "type": "table",
+      "columns": [
+        "Profile",
+        "Path Behavior"
+      ],
+      "rows": [
+        [
+          "`quick`",
+          "Adds scoped `ruff check` dynamically when Python paths are provided; non-Python paths do not trigger ruff"
+        ],
+        [
+          "`python`",
+          "Scopes `ruff check` to provided Python-relevant paths; skips ruff when no Python paths provided; leaves `pyright` repo-wide (pyright path scoping is unreliable in this project)"
+        ],
+        [
+          "`schemas`",
+          "Runs schema validation only when paths contain \"schema\" or are under `docs/schemas/`; skips otherwise"
+        ],
+        [
+          "`receipt-policy`",
+          "Runs receipt policy validation only when paths contain \"receipt\" or are under receipt-related paths; skips otherwise"
+        ],
+        [
+          "`tool-hardening`",
+          "Scopes `pytest` to provided test paths (under `tests/`); skips pytest when only source paths are provided (no fragile source-to-test inference)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-123",
+      "type": "heading",
+      "level": 3,
+      "content": "Content-Light Receipts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-124",
+      "type": "paragraph",
+      "content": "- Path-scoped `affected_paths` in `ValidateCheckResult` and `ValidateCheckReceipt` contain only normalized relative paths. - No raw file contents, stdout/stderr, or command transcripts in receipts. - Receipts pass `tool_receipt_policy` validation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-125",
+      "type": "heading",
+      "level": 3,
+      "content": "Pyright Scoping Decision",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-126",
+      "type": "paragraph",
+      "content": "`pyright` is left repo-wide in all scoped modes. Pyright does not support efficient single-file scoping in this project's configuration, and scoping it would produce unreliable type-check results. This is documented as a known limitation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-127",
+      "type": "heading",
+      "level": 3,
+      "content": "Pytest Scoping Decision",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-128",
+      "type": "paragraph",
+      "content": "`pytest` is scoped only to paths under `tests/`. Source-only scoped validation does not run pytest unless an explicit test path is provided. No source-to-test inference is implemented (Stage 4+).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-129",
+      "type": "heading",
+      "level": 2,
+      "content": "Profile Taxonomy Notes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-130",
+      "type": "paragraph",
+      "content": "- `quick` should be the default entry profile. - `python` should absorb the most common bash validation patterns. - `schemas` should own schema and receipt checks. - `tool-hardening` should be used for deterministic tool contract work. - `promotion-readiness` should stay narrow and policy-heavy.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-131",
+      "type": "heading",
+      "level": 3,
+      "content": "`worktree-readiness`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-132",
+      "type": "table",
+      "columns": [
+        "Attribute",
+        "Value"
+      ],
+      "rows": [
+        [
+          "**Runtime Tier**",
+          "3 (local preflight)"
+        ],
+        [
+          "**Command Bundle**",
+          "Git state collection only (no test/lint/schema commands)"
+        ],
+        [
+          "**Timeout**",
+          "30s"
+        ],
+        [
+          "**Mutation**",
+          "Never"
+        ],
+        [
+          "**Network**",
+          "Never"
+        ],
+        [
+          "**Purpose**",
+          "Answer lane readiness purely through git workspace state + dirty policy. No tool invocations."
+        ],
+        [
+          "**Use Cases**",
+          "Preflight before mutation operations; lane occupancy checks; workspace dirtiness audits."
+        ],
+        [
+          "**Path Scoping**",
+          "No commands to scope; dirty policy applies to all paths."
+        ],
+        [
+          "**Blocker Types**",
+          "`dirty_workspace` when `expected_dirty_policy` rejects state."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/validate-tool/validate-profile-taxonomy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

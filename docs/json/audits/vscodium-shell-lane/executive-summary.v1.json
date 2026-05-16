@@ -1,0 +1,179 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "executive-summary",
+  "document_type": "audit",
+  "title": "Executive Summary: VSCodium Shell Lane for Rig Relay",
+  "summary": "The audit recommends proceeding with the **VSCodium Shell Lane** using an **Extension-First** strategy. VSCodium is a viable, governed editor shell that aligns with Rig's \"governance-first\" posture wh",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/vscodium-shell-lane/executive-summary.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Executive Summary: VSCodium Shell Lane for Rig Relay",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Verdict: GO (Extension-First)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The audit recommends proceeding with the **VSCodium Shell Lane** using an **Extension-First** strategy. VSCodium is a viable, governed editor shell that aligns with Rig's \"governance-first\" posture while offloading the heavy editor maintenance burden.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Recommendation: Extension-First",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Do not start with a custom branded distribution. Build a high-quality VSCodium extension that connects to a local Rig Relay daemon. This maximizes compatibility with the existing VS Code ecosystem (Open VSX) and ensures immediate compatibility with the ChatGPT macOS \"Work with Apps\" feature.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Estimated Effort",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "*   **Phase 1-3 (MVP):** 3-5 weeks (Skeleton, Daemon bridge, Prompt turns). *   **Phase 4-6 (Governed Workbench):** 4-6 weeks (Receipts, Patches, Worktrees). *   **Total for Dogfood:** ~2 months.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Primary Risks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Risk Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "**Technical**",
+          "Maintaining local WebSocket/IPC security between the extension and the daemon."
+        ],
+        [
+          "**Product**",
+          "\"Clutter-rot\": The VS Code UI is dense; Rig must remain content-light and distinct from generic \"AI chat\" sidebars."
+        ],
+        [
+          "**Security**",
+          "Extension supply chain: Rig's governance must protect the user even if other extensions are malicious."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "5. Minimum Viable Dogfood (MVD)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "A VSCodium environment where an operator can: 1.  Open a workspace. 2.  Type a prompt in a Rig side-panel. 3.  Observe agent tool calls (Bash, Read, etc.) in a content-light stream. 4.  Approve/Reject changes via a Patch Review surface. 5.  Inspect Evidence Receipts for all actions within the editor.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "6. Key Conclusions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "1.  **VSCodium is the correct shell**: It removes Microsoft telemetry/marketplace constraints while keeping the extension API. 2.  **Daemon is the source of truth**: Governance, tools, and execution *must* stay in the Python daemon. The extension is purely a projection/input surface. 3.  **Governance as the Wedge**: Unlike Cursor or Aider, Rig wins on verifiable evidence and worktree safety, not on IDE features.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/vscodium-shell-lane/executive-summary.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SearchReplace Final Gaps — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="SearchReplace is largely complete:">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>SearchReplace Final Gaps</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">SearchReplace Final Gaps</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Current Hardening Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">SearchReplace is largely complete:</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">- structured invocation/result/receipt models: present - `build_receipt()`: present - schema coverage: present - content-light validator coverage: present - receipt index compatibility: present - automatic receipt emission through the agent loop: present</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Remaining Gaps</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">1. **End-to-end agent-loop test** - Current evidence proves `build_receipt()` and generic receipt emission separately. - Missing: a full synthetic agent-loop test that exercises `_execute_tool()` end to end.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">2. **Sanitizer edge cases** - `refusal_reason` and `warnings` are sanitized, but the current audit still flags the need for a tighter regression around any future contextual text.</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">3. **Structured failure completeness** - Some `ToolError` paths still bypass receipt emission because they are caller/setup errors rather than tool outcomes. - That is acceptable, but should remain explicit and tested.</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">4. **Status completeness** - Structured statuses are present, but the audit should keep checking that every intended status emits a receipt and indexes correctly.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Evidence Standard</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">SearchReplace should remain the reference pattern for deterministic mutation tools:</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- content-light receipts - schema coverage - policy validation - receipt index compatibility - structured refusals</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Next Step</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Use SearchReplace as the baseline template for `write_file`.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-hardening/search-replace-final-gaps.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

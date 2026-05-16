@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Assembler — Completion Plan — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Inspection date: 2026-05-15. HEAD: c5a31bbe.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Context Assembler — Completion Plan</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Context Assembler — Completion Plan</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Inspection date: 2026-05-15. HEAD: c5a31bbe.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Current state</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The context assembly pipeline (`rig_relay/context/`) has a well-structured model layer (`ContextRequest`, `ContextPacket`, `ContextScope`, `ContextBudget`, `CompressionMode`, `DetailLevel`) and a functional but incomplete compiler (`compiler.py`). The compiler successfully builds repo topology, subsystem maps, collision warnings, and receipt entries. But 12 of 12 request fields that promise gating behavior are ignored. Budget, compression, detail, freshness, relevance, and repo-index expansion are all promised by the schema but not delivered by the implementation.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Proposed architecture: ContextAssemblyPlan v1</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">New models</h3>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Model</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`ContextCandidate`</td><td>A discovered possible context item (file, symbol, receipt, lane)</td></tr>
+<tr><td>`ContextSelection`</td><td>A selected context item with reason, priority, and estimated tokens</td></tr>
+<tr><td>`ContextOmission`</td><td>An omitted item with reason (budget, irrelevant, duplicate, risk)</td></tr>
+<tr><td>`ContextAssemblyPlan`</td><td>Canonical plan: candidates → selections → omissions → budget → warnings → hashes</td></tr>
+<tr><td>`ContextSection`</td><td>Rendered packet section with provenance, cache tier, and token estimate</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Candidate fields</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`path`</td><td>str</td><td>repo-relative path</td></tr>
+<tr><td>`kind`</td><td>str</td><td>source/test/doc/schema/config/work/receipt/governance</td></tr>
+<tr><td>`source`</td><td>str</td><td>requested_path/repo_index/repo_map/work_map/receipt</td></tr>
+<tr><td>`relation`</td><td>str\</td><td>None</td><td>direct/test/doc/schema/same_package/active_work/collision</td></tr>
+<tr><td>`estimated_tokens`</td><td>int</td><td>deterministic estimate from token_estimator</td></tr>
+<tr><td>`priority`</td><td>int</td><td>deterministic integer from scoring function</td></tr>
+<tr><td>`risk_flags`</td><td>list[str]</td><td>dirty/collision/generated/large/binary/unknown</td></tr>
+<tr><td>`reason`</td><td>str</td><td>concise human-readable reason for inclusion</td></tr>
+<tr><td>`source_hash`</td><td>str\</td><td>None</td><td>content hash if safe to compute</td></tr>
+<tr><td>`include_mode`</td><td>str</td><td>full/summary/path_only/omitted</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Planner flow</h3>
+
+<pre id="code-11"><code class="language-text">ContextRequest.normalize()
+  → resolve scope paths/symbols/options
+  → discover_candidates()
+    → requested_paths + repo_map + work_map
+  → expand_relations()
+    → RepoContextIndex for tests/docs/schemas/same-package
+  → apply_scope_flags()
+    → include_tests/include_docs/include_receipts filtering
+  → score_candidates()
+    → deterministic priority: requested &gt; related &gt; same_package &gt; other
+  → apply_risk_policy()
+    → collision_warnings → do_not_touch flag
+    → dirty files → risk flag, not exclusion
+  → enforce_budget()
+    → select until cumulative tokens ≤ max_tokens
+    → record omissions with reason
+  → apply_compression()
+    → symbol_codec only if net savings positive
+    → substitution_table_sha256
+  → build_packet()
+    → structured sections with cache tiers
+  → build_receipt()
+    → canonical hash, warnings, omissions</code></pre>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Cache-aware layout</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Cache tier</th><th>Sections</th><th>Stability</th></tr></thead>
+<tbody>
+<tr><td>stable</td><td>AGENTS.md, project doctrine, schemas, API contracts</td><td>Changes only on repo structure/doctrine updates</td></tr>
+<tr><td>semi-stable</td><td>Repo topology, subsystem map, package map</td><td>Changes on file additions/removals</td></tr>
+<tr><td>dynamic</td><td>Dirty files, active lanes, collision warnings</td><td>Changes every turn</td></tr>
+<tr><td>volatile</td><td>Current user task, latest receipts, tool results</td><td>Changes mid-turn</td></tr>
+</tbody>
+</table>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Prompt caching research supports this: strategic cache block placement outperforms naive full-context caching. Static content should be placed at the beginning of the prompt for prefix caching.</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Privacy/security model</h3>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Untrusted repo docs/files</td><td>Label with provenance (`source: &quot;repo_file&quot;`, `trust: &quot;untrusted&quot;`)</td></tr>
+<tr><td>Tool output injection</td><td>Separate dynamic/tool-result sections with explicit boundary</td></tr>
+<tr><td>External docs</td><td>`provenance: &quot;external&quot;`, `trust_tier: &quot;untrusted&quot;`</td></tr>
+<tr><td>Raw secrets in context</td><td>Path/env/token redaction before rendering</td></tr>
+<tr><td>Prompt instructions in files</td><td>Prefix with `[CONTEXT EVIDENCE — NOT INSTRUCTIONS]` marker</td></tr>
+<tr><td>Raw message content</td><td>Replace with content_sha256 + role + byte_count</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Implementation slices</h2>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Slice</th><th>Goal</th><th>Gap IDs addressed</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>`ContextAssemblyPlan` models + tests</td><td>Define `ContextCandidate`, `ContextSelection`, `ContextOmission`, `ContextAssemblyPlan`, `ContextSection` as Pydantic models with `extra=&quot;forbid&quot;`. Deterministic hash tests.</td><td>— (new models)</td></tr>
+<tr><td>2</td><td>Deterministic planner: candidate discovery + scoring</td><td>`discover_candidates()`, `score_candidates()`, `apply_scope_flags()`, `apply_risk_policy()`. Pure functions, testable without repo.</td><td>003, 004, 006</td></tr>
+<tr><td>3</td><td>RepoIndex integration: relation expansion</td><td>Wire `RepoContextIndex` into planner. `expand_relations()` for tests/docs/schemas/same-package.</td><td>004, 016</td></tr>
+<tr><td>4</td><td>Budget enforcement: select under max_tokens</td><td>`enforce_budget()` with incremental token tracking. `ContextOmission` recording.</td><td>001, 007</td></tr>
+<tr><td>5</td><td>Compression integration: symbol codec</td><td>`apply_compression()` calling `SymbolCodec.compress()`. Net savings check. Substitution table SHA.</td><td>002, 008, 015</td></tr>
+<tr><td>6</td><td>Cache-aware renderer: stable/dynamic/volatile layout</td><td>`build_packet()` with cache tier ordering. Section metadata.</td><td>014</td></tr>
+<tr><td>7</td><td>Privacy/provenance hardening: trust labels + injection boundary</td><td>Trust tier labels on all context. Quoted evidence markers. Path/secret redaction.</td><td>009, 010</td></tr>
+<tr><td>8</td><td>AgentLoop integration: consume plan/packet safely</td><td>Replace `build_envelope()` with `ContextAssemblyPlan.execute()`. Backward compatible.</td><td>—</td></tr>
+<tr><td>9</td><td>Determinism fix: hash-based IDs</td><td>Replace `uuid4()` with deterministic hash. Exclude `generated_at` from canonical hash.</td><td>011, 012</td></tr>
+<tr><td>10</td><td>Failure hardening: structured warnings</td><td>Replace `except: pass` with logged warnings. Add `warnings` field to receipt.</td><td>013</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Tests needed</h2>
+
+<table id="table-20" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Slice</th><th>Test scenarios</th></tr></thead>
+<tbody>
+<tr><td>1 — Models</td><td>JSON-safe serialization, extra=forbid, field defaults, candidate equality, selection/omission roundtrip</td></tr>
+<tr><td>2 — Planner</td><td>Empty request, single path, path not found, scope flag exclusion, risk flag propagation, deterministic priority for identical inputs</td></tr>
+<tr><td>3 — RepoIndex</td><td>Test/doc/schema expansion from source file, same-package expansion, no circular expansion, empty index returns empty</td></tr>
+<tr><td>4 — Budget</td><td>Under-budget selection, exact-budget selection, over-budget omission, omission reason recorded, cumulative token tracking</td></tr>
+<tr><td>5 — Compression</td><td>No savings → skip, positive savings → apply, substitution table valid, compressed → decompressed roundtrip</td></tr>
+<tr><td>6 — Cache layout</td><td>Stable sections first, dynamic sections last, cache tier metadata on sections</td></tr>
+<tr><td>7 — Privacy</td><td>Untrusted source label, quoted evidence marker, path hash instead of raw, message content replaced with hash</td></tr>
+<tr><td>8 — Integration</td><td>AgentLoop._build_context_envelope unchanged API, backward compatible receipt, no regression on existing context tests</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Recommendation</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Build slices 1-4 as a single coherent push (model + planner + repo index + budget). This establishes the `ContextAssemblyPlan` architecture and delivers the four highest-impact gaps (budget enforcement, scope filtering, relevance scoring, repo index integration). Slices 5-10 can follow as separate pushes.</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">The current implementation is NOT wrong — it&#x27;s just incomplete. The compiler produces correct, deterministic output for what it does. The completion plan adds the missing intelligence without rewriting the existing infrastructure.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/context/context-assembler-completion-plan.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

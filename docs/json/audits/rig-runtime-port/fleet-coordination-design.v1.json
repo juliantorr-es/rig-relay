@@ -1,0 +1,273 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "fleet-coordination-design",
+  "document_type": "audit",
+  "title": "Fleet Coordination Plane — Design Audit",
+  "summary": "**Date:** 2026-05-14",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/rig-runtime-port/fleet-coordination-design.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Fleet Coordination Plane — Design Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date:** 2026-05-14 **Status:** Design Reviewed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Context",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Rig Relay is evolving from a single-agent session model to a multi-agent fleet model. The current \"Cross-Session Coordination\" (local, file-backed) provides basic path and task isolation but does not scale to a fleet where many agents might need to mutate shared files.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Problem Statement",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Parallel agents currently collide when editing shared files. While Git worktrees provide isolation, managing 20+ worktrees for a single mission is ergonomically and computationally expensive.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Design Principles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "1. **Orchestrator Ownership**: The orchestrator is the only entity that mutates the canonical worktree. 2. **Patch-Based Workflow**: Agents submit `PatchProposals` for shared resources. 3. **Receipt-Backed Coordination**: Every coordination action (lease, message, patch) emits an event in a canonical JSONL stream. 4. **Content-Light Events**: Events contain hashes and metadata, never raw prompts, secrets, or large blobs.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Assessment of Proposed Entities",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "AgentSession",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- **Strengths**: Provides stable identity for audit and lease ownership. - **Risks**: Stale sessions must be cleaned up to avoid holding leases indefinitely.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "WorkClaim & PathLease",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- **Strengths**: Reuses successful concepts from existing cross-session coordination. - **Risks**: Lease granularity (per-file vs. per-directory) needs to be balanced for performance vs. isolation. Salted hashes of paths are used for privacy.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "AgentMessage & PatchProposal",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- **Strengths**: Enables the \"agents propose; orchestrator disposes\" model. Decouples thinking from mutation. - **Risks**: Orchestrator review latency could become a bottleneck. Automated patch validation is required.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "5. Storage and Indexing",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- **Canonical JSONL**: Append-only log is robust and auditable. - **DuckDB Boundary**: Using DuckDB as a read-only index is the correct posture. It avoids multi-process write contention and keeps the source of truth simple (files). - **Local-First**: Staying under `.rig/fleet/` (within the project root) maintains the \"no daemon\" philosophy.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "6. Failure Modes and Mitigation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-19",
+      "type": "table",
+      "columns": [
+        "Failure",
+        "Mitigation"
+      ],
+      "rows": [
+        [
+          "Agent Crash",
+          "Heartbeat monitor in orchestrator marks leases as `stale`."
+        ],
+        [
+          "Network/FS Partition",
+          "Atomic file replacement and `flock` as local guards."
+        ],
+        [
+          "Duplicate Event IDs",
+          "Idempotency checks at the store layer."
+        ],
+        [
+          "Stale Lease Conflict",
+          "Takeover protocol requiring fresh dirty snapshots."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "7. Migration Path",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "1. **Phase 1 (Current)**: Implement schemas and governance docs. 2. **Phase 2**: Implement `FleetCoordinationStore` with JSONL backing. 3. **Phase 3**: Implement `PatchProposal` artifact generation in agents. 4. **Phase 4**: Implement `MergeDecision` applier in orchestrator.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "8. Conclusion",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "The proposed Fleet Coordination Plane design correctly centralizes mutation authority while decentralizing thought. It avoids the scaling limits of Git worktrees by moving to a structured patch-proposal mechanism. The use of salted hashes and content-light events preserves the project's privacy and observability standards.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/rig-runtime-port/fleet-coordination-design.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

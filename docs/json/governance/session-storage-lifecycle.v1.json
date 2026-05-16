@@ -1,0 +1,355 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "session-storage-lifecycle",
+  "document_type": "governance",
+  "title": "Session Storage Lifecycle",
+  "summary": "**Draft.** Conservative lifecycle policy for `~/.rig/sessions`.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/session-storage-lifecycle.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Session Storage Lifecycle",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Draft.** Conservative lifecycle policy for `~/.rig/sessions`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Primary Surface",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "The primary product surface is an end-of-session agent tool:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- `rig.relay.session_lifecycle.finalize`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "The finalize tool may optionally receive a `MissionEnvelope` and will write a mission-linked lifecycle receipt when one is provided.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "CLI scripts remain internal/admin/recovery utilities for now.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- `~/.rig/sessions` is hot state, not a long-term archive. - Dry-run is the default for audit, compaction, and GC tooling. - Protected classes are never deleted by default. - Active or pinned sessions are never deleted. - Shareable outputs must remain content-light.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Storage Classes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Class",
+        "Treatment"
+      ],
+      "rows": [
+        [
+          "Hot",
+          "Recent session state, active sessions, pinned sessions"
+        ],
+        [
+          "Warm",
+          "Compaction candidates eligible for rollups"
+        ],
+        [
+          "Cold",
+          "Archivable or pruneable candidates after retention"
+        ],
+        [
+          "Delete",
+          "Only confirmed GC candidates after safety checks"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Protected Classes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "- receipts - consent - upload_receipts - signed_envelopes - active session markers - pinned sessions",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Compaction Strategy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "- JSONL event-like files may be rolled up to Parquet when DuckDB is available. - When DuckDB is unavailable, gzip JSONL is the fallback. - No raw prompts, model outputs, source diffs, stdout, or stderr bodies are allowed in shareable rollups. - Current-session compaction may run automatically during finalization.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "GC Strategy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "- GC is dry-run first. - GC must print exact paths and sizes. - GC must refuse to delete protected classes. - GC must stop when the configured delete cap is reached. - GC may archive candidates instead of deleting them. - Confirmed deletion only happens when the operator passes the explicit confirm flag. - Cross-session GC is separate maintenance, not part of normal finalization.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Recovery",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- Manual recovery requires the source session tree and the local GC receipt. - Receipts, consent, and signed envelopes remain untouched. - Nothing is uploaded.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "Manual Use",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "- Do not manually delete session trees unless you understand the retention policy and the local recovery path. - Protected classes are never compacted or pruned. - Lifecycle receipts are part of the evidence trail. - Mission linkage is optional and must not require ADR or sprint metadata.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Future CLI Surface",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Future Relay CLI commands are expected to expose the same lifecycle actions:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "- `rig relay sessions audit` - `rig relay sessions compact` - `rig relay sessions gc`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "This is future work only. The current implementation is script-based.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-27",
+      "type": "heading",
+      "level": 2,
+      "content": "Tool Receipt Evidence Index",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Receipt events (`rig.relay.tool_receipt.captured`) can be queried via the receipt index builder in `rig_relay.evidence.receipt_index`. The index is:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "- **Content-light**: no raw stdout, stderr, file contents, diffs, snippets, or secrets. Only metadata, SHA256 hashes, byte counts, and structured error classification. - **Read-only derived evidence**: built from session observability events, never modified. - **Audit/replay surface**: answers which tools ran, which calls mutated files, which were refused or timed out, and which produced before/after hashes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "Currently supported tools: `bash`, `search_replace`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "The CLI script `scripts/rig_relay_receipt_index.py` provides read-only inspection.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-32",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "- [Usage Data Doctrine](usage-data-doctrine.md) - [Storage Retention Policy](storage-retention-policy.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md) - [Telemetry Contribution Policy](telemetry-contribution-policy.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/session-storage-lifecycle.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

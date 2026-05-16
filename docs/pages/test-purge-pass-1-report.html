@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Purge Pass 1 Report — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="All 177 deletions were already staged by a prior agent in the main branch. No additional deletions were performed in this pass.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Purge Pass 1 Report</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Purge Pass 1 Report</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Baseline Metrics</h2>
+
+<table id="table-3" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Branch/HEAD</td><td>main / 8d0b13c802e182c72ade51e58ae70b6abafdadc3</td></tr>
+<tr><td>Collected test count</td><td>6085</td></tr>
+<tr><td>Test files (test_*.py)</td><td>325</td></tr>
+<tr><td>Total .py files in tests/</td><td>360</td></tr>
+<tr><td>Layout guard</td><td>PASSED</td></tr>
+<tr><td>Conftest hygiene</td><td>PASSED</td></tr>
+<tr><td>Collect-only errors</td><td>0</td></tr>
+<tr><td>Dirty files (modified in tree)</td><td>~36 M + ~177 D staged</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Deletions Executed</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">All 177 deletions were already staged by a prior agent in the main branch. No additional deletions were performed in this pass.</p>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Deletion Categories</h3>
+
+<details id="table-7" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-7" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Category</th><th>Count</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><td>Old TUI autocomplete</td><td>2</td><td>tests/autocompletion/test_path_completion_controller.py, test_slash_command_controller.py</td></tr>
+<tr><td>Old TUI plan offer</td><td>3</td><td>tests/cli/plan_offer/*</td></tr>
+<tr><td>Old TUI CLI features</td><td>7</td><td>tests/cli/test_cache.py, test_clipboard.py, test_commands.py, test_doctor.py, test_initial_agent_name.py, test_programmatic_setup.py, test_stderr_guard.py</td></tr>
+<tr><td>Old TUI narrator</td><td>2</td><td>tests/narrator_manager/*</td></tr>
+<tr><td>Duplicate scripts tests</td><td>8</td><td>tests/scripts/test_desktop_*.py, test_websocket_server.py, etc.</td></tr>
+<tr><td>Old TUI snapshots</td><td>~90</td><td>tests/snapshots/__snapshots__/*.svg, test_ui_snapshot_*.py</td></tr>
+<tr><td>Old TUI stubs</td><td>3</td><td>tests/stubs/fake_audio_recorder.py, fake_transcribe_client.py, fake_voice_manager.py</td></tr>
+<tr><td>Old update notifier</td><td>8</td><td>tests/update_notifier/*</td></tr>
+<tr><td>Old voice manager</td><td>2</td><td>tests/voice_manager/*</td></tr>
+<tr><td>Old webview console</td><td>1</td><td>tests/webview_console/*</td></tr>
+<tr><td>Root-level migration tests</td><td>20+</td><td>test_agents.py, test_cli_programmatic_preload.py, test_history_manager.py, test_message_id.py, test_message_merging.py, test_model_observations.py, test_observation_consent_integration.py, test_rig_relay.py, test_tagged_text.py, test_telemetry_consent.py, test_turn_summary.py</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Canonical Survivor Coverage</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">All desktop/WebSocket functionality from deleted tests/scripts/* is covered by canonical tests in tests/desktop/test_websocket_server.py, test_desktop_projection.py, test_intents.py, and test_protected_intents.py (all 44 + tests pass).</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">All orchestration/projection functionality is covered by tests in tests/desktop/, tests/ralph/, tests/orchestrator/, tests/runtime/.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Remaining Purge Candidates</h2>
+
+<table id="table-12" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Path</th><th>Category</th><th>Risk</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td>purge-layout-split</td><td>tests/scripts/ surviving files</td><td>misc</td><td>low</td><td>Auditing remaining scripts/ tests for future relocation</td></tr>
+<tr><td>purge-demo-mcp</td><td>tests/demo/test_mcp_night_demo_fixtures.py</td><td>stale</td><td>low</td><td>Defer — imports redaction module, needs investigation</td></tr>
+<tr><td>purge-historical-migration</td><td>tests/docs/test_vibe_legacy_boundary.py</td><td>historical</td><td>low</td><td>Defer — documents migration, may be kept as audit</td></tr>
+<tr><td>purge-textual-retirement</td><td>tests/docs/test_textual_retirement_policy.py</td><td>policy</td><td>low</td><td>Defer — documents TUI retirement, useful as audit evidence</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Validation</h2>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Check</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>`PYTHONDONTWRITEBYTECODE=1 uv run pytest --collect-only -q`</td><td>6085 tests collected, 0 errors</td></tr>
+<tr><td>Layout guard</td><td>PASSED</td></tr>
+<tr><td>Conftest hygiene</td><td>PASSED</td></tr>
+<tr><td>demo-doctor</td><td>22/22 passed</td></tr>
+<tr><td>Desktop tests (full)</td><td>326/326 passed</td></tr>
+<tr><td>Runtime convergence tests</td><td>9/9 passed</td></tr>
+<tr><td>Ralph tests</td><td>All passing</td></tr>
+<tr><td>Orchestrator tests</td><td>All passing</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Inventories Created</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- `docs/audits/test-suite/test_purge_candidates.jsonl` — 10 candidate groups documented - `docs/audits/test-suite/canonical_coverage_keep_list.jsonl` — 20 canonical test groups protected</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite/test_purge_pass_1_report.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

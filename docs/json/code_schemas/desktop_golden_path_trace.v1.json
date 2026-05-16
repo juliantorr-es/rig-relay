@@ -1,0 +1,109 @@
+{
+  "schema_version": "rig.code_schema.v1",
+  "document_id": "desktop-golden-path-trace",
+  "schema_id": "desktop_golden_path_trace.v1",
+  "title": "Desktop Golden Path Trace",
+  "summary": "Canonical desktop bridge startup and handshake trace for the local golden path.",
+  "change_kind": "desktop_bridge_trace",
+  "status": "active",
+  "authority": {
+    "authority_kind": "repo_governance",
+    "trusted": true,
+    "source_path": "docs/json/governance/desktop-cockpit-ui.v1.json",
+    "source_hash": "sha256:7b5d7431ff5f17d47f74e1197aead59db7e295cbe6f291abb7b28fe60eee42e8",
+    "review_status": "active",
+    "last_reviewed_at": "2026-05-18"
+  },
+  "intent_patterns": [
+    "desktop bridge startup",
+    "golden path trace",
+    "handshake id",
+    "projection rendered",
+    "status rendered"
+  ],
+  "applies_when": {
+    "symptoms": [
+      "bridge launches but frontend stays disconnected",
+      "transport handshake trace missing",
+      "browser integration needs proof"
+    ],
+    "traceback_patterns": [
+      "desktop.bridge.start_begin",
+      "desktop.transport.handshake_succeeded"
+    ],
+    "file_patterns": [
+      "rig_relay/desktop/bridge_server.py",
+      "rig_relay/desktop/websocket_server.py",
+      "tests/desktop/test_golden_path.py"
+    ],
+    "test_patterns": [
+      "tests/desktop/test_golden_path.py",
+      "tests/desktop/test_golden_path_browser_integration.py"
+    ],
+    "user_prompt_patterns": [
+      "golden path trace",
+      "desktop startup handshake",
+      "browser integration"
+    ]
+  },
+  "required_invariants": [
+    "Startup logs report host, port, frontend_url, websocket_url, tls_enabled, token_present, and transport_label.",
+    "Auth success must emit canonical handshake_id.",
+    "Projection sent, received, and rendered must be traced.",
+    "Status rendered must follow connection success.",
+    "Playwright browser integration is release evidence.",
+    "Simulated trace tests are analyzer tests, not launch proof.",
+    "No untrusted TLS is labeled secure."
+  ],
+  "validation_commands": [
+    "uv run pytest tests/desktop/test_golden_path_browser_integration.py tests/desktop/test_golden_path.py -q",
+    "uv run pytest tests/desktop/test_websocket_correlation.py -q"
+  ],
+  "forbidden_patterns": [
+    "Secure Local Bridge",
+    "missing handshake_id",
+    "ws_url without /ws"
+  ],
+  "required_files": [
+    "rig_relay/desktop/bridge_server.py",
+    "rig_relay/desktop/websocket_server.py",
+    "tests/desktop/test_golden_path.py"
+  ],
+  "required_tests": [
+    "tests/desktop/test_golden_path.py",
+    "tests/desktop/test_golden_path_browser_integration.py"
+  ],
+  "required_trace_events": [
+    "desktop.bridge.start_begin",
+    "desktop.frontend.bootstrap_loaded",
+    "desktop.transport.websocket_connected",
+    "desktop.transport.auth_received",
+    "desktop.transport.handshake_succeeded",
+    "frontend_status_rendered"
+  ],
+  "required_receipts": [
+    "bridge_probe.json",
+    "bridge.log"
+  ],
+  "context_pack": {
+    "include_files": [
+      "rig_relay/desktop/bridge_server.py",
+      "rig_relay/desktop/websocket_server.py",
+      "tests/desktop/test_golden_path.py"
+    ],
+    "include_docs": [
+      "docs/json/governance/desktop-cockpit-ui.v1.json",
+      "docs/json/governance/relay-desktop-projection-contract.v1.json"
+    ],
+    "include_schemas": [
+      "docs/schemas/rig.code_schema.v1.schema.json",
+      "docs/schemas/rig.documentation.page.v1.schema.json"
+    ],
+    "exclude_patterns": [
+      "docs/pages/**",
+      "**/*.html"
+    ],
+    "max_context_notes": 12
+  },
+  "model_facing_summary": "Use the desktop golden path as the proof artifact. Trace startup, websocket connect, auth, projection, and status rendering with canonical handshake_id."
+}

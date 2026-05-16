@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Suite Tiering Report — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="- Conftest hygiene (1): conftest source guard">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Suite Tiering Report</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Suite Tiering Report</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Marker Definitions</h2>
+
+<details id="table-3" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-3" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Marker</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`smoke`</td><td>Fastest health checks; must pass before demo/share</td></tr>
+<tr><td>`contract`</td><td>Domain contract/unit tests</td></tr>
+<tr><td>`integration`</td><td>Crosses multiple components/processes/filesystems</td></tr>
+<tr><td>`e2e`</td><td>Broad-stack or full flow</td></tr>
+<tr><td>`packaging`</td><td>Packaged app / installer / bundle checks</td></tr>
+<tr><td>`slow`</td><td>Intentionally slow — excluded from default</td></tr>
+<tr><td>`legacy`</td><td>Retained but not part of default suite</td></tr>
+<tr><td>`quarantine`</td><td>Quarantined, runs only in dedicated job</td></tr>
+<tr><td>`flaky`</td><td>Known nondeterministic — excluded from default</td></tr>
+<tr><td>`network`</td><td>Requires external network</td></tr>
+<tr><td>`provider`</td><td>Requires external model/provider/API</td></tr>
+<tr><td>`destructive`</td><td>Mutates worktrees/branches/files beyond temp dirs</td></tr>
+<tr><td>`migration`</td><td>Being relocated during test layout canonicalization</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Canonical Commands</h2>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Purpose</th><th>Command</th></tr></thead>
+<tbody>
+<tr><td>Smoke</td><td>`uv run pytest -m smoke`</td></tr>
+<tr><td>Default (dev/agent)</td><td>`uv run pytest -m &quot;not slow and not legacy and not quarantine and not flaky and not network and not provider and not destructive&quot;`</td></tr>
+<tr><td>Full suite</td><td>`uv run pytest`</td></tr>
+<tr><td>Collection check</td><td>`PYTHONDONTWRITEBYTECODE=1 uv run pytest --collect-only -q`</td></tr>
+<tr><td>Legacy/quarantine review</td><td>`uv run pytest -m &quot;legacy or quarantine or flaky&quot;`</td></tr>
+<tr><td>Packaging</td><td>`uv run pytest -m packaging`</td></tr>
+<tr><td>Integration/e2e</td><td>`uv run pytest -m &quot;integration or e2e&quot;`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Current Suite Metrics</h2>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Suite</th><th>Tests Collected</th><th>Passed</th><th>Time</th></tr></thead>
+<tbody>
+<tr><td>Smoke</td><td>24</td><td>24</td><td>48.7s</td></tr>
+<tr><td>Default</td><td>6104</td><td>—</td><td>—</td></tr>
+<tr><td>Full</td><td>6108</td><td>—</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Smoke Tests (24 marks)</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- Conftest hygiene (1): conftest source guard - Layout guard (1): test layout audit - Architecture quality doctrine (12): marker validation, conftest checks, naming rules - Orchestrator (3): demo profiles, autonomous worker, local bindings - Ralph (4): lifecycle projection, mission board, demo reports - Desktop TLS (1): TLS material generation - Desktop projection (1): build projection returns dict - Runtime convergence (1): runner uses tool runtime</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Agent Guidance</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Agents should run `validate focused` or the default marker expression unless explicitly asked for full suite validation. Full suite is an explicit confidence event, not an ordinary loop.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite/default_suite_tiering_report.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

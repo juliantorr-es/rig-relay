@@ -6,29 +6,54 @@
   "summary": "Canonical JSON documentation policy for Rig Relay. New docs must be JSON. Old Markdown must be migrated before deletion.",
   "status": "active",
   "created_at": "2026-05-18",
-  "owners": ["maintainer"],
-  "tags": ["documentation", "policy", "json"],
-  "audience": ["contributor", "agent", "maintainer"],
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "documentation",
+    "policy",
+    "json"
+  ],
+  "audience": [
+    "contributor",
+    "agent",
+    "maintainer"
+  ],
   "canonical_path": "docs/json/documentation_policy.v1.json",
-  "render": {"toc": true, "search_index": true},
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
   "sections": [
     {
       "block_id": "heading-1",
       "type": "heading",
       "level": 1,
-      "content": "Documentation Policy"
+      "content": "Documentation Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     },
     {
       "block_id": "policy-statement",
       "type": "callout",
       "severity": "info",
-      "content": "New project documentation must be written as canonical JSON artifacts using the rig.documentation.page.v1 schema. Markdown is only permitted for explicitly allowed exceptions. Old Markdown docs must be migrated to JSON before deletion."
+      "content": "New project documentation must be written as canonical JSON artifacts using the rig.documentation.page.v1 schema. Markdown is only permitted for explicitly allowed exceptions. Old Markdown docs must be migrated to JSON before deletion.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     },
     {
       "block_id": "heading-allowed",
       "type": "heading",
       "level": 2,
-      "content": "Allowed Markdown Exceptions"
+      "content": "Allowed Markdown Exceptions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     },
     {
       "block_id": "allowed-list",
@@ -41,13 +66,20 @@
         "LICENSE — plain license text",
         "ATTRIBUTION.md — human-readable attribution",
         "CHANGELOG.md — if release tooling requires it"
-      ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
     },
     {
       "block_id": "heading-rules",
       "type": "heading",
       "level": 2,
-      "content": "Migration Rules"
+      "content": "Migration Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     },
     {
       "block_id": "migration-rules",
@@ -60,13 +92,20 @@
         "References must be updated",
         "Tests must pass",
         "Deletion must be listed in the final report"
-      ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
     },
     {
       "block_id": "heading-schemas",
       "type": "heading",
       "level": 2,
-      "content": "Required Schema Validation"
+      "content": "Required Schema Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     },
     {
       "block_id": "schemas-list",
@@ -75,35 +114,97 @@
         "rig.documentation.page.v1 — individual documentation pages",
         "rig.documentation.collection.v1 — named document collections",
         "rig.documentation.migration_manifest.v1 — migration tracking",
-        "rig.documentation.site_manifest.v1 — site navigation structure"
-      ]
+        "rig.documentation.site_manifest.v1 — site navigation structure",
+        "rig.code_schema.v1 — governed implementation contracts",
+        "rig.code_schema.plan.v1 — integration plans for the context assembler"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "heading-code-schemas",
+      "type": "heading",
+      "level": 2,
+      "content": "Code Schemas",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-schema-policy",
+      "type": "callout",
+      "severity": "info",
+      "content": "Recurring implementation patterns should be written as JSON code schemas under docs/json/code_schemas/ and validated against docs/schemas/rig.code_schema.v1.schema.json. Code schemas are governed contracts for retrieval and context packing, not code templates.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     },
     {
       "block_id": "heading-render",
       "type": "heading",
       "level": 2,
-      "content": "Static Site Rendering"
+      "content": "Static Site Rendering",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     },
     {
       "block_id": "render-info",
       "type": "paragraph",
-      "content": "Documentation is rendered to static HTML by scripts/render_static_docs.py. The generated site is committed under docs/ and published via GitHub Pages from the main branch /docs folder. No custom GitHub Actions workflow is required."
+      "content": "Documentation is rendered to static HTML by scripts/render_static_docs.py. The generated site is committed under docs/ and published via GitHub Pages from the main branch /docs folder. No custom GitHub Actions workflow is required.",
+      "disclosure": {
+        "level": "standard"
+      }
     },
     {
       "block_id": "heading-actions",
       "type": "heading",
       "level": 2,
-      "content": "Actions Policy"
+      "content": "Actions Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     },
     {
       "block_id": "actions-policy",
       "type": "table",
-      "columns": ["Setting", "Value"],
+      "columns": [
+        "Setting",
+        "Value"
+      ],
       "rows": [
-        ["Custom GitHub Actions required", "false"],
-        ["Default publish model", "local_render_committed_static_site"],
-        ["Reason", "Avoid unnecessary GitHub Actions quota and artifact storage use"]
-      ]
+        [
+          "Custom GitHub Actions required",
+          "false"
+        ],
+        [
+          "Default publish model",
+          "local_render_committed_static_site"
+        ],
+        [
+          "Reason",
+          "Avoid unnecessary GitHub Actions quota and artifact storage use"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
     }
-  ]
+  ],
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
 }

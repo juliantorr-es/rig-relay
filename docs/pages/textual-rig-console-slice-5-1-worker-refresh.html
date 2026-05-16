@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual Worker boundary so provider reads (`build_receipt_index`) cannot block the UI event loop as receipt/session data grows.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Motivation</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Slice 5 added `RuntimeDashboardProjectionProvider` — a real, read-only provider that reads session observability JSONL via `build_receipt_index()`. For small receipts this is fast (&lt;1ms), but as session data accumulates the read could take tens of milliseconds or more. Textual guidance is to use workers for any work that may take more than a few milliseconds.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Previously, `action_refresh()` awaited `provider.dashboard_projection()` directly in the message handler — blocking widget updates and keystroke processing until the read completed.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">What Changed</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">`DashboardScreen` (`screens/dashboard.py`)</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">1. **`action_refresh()` rewritten** — no longer awaits the provider directly. Instead it: - Returns immediately with a status message (&quot;Refresh started&quot;) - Schedules the real work via `self.run_worker(self._do_refresh, exclusive=True, exit_on_error=False)` - Without a provider, returns early (no worker, no status)</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**Important:** `action_refresh` passes `self._do_refresh` (a bound method callable) rather than `self._do_refresh()` (a coroutine). Textual&#x27;s `run_worker` accepts both — when given a callable it calls it to obtain the coroutine. When `run_worker` is patched in tests, the mock receives a bound method (never an orphaned coroutine), avoiding `RuntimeWarning: coroutine &#x27;_do_refresh&#x27; was never awaited`.</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">2. **`_do_refresh()` added** — async method that runs inside a Textual Worker: - Calls `provider.dashboard_projection()` in the background - On success: calls `update_projection()`, sets `_last_refresh_at`, clears `_last_refresh_error`, shows &quot;Refresh complete&quot; - On `asyncio.CancelledError`: silently exits (worker was replaced by a newer refresh via `exclusive=True`) - On other exceptions: sanitizes the error (first line, max 100 chars), stores it in `_last_refresh_error`, shows &quot;Refresh failed: &lt;msg&gt;&quot;</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">3. **Refresh state fields added** to `__init__`: - `_refresh_in_progress: bool` — True while a worker is active - `_last_refresh_error: str | None` — sanitized error message - `_last_refresh_at: str | None` — ISO-8601 timestamp of last success</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Worker Behavior</h3>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Aspect</th><th>Decision</th></tr></thead>
+<tbody>
+<tr><td>Mechanism</td><td>`self.run_worker(coro, exclusive=True, exit_on_error=False)`</td></tr>
+<tr><td>Overlapping refreshes</td><td>`exclusive=True` cancels the previous worker before starting a new one</td></tr>
+<tr><td>Error handling</td><td>`exit_on_error=False` prevents unhandled exceptions from crashing the app; exceptions are caught in `_do_refresh`</td></tr>
+<tr><td>No-provider path</td><td>`action_refresh` returns immediately, no worker started, no status change</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Error Sanitization</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Errors from `provider.dashboard_projection()` are sanitized before display: - Only the first line is kept (tracebacks are suppressed) - Truncated to 100 characters max - Displayed as `Refresh failed: &lt;sanitized&gt;` in the footer</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">No raw traceback appears in the UI.</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">No-Provider Safety</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">When `DashboardScreen` is instantiated without a provider: - `action_refresh()` returns immediately (no worker started) - Footer/status unchanged - All existing no-provider tests pass unchanged</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Updates to Existing Files</h2>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>`vibe/cli/textual_ui/rig_console/screens/dashboard.py`</td><td>`action_refresh` rewritten, `_do_refresh` added, refresh state fields added</td></tr>
+<tr><td>`tests/cli/textual_ui/rig_console/test_dashboard_screen.py`</td><td>11 new tests for worker dispatch, worker body, error handling, state tracking</td></tr>
+<tr><td>`docs/ui/textual-rig-console-slice-5-runtime-provider.md`</td><td>&quot;Intentionally does not implement workers&quot; removed; Future Provider Path updated</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">What This Slice Intentionally Does Not Do</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- Does not modify legacy VibeApp or its TCSS files - Does not wire mutation actions - Does not execute validate or any tool from the TUI - Does not read coordination state or session lifecycle files - Does not parse raw observability payloads in widgets/screens - Does not add real-time/frequent polling - Does not resolve branch_name (not available from receipt index alone) - Does not change the provider abstraction — provider remains read-only, widget/screen code still never parses logs - Does not add persistent state — refresh state is local UI only</p>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Next Slice (6)</h2>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Add coordination state reading for branch/lane/heartbeat fields in the `SessionPaneProjection`.</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- [Slice 5: Runtime Dashboard Provider](textual-rig-console-slice-5-runtime-provider.md) - [DashboardScreen source](../../vibe/cli/textual_ui/rig_console/screens/dashboard.py) - [Providers module](../../vibe/cli/textual_ui/rig_console/providers.py)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/ui/textual-rig-console-slice-5-1-worker-refresh.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

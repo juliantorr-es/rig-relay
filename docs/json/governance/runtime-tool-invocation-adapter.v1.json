@@ -1,0 +1,310 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-tool-invocation-adapter",
+  "document_type": "governance",
+  "title": "Runtime Tool Invocation Adapter",
+  "summary": "`RuntimeToolInvocationAdapter` is the relay-native boundary that turns a resolved runtime context into a safe tool or runtime invocation envelope.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/runtime-tool-invocation-adapter.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Runtime Tool Invocation Adapter",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "`RuntimeToolInvocationAdapter` is the relay-native boundary that turns a resolved runtime context into a safe tool or runtime invocation envelope.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Agents should not carry fragile coordination identifiers through each tool call. The adapter consumes a high-level intent plus `RuntimeContextResolution`, then derives the canonical metadata needed for a tool invocation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Responsibilities",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- Accept a high-level intent, a `RuntimeContextResolution`, a tool name, and the requested path/payload inputs. - Refuse unresolved, unsafe, or policy-incompatible invocations before they reach a tool. - Inject canonical `session_id`, `task_id`, `lane_id`, and worktree metadata from the resolved context. - Apply dirty policy and coordination policy consistently. - Build the correct invocation envelope for each tool family. - Bind receipt and audit metadata at the adapter boundary, not in the agent prompt.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Tool Families",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "`write_file`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- Resolve the target path inside the resolved repo/worktree scope. - Require `expected_before_sha256` when overwriting a dirty-at-start file. - Preserve overwrite/create-parent policy from the tool contract. - Prefer the resolved worktree path when the context requires isolation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "`search_replace`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- Resolve the target path inside the resolved repo/worktree scope. - Carry `expected_before_sha256` for protected files. - Preserve patch-block safety and refusal handling. - Feed the same canonical session/task metadata used for coordination claims.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- Select a validation profile from the context and intent. - Scope checks to the resolved repo/worktree. - Use the dirty policy from the resolved context to decide whether validation is allowed to inspect or mutate anything. - Prefer `worktree-readiness` style checks when a worktree is required.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "`bash` and runtime execution",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- Prefer `ExecutionRequest` + `ExecutionLease` + `RuntimeSupervisor`. - Treat raw bash as legacy fallback only when a governed runtime path is unavailable. - Map requested capabilities into governance decisions before lease acquisition.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Blocking / Refusal Taxonomy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "The adapter should return structured blocked or refused results for:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "- unresolved context - unsafe path - missing worktree when required - dirty policy failure - active lease conflict - coordination path already reserved - missing expected hash - unsupported tool - unsupported mutation location - invalid payload - session required - task required",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Metadata Injection",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "The adapter owns canonical injection for:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "- `session_id` - `task_id` - `lane_id` - `workspace_id` - `worktree_path` - `repo_root` - `cwd`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Those values should come from the resolved context, not from ad hoc agent-provided fields.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Implementation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Phase 1 implementation is complete. See [docs/governance/runtime-tool-invocation-adapter-implementation.md](runtime-tool-invocation-adapter-implementation.md) for details.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Source: `rig_relay/runtime/tool_invocation_adapter.py` Schema: `docs/schemas/rig.relay.runtime_tool_invocation.v1.schema.json` Tests: `tests/runtime/test_runtime_tool_invocation_adapter.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "Dry-Run Integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "The `RuntimeToolDryRunRunner` provides a dry-run layer that validates adapter output without executing tools, acquiring leases, or mutating files.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- Calls `RuntimeToolInvocationAdapter.prepare()` and validates the envelope. - Returns `RuntimeToolDryRunResult` with status, schema validity, tool-specific payload validity, and refusal/error information. - `would_execute` is always `False` — this is a dry run. - `would_mutate` is a classification flag for write_file/search_replace, not an action. See `docs/governance/runtime-tool-invocation-dry-run.md`. - Content-light: dry-run results never store raw invocation payloads.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-29",
+      "type": "heading",
+      "level": 2,
+      "content": "Future Shape",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "Later implementation can split into smaller adapters per surface if needed, but the semantic contract stays the same: intent plus resolved context becomes a safe invocation envelope, or a structured refusal.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/runtime-tool-invocation-adapter.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Provider Onboarding Policy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Defines the security and product boundaries for cloud model provider">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Provider Onboarding Policy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Provider Onboarding Policy</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Defines the security and product boundaries for cloud model provider API key onboarding in Rig Relay&#x27;s desktop cockpit.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Core Principles</h2>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">Provider onboarding is separate from identity</h3>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- **Identity** answers: _Who is this tester?_ (GitHub/Google sign-in) - **Provider keys** answer: _Which model APIs can this local install call?_ - **Authorization receipts** answer: _What protected actions may this machine perform?_</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">These three concerns must never be conflated. Provider onboarding must not grant protected intent authority, must not imply telemetry consent, and must not change identity semantics.</p>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">No remote key storage</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">API keys are stored **only on the local machine**:</p>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Store</th><th>Path</th><th>Security</th></tr></thead>
+<tbody>
+<tr><td>Environment variables</td><td>`$OPENAI_API_KEY`, etc.</td><td>Read at runtime via `os.environ`</td></tr>
+<tr><td>Dev file store</td><td>`~/.rig/relay/providers/&lt;provider&gt;.key`</td><td>`chmod 0600`, excluded from git/build/bundles</td></tr>
+<tr><td>macOS Keychain</td><td>Not yet implemented</td><td>Placeholder for future `keyring` integration</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">No keys in telemetry, audit, or frontend storage</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- Intent audit may record: provider name, configured status, key source, key fingerprint (SHA256 prefix), health status, warnings - Intent audit must **never** record: `api_key`, `provider_api_key`, `authorization`, `bearer_token`, or any raw credential field - The shared redaction layer (`rig_relay.evidence.redaction`) marks all provider key field names as `FORBIDDEN` — they are redacted to `[REDACTED]` - Frontend never stores keys in `localStorage`, `sessionStorage`, cookies, or IndexedDB - Key input fields use `type=&quot;password&quot;` and are cleared after save</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Supported Providers</h2>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Provider</th><th>Env Var</th><th>Alt Env Var</th><th>Key Source Detection</th></tr></thead>
+<tbody>
+<tr><td>OpenAI</td><td>`OPENAI_API_KEY`</td><td>—</td><td>Exact match</td></tr>
+<tr><td>Anthropic</td><td>`ANTHROPIC_API_KEY`</td><td>—</td><td>Exact match</td></tr>
+<tr><td>Google Gemini</td><td>`GEMINI_API_KEY`</td><td>`GOOGLE_API_KEY`</td><td>Prefers `GEMINI_API_KEY`; warns if both set</td></tr>
+<tr><td>OpenRouter</td><td>`OPENROUTER_API_KEY`</td><td>—</td><td>Exact match</td></tr>
+<tr><td>DeepSeek</td><td>`DEEPSEEK_API_KEY`</td><td>—</td><td>Supports optional `base_url`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Key Store Abstraction</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Three backends implement the `ProviderKeyStore` protocol:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">1. **`EnvProviderKeyStore`** — Read-only. Reads from environment variables. Cannot `set_key()` or `remove_key()`. Used for runtime key detection.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">2. **`DevFileProviderKeyStore`** — Read-write. Stores keys in individual files under `~/.rig/relay/providers/`. Files created with `chmod 0600`. Excluded from telemetry/bundles/audit intentionally by the redaction layer.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">3. **`MacKeychainProviderKeyStore`** — Placeholder. Not yet implemented. Will use the `keyring` library (already a dependency) when implemented.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Health Check Behavior</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Default: **No network calls.** `network_allowed=False` returns configured/skipped status based on key presence and SHA256 fingerprint only.</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">&quot;valid&quot; means a real provider-specific network check succeeded. &quot;configured&quot; means a key exists but has not been network-validated.</p>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Scenario</th><th>Status Returned</th></tr></thead>
+<tbody>
+<tr><td>Key present, `network_allowed=False`</td><td>`valid` (key-presence based)</td></tr>
+<tr><td>No key found</td><td>`skipped` with warning</td></tr>
+<tr><td>`network_allowed=True`, check not implemented</td><td>`unknown` with `network_check_not_implemented` warning</td></tr>
+<tr><td>`network_allowed=True`, check implemented</td><td>`valid` / `invalid` / `error`</td></tr>
+</tbody>
+</table>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Network checks are explicit (`network_allowed=True`). They must not run in tests, must not print raw keys, must timeout quickly, and must return content-light status only. Unimplemented network checks always return `unknown`, never `valid`.</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Desktop Intents</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Four safe/control-plane intents for provider onboarding:</p>
+
+<table id="table-27" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Intent</th><th>Description</th><th>Content-Light?</th></tr></thead>
+<tbody>
+<tr><td>`provider_status`</td><td>Return provider summaries for all providers</td><td>✅</td></tr>
+<tr><td>`provider_onboarding_save_key`</td><td>Save provider key locally</td><td>✅ Returns fingerprint only</td></tr>
+<tr><td>`provider_onboarding_remove_key`</td><td>Delete local provider key</td><td>✅</td></tr>
+<tr><td>`provider_health_check`</td><td>Check provider health</td><td>✅ No network by default</td></tr>
+</tbody>
+</table>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">These intents do **not** grant protected action authority. They are categorized as safe/control-plane, not protected.</p>
+
+<h2 id="h2-29" class="disclosure-standard" data-disclosure-level="standard">Frontend Placement</h2>
+
+<table id="table-30" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mode</th><th>Widget</th><th>Key Controls?</th></tr></thead>
+<tbody>
+<tr><td>**Operate**</td><td>Provider Health Pill (configured count)</td><td>❌ No</td></tr>
+<tr><td>**System**</td><td>Model Providers card (list, status, key fields)</td><td>✅ Save/Remove/Check</td></tr>
+</tbody>
+</table>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">The Operate mode shows only a small health indicator — no key input fields. Key controls are restricted to System mode, two clicks from the default view.</p>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Audit Compliance</h2>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Intent audit may record (content-light): - `provider` — provider name - `configured` — boolean - `key_source` — env, dev_file, missing - `key_fingerprint` — SHA256 prefix - `status` — valid, skipped, error - `warnings` — string list</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Intent audit must **not** record: - `api_key` or any `*_api_key` variant - `authorization` header - `bearer_token` - Any raw credential</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">The shared redaction boundary (`assert_remote_safe` in `rig_relay.evidence.redaction`) enforces this by marking all credential field names as `FORBIDDEN`.</p>
+
+<h2 id="h2-36" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- [Frontend Rendering Safety Doctrine](frontend-rendering-safety.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md) - [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Provider Config Schema](../schemas/rig.relay.provider_config.v1.schema.json) - [Provider Status Schema](../schemas/rig.relay.provider_status.v1.schema.json) - [Provider Onboarding Result Schema](../schemas/rig.relay.provider_onboarding_result.v1.schema.json)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/provider-onboarding-policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

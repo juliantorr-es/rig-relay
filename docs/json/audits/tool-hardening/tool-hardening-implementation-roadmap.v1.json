@@ -1,0 +1,758 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "tool-hardening-implementation-roadmap",
+  "document_type": "audit",
+  "title": "Tool Hardening Implementation Roadmap",
+  "summary": "Recommended order:",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/tool-hardening/tool-hardening-implementation-roadmap.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Tool Hardening Implementation Roadmap",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Recommended order:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "1. SearchReplace final closure 2. WriteFile deterministic envelope 3. WriteFile receipt emission and policy validation 4. Shared mutation tool test matrix 5. Read-only inspection tool hardening 6. Orchestration hardening prerequisites 7. Fleet / delegate / aggregate patching readiness",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 1 - SearchReplace Final Closure",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Goal:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- remove the last avoidable SearchReplace evidence gaps.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Files likely affected:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- `vibe/core/tools/builtins/search_replace.py` - `tests/tools/test_tool_receipt_emission.py` - `tests/evidence/test_tool_receipt_policy.py` - `tests/evidence/test_receipt_index.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "Tests needed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- full agent-loop receipt emission - schema validation against actual results/receipts - sanitizer regression - status coverage",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Validation commands:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- `uv run pytest tests/tools/test_tool_receipt_emission.py` - `uv run pytest tests/evidence/test_tool_receipt_policy.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "Risks:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- contextual text leaking back into receipts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Exit criteria:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- all SearchReplace paths emit content-light receipts where appropriate",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 2 - WriteFile Deterministic Envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Goal:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- make write_file structurally equivalent to search_replace in evidence quality.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Files likely affected:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "- `vibe/core/tools/builtins/write_file.py` - `docs/schemas/*write_file*` - `tests/tools/test_write_file*`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "Tests needed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "- create vs overwrite - refusal paths - hash and byte accounting - atomic write evidence",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Validation commands:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "- `uv run pytest tests/tools/test_write_file*`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Risks:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- raw content leakage - write-path ambiguity",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Exit criteria:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "- structured result with hashes, bytes, and statuses",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-31",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 3 - WriteFile Receipt Emission and Policy Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "Goal:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "- add receipt/model/schema/policy coverage for write_file.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Files likely affected:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "- `vibe/core/tools/builtins/write_file.py` - `docs/schemas/rig.relay.write_file_*` - `tests/evidence/test_tool_receipt_policy.py` - `tests/evidence/test_receipt_index.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "Tests needed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "- receipt schema validation - receipt policy validation - receipt index compatibility",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "Validation commands:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "- `uv run pytest tests/evidence/test_receipt_index.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "Risks:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "- receipt can accidentally contain raw file text",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "Exit criteria:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "- write_file receipts are content-light and indexable",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-44",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 4 - Shared Mutation Tool Test Matrix",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "Goal:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "- share core assertions across mutation tools.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-47",
+      "type": "paragraph",
+      "content": "Files likely affected:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "- mutation tool tests - shared helpers",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "Tests needed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "- path safety - refusal taxonomy - byte accounting - hash accounting - receipt policy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "Risks:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "- over-broad abstractions hiding tool-specific semantics",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "Exit criteria:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "- mutation tools share a consistent evidence bar",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-55",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 5 - Read-Only Inspection Tool Hardening",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "Goal:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "- constrain content-heavy read surfaces.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "Files likely affected:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "- `vibe/core/tools/builtins/read_file.py` - `vibe/core/tools/builtins/grep.py` - related inspection helpers",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-60",
+      "type": "paragraph",
+      "content": "Tests needed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "- output caps - truncation flags - path refusals - binary handling",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-62",
+      "type": "paragraph",
+      "content": "Risks:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "- prompt bloat - privacy leakage",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-64",
+      "type": "paragraph",
+      "content": "Exit criteria:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-65",
+      "type": "paragraph",
+      "content": "- read-only tools are bounded and measurable",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-66",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 6 - Orchestration Hardening Prerequisites",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-67",
+      "type": "paragraph",
+      "content": "Goal:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-68",
+      "type": "paragraph",
+      "content": "- ensure orchestration depends on hardened mutation and validation surfaces.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-69",
+      "type": "paragraph",
+      "content": "Files likely affected:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-70",
+      "type": "paragraph",
+      "content": "- `vibe/core/tools/builtins/coordination.py` - `vibe/core/tools/builtins/checkpoint.py` - `vibe/core/tools/builtins/session_lifecycle.py` - `vibe/core/tools/builtins/validate.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-71",
+      "type": "paragraph",
+      "content": "Tests needed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-72",
+      "type": "paragraph",
+      "content": "- dirty workspace respect - receipt lineage - promotion gate behavior",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-73",
+      "type": "paragraph",
+      "content": "Risks:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-74",
+      "type": "paragraph",
+      "content": "- orchestration becoming a bypass channel",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-75",
+      "type": "paragraph",
+      "content": "Exit criteria:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-76",
+      "type": "paragraph",
+      "content": "- orchestration only routes through hardened surfaces",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-77",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 7 - Fleet / Delegate / Aggregate Patching Readiness",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-78",
+      "type": "paragraph",
+      "content": "Goal:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-79",
+      "type": "paragraph",
+      "content": "- enable safe promotion and delegation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-80",
+      "type": "paragraph",
+      "content": "Files likely affected:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-81",
+      "type": "paragraph",
+      "content": "- fleet / delegate / promotion code - lane metadata - validate consumers",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-82",
+      "type": "paragraph",
+      "content": "Tests needed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-83",
+      "type": "paragraph",
+      "content": "- lane eligibility - promotion gate - evidence indexing",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-84",
+      "type": "paragraph",
+      "content": "Risks:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-85",
+      "type": "paragraph",
+      "content": "- promotion on incomplete evidence",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-86",
+      "type": "paragraph",
+      "content": "Exit criteria:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-87",
+      "type": "paragraph",
+      "content": "- promotion and delegation depend on validate plus receipts",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/tool-hardening/tool-hardening-implementation-roadmap.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

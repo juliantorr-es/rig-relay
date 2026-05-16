@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backend Adapter Overlap Dedup v1 — Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-17">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Backend Adapter Overlap Dedup v1 — Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Backend Adapter Overlap Dedup v1 — Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-17</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Overlap Inventory</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Inspected production adapters: - `rig_relay/core/llm/backend/anthropic.py` (653 lines) - `rig_relay/core/llm/backend/vertex.py` (132 lines)</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Inspected test files: - `tests/backend/test_anthropic_adapter.py` (611 lines) - `tests/backend/test_vertex_anthropic_adapter.py` (637 → 299 lines)</p>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Behavior Matrix</h3>
+
+<details id="table-7" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-7" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Behavior</th><th>Anthropic</th><th>Vertex Anthropic</th><th>Shared?</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Message formatting</td><td>`AnthropicMapper.prepare_messages()`</td><td>**Inherited**</td><td>Yes</td><td>Full inheritance</td></tr>
+<tr><td>Tool formatting</td><td>`AnthropicMapper.prepare_tools()`</td><td>**Inherited**</td><td>Yes</td></tr>
+<tr><td>System prompt handling</td><td>`AnthropicAdapter._build_system_blocks()`</td><td>**Inherited**</td><td>Yes</td></tr>
+<tr><td>Cache-control</td><td>`AnthropicAdapter._add_cache_control_to_last_user_message()`</td><td>**Inherited**</td><td>Yes</td></tr>
+<tr><td>Streaming parse</td><td>`AnthropicMapper.parse_streaming_event()`</td><td>**Inherited**</td><td>Yes</td></tr>
+<tr><td>Usage parsing</td><td>`AnthropicMapper.parse_response()`</td><td>**Inherited**</td><td>Yes</td></tr>
+<tr><td>Thinking config</td><td>`AnthropicAdapter._apply_thinking_config()`</td><td>**Inherited**</td><td>Yes</td></tr>
+<tr><td>Error handling</td><td>`APIAdapter` base class</td><td>**Inherited**</td><td>Yes</td></tr>
+<tr><td>Auth/client setup</td><td>API key env var</td><td>Google ADC + project/region</td><td>**No**</td><td>Provider-specific</td></tr>
+<tr><td>Endpoint/model naming</td><td>`https://api.anthropic.com/v1/messages`</td><td>Vertex endpoint with project/region</td><td>**No**</td><td>Provider-specific</td></tr>
+<tr><td>Request building</td><td>`AnthropicAdapter.prepare_request()`</td><td>`VertexAnthropicAdapter.prepare_request()` (overrides)</td><td>**No**</td><td>Vertex adds project_id, region, ADC auth</td></tr>
+<tr><td>Anthropic version header</td><td>`anthropic-version: 2023-06-01`</td><td>`anthropic_version: vertex-2023-10-16`</td><td>**No**</td><td>Different version strings</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Extraction Decision</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">**No extraction needed.** The production adapters are already well-factored:</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- `AnthropicAdapter` is a full-featured base class with 15+ methods - `VertexAnthropicAdapter(AnthropicAdapter)` inherits **all** parsing/streaming/cache/thinking logic - Only `__init__()` and `prepare_request()` are overridden for Vertex-specific auth/endpoint - `AnthropicMapper` is a standalone mapper used by both</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">The overlap was in the **tests**, not the production code.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Test Consolidation</h2>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Before</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">28 Vertex tests duplicated Anthropic mapper/adapter tests: - `TestParseFullResponse` (6 tests) — duplicate of `AnthropicMapper.parse_response` - `TestStreamingEvents` (13 tests) — duplicate of `AnthropicMapper.parse_streaming_event` - `TestHelperMethods` (9 tests) — duplicate of `AnthropicAdapter` helpers</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">After</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">4 lightweight contract tests replaced the 28 duplicates: - `TestAdapterInheritanceContract::test_inherits_parse_response` — proves Vertex delegates to AnthropicAdapter - `TestAdapterInheritanceContract::test_inherits_streaming_events` — proves streaming parse inheritance - `TestAdapterInheritanceContract::test_inherits_cache_control` — proves cache control inheritance - `TestAdapterInheritanceContract::test_inherits_thinking_detection` — proves thinking detection inheritance</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Vertex-specific tests preserved (18 tests): - `TestBuildVertexEndpoint` (5 tests) — endpoint/URL construction - `TestPrepareRequest` (8 tests) — Vertex-specific auth/endpoint/project/region request building - `TestVertexCredentials` (5 tests) — ADC token lifecycle</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Lines Changed</h3>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Before</th><th>After</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>`tests/backend/test_vertex_anthropic_adapter.py`</td><td>637</td><td>~299</td><td>−338 lines (−53%)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">Provider-Specific Seams</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Kept separate: - API key/env var loading (`AnthropicAdapter.__init__` vs `VertexAnthropicAdapter.__init__` + `VertexCredentials`) - Endpoint construction (`build_vertex_endpoint`, `build_vertex_base_url`) - Request body (Vertex uses `anthropic_version: vertex-2023-10-16`, Anthropic uses `anthropic-version` header) - Auth (API key vs Google ADC) - Beta features (Vertex has none, Anthropic may have)</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Risks</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- `test_inherits_streaming_events` and `test_inherits_thinking_detection` fail on pre-existing `vibe` module references (not caused by this change) - VertexCredentials tests also fail on pre-existing `vibe` references (5 of 5)</p>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">Validation</h3>
+
+<table id="table-25" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Command</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>`ruff check tests/backend/test_vertex_anthropic_adapter.py`</td><td>All checks passed</td></tr>
+<tr><td>`pyright tests/backend/test_vertex_anthropic_adapter.py`</td><td>0 errors</td></tr>
+<tr><td>`pytest tests/backend/test_anthropic_adapter.py tests/backend/test_vertex_anthropic_adapter.py -q`</td><td>75 passed, 7 pre-existing `vibe` failures</td></tr>
+<tr><td>`python scripts/rig_relay_test_duplicate_audit.py --max-exact-duplicate-groups=1`</td><td>Exit 0</td></tr>
+<tr><td>`collect-only`</td><td>6271 tests, 0 errors</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Deferred</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">No remaining adapter overlap. The Anthropic ↔ Vertex Anthropic relationship is cleanly modeled as inheritance. Future Anthropic-family adapters (e.g., AWS Bedrock Anthropic) can follow the same pattern.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/backend/backend-adapter-overlap-dedup-v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

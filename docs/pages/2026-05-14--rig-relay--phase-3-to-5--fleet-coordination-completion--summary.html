@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet Coordination Completion — Phases 3–5 — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date:** 2026-05-14">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Fleet Coordination Completion — Phases 3–5</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Fleet Coordination Completion — Phases 3–5</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2026-05-14 **Session type:** Multi-mission (5 sequential missions) **Branch:** `main` at `384e486` (even with `origin/main`) **Validation state:** All green — 483 coordination tests, 44 projection tests, 24 fleet panel tests, 111 schemas, ruff format/check, pyright</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Five sequential missions implementing fleet coordination infrastructure across Phases 3–5. The work spans runtime lease hardening, patch proposal workflow, test closure, queue runner, and projection read model wiring.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Mission 1 — Phase 3 Runtime Lease Hardening</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Goals</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Harden the runtime path lease system so mutating tools cannot silently proceed without a lease when coordination is enabled.</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Key Changes</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/lease_manager.py`: Changed `LeaseStatusValue` from `str` subclass to `StrEnum`; added `DEFAULT_LEASE_TTL_SECONDS = 120` - `rig_relay/runtime/context.py`: Added `coordination_enabled: bool = True` to `RuntimeContext` - `rig_relay/runtime/tool_invocation_adapter.py`: Added `coordination_enabled` and `lease_ttl_seconds` to `RuntimeToolInvocationEnvelope` - `rig_relay/runtime/tool_invocation_execution.py`: Refactored `_claim_mutation_lease` → `_LeaseClaimOutcome` dataclass; added `_release_mutation_lease` with try/finally around search_replace/write_file - `docs/schemas/rig.relay.runtime_tool_invocation.v1.schema.json`: Added new fields - `tests/runtime/test_runtime_lease_acquisition.py`: 10 new tests</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Design Decisions</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- `coordination_enabled` defaults to `True` for backward compatibility - TTL configurable via envelope, defaults to 120s - Lease release is best-effort (failures silently ignored) - `_resolve_coordination_root` priority: worktree_path → repo_root → cwd</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Validation</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- **80/80** tests (22 lease + 48 execution + 10 acquisition), pyright, ruff, schema validation</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Mission 2 — Fleet Patch Proposal Phase 0</h2>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Goals</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">Implement the minimal PatchProposal artifact workflow — agents propose, orchestrator disposes.</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">Key Changes</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/patch_proposal.py`: New module (196 lines) with `PatchProposal`, `PatchProposalArtifactRef`, `PatchDecision`, `compute_proposal_fingerprint`, `CreateProposalResult` - `rig_relay/coordination/fleet_models.py`: Re-exports from `patch_proposal` - `rig_relay/coordination/models.py`: Extended `__all__` with new model names - `docs/schemas/rig.fleet.patch_proposal.v1.schema.json` (108 lines) + `docs/schemas/rig.fleet.patch_decision.v1.schema.json` (55 lines): Full JSON Schema with `additionalProperties: false` - `tests/coordination/test_patch_proposal.py`: 27 tests covering validation, artifact ref, decision, fingerprint, content-light, schema validation - `docs/governance/fleet-coordination-plane.md`: Added §10</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Design Decisions</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- Five proposal statuses: `pending`, `accepted`, `rejected`, `needs_revision`, `superseded` - `compute_proposal_fingerprint` excludes `proposal_id` and `schema_version` - `expected_before_sha256` is `dict[str, str]` mapping path→hash - Content-light: tests check for key presence, not raw content</p>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">Validation</h3>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">- **31/31** patch proposal tests, pyright, schema validation</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Mission 3 — Fleet Coordination Test Closure</h2>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Goals</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Resolve or isolate all coordination test failures without adding new fleet features.</p>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">Key Changes</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- `tests/coordination/test_queue_plan.py`: Fixed `NameError: name &#x27;tmp_path&#x27; is not defined` by adding `tmp_path: Path` parameter</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Validation</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- **437/437** passed (was 413); runtime **367/367**; schemas **110/110**</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">Resolved</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">- &quot;465/465 but 17 failures&quot; contradiction: the 17 failures were in `test_fleet_projection.py` (dirty state during Mission 4), fixed in Mission 5</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-37" class="disclosure-standard" data-disclosure-level="standard">Mission 4 — Fleet Queue Runner Phase 0</h2>
+
+<h3 id="h3-38" class="disclosure-standard" data-disclosure-level="standard">Goals</h3>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">Implement minimal queue runner that executes one runnable item at a time through existing `runtime_exec`, with event-sourced state transitions and content-light boundaries.</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">Key Changes</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/fleet_queue_runner.py`: New module (245 lines) with `FleetQueueRunner`, `FleetQueueRunnerConfig`, `FleetQueueRunnerResult` - `docs/schemas/rig.fleet.queue_runner_result.v1.schema.json`: Uses `oneOf` for nullable patterned fields - `tests/coordination/test_fleet_queue_runner.py`: 26 tests</p>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">Item Routing</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">- validate → `execute_validate()` - runtime_exec → `execute_runtime_exec()` (governed path) - message/handoff_note → immediate completion - pause/resume → no-op (completes) - unsupported → blocked</p>
+
+<h3 id="h3-44" class="disclosure-standard" data-disclosure-level="standard">Design Decisions</h3>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">- One item per call (no looping) - State transitions: running→completed/failed/blocked (event-sourced via queue.mark_*) - Minimal `RuntimeContext` with `coordination_enabled=False` - `FleetQueueRunnerResult` carries only metadata fields, no raw content - Schema uses `oneOf: [{&quot;type&quot;: &quot;string&quot;}, {&quot;type&quot;: &quot;null&quot;}]` for nullable fields</p>
+
+<h3 id="h3-46" class="disclosure-standard" data-disclosure-level="standard">Validation</h3>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">- **26/26** runner tests, **67/67** fleet queue tests, **12/12** runtime exec orchestrator, **482/482** coordination suite, **111/111** schemas</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-49" class="disclosure-standard" data-disclosure-level="standard">Mission 5 — Fleet Projection Phase 0 Closure</h2>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">Goals</h3>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Close the Fleet Projection / TUI Read Model Phase 0 slice by resolving test ambiguity, validating schemas, updating docs, wiring queue/proposal summaries.</p>
+
+<h3 id="h3-52" class="disclosure-standard" data-disclosure-level="standard">Key Changes</h3>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">- `tests/coordination/test_fleet_projection.py`: Added `test_model_dump_validates_without_exclude_none` (44 tests total) - `tests/cli/textual_ui/rig_console/test_fleet_panel.py`: Added `TestMountedFleetPanel` with 2 mounted Textual tests (24 tests total) - `vibe/cli/textual_ui/rig_console/providers.py`: Fixed pre-existing `IndentationError` (duplicate import block); added missing `QueueRunnerBridge` import</p>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">Verification</h3>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">- Schema validates `model_dump(mode=&quot;json&quot;)` without `exclude_none=True` ✅ - `FleetProjection` uses `additionalProperties: false` in all sub-models ✅ - Queue summaries wired through `build_queue_summary_from_snapshot()` ✅ - Patch proposal summaries wired through `build_patch_proposal_summary()` ✅ - Empty-safe defaults for missing roots/files ✅</p>
+
+<h3 id="h3-56" class="disclosure-standard" data-disclosure-level="standard">Validation</h3>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">- Projection tests: **44/44** passed - Fleet panel tests: **24/24** passed - Full coordination suite: **483/483** passed - Schema validation: **111/111** passed - ruff format/check, pyright: ✅</p>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-59" class="disclosure-standard" data-disclosure-level="standard">Files Changed Across All Missions</h2>
+
+<h3 id="h3-60" class="disclosure-standard" data-disclosure-level="standard">New Files</h3>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/patch_proposal.py` - `rig_relay/coordination/fleet_queue_runner.py` - `tests/coordination/test_patch_proposal.py` - `tests/coordination/test_fleet_queue_runner.py` - `tests/runtime/test_runtime_lease_acquisition.py` - `docs/schemas/rig.fleet.patch_proposal.v1.schema.json` - `docs/schemas/rig.fleet.patch_decision.v1.schema.json` - `docs/schemas/rig.fleet.queue_runner_result.v1.schema.json`</p>
+
+<h3 id="h3-62" class="disclosure-standard" data-disclosure-level="standard">Modified Clean Files</h3>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/runtime/context.py` - `rig_relay/runtime/tool_invocation_adapter.py` - `rig_relay/coordination/fleet_models.py` - `tests/coordination/test_queue_plan.py`</p>
+
+<h3 id="h3-64" class="disclosure-standard" data-disclosure-level="standard">Modified Dirty Files (preserved existing edits)</h3>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/lease_manager.py` - `rig_relay/runtime/tool_invocation_execution.py` - `rig_relay/coordination/models.py` - `vibe/cli/textual_ui/rig_console/providers.py` - `tests/coordination/test_fleet_projection.py` - `tests/cli/textual_ui/rig_console/test_fleet_panel.py` - `docs/governance/fleet-coordination-plane.md` - `docs/schemas/rig.relay.runtime_tool_invocation.v1.schema.json` - `docs/governance/runtime-tool-invocation-execution.md`</p>
+
+<h3 id="h3-66" class="disclosure-standard" data-disclosure-level="standard">Pre-existing Dirty Files (not modified by these missions)</h3>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">- `docs/governance/textual-rig-console.md` - `docs/schemas/rig.fleet.projection.v1.schema.json` - `rig_relay/coordination/fleet_projection.py` - Various TUI widget files in `vibe/cli/textual_ui/rig_console/`</p>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-69" class="disclosure-standard" data-disclosure-level="standard">Key Design Principles Applied</h2>
+
+<p id="p-70" class="disclosure-standard" data-disclosure-level="standard">1. **Content-light**: No raw diffs, patches, file contents, stdout, stderr, or secrets in events or result models 2. **Agents propose; orchestrator disposes**: Patch proposals separate proposal from application 3. **Event-sourced state transitions**: Queue runner transitions are recorded as events, not in-place mutations 4. **Empty-safe defaults**: All projection models handle missing roots/files gracefully 5. **Schema-first**: All new models have corresponding JSON Schema with `additionalProperties: false` 6. **Governed mutation paths**: Runtime exec goes through `RuntimeToolExecutionRunner` with lease checks</p>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-72" class="disclosure-standard" data-disclosure-level="standard">Out-of-scope Findings Recorded</h2>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">None during these missions — all changes were in-scope for the five missions.</p>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-75" class="disclosure-standard" data-disclosure-level="standard">Continuation Points</h2>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">Future work (not started): - Patch application workflow (post-Phase 0) - Full scheduler (supervisor dispatch loop) - Supervisor projection integration - TUI queue panel execution controls - DuckDB indexing for fleet events - Scheduler retry/recovery policies</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/conversations/2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

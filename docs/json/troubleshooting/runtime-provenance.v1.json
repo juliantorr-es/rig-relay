@@ -1,0 +1,321 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-provenance",
+  "document_type": "reference",
+  "title": "Runtime Provenance",
+  "summary": "How to verify what code Rig Relay is actually running and diagnose stale-install problems.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/troubleshooting/runtime-provenance.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Runtime Provenance",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "How to verify what code Rig Relay is actually running and diagnose stale-install problems.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "The problem",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Rig Relay can be installed in two ways:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-5",
+      "type": "table",
+      "columns": [
+        "Method",
+        "Command",
+        "Live-links to checkout?"
+      ],
+      "rows": [
+        [
+          "Project venv (development)",
+          "`uv run rig-relay`",
+          "✅ Yes (editable install)"
+        ],
+        [
+          "System tool (global)",
+          "`rig-relay`",
+          "❌ No (frozen copy)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Running `rig-relay` (bare) invokes a **`uv tool install`** copy, which is a frozen snapshot of the code at install time. It does **not** pick up local edits or new commits until you reinstall.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "Running `uv run rig-relay` uses the project's `.venv` editable install, which **does** reflect the current working tree.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Dogfood install",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "For development/dogfood, install from the local checkout:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-10",
+      "type": "code",
+      "language": "bash",
+      "content": "cd /path/to/rig-relay\nuv tool install --reinstall .",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "This replaces the global tool copy with the current checkout's code. Repeat anytime the checkout advances.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Verify what code is running",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Run the runtime doctor:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-14",
+      "type": "code",
+      "language": "bash",
+      "content": "rig-relay doctor runtime",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "This reports:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "- Python executable path - `rig-relay` command path - `vibe` package path - `agent_loop.py` and `assembler.py` paths - Git HEAD commit (if inside a checkout) - Installed version - Presence of critical symbols (`write_assembly_report`, `validate_evidence_session`, etc.) - Coherence status with warnings if paths disagree",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Use `--json` for machine-readable output:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-18",
+      "type": "code",
+      "language": "bash",
+      "content": "rig-relay doctor runtime --json",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Diagnostic commands",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-20",
+      "type": "code",
+      "language": "bash",
+      "content": "# Which rig-relay is on PATH?\nwhich rig-relay\n\n# Is it a uv tool install?\nls -la $(which rig-relay)\n\n# Where does the tool env point?\ncat ~/.local/share/uv/tools/rig-relay/lib/python3.12/site-packages/rig_relay-*.dist-info/direct_url.json\n\n# What git commit was the tool install built from?\n# Check direct_url.json or uv-receipt.toml\n\n# What code does uv run use?\nuv run python -c \"import vibe; print(vibe.__file__)\"\n\n# Are the module paths coherent?\nuv run python -c \"from vibe.core.context.assembler import write_assembly_report; print('OK')\"",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "Common causes of stale runtime",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "1. **Bare `rig-relay` vs `uv run rig-relay`** — The bare command may use an old uv tool install while `uv run` uses the project venv.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "2. **Multiple Python environments** — System Python, homebrew Python, uv-managed Python, and pyenv Python can all have different installs.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "3. **Non-editable install** — `uv tool install .` copies the code; `uv pip install -e .` creates an editable link. Only the latter reflects local changes immediately.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "4. **Git checkout drift** — If you run from the checkout (via `uv run`), the code matches the working tree. If you run from a tool install, you get the commit that was current when the tool was installed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "Startup logging",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Every Rig Relay session logs a compact provenance line at startup:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-28",
+      "type": "code",
+      "language": "text",
+      "content": "session_id=... package_path=... python=... git_head=... version=...",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Look for this in `~/.rig/relay/logs/vibe.log` (or `$RIG_RELAY_HOME/logs/vibe.log`) to confirm which code a session actually ran.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/troubleshooting/runtime-provenance.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,503 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-rig-console-slice-5-runtime-provider",
+  "document_type": "audit",
+  "title": "Textual Rig Console — Slice 5: Read-Only Runtime Dashboard Provider",
+  "summary": "**Draft.** Replaces the fixture-only provider seam with a real read-only",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/ui/textual-rig-console-slice-5-runtime-provider.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Textual Rig Console — Slice 5: Read-Only Runtime Dashboard Provider",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Draft.** Replaces the fixture-only provider seam with a real read-only provider that builds `DashboardProjection` from existing Rig Relay evidence/session state via the receipt index.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "RuntimeDashboardProjectionProvider",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-5",
+      "type": "heading",
+      "level": 3,
+      "content": "Constructor",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-6",
+      "type": "code",
+      "language": "python",
+      "content": "class RuntimeDashboardProjectionProvider:\n    def __init__(\n        self,\n        session_id: str = \"unknown\",\n        session_path: Path | None = None,\n        workspace_root: Path | None = None,\n        max_evidence_items: int = 20,\n        coordination_root: Path | None = None,\n        session_root: Path | None = None,\n        lane_id: str | None = None,\n        task_title: str | None = None,\n    ) -> None: ...",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- `session_id`: Logical session identifier (defaults to \"unknown\") - `session_path`: Optional explicit path to a session directory or `observability.jsonl` file. If None, resolves from `session_id` via `get_observability_log_path()` (`~/.rig/relay/sessions/<id>/observability.jsonl`) - `workspace_root`: Optional workspace root path for `worktree_path` in the session pane (display only) - `max_evidence_items`: Maximum evidence rail items (default 20) - `coordination_root`: Optional root path of the coordination store (`{root}/sessions/{session_id}.json` contains the coordination session). If None, coordination fields remain empty. - `session_root`: Reserved for future session lifecycle scanning (unused). - `lane_id`: Explicit lane identifier. Overrides coordination-derived value. - `task_title`: Explicit task title. Not available from coordination store directly; set via constructor.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Data Sources",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "The provider reads from two backend stores:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "1. **`build_receipt_index()`** from `rig_relay/evidence/receipt_index.py` — reads session observability JSONL, filters for `rig.relay.tool_receipt.captured` events, returns content-light `ToolReceiptIndexRecord` objects",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "2. **`evidence_rail_from_receipt_index()`** from `projections.py` — adapter that converts `ToolReceiptIndexRecord` list to `EvidenceRailProjection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "3. **Coordination store** (Slice 6) — reads `{coordination_root}/sessions/{session_id}.json` for lane_id, last_heartbeat_at, and current_step via `_read_coordination_summary()`. Tolerates missing/malformed JSON gracefully.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "SessionPaneProjection Field Mapping",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Source",
+        "Behavior"
+      ],
+      "rows": [
+        [
+          "`session_id`",
+          "Constructor parameter",
+          "Direct pass-through"
+        ],
+        [
+          "`status`",
+          "Receipt presence",
+          "`\"active\"` if any records, `\"idle\"` otherwise"
+        ],
+        [
+          "`worktree_path`",
+          "Constructor `workspace_root`",
+          "Set if provided"
+        ],
+        [
+          "`current_step`",
+          "Coordination `status` or default",
+          "`\"No active session data\"` if coordination not available"
+        ],
+        [
+          "`validate_status`",
+          "Latest validate receipt status",
+          "Extracted from most recent validate record's `status` field"
+        ],
+        [
+          "`blocker_summary`",
+          "N/A",
+          "Empty dict `{}` (not available from receipt index)"
+        ],
+        [
+          "`receipt_count`",
+          "Evidence projection",
+          "Pass through from `evidence.receipt_count`"
+        ],
+        [
+          "`latest_receipt_kind`",
+          "Most recent receipt tool_name",
+          "First non-None tool_name found in descending chronological order"
+        ],
+        [
+          "`changed_paths`",
+          "Evidence items with `path`",
+          "Deduplicated, capped at `_PROVIDER_PATH_CAP` (10)"
+        ],
+        [
+          "`branch_name`",
+          "N/A",
+          "Left `None` (not available from receipts)"
+        ],
+        [
+          "`last_heartbeat_at`",
+          "Coordination `updated_at`",
+          "Coordination session file's `updated_at`"
+        ],
+        [
+          "`pending_user_action`",
+          "N/A",
+          "Left `None`"
+        ],
+        [
+          "`lane_id`",
+          "Coordination `task_id` or constructor `lane_id`",
+          "Constructor param overrides coordination"
+        ],
+        [
+          "`task_title`",
+          "Constructor `task_title`",
+          "Only via explicit constructor input"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "DashboardProjection Field Mapping",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-16",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Value"
+      ],
+      "rows": [
+        [
+          "`title`",
+          "`\"Rig Console\"`"
+        ],
+        [
+          "`subtitle`",
+          "`\"Session <id>\"` (first 12 chars)"
+        ],
+        [
+          "`safety_state`",
+          "`\"read-only\"`"
+        ],
+        [
+          "`footer_hint`",
+          "`\"Read-only evidence provider\"` + `\"(N read errors)\"` if errors"
+        ],
+        [
+          "`backlog_items`",
+          "Empty list"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-17",
+      "type": "heading",
+      "level": 3,
+      "content": "Missing Session Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "If the session path does not exist or the observability file is missing: - `build_receipt_index` returns `([], [\"Observability file not found: ...\"])` - The provider returns a clean `DashboardProjection` with: - `session.status = \"idle\"` - `session.receipt_count = 0` - `evidence.receipt_count = 0` - `evidence.items = []` - `footer_hint` includes `\"(1 read errors)\"` - No crash, no exception",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "Content-Light Guarantees",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "All data flows through projection models with `extra=\"forbid\"`: - `DashboardProjection` - `SessionPaneProjection` - `EvidenceRailProjection` - `EvidenceRailItemProjection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "The provider itself never: - Exposes raw stdout/stderr - Exposes file contents, diffs, or snippets - Exposes command transcripts - Parses raw observability payloads in widget/screen code - Mutates files or state - Executes tools",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "No Mutation / No Tool Execution Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "The `RuntimeDashboardProjectionProvider` is **read-only**: - It calls `build_receipt_index()` which reads JSONL files - It calls `evidence_rail_from_receipt_index()` which is a pure function - It does not call any tool, write files, or mutate state - It is safe to call from the TUI event loop",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-24",
+      "type": "heading",
+      "level": 2,
+      "content": "Integration with DashboardScreen",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-25",
+      "type": "code",
+      "language": "python",
+      "content": "from vibe.cli.textual_ui.rig_console.providers import (\n    RuntimeDashboardProjectionProvider,\n)\n\nprovider = RuntimeDashboardProjectionProvider(\n    session_id=\"abc123-def456\",\n    workspace_root=Path(\"/Users/user/project\"),\n)\ninitial = await provider.dashboard_projection()\nscreen = DashboardScreen(initial, provider=provider)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Pressing `r` (refresh) calls `provider.dashboard_projection()` which re-reads the observability JSONL and returns an updated projection. Widgets are updated in place via `update_projection()` — no remounting.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-27",
+      "type": "heading",
+      "level": 2,
+      "content": "Project Structure",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-28",
+      "type": "code",
+      "language": "text",
+      "content": "vibe/cli/textual_ui/rig_console/\n├── __init__.py              # +RuntimeDashboardProjectionProvider\n├── projections.py           # (unchanged)\n├── providers.py             # +RuntimeDashboardProjectionProvider\n├── intents.py               # (unchanged)\n├── console_app.py           # (unchanged — still uses fixture)\n├── screens/\n│   └── dashboard.py         # (unchanged)\n└── widgets/\n    ├── __init__.py\n    ├── session_pane.py\n    ├── evidence_rail.py\n    ├── operator_header.py\n    └── footer_status.py",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-29",
+      "type": "heading",
+      "level": 2,
+      "content": "Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-30",
+      "type": "code",
+      "language": "text",
+      "content": "tests/cli/textual_ui/rig_console/\n├── test_providers.py        # +RuntimeDashboardProjectionProvider tests",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "New test coverage: - Missing session path returns clean empty projection (no crash) - Builds from synthetic JSONL with bash/search_replace/validate/write_file events - EvidenceRailProjection has correct item counts (mutations, refusals, timeouts) - Items ordered by captured_at descending - Maps validate receipt status into validate_status - Maps latest receipt tool_name into latest_receipt_kind - Deduplicates and caps changed_paths at `_PROVIDER_PATH_CAP` (10) - No validate receipt → validate_status is None - Malformed JSON lines are tolerated without crash - Footer shows read error count - No forbidden raw fields on DashboardProjection or SessionPaneProjection - DashboardScreen can be instantiated with RuntimeDashboardProjectionProvider - workspace_root propagates to worktree_path - blocker_summary is empty dict (not available from receipts)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-32",
+      "type": "heading",
+      "level": 2,
+      "content": "What This Slice Intentionally Does Not Do",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "- Does not modify legacy VibeApp or its TCSS files - Does not wire mutation actions - Does not execute validate or any tool from the TUI - Does not read coordination state or session lifecycle files - Does not parse raw observability payloads in widgets/screens - Does not add real-time/frequent polling - Does not resolve branch_name (not available from receipt index alone)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-34",
+      "type": "heading",
+      "level": 2,
+      "content": "Future Provider Path",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-35",
+      "type": "table",
+      "columns": [
+        "Slice",
+        "Improvement"
+      ],
+      "rows": [
+        [
+          "5.1",
+          "**COMPLETED** — Worker-safe refresh (Textual worker via `run_worker(exclusive=True)`)"
+        ],
+        [
+          "6",
+          "Add coordination state reading for branch/lane/heartbeat fields"
+        ],
+        [
+          "7",
+          "Add session lifecycle directory scanning for multi-session views"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-36",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "- [Slice 1: SessionPaneWidget](textual-rig-console-slice-1.md) - [Slice 2: EvidenceRailWidget](textual-rig-console-slice-2-evidence-rail.md) - [Slice 3: DashboardScreen](textual-rig-console-slice-3-dashboard.md) - [Slice 4: Action Boundary](textual-rig-console-slice-4-action-boundary.md) - [Desktop Projection Contract](../governance/relay-desktop-projection-contract.md) - [Receipt Index](../../rig_relay/evidence/receipt_index.py)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/ui/textual-rig-console-slice-5-runtime-provider.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

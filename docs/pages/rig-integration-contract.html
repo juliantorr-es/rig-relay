@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Integration Contract — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and m">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig Integration Contract</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Integration Contract</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and marriage of assumptions required to ensure Rig Relay can eventually fold cleanly into the Rig ecosystem.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">1. Authority Boundaries</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">- **Rig owns**: The **Workspace**. The workspace is the root of authority, owning repository roots, base-branch policies, validation gates, lane registries, and durable receipts. - **Rig Relay owns**: The **Session**. A session is a single interactive run of an agent loop, managing model calls, tool executions, and local context. - **Marriage**: Rig Relay sessions must eventually attach to a Rig `workspace_id` and, optionally, an `lane_id`. The agent loop is a worker within a workspace, not an independent authority.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">2. Mutation &amp; Policy</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- **Rig Doctrine**: No silent mutation of main, no auto-apply without review, and explicit validation gates. - **Relay Role**: Interactive patching and verification. Modes like `auto-approve` or `accept-edits` are local harness conveniences and must never override workspace-level policy. - **Marriage**: Relay respects the mutation model of the attached workspace. &quot;Agent profiles&quot; do not grant authority; workspace policy does.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">3. Worktree &amp; Lane Model</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- **Rig Model**: AgentLanes map to isolated Git worktrees. Each lane has one branch, one agent identity, one task identity, and explicit history. - **Relay Model**: Runs in a working directory. - **Marriage**: In embedded mode, Rig Relay accepts `repo_root`, `worktree_path`, `branch`, and `task_id` from Rig and restricts all operations to that lane.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">4. Artifact &amp; Storage Root</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- **Canonical Root**: `.rig/relay/` within the project root. - **Relay Artifacts**: Session logs, context accounting, and local observability events live in `.rig/relay/sessions/&lt;session_id&gt;/`. - **Marriage**: Rig Relay avoids creating `.rig-relay` or `.vibe` directories for new project-local state. It uses `.rig/relay/` as its primary home for local truth.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">5. Event Semantics: Telemetry vs. Authority</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- **Rig Status**: Progress streams are telemetry (informative). Receipts and projections are authority (durable truth). - **Relay Status**: Observability events are diagnostic. - **Marriage**: Rig Relay events (JSONL) are non-authoritative unless promoted to Rig receipts. Event names use `rig.relay.*` (e.g., `rig.relay.context.request_accounted`) to avoid namespace collisions and clarify intent.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">6. Tool Authority &amp; Risk Classes</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- **Rig Safety**: Tools must advertise risk and scope. - **Relay Execution**: Tools are the primary mutation vector. - **Marriage**: Rig Relay tools categorize themselves into risk classes that Rig can govern: - `read_only`: No side effects (e.g., `read_file`, `ls`). - `workspace_write`: Local filesystem mutation in the active lane. - `git_read`: Inspection of git state (e.g., `git log`, `git diff`). - `git_mutation`: Side effects on git (e.g., `commit`, `branch`). - `network`: External requests. - `credential`: Access to secrets.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">7. Context &amp; Accounting</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- **Rig Role**: Aggregates and analyzes context usage across the workspace. - **Relay Role**: Instruments every request with granular character counts, fingerprints, and bloat analysis. - **Marriage**: Relay produces `request_accounted` events; Rig can analyze them later.</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">8. Embedded Invocation Schema (Proposed)</h2>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">When Rig invokes Rig Relay, it provides a structured context:</p>
+
+<pre id="code-19"><code class="language-json">{
+  &quot;schema_version&quot;: &quot;rig.relay.invocation.v1&quot;,
+  &quot;workspace_id&quot;: &quot;ws_...&quot;,
+  &quot;lane_id&quot;: &quot;lane_...&quot;,
+  &quot;operation_id&quot;: &quot;op_...&quot;,
+  &quot;repo_root&quot;: &quot;/path/to/repo&quot;,
+  &quot;worktree_path&quot;: &quot;/path/to/worktree&quot;,
+  &quot;branch&quot;: &quot;agent/task/name&quot;,
+  &quot;task&quot;: &quot;Fix deterministic git tools&quot;,
+  &quot;mode&quot;: &quot;inspect|patch|verify&quot;,
+  &quot;artifact_root&quot;: &quot;.rig/relay/sessions/&lt;session_id&gt;&quot;,
+  &quot;tool_policy&quot;: {
+    &quot;allowed_classes&quot;: [&quot;read_only&quot;, &quot;git_read&quot;, &quot;workspace_write&quot;],
+    &quot;forbidden_classes&quot;: [&quot;destructive_git&quot;, &quot;external_side_effect&quot;]
+  }
+}</code></pre>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">9. Result Schema (Proposed)</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Relay returns its execution summary:</p>
+
+<pre id="code-22"><code class="language-json">{
+  &quot;schema_version&quot;: &quot;rig.relay.result.v1&quot;,
+  &quot;session_id&quot;: &quot;relay_...&quot;,
+  &quot;operation_id&quot;: &quot;op_...&quot;,
+  &quot;status&quot;: &quot;completed|blocked|failed|cancelled&quot;,
+  &quot;events_jsonl&quot;: &quot;.rig/relay/sessions/.../events.jsonl&quot;,
+  &quot;observability_jsonl&quot;: &quot;.rig/relay/sessions/.../observability.jsonl&quot;,
+  &quot;receipt_candidates&quot;: [],
+  &quot;files_touched&quot;: [],
+  &quot;next_actions&quot;: []
+}</code></pre>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/architecture/rig-integration-contract.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

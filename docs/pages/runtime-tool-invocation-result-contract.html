@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Tool Invocation Result Contract — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**File:** `docs/governance/runtime-tool-invocation-result-contract.md`">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Tool Invocation Result Contract</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Result Contract</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**File:** `docs/governance/runtime-tool-invocation-result-contract.md`</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">This document defines the contract between the runtime adapter execution layer and the evidence/audit layer for tool invocation results and receipts. It covers what data is recorded, how it flows between layers, and what is explicitly forbidden.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Data Flow</h2>
+
+<pre id="code-6"><code class="language-text">RuntimeToolIntent → RuntimeToolInvocationEnvelope → Tool → ToolResult → ToolReceipt
+                                                                           ↓
+                                                              RuntimeToolExecutionResult
+                                                                           ↓
+                                                              ReceiptEnvelope
+                                                                           ↓
+                                                              AuditEvent</code></pre>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Layer Boundaries</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Layer 1: Invocation Envelope</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Tool input payload (file content, SEARCH/REPLACE blocks, argv, profile/paths) - **Content-light:** NO — operational input for tool execution - **Never stored as evidence:** Payload is consumed by the tool and discarded - **Schema:** `rig.relay.runtime_tool_invocation.v1`</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Layer 2: Tool Result</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Full operational output (stdout, stderr, check results, file content after edit) - **Content-light:** NO — contains data for rendering and user feedback - **Never stored as evidence:** Result is ephemeral; only receipt persists - **Schema:** Tool-specific (e.g. `rig.relay.validate_result.v1`)</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Layer 3: Tool Receipt</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Content-light view — SHA256 hashes, byte counts, statuses, blocker counts - **Content-light:** YES — no raw stdout, stderr, file content, diffs - **Persisted as evidence:** Yes, via ReceiptEnvelope - **Schema:** Tool-specific (e.g. `rig.relay.validate_receipt.v1`)</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Layer 4: RuntimeToolExecutionResult</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Adapter status + tool receipt SHA256 + timing + linkage IDs + RuntimeToolInvocationReceipt (strict model) - **Content-light:** YES — only IDs, statuses, hashes, timing; `RuntimeToolInvocationReceipt` has `extra=&quot;forbid&quot;` - **Persisted as evidence:** Via receipt envelope wrapping - **Schema:** `rig.relay.runtime_tool_execution_result.v1` with `$ref` to `#/$defs/runtime_tool_invocation_receipt`</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Layer 5: ReceiptEnvelope</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Canonical wrapper with actor, subject, decision, evidence references - **Content-light:** YES — only IDs, hashes, schema versions - **Persisted as evidence:** Yes, primary evidence record - **Schema:** `rig.relay.receipt_envelope.v1`</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Layer 6: AuditEvent</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Action/decision metadata + reference to ReceiptEnvelope - **Content-light:** YES — only IDs, action/decision kinds, references - **Persisted:** Yes, append-only JSONL trail - **Schema:** `rig.relay.audit_event.v1`</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Receipt Hashing</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `receipt_sha256` in `RuntimeToolExecutionResult` = SHA256 of the tool receipt&#x27;s canonical JSON (`model_dump(mode=&quot;json&quot;), sort_keys=True`) - `evidence_sha256` in `ReceiptEnvelope` = SHA256 of the receipt payload&#x27;s canonical JSON (computed by `build_receipt_envelope()`) - `evidence_sha256` in `AuditEvent` = SHA256 of related evidence payload</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">These are three distinct hashes for three distinct artifacts.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolExecutionResult Fields</h2>
+
+<details id="table-24" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-24" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`schema_version`</td><td>string</td><td>yes</td><td>`&quot;rig.relay.runtime_tool_execution_result.v1&quot;`</td></tr>
+<tr><td>`invocation_id`</td><td>string\</td><td>null</td><td>no</td><td>Invocation ID from the adapter envelope</td></tr>
+<tr><td>`intent_id`</td><td>string</td><td>yes</td><td>ID from the original RuntimeToolIntent</td></tr>
+<tr><td>`tool_name`</td><td>string</td><td>yes</td><td>Name of the executed tool</td></tr>
+<tr><td>`status`</td><td>string</td><td>yes</td><td>`completed`, `blocked`, `refused`, or `failed`</td></tr>
+<tr><td>`envelope_schema_valid`</td><td>boolean</td><td>no</td><td>Whether the envelope passed schema validation</td></tr>
+<tr><td>`tool_status`</td><td>string\</td><td>null</td><td>no</td><td>Status returned by the tool</td></tr>
+<tr><td>`tool_error_kind`</td><td>string\</td><td>null</td><td>no</td><td>Structured error kind from the tool</td></tr>
+<tr><td>`receipt_sha256`</td><td>string\</td><td>null</td><td>no</td><td>SHA256 of tool receipt canonical JSON (`model_dump(mode=&quot;json&quot;), sort_keys=True`)</td></tr>
+<tr><td>`duration_ms`</td><td>number\</td><td>null</td><td>no</td><td>Adapter-level wall-clock execution time</td></tr>
+<tr><td>`error_kind`</td><td>string\</td><td>null</td><td>no</td><td>Structured error kind for blocked/refused/failed</td></tr>
+<tr><td>`refusal_reason`</td><td>string\</td><td>null</td><td>no</td><td>Human-readable refusal reason</td></tr>
+<tr><td>`warnings`</td><td>string[]</td><td>no</td><td>Non-fatal warnings</td></tr>
+<tr><td>`tool_receipt_kind`</td><td>string\</td><td>null</td><td>no</td><td>Kind of tool receipt (e.g. `validate`, `search_replace`)</td></tr>
+<tr><td>`tool_receipt_schema_version`</td><td>string\</td><td>null</td><td>no</td><td>Schema version of the tool receipt (e.g. `rig.relay.validate_receipt.v1`)</td></tr>
+<tr><td>`receipt_envelope_id`</td><td>string\</td><td>null</td><td>no</td><td>ReceiptEnvelope ID — initially `None`, populated by envelope builder</td></tr>
+<tr><td>`audit_event_id`</td><td>string\</td><td>null</td><td>no</td><td>AuditEvent ID — initially `None`, populated by audit integration</td></tr>
+<tr><td>`changed_paths`</td><td>string[]</td><td>no</td><td>Files affected by mutation tools; populated by search_replace, write_file</td></tr>
+<tr><td>`receipt`</td><td>object\</td><td>null</td><td>no</td><td>RuntimeToolInvocationReceipt dict dump, produced alongside the result</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Linkage Fields</h2>
+
+<table id="table-26" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Source</th><th>Target</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`invocation_id`</td><td>Adapter envelope</td><td>Execution result</td><td>Links result back to envelope</td></tr>
+<tr><td>`receipt_sha256`</td><td>Execution result → tool receipt</td><td>ReceiptEnvelope evidence</td><td>Links execution result to receipt</td></tr>
+<tr><td>`tool_receipt_kind`</td><td>Tool-specific (validate, search_replace)</td><td>Execution result</td><td>Identifies which receipt schema applies</td></tr>
+<tr><td>`tool_receipt_schema_version`</td><td>Tool receipt model</td><td>Execution result</td><td>Records which schema version produced the hash</td></tr>
+<tr><td>`receipt_envelope_id`</td><td>ReceiptEnvelope</td><td>Execution result</td><td>Links execution result to envelope</td></tr>
+<tr><td>`audit_event_id`</td><td>AuditEvent</td><td>Execution result</td><td>Links execution result to audit</td></tr>
+<tr><td>`changed_paths`</td><td>Mutation tool payload</td><td>Execution result</td><td>Lists files affected</td></tr>
+<tr><td>`envelope_id`</td><td>ReceiptEnvelope</td><td>AuditEvent</td><td>Links audit event to envelope</td></tr>
+<tr><td>`evidence_sha256`</td><td>AuditEvent → ReceiptEnvelope</td><td>AuditEvent</td><td>Links audit event to evidence</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Content-Light Boundary Policy</h2>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Principle</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Content-light means any data in a receipt, envelope, execution result, or audit event must be safe to: 1. Log to structured observability 2. Include in cross-session coordination artifacts 3. Share in derived eval datasets 4. Index and search without exposing raw content</p>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">Raw Payload Boundary</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Local tool result models (BashResult, WriteFileResult, SearchReplaceResult, ValidateResult) **intentionally carry raw operational payloads** (stdout, stderr, content, diffs). These are used for in-process rendering and user feedback — never persisted to receipts, envelopes, execution results, projections, or telemetry.</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">**Allowed (raw payloads in local result models):** - `BashResult.stdout`, `BashResult.stderr` — full command output - `WriteFileResult.content` — file content written - `SearchReplaceResult.content` — diff/patch output - `SearchReplaceResult.old_text`, `SearchReplaceResult.new_text` — SEARCH/REPLACE text - `BashResult.argv` — command arguments</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">**Forbidden (must never appear in content-light artifacts):** - `stdout`, `stderr` — raw output - `content`, `file_content`, `file_contents` — raw file content - `old_text`, `new_text`, `old`, `new` — SEARCH/REPLACE text - `diff`, `patch`, `snippet`, `context` — diff and snippet data - `chunk_text` — streaming chunk data - `command_output` — raw command output - `raw_output`, `raw_stdout`, `raw_stderr` — raw output aliases - `replacement`, `replacement_text` — replacement text - `prompt`, `secret` — sensitive material - `argv` — raw command arguments (metadata summary allowed)</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">Enforcement Points</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">1. **`build_receipt()`** — Each tool&#x27;s receipt builder explicitly excludes raw fields. This is the primary enforcement point for tool-specific receipts (BashReceipt, WriteFileReceipt, SearchReplaceReceipt, ValidateReceipt).</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">2. **`build_runtime_tool_invocation_receipt()`** — Copies only content-light fields from RuntimeToolExecutionResult (`invocation_id`, `intent_id`, `tool_name`, `status`, hashes, timing). Never copies stdout, stderr, content, diffs.</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">3. **`validate_receipt_payload()`** — Runtime policy validator (`rig_relay/evidence/tool_receipt_policy.py`) catches raw field leaks in `rig.relay.tool_receipt.captured` events. Tests in `tests/evidence/test_tool_receipt_policy.py` prove enforcement for all four tool receipts.</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">4. **Pydantic `extra=&quot;forbid&quot;`** — Every receipt and execution result model has `ConfigDict(extra=&quot;forbid&quot;)`, rejecting unknown fields at the model boundary.</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">5. **JSON Schema `additionalProperties: false`** — Every receipt and execution result schema has `additionalProperties: false`, rejecting unknown fields at the schema boundary.</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">Test Coverage</h3>
+
+<table id="table-41" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Artifact</th><th>Content-light enforced</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>BashReceipt</td><td>`build_receipt()` + policy validator</td><td>`test_tool_receipt_policy.py`</td></tr>
+<tr><td>WriteFileReceipt</td><td>`build_receipt()` + policy validator</td><td>`test_tool_receipt_policy.py`</td></tr>
+<tr><td>SearchReplaceReceipt</td><td>`build_receipt()` + policy validator</td><td>`test_tool_receipt_policy.py`</td></tr>
+<tr><td>ValidateReceipt</td><td>`build_receipt()` + policy validator</td><td>`test_tool_receipt_policy.py`</td></tr>
+<tr><td>RuntimeToolInvocationReceipt</td><td>`extra=&quot;forbid&quot;` + builder</td><td>`test_runtime_tool_invocation_execution.py`</td></tr>
+<tr><td>RuntimeToolExecutionResult</td><td>`extra=&quot;forbid&quot;` + schema</td><td>`test_runtime_tool_invocation_execution.py`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-42" class="disclosure-standard" data-disclosure-level="standard">Schema Validation</h2>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">Each adapter-level schema must validate its corresponding model&#x27;s `model_dump(mode=&quot;json&quot;)` output in tests. Tool receipt schemas should validate against actual receipt model dumps, not just be registered in the schema registry.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/runtime-tool-invocation-result-contract.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

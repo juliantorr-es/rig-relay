@@ -1,0 +1,365 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "subagent-runtime-toolruntime-v2",
+  "document_type": "audit",
+  "title": "SubagentRuntime Governed Tool Path — Verification",
+  "summary": "**Date**: 2026-05-17",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/agent-loop/subagent-runtime-toolruntime-v2.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "SubagentRuntime Governed Tool Path — Verification",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date**: 2026-05-17 **Status**: ✅ Already implemented. Verified, confirmed, readiness tests added.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Repo Truth",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "The current repo **already has** SubagentRuntime routed through ToolRuntime. No implementation was needed. This slice adds readiness proof tests and confirms the existing implementation is complete.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Implementation Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Requirement",
+        "Status",
+        "Evidence"
+      ],
+      "rows": [
+        [
+          "SubagentRuntime accepts `tool_runtime=`",
+          "✅",
+          "Constructor has `tool_runtime: Any \\",
+          "None = None`"
+        ],
+        [
+          "Governed path routes through ToolRuntime",
+          "✅",
+          "`_execute_tool_call_governed()` calls `execute_and_format(self._tool_runtime, ...)`"
+        ],
+        [
+          "Legacy path is explicit fallback",
+          "✅",
+          "Comment: \"fallback only when no ToolRuntime\""
+        ],
+        [
+          "`tool_execution_mode` set correctly",
+          "✅",
+          "`\"tool_runtime\"` when provided, `\"legacy_direct\"` otherwise"
+        ],
+        [
+          "task.py passes `tool_runtime=`",
+          "✅",
+          "`tool_runtime=getattr(ctx, \"tool_runtime\", None)`"
+        ],
+        [
+          "Envelope evidence preserved",
+          "✅",
+          "`SubagentToolResult` carries `supervisor_envelope_id`, `supervisor_envelope_sha256`, `supervisor_classification`"
+        ],
+        [
+          "SubagentToolResult extracts from ToolRuntimeResult",
+          "✅",
+          "`result.supervisor_result_envelope_id` → `SubagentToolResult.supervisor_envelope_id`"
+        ],
+        [
+          "No AgentLoop in subagent",
+          "✅",
+          "Guard test `test_subagent_runtime_never_constructs_agent_loop`"
+        ],
+        [
+          "No direct tool run in subagent",
+          "✅",
+          "Guard test `test_subagent_runtime_has_no_direct_tool_run`"
+        ],
+        [
+          "ToolRuntime span finalization",
+          "✅",
+          "All 8 terminal paths covered (prior slice)"
+        ],
+        [
+          "Envelope SHA is real content hash",
+          "✅",
+          "`sha256:<64 hex>` (prior slice)"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Readiness Tests Added",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "`tests/core/test_subagent_runtime_tool_runtime_readiness.py` (7 tests):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Test",
+        "Proves"
+      ],
+      "rows": [
+        [
+          "`test_task_py_passes_tool_runtime_to_subagent_runtime`",
+          "Production wiring exists"
+        ],
+        [
+          "`test_subagent_runtime_constructor_accepts_tool_runtime`",
+          "Constructor has the parameter"
+        ],
+        [
+          "`test_governed_path_uses_execute_one`",
+          "Governed path exists"
+        ],
+        [
+          "`test_tool_execution_mode_set_to_tool_runtime_when_provided`",
+          "Mode tracking in metadata"
+        ],
+        [
+          "`test_no_legacy_direct_as_default`",
+          "Legacy is fallback, not default"
+        ],
+        [
+          "`test_subagent_tool_result_carries_envelope_fields`",
+          "Result model carries envelope"
+        ],
+        [
+          "`test_execute_and_format_extracts_envelope_from_tool_runtime_result`",
+          "Passthrough from ToolRuntimeResult"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Evidence Propagation Chain",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-11",
+      "type": "code",
+      "language": "text",
+      "content": "SubagentRuntime._execute_tool_call_governed()\n  → tool_adapter.execute_and_format(tool_runtime, call)\n    → ToolRuntime.execute_one(request)\n      → ToolRuntime._execute_governed()\n        → subprocess runner\n        → extracts supervisor_result_envelope{_id,_sha256,_classification}\n        → returns ToolRuntimeResult with envelope fields populated\n    → SubagentToolResult(\n        supervisor_envelope_id=result.supervisor_result_envelope_id,\n        supervisor_envelope_sha256=result.supervisor_result_envelope_sha256,\n        supervisor_classification=result.supervisor_result_classification,\n      )\n  → LLMMessage(role=tool, content=result.output_text) appended to messages",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Guard Tests (existing, 28 tests)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Test",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`test_task_py_never_constructs_agent_loop`",
+          "AST proof: no AgentLoop in task.py"
+        ],
+        [
+          "`test_subagent_runtime_never_constructs_agent_loop`",
+          "AST proof: no AgentLoop in subagent"
+        ],
+        [
+          "`test_ralph_never_constructs_agent_loop`",
+          "AST proof: Ralph is read-only"
+        ],
+        [
+          "`test_subagent_runtime_has_no_direct_tool_run`",
+          "AST proof: no `.run()` bypass"
+        ],
+        [
+          "`test_legacy_path_is_marked_not_default`",
+          "Legacy is explicitly fallback"
+        ],
+        [
+          "`test_governed_path_is_primary`",
+          "Governed path is primary"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-15",
+      "type": "table",
+      "columns": [
+        "Command",
+        "Result"
+      ],
+      "rows": [
+        [
+          "`pytest tests/core/test_subagent_runtime_*.py -q`",
+          "35 passed"
+        ],
+        [
+          "`ruff check` touched files",
+          "All checks passed"
+        ],
+        [
+          "`pyright` touched files",
+          "0 errors"
+        ],
+        [
+          "`collect-only`",
+          "6306 tests, 0 errors"
+        ],
+        [
+          "`demo-doctor`",
+          "22/22"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 3 Readiness",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "ToolRuntime direct path and SubagentRuntime governed path are **both complete**. The runtime evidence spine now:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "1. ToolRuntime extracts envelope evidence from subprocess results ✓ 2. ToolRuntime populates ToolRuntimeResult with envelope id/sha/classification ✓ 3. All ToolRuntime terminal paths close trace spans ✓ 4. SubagentRuntime routes tool calls through ToolRuntime ✓ 5. SubagentRuntime extracts envelope evidence from ToolRuntimeResult ✓ 6. Envelope evidence reaches SubagentResult metadata ✓",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "**Phase 3 (ConversationRuntime.execute_turn)** is unblocked. The tool execution spine is governed end-to-end.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/agent-loop/subagent-runtime-toolruntime-v2.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

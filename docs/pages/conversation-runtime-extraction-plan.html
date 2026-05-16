@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConversationRuntime extraction plan — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Audit dates: 2026-05-15 (Phase 0), 2026-05-15 (Phase 1), 2026-05-15 (Phase 2B)">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>ConversationRuntime extraction plan</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ConversationRuntime extraction plan</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Audit dates: 2026-05-15 (Phase 0), 2026-05-15 (Phase 1), 2026-05-15 (Phase 2B)</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Phase progression</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Phase</th><th>Status</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Phase 0</td><td>✅ Complete</td><td>Observer/runtime-result seam.</td></tr>
+<tr><td>Phase 1</td><td>✅ Complete</td><td>Trace evidence (`PhaseTraceHook`, `PhaseTraceAttributes`).</td></tr>
+<tr><td>Phase 2A</td><td>✅ Complete</td><td>Terminal/near-terminal decisions: `decide_after_middleware`, `decide_after_model_turn`, `decide_on_exception`.</td></tr>
+<tr><td>Phase 2B</td><td>✅ Complete</td><td>Hook/tool/budget decisions: `decide_after_hook_processing`, `decide_after_tool_batch`, `decide_after_budget_check`. AgentLoop still holds execution mechanics.</td></tr>
+<tr><td>Phase 3</td><td>**✅ COMPLETE**</td><td>Loop ownership transferred. `ConversationRuntime.execute_turn_loop()` owns the while-loop. AgentLoop delegates via `_ConversationLoopAdapter`. Middleware is real (async). Context build is async-safe (no `run_until_complete`). Tool execution is single-pass via `_perform_llm_turn()`. 73/73 tests pass.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Phase 2B — Decision policy moved to ConversationRuntime</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Decision methods</h3>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Method</th><th>Owns</th></tr></thead>
+<tbody>
+<tr><td>`decide_after_middleware(action)`</td><td>STOP → stop_middleware, else continue</td></tr>
+<tr><td>`decide_after_model_turn(user_cancelled, assistant_final, error)`</td><td>stop_cancelled, stop_completed, run_tools, fail_error</td></tr>
+<tr><td>`decide_on_exception(exc)`</td><td>fail_error</td></tr>
+<tr><td>`decide_after_hook_processing(hook_returned_user_message)`</td><td>retry_hooks or stop_completed</td></tr>
+<tr><td>`decide_after_tool_batch()`</td><td>continue_turn</td></tr>
+<tr><td>`decide_after_budget_check(current_turn, max_turns)`</td><td>fail_budget_exceeded or continue_turn</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Decision kinds</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Kind</th><th>should_break</th><th>should_run_tools</th><th>should_retry_hooks</th></tr></thead>
+<tbody>
+<tr><td>`continue_turn`</td><td>False</td><td>False</td><td>False</td></tr>
+<tr><td>`stop_completed`</td><td>True</td><td>False</td><td>False</td></tr>
+<tr><td>`stop_middleware`</td><td>True</td><td>False</td><td>False</td></tr>
+<tr><td>`stop_cancelled`</td><td>True</td><td>False</td><td>False</td></tr>
+<tr><td>`run_tools`</td><td>False</td><td>True</td><td>False</td></tr>
+<tr><td>`retry_hooks`</td><td>False</td><td>False</td><td>True</td></tr>
+<tr><td>`fail_error`</td><td>True</td><td>False</td><td>False</td></tr>
+<tr><td>`fail_budget_exceeded`</td><td>True</td><td>False</td><td>False</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">What stays in AgentLoop</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Hook execution loop (`async for hook_event in self._hooks_manager.run(...)`) - Hook message injection (`self.messages.append(...)`) - Tool execution (delegates to ToolRuntime) - Event yielding - Middleware execution - Context building - LLM turn dispatch</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Current flow (AgentLoop._conversation_loop)</h2>
+
+<pre id="code-13"><code class="language-text">act()  →  _conversation_loop()
+           ├─ create ConversationTurnRuntime
+           ├─ create ConversationRuntime (observer)
+           ├─ cr.set_turn_id()
+           ├─ append user message → yield UserMessageEvent
+           ├─ while not should_break:
+           │    ├─ middleware → cr.decide_after_middleware()
+           │    ├─ first turn: context build
+           │    ├─ _perform_llm_turn()
+           │    ├─ cr.decide_after_model_turn()
+           │    ├─ stop_cancelled? → return
+           │    ├─ stop_completed? → hooks →
+           │    │   cr.decide_after_hook_processing()
+           │    │   retry_hooks? → inject message, continue loop
+           │    ├─ run_tools? → cr.decide_after_tool_batch()
+           │    ├─ cr.decide_after_budget_check()
+           │    └─ fail_budget_exceeded? → return
+           ├─ cr._finish(SUCCESS)
+           └─ turn.mark_outcome(SUCCESS)
+
+act() finally:
+  ├─ self._conversation_runtime = None
+  └─ self._current_turn = None</code></pre>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Phase 3 — Loop ownership transfer (planned)</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Phase 3 should move the while-loop into `ConversationRuntime.execute_turn()`, but with an important distinction:</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">1. **OrchestratorLoop** (renamed from AgentLoop) is the ONLY owner of a full turn loop. Only the desktop cockpit, ACP server, and IDE sidecar should instantiate it.</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">2. **SubagentRuntime v1** is built and now owns lifecycle evidence, trace propagation, and explicit tool execution mode markers. `task.py` delegates to `SubagentRuntime`, NOT `AgentLoop`. The `is_subagent=True` pattern is dead and blocked by guard tests.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">3. **RalphRuntime** should use SubagentRuntime with `profile_kind=AUTONOMOUS_BACKGROUND` — it must never own a full turn loop.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">4. **Handoff receipts** are required for ownership transfer: owner_before, owner_after, reason, scope, budget, return_condition, trace_id.</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">5. AgentLoop → OrchestratorLoop rename should occur AFTER SubagentRuntime exists, to prevent confusion between &quot;agent&quot; and &quot;subagent.&quot;</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">See `docs/governance/orchestrator-loop-boundary.md` for the full doctrine.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/agent-loop/conversation-runtime-extraction-plan.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

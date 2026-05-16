@@ -1,0 +1,260 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "default-suite-tiering-report",
+  "document_type": "audit",
+  "title": "Test Suite Tiering Report",
+  "summary": "- Conftest hygiene (1): conftest source guard",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/test-suite/default_suite_tiering_report.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Suite Tiering Report",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Marker Definitions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-3",
+      "type": "table",
+      "columns": [
+        "Marker",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`smoke`",
+          "Fastest health checks; must pass before demo/share"
+        ],
+        [
+          "`contract`",
+          "Domain contract/unit tests"
+        ],
+        [
+          "`integration`",
+          "Crosses multiple components/processes/filesystems"
+        ],
+        [
+          "`e2e`",
+          "Broad-stack or full flow"
+        ],
+        [
+          "`packaging`",
+          "Packaged app / installer / bundle checks"
+        ],
+        [
+          "`slow`",
+          "Intentionally slow — excluded from default"
+        ],
+        [
+          "`legacy`",
+          "Retained but not part of default suite"
+        ],
+        [
+          "`quarantine`",
+          "Quarantined, runs only in dedicated job"
+        ],
+        [
+          "`flaky`",
+          "Known nondeterministic — excluded from default"
+        ],
+        [
+          "`network`",
+          "Requires external network"
+        ],
+        [
+          "`provider`",
+          "Requires external model/provider/API"
+        ],
+        [
+          "`destructive`",
+          "Mutates worktrees/branches/files beyond temp dirs"
+        ],
+        [
+          "`migration`",
+          "Being relocated during test layout canonicalization"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Canonical Commands",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-5",
+      "type": "table",
+      "columns": [
+        "Purpose",
+        "Command"
+      ],
+      "rows": [
+        [
+          "Smoke",
+          "`uv run pytest -m smoke`"
+        ],
+        [
+          "Default (dev/agent)",
+          "`uv run pytest -m \"not slow and not legacy and not quarantine and not flaky and not network and not provider and not destructive\"`"
+        ],
+        [
+          "Full suite",
+          "`uv run pytest`"
+        ],
+        [
+          "Collection check",
+          "`PYTHONDONTWRITEBYTECODE=1 uv run pytest --collect-only -q`"
+        ],
+        [
+          "Legacy/quarantine review",
+          "`uv run pytest -m \"legacy or quarantine or flaky\"`"
+        ],
+        [
+          "Packaging",
+          "`uv run pytest -m packaging`"
+        ],
+        [
+          "Integration/e2e",
+          "`uv run pytest -m \"integration or e2e\"`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Current Suite Metrics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Suite",
+        "Tests Collected",
+        "Passed",
+        "Time"
+      ],
+      "rows": [
+        [
+          "Smoke",
+          "24",
+          "24",
+          "48.7s"
+        ],
+        [
+          "Default",
+          "6104",
+          "—",
+          "—"
+        ],
+        [
+          "Full",
+          "6108",
+          "—",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Smoke Tests (24 marks)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- Conftest hygiene (1): conftest source guard - Layout guard (1): test layout audit - Architecture quality doctrine (12): marker validation, conftest checks, naming rules - Orchestrator (3): demo profiles, autonomous worker, local bindings - Ralph (4): lifecycle projection, mission board, demo reports - Desktop TLS (1): TLS material generation - Desktop projection (1): build projection returns dict - Runtime convergence (1): runner uses tool runtime",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Agent Guidance",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Agents should run `validate focused` or the default marker expression unless explicitly asked for full suite validation. Full suite is an explicit confidence event, not an ordinary loop.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/test-suite/default_suite_tiering_report.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

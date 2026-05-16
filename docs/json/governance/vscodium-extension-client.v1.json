@@ -1,0 +1,186 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "vscodium-extension-client",
+  "document_type": "governance",
+  "title": "Governance: VSCodium Extension Client",
+  "summary": "This document defines the governance boundaries and security invariants for the Rig Relay VSCodium extension.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/vscodium-extension-client.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Governance: VSCodium Extension Client",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "This document defines the governance boundaries and security invariants for the Rig Relay VSCodium extension.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Daemon Authority Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "The VSCodium extension is a **Content-Light Projector**. It does not possess authority to: *   Perform direct file I/O on the project codebase. *   Execute shell commands or scripts. *   Authorize tool permissions or bypass tool gates. *   Compile context or assemble LLM prompts.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "All of the above responsibilities reside strictly within the **Rig Relay Daemon**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Token Storage & Security",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "*   **SecretStorage**: Authentication tokens for the daemon are stored in VS Code's `SecretStorage` API, which leverages the OS keyring (macOS Keychain, Windows Credential Manager). *   **Isolation**: Tokens are never stored in `settings.json`, environment variables, or extension-local storage. *   **Discovery**: The `.rig/daemon/console.json` file is used for configuration discovery but **must never contain raw tokens**. It should only contain the connection metadata (host/port/session_id).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Protocol Versioning & Invariants",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "*   **Handshake**: Every connection requires a protocol version check. The client and server must agree on `rig.ws.v1`. *   **Sequence Tracking**: The client maintains a `last_seen_seq` to ignore stale or out-of-order messages during reconnects. *   **Idempotency**: All `delta` events carry a unique `event_id`. The client must deduplicate incoming events to ensure deterministic rendering.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Content-Light Invariant",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "To prevent sensitive data leakage into the editor's renderer process, the following data types are **strictly prohibited** from being sent to or rendered by the extension: *   Raw `stdout` / `stderr` from tool executions. *   Full file contents (unless explicitly requested for a Patch Review). *   Unformatted `diff` or `patch` blobs. *   Environment variables or secrets.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "In the event of a protocol violation, the extension must render a `rig.ws.server.warning.v1` and refuse further interaction until corrected.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "5. Webview Security",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "*   **CSP**: A strict Content Security Policy is applied to the Mission Control webview. *   **Nonce**: All scripts are gated by a one-time nonce. *   **Isolation**: The webview has no access to the local filesystem except through authorized `localResourceRoots` pointing to the extension's `media` directory.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "6. Open VSX & Distribution",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "*   **Neutrality**: The extension targets VSCodium and is compatible with the Open VSX registry. *   **Packaging**: The extension is bundled as a standalone `.vsix` that can be sideloaded without Microsoft Marketplace access.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/vscodium-extension-client.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

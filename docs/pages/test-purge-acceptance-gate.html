@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Purge Pass 1 — Acceptance Gate — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="All 177 working-tree deletions are certified as:">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Purge Pass 1 — Acceptance Gate</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Purge Pass 1 — Acceptance Gate</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Decision: ACCEPT</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">All 177 working-tree deletions are certified as: - Stale removed-feature tests (old TUI, update notifier, voice, webview) - Duplicate tests with canonical survivors in current test layout</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Deletion Audit</h2>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">Git Status</h3>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Staged deletions (`git diff --cached`)</td><td>**0** (not yet staged)</td></tr>
+<tr><td>Working-tree deletions (`git status -s</td><td>grep &quot; D&quot;`)</td><td>**177**</td></tr>
+<tr><td>Working-tree modified</td><td>11</td></tr>
+<tr><td>New untracked</td><td>34</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">Deletion Groups Accepted</h3>
+
+<details id="table-8" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-8" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Group</th><th>Count</th><th>Category</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>tests/autocompletion/*</td><td>2</td><td>deleted feature</td><td>Old TUI autocomplete controllers</td></tr>
+<tr><td>tests/cli/plan_offer/*</td><td>3</td><td>deleted feature</td><td>Old TUI plan offer</td></tr>
+<tr><td>tests/cli/test_*.py</td><td>7</td><td>deleted feature</td><td>Old TUI CLI features (cache, clipboard, commands, doctor, initial_agent_name, programmatic_setup, stderr_guard)</td></tr>
+<tr><td>tests/narrator_manager/*</td><td>3</td><td>deleted feature</td><td>Old TUI narrator manager</td></tr>
+<tr><td>tests/scripts/test_desktop_*.py + test_websocket_server.py</td><td>10</td><td>duplicate</td><td>Canonical in tests/desktop/test_websocket_server.py, test_intents.py, test_protected_intents.py, test_projection.py</td></tr>
+<tr><td>tests/snapshots/*</td><td>~95</td><td>deleted feature</td><td>Old TUI snapshot SVG tests</td></tr>
+<tr><td>tests/stubs/fake_*.py</td><td>3</td><td>deleted feature</td><td>Old TUI audio stubs</td></tr>
+<tr><td>tests/update_notifier/*</td><td>8</td><td>deleted feature</td><td>Old CLI update notifier</td></tr>
+<tr><td>tests/voice_manager/*</td><td>3</td><td>deleted feature</td><td>Old TUI voice manager</td></tr>
+<tr><td>tests/webview_console/*</td><td>1</td><td>deleted feature</td><td>Old webview console</td></tr>
+<tr><td>tests/test_*.py (root-level)</td><td>~42</td><td>deleted feature / migration relic</td><td>Old root-level tests without current source domain</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">Deletion Groups Rejected</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**None.** All 177 deletions pass the acceptance criteria.</p>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">Protected Domain Check</h3>
+
+<details id="table-12" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-12" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Domain</th><th>Files</th><th>Deleted?</th></tr></thead>
+<tbody>
+<tr><td>ToolRuntime</td><td>tests/core/test_tool_runtime_ledger.py</td><td>**No**</td></tr>
+<tr><td>RuntimeSupervisor</td><td>tests/runtime/test_runtime_tool_convergence_boundary.py</td><td>**No**</td></tr>
+<tr><td>Bash supervised subprocess</td><td>tests/tools/test_bash.py, test_bash_hardening.py</td><td>**No**</td></tr>
+<tr><td>Desktop WebSocket</td><td>tests/desktop/test_websocket_server.py</td><td>**No** (scripts/ shadow deleted)</td></tr>
+<tr><td>Desktop projection</td><td>tests/desktop/test_projection.py, test_desktop_projection.py</td><td>**No**</td></tr>
+<tr><td>Desktop intents</td><td>tests/desktop/test_intents.py, test_protected_intents.py</td><td>**No**</td></tr>
+<tr><td>Desktop TLS</td><td>tests/desktop/test_tls.py</td><td>**No**</td></tr>
+<tr><td>Ralph</td><td>tests/ralph/* (11 files)</td><td>**No**</td></tr>
+<tr><td>Orchestrator</td><td>tests/orchestrator/* (2 files)</td><td>**No**</td></tr>
+<tr><td>Demo doctor</td><td>tests/demo/*</td><td>**No**</td></tr>
+<tr><td>Layout guard</td><td>tests/architecture/test_test_layout.py</td><td>**No**</td></tr>
+<tr><td>Conftest hygiene</td><td>tests/test_conftest_hygiene.py</td><td>**No**</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Test Count Resolution</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">The 6085 collected test count IS the post-deletion count. The deleted files were dead-on-arrival (importing non-existent modules from removed TUI features), contributing 0 tests to collection even before deletion.</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Validation Results</h3>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Check</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Collect-only</td><td>6085 tests, 0 errors</td></tr>
+<tr><td>Layout guard</td><td>PASSED</td></tr>
+<tr><td>Conftest hygiene</td><td>PASSED</td></tr>
+<tr><td>Demo-doctor</td><td>22/22 passed</td></tr>
+<tr><td>WebSocket server tests</td><td>44/44 passed</td></tr>
+<tr><td>Orchestrator tests</td><td>20/20 passed</td></tr>
+<tr><td>Ralph tests</td><td>98 passed, 6 pre-existing failures (ralph_intents.py binding/state issues — not purge-related)</td></tr>
+<tr><td>Runtime convergence</td><td>9/9 passed</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite/test_purge_acceptance_gate.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

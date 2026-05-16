@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bash Deterministic Tool Envelope — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Local Relay tool usage audit (`/Users/user/.rig/relay`) evidence:">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Bash Deterministic Tool Envelope</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Bash Deterministic Tool Envelope</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Why Bash is First</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Local Relay tool usage audit (`/Users/user/.rig/relay`) evidence:</p>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Total calls</td><td>5,023</td></tr>
+<tr><td>Failures</td><td>337</td></tr>
+<tr><td>Failure rate</td><td>~6.71%</td></tr>
+<tr><td>Risk tier</td><td>3 (highest)</td></tr>
+<tr><td>p95 latency</td><td>~10,469 ms</td></tr>
+<tr><td>p95 output</td><td>~8,012 bytes</td></tr>
+<tr><td>Observed exposure</td><td>subprocess, Git, network</td></tr>
+</tbody>
+</table>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Bash dominates both usage and risk. SearchReplace has a higher failure rate (~10.55%) but lower total calls (2,057) and lower authority. WriteFile has lower failure rate (~4.1%) but higher authority. Bash is the right first hardening target because it combines high call volume, high failure count, p95 latency &gt;10 s, and direct subprocess/network exposure.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Current Implementation Findings</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">File: `vibe/core/tools/builtins/bash.py`</p>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">What existed before hardening</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- **`BashArgs`**: `command: str`, `timeout: int | None` - **`BashResult`**: `command: str`, `stdout: str`, `stderr: str`, `returncode: int` - **`BashToolConfig`**: permission allowlist/denylist, `max_output_bytes`, `default_timeout` - **Permission system**: arity-based session patterns, outside-directory detection, find-exec predicates - **Timeout**: Raised `ToolError` on timeout (counted as failure) - **Output truncation**: Single `max_output_bytes` applied after decode, no truncation flags - **Refusal**: `resolve_permission` returned `NEVER` for denylist matches - **Git guard**: `get_guard().is_destructive_git_command()` raises `ToolError` on destructive commands</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">What was missing</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">1. No structured result status — `success`/`failure`/`timed_out`/`refused`/`truncated` 2. No `duration_ms` in result — latency tracked only at the agent-loop level 3. No `stdout_truncated`/`stderr_truncated` flags — silent truncation 4. No `error_kind` — error classification was only in `ToolError` message text 5. No `refusal_reason` — refusal signaled only through permission context 6. No per-stream byte caps — single shared `max_output_bytes` 7. No content-light receipt — receipts contained raw stdout/stderr 8. No schema files — bash invocation/result/receipt schemas did not exist 9. Timeout raised `ToolError` instead of yielding structured result 10. No `cwd` field on args — working directory was always implicit</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Implemented Guardrails</h2>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Guardrail</th><th>Mechanism</th></tr></thead>
+<tbody>
+<tr><td>Structured status</td><td>`BashResult.status` ∈ {`success`, `failure`, `timed_out`, `refused`, `truncated`}</td></tr>
+<tr><td>Duration tracking</td><td>`time.perf_counter()` before/after subprocess, yields `duration_ms`</td></tr>
+<tr><td>Truncation flags</td><td>`stdout_truncated`, `stderr_truncated` booleans in result</td></tr>
+<tr><td>Per-stream byte caps</td><td>`BashArgs.max_stdout_bytes`, `max_stderr_bytes` override config</td></tr>
+<tr><td>Error classification</td><td>`error_kind` ∈ {`nonzero_exit`, `timeout`, `refused`, `internal_error`}</td></tr>
+<tr><td>Refusal reason</td><td>`refusal_reason` string on refused/timed-out results</td></tr>
+<tr><td>Content-light receipts</td><td>`BashReceipt` model — SHA256 hashes, byte counts, no raw output</td></tr>
+<tr><td>Explicit cwd</td><td>`BashArgs.cwd` for deterministic working directory</td></tr>
+<tr><td>Structured timeout</td><td>`yield BashResult(status=&quot;timed_out&quot;)` instead of `raise ToolError`</td></tr>
+<tr><td>Schema validation</td><td>3 new JSON schemas for invocation, result, and receipt</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Backward Compatibility</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- All new `BashResult` fields are optional with defaults - Old constructor `BashResult(command=..., stdout=..., stderr=..., returncode=...)` still works - Non-zero exit still raises `ToolError` via `_build_result` (preserves existing behavior) - `BashArgs` new fields (`cwd`, `max_stdout_bytes`, `max_stderr_bytes`) are optional - `run()` signature unchanged — still yields `BashResult` - `BashReceipt` is a new additive model, not required</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Remaining Gaps</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">1. **No-shell/argv mode**: The tool always uses `create_subprocess_shell`. A future hardening pass should add an `argv` mode for commands that don&#x27;t need shell features. 2. **No explicit command classification**: The `BashArgs` model has no `intent` or `category` field. This would require cross-cutting changes to how tools declare their intent. 3. **Guard channel**: The `get_guard().is_destructive_git_command()` gate exists but the guard behavior is context-dependent (no-op outside git repos). This should become more deterministic. 4. **Environment filtering**: The current approach inherits the full `os.environ` with a few overrides. A future pass should explicitly enumerate permitted env vars. 5. **Receipt integration**: `BashReceipt` is constructed via `build_receipt()` and emitted as a `rig.relay.tool_receipt.captured` event via `capture_tool_receipt()` in the agent loop&#x27;s `_execute_tool()` method. See `tests/tools/test_tool_receipt_emission.py` for emission tests.</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Follow-Up Migration Plan</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">1. **Short term** (this mission): Deterministic envelope in place. Tests passing. Schemas defined. 2. **Completed**: `BashReceipt` emission wired into agent loop via `capture_tool_receipt()` helper. Content-light receipt policy validator (`rig_relay/evidence/tool_receipt_policy.py`) with 21 tests and CLI validation script. Event `rig.relay.tool_receipt.captured` added to `EventName`. Tests in `tests/tools/test_tool_receipt_emission.py`. 3. **Medium term**: Add `argv` execution mode for commands that don&#x27;t need shell expansion. 4. **Long term**: Replace raw agent `bash` calls with determinism-managed envelope for all subprocess tools (grep, git, checkpoint). Add `command_classification` to args for finer-grained permission control. 5. **Continuous**: Monitor the audit aggregates. As new tool-usage data accumulates, re-run `scripts/analyze_relay_tool_usage.py` and compare failure rates against this baseline.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Schema Files</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `docs/schemas/rig.relay.bash_invocation.v1.schema.json` — request envelope - `docs/schemas/rig.relay.bash_result.v1.schema.json` — result with output - `docs/schemas/rig.relay.bash_receipt.v1.schema.json` — content-light receipt</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Test Coverage</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Tests in `tests/tools/test_bash_hardening.py` (23 new tests):</p>
+
+<details id="table-24" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-24" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Category</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>Structured result model</td><td>2 (fields on success, failure raises ToolError)</td></tr>
+<tr><td>Timeout behavior</td><td>1 (structured timed_out result)</td></tr>
+<tr><td>Output bounding</td><td>4 (stdout truncation, stderr truncation, per-stream override, no truncation)</td></tr>
+<tr><td>Content-light receipt</td><td>3 (no raw output, timed-out receipt, SHA256 diffs)</td></tr>
+<tr><td>cwd handling</td><td>2 (explicit cwd, default cwd)</td></tr>
+<tr><td>Environment safety</td><td>2 (noninteractive flags, no env leak to receipt)</td></tr>
+<tr><td>Refusal behavior</td><td>1 (denylist refusal)</td></tr>
+<tr><td>Duration tracking</td><td>1 (milliseconds)</td></tr>
+<tr><td>Status field values</td><td>2 (success, failure)</td></tr>
+<tr><td>Backward compatibility</td><td>1 (BashResult defaults)</td></tr>
+<tr><td>BashReceipt construction</td><td>2 (minimal, truncation)</td></tr>
+</tbody>
+</table></details>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Plus updated `test_handles_timeout_structured_result` in existing `tests/tools/test_bash.py`.</p>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">Tool Receipt Content-Light Policy Validator (`rig_relay/evidence/tool_receipt_policy.py`)</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Reusable validator module that checks emitted tool receipt events against content-light policy:</p>
+
+<table id="table-28" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Category</th><th>Mechanism</th></tr></thead>
+<tbody>
+<tr><td>Forbidden key detection</td><td>Recursive walk of receipt dict, exact field-name match against `_FORBIDDEN_RECEIPT_FIELDS`</td></tr>
+<tr><td>Allowed metadata passthrough</td><td>Skips `_ALLOWED_METADATA_FIELDS` (e.g. `stdout_sha256`, `stdout_bytes`)</td></tr>
+<tr><td>Value-shape heuristics</td><td>Flags strings &gt;256 bytes, unified diff markers (`--- `, `+++ `, `@@ `), &gt;10 newlines</td></tr>
+<tr><td>Event-level validation</td><td>`validate_event()` — ignores non-receipt events</td></tr>
+<tr><td>File-level validation</td><td>`validate_file()` — parses JSONL, validates each receipt event</td></tr>
+</tbody>
+</table>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Tests in `tests/evidence/test_tool_receipt_policy.py` (21 tests):</p>
+
+<table id="table-30" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Category</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>Valid receipt passes</td><td>1 (BashReceipt with hashes, no raw output)</td></tr>
+<tr><td>Allowed metadata</td><td>1 (stdout_sha256, stderr_bytes, etc. not rejected)</td></tr>
+<tr><td>Forbidden fields</td><td>7 (stdout, stderr, old, new, diff, snippet, replacement, patch, context, command_output)</td></tr>
+<tr><td>Nested fields</td><td>1 (forbidden fields in nested dicts)</td></tr>
+<tr><td>Unrelated events</td><td>2 (ignored, malformed but unrelated tolerated)</td></tr>
+<tr><td>Malformed receipts</td><td>2 (missing payload, non-dict receipt)</td></tr>
+<tr><td>Value-shape heuristics</td><td>2 (large strings, diff markers)</td></tr>
+<tr><td>File-level validation</td><td>4 (clean, violations, malformed unrelated, multiple violations)</td></tr>
+<tr><td>Edge cases</td><td>2 (empty receipt, non-dict receipt value)</td></tr>
+</tbody>
+</table>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Read-only CLI script at `scripts/rig_relay_validate_tool_receipts.py`: - Accepts a JSONL file path or session directory - Exits 0 (pass), 1 (violations), or 2 (file not found) - Usage: `uv run python scripts/rig_relay_validate_tool_receipts.py &lt;path&gt;`</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Tool Receipt Emission Tests (`tests/tools/test_tool_receipt_emission.py`)</h3>
+
+<table id="table-33" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Category</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>Helper emits event</td><td>1 (capture_tool_receipt writes to JSONL)</td></tr>
+<tr><td>Content-light receipt</td><td>1 (no raw stdout/stderr in payload)</td></tr>
+<tr><td>Failure-safe</td><td>1 (helper does not raise on invalid input)</td></tr>
+<tr><td>Bash has build_receipt</td><td>1 (duck-type check)</td></tr>
+<tr><td>Success receipt</td><td>1 (content-light fields, hashes, no raw output)</td></tr>
+<tr><td>Timeout receipt</td><td>1 (content-light timeout receipt)</td></tr>
+<tr><td>Refusal receipt</td><td>1 (content-light refusal receipt)</td></tr>
+<tr><td>Full integration</td><td>1 (build → emit → verify event)</td></tr>
+<tr><td>No-raise guarantee</td><td>1 (emission does not break tool execution)</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-hardening/bash-deterministic-envelope.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

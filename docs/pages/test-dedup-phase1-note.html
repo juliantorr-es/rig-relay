@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Deduplication Phase 1 — Doctrine Note — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-16">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Deduplication Phase 1 — Doctrine Note</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Deduplication Phase 1 — Doctrine Note</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-16</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Rule</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">When tests share the same **target module** and **assertion shape**, prefer a **named case table** (`pytest.mark.parametrize` or dataclass table) over separate test functions, unless separate functions encode materially different setup, contract, or regression history.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Phase 1 Actions</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Exact body duplicate resolved</h3>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- `tests/evidence/test_audit_trail.py::test_schema_has_no_forbidden_raw_fields` - `tests/evidence/test_receipt_envelope.py::test_schema_has_no_forbidden_raw_fields`</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">**Resolution**: Extracted shared `check_schema_for_forbidden_fields()` helper into `tests/evidence/_helpers.py`. Both tests now call the shared helper. Bodies remain structurally identical by design (same assertion pattern, different schema fixtures).</p>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">Guardrail added</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">`scripts/rig_relay_test_duplicate_audit.py` supports: - `--fail-on-exact-duplicates` — exits 1 if any exact body duplicates found - `--max-exact-duplicate-groups=N` — exits 1 if exact groups exceed N</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Current baseline: 1 exact duplicate group (acceptable — shared helper pattern).</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Audit results post-Phase 1</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>Scanned</td><td>5,966</td></tr>
+<tr><td>Exact body groups</td><td>1 (shared helper, by design)</td></tr>
+<tr><td>Normalized AST groups</td><td>35</td></tr>
+<tr><td>Assert shape groups</td><td>618</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Assert shape groups</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">The 618 assert-shape groups represent tests with similar assertion counts/patterns across different domains. Most are within-file test methods in the same class. These are not true duplicates — they test different behaviors on the same model. Parametrization would require case-by-case analysis.</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Future dedup targets</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Priority</th><th>Group</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>P1</td><td>Normalized AST groups (35)</td><td>Within-file structural duplicates — best targets for parametrization</td></tr>
+<tr><td>P2</td><td>Backend adapter duplicates</td><td>test_anthropic_adapter ↔ test_vertex_anthropic_adapter structural overlap</td></tr>
+<tr><td>P3</td><td>ACP tool get_name duplicates</td><td>4 files with identical `test_get_name` — cross-file parametrization deferred</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite/test_dedup_phase1_note.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

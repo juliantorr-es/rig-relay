@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SearchReplace Patch Contract — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document audits the hardening of the `search_replace` tool into a">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>SearchReplace Patch Contract</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">SearchReplace Patch Contract</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">This document audits the hardening of the `search_replace` tool into a deterministic, schema-validated, content-light patch contract.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Motivation</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Local Relay tool-usage audit evidence:</p>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Total calls</td><td>2,057</td></tr>
+<tr><td>Failures</td><td>217</td></tr>
+<tr><td>Failure rate</td><td>~10.55%</td></tr>
+<tr><td>Risk tier</td><td>2 (high)</td></tr>
+<tr><td>p95 latency</td><td>~3,200 ms</td></tr>
+<tr><td>p95 output</td><td>~2,400 bytes</td></tr>
+</tbody>
+</table>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">SearchReplace has the highest **failure rate** of any tool at ~10.55%. While total call volume is lower than bash (5,023), the friction cost of failed patches is high — each failure requires a human to re-read the file, adjust the patch, and retry.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">What Changed</h2>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">Result Model Extensions (`SearchReplaceResult`)</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">Added structured status, error classification, and timing:</p>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Default</th></tr></thead>
+<tbody>
+<tr><td>`status`</td><td>`str`</td><td>`&quot;success&quot;`</td></tr>
+<tr><td>`error_kind`</td><td>`str \</td><td>None`</td><td>`None`</td></tr>
+<tr><td>`refusal_reason`</td><td>`str \</td><td>None`</td><td>`None`</td></tr>
+<tr><td>`duration_ms`</td><td>`float \</td><td>None`</td><td>`None`</td></tr>
+<tr><td>`replacements`</td><td>`int`</td><td>`0`</td></tr>
+<tr><td>`before_bytes`</td><td>`int`</td><td>`0`</td></tr>
+<tr><td>`after_bytes`</td><td>`int`</td><td>`0`</td></tr>
+</tbody>
+</table>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Status values: `success`, `no_match`, `ambiguous_match`, `count_mismatch`, `refused`.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Error Classification</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">The `_classify_block_errors()` function maps block parser error messages to structured `error_kind` values:</p>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mismatch Pattern</th><th>`error_kind`</th></tr></thead>
+<tbody>
+<tr><td>`&quot;Search text not found&quot;`</td><td>`old_text_not_found`</td></tr>
+<tr><td>`&quot;search text hasn&#x27;t been modified&quot;`</td><td>`unchanged_replacement`</td></tr>
+<tr><td>Fallback</td><td>`old_text_not_found`</td></tr>
+</tbody>
+</table>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">The `_classify_status_from_error_kind()` function maps `error_kind` to status:</p>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>`error_kind`</th><th>`status`</th></tr></thead>
+<tbody>
+<tr><td>`old_text_not_found`, `unchanged_replacement`, `encoding_error`</td><td>`no_match`</td></tr>
+<tr><td>`multiple_matches_when_single_required`</td><td>`ambiguous_match`</td></tr>
+<tr><td>`replacement_count_mismatch`</td><td>`count_mismatch`</td></tr>
+<tr><td>Unknown</td><td>`mismatch`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Refusal Classification</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">The `_classify_refusal()` function inspects `GuardCheck` attributes to classify refusals. Currently heuristic-based; covers hash mismatch, destructive path patterns, and guard policy violations.</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">Structured Block Mismatch</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Previously, block errors raised `ToolError`. Now they return a `SearchReplaceResult(status=&quot;no_match&quot;, ...)` with block-level details.</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Structured Guard Refusal</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Previously, guard refusal raised `ToolError`. Now the `run()` method yields `SearchReplaceResult(status=&quot;refused&quot;, ...)` with the guard check detail.</p>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">Content-Light Receipt</h3>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">New `SearchReplaceReceipt` model — identical to `SearchReplaceResult` minus the `content` field. Used for telemetry and audit trails without exposing file contents.</p>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">Schema Files</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Three new JSON schemas:</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- `docs/schemas/rig.relay.search_replace_invocation.v1.schema.json` - `docs/schemas/rig.relay.search_replace_result.v1.schema.json` - `docs/schemas/rig.relay.search_replace_receipt.v1.schema.json`</p>
+
+<h2 id="h2-29" class="disclosure-standard" data-disclosure-level="standard">Backward Compatibility</h2>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">- All new `SearchReplaceResult` fields are optional with defaults - `content` field preserved in result for legacy consumers - `run()` signature unchanged — still yields `SearchReplaceResult` - `SearchReplaceReceipt` is an additive model, not required - File-not-found, outside-workdir, content-size, empty-content, directory-path, binary-file, and parse failures now return structured `SearchReplaceResult(status=&quot;refused&quot;)` with domain-specific `error_kind` instead of raising `ToolError`. Receipt emission follows automatically.</p>
+
+<h2 id="h2-31" class="disclosure-standard" data-disclosure-level="standard">Bugs Fixed Incidentally</h2>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">1. **CoordinationStore release_paths key mismatch** (`rig_relay/coordination/store.py`): `reserve_paths()` wrote lease files using `_path_key(session_id+task_id+paths)` while `release_paths()` looked for them using `_lease_path(sha256(path))` — completely different filenames. Fixed `release_paths()` to use the same key construction as `reserve_paths()`.</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">2. **SearchReplace class structure corruption**: A previous edit accidentally placed `_classify_status_from_error_kind()` at module level (indent 0), which closed the `SearchReplace` class and made all subsequent methods (`run`, `_apply_blocks`, etc.) nested functions inside it. Restored proper class membership with `@staticmethod`.</p>
+
+<h2 id="h2-34" class="disclosure-standard" data-disclosure-level="standard">Receipt Emission Verification</h2>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Automatic Integration (verified)</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">SearchReplace receipts are **automatically emitted** through the generic duck-typed receipt path in the agent loop (`vibe/core/agent_loop.py` lines 1114–1130):</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">1. Agent loop calls `getattr(tool_instance, &quot;build_receipt&quot;, None)` — finds `SearchReplace.build_receipt` via duck typing 2. Calls `build_receipt(result_model)` with the `SearchReplaceResult` yielded from `run()` 3. Calls `capture_tool_receipt()` to write `rig.relay.tool_receipt.captured` event to local observability JSONL</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">**No code change was required for SearchReplace receipt emission.** The Phase 5 addition of `build_receipt()` to the `SearchReplace` class was sufficient for automatic integration.</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Statuses That Emit Receipts</h3>
+
+<table id="table-40" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Status</th><th>Source</th><th>Emits Receipt?</th></tr></thead>
+<tbody>
+<tr><td>`success`</td><td>`_build_search_replace_result()`</td><td>Yes</td></tr>
+<tr><td>`no_match`</td><td>`_apply_search_replace()` when `block_result.errors`</td><td>Yes</td></tr>
+<tr><td>`ambiguous_match`</td><td>`_apply_search_replace()` when `allow_multiple=False`</td><td>Yes</td></tr>
+<tr><td>`count_mismatch`</td><td>`_apply_search_replace()` when `expected_replacements` mismatches</td><td>Yes</td></tr>
+<tr><td>`refused`</td><td>`run()` guard check failure</td><td>Yes</td></tr>
+<tr><td>`ToolError` (file not found, outside workdir, parse failure)</td><td>`_prepare_and_validate_args()`</td><td>No — exception path, not a result</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-41" class="disclosure-standard" data-disclosure-level="standard">Receipt Fields (Content-Light Proof)</h3>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">`SearchReplaceReceipt` model fields:</p>
+
+<details id="table-43" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-43" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Content-Light?</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`file`</td><td>Yes</td><td>Path string (repo-relative)</td></tr>
+<tr><td>`status`</td><td>Yes</td><td>Structured enum value</td></tr>
+<tr><td>`blocks_applied`</td><td>Yes</td><td>Integer count</td></tr>
+<tr><td>`lines_changed`</td><td>Yes</td><td>Integer count</td></tr>
+<tr><td>`replacements`</td><td>Yes</td><td>Integer count</td></tr>
+<tr><td>`warnings`</td><td>⚠️</td><td>May contain file context snippets from fuzzy match</td></tr>
+<tr><td>`before_file_sha256`</td><td>Yes</td><td>SHA256 hash only</td></tr>
+<tr><td>`after_file_sha256`</td><td>Yes</td><td>SHA256 hash only</td></tr>
+<tr><td>`changed_files`</td><td>Yes</td><td>Filenames only</td></tr>
+<tr><td>`failed_block_count`</td><td>Yes</td><td>Integer count</td></tr>
+<tr><td>`total_block_count`</td><td>Yes</td><td>Integer count</td></tr>
+<tr><td>`before_bytes`</td><td>Yes</td><td>Integer count</td></tr>
+<tr><td>`after_bytes`</td><td>Yes</td><td>Integer count</td></tr>
+<tr><td>`error_kind`</td><td>Yes</td><td>Structured string</td></tr>
+<tr><td>`refusal_reason`</td><td>⚠️</td><td>May contain file context from `_find_search_context()`</td></tr>
+<tr><td>`duration_ms`</td><td>Yes</td><td>Float</td></tr>
+</tbody>
+</table></details>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">Explicitly excluded: `content`, `old_text`, `new_text`, `diff`, `patch`, `snippet`.</p>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">Remaining Risks</h3>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">1. **Warnings and refusal_reason may contain file content**: The `_find_search_context()` helper includes file context lines in error messages, which propagate to `refusal_reason` and `warnings`. A follow-up pass should strip or hash these context snippets before they enter the receipt. 2. **Legacy ToolError paths bypass receipt emission**: File-not-found, outside-workdir, and parse-failure errors raise `ToolError`, which the agent loop catches before reaching the receipt seam. This is acceptable — these are caller errors, not tool outcomes. 3. **No end-to-end agent-loop integration test**: The existing tests verify the `build_receipt` + `capture_tool_receipt` pipeline in isolation but do not exercise the full agent-loop code path. A synthetic agent-loop test would improve confidence. 4. **Schema `schema_version` field**: The receipt schema requires `schema_version` but the model does not emit it. The schema is descriptive/documentation rather than prescriptive for model_dump(). This is consistent with bash&#x27;s pattern. 5. **Refusal classification heuristic**: `_classify_refusal()` inspects `GuardCheck` attributes rather than using explicit refusal codes. 6. **No ToolReceipt content-light policy validator**: Should follow as the next slice — a validator over the full receipt stream.</p>
+
+<h3 id="h3-47" class="disclosure-standard" data-disclosure-level="standard">Receipt Sanitization</h3>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">The `build_receipt()` method sanitizes `refusal_reason` via ``_sanitize_refusal_for_receipt()`` before it enters the receipt model.</p>
+
+<table id="table-49" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Rule</th><th>Applied?</th></tr></thead>
+<tbody>
+<tr><td>Strip search text (``old``/``new``) from ``refusal_reason``</td><td>✅</td></tr>
+<tr><td>Strip context analysis lines (file content)</td><td>✅</td></tr>
+<tr><td>Strip fuzzy match diffs</td><td>✅</td></tr>
+<tr><td>Keep summary lines (``SEARCH/REPLACE block …``)</td><td>✅</td></tr>
+<tr><td>Keep ``Expected …`` lines (count mismatch)</td><td>✅</td></tr>
+<tr><td>Keep debugging tips</td><td>✅</td></tr>
+<tr><td>Return ``None`` for ``None`` or empty input</td><td>✅</td></tr>
+<tr><td>Pass through safe strings unchanged</td><td>✅</td></tr>
+</tbody>
+</table>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">**Before sanitization** (rich error sent to user):</p>
+
+<pre id="code-51"><code class="language-text">SEARCH/REPLACE block 1 failed: Search text not found in test.py
+Search text was:
+&#x27;NonExistent&#x27;
+Context analysis:
+Potential match area around line 1:
+&gt;&gt;&gt;   1: x = 1
+      2: y = 2
+Debugging tips:
+1. Check for exact whitespace/indentation match</code></pre>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">**After sanitization** (content-light receipt):</p>
+
+<pre id="code-53"><code class="language-text">SEARCH/REPLACE block 1 failed: Search text not found in test.py
+Debugging tips:
+1. Check for exact whitespace/indentation match</code></pre>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">Policy Validator Integration</h3>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">SearchReplace receipts in all statuses (`success`, `no_match`, `refused`) pass the content-light policy validator (``validate_receipt_payload`` and ``validate_event``). No forbidden fields or value-shape violations are produced.</p>
+
+<h3 id="h3-56" class="disclosure-standard" data-disclosure-level="standard">Instantiation</h3>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">The abstract-class instantiation bug reported earlier was fixed in Phase 5 by restoring proper class indentation for ``_classify_status_from_error_kind``. SearchReplace now instantiates cleanly and exposes ``run()`` and ``build_receipt()`` as expected.</p>
+
+<h3 id="h3-58" class="disclosure-standard" data-disclosure-level="standard">Remaining Risks</h3>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">1. **Legacy ToolError paths** (file not found, outside workdir, parse failure, content size, empty content, directory target, binary file) now return structured `SearchReplaceResult(status=&quot;refused&quot;)` with domain-specific `error_kind`. Receipt emission follows automatically. Only truly exceptional filesystem errors (PermissionError, OSError) in `_read_file`/`_write_file` remain as ToolError — these are system-level faults, not tool outcomes. 2. **No end-to-end agent-loop integration test**. ``build_receipt`` + ``capture_tool_receipt`` pipeline tested in isolation; full ``_execute_tool()`` path not exercised. 3. **``warnings`` field** is currently safe (counts and tips only) but could theoretically contain contextual strings in future. 4. **``refusal_reason`` for ``count_mismatch``** passes through unsanitized because count-mismatch errors contain only counts and expectations — no file content. This is safe by construction but worth noting.</p>
+
+<h3 id="h3-60" class="disclosure-standard" data-disclosure-level="standard">Existing Tests (in `tests/tools/test_hardened_tools.py`)</h3>
+
+<table id="table-61" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test</th><th>What It Verifies</th></tr></thead>
+<tbody>
+<tr><td>`test_search_replace_rejects_outside_workdir_path`</td><td>Workdir boundary</td></tr>
+<tr><td>`test_search_replace_does_not_write_when_block_fails`</td><td>Structured mismatch status</td></tr>
+<tr><td>`test_search_replace_successful_records_hashes`</td><td>Before/after hashes</td></tr>
+<tr><td>`test_search_replace_noop_records_block_counts`</td><td>No-op block counts</td></tr>
+<tr><td>`test_search_replace_failed_does_not_emit_success_hash`</td><td>Failed block hashes</td></tr>
+<tr><td>`test_search_replace_block_counts_on_partial`</td><td>Partial apply counts</td></tr>
+<tr><td>`test_search_replace_dict_keys_relative`</td><td>Repo file key format</td></tr>
+<tr><td>`test_search_replace_result_serializes`</td><td>Pydantic serialization</td></tr>
+<tr><td>`test_search_replace_emits_coordination_events`</td><td>Coordination event ordering</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-62" class="disclosure-standard" data-disclosure-level="standard">Files Changed</h2>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/search_replace.py` — hardened result model, structured mismatch/refusal, receipt, error classification - `rig_relay/coordination/store.py` — fixed `release_paths` key mismatch - `tests/tools/test_hardened_tools.py` — updated tests for new status values</p>
+
+<h2 id="h2-64" class="disclosure-standard" data-disclosure-level="standard">Files Created</h2>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">- `docs/schemas/rig.relay.search_replace_invocation.v1.schema.json` - `docs/schemas/rig.relay.search_replace_result.v1.schema.json` - `docs/schemas/rig.relay.search_replace_receipt.v1.schema.json` - `docs/audits/tool-hardening/search-replace-patch-contract.md` (this file)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-hardening/search-replace-patch-contract.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

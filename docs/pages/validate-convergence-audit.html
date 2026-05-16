@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validate Workstream Convergence Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date:** 2026-05-13">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Validate Workstream Convergence Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validate Workstream Convergence Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2026-05-13 **Branch:** main **HEAD:** 384e4860b14959769a14fbcb5b4ca27618dad861 **Scope:** Post-mission reconciliation for Stage 2/3/4/5 parallel validate work</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">1. Repo State Summary</h2>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">Dirty Files (Validate-Related)</h3>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Status</th><th>Lines</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>`vibe/core/tools/builtins/validate.py`</td><td>untracked</td><td>1538</td><td>Core tool implementation</td></tr>
+<tr><td>`tests/tools/test_validate.py`</td><td>untracked</td><td>1797</td><td>Main test file (all stages)</td></tr>
+<tr><td>`tests/tools/test_validate_git_state.py`</td><td>untracked</td><td>390</td><td>Git-state-only test file</td></tr>
+<tr><td>`docs/audits/validate-tool/validate-tool-contract.md`</td><td>untracked</td><td>~315</td><td>Contract doc</td></tr>
+<tr><td>`docs/audits/validate-tool/validate-profile-taxonomy.md`</td><td>untracked</td><td>~300</td><td>Profile registry doc</td></tr>
+<tr><td>`docs/audits/validate-tool/validate-implementation-roadmap.md`</td><td>untracked</td><td>~395</td><td>Roadmap doc</td></tr>
+<tr><td>`docs/schemas/rig.relay.validate_invocation.v1.schema.json`</td><td>untracked</td><td>—</td><td>Invocation schema</td></tr>
+<tr><td>`docs/schemas/rig.relay.validate_result.v1.schema.json`</td><td>untracked</td><td>—</td><td>Result schema</td></tr>
+<tr><td>`docs/schemas/rig.relay.validate_receipt.v1.schema.json`</td><td>untracked</td><td>—</td><td>Receipt schema</td></tr>
+<tr><td>`test_out.txt`</td><td>untracked</td><td>~500</td><td>Stale pytest output dump</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">Stale/Backup Files</h3>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- `test_out.txt` (18 KB pytest log) — should be removed or gitignored.</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">2. Current Validate Feature Matrix</h2>
+
+<details id="table-11" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-11" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Feature</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>**Stage 1: Profile Runner**</td></tr>
+<tr><td>Profile registry</td><td>complete</td><td>`_register()` / `get_profile()` / `list_profiles()`</td></tr>
+<tr><td>ValidateArgs</td><td>complete</td><td>All fields: profile, paths, workspace_root, expected_dirty_policy, etc.</td></tr>
+<tr><td>ValidateCheckResult</td><td>complete</td><td>Pydantic model with parsed_summary, status, blocker_summary</td></tr>
+<tr><td>ValidateResult</td><td>complete</td><td>Content-light (extra=forbid), no raw stdout/stderr</td></tr>
+<tr><td>quick profile</td><td>complete</td><td>ruff, pyright, pytest, git-diff checks</td></tr>
+<tr><td>python profile</td><td>complete</td><td>ruff, pyright, pytest checks</td></tr>
+<tr><td>schemas profile</td><td>complete</td><td>schema validation script check</td></tr>
+<tr><td>receipt-policy profile</td><td>complete</td><td>receipt policy script check</td></tr>
+<tr><td>tool-hardening profile</td><td>complete</td><td>pytest on hardening tests</td></tr>
+<tr><td>worktree-readiness profile</td><td>complete</td><td>No commands, purely git state + dirty policy</td></tr>
+<tr><td>**Stage 2: Content-Light Receipts**</td></tr>
+<tr><td>ValidateReceipt</td><td>complete</td><td>extra=forbid, no raw output</td></tr>
+<tr><td>ValidateCheckReceipt</td><td>complete</td><td>extra=forbid, hashes + counts only</td></tr>
+<tr><td>build_receipt()</td><td>complete</td><td>On Validate class</td></tr>
+<tr><td>Receipt schema</td><td>complete</td><td>Validated (78/78)</td></tr>
+<tr><td>Receipt index support</td><td>complete</td><td>In evidence infrastructure</td></tr>
+<tr><td>Receipt policy validation</td><td>complete</td><td>Receipts pass policy checks (25/25)</td></tr>
+<tr><td>**Stage 3: Path Scoping**</td></tr>
+<tr><td>Path normalization</td><td>complete</td><td>_normalize_validate_paths(), posix-only</td></tr>
+<tr><td>Stable relative path policy</td><td>complete</td><td>No absolute paths in results/receipts</td></tr>
+<tr><td>affected_paths behavior</td><td>complete</td><td>On scoped checks only</td></tr>
+<tr><td>command_fingerprint determinism</td><td>complete</td><td>SHA256 of normalized argv</td></tr>
+<tr><td>scope_check_argv</td><td>complete</td><td>Per-profile path scoping</td></tr>
+<tr><td>**Stage 4: Parsed Summaries**</td></tr>
+<tr><td>ruff parser</td><td>complete</td><td>_parse_ruff_summary</td></tr>
+<tr><td>pyright parser</td><td>complete</td><td>_parse_pyright_summary</td></tr>
+<tr><td>pytest parser</td><td>complete</td><td>_parse_pytest_summary</td></tr>
+<tr><td>schema parser</td><td>complete</td><td>_parse_schema_summary</td></tr>
+<tr><td>receipt-policy parser</td><td>complete</td><td>_parse_policy_summary</td></tr>
+<tr><td>parsed_summary field</td><td>complete</td><td>On ValidateCheckResult (not on receipt)</td></tr>
+<tr><td>**Stage 5: Git State**</td></tr>
+<tr><td>ValidateGitState model</td><td>complete</td><td>18 fields, extra=forbid</td></tr>
+<tr><td>git porcelain parser</td><td>complete</td><td>_parse_git_status_porcelain, _parse_git_status_branch, _parse_git_status_porcelain_line</td></tr>
+<tr><td>before_git_state</td><td>complete</td><td>ValidateGitState on ValidateResult</td></tr>
+<tr><td>after_git_state</td><td>complete</td><td>ValidateGitState on ValidateResult</td></tr>
+<tr><td>expected_dirty_policy enforcement</td><td>complete</td><td>Allow_dirty, clean, allow_listed_dirty</td></tr>
+<tr><td>dirty policy blocker mapping</td><td>complete</td><td>blocker_summary with &quot;dirty_workspace&quot;</td></tr>
+</tbody>
+</table></details>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">3. Inconsistencies Found</h2>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">3A. Stage Numbering Conflicts (Critical)</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">The **implementation-roadmap.md** has non-sequential ordering:</p>
+
+<pre id="code-16"><code class="language-text">Line  3: Stage 0
+Line 25: Stage 1
+Line 75: Stage 2
+Line 114: Stage 3
+Line 190: Stage 5 ← Stage 5 BEFORE Stage 4
+Line 236: Stage 4 ← Stage 4 AFTER Stage 5
+Line 301: Stage 5 (duplicate — Worktree / Lane Awareness)
+Line 326: Stage 5 (duplicate — Aggregate Patch Eligibility)
+Line 350: Stage 6
+Line 373: Stage 7</code></pre>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Three entries claim &quot;Stage 5&quot;. The ordering suggests parsed summaries should be Stage 4 and worktree/lane awareness should be Stage 5, but the entries are reversed.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">The **validate-tool-contract.md** also has out-of-order sections: - Stage 2, Stage 3, Stage 5, then Stage 4</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Adopt canonical numbering: - Stage 0: Audit and Contract Only - Stage 1: Read-Only Validate Profiles - Stage 2: Content-Light ValidateReceipt - Stage 3: Path-Scoped Validation Profiles - Stage 4: Parsed Summaries - Stage 5: Worktree/Lane Awareness and Dirty-State Policy - Stage 6: Aggregate Patch Eligibility - Stage 7: Promotion Gate Integration - Stage 8: Fleet/Delegate Policy Integration</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">3B. Schema Drift (Medium)</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- **Result schema:** `before_git_state` and `after_git_state` are defined as `type: object` with no properties, described as &quot;Optional pre-state git snapshot&quot;. The Pydantic model `ValidateGitState` has 18 specific fields. The schema should either define these properties or reference a `$defs/ValidateGitState`. - **Receipt schema:** Has proper `GitSummary` `$def` that matches the model — no drift here. - **Invocation schema:** Matches Pydantic model exactly.</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">3C. Duplicate Test Coverage (Medium)</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Two test files test the same features:</p>
+
+<table id="table-24" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Feature</th><th>In test_validate.py</th><th>In test_validate_git_state.py</th></tr></thead>
+<tbody>
+<tr><td>Git state model</td><td>`test_validate_git_state_extra_forbidden`</td><td>`test_git_state_extra_forbidden`, `test_git_state_defaults`, `test_git_state_fields`</td></tr>
+<tr><td>Dirty policy (7 tests)</td><td>6 tests (allow_dirty, clean, allow_listed)</td><td>7 tests (same policies + non-repo + clean-when-clean)</td></tr>
+<tr><td>Porcelain parsing</td><td>5 tests (branch, lines, full output)</td><td>3 tests (clean, mixed, empty, paths)</td></tr>
+<tr><td>Receipt git summary</td><td>1 test</td><td>2 tests (content-light, none-when-no-git)</td></tr>
+<tr><td>Worktree-readiness profile</td><td>1 test</td><td>3 tests (exists, no-checks, description)</td></tr>
+<tr><td>**Exact duplicate**</td><td>`test_validate_receipt_git_summary_content_light`</td><td>`test_validate_receipt_git_summary_content_light`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">3D. `# type: ignore` Violation (Minor)</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">**tests/tools/test_validate.py line 1773:**</p>
+
+<pre id="code-27"><code class="language-python">ValidateGitState(is_git_repo=True, unknown_field=&quot;test&quot;)  # type: ignore</code></pre>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">This violates AGENTS.md (&quot;No inline # type: ignore or # noqa&quot;). The fix should use `model_validate`:</p>
+
+<pre id="code-29"><code class="language-python">ValidateGitState.model_validate({&quot;is_git_repo&quot;: True, &quot;unknown_field&quot;: &quot;test&quot;})</code></pre>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">3E. Stale Doc References (Minor)</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- Contract doc line 70-71: documents `before_git_state` as `dict | None` but the model is `ValidateGitState | None` - Roadmap describes Stage 5 with `test_validate_git_state.py` reference — but git state tests also exist in `test_validate.py`</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">3F. Stale Artifact (Trivial)</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- `test_out.txt` is an 18 KB pytest log dump not tracked or gitignored.</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-35" class="disclosure-standard" data-disclosure-level="standard">4. File Size and Decomposition Needs</h2>
+
+<h3 id="h3-36" class="disclosure-standard" data-disclosure-level="standard">validate.py — 1538 lines, 37 functions, 10 classes</h3>
+
+<table id="table-37" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Section</th><th>Lines</th><th>Functions</th><th>Decomposition Priority</th></tr></thead>
+<tbody>
+<tr><td>Imports</td><td>~24</td><td>—</td><td>—</td></tr>
+<tr><td>Profile registry</td><td>~130</td><td>3 functions, 2 classes</td><td>Medium</td></tr>
+<tr><td>Models</td><td>~110</td><td>8 classes</td><td>**High**</td></tr>
+<tr><td>Blocker taxonomy</td><td>~40</td><td>2 functions</td><td>Low</td></tr>
+<tr><td>Subprocess/check runner</td><td>~120</td><td>1 async function</td><td>Medium</td></tr>
+<tr><td>Parsed summaries</td><td>~170</td><td>6 functions</td><td>**High**</td></tr>
+<tr><td>Path scoping</td><td>~42</td><td>4 functions</td><td>Medium</td></tr>
+<tr><td>Git state helpers</td><td>~85</td><td>6 functions</td><td>**High**</td></tr>
+<tr><td>Dirty policy</td><td>~50</td><td>1 function</td><td>Medium</td></tr>
+<tr><td>Validate class</td><td>~360</td><td>8 methods (1 is 140-line `run()`)</td><td>**High**</td></tr>
+</tbody>
+</table>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">**Recommended decomposition targets** (for future cleanup): - `vibe/core/tools/builtins/validate/models.py` — all Pydantic models - `vibe/core/tools/builtins/validate/profiles.py` — profile registry - `vibe/core/tools/builtins/validate/_runner.py` — subprocess runner - `vibe/core/tools/builtins/validate/_parsed_summaries.py` — all 5 parsers - `vibe/core/tools/builtins/validate/_git_state.py` — git state helpers + dirty policy - `vibe/core/tools/builtins/validate/_paths.py` — path normalization + scoping</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">**Largest functions:** - `run()`: ~140 lines (line 1390-1529) — profile resolution, mutation/network checks, git state, dirty policy, path scoping, check loop, result build - `_parse_ruff_summary()`: ~40 lines - `_run_check()`: ~115 lines</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">test_validate.py — 1797 lines, 116 tests</h3>
+
+<table id="table-41" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Section</th><th>Tests</th><th>Lines</th></tr></thead>
+<tbody>
+<tr><td>Profiles</td><td>~6</td><td>~40</td></tr>
+<tr><td>fingerprint/kinds</td><td>~10</td><td>~70</td></tr>
+<tr><td>Models (receipts, results)</td><td>~12</td><td>~200</td></tr>
+<tr><td>Blocker taxonomy</td><td>~10</td><td>~90</td></tr>
+<tr><td>Path scoping</td><td>~25</td><td>~400</td></tr>
+<tr><td>Parsed summaries</td><td>~20</td><td>~250</td></tr>
+<tr><td>Git state / dirty policy</td><td>~19</td><td>~230</td></tr>
+<tr><td>Imports and fixtures</td><td>—</td><td>~40</td></tr>
+</tbody>
+</table>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">**Recommended test split:** - `tests/tools/test_validate_models.py` — model validation tests - `tests/tools/test_validate_profiles.py` — profile registration tests - `tests/tools/test_validate_paths.py` — path normalization tests - `tests/tools/test_validate_parsed_summaries.py` — parser tests - `tests/tools/test_validate_git_state.py` — consolidate git state tests (remove from test_validate.py)</p>
+
+<h3 id="h3-43" class="disclosure-standard" data-disclosure-level="standard">test_validate_git_state.py — 390 lines, 21 tests</h3>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">This file exists as a standalone but has 1 exact duplicate and ~15 near-duplicate tests with `test_validate.py`. After consolidation, this should be the sole home for git state tests (~25 unique tests).</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-46" class="disclosure-standard" data-disclosure-level="standard">5. Test Results (All Passing)</h2>
+
+<table id="table-47" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test Suite</th><th>Tests</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>`tests/tools/test_validate.py`</td><td>127</td><td>✅ All passed</td></tr>
+<tr><td>`tests/tools/test_validate_git_state.py`</td><td>27</td><td>✅ All passed</td></tr>
+<tr><td>`tests/tools/test_tool_receipt_emission.py`</td><td>34</td><td>✅ All passed</td></tr>
+<tr><td>`tests/evidence/test_tool_receipt_policy.py`</td><td>25</td><td>✅ All passed</td></tr>
+<tr><td>`tests/evidence/test_receipt_index.py`</td><td>40</td><td>✅ All passed</td></tr>
+<tr><td>Schema validation (78 schemas)</td><td>78</td><td>✅ All passed</td></tr>
+<tr><td>Schema Python contamination</td><td>1</td><td>✅ Passed</td></tr>
+</tbody>
+</table>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">Ruff and pyright: all clean (0 errors).</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-50" class="disclosure-standard" data-disclosure-level="standard">6. Cleanup Roadmap</h2>
+
+<h3 id="h3-51" class="disclosure-standard" data-disclosure-level="standard">Stage A — Documentation Canonicalization (safe, docs-only)</h3>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">1. Reorder roadmap stages: Stage 4 = Parsed Summaries, Stage 5 = Worktree/Lane Awareness 2. Deduplicate the three &quot;Stage 5&quot; entries 3. Update contract doc: fix `dict | None` → `ValidateGitState | None` references 4. Add `test_out.txt` to `.gitignore` or confirm deletion</p>
+
+<h3 id="h3-53" class="disclosure-standard" data-disclosure-level="standard">Stage B — Policy Cleanup (safe, targeted)</h3>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">1. Fix `# type: ignore` at test_validate.py:1773 using `model_validate()` 2. Remove `test_out.txt` if confirmed stale</p>
+
+<h3 id="h3-55" class="disclosure-standard" data-disclosure-level="standard">Stage C — Schema/Model Alignment (safe, additive)</h3>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">1. Add `ValidateGitState` properties to result schema&#x27;s `before_git_state`/`after_git_state` object definitions 2. Add schema-model roundtrip test</p>
+
+<h3 id="h3-57" class="disclosure-standard" data-disclosure-level="standard">Stage D — Validate Module Decomposition (risky, requires planning)</h3>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">1. Extract models → `_models.py` 2. Extract profiles → `_profiles.py` 3. Extract parsed summaries → `_parsed_summaries.py` 4. Extract git state → `_git_state.py` 5. Extract path scoping → `_paths.py` 6. Keep `validate.py` as the public tool class with thin imports</p>
+
+<h3 id="h3-59" class="disclosure-standard" data-disclosure-level="standard">Stage E — Test File Decomposition (risky, depends on D)</h3>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">1. Split `test_validate.py` by concern (models, profiles, paths, summaries, git) 2. Remove git state tests from `test_validate.py` (keep only in `test_validate_git_state.py`) 3. Remove the exact duplicate `test_validate_receipt_git_summary_content_light`</p>
+
+<h3 id="h3-61" class="disclosure-standard" data-disclosure-level="standard">Stage F — Promotion-Readiness Profile (after cleanup)</h3>
+
+<p id="p-62" class="disclosure-standard" data-disclosure-level="standard">Only after all cleanup is complete.</p>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-64" class="disclosure-standard" data-disclosure-level="standard">7. Recommended Next Implementation Slice</h2>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">**First action:** Stage A (docs) + Stage B (policy fix) — these are safe, docs-only or single-line changes that resolve the most visible inconsistencies.</p>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">**Then:** Stage C (schema alignment) — additive schema detail that doesn&#x27;t break anything.</p>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">**Defer:** Stage D and E (decomposition) — requires careful planning and testing; not suitable for a single session.</p>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-69" class="disclosure-standard" data-disclosure-level="standard">8. Cleanup Applied (Stages A–C)</h2>
+
+<h3 id="h3-70" class="disclosure-standard" data-disclosure-level="standard">Stage A — Documentation Canonicalization ✅</h3>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">**Roadmap** (`validate-implementation-roadmap.md`): - Swapped Stage 4 (Parsed Summaries) and Stage 5 (Worktree/Lane Awareness) to canonical order - Removed duplicate &quot;Stage 5 — Worktree / Lane Awareness&quot; entry - Renumbered rest: Stage 5→5 (Aggregate), Stage 6→7 (Promotion), Stage 7→8 (Fleet) - Final order: Stage 0, 1, 2, 3, 4, 5, 6, 7, 8 (sequential)</p>
+
+<p id="p-72" class="disclosure-standard" data-disclosure-level="standard">**Contract** (`validate-tool-contract.md`): - Removed duplicate Stage 5 section (was labeled Stage 4 — Worktree/Lane Awareness) - Fixed stale `dict | None` → `ValidateGitState | None` for `before_git_state`/`after_git_state` in the ValidateResult table - Final: Stage 2, Stage 3, Stage 5 (no gaps, no duplicates)</p>
+
+<h3 id="h3-73" class="disclosure-standard" data-disclosure-level="standard">Stage B — Policy Cleanup ✅</h3>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">**Inline type ignore** (`tests/tools/test_validate.py:1773`): - Changed from: `ValidateGitState(is_git_repo=True, unknown_field=&quot;test&quot;)  # type: ignore` - Changed to: `ValidateGitState.model_validate({&quot;is_git_repo&quot;: True, &quot;unknown_field&quot;: &quot;test&quot;})` - AGENTS.md violation resolved.</p>
+
+<p id="p-75" class="disclosure-standard" data-disclosure-level="standard">**Stale test_out.txt**: - Removed (18 KB pytest log dump at repo root).</p>
+
+<h3 id="h3-76" class="disclosure-standard" data-disclosure-level="standard">Stage C — Schema Alignment ✅</h3>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">**Result schema** (`docs/schemas/rig.relay.validate_result.v1.schema.json`): - Added `$defs.ValidateGitState` with all 18 fields matching the Pydantic model - Updated `before_git_state` from bare `{&quot;type&quot;: &quot;object&quot;}` to `{&quot;anyOf&quot;: [{&quot;type&quot;: &quot;null&quot;}, {&quot;$ref&quot;: &quot;#/definitions/ValidateGitState&quot;}]}` - Updated `after_git_state` identically - Schema still passes 78/78 validation and Python contamination test</p>
+
+<h3 id="h3-78" class="disclosure-standard" data-disclosure-level="standard">Items Not Yet Applied</h3>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">- Duplicate git state tests across `test_validate.py` and `test_validate_git_state.py` (1 exact + ~15 near-duplicate) — deferred to Stage E - Validate module decomposition (1538-line validate.py) — deferred to Stage D - Test file splitting (1797-line test_validate.py) — deferred to Stage E - Promotion-readiness profile — deferred to Stage F</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/validate-tool/validate-convergence-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

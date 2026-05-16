@@ -1,0 +1,266 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-a-compiler-renderer-gaps",
+  "document_type": "audit",
+  "title": "Lane A — Compiler-Renderer Reconciliation Gaps",
+  "summary": "**Date**: 2026-05-18",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/context/gap-reports/lane-a-compiler-renderer-gaps.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Lane A — Compiler-Renderer Reconciliation Gaps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date**: 2026-05-18 **Lane**: A **Branch**: main **HEAD**: 05a9f395",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Other Lane Reports Read",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "- `context-assembly-plan-v1.md` — model spine complete - `context-assembler-completion-plan.md` — overall completion plan - `context-assembler-gap-inventory.md` / `.jsonl` — gap inventory",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "File",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`rig_relay/context/renderer.py`",
+          "Added `add_warning()` public method"
+        ],
+        [
+          "`rig_relay/context/models.py`",
+          "Added `assembly_plan_summary` field to `ContextPacket`"
+        ],
+        [
+          "`rig_relay/context/compiler.py`",
+          "Fixed `renderer._sections` → `renderer.section_count`; fixed `renderer.warnings.append` → `renderer.add_warning()`; integrated `RepoContextIndex` construction; populated `assembly_plan_summary`"
+        ],
+        [
+          "`tests/context/test_context_compiler_renderer_integration.py`",
+          "**Created** — 9 integration tests"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Gaps Closed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Gap",
+        "Resolution"
+      ],
+      "rows": [
+        [
+          "`len(renderer._sections)` private access",
+          "Replaced with `renderer.section_count` public property"
+        ],
+        [
+          "`renderer.warnings.append(...)` — appended to copy, lost warnings",
+          "Added `renderer.add_warning()` method; compiler now uses it"
+        ],
+        [
+          "`repo_index=None` always",
+          "`execute()` now constructs `RepoContextIndex(root)` and passes to planner"
+        ],
+        [
+          "Warnings not surfaced",
+          "`ContextPacket.warnings` already existed and is populated; `assembly_plan_summary` added with plan metadata"
+        ],
+        [
+          "`build_receipt()` bare `except: pass`",
+          "Already hardened (creates warning, documented limitation)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Gaps Left Open",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Gap",
+        "Owner/Reason"
+      ],
+      "rows": [
+        [
+          "ContextReceipt has no warnings field",
+          "Schema change needed — `build_receipt` creates warning but cannot attach it"
+        ],
+        [
+          "Pre-existing test failures (4)",
+          "Packet warnings, planner budget — not caused by Lane A"
+        ],
+        [
+          "Renderer `add_warning` returns None (not chainable)",
+          "Minor — functional, not blocking"
+        ],
+        [
+          "Planner scoring semantics",
+          "Lane B domain"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Command",
+        "Result"
+      ],
+      "rows": [
+        [
+          "`pytest test_context_compiler_renderer_integration.py test_context_compiler_planner_integration.py -q`",
+          "19 passed"
+        ],
+        [
+          "`pytest tests/context/ -q`",
+          "268 passed, 4 pre-existing failures"
+        ],
+        [
+          "`ruff check`",
+          "All checks passed"
+        ],
+        [
+          "`pyright`",
+          "Pre-existing errors only"
+        ],
+        [
+          "`collect-only`",
+          "6493 tests, 0 errors"
+        ],
+        [
+          "`demo-doctor`",
+          "22/22"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Final Status Recommendation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "**INTEGRATED_WITH_GAPS** — The compiler now consumes renderer and planner through public APIs. RepoIndex is integrated. Warnings propagate. Canonical hash is stable. Remaining gaps are in ContextReceipt schema (no warnings field) and 4 pre-existing test failures outside Lane A scope.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/context/gap-reports/lane-a-compiler-renderer-gaps.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

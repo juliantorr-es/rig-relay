@@ -1,0 +1,437 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "tool-runtime-evidence-adoption-v1",
+  "document_type": "audit",
+  "title": "ToolRuntime Direct Path Envelope Population v1 — Audit",
+  "summary": "**Date**: 2026-05-17",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/runtime/tool-runtime-evidence-adoption-v1.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "ToolRuntime Direct Path Envelope Population v1 — Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date**: 2026-05-17",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Current State",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Area",
+        "Before",
+        "After"
+      ],
+      "rows": [
+        [
+          "Desktop correlation privacy",
+          "Fixed (prior slice)",
+          "Fixed"
+        ],
+        [
+          "ToolRuntime success path envelope population",
+          "Already working (lines 449-464)",
+          "Working"
+        ],
+        [
+          "Span closure on early returns",
+          "6 of 8 paths missing `end_span()`",
+          "All 8 paths covered"
+        ],
+        [
+          "ToolRuntimeResult model fields",
+          "Present",
+          "Present"
+        ],
+        [
+          "Runtime intent path",
+          "Already working",
+          "Working"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Direct Path Envelope Population",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "The success path in `ToolRuntime._execute_governed()` already extracts and propagates supervisor envelope metadata (lines 449-464):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-7",
+      "type": "code",
+      "language": "python",
+      "content": "supervisor_result_envelope_id=(\n    supervisor_result.get(\"result_id\") if supervisor_result else None\n),\nsupervisor_result_envelope_sha256=supervisor_result_sha256,\nsupervisor_result_classification=supervisor_result_classification,",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Extraction logic (lines 449-459): - `supervisor_result` from `result_model.supervisor_result_envelope` - `supervisor_result_sha256` from `result_model.supervisor_result_envelope_sha256` - `supervisor_result_classification` from `result_model.supervisor_result_classification` - Falls back to envelope dict fields if top-level attrs are None",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Span Finalization Fix",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "**Before**: 6 early-return paths left trace spans open (dangling spans).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "Return Path",
+        "Span Closed Before",
+        "Span Closed After"
+      ],
+      "rows": [
+        [
+          "Cache hit",
+          "✅",
+          "✅"
+        ],
+        [
+          "Permission refused",
+          "❌",
+          "✅ (`status_str=\"refused\"`)"
+        ],
+        [
+          "Approval refused",
+          "❌",
+          "✅ (`status_str=\"refused\"`)"
+        ],
+        [
+          "Patch gate refused",
+          "❌",
+          "✅ (`status_str=\"refused\"`)"
+        ],
+        [
+          "ToolPermissionError",
+          "❌",
+          "✅ (`status_str=\"refused\"`)"
+        ],
+        [
+          "Invocation exception",
+          "❌",
+          "✅ (`status_str=\"error\"`)"
+        ],
+        [
+          "No result",
+          "❌",
+          "✅ (`status_str=\"error\"`)"
+        ],
+        [
+          "Success",
+          "✅",
+          "✅"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "**Fix**: Added `_finalize_span()` helper (lazy evaluating, handles None trace_status cleanly). All 7 terminal return paths now call it.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Classification Mapping",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Supervisor Classification",
+        "Trace Status",
+        "ToolRuntime Status"
+      ],
+      "rows": [
+        [
+          "`completed`",
+          "`ok`",
+          "`COMPLETED` (or `DEGRADED` if cache/context failures)"
+        ],
+        [
+          "`cancelled`",
+          "`cancelled`",
+          "`COMPLETED` (or `FAILED` if subprocess had errors)"
+        ],
+        [
+          "`timed_out`",
+          "`timed_out`",
+          "`TIMED_OUT`"
+        ],
+        [
+          "`refused`",
+          "`refused`",
+          "`REFUSED`"
+        ],
+        [
+          "`killed`",
+          "`error`",
+          "`FAILED`"
+        ],
+        [
+          "`spawn_failed`",
+          "`error`",
+          "`FAILED`"
+        ],
+        [
+          "`cleanup_failed`",
+          "`error`",
+          "`FAILED` or `DEGRADED`"
+        ],
+        [
+          "`errored`",
+          "`error`",
+          "`FAILED`"
+        ],
+        [
+          "(no supervisor)",
+          "`degraded` or `error`",
+          "`DEGRADED` or `COMPLETED`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Original classification preserved in `supervisor_result_classification` field regardless of mapping coarseness.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Privacy Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "The following fields are **never** emitted into ToolRuntime trace spans, result dicts, or receipt envelope: - Raw stdout, stderr, argv, cwd, env, shell command - Frontend paths, URLs - Auth tokens, API keys - Raw exception repr strings (truncated to 500 chars for error_message)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "Allowed in trace/receipt: envelope id, envelope sha, classification, byte counts, hashes, safe refusal/error kind, duration, tool name, tool call id.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-20",
+      "type": "table",
+      "columns": [
+        "File",
+        "Change"
+      ],
+      "rows": [
+        [
+          "`rig_relay/core/tool_runtime.py`",
+          "Added `_finalize_span()` helper; wired to all 7 early-return paths"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-22",
+      "type": "table",
+      "columns": [
+        "Command",
+        "Result"
+      ],
+      "rows": [
+        [
+          "`pytest tests/core/test_tool_runtime.py -q`",
+          "13 passed"
+        ],
+        [
+          "`ruff check rig_relay/core/tool_runtime.py`",
+          "All checks passed"
+        ],
+        [
+          "`pyright rig_relay/core/tool_runtime.py`",
+          "0 errors, 0 warnings"
+        ],
+        [
+          "`demo-doctor`",
+          "22/22"
+        ],
+        [
+          "`collect-only`",
+          "6274 tests, 0 errors"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Deferred",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "- **SubagentRuntime envelope consumption** — can now proceed since ToolRuntime direct path populates envelope fields. SubagentRuntime routes tool calls through ToolRuntime and will find the fields populated. - **Validate envelope consumption** — deferred. - **Frontend JS trace display** — deferred.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Follow-up",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "**SubagentRuntime ToolRuntime Adoption v2** — route SubagentRuntime tool calls through ToolRuntime and consume envelope evidence.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/runtime/tool-runtime-evidence-adoption-v1.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

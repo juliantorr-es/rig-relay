@@ -1,0 +1,322 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-rig-console-slice-5-1-worker-refresh",
+  "document_type": "audit",
+  "title": "Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh",
+  "summary": "**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/ui/textual-rig-console-slice-5-1-worker-refresh.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual Worker boundary so provider reads (`build_receipt_index`) cannot block the UI event loop as receipt/session data grows.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Motivation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Slice 5 added `RuntimeDashboardProjectionProvider` — a real, read-only provider that reads session observability JSONL via `build_receipt_index()`. For small receipts this is fast (<1ms), but as session data accumulates the read could take tens of milliseconds or more. Textual guidance is to use workers for any work that may take more than a few milliseconds.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Previously, `action_refresh()` awaited `provider.dashboard_projection()` directly in the message handler — blocking widget updates and keystroke processing until the read completed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "What Changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "`DashboardScreen` (`screens/dashboard.py`)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "1. **`action_refresh()` rewritten** — no longer awaits the provider directly. Instead it: - Returns immediately with a status message (\"Refresh started\") - Schedules the real work via `self.run_worker(self._do_refresh, exclusive=True, exit_on_error=False)` - Without a provider, returns early (no worker, no status)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "**Important:** `action_refresh` passes `self._do_refresh` (a bound method callable) rather than `self._do_refresh()` (a coroutine). Textual's `run_worker` accepts both — when given a callable it calls it to obtain the coroutine. When `run_worker` is patched in tests, the mock receives a bound method (never an orphaned coroutine), avoiding `RuntimeWarning: coroutine '_do_refresh' was never awaited`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "2. **`_do_refresh()` added** — async method that runs inside a Textual Worker: - Calls `provider.dashboard_projection()` in the background - On success: calls `update_projection()`, sets `_last_refresh_at`, clears `_last_refresh_error`, shows \"Refresh complete\" - On `asyncio.CancelledError`: silently exits (worker was replaced by a newer refresh via `exclusive=True`) - On other exceptions: sanitizes the error (first line, max 100 chars), stores it in `_last_refresh_error`, shows \"Refresh failed: <msg>\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "3. **Refresh state fields added** to `__init__`: - `_refresh_in_progress: bool` — True while a worker is active - `_last_refresh_error: str | None` — sanitized error message - `_last_refresh_at: str | None` — ISO-8601 timestamp of last success",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Worker Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Aspect",
+        "Decision"
+      ],
+      "rows": [
+        [
+          "Mechanism",
+          "`self.run_worker(coro, exclusive=True, exit_on_error=False)`"
+        ],
+        [
+          "Overlapping refreshes",
+          "`exclusive=True` cancels the previous worker before starting a new one"
+        ],
+        [
+          "Error handling",
+          "`exit_on_error=False` prevents unhandled exceptions from crashing the app; exceptions are caught in `_do_refresh`"
+        ],
+        [
+          "No-provider path",
+          "`action_refresh` returns immediately, no worker started, no status change"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Error Sanitization",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Errors from `provider.dashboard_projection()` are sanitized before display: - Only the first line is kept (tracebacks are suppressed) - Truncated to 100 characters max - Displayed as `Refresh failed: <sanitized>` in the footer",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "No raw traceback appears in the UI.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "No-Provider Safety",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "When `DashboardScreen` is instantiated without a provider: - `action_refresh()` returns immediately (no worker started) - Footer/status unchanged - All existing no-provider tests pass unchanged",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Updates to Existing Files",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-21",
+      "type": "table",
+      "columns": [
+        "File",
+        "Change"
+      ],
+      "rows": [
+        [
+          "`vibe/cli/textual_ui/rig_console/screens/dashboard.py`",
+          "`action_refresh` rewritten, `_do_refresh` added, refresh state fields added"
+        ],
+        [
+          "`tests/cli/textual_ui/rig_console/test_dashboard_screen.py`",
+          "11 new tests for worker dispatch, worker body, error handling, state tracking"
+        ],
+        [
+          "`docs/ui/textual-rig-console-slice-5-runtime-provider.md`",
+          "\"Intentionally does not implement workers\" removed; Future Provider Path updated"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "What This Slice Intentionally Does Not Do",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "- Does not modify legacy VibeApp or its TCSS files - Does not wire mutation actions - Does not execute validate or any tool from the TUI - Does not read coordination state or session lifecycle files - Does not parse raw observability payloads in widgets/screens - Does not add real-time/frequent polling - Does not resolve branch_name (not available from receipt index alone) - Does not change the provider abstraction — provider remains read-only, widget/screen code still never parses logs - Does not add persistent state — refresh state is local UI only",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-24",
+      "type": "heading",
+      "level": 2,
+      "content": "Next Slice (6)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Add coordination state reading for branch/lane/heartbeat fields in the `SessionPaneProjection`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "- [Slice 5: Runtime Dashboard Provider](textual-rig-console-slice-5-runtime-provider.md) - [DashboardScreen source](../../vibe/cli/textual_ui/rig_console/screens/dashboard.py) - [Providers module](../../vibe/cli/textual_ui/rig_console/providers.py)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/ui/textual-rig-console-slice-5-1-worker-refresh.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

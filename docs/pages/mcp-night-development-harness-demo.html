@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP Night — Rig Relay Development Harness Demo — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="&gt; **One-line thesis:** MCP connects agents to tools. Rig Relay makes that">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>MCP Night — Rig Relay Development Harness Demo</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">MCP Night — Rig Relay Development Harness Demo</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **One-line thesis:** MCP connects agents to tools. Rig Relay makes that &gt; usable for real development: coordination, validation, receipts, progress, &gt; provider setup, consent, redaction, and local authority.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Prerequisites</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">- Python 3.12+ - `uv` installed - Rig Relay cloned</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Setup</h2>
+
+<pre id="code-6"><code class="language-bash">cd rig-relay
+uv sync --all-extras</code></pre>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">No API keys required. No network setup. No local models to download. The cockpit runs in demo mode with safe intents only.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Launch</h2>
+
+<pre id="code-9"><code class="language-bash">uv run python scripts/rig_relay_desktop_cockpit.py --dry-run</code></pre>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">This launches the pywebview desktop cockpit. The `--dry-run` flag ensures no protected state mutations occur.</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">**Fallback:** If pywebview is unavailable, use:</p>
+
+<pre id="code-12"><code class="language-bash">uv run python scripts/rig_relay_desktop_cockpit.py --dry-run --headless</code></pre>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">This prints the projection JSON to stdout instead of opening a window.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Five-Minute Talk Track</h2>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">0:00 – Thesis (15s)</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">&gt; &quot;MCP gives agents a protocol to call tools. Rig Relay gives them a &gt; governed harness to do real development work — coordination, validation, &gt; progress, provider setup, consent, and content-light redaction.&quot;</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Click **System** tab.</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">0:15 – Cockpit Layout (30s)</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">Three modes in the nav bar:</p>
+
+<table id="table-20" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mode</th><th>What It Shows</th></tr></thead>
+<tbody>
+<tr><td>**Operate**</td><td>Live state: provider health, validation counts, storage budget, Next Action</td></tr>
+<tr><td>**Review**</td><td>Progress Timeline, validation results, storage audit, bundle status</td></tr>
+<tr><td>**System**</td><td>Identity, provider keys, telemetry consent, authorization receipts, bundles</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">0:45 – Operate: Live State (45s)</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Click **Operate**.</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Six widgets: - **Operator** — version, mode, session - **Safety State** — dirty count, lease count, stale leases - **Validation** — passed/failed counts - **Storage Budget** — size, budget status, prune candidates - **Next Action** — recommended next step (computed from projection state) - **Provider Health** — provider status summary</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">&gt; &quot;This is the live instrument panel. No guesswork — every number comes &gt; from real artifact data.&quot;</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">1:30 – Run Safe Intents (90s)</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Click the following buttons in **Operate** (or run from terminal):</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">1. **Generate Refinement Report** - `runIntent(&#x27;generate_refinement_report&#x27;)` - Produces a content-light report from derived datasets - Result card shows report summary</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">2. **Create Refinement Packets** - `runIntent(&#x27;create_refinement_packets&#x27;, { limit: 3 })` - Produces mission packet artifacts</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">3. **Run Validation Suite** - `runIntent(&#x27;run_validation_suite&#x27;)` - Runs all registered validators - Result shows passed/failed counts</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">4. **Refresh Projection** - `runIntent(&#x27;refresh_projection&#x27;)` - Rebuilds Operate widgets from latest artifacts</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">**Fallback:** If buttons are unresponsive, run from terminal:</p>
+
+<pre id="code-32"><code class="language-bash"># These commands work headless:
+uv run python -c &quot;
+from scripts.rig_relay_desktop_cockpit import execute_intent
+result = execute_intent({&#x27;intent_name&#x27;: &#x27;generate_refinement_report&#x27;})
+print(result[&#x27;status&#x27;], result.get(&#x27;summary&#x27;, &#x27;&#x27;))
+&quot;</code></pre>
+
+<h3 id="h3-33" class="disclosure-standard" data-disclosure-level="standard">3:00 – Review: Progress Timeline (60s)</h3>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Click **Review**.</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Left column: - **Progress Timeline** — shows every operation as a card with type, phase, status, and message. Each card has a colored left border (green=ok, yellow=warn, red=error). - **Receipt Timeline** — authorization receipts (if any) - **Refinement Backlog** — generated packets</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Right column: - **Validation Results** — per-validator outcomes - **Storage Audit** — budget details - **Telemetry Bundle** — bundle status (if created)</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">&gt; &quot;The Progress Timeline is a live event stream. Every intent, validation &gt; step, and operation logs here. No second transport — it reuses the &gt; existing WebSocket.&quot;</p>
+
+<h3 id="h3-38" class="disclosure-standard" data-disclosure-level="standard">4:00 – System: Trust Infrastructure (60s)</h3>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">Click **System**.</p>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">Five cards: 1. **Identity Providers** — Sign in with GitHub or Google (or skip) 2. **Model Providers** — Manage API keys locally. Keys are: - Stored in file or keychain — never in telemetry/audit - Hashed to fingerprint — never raw in results - Input fields use `type=&quot;password&quot;` — cleared after save 3. **Telemetry Consent** — Granular scope checkboxes. Commercial scopes are never default. Must be explicitly checked. 4. **Authorization Receipts** — Mint and inspect receipts for step-up auth 5. **Bundles** — Dev bundle dry-run, telemetry bundle dry-run</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">**Protected controls are absent.** There are no buttons for: - `bash`, `shell`, `write_file`, `search_replace` - `spawn.execute`, `fleet.execute`, `delegate.execute` - `remote_upload.confirm` - `lease_cleanup.remove`</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">&gt; &quot;The System tab is the trust panel. Identity, keys, consent, receipts — &gt; everything that makes agent tool use safe for real development.&quot;</p>
+
+<h3 id="h3-43" class="disclosure-standard" data-disclosure-level="standard">4:45 – Dataset Close (15s)</h3>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">Open `docs/demo/fixtures/model-observation-demo.json`:</p>
+
+<pre id="code-45"><code class="language-json">{
+  &quot;schema_version&quot;: &quot;rig.relay.model_observation.v1&quot;,
+  &quot;task_kind&quot;: &quot;code_gen&quot;,
+  &quot;provider_kind&quot;: &quot;cloud&quot;,
+  &quot;provider_name&quot;: &quot;openai&quot;,
+  &quot;model_id&quot;: &quot;gpt-4o&quot;,
+  &quot;latency_ms&quot;: 2340.5,
+  &quot;tool_call_count&quot;: 4,
+  &quot;tool_success_count&quot;: 3,
+  &quot;content_light_guarantee&quot;: true
+}</code></pre>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">And `docs/demo/fixtures/provider-ranking-demo.json`:</p>
+
+<pre id="code-47"><code class="language-json">{
+  &quot;ranking_id&quot;: &quot;rank_demo_mcp_night_001&quot;,
+  &quot;provider_scores&quot;: [
+    { &quot;provider_name&quot;: &quot;openai&quot;, &quot;overall_score&quot;: 0.72 },
+    { &quot;provider_name&quot;: &quot;anthropic&quot;, &quot;overall_score&quot;: 0.74 }
+  ],
+  &quot;confidence_level&quot;: &quot;low&quot;,
+  &quot;warnings&quot;: [&quot;Low sample count (3): consider collecting more observations...&quot;]
+}</code></pre>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">&gt; &quot;This is the dataset story: content-light observations, structured &gt; rankings, consent-gated, early-alpha confidence labels. No raw prompts, &gt; no raw outputs, no source code, no diffs, no secrets — just the signal. &gt; Aggregation over time turns low-confidence rankings into &gt; high-confidence recommendations.&quot;</p>
+
+<h3 id="h3-49" class="disclosure-standard" data-disclosure-level="standard">5:00 – Closing Value Proposition</h3>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">&gt; **Rig Relay today:** &gt; - Governed local harness with three-mode cockpit &gt; - Safe intent execution (no protected mutation) &gt; - Content-light telemetry with granular consent &gt; - Provider onboarding with local key store &gt; - Progress event streaming with Review timeline &gt; - Validation artifacts with dashboard &gt; - Model observation dataset for provider/local model ranking &gt; &gt; **Next (not today):** &gt; - Full observation ingestion from all tool calls &gt; - Dashboard visualization of ranking snapshots &gt; - Automatic local model benchmarking &gt; - Commercial/aggregate dataset export with consent</p>
+
+<h2 id="h2-51" class="disclosure-standard" data-disclosure-level="standard">What Not to Show</h2>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">- Do not click any button labeled &quot;Bash&quot;, &quot;Shell&quot;, &quot;Write File&quot;, &quot;Search/Replace&quot;, &quot;Spawn&quot;, &quot;Fleet&quot;, &quot;Delegate&quot;. - Do not enter real API keys on a projector screen. - Do not click &quot;Upload to Google Drive&quot; — it requires real credentials. - Do not claim production readiness. This is alpha. - Do not show raw prompts, raw model outputs, source code diffs, or stdout/stderr bodies on screen. - Do not run `git commit`, `git push`, or any git mutation during demo.</p>
+
+<h2 id="h2-53" class="disclosure-standard" data-disclosure-level="standard">Trust/Data Use Line</h2>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">&gt; **Rig Relay collects no raw prompts, no raw model outputs, no source code, &gt; no diffs, no stdout/stderr bodies, and no secrets.** All telemetry is &gt; content-light: hashes, counts, timestamps, and statuses. Consent is &gt; explicit, granular, and revocable. The redaction boundary is enforced &gt; by a shared module that every bundle writer, audit builder, and export &gt; helper must route through.</p>
+
+<h2 id="h2-55" class="disclosure-standard" data-disclosure-level="standard">Artifact References</h2>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">- Demo observation: `docs/demo/fixtures/model-observation-demo.json` - Demo ranking: `docs/demo/fixtures/provider-ranking-demo.json` - Observation schema: `docs/schemas/rig.relay.model_observation.v1.schema.json` - Ranking schema: `docs/schemas/rig.relay.provider_ranking_snapshot.v1.schema.json` - Model code: `rig_relay/evidence/model_observations.py` - Consent helpers: `rig_relay/identity/telemetry_consent.py` - Redaction: `rig_relay/evidence/redaction.py` - Dataset governance: `docs/governance/model-observation-dataset.md` - Commercial license: `docs/legal/usage-data-license-alpha.md` - Privacy notice: `docs/legal/privacy-notice-alpha.md`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/demo/mcp-night-development-harness-demo.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

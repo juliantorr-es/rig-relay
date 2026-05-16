@@ -1,0 +1,460 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "tracing-v0",
+  "document_type": "audit",
+  "title": "Tracing v0 — Audit",
+  "summary": "**Date**: 2026-05-16",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/runtime/tracing-v0.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Tracing v0 — Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date**: 2026-05-16 **Schema**: `rig.trace_event.v1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Implementation Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-4",
+      "type": "heading",
+      "level": 3,
+      "content": "Core Package (`rig_relay/tracing/`)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-5",
+      "type": "table",
+      "columns": [
+        "File",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`__init__.py`",
+          "Public API exports"
+        ],
+        [
+          "`models.py`",
+          "`RigTraceEvent`, `TraceStatus`, `TraceEventKind`"
+        ],
+        [
+          "`context.py`",
+          "`TraceContext` with contextvars propagation"
+        ],
+        [
+          "`store.py`",
+          "`JSONLTraceStore`, `InMemoryTraceStore`, `NullTraceStore`"
+        ],
+        [
+          "`recorder.py`",
+          "`TraceRecorder` with span context manager"
+        ],
+        [
+          "`redaction.py`",
+          "`sanitize_trace_attributes()`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Tests (`tests/tracing/`)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "File",
+        "Tests"
+      ],
+      "rows": [
+        [
+          "`test_trace_models.py`",
+          "12 tests — serialization, redaction"
+        ],
+        [
+          "`test_trace_context.py`",
+          "4 tests — propagation, clearing, async"
+        ],
+        [
+          "`test_trace_store.py`",
+          "5 tests — JSONL, in-memory, null"
+        ],
+        [
+          "`test_trace_recorder.py`",
+          "7 tests — span start/end, events, errors, nesting"
+        ],
+        [
+          "**Total**",
+          "**28 tests, all passing**"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Instrumented Hot Paths",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Path",
+        "File",
+        "Events"
+      ],
+      "rows": [
+        [
+          "`desktop.bridge.start_begin`",
+          "`bridge_server.py`",
+          "host, port, tls_enabled"
+        ],
+        [
+          "`desktop.websocket.connection_begin`",
+          "`websocket_server.py`",
+          "—"
+        ],
+        [
+          "`desktop.websocket.auth_ok`",
+          "`websocket_server.py`",
+          "token_present, token_length"
+        ],
+        [
+          "`runtime.subprocess.execute`",
+          "`supervisor.py`",
+          "executable, argv_hash, argv_count, cwd_hash, timeout_seconds, lease_id"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Sample JSONL Event",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-11",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"schema_version\": \"rig.trace_event.v1\",\n  \"trace_id\": \"a1b2c3d4e5f6...\",\n  \"span_id\": \"1a2b3c4d5e6f7g8h\",\n  \"event_kind\": \"span.event\",\n  \"name\": \"desktop.bridge.start_begin\",\n  \"timestamp\": \"2026-05-16T00:00:00.000Z\",\n  \"attributes\": {\n    \"host\": \"127.0.0.1\",\n    \"port\": 9876,\n    \"tls_enabled\": false\n  }\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "Trace Store Paths",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Mode",
+        "Path"
+      ],
+      "rows": [
+        [
+          "Source/Dev",
+          "`.build/rig-relay/traces/trace_events.jsonl`"
+        ],
+        [
+          "Packaged",
+          "`~/Library/Application Support/Rig Relay/traces/trace_events.jsonl`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Redaction Verified",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- `token`, `auth_token`, `api_key`, `password`, `secret` → `<redacted>` - `token_present`, `token_length` → allowed - Long strings truncated (>1000 chars) - Bytes summarized - Nested dicts/lists sanitized recursively - Serialized output never contains raw auth token",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Skipped Instrumentation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-17",
+      "type": "table",
+      "columns": [
+        "Path",
+        "Reason"
+      ],
+      "rows": [
+        [
+          "AgentLoop",
+          "Dirty `agent_loop.py` SyntaxError from parallel lane"
+        ],
+        [
+          "ToolRuntime",
+          "Lower priority; can add in follow-up"
+        ],
+        [
+          "RuntimeSupervisor",
+          "Lower priority"
+        ],
+        [
+          "Validate tool",
+          "Lower priority"
+        ],
+        [
+          "Ralph/orchestrator",
+          "Lower priority"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-19",
+      "type": "table",
+      "columns": [
+        "Check",
+        "Result"
+      ],
+      "rows": [
+        [
+          "Tracing tests (28)",
+          "All passing"
+        ],
+        [
+          "ruff",
+          "All checks passed"
+        ],
+        [
+          "pyright (tracing package)",
+          "0 errors"
+        ],
+        [
+          "Core imports",
+          "Clean"
+        ],
+        [
+          "Context propagation across async",
+          "Verified"
+        ],
+        [
+          "Nested span parent tracking",
+          "Verified"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeSupervisor Follow-Up",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "`RuntimeSupervisor` tracing is now implemented under the same local trace substrate. The v0 implementation emits a parent `runtime.subprocess.execute` span plus structured child events for spawn, output, timeout, kill, exit, and result classification.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "The implementation intentionally avoids raw stdout/stderr and raw argv material in trace payloads. Only hashes, counts, and terminal status data are recorded.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-23",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeSupervisor Teardown",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "`RuntimeSupervisor` now performs deterministic subprocess transport cleanup through a dedicated finalizer that terminates or waits the process and then closes the underlying transport. The prior `PytestUnraisableExceptionWarning` from `BaseSubprocessTransport.__del__` was caused by subprocess transports surviving past event-loop teardown after timeout-heavy tests.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Validation of the cleanup path is covered by `tests/runtime/test_runtime_supervisor_teardown.py`. The runtime supervisor behavior remains unchanged for success, failure, timeout, cancellation, and trace payload privacy; the only difference is that subprocess resources are now closed explicitly before the loop exits.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-26",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeSupervisor Result Envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "`SupervisorCommandInvoker` now attaches a canonical `RuntimeSupervisorResultEnvelope` to each terminal result. The envelope is the content-light terminal evidence contract for downstream consumers such as ToolRuntime, validate, desktop diagnostics, and future SubagentRuntime paths.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "The envelope classifies outcomes with the same vocabulary used by trace summary events:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "- `completed` - `failed` - `timed_out` - `killed` - `cancelled` - `spawn_failed` - `cleanup_failed` - `errored` - `refused`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "The envelope stores command and cwd digests, output digests, timing facts, state projection, and safe evidence metadata only. Raw stdout, raw stderr, raw argv strings, and raw cwd values remain excluded.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/runtime/tracing-v0.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

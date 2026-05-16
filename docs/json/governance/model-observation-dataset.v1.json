@@ -1,0 +1,949 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "model-observation-dataset",
+  "document_type": "governance",
+  "title": "Model Observation Dataset",
+  "summary": "**Draft.** Defines the content-light observation dataset layer for ranking",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/model-observation-dataset.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Model Observation Dataset",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Draft.** Defines the content-light observation dataset layer for ranking cloud providers and local models across real Rig Relay workflows.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Rig Relay uses cleaned, aggregated usage data to answer:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "> For this task, on this machine, with this budget/privacy preference, > which cloud provider or local model should Rig Relay use?",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "The model observation dataset is the raw material for this recommendation engine. It is content-light, consent-gated, and export-safe.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Dataset Schema",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Three schemas live in `docs/schemas/`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Schema",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`rig.relay.model_observation.v1.schema.json`",
+          "Per-invocation observation record"
+        ],
+        [
+          "`rig.relay.provider_ranking_snapshot.v1.schema.json`",
+          "Aggregated provider/model scores"
+        ],
+        [
+          "`rig.relay.local_model_comfort_score.v1.schema.json`",
+          "Local model fit assessment"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "ModelObservation Fields",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "All fields are content-light. No raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, API keys, or raw private paths.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`schema_version`",
+          "string",
+          "`rig.relay.model_observation.v1`"
+        ],
+        [
+          "`observation_id`",
+          "string",
+          "Unique observation ID"
+        ],
+        [
+          "`created_at`",
+          "string (ISO 8601)",
+          "Timestamp"
+        ],
+        [
+          "`task_kind`",
+          "string",
+          "Kind of task (e.g. code_gen, chat)"
+        ],
+        [
+          "`task_fingerprint`",
+          "string",
+          "SHA256 of task content (not raw)"
+        ],
+        [
+          "`provider_kind`",
+          "enum",
+          "`cloud` or `local`"
+        ],
+        [
+          "`provider_name`",
+          "string",
+          "Provider name (e.g. openai, ollama)"
+        ],
+        [
+          "`model_id`",
+          "string",
+          "Model identifier"
+        ],
+        [
+          "`backend`",
+          "enum",
+          "`api`, `mlx`, `llama_cpp`"
+        ],
+        [
+          "`endpoint_kind`",
+          "string (optional)",
+          "chat, completion, embedding"
+        ],
+        [
+          "`machine_profile_id`",
+          "string (optional)",
+          "For local model observations"
+        ],
+        [
+          "`input_tokens`",
+          "integer (optional)",
+          "Prompt tokens"
+        ],
+        [
+          "`output_tokens`",
+          "integer (optional)",
+          "Completion tokens"
+        ],
+        [
+          "`context_tokens`",
+          "integer (optional)",
+          "Context window usage"
+        ],
+        [
+          "`latency_ms`",
+          "number (optional)",
+          "End-to-end latency"
+        ],
+        [
+          "`time_to_first_token_ms`",
+          "number (optional)",
+          "TTFT"
+        ],
+        [
+          "`prompt_eval_tps`",
+          "number (optional)",
+          "Prompt eval throughput"
+        ],
+        [
+          "`decode_tps`",
+          "number (optional)",
+          "Decode throughput"
+        ],
+        [
+          "`peak_memory_gb`",
+          "number (optional)",
+          "Peak memory usage"
+        ],
+        [
+          "`estimated_cost_usd`",
+          "number (optional)",
+          "Estimated cost"
+        ],
+        [
+          "`tool_call_count`",
+          "integer",
+          "Total tool calls"
+        ],
+        [
+          "`tool_success_count`",
+          "integer",
+          "Successful tool calls"
+        ],
+        [
+          "`retry_count`",
+          "integer",
+          "Retry attempts"
+        ],
+        [
+          "`refusal_count`",
+          "integer",
+          "Model refusals"
+        ],
+        [
+          "`failure_count`",
+          "integer",
+          "Failed calls"
+        ],
+        [
+          "`validation_status`",
+          "enum",
+          "`passed`, `failed`, `skipped`, `unknown`"
+        ],
+        [
+          "`user_outcome`",
+          "enum",
+          "`accepted`, `revised`, `rejected`, `unknown`"
+        ],
+        [
+          "`content_light_guarantee`",
+          "boolean",
+          "Always `true`"
+        ],
+        [
+          "`artifact_refs`",
+          "array",
+          "References to related artifacts (sha256 only)"
+        ],
+        [
+          "`warnings`",
+          "array",
+          "Human-readable warnings"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "ProviderRankingSnapshot Fields",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-15",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`ranking_id`",
+          "string",
+          "Unique ID"
+        ],
+        [
+          "`created_at`",
+          "string (ISO 8601)",
+          "Timestamp"
+        ],
+        [
+          "`task_kind`",
+          "string",
+          "Task kind this ranking applies to"
+        ],
+        [
+          "`sample_count`",
+          "integer",
+          "Number of observations"
+        ],
+        [
+          "`provider_scores[]`",
+          "array",
+          "Per-provider scores"
+        ],
+        [
+          "`model_scores[]`",
+          "array",
+          "Per-model scores"
+        ],
+        [
+          "`confidence_level`",
+          "enum",
+          "`low`, `medium`, `high`"
+        ],
+        [
+          "`warnings`",
+          "array",
+          "Warnings (e.g. low sample count)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Each score includes: - `task_success_score` (0-1) - `cost_efficiency_score` (0-1) - `latency_score` (0-1) - `tool_reliability_score` (0-1) - `privacy_score` (0-1) - `overall_score` (0-1) - `local_comfort_score` (0-1, model_scores only, optional)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-17",
+      "type": "heading",
+      "level": 3,
+      "content": "LocalModelComfortScore Fields",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-18",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`model_id`",
+          "string",
+          "Model identifier"
+        ],
+        [
+          "`backend`",
+          "enum",
+          "`mlx`, `llama_cpp`"
+        ],
+        [
+          "`quantization`",
+          "string (optional)",
+          "q4_0, q8_0, fp16"
+        ],
+        [
+          "`machine_profile_id`",
+          "string",
+          "Machine profile (e.g. m1-pro-16gb)"
+        ],
+        [
+          "`memory_headroom_score`",
+          "number (0-1)",
+          "Memory fit"
+        ],
+        [
+          "`speed_score`",
+          "number (0-1)",
+          "Inference speed"
+        ],
+        [
+          "`context_score`",
+          "number (0-1)",
+          "Context window fit"
+        ],
+        [
+          "`stability_score`",
+          "number (0-1)",
+          "Runtime stability"
+        ],
+        [
+          "`comfort_category`",
+          "enum",
+          "`comfortable`, `maybe`, `not_recommended`"
+        ],
+        [
+          "`evidence_count`",
+          "integer",
+          "Observation count supporting this score"
+        ],
+        [
+          "`warnings`",
+          "array",
+          "Warnings (e.g. zero evidence)"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Consent Gates",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "Every model observation collection is gated by active telemetry consent. The `observation_allowed_by_consent()` helper checks:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-21",
+      "type": "table",
+      "columns": [
+        "Observation Kind",
+        "Required Active Scope"
+      ],
+      "rows": [
+        [
+          "`provider`",
+          "`provider_model_benchmarking`"
+        ],
+        [
+          "`local_model`",
+          "`local_model_benchmarking`"
+        ],
+        [
+          "`commercial_export`",
+          "`commercial_dataset_license`"
+        ],
+        [
+          "`public_aggregate`",
+          "`aggregate_public_reporting`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "Active Consent Semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "A consent scope is considered **active** only when: 1. The consent record status is `GRANTED` (not `REVOKED`, `DENIED`, or `NOT_REQUESTED`) 2. The scope is present in the record's `scopes` list",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "If consent is revoked or denied, `active_consent_scopes()` returns an empty list, even if scopes remain in the record. This means: - A revoked record still shows which scopes were originally granted (audit) - But no observation collection is allowed against a revoked record - The `has_commercial_dataset_license()` helper checks raw scope presence - The `has_active_commercial_dataset_license()` helper checks scope + status",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Content-Light Guarantee",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "All observation records carry `content_light_guarantee: true`. The `validate_observation_content_light()` function verifies:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "- No field keys named `raw_prompt`, `prompt`, `raw_model_output`, `model_output`, `source_code`, `diff`, `stdout`, `stderr`, `api_key`, `access_token`, `refresh_token`, or `private_path` - No raw secrets in string values (API key patterns, private keys) - The shared redaction module (`rig_relay.evidence.redaction`) classifies these same field keys as `FORBIDDEN`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-28",
+      "type": "heading",
+      "level": 2,
+      "content": "Confidence Labels",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Early-alpha confidence levels for ranking snapshots:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-30",
+      "type": "table",
+      "columns": [
+        "Sample Count",
+        "Confidence",
+        "Label"
+      ],
+      "rows": [
+        [
+          "0",
+          "Low",
+          "No observations"
+        ],
+        [
+          "1-9",
+          "Low",
+          "Insufficient data"
+        ],
+        [
+          "10-29",
+          "Medium",
+          "Moderate confidence"
+        ],
+        [
+          "30+",
+          "High",
+          "Reasonable confidence"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Local model comfort scores use three categories:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-32",
+      "type": "table",
+      "columns": [
+        "Overall Score",
+        "Category"
+      ],
+      "rows": [
+        [
+          "0.7+",
+          "Comfortable — model runs well"
+        ],
+        [
+          "0.4-0.7",
+          "Maybe — runs but may have constraints"
+        ],
+        [
+          "<0.4",
+          "Not recommended — unlikely to perform well"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "When evidence_count is 0, a warning is emitted: \"No observed evidence — score is estimated, not measured.\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-34",
+      "type": "heading",
+      "level": 2,
+      "content": "No Raw Content",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "This dataset layer explicitly prohibits:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "- Raw prompts or user messages - Raw model outputs or completions - Source code, file contents, or diffs - stdout/stderr output bodies - API keys, tokens, secrets, or passwords - Raw authorization receipt bodies - Personal identifiable information - Raw file paths or directory structures",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-37",
+      "type": "heading",
+      "level": 2,
+      "content": "Commercial Export",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "Commercial/aggregate export of observation data requires: 1. The `commercial_dataset_license` scope to be **active** (granted + not revoked) 2. The `aggregate_public_reporting` scope for public reports 3. Content-light guarantee verified on all observations 4. See [Usage Data Commercial License](../legal/usage-data-license-alpha.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-39",
+      "type": "heading",
+      "level": 2,
+      "content": "Local-Only Ingestion",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "Model observations are **local by default**. Every observation is written to the session's local observability JSONL under the event name `rig.relay.model_observation.captured`. No observation data is uploaded, exported, or transmitted unless the user explicitly enables contribution flows and grants the required consent scopes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-41",
+      "type": "heading",
+      "level": 3,
+      "content": "Ingestion Path",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "Observations are captured in `vibe/core/agent_loop.py` via the `_capture_model_observation_for_tool_response()` helper, which is called at the end of `_handle_tool_response()` for every non-skipped tool call when `enable_local_observability` is active.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "The helper: 1. Checks `status != \"skipped\"` and `enable_local_observability` 2. Extracts provider info from `self.config.get_active_provider()` 3. Extracts model info from `self.config.get_active_model()` 4. Computes a deterministic `task_fingerprint` as SHA256 of the namespaced preimage `rig-relay-tool-args-v1:<canonical_args_json>` 5. Calls `observe_tool_call()` from `rig_relay/evidence/model_observations.py` 6. Errors are caught and logged — observation failures never break tool execution",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "Only content-light fields from `ModelObservation` reach the observability log. Raw tool args, raw tool output, stdout/stderr bodies, source code, diffs, and secrets are never stored in observation events.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-45",
+      "type": "heading",
+      "level": 3,
+      "content": "Guards",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-46",
+      "type": "table",
+      "columns": [
+        "Gate",
+        "Mechanism"
+      ],
+      "rows": [
+        [
+          "Config-level",
+          "`enable_local_observability` must be `True`"
+        ],
+        [
+          "Status-level",
+          "`status == \"skipped\"` produces no observation"
+        ],
+        [
+          "Consent-level",
+          "`observation_allowed_by_consent()` checked via `ConsentStore.get()` — default-deny"
+        ],
+        [
+          "Error resilience",
+          "try/except with `logger.warning`, never propagates"
+        ],
+        [
+          "Content-light",
+          "All observation fields validated by `validate_observation_content_light()`"
+        ],
+        [
+          "Fingerprint",
+          "Preimage is SHA256-hashed and namespaced — raw args never persisted"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-47",
+      "type": "heading",
+      "level": 3,
+      "content": "Default-Deny Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "Model observations are **default-deny**. When no consent record exists (consent status is `NOT_REQUESTED`), `observation_allowed_by_consent()` returns `False` and the observation is silently skipped. This ensures:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "- First-time users without any consent configuration produce no observations - Consent must be explicitly granted before any observation is captured - Revoked or denied consent is equivalent to no consent for collection purposes",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "The full gate stack evaluated in `_capture_model_observation_for_tool_response()`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "1. **Status gate** — `status == \"skipped\"` → return early, no consent check 2. **Config gate** — `enable_local_observability == False` → return early, no consent check 3. **Consent gate** — loads `ConsentStore().get()`, calls `observation_allowed_by_consent(record, kind)` with the derived observation kind → if `False`, return early 4. **Persistence** — calls `observe_tool_call()` to build and write the observation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-52",
+      "type": "heading",
+      "level": 3,
+      "content": "Backend-to-Observation-Kind Mapping",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "The `_capture_model_observation_for_tool_response()` helper derives the observation kind from the active provider's backend:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-54",
+      "type": "table",
+      "columns": [
+        "Backend",
+        "Classification",
+        "Observation Kind"
+      ],
+      "rows": [
+        [
+          "`api`",
+          "Cloud",
+          "`provider`"
+        ],
+        [
+          "`generic`",
+          "Cloud",
+          "`provider`"
+        ],
+        [
+          "`mlx`",
+          "Local",
+          "`local_model`"
+        ],
+        [
+          "`llama_cpp`",
+          "Local",
+          "`local_model`"
+        ],
+        [
+          "`ollama`",
+          "Local",
+          "`local_model`"
+        ],
+        [
+          "Unknown/missing",
+          "Falls to cloud",
+          "`provider`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "The classification is purely string-based on `str(getattr(provider, \"backend\", \"generic\"))`. Local backends are `{\"mlx\", \"llama_cpp\", \"ollama\"}`; everything else is cloud.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-56",
+      "type": "heading",
+      "level": 2,
+      "content": "Related",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "- [Usage Data Doctrine](./usage-data-doctrine.md) - [Provider Onboarding Policy](./provider-onboarding-policy.md) - [Local/Remote Boundary](./relay-local-remote-boundary.md) - [Usage Data Commercial License](../legal/usage-data-license-alpha.md) - [Privacy Notice](../legal/privacy-notice-alpha.md) - [`rig_relay.evidence.model_observations`](../../rig_relay/evidence/model_observations.py) - [`rig_relay.identity.telemetry_consent`](../../rig_relay/identity/telemetry_consent.py)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/model-observation-dataset.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

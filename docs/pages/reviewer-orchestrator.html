@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reviewer Orchestrator Doctrine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Rig Relay&#x27;s reviewer orchestrator protocol defines how a manager agent reads a full">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Reviewer Orchestrator Doctrine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Reviewer Orchestrator Doctrine</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s reviewer orchestrator protocol defines how a manager agent reads a full sprint cockpit, launches bounded child missions through a specialized tool, monitors coordination state, aggregates child reports, and decides the next sprint action.</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">This doctrine governs the **reviewer-as-orchestrator** pattern — the most restrictively safe path to autonomous multi-mission execution.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Core Principles</h2>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">Reviewer is Orchestrator, Not Direct Editor</h3>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- The reviewer reads the sprint cockpit and mission brief. - The reviewer **does not edit files directly**. - The reviewer **does not run arbitrary shell commands**. - The reviewer may only launch bounded child missions through `rig_relay_spawn_session` or equivalent high-level tools.</p>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">Bounded Autonomy</h3>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Child sessions receive a typed mission packet that defines:</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- Allowed and forbidden file paths - Tool policy (write access, bash access, bash allowlist) - Coordination policy (claim task, reserve paths, heartbeat) - Checkpoint policy (off, prompt, auto) - Completion criteria (`done_when`) - Maximum runtime</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**Child sessions cannot exceed their mission packet bounds.**</p>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">Max Parallel Sessions</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">The default maximum is **4 concurrent child sessions**. This ceiling exists because:</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- The current coordination layer is local/file-backed. - More than 4 concurrent sessions creates coordination noise faster than throughput. - The repo is in rapid motion and overlapping write scopes are dangerous.</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Default Concurrency Pattern</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">The safe default is **one writer + multiple readers/testers**:</p>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Profile</th><th>Write</th><th>Read</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>implementer</td><td>Yes</td><td>Yes</td><td>Scoped file mutation</td></tr>
+<tr><td>tester</td><td>No</td><td>Yes</td><td>Validation only</td></tr>
+<tr><td>reviewer/researcher</td><td>No</td><td>Yes</td><td>Read-only audit</td></tr>
+<tr><td>documenter</td><td>Yes (docs only)</td><td>Yes</td><td>Docs/findings/report updates</td></tr>
+</tbody>
+</table>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">For read-only sprint analysis, all four can run in parallel. For mutation work, only one writer per path is allowed.</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Multi-Writer Requires Non-Overlapping Paths or Worktrees</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- Two writers may operate concurrently only if their `allowed_paths` sets do not overlap. - For true multi-writer mode across the same paths, use `git worktree` — it is designed to let one repository have multiple working trees on different branches.</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">Reviewer Must Inspect Coordination State Before Launch</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Before launching any child mission, the reviewer MUST:</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">1. Read the current coordination projection (active sessions, path leases, conflicts). 2. Verify no write lease overlap exists with the intended mission. 3. Verify the sprint&#x27;s `max_parallel_sessions` limit is not exceeded. 4. Verify storage budget is not `fleet_blocked` — check `current_state.storage_status.budget_status` or `projection.storage.budget_status`. See [Storage Retention Policy § Fleet Preflight Enforcement](storage-retention-policy.md#fleet-preflight-enforcement) for thresholds.</p>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">Reviewer Must Aggregate Reports Before Follow-Up</h3>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Before launching a follow-up mission, the reviewer MUST:</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">1. Collect all complete child session results. 2. Check for failures, conflicts, or blocked paths. 3. Decide: clean → propose manual push / next sprint; blocked → launch one bounded fix mission.</p>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">Reviewer Never Bypasses Git Policy</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- The reviewer never pushes, merges, rebases, resets, cleans, stashes, or bypasses checkpoint policy. - The reviewer never runs `git commit` or `git add` directly. - Checkpoints are created by child sessions through the existing `checkpoint` tool, governed by dirty-file guard, path leases, and checkpoint policy.</p>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Desktop Intent API</h2>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">The desktop Intent API (see `rig_relay/desktop/intents.py`) provides a governed entry point for safe orchestration actions from the desktop cockpit:</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">- **Dry-run only**: All intents are read-only or dry-run. Protected mutation intents are explicitly refused. - **Schema-validated**: Every intent is validated against the request schema before dispatch. - **Content-light results**: Counts, statuses, hashes, and refs only — never raw data. - **Future receipt-gated**: Protected intents return `authorization_required=true` and will be wired through authorization receipts in a future slice.</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Allowed intents: `refresh_projection`, `generate_refinement_report`, `run_storage_audit`, `run_queue_plan_dry_run`, `run_spawn_plan_dry_run`, `create_refinement_packets`, and others.</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">See `docs/governance/desktop-cockpit-ui.md` for the full intent catalog.</p>
+
+<h2 id="h2-33" class="disclosure-standard" data-disclosure-level="standard">Packet Types</h2>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">The reviewer orchestrator protocol uses four packet types:</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">1. Sprint Cockpit (`rig.relay.sprint_cockpit.v1`)</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Created at sprint start by `scripts/rig_relay_create_sprint_cockpit.py`. Contains the full context the reviewer needs to plan missions:</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- `sprint_id`, `branch`, `head`, `repo_state_sha256` - `dirty_summary` (tracked, untracked, protected dirty counts) - `coordination_summary` (active sessions, tasks, write leases, conflicts) - `dataset_summary` (observability events, coordination events, tool calls, findings) - `open_findings` (content-light: id, severity, title) - `recent_checkpoints` (session_id, commit_sha, status) - `active_sessions` and `active_path_reservations` - `sprint_mission`, `constraints`, `available_reviewer_tools`</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Stored as `.build/rig-relay/cockpit/current_sprint_cockpit.json` with companion Markdown at `.build/rig-relay/cockpit/current_sprint_cockpit.md`.</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">Content-light: never includes raw file contents, prompts, model outputs, stdout/stderr, or diffs.</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">2. Mission Packet (`rig.relay.mission_packet.v1`)</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Created by the reviewer for each child session. Defines the mission bounds:</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">- `mission_id`, `parent_sprint_id`, `parent_review_id` - `agent_profile` (implementer, tester, reviewer, documenter) - `mission_title`, `instructions` - `allowed_paths`, `forbidden_paths` - `tool_policy` (allow_write, allow_bash, bash_allowlist) - `coordination_policy` (claim_task, reserve_paths, heartbeat) - `checkpoint_policy` (off, prompt, auto) - `validation_commands`, `done_when`, `max_runtime_seconds`</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">Built-in refinement packet generators may create a narrower packet schema for derived implementation slices, but the reviewer still expects the same bounded-mission properties: explicit scope, clear validation, and content-light instructions.</p>
+
+<h3 id="h3-44" class="disclosure-standard" data-disclosure-level="standard">3. Child Session Result (`rig.relay.child_session_result.v1`)</h3>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">Produced by each completed child session. Returned to the reviewer for aggregation:</p>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">- `mission_id`, `session_id`, `status` - `final_report_path`, `artifact_manifest_path` - `checkpoint_commit_sha`, `files_changed` - `validation_summary`, `findings_recorded` - `warnings`, `recommended_next_action`, `runtime_seconds`</p>
+
+<h3 id="h3-47" class="disclosure-standard" data-disclosure-level="standard">4. Sprint Aggregate Report (`rig.relay.sprint_aggregate_report.v1`)</h3>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">Produced by the reviewer after collecting all child results. Decides next action:</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">- `sprint_id`, `parent_review_id` - `child_results` (summaries with status, validation pass/fail) - `overall_status` (clean, blocked, partial, failed) - `recommended_next_action`, `new_findings`, `blockers`</p>
+
+<h2 id="h2-50" class="disclosure-standard" data-disclosure-level="standard">Security Boundaries</h2>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">1. **No unrestricted shell for the reviewer.** Only high-level tools like `rig_relay_spawn_session`, `rig_relay_read_cockpit`, `rig_relay_read_coordination_state`, `rig_relay_read_dataset_report`, `rig_relay_cancel_session`, `rig_relay_request_checkpoint`, `rig_relay_aggregate_reports` are allowed.</p>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">2. **Child sessions cannot escape their mission packet.** The mission packet defines allowed paths, write access, bash access, and coordination access. Attempts to exceed bounds are refused by the tool layer.</p>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">3. **Checkpoints require a governed tool, not direct git.** The `checkpoint` tool enforces dirty-file guard, path leases, and checkpoint policy. The reviewer cannot create or bypass checkpoints.</p>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">4. **Coordination is the source of truth.** Before every launch and every follow-up, the reviewer reads the coordination projection. Stale or missing projections block further action.</p>
+
+<h2 id="h2-55" class="disclosure-standard" data-disclosure-level="standard">Reviewer Orchestrator Prompt</h2>
+
+<pre id="code-56"><code class="language-markdown">You are the Rig Relay sprint orchestrator.
+You do not edit files directly.
+You do not run shell commands directly.
+You may only launch bounded child missions through rig_relay_spawn_session.
+You must keep at most 4 child sessions active.
+You must prefer one writer plus read-only reviewers/testers.
+You must inspect coordination state before launching new work.
+You must avoid overlapping write scopes.
+You must aggregate child final reports before deciding the next mission.
+You must never push, merge, rebase, reset, clean, stash, or bypass checkpoint policy.</code></pre>
+
+<h2 id="h2-57" class="disclosure-standard" data-disclosure-level="standard">Bootstrap Implementation Status</h2>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">The following components exist:</p>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">- [x] 4 JSON Schemas (sprint_cockpit, mission_packet, child_session_result, sprint_aggregate_report) - [x] Cockpit generator script (`scripts/rig_relay_create_sprint_cockpit.py`) - [x] Tests for cockpit generator and schema validation - [x] Doctrine document (this file) - [x] `rig_relay_spawn_session` dry-run planner (`scripts/rig_relay_spawn_session.py`) - [x] `rig_relay_current_state` live orchestration pulse (`scripts/rig_relay_current_state.py`) - [ ] `rig_relay_spawn_session` executor (real subprocess spawning — deferred) - [ ] `rig_relay_read_cockpit` tool (read the cockpit packet — deferred) - [ ] `rig_relay_aggregate_reports` tool (collect and summarize child results — deferred) - [ ] Full autonomous reviewer loop (deferred — requires tool implementation above)</p>
+
+<h2 id="h2-60" class="disclosure-standard" data-disclosure-level="standard">References</h2>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">- [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md) - [Rig-to-Relay Pattern Inventory](rig-to-relay-pattern-inventory.md)</p>
+
+<p id="p-62" class="disclosure-standard" data-disclosure-level="standard">- [Delegate/Fleet Orchestration Doctrine](delegate-fleet-orchestration.md) - [Cross-Session Coordination Doctrine](cross-session-coordination.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Review Packet Protocol](usage-data-doctrine.md#review-packet-protocol) - [Work Item Schema](../schemas/rig.relay.work_item.v1.schema.json) - [Work Queue Schema](../schemas/rig.relay.work_queue.v1.schema.json) - [Ready Work Plan Schema](../schemas/rig.relay.ready_work_plan.v1.schema.json) - [Git Discipline Rules](../AGENTS.md#git) - [Dirty-File Preservation](../AGENTS.md#dirty-file-preservation)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/reviewer-orchestrator.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

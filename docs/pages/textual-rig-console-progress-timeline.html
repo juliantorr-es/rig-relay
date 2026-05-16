@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProgressTimelineWidget — Design — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**P4c implemented.** A dumb Textual widget that renders an">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>ProgressTimelineWidget — Design</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ProgressTimelineWidget — Design</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**P4c implemented.** A dumb Textual widget that renders an `ExecutionProgressProjection` without reading runtime events directly. Integrated into `DashboardProjection` and `DashboardScreen`.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Motivation</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">The Rig Console Dashboard needs to display runtime execution progress (status, timing, output byte counts, warnings, exit code) for the current invocation. Direct access to `RuntimeStreamEvent` objects from the widget would violate the projection pattern and risk accidental content leakage.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">`ProgressTimelineWidget` follows the `EvidenceRailWidget` pattern: it consumes a pre-aggregated `ExecutionProgressProjection` and renders it as a compact card in the dashboard&#x27;s vertical layout.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Widget Architecture</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Location</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- Source: `vibe/cli/textual_ui/rig_console/widgets/progress_timeline.py` - Projection model: `rig_relay.desktop.execution_progress.ExecutionProgressProjection` - Exported via `__all__ = [&quot;ProgressTimelineWidget&quot;]`</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Pattern</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Mirrors `EvidenceRailWidget` / `SessionPaneWidget` exactly:</p>
+
+<pre id="code-12"><code class="language-python">class ProgressTimelineWidget(Vertical):
+    class Updated(Message):
+        def __init__(self, projection: ExecutionProgressProjection) -&gt; None: ...
+
+    def __init__(self, projection: ExecutionProgressProjection | None = None, ...) -&gt; None
+    def compose(self) -&gt; ComposeResult
+    def update_projection(self, projection: ExecutionProgressProjection) -&gt; None
+    def _render_all(self) -&gt; None
+    def _update_static(self, css_class: str, text: str) -&gt; None</code></pre>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Children</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1. A header `Static` with class `.progress-timeline-header`, always showing `&quot;Progress&quot;`. 2. A body `Static` with class `.progress-timeline-body`, whose text is rebuilt by `_build_body_text()` on each update.</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Rendering</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">`_build_body_text()` returns a multi-line string. Sections:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">1. **Status line**: `&quot;status: &lt;status&gt;&quot;` + optional `&quot;  &lt;elapsed_ms&gt;ms&quot;` 2. **Identity line**: Space-separated short IDs — `&quot;inv: &lt;12chars&gt;&quot;`, `&quot;lease: &lt;12chars&gt;&quot;`, `&quot;req: &lt;12chars&gt;&quot;`. Only present if field is set. 3. **Heartbeat line**: `&quot;heartbeats: &lt;count&gt;&quot;`. Only if `heartbeat_count &gt; 0`. 4. **Output line**: `&quot;stdout: &lt;bytes&gt;b&quot;` and/or `&quot;stderr: &lt;bytes&gt;b&quot;` plus `&quot;(truncated)&quot;` badge when respective truncation flag is set. 5. **Warning line**: `&quot;warnings: &lt;count&gt;&quot;` + `&quot; [&lt;kind&gt;]&quot;` + `&quot; &lt;message&gt;&quot;`. Only if `warning_count &gt; 0`. Messages capped at 200 chars. 6. **Terminal lines**: Separate lines for `exit: &lt;code&gt;`, `error: &lt;kind&gt;`, `refused: &lt;reason&gt;`. Only present when respective field is set.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">If the projection is empty (no meaningful data), renders: `&quot;No runtime execution yet.&quot;`</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Empty-state detection (`_is_empty`)</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">A projection is considered empty when all of the following are true:</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `status == &quot;pending&quot;` (default) - `invocation_id` is None - `lease_id` is None - `request_id` is None - `heartbeat_count == 0` - `warning_count == 0` - `last_event_at` is None - `exit_code` is None - `error_kind` is None - `refusal_reason` is None - `stdout_bytes` is None - `stderr_bytes` is None - `elapsed_ms` is None</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">CSS</h3>
+
+<pre id="code-23"><code class="language-css">ProgressTimelineWidget {
+    width: 100%;
+    height: auto;
+    padding: 0 1;
+    margin: 0 0 1 0;
+    background: $surface;
+    border: solid $border;
+}
+
+ProgressTimelineWidget &gt; .progress-timeline-header {
+    width: 100%;
+    height: auto;
+    text-style: bold;
+    color: $text;
+}
+
+ProgressTimelineWidget &gt; .progress-timeline-body {
+    width: 100%;
+    height: auto;
+    color: $text;
+    padding: 0 0 0 1;
+}</code></pre>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Projection Integration</h2>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">DashboardProjection changes</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">An optional field was added to `DashboardProjection`:</p>
+
+<pre id="code-27"><code class="language-python">execution_progress: ExecutionProgressProjection | None = None</code></pre>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">When `None`, the widget defaults to `ExecutionProgressProjection()` (empty state).</p>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">DashboardScreen integration</h3>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">In `compose()`, the widget is yielded between the activity zone and the footer, always present:</p>
+
+<pre id="code-31"><code class="language-python">yield Horizontal(
+    SessionPaneWidget(proj.session),
+    EvidenceRailWidget(proj.evidence),
+    classes=&quot;dashboard-activity&quot;,
+)
+yield ProgressTimelineWidget(proj.execution_progress or None)
+yield FooterStatusWidget(proj)</code></pre>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">In `_render_all()`, the widget&#x27;s projection is updated:</p>
+
+<pre id="code-33"><code class="language-python">ep = proj.execution_progress or ExecutionProgressProjection()
+timeline = self.query_one(ProgressTimelineWidget)
+timeline.update_projection(ep)</code></pre>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Widget is always present in `compose()` to avoid conditional DOM issues with `query_one()`.</p>
+
+<h2 id="h2-35" class="disclosure-standard" data-disclosure-level="standard">Content-light Guarantee</h2>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">The widget renders only metadata from `ExecutionProgressProjection`. It never accesses:</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- `chunk_text` — raw output chunks - `stdout` / `stderr` (raw) — only byte counts `stdout_bytes`/`stderr_bytes` - `content` — generic raw content - `diff` / `snippet` / `patch` — diffs - `argv` — raw command - `output` — raw command output</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Verified by: - Model `extra=&quot;forbid&quot;` prevents accidental field addition - Widget only accesses model fields via `proj.&lt;field&gt;` getters - Widget does not accept raw event objects - Test `test_widget_does_not_render_raw_output` asserts no raw patterns in rendered text - Test `test_no_forbidden_raw_field_names_in_widget` checks no forbidden attribute names on the widget class</p>
+
+<h2 id="h2-39" class="disclosure-standard" data-disclosure-level="standard">Tests</h2>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- Location: `tests/cli/textual_ui/rig_console/test_progress_timeline.py` - 40 tests covering: - Model validation (rejects raw fields, rejects extras, no raw field names) - Empty state (both explicit and default constructor) - Status line (with/without elapsed, different statuses) - Identity line (each ID separately, combined, truncated, none) - Heartbeat line (count shown, hidden when zero) - Output line (stdout, stderr, combined, truncated badges, missing) - Warning line (count, kind, message, long message truncation, hidden) - Terminal lines (exit code, error kind, refusal, combined, hidden) - Full projection (all sections rendered) - Failure projection (error + refusal rendered) - Update method (replaces data) - Content-light (no raw field names in widget, no raw output in text) - Edge cases (zero bytes, only warnings, only heartbeats, long IDs)</p>
+
+<h2 id="h2-41" class="disclosure-standard" data-disclosure-level="standard">Widget Behavior Rules</h2>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">1. **Always present in DOM** — even when `execution_progress` is `None`, the widget renders the empty state. No conditional mounting.</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">2. **Content-light only** — never reads runtime events or raw output streams. Only renders already-aggregated projection data.</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">3. **Projection-absent → empty state** — when `execution_progress` field is not set (None), the widget defaults to an empty projection.</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">4. **Projection-present → full render** — when a non-empty projection is received, the widget renders all available sections.</p>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">5. **Re-render via update_projection** — calling `update_projection()` replaces internal state, re-renders, and posts an `Updated` message.</p>
+
+<h2 id="h2-47" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">- [Execution Progress Projection](../governance/execution-progress-projection.md) - [EvidenceRailWidget](textual-rig-console-evidence-rail.md) - [Dashboard Screen](textual-rig-console-dashboard.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/ui/textual-rig-console-progress-timeline.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

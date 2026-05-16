@@ -1,0 +1,230 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "subagent-runtime-v1",
+  "document_type": "audit",
+  "title": "SubagentRuntime v1 — Evidence and Tool Execution Mode",
+  "summary": "Implementation date: 2026-05-15",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/agent-loop/subagent-runtime-v1.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "SubagentRuntime v1 — Evidence and Tool Execution Mode",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Implementation date: 2026-05-15",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "What changed from v0",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Area",
+        "v0",
+        "v1"
+      ],
+      "rows": [
+        [
+          "Lifecycle evidence",
+          "None",
+          "`TraceRecorder` start/end/cancel/error/budget"
+        ],
+        [
+          "Tool execution mode",
+          "Hidden (direct ToolManager)",
+          "Explicit `tool_execution_mode: \"legacy_direct\"` in result metadata and trace"
+        ],
+        [
+          "Parent trace propagation",
+          "Stored in mission only",
+          "Emitted in span attributes"
+        ],
+        [
+          "Timestamp handling",
+          "`time.monotonic()` used as wall clock (bug)",
+          "`started_at` = `datetime.now(UTC)`, `duration_ms` = monotonic delta"
+        ],
+        [
+          "Trace recorder",
+          "Not accepted",
+          "Optional `trace_recorder` parameter"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Events emitted",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Event",
+        "When",
+        "TraceRecorder API"
+      ],
+      "rows": [
+        [
+          "`subagent.runtime` span",
+          "Mission starts",
+          "`recorder.start_span()`"
+        ],
+        [
+          "span end (ok)",
+          "Normal completion",
+          "`recorder.end_span(status=ok)`"
+        ],
+        [
+          "span end (cancelled)",
+          "Cancelled",
+          "`recorder.end_span(status=cancelled)`"
+        ],
+        [
+          "span end (error)",
+          "Runtime error",
+          "`recorder.end_span(status=error, error=...)`"
+        ],
+        [
+          "`subagent.runtime.budget.exhausted`",
+          "Budget exceeded",
+          "`span.event()`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "What SubagentRuntime owns now",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- Bounded mission execution - **Lifecycle evidence emission** (v1) - **Explicit tool execution mode** (v1) - Budget enforcement - Structured result artifact",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "What still belongs to OrchestratorLoop",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- User-facing turn orchestration - Approval policy - Final synthesis - Merge/push",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "What remains before ToolRuntime adoption",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Tool execution still goes through direct `ToolManager.get()` / `tool_inst.run()`. This is marked as `tool_execution_mode: \"legacy_direct\"` in both result metadata and trace span attributes so there are no invisible side tunnels.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "The full ToolRuntime adapter (with permission, approval, cache, receipt pipeline) requires the AgentLoop adapter closures. A future slice should:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "1. Extract minimal ToolRuntime adapter helpers 2. Wire SubagentRuntime tool calls through `ToolRuntime.execute_one()` 3. Change `tool_execution_mode` to `\"governed\"`",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/agent-loop/subagent-runtime-v1.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

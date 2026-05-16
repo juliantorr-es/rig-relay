@@ -1,0 +1,551 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "bash-usage-audit",
+  "document_type": "audit",
+  "title": "Bash Usage Audit for Validate Design",
+  "summary": "This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/validate-tool/bash-usage-audit.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Bash Usage Audit for Validate Design",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Scope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Evidence Sources",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- `docs/audits/tool-usage-analysis/tool-usage-summary.md` - `docs/audits/tool-usage-analysis/tool-usage-aggregates.json` - `docs/audits/tool-hardening/bash-deterministic-envelope.md` - `docs/audits/tool-hardening/search-replace-patch-contract.md` - `scripts/rig_relay_validate_schemas.py` - `scripts/rig_relay_validate_tool_receipts.py` - `tests/tools/test_bash.py` - `tests/tools/test_bash_hardening.py` - `tests/tools/test_validation_suite.py` - `tests/tools/test_tool_receipt_emission.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "What the Current Data Says",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "The local tool-usage audit shows bash is the dominant high-authority command surface.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Value"
+      ],
+      "rows": [
+        [
+          "Calls",
+          "5,023"
+        ],
+        [
+          "Failures",
+          "337"
+        ],
+        [
+          "Failure rate",
+          "6.71%"
+        ],
+        [
+          "p95 latency",
+          "10,469 ms"
+        ],
+        [
+          "p95 output",
+          "8,012 bytes"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "The strongest empirical signal is not raw command text. It is command family pressure:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- validation commands are frequent and already script-shaped - inspection commands are frequent and mostly read-only - Git introspection is common and high-authority - schema and receipt validation already exist as standalone scripts - mutation commands are already separated by tool boundaries, so bash should not become a general mutation gateway",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Command Categories",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "Validation / Test Execution",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Observed command family:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "- `uv run pytest` - `uv run pytest tests/...` - `uv run pytest -n0 ...` - `uv run pyright ...` - `uv run ruff check ...` - `uv run ruff format ...` - `uv run ruff format --check ...` - `uv run python scripts/rig_relay_validate_schemas.py` - `uv run python scripts/rig_relay_validate_tool_receipts.py ...`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Empirical role:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "- high frequency in this repo - deterministic enough to model as first-class validate profiles - mostly read-only, with clear pass/fail semantics",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Recommendation:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "- absorb into `validate` - keep bash fallback for ad hoc or one-off command composition",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "Git Introspection",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "Observed command family:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "- `git status` - `git diff` - `git log` - `git show` - `git ls-files` - `git branch`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Empirical role:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "- read-only but high leverage - used for promotion/readiness and dirty-state checks - should be deterministic and content-light",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Recommendation:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "- absorb into `validate` for readiness checks - later migrate to a dedicated deterministic Git-read surface if needed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-26",
+      "type": "heading",
+      "level": 3,
+      "content": "File / Content Inspection",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Observed command family:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- `rg ...` - `find ...` - `ls ...` - `sed ...` - `jq ...` - `du ...` - `stat ...`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Empirical role:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "- common inspection layer - low mutation risk - useful for audits and repository discovery",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Recommendation:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "- keep bash for ad hoc inspection - absorb only repeatable read-only checks into `validate`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-33",
+      "type": "heading",
+      "level": 3,
+      "content": "Report / Dataset Generation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Observed command family:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "- `uv run python scripts/rig_relay_*.py` - validation and export scripts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "Empirical role:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "- deterministic pipeline steps - often depends on a known repo root or evidence root",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "Recommendation:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "- absorb fixed report-generation checks into `validate` - keep free-form report generation in bash when it is exploratory",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-40",
+      "type": "heading",
+      "level": 3,
+      "content": "Mutation / Destructive / Refused Commands",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "Observed command family:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "- repo mutation commands - file edits - Git write operations - cleanup / pruning / archive operations",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "Empirical role:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "- should not be the default validate target - usually need a separate governed tool or explicit mutation surface",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "Recommendation:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "- exclude from `validate` by default - gate via explicit mutation profiles if they ever become eligible",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-47",
+      "type": "heading",
+      "level": 2,
+      "content": "Validate Absorption Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "`validate` should absorb commands when all are true:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "- command is deterministic or close to deterministic - exit code is enough to decide pass/fail - output can be summarized content-light - command is read-only or check-only - the command is a repeated workflow primitive, not a one-off exploration",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "`validate` should stay out of bash when any are true:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "- command is exploratory or ad hoc - command is interactive - command depends on arbitrary shell expansion - command mutates state - command needs raw stdout as the main product",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-52",
+      "type": "heading",
+      "level": 2,
+      "content": "Gaps in Current Data",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "- raw bash command text is not preserved in the content-light observability stream - exact command-family counts are therefore partially inferred from validator scripts and hardening docs - failure classification for bash commands is still mostly external to the command text - no canonical `command_kind` field exists yet",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-54",
+      "type": "heading",
+      "level": 2,
+      "content": "Conclusion",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "The strongest `validate` candidates are:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "1. `pytest` 2. `pyright` 3. `ruff check` 4. schema validation scripts 5. receipt-policy validation scripts 6. git cleanliness / readiness checks",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "These are the commands most likely to benefit from deterministic profiles, structured receipts, and blocker taxonomy.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/validate-tool/bash-usage-audit.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

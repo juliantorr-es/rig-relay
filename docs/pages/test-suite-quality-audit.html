@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Suite Quality Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date:** 2025-06-13">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Suite Quality Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Suite Quality Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2025-06-13 **Branch:** main (HEAD `384e4860b14959769a14fbcb5b4ca27618dad861`) **Scope:** Focus on validate, receipt, mutation-tool, schema, and governance tests.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Repository State</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Branch</td><td>`main` (ahead of `origin/main` by 2 commits — from prior sessions)</td></tr>
+<tr><td>HEAD</td><td>`384e4860`</td></tr>
+<tr><td>Dirty files at start</td><td>25 modified, 51 untracked</td></tr>
+<tr><td>Dirty files at end</td><td>Unchanged (no files modified by this audit)</td></tr>
+<tr><td>Total test files</td><td>352 (excluding stubs and `__pycache__`)</td></tr>
+<tr><td>Total test functions</td><td>~1,772</td></tr>
+<tr><td>Total test lines</td><td>~91,434</td></tr>
+<tr><td>Top 3 largest test files</td><td>`test_validate.py` (1,797), `test_openai_responses_adapter.py` (1,322), `test_config_resolution.py` (1,250)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Test File Summary (Focus Area)</h2>
+
+<details id="table-6" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-6" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>File</th><th>Lines</th><th>Tests</th><th>Domain</th><th>Type</th><th>Speed</th><th>Dup Risk</th></tr></thead>
+<tbody>
+<tr><td>`test_validate.py`</td><td>1,797</td><td>127</td><td>validate</td><td>integration</td><td>slow</td><td>**high**</td></tr>
+<tr><td>`test_validate_git_state.py`</td><td>390</td><td>27</td><td>validate_git_state</td><td>integration</td><td>slow</td><td>**high**</td></tr>
+<tr><td>`test_tool_receipt_emission.py`</td><td>1,208</td><td>34</td><td>receipt_emission</td><td>unit</td><td>fast</td><td>medium</td></tr>
+<tr><td>`test_tool_receipt_policy.py`</td><td>359</td><td>25</td><td>receipt_policy</td><td>contract</td><td>fast</td><td>medium</td></tr>
+<tr><td>`test_receipt_index.py`</td><td>881</td><td>40</td><td>receipt_index</td><td>unit</td><td>fast</td><td>medium</td></tr>
+<tr><td>`test_bash_hardening.py`</td><td>278</td><td>21</td><td>bash_hardening</td><td>unit</td><td>fast</td><td>medium</td></tr>
+<tr><td>`test_bash.py`</td><td>317</td><td>10</td><td>bash</td><td>unit</td><td>fast</td><td>low</td></tr>
+<tr><td>`test_hardened_tools.py`</td><td>755</td><td>29</td><td>hardened_tools</td><td>integration</td><td>slow</td><td>low</td></tr>
+<tr><td>`test_schema_validation.py`</td><td>145</td><td>12</td><td>schema_validation</td><td>contract</td><td>fast</td><td>low</td></tr>
+<tr><td>`test_validation_suite.py`</td><td>290</td><td>8</td><td>validation_suite</td><td>integration</td><td>medium</td><td>low</td></tr>
+<tr><td>`test_tool_contract_coverage.py`</td><td>77</td><td>2</td><td>tool_contract</td><td>unit</td><td>fast</td><td>low</td></tr>
+<tr><td>`test_checkpoint.py`</td><td>518</td><td>11</td><td>checkpoint</td><td>integration</td><td>slow</td><td>low</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Duplicate/Near-Duplicate Summary</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">**11 duplicate groups identified** (see `data/test_duplicate_candidates.jsonl`):</p>
+
+<details id="table-9" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-9" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Group</th><th>Type</th><th>Files</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>dup-001</td><td>**Exact**</td><td>test_validate.py, test_validate_git_state.py</td><td>test_collect_git_state_non_repo</td></tr>
+<tr><td>dup-002</td><td>Near</td><td>test_validate.py, test_validate_git_state.py</td><td>test_validate_receipt_git_summary_content_light</td></tr>
+<tr><td>dup-003</td><td>Near</td><td>test_validate.py, test_validate_git_state.py</td><td>validate_git_state extra_forbidden</td></tr>
+<tr><td>dup-004</td><td>**Near (6 pairs)**</td><td>test_validate.py, test_validate_git_state.py</td><td>All dirty_policy tests</td></tr>
+<tr><td>dup-005</td><td>Near</td><td>test_validate.py, test_validate_git_state.py</td><td>worktree_readiness profile tests</td></tr>
+<tr><td>dup-006</td><td>Near</td><td>test_validate.py, test_validate_git_state.py</td><td>porcelain parsing full output</td></tr>
+<tr><td>dup-007</td><td>**Exact (3)**</td><td>test_delegate_fleet.py, test_queue_plan.py</td><td>schema validation tests</td></tr>
+<tr><td>dup-008</td><td>Near</td><td>test_bash.py, test_bash_hardening.py</td><td>test_uses_effective_workdir</td></tr>
+<tr><td>dup-009</td><td>Near</td><td>test_bash.py, test_grep.py</td><td>test_uses_effective_workdir</td></tr>
+<tr><td>dup-010</td><td>**Exact**</td><td>test_rig_intake_cannibalization_plan.py, test_textual_retirement_policy.py</td><td>test_textual_retirement_policy_exists</td></tr>
+<tr><td>dup-011</td><td>Near (justified)</td><td>test_github_update_gateway.py, test_pypi_update_gateway.py</td><td>Adapter interface conformance</td></tr>
+</tbody>
+</table></details>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**Total candidates for removal:** ~15-18 test functions **Net reduction if merged:** ~300-400 lines</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Primary Risk: Validate Test Overlap</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">**`test_validate.py` (1,797 lines, 127 tests)** and **`test_validate_git_state.py` (390 lines, 27 tests)** contain:</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- **1 exact duplicate** (test_collect_git_state_non_repo) - **~15 near-duplicates** across dirty policy, git state model, porcelain parsing, and worktree readiness - **Same Stage 5 git-state tests** were added to test_validate.py first, then test_validate_git_state.py was created as a cleaner dedicated file — but the originals were never removed - **`test_validate.py` does NOT need to keep any git-state tests** — they were added as part of Stage 5 and are fully covered in `test_validate_git_state.py`</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">**Recommended:** remove 19 tests from test_validate.py (all git-state tests starting at line 1469), reducing it by ~310 lines. No coverage loss.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Brittle/Low-Value Test Patterns</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">1. **Private helper assertion tests** — `test_validate.py` has many tests that import and assert against private functions (`_parse_git_status_branch`, `_parse_git_status_porcelain_line`, `_check_dirty_policy`, etc.). These are implementation-detail tests. While they provide fast feedback during development, they are brittle to refactoring and should be supplemented (not replaced) by public-behavior tests that exercise these helpers through `tool.run()`.</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">2. **`# type: ignore[call-arg]` on line 1773** of `test_validate.py` — Violates AGENTS.md rule against inline `# type: ignore`. Pre-existing from Stage 4.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">3. **Exact string matching on refusal messages** — Several receipt emission tests match exact strings like `&quot;Command timed out after 30s&quot;`. Brittle if wording changes.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">4. **Test files with 0 test functions** — `tests/governance/test_local_action_envelope.py` (434 lines) contains no `test_` functions. May be a conftest or fixture file with misleading name.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">High-Value Tests to Preserve</h2>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Tests to Protect</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>`test_schema_validation.py`</td><td>All 12</td><td>Schema integrity is critical; low brittleness</td></tr>
+<tr><td>`test_tool_receipt_policy.py`</td><td>All 25</td><td>Content-light enforcement is a privacy contract</td></tr>
+<tr><td>`test_tool_contract_coverage.py`</td><td>Both</td><td>Ensures all builtins have determinism/mutation metadata</td></tr>
+<tr><td>`test_hardened_tools.py`</td><td>All 29</td><td>write_file hash, dirty guard, lease — critical mutation safety</td></tr>
+<tr><td>`test_bash_hardening.py`</td><td>All 21</td><td>Deterministic envelope — core bash contract</td></tr>
+<tr><td>`test_validate_git_state.py`</td><td>All 27 (except exact duplicate)</td><td>Complete git state coverage</td></tr>
+<tr><td>`test_tool_receipt_emission.py`</td><td>Receipt schema validation tests + receipt_policy integration tests</td><td>Schema contract validation is rare and high-value</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">High-Value Tests to Remove (after equivalent coverage confirmed)</h2>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Tests</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>`test_validate.py`</td><td>19 git-state tests (lines 1469-1797)</td><td>Fully covered by test_validate_git_state.py</td></tr>
+<tr><td>`test_bash.py`</td><td>test_uses_effective_workdir</td><td>Covered by test_bash_hardening.py</td></tr>
+<tr><td>`test_rig_intake_cannibalization_plan.py`</td><td>test_textual_retirement_policy_exists</td><td>Exact duplicate of dedicated file</td></tr>
+<tr><td>`test_delegate_fleet.py` / `test_queue_plan.py`</td><td>3 schema validation tests</td><td>Covered by test_schema_validation.py</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Key Missing Coverage (see `data/test_coverage_gap_inventory.jsonl`)</h2>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">**High priority (11 gaps identified):**</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">1. **Receipt pipeline E2E** — No test chains build_receipt → capture → policy validate → index for any tool 2. **Validate pipeline E2E** — No test chains run → build_receipt → capture → index 3. **Model dump vs schema validation** — 6 of 8 schema test files exist but only 2 have model-dump validation 4. **Bash/search_replace/validate result + invocation schema validation** — 9 untested schemas 5. **Dirty policy E2E (allow_dirty, allow_listed_dirty)** — Only clean policy has E2E test 6. **write_file receipt policy validation** — write_file has no receipt pipeline tests</p>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Subprocess and Git Test Profile</h2>
+
+<table id="table-28" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Subprocess</th><th>Git</th><th>Speed</th><th>Recommended Tier</th></tr></thead>
+<tbody>
+<tr><td>test_validate.py</td><td>Yes</td><td>Yes</td><td>Slow</td><td>Tier 2 (integration)</td></tr>
+<tr><td>test_validate_git_state.py</td><td>Yes</td><td>Yes</td><td>Slow</td><td>Tier 2 (integration)</td></tr>
+<tr><td>test_checkpoint.py</td><td>Yes</td><td>Yes</td><td>Slow</td><td>Tier 2 (integration)</td></tr>
+<tr><td>test_hardened_tools.py</td><td>Yes</td><td>No</td><td>Medium</td><td>Tier 1 (standard)</td></tr>
+<tr><td>test_bash_hardening.py</td><td>Yes</td><td>No</td><td>Medium</td><td>Tier 1 (standard)</td></tr>
+<tr><td>test_bash.py</td><td>Yes</td><td>No</td><td>Medium</td><td>Tier 1 (standard)</td></tr>
+<tr><td>test_validation_suite.py</td><td>Yes</td><td>No</td><td>Medium</td><td>Tier 1 (standard)</td></tr>
+<tr><td>test_tool_receipt_emission.py</td><td>No</td><td>No</td><td>Fast</td><td>Tier 0 (immediate)</td></tr>
+<tr><td>test_schema_validation.py</td><td>No</td><td>No</td><td>Fast</td><td>Tier 0 (immediate)</td></tr>
+<tr><td>test_tool_receipt_policy.py</td><td>No</td><td>No</td><td>Fast</td><td>Tier 0 (immediate)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-29" class="disclosure-standard" data-disclosure-level="standard">Compute Pattern: `pytest from inside pytest`</h2>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">Only `tests/tools/test_validation_suite.py` uses subprocess-based pytest invocation. This is intentional (tests the validation suite orchestration). All other subprocess tests run git, uv, or shell commands.</p>
+
+<h2 id="h2-31" class="disclosure-standard" data-disclosure-level="standard">Execution Results (Stage 2-3)</h2>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Stage 2 — Validate Dedup Complete</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">**Removed 18 duplicate tests** from `tests/tools/test_validate.py`: - 1 exact duplicate (test_collect_git_state_non_repo) - 17 near-duplicates (porcelain parsing, dirty policy, worktree readiness, extra_forbidden, receipt content-light) - **Preserved** 1 unique test (test_collect_git_state_porcelain_sha256) with no equivalent in dedicated file</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">**Coverage preservation:** All 18 removals fully covered by `tests/tools/test_validate_git_state.py` **Net reduction:** 308 lines, 18 tests, `test_validate.py` now 1,489 lines / 109 tests **Validation:** 109/109 tests pass, 27/27 git state tests pass</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Stage 3 — Schema Contracts Complete</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">**Created** `tests/tools/test_tool_schema_contracts.py` with **13 tests** across 3 tool families:</p>
+
+<table id="table-37" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tool</th><th>Model</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>Bash</td><td>BashResult</td><td>schema + extra_forbidden</td></tr>
+<tr><td>Bash</td><td>BashReceipt</td><td>schema + nullable</td></tr>
+<tr><td>Bash</td><td>BashArgs</td><td>schema</td></tr>
+<tr><td>SearchReplace</td><td>SearchReplaceResult</td><td>schema</td></tr>
+<tr><td>SearchReplace</td><td>SearchReplaceReceipt</td><td>schema</td></tr>
+<tr><td>SearchReplace</td><td>SearchReplaceArgs</td><td>schema</td></tr>
+<tr><td>Validate</td><td>ValidateResult</td><td>schema + nullable (git state)</td></tr>
+<tr><td>Validate</td><td>ValidateReceipt</td><td>schema</td></tr>
+<tr><td>Validate</td><td>ValidateArgs</td><td>schema + extra_forbidden</td></tr>
+</tbody>
+</table>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">**Schema fixes applied** (2 stale bash schemas): - `bash_result.v1`: renamed `exit_code`→`returncode`, added `stdout`/`stderr`, fixed nullable fields - `bash_invocation.v1`: renamed `timeout_ms`→`timeout`, removed `allow_shell`/`schema_version`, fixed nullable fields - Fixed nullable `error_kind`, `refusal_reason`, `duration_ms` across all search_replace and validate schemas</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">**Coverage gaps closed:** gap-003, gap-008, gap-009, gap-010, gap-011 **Validation:** 13/13 schema contract tests pass, 78/78 schemas valid, 34/34 receipt emission tests pass</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">Remaining duplicate groups (not in scope)</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">- dup-007: 3 exact schema tests in delegate_fleet/queue_plan - dup-008: test_uses_effective_workdir in bash vs bash_hardening - dup-009: test_uses_effective_workdir in grep vs bash - dup-010: test_textual_retirement_policy_exists - dup-011: justified adapter conformance tests</p>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">Remaining coverage gaps (not in scope)</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">- gap-001, gap-002: Receipt pipeline E2E tests - gap-004: Dirty policy E2E (allow_dirty, allow_listed_dirty) - gap-005: write_file receipt policy - gap-006: CI command coverage - gap-007: Tool registry discovery</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">See `data/test_file_inventory.jsonl`, `data/test_duplicate_candidates.jsonl`, `data/test_coverage_gap_inventory.jsonl` for detailed records.</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">See `test-cleanup-roadmap.md` for staged cleanup plan.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tests/test-suite-quality-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

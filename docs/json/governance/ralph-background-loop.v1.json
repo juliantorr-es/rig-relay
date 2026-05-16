@@ -1,0 +1,331 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "ralph-background-loop",
+  "document_type": "governance",
+  "title": "Ralph — Governed Background Maintenance Loop",
+  "summary": "Ralph is a governed background maintenance loop for Rig Relay.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/ralph-background-loop.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Ralph — Governed Background Maintenance Loop",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Ralph is a governed background maintenance loop for Rig Relay. Ralph reads evidence-backed state and proposes bounded maintenance missions. Ralph never silently mutates risky state.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Ralph observes report projections, receipts, validation summaries, and storage state. It ranks overlooked gaps and proposes one bounded maintenance mission per scan. Ralph is projection-driven, not chat-driven.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Non-goals",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Ralph is **not**: - A daemon or scheduled background worker - A task manager, feed, or workplace chat system - A code-review bot or lint-fixing automaton - A replacement for human judgment on architecture decisions - A bypass around Relay permissions, reports, receipts, worktree isolation, or approval gates",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Relationship to Rig Relay",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-8",
+      "type": "code",
+      "language": "text",
+      "content": ".rig/reports/reports.jsonl       raw report/event ledger\nDuckDB query layer (future)      analytical queries over reports\nreport projectors                deterministic read models\nRalph                            reads projections, proposes missions\nRelay                            executes approved Ralph missions\n                                 through normal tool governance\nrig.report / receipts            record what Ralph observed, proposed,\n                                 changed, or declined",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Ralph uses the same Relay substrate as every other agent path. It has no special privileges or bypass powers.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Autonomy tiers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "Tier",
+        "Name",
+        "Allowed",
+        "Forbidden"
+      ],
+      "rows": [
+        [
+          "0",
+          "Observe",
+          "Read projections, receipts, validation summaries, storage state. Emit scan summaries.",
+          "Code writes."
+        ],
+        [
+          "1",
+          "Evidence write",
+          "Tier 0 + write reports, Ralph scan events, projection diagnostics, receipts.",
+          "Code writes."
+        ],
+        [
+          "2",
+          "Safe local maintenance",
+          "Tier 1 + rebuild derived indexes, run validators, refresh projections, compact safe local artifacts.",
+          "Source-code changes."
+        ],
+        [
+          "3",
+          "Patch proposal",
+          "Tier 2 + create isolated worktree and prepare bounded patch proposal.",
+          "Merge. Main-workspace mutation."
+        ],
+        [
+          "4",
+          "Main workspace mutation",
+          "Tier 3 + apply approved patches to main workspace.",
+          "Requires explicit user approval."
+        ],
+        [
+          "5",
+          "External side effects",
+          "Tier 4 + network calls, external service writes.",
+          "Requires explicit user approval and scoped credentials."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Ralph v0 operates at **Tier 0 — Observe only**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Forbidden actions (all tiers)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "Ralph must never: - Mutate source code without explicit user approval - Promote reports to canonical findings - Delete canonical findings - Bypass worktree isolation - Make external network calls - Trigger recursive self-scans - Write to `docs/findings/out-of-scope-findings.jsonl`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Stop conditions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Every Ralph scan must stop if: - No projections found - Maximum one recommended mission per scan - Maximum 200 reports inspected - Maximum 30 seconds elapsed - Dirty-state ambiguity detected - Missing projection metadata - Malformed policy file - No recursive self-triggering",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Input projections",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "Ralph may read: - `docs/findings/out-of-scope-findings.jsonl` (finding registry) - `.rig/reports/reports.jsonl` (raw report ledger, when present) - `.rig/reports/indexes/report_summary.json` (projection index, when present) - `.rig/reports/indexes/candidate_findings.json` (candidate findings, when present) - `.rig/reports/indexes/open_raw_reports.json` (open reports, when present)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Output events",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "Ralph may emit: - `ralph.scan.started` - `ralph.scan.completed` - `ralph.mission_candidate.proposed` - `ralph.scan.refused`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "All output events are content-light: SHA256 hashes, counts, and structured candidate summaries. No raw file contents or secrets.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Candidate ranking (v1 policy)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "1. projection corruption / malformed ledger diagnostics 2. high severity security_concern or data_race 3. stale canonical findings 4. candidate findings with evidence 5. duplicate clusters above threshold 6. validation gaps 7. architecture seams touching hot files 8. low-risk docs/projection maintenance",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Score formula:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-25",
+      "type": "code",
+      "language": "text",
+      "content": "score = severity_weight + kind_weight + evidence_bonus",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "v0 behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Ralph v0: - Reads `docs/findings/out-of-scope-findings.jsonl` - Ranks open findings by score - Produces one recommended mission - Writes nothing to disk (output returned in-memory only) - Operates at Tier 0 — observe only",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/ralph-background-loop.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

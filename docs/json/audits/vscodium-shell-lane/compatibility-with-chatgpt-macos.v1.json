@@ -1,0 +1,152 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "compatibility-with-chatgpt-macos",
+  "document_type": "audit",
+  "title": "ChatGPT macOS Compatibility Audit",
+  "summary": "This document assesses the interaction between the Rig Relay VSCodium lane and the ChatGPT macOS \"Work with Apps\" feature.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/vscodium-shell-lane/compatibility-with-chatgpt-macos.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "ChatGPT macOS Compatibility Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "This document assesses the interaction between the Rig Relay VSCodium lane and the ChatGPT macOS \"Work with Apps\" feature.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Interaction Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "ChatGPT's \"Work with Apps\" on macOS works via: 1.  **Accessibility API**: Reading the active window's UI hierarchy. 2.  **VS Code Extension**: A proprietary `.vsix` that OpenAI provides to deeper editor state.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Rig Extension Interaction",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "*   **Context Visibility**: ChatGPT will likely see the code in the active editor tab. It will **not** see the internal state of the Rig daemon or hidden worktree lanes unless they are opened as tabs. *   **Conflict of Interest**: If both Rig and ChatGPT are active, the user has two \"agents\" in one editor. Rig should position itself as the **Governed Authority**, while ChatGPT is the **Creative Assistant**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Risks of Branded Bundle (Option B)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "*   **Accessibility White-listing**: If we rename the binary (e.g., from `VSCodium` to `Rig Studio`), we may lose the pre-configured \"Work with Apps\" support in the ChatGPT app until OpenAI adds our new bundle ID. *   **Recommendation**: Stick to standard VSCodium binary to maintain maximum compatibility with OpenAI's macOS ecosystem.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Manual Test Checklist (macOS)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- [ ] Install VSCodium. - [ ] Install `openai-chatgpt.vsix` manually. - [ ] Verify ChatGPT \"Work with Apps\" shows VSCodium in the list. - [ ] Open a file in VSCodium. - [ ] Ask ChatGPT: \"What is the content of my open file?\" (Verify accessibility read). - [ ] Install Rig Relay extension (prototype). - [ ] Open a Rig Mission Worktree. - [ ] Verify ChatGPT can see the worktree file. - [ ] Verify ChatGPT **cannot** see raw Rig tool logs in the terminal unless the terminal is visible.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "5. Conclusion: Safer in the Stream",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Ordinary VSCodium + the Rig Extension is the **safest** path for maintaining ecosystem compatibility. Branded bundles introduce high friction for cross-app AI features.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/vscodium-shell-lane/compatibility-with-chatgpt-macos.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

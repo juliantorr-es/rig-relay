@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coordination Migration Inventory — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This inventory maps the coordination seam that started in `vibe.core.coordination`">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Coordination Migration Inventory</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Coordination Migration Inventory</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This inventory maps the coordination seam that started in `vibe.core.coordination` and now lives in `rig_relay.coordination.models`, `rig_relay.coordination.store`, and the Relay-native coordination tool execution helpers. `vibe.core.coordination` remains a compatibility adapter during alpha. The planning slice is inventory-first: no event-name changes, no schema changes, no payload behavior changes, and no circular imports from `rig_relay` back into `vibe`.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">**Slice B complete (2026-05-13).** All three Relay-native modules are live:</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/_canonical_json.py` — stdlib-only JSON helper - `rig_relay/coordination/models.py` — full implementation, 10 Pydantic model classes - `rig_relay/coordination/store.py` — full implementation, `CoordinationStore` dataclass</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">`vibe.core.coordination._models`, `vibe.core.coordination._store`, and `vibe.core.coordination.__init__` are compatibility adapters. All 64 coordination tests pass through the Relay-native modules. No schema changes, no event-name changes, no circular imports.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">**Next:** Coordination tool surface (`vibe.core.tools.builtins.coordination`→`rig_relay.coordination.tool`) — deferred by user.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Current `vibe.core.coordination` Surface</h2>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">`vibe/core/coordination/_models.py`</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- Legacy compatibility adapter re-exporting the Relay-native coordination models. - Existing imports still resolve for sessions, claims, reservations, conflicts, artifact references, state projections, event envelopes, payload builders, and hash helpers.</p>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">`vibe/core/coordination/_store.py`</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- Legacy compatibility adapter re-exporting the Relay-native file-backed store. - Session registration, heartbeat, task claim, path reservation, artifact publication, conflict reporting, release, handoff, stale-lease, and checkpoint-facing store flows continue to work unchanged. - Reads and writes coordination state under `.build/rig-relay/coordination/`.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">`vibe/core/coordination/__init__.py`</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- Re-exports the public coordination models and store for current callers. - Acts as the compatibility import surface for legacy `vibe.*` code. - This module now points at Relay-owned coordination modules.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Public API Summary</h2>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Classes</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- `CoordinationSession` - `CoordinationHeartbeat` - `CoordinationTaskClaim` - `CoordinationPathReservation` - `CoordinationArtifactRef` - `CoordinationConflict` - `CoordinationClaimResult` - `CoordinationReservationResult` - `CoordinationStateProjection` - `CoordinationEvent` - `CoordinationStore`</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Functions</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- `salted_path_hash` - `reset_path_salt_for_testing` - `stable_path_key` - `normalize_path` - `now_plus` - `build_session_registered_payload` - `build_heartbeat_payload` - `build_task_claim_payload` - `build_task_released_payload` - `build_path_reserved_payload` - `build_path_released_payload` - `build_reservation_refused_payload` - `build_artifact_published_payload` - `build_conflict_reported_payload` - `build_handoff_requested_payload` - `build_handoff_accepted_payload` - `build_handoff_rejected_payload` - `build_projection_read_payload` - `build_lease_expired_payload` - `build_lease_marked_stale_payload` - `build_checkpoint_committed_payload` - `build_checkpoint_refused_payload`</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Current Import Sites</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/coordination.py` - `vibe/core/tools/builtins/task.py` - `vibe/core/tools/builtins/write_file.py` - `vibe/core/tools/builtins/search_replace.py` - `vibe/core/tools/builtins/checkpoint.py` - `rig_relay/coordination/current_state.py` - `rig_relay/coordination/cleanup_leases.py` - `rig_relay/evidence/storage_lifecycle.py`</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Tests Covering Coordination</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- `tests/coordination/` - `tests/coordination/test_current_state.py` - `tests/scripts/test_storage_lifecycle.py`</p>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Runtime Dependencies</h2>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/current_state.py` reads coordination sessions, leases, events, and derived storage summaries. - `rig_relay/coordination/cleanup_leases.py` scans lease files for stale and expired entries. - `rig_relay/evidence/storage_lifecycle.py` exposes the storage summary used by current_state and fleet preflight. - Tool builtins use the coordination store for claims, reservations, artifact publication, and conflict reporting.</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Generated Artifact Locations</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- `.build/rig-relay/coordination/events.jsonl` - `.build/rig-relay/coordination/sessions/*.json` - `.build/rig-relay/coordination/leases/paths/*.json` - `.build/rig-relay/coordination/artifacts/*.json` - `.build/rig-relay/coordination/conflicts/*.json` - `.build/rig-relay/refinement-packets/P0-coordination-add_coordination_hook/mission_packet.json`</p>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Event Names Emitted</h2>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- `coord.session.registered` - `coord.session.heartbeat` - `coord.task.claimed` - `coord.task.released` - `coord.path.reserved` - `coord.path.released` - `coord.path.reservation_refused` - `coord.artifact.published` - `coord.conflict.reported` - `coord.lease.marked_stale` - `coord.session.handoff_requested`</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Schema Dependencies</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- `docs/schemas/rig.relay.cross_session_coordination.v1.schema.json` - `docs/schemas/rig.relay.coordination_conflict.v1.schema.json` - `docs/schemas/rig.relay.artifact_reuse.v1.schema.json` - `docs/schemas/rig.relay.checkpoint_eval.v1.schema.json` - `docs/schemas/rig.relay.current_state.v1.schema.json` - `docs/schemas/rig.relay.mission_packet.v1.schema.json`</p>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Migration Risk</h2>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- High. Coordination is load-bearing for claims, path reservations, task release, artifact publication, checkpoint metadata, current_state, storage preflight, and delegate/fleet readiness. - The safe path is inventory-first, then move the models and store, then convert `vibe.core.coordination` into compatibility adapters.</p>
+
+<h2 id="h2-34" class="disclosure-standard" data-disclosure-level="standard">Target Relay-Native Boundary</h2>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">`rig_relay.coordination.models`</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">- `CoordinationSession` - `CoordinationTaskClaim` - `CoordinationPathReservation` - `CoordinationArtifactRef` - event envelopes and typed payload builders</p>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">`rig_relay.coordination.store`</h3>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">- `CoordinationStore` - file-backed store implementation</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">`rig_relay.coordination.events`</h3>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- coordination event names - envelope/hash helpers if currently embedded in model/store files</p>
+
+<h3 id="h3-41" class="disclosure-standard" data-disclosure-level="standard">`rig_relay.coordination.tool`</h3>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">- Relay-native coordination action executor - helper surface for the built-in coordination tool</p>
+
+<h2 id="h2-43" class="disclosure-standard" data-disclosure-level="standard">Adapter Strategy</h2>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">1. Move implementation into `rig_relay.coordination.*`. 2. Convert `vibe.core.coordination.*` into compatibility adapters/re-exports. 3. Update product-facing imports to Relay-native modules where safe. 4. Preserve legacy imports during alpha for runtime and tool callers. 5. Prevent circular imports from `rig_relay` back into `vibe`.</p>
+
+<h2 id="h2-45" class="disclosure-standard" data-disclosure-level="standard">Dataset-Backed Motivation</h2>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">- Refinement item: `refine_406d97c0abd2` - Priority: `P0` - Tool name: `coordination` - Refinement kind: `add_coordination_hook` - Packet: `.build/rig-relay/refinement-packets/P0-coordination-add_coordination_hook/mission_packet.json`</p>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Coordination migration should precede delegate/fleet and broader Intent API execution because the store is the shared boundary for claims, leases, conflicts, and current-state readiness.</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">The tool layer is now partially Relay-owned: `rig_relay.coordination.tool` owns the action executor while `vibe.core.tools.builtins.coordination` remains the registry-compatible adapter. Full tool registry migration is still deferred.</p>
+
+<h2 id="h2-49" class="disclosure-standard" data-disclosure-level="standard">Planning-Slice Rules</h2>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">- No event-name changes in this slice. - No schema changes in this slice. - No payload behavior changes in this slice. - No circular imports from `rig_relay` to `vibe`.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/coordination-migration-inventory.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

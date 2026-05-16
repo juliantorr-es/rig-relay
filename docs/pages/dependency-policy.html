@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Relay Dependency Policy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Rig Relay is a cohesive product, not a tiny library. Product-critical capabilities">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig Relay Dependency Policy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Dependency Policy</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Philosophy</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Rig Relay is a cohesive product, not a tiny library. Product-critical capabilities use explicit core runtime dependencies. We do not maintain fragile ImportError fallback paths for capabilities that are part of the product.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Three-Bucket Model</h2>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Bucket</th><th>Purpose</th><th>Declared In</th><th>Used By</th></tr></thead>
+<tbody>
+<tr><td>**Core runtime**</td><td>Features installed for everyone</td><td>`[project.dependencies]`</td><td>Any runtime module</td></tr>
+<tr><td>**Workbench/dev group**</td><td>Contributor tooling, notebooks, interactive analytics</td><td>`[dependency-groups]`</td><td>Notebooks, scripts</td></tr>
+<tr><td>**Optional extras**</td><td>Genuinely non-product integrations</td><td>`[project.optional-dependencies]`</td><td>Experimental features only</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Rules</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">1. **Explicit declaration required.** If Rig Relay imports a package directly in any runtime module, that package must be declared explicitly in `[project.dependencies]` or `[project.optional-dependencies]`.</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">2. **No accidental transitive dependency reliance.** If package A brings in package B, and Rig Relay code imports B directly, B must be listed as a dependency. An upstream update can otherwise remove B and break the build.</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">3. **Product-critical deps are core.** If a capability is part of the default product install (dataset analysis, desktop shell, schema validation, telemetry upload), its dependencies belong in `[project.dependencies]`, not in optional extras.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">4. **Use dependencies intentionally.** Import a core dependency where it improves correctness, maintainability, or product quality. Do not add duplicate stdlib-only reimplementations to pretend the dependency is optional. Do not import a dependency just because it happens to be installed.</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">5. **Avoid dependency soup.** A dependency is worth the cost if it: - Removes significant boilerplate or bug-prone logic - Provides correctness guarantees the stdlib cannot - Is the standard backend for the domain (DuckDB for analytics, pywebview for desktop, jsonschema for validation)</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">6. **Workbench dependencies.** Libraries used only by the marimo notebook and interactive analysis tools (pandas, altair, marimo) belong in the `workbench` dependency group, not in optional extras. These are contributor/development tools, not product features.</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">7. **Optional extras are for non-product integrations.** Examples: third-party API bindings not part of the core product, experimental local workflows, or platform-specific shims. Optional extras must NOT be used to gate product features.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Current Classification (2026-05-13)</h2>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Core runtime dependencies (product features)</h3>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Package</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>`duckdb`</td><td>Dataset analytics, current_state aggregation, reports, snippets</td></tr>
+<tr><td>`jsonschema`</td><td>Schema validation boundary (bundles, receipts, projections)</td></tr>
+<tr><td>`pywebview`</td><td>Desktop cockpit shell</td></tr>
+<tr><td>`LocalAuthentication` via PyObjC</td><td>macOS step-up receipt minting POC (graceful-unavailable outside macOS)</td></tr>
+<tr><td>`google-api-python-client`</td><td>Google Drive upload</td></tr>
+<tr><td>`google-auth`</td><td>Google OAuth flow</td></tr>
+<tr><td>`google-auth-oauthlib`</td><td>Google OAuth flow (app-side)</td></tr>
+<tr><td>`google-auth-httplib2`</td><td>Google OAuth HTTP transport</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">Workbench dependency group (not product)</h3>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Package</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>`pandas`</td><td>Inspector tables (marimo notebook)</td></tr>
+<tr><td>`altair`</td><td>Inspector charts (marimo notebook)</td></tr>
+<tr><td>`marimo`</td><td>Interactive dataset workbench</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Optional extras</h3>
+
+<table id="table-20" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Extra</th><th>Contents</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>`desktop`</td><td>`pywebview`</td><td>Listed for discoverability; actually pulled in as core</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Enforcement</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- CI (ruff + pyright) must pass after every dependency change. - Tests verify that every directly imported runtime dependency is declared. - Adding a new optional extra that gates a product feature requires policy review.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- [Python Packaging Guide — Optional Dependencies](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#optional-dependencies) - [uv — Dependency Management](https://docs.astral.sh/uv/concepts/projects/dependencies/) - [Install Channels](../install.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Storage Retention Policy](storage-retention-policy.md) - [Desktop Cockpit UI Doctrine](desktop-cockpit-ui.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/dependency-policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

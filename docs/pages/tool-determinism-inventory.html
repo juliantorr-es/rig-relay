@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tool Determinism Inventory — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-d">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Tool Determinism Inventory</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Tool Determinism Inventory</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-doctrine.md).</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">See also the [bash replacement opportunity map](bash-replacement-opportunity-map.md) for shell-to-typed-tool migration priorities. See [Cross-Session Coordination](../governance/cross-session-coordination.md) for how tool determinism data feeds fleet/delegate evaluation datasets. Out-of-scope findings discovered during determinism audits are recorded in the [findings registry](../findings/out-of-scope-findings.md).</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">**2025-05-17**: Coordination dataset row normalization milestone — `coord.*` and checkpoint events now emit normalized payload contracts with salted path hashes, content-light fields, and four new evaluation schemas. See `docs/schemas/` for `rig.relay.cross_session_coordination.v1`, `rig.relay.coordination_conflict.v1`, `rig.relay.artifact_reuse.v1`, and `rig.relay.checkpoint_eval.v1`.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Reasoning Traces</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Rig Relay records **observable reasoning traces** for every tool call, not raw hidden chain-of-thought. See `docs/schemas/rig.relay.artifact.tool_reasoning_trace.v1.schema.json`.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">Trace records include: - Latency (ms) per tool call - Input/output byte sizes - Output kind (inline vs artifacted vs error) - Determinism and mutation class - Observable rationale summaries (empty when provider does not expose them)</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">These traces power the `rig-relay doctor tool-reasoning` report for identifying latency bottlenecks and token-pressure candidates.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Inventory</h2>
+
+<details id="table-10" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-10" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Tool Name</th><th>Module</th><th>Determinism Class</th><th>Mutation Class</th><th>Input Normalization</th><th>Output Normalization</th><th>Evidence Coverage</th></tr></thead>
+<tbody>
+<tr><td>`read_file`</td><td>`builtins.read_file`</td><td>`deterministic_repo_state`</td><td>`read_only`</td><td>High (Path normalization)</td><td>High (UTF-8, line range)</td><td>Full</td></tr>
+<tr><td>`write_file`</td><td>`builtins.write_file`</td><td>`deterministic_repo_state`</td><td>`writes_workspace`</td><td>High</td><td>High</td><td>Full (before/after SHA256, creation/overwrite flags, parent dirs, dirty-file guard with expected_before_sha256 + allow_overwrite_protected)</td></tr>
+<tr><td>`grep`</td><td>`builtins.grep`</td><td>`deterministic_repo_state`</td><td>`read_only`</td><td>High</td><td>Medium (Recursive order)</td><td>Full (typed search_query/search_result with backend/count/order evidence)</td></tr>
+<tr><td>`bash`</td><td>`builtins.bash`</td><td>`nondeterministic_external_io`</td><td>`writes_workspace`</td><td>Low</td><td>Low</td><td>Full</td></tr>
+<tr><td>`git`</td><td>`builtins.git`</td><td>`deterministic_repo_state`</td><td>`read_only`</td><td>Medium</td><td>Medium</td><td>Full (`git_status` emits typed git_state evidence)</td></tr>
+<tr><td>`websearch`</td><td>`builtins.websearch`</td><td>`nondeterministic_external_io`</td><td>`read_only`</td><td>High</td><td>Low (Provider dependent)</td><td>Full</td></tr>
+<tr><td>`webfetch`</td><td>`builtins.webfetch`</td><td>`nondeterministic_external_io`</td><td>`read_only`</td><td>High</td><td>Low</td><td>Full</td></tr>
+<tr><td>`ask_user_question`</td><td>`builtins.ask_user_question`</td><td>`nondeterministic_external_io`</td><td>`read_only`</td><td>N/A</td><td>N/A</td><td>Full</td></tr>
+<tr><td>`search_replace`</td><td>`builtins.search_replace`</td><td>`deterministic_repo_state`</td><td>`writes_workspace`</td><td>High</td><td>High</td><td>Full (before/after per-file SHA256, block counts, changed files, dirty-file guard with expected_before_sha256)</td></tr>
+<tr><td>`skill`</td><td>`builtins.skill`</td><td>`deterministic_repo_state`</td><td>`read_only`</td><td>High</td><td>Medium</td><td>Full</td></tr>
+<tr><td>`task`</td><td>`builtins.task`</td><td>`nondeterministic_provider`</td><td>`writes_workspace`</td><td>Medium</td><td>Low</td><td>Full (provider/model/thinking metadata + deterministic task-result hash + task_session_link artifact + typed task packet + read-only fleet report with parallel child summaries)</td></tr>
+<tr><td>`todo`</td><td>`builtins.todo`</td><td>`deterministic_pure`</td><td>`writes_temp_only`</td><td>High</td><td>High</td><td>Full</td></tr>
+<tr><td>`validation_suite`</td><td>`builtins.validation_suite`</td><td>`nondeterministic_external_io`</td><td>`read_only`</td><td>High</td><td>High</td><td>Full (allowlist-based step summaries, command hashes, stdout/stderr hashes, artifact refs)</td></tr>
+<tr><td>`exit_plan_mode`</td><td>`builtins.exit_plan_mode`</td><td>`deterministic_pure`</td><td>`read_only`</td><td>N/A</td><td>N/A</td><td>Full</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Refinement Backlog Linkage</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">The determinism inventory is an input to built-in tool refinement reports. Those reports rank tools by failure, refusal, truncation, fallback, storage pressure, and coordination pressure so hardening work can be ordered from actual usage evidence.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Determinism Classes</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- `deterministic_pure`: Output depends only on inputs (e.g. math). - `deterministic_repo_state`: Output depends on inputs and the current repository files/state. - `deterministic_env_sensitive`: Output depends on environment variables. - `deterministic_time_sensitive`: Output depends on current time/date. - `nondeterministic_provider`: Output depends on external LLM/AI provider. - `nondeterministic_external_io`: Output depends on external network or non-repo filesystem. - `unknown`: Classification pending.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Mutation Classes</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- `read_only`: No side effects. - `writes_workspace`: Modifies files in the user&#x27;s working directory. - `writes_evidence_only`: Only modifies Rig Relay telemetry/evidence logs. - `writes_temp_only`: Only modifies temporary files. - `mutates_git_state`: Modifies the Git repository (index, commits, etc.). - `external_side_effect`: Modifies external systems (API calls, etc.). - `unknown`: Classification pending.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-determinism-inventory.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

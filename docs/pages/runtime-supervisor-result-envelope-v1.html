@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RuntimeSupervisor Result Envelope v1 — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-16">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>RuntimeSupervisor Result Envelope v1</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor Result Envelope v1</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-16</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">`RuntimeSupervisorResultEnvelope` is the canonical terminal evidence shape for supervised subprocess execution. It is built at the invocation boundary by `SupervisorCommandInvoker` from:</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- terminal stream event classification - command and cwd digests - timing facts - output digests and byte counts - safe trace context - state machine projection facts</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">The envelope is content-light and privacy-preserving. It does not carry raw stdout, raw stderr, raw argv strings, or raw cwd values.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Root Cause</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Before this slice, `RuntimeSupervisor` produced terminal stream events and `SupervisorCommandInvoker` converted those events into a flat result model. Downstream layers could only infer subprocess meaning by reinterpreting raw fields, which encouraged divergent vocabularies and duplicated result shapes.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Cleanup / Normalization</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">This slice introduced a stable envelope model with a single terminal classification vocabulary:</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- `completed` - `failed` - `timed_out` - `killed` - `cancelled` - `spawn_failed` - `cleanup_failed` - `errored` - `refused`</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">The envelope also carries:</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- command digest - cwd digest - output digest - timing - resource usage - safe error details - cleanup status - trace/evidence identifiers - state machine projection</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Semantics</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Existing caller-facing subprocess output behavior remains unchanged. The flat result still exposes stdout/stderr text to direct callers that expect it. The envelope is additive evidence, not a replacement for the user-facing result.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Tests</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Covered by:</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- `tests/runtime/test_runtime_supervisor_result_envelope.py` - `tests/runtime/test_runtime_supervisor.py` - `tests/runtime/test_runtime_supervisor_state_machine.py` - `tests/runtime/test_runtime_supervisor_teardown.py` - `tests/tracing/test_runtime_supervisor_tracing.py`</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">These tests prove:</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- success, non-zero exit, timeout, spawn failure, and cancellation all produce envelopes - privacy-sensitive fields are excluded from the envelope - trace classification stays aligned with the envelope classification - the state projection matches the terminal lifecycle - the envelope builder is pure</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Remaining Gaps</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">The envelope is wired at the supervisor invocation boundary, and ToolRuntime now preserves it through subprocess-backed tool calls. Remaining downstream consumers still need to adopt it directly:</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- `validate` - desktop diagnostics - future `SubagentRuntime`</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Those consumers currently still rely on the existing flat result contract.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/runtime/runtime-supervisor-result-envelope-v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

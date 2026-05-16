@@ -1,0 +1,238 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "test-dedup-phase1-note",
+  "document_type": "audit",
+  "title": "Test Deduplication Phase 1 — Doctrine Note",
+  "summary": "**Date**: 2026-05-16",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/test-suite/test_dedup_phase1_note.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Deduplication Phase 1 — Doctrine Note",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date**: 2026-05-16",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Rule",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "When tests share the same **target module** and **assertion shape**, prefer a **named case table** (`pytest.mark.parametrize` or dataclass table) over separate test functions, unless separate functions encode materially different setup, contract, or regression history.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 1 Actions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Exact body duplicate resolved",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- `tests/evidence/test_audit_trail.py::test_schema_has_no_forbidden_raw_fields` - `tests/evidence/test_receipt_envelope.py::test_schema_has_no_forbidden_raw_fields`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "**Resolution**: Extracted shared `check_schema_for_forbidden_fields()` helper into `tests/evidence/_helpers.py`. Both tests now call the shared helper. Bodies remain structurally identical by design (same assertion pattern, different schema fixtures).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-9",
+      "type": "heading",
+      "level": 3,
+      "content": "Guardrail added",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "`scripts/rig_relay_test_duplicate_audit.py` supports: - `--fail-on-exact-duplicates` — exits 1 if any exact body duplicates found - `--max-exact-duplicate-groups=N` — exits 1 if exact groups exceed N",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Current baseline: 1 exact duplicate group (acceptable — shared helper pattern).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "Audit results post-Phase 1",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Count"
+      ],
+      "rows": [
+        [
+          "Scanned",
+          "5,966"
+        ],
+        [
+          "Exact body groups",
+          "1 (shared helper, by design)"
+        ],
+        [
+          "Normalized AST groups",
+          "35"
+        ],
+        [
+          "Assert shape groups",
+          "618"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Assert shape groups",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "The 618 assert-shape groups represent tests with similar assertion counts/patterns across different domains. Most are within-file test methods in the same class. These are not true duplicates — they test different behaviors on the same model. Parametrization would require case-by-case analysis.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Future dedup targets",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-17",
+      "type": "table",
+      "columns": [
+        "Priority",
+        "Group",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "P1",
+          "Normalized AST groups (35)",
+          "Within-file structural duplicates — best targets for parametrization"
+        ],
+        [
+          "P2",
+          "Backend adapter duplicates",
+          "test_anthropic_adapter ↔ test_vertex_anthropic_adapter structural overlap"
+        ],
+        [
+          "P3",
+          "ACP tool get_name duplicates",
+          "4 files with identical `test_get_name` — cross-file parametrization deferred"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/test-suite/test_dedup_phase1_note.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

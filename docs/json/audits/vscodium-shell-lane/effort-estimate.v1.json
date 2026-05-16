@@ -1,0 +1,170 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "effort-estimate",
+  "document_type": "audit",
+  "title": "Effort Estimate: VSCodium Shell Lane",
+  "summary": "This phase plan outlines the path to a testable, governed agent workbench.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/vscodium-shell-lane/effort-estimate.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Effort Estimate: VSCodium Shell Lane",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "This phase plan outlines the path to a testable, governed agent workbench.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-3",
+      "type": "table",
+      "columns": [
+        "Phase",
+        "Goal",
+        "Files Touched/Created",
+        "Complexity",
+        "Exit Criteria"
+      ],
+      "rows": [
+        [
+          "**0: Audit**",
+          "Closure / decision gate.",
+          "`docs/audits/vscodium-shell-lane/`",
+          "S",
+          "Audit approved by stakeholders."
+        ],
+        [
+          "**1: Skeleton**",
+          "Extension boilerplate.",
+          "`extension/`, `package.json`",
+          "S",
+          "Extension installs and shows sidebar."
+        ],
+        [
+          "**2: Bridge**",
+          "Daemon connection.",
+          "`vibe/cli/extension_daemon.py`, `extension/src/daemon_client.ts`",
+          "M",
+          "Handshake complete; token auth working."
+        ],
+        [
+          "**3: Turn**",
+          "Prompt turn bridge.",
+          "`vibe/cli/webview_console/backend.py` (updates)",
+          "M",
+          "\"Hello World\" prompt returns agent text."
+        ],
+        [
+          "**4: Evidence**",
+          "Receipts + Validation.",
+          "`rig_relay/evidence/`, `extension/src/views/receipts.ts`",
+          "L",
+          "Receipt tree view populated from daemon."
+        ],
+        [
+          "**5: Patch**",
+          "Patch governance.",
+          "`rig_relay/coordination/patch_proposal.py`, `extension/src/patch_review.ts`",
+          "L",
+          "Native diff view opens on proposed changes."
+        ],
+        [
+          "**6: Lanes**",
+          "Worktree management.",
+          "`rig_relay/coordination/worktree_manager.py`",
+          "XL",
+          "Agents operate in isolated worktree \"lanes\"."
+        ],
+        [
+          "**7: Bundle**",
+          "Branded VSCodium app.",
+          "`scripts/build_vscodium_bundle.sh`",
+          "XL",
+          "(Optional) Signed macOS binary available."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Dependencies",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "1.  **VSCodium**: Extension host API (v1.90+ recommended). 2.  **Node.js**: For extension development. 3.  **Python 3.12+**: For the Rig Relay daemon.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Key Risks to Schedule",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "*   **Worktree Complexity**: Managing git state across multiple lanes without corrupting the user's main working copy is the highest technical risk. *   **VS Code API Stability**: Relying on proposed APIs (if needed) can break the extension on minor updates. *   **Mac OS Notarization**: If we pivot to Option B (Bundled App), signing will add weeks of friction.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/vscodium-shell-lane/effort-estimate.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

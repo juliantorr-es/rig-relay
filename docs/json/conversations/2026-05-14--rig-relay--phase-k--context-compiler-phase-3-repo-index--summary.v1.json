@@ -1,0 +1,301 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary",
+  "document_type": "report",
+  "title": "Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval",
+  "summary": "**Date:** 2026-05-14",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date:** 2026-05-14 **Phase:** k (prompt-first shell bridge → context compiler → repo index) **Topic:** DuckDB-backed RepoContextIndex replacing ad-hoc file discovery with deterministic constrained retrieval **Kind:** summary",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Context",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Phase 1 built pack-based context compiler with fingerprint caching (7 packs). Phase 2 wired the receipt store for compaction receipts + context envelope persistence. Phase 3 (this) adds a DuckDB-backed `RepoContextIndex` that maps source files to their tests, docs, schemas, and same-package peers — then integrates it into the compiler.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Outcome",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "New file: `rig_relay/context/repo_index.py`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- `RepoContextIndex` class, DuckDB in-memory backend - `populate()` scans git-tracked files, discovers relationships via naming conventions - `find_tests(paths)` → test files by stem matching (`test_{stem}.py`, `{stem}_test.py`) - `find_docs(paths)` → doc files in `docs/` - `find_schemas(paths)` → schema files in `docs/schemas/` - `find_related(paths)` → all relations grouped by type - `summary()` → content-light file/relation counts - Fingerprint based on file mtimes for rebuild caching - Graceful absence: returns empty results if DuckDB unavailable or no git repo",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Modified: `rig_relay/context/compiler.py`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- `ContextCompiler.__init__` accepts `repo_index: RepoContextIndex | None` - `RelevantTestsPack` uses index when available (falls back to glob patterns) - New `RelatedFilesPack` — shows related files (tests, docs, schemas) for user-mentioned paths - Both packs added to `_default_packs`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Modified: `vibe/cli/textual_ui/rig_console/screens/dashboard.py`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- `_do_turn` lazily creates `RepoContextIndex` on first prompt and caches it - Passes to `ContextCompiler(repo_index=...)`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "Tests: `tests/context/test_repo_index.py`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- 11 tests: populate, find_tests, find_related, summary, fallback, integration with RelatedFilesPack and RelevantTestsPack, end-to-end via ContextCompiler",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- **431 tests pass** (420 old + 11 new) - Ruff, pyright, ruff format all clean - No new dependencies (DuckDB was already in `pyproject.toml`)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Key Decisions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- **In-memory DuckDB**: index rebuilt per session (or lazily on first prompt). Fingerprint caching avoids redundant rebuilds within a session. - **Deterministic relations**: stem-based mapping, no glob, no heuristic scoring. If a test file has the same stem as a source file (modulo `test_` prefix/suffix), it's related. Embeds cleanly into the content-light convention. - **Index as optional dependency**: all packs fall back gracefully. If DuckDB is not installed, no git repo, or the index errors, the compiler uses its original glob-based logic. Zero disruption. - **No embeddings**: Phase 3 explicitly skips semantic retrieval. The index is structural only — filenames, paths, and naming conventions.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "Delta from Phase 2",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-19",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Phase 2",
+        "Phase 3"
+      ],
+      "rows": [
+        [
+          "Files touched",
+          "7",
+          "5"
+        ],
+        [
+          "New files",
+          "0",
+          "2 (repo_index.py, test_repo_index.py)"
+        ],
+        [
+          "New tests",
+          "11",
+          "11"
+        ],
+        [
+          "Test count",
+          "420",
+          "431"
+        ],
+        [
+          "Dependencies added",
+          "0",
+          "0"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-Session Coordination",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "No coordination artifacts produced. RepoContextIndex is session-local (in-memory DuckDB, lazily initialized, no inter-session state).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Out-of-Scope Findings Recorded",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "None.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-24",
+      "type": "heading",
+      "level": 2,
+      "content": "Next Steps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "- Phase 4: cross-lane context exchange (lane summaries → compiler input) - Phase 5: MCP-compatible resource exposure if warranted - Embeddings remain deferred (acceleration layer, not authority)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

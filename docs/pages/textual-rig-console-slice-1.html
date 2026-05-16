@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Textual Rig Console — Slice 1: Projection-Only SessionPaneWidget — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** First slice of the Rig-native Textual operator console,">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Textual Rig Console — Slice 1: Projection-Only SessionPaneWidget</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Textual Rig Console — Slice 1: Projection-Only SessionPaneWidget</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** First slice of the Rig-native Textual operator console, separate from the legacy VibeApp chat UI.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Why This Is Separate From VibeApp</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">VibeApp is the legacy chat-centric Textual TUI (product surface). The Rig Console is a **development/compatibility surface** for testing projection models, content-light rendering, and widget grouping before they migrate to the pywebview desktop cockpit.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Rationale for a separate package (`vibe/cli/textual_ui/rig_console/`):</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">1. **Projection-first** — Rig Console widgets render backend-authored state only. They never touch chat messages, tool output streams, or scrollback history. 2. **Content-light by construction** — Projection models forbid raw content fields. Widgets cannot accidentally render stdout, file contents, or diffs because the projection simply does not contain them. 3. **Isolated from VibeApp complexity** — VibeApp owns agent loop, chat input, approval callbacks, command dispatch, and 30+ widget types. Rig Console starts as a tiny orthogonal package. 4. **Migration path** — These projection models and widgets are designed to port to the pywebview desktop cockpit backend. The Textual renderer is a development preview; the real surface is the HTML/CSS/JS cockpit.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Projection-First Rule</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">**Backend authors the state. Frontend renders the state. Frontend emits intentions only.**</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- Widgets never fetch data directly from tools, receipts, or git. - Widgets receive a `SessionPaneProjection` (or future projection type) and render it. - Missing data degrades to explicit placeholder (None/0), never fabricated state.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">SessionPaneProjection Fields</h2>
+
+<details id="table-12" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-12" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`session_id`</td><td>str</td><td>Unique session identifier</td></tr>
+<tr><td>`lane_id`</td><td>str \</td><td>None</td><td>Logical lane within the console</td></tr>
+<tr><td>`task_title`</td><td>str \</td><td>None</td><td>Human-readable task title</td></tr>
+<tr><td>`status`</td><td>str</td><td>Session status (`active`, `blocked`, `idle`, etc.)</td></tr>
+<tr><td>`branch_name`</td><td>str \</td><td>None</td><td>Git branch name</td></tr>
+<tr><td>`worktree_path`</td><td>str \</td><td>None</td><td>Display-only worktree path</td></tr>
+<tr><td>`last_heartbeat_at`</td><td>str \</td><td>None</td><td>ISO 8601 timestamp of last heartbeat</td></tr>
+<tr><td>`current_step`</td><td>str \</td><td>None</td><td>Short description of current activity</td></tr>
+<tr><td>`validate_status`</td><td>str \</td><td>None</td><td>Last validation run status</td></tr>
+<tr><td>`blocker_summary`</td><td>dict[str, int]</td><td>Structured blocker counts (e.g. `{&quot;dirty_files&quot;: 3}`)</td></tr>
+<tr><td>`receipt_count`</td><td>int</td><td>Number of captured tool receipts</td></tr>
+<tr><td>`latest_receipt_kind`</td><td>str \</td><td>None</td><td>Kind of most recent receipt</td></tr>
+<tr><td>`changed_paths`</td><td>list[str]</td><td>Paths modified by the session (capped at 5 in display)</td></tr>
+<tr><td>`pending_user_action`</td><td>str \</td><td>None</td><td>Action the user needs to take</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">What the model explicitly does NOT contain</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- No `stdout`, `stderr`, or output fields - No file contents or snippets - No diffs or old/new text - No command transcripts - No secrets or tokens - No raw tool results</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">What the Widget Shows</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">The `SessionPaneWidget` renders one session as a vertical card:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">1. **Header row** — truncated session ID, lane tag, status, task title 2. **Metadata row** — branch name, worktree path, last heartbeat time 3. **Current step** — what the session is doing right now 4. **Validate status** — validation result + structured blocker summary if blocked 5. **Receipt summary** — receipt count + latest receipt kind 6. **Changed paths** — sorted, capped at 5, with total count 7. **Pending action badge** — shown if the user needs to act</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">What the widget intentionally does NOT show</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- No scrollback firehose - No raw logs - No tool output - No diffs or file previews - No direct tool execution buttons - No session lifecycle controls</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Project Structure</h2>
+
+<pre id="code-21"><code class="language-text">vibe/cli/textual_ui/rig_console/
+├── __init__.py              # Public API re-exports
+├── projections.py           # SessionPaneProjection + EvidenceRail projections
+├── console_app.py           # Standalone fixture preview (optional)
+├── widgets/
+│   ├── __init__.py
+│   ├── session_pane.py      # SessionPaneWidget
+│   └── evidence_rail.py     # EvidenceRailWidget (Slice 1.1–2)</code></pre>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Tests</h2>
+
+<pre id="code-23"><code class="language-text">tests/cli/textual_ui/rig_console/
+├── __init__.py
+├── test_session_pane_projection.py   # Model field/method tests
+├── test_session_pane_widget.py       # Widget structural/content tests
+└── test_evidence_rail.py             # Evidence rail model/adapter/widget tests</code></pre>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Tests cover: - Projection defaults and immutability methods - Unknown field rejection (via `ConfigDict(extra=&quot;forbid&quot;)`) - Nullable field handling in `to_display_dict()` - Forbidden raw field names are absent from projection fields - Widget instantiation with various projection states - `compose()` output structure (full, minimal, empty states) - `update_projection()` replaces data - Helper functions `_cap()`, `_format_path()`, `_format_blocker_summary()` - Empty blocker/receipt/paths render cleanly</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Slice 1.1–2 additions (structured blockers and EvidenceRailWidget)</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">- `blocker_summary` changed from `str | None` to `dict[str, int] = {}` - `_format_blocker_summary()` renders stable sorted text from dict - `EvidenceRailItemProjection` — content-light receipt item - `EvidenceRailProjection` — summary with counts and items - `evidence_rail_from_receipt_index()` — pure adapter from `ToolReceiptIndexRecord` - `EvidenceRailWidget` — renders header, counts, item list, empty state - All projections forbid extra fields - Adapter caps items (default 20), orders by `captured_at` descending</p>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Standalone Preview</h2>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Run `uv run python -m vibe.cli.textual_ui.rig_console.console_app` for a fixture preview with four sample sessions and one evidence rail.</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">This is for local visual testing. Not wired into the default CLI.</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Next Slices</h2>
+
+<table id="table-31" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Slice</th><th>Component</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>2</td><td>EvidenceRailWidget</td><td>✅ Completed (included as Slice 1.1–2)</td></tr>
+<tr><td>3</td><td>DashboardScreen</td><td>✅ Completed — projection-driven screen with header, activity, footer zones</td></tr>
+<tr><td>4</td><td>Typed intents</td><td>Structured intention types (refresh, navigate, validate)</td></tr>
+<tr><td>5</td><td>Multi-session grid</td><td>Grid of SessionPaneWidget instances for fleet/delegate views</td></tr>
+<tr><td>6</td><td>Backend feed</td><td>Live projection updates from coordination store</td></tr>
+<tr><td>7</td><td>pywebview port</td><td>Migrate projection models to desktop cockpit backend</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- [Desktop Projection Contract](../governance/relay-desktop-projection-contract.md) - [Textual Retirement Policy](../governance/textual-retirement-policy.md) - [Receipt Index](../../rig_relay/evidence/receipt_index.py) - [Coordination Models](../../rig_relay/coordination/models.py) - [Slice 2: EvidenceRailWidget](textual-rig-console-slice-2-evidence-rail.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/ui/textual-rig-console-slice-1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

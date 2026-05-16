@@ -1,0 +1,126 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "write-file-final-gaps",
+  "document_type": "audit",
+  "title": "WriteFile Hardening State",
+  "summary": "WriteFile has reached near-parity with SearchReplace on evidence maturity.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/tool-hardening/write-file-final-gaps.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "WriteFile Hardening State",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Current Status (Post-Closure)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "WriteFile has reached near-parity with SearchReplace on evidence maturity.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Current State",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- structured invocation model: present - structured result model: partial (carries `content` field for backwards compatibility) - structured receipt model: **complete** (WriteFileReceipt, 16 fields, extra=\"forbid\") - `build_receipt()`: **complete** (content-light, sanitized refusal_reason) - schema coverage: **added** (rig.relay.write_file_receipt.v1) - receipt emission compatibility: **complete** (duck-typed into agent loop) - receipt policy validation: **complete** (tested via test_tool_receipt_emission.py) - receipt index compatibility: **complete** (write_file case in receipt_index.py) - before/after hashes: present (success path only) - before/after byte counts: complete (before_bytes from snapshot, after_bytes from file stat) - created vs overwritten status: present - path safety: present - outside-workspace refusal: present - atomicity: complete (tempfile + os.replace atomic pattern)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Gaps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "1. **content still in WriteFileResult** — Legacy callers may depend on it. See `docs/audits/tool-hardening/write-file-legacy-result-content-audit.md` — recommended to keep, mark as deprecated. 2. **Permission preservation** — Only mode bits preserved after atomic replace (ACLs/xattrs dropped).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Gap Closure Reference",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "See `docs/audits/tool-hardening/write-file-receipt-gap-closure.md` for the detailed closure report.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/tool-hardening/write-file-final-gaps.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

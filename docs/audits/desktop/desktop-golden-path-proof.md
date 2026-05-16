@@ -1,6 +1,84 @@
 # Desktop Golden Path — Audit Proof
 
 **Date**: 2026-05-16
+**Branch**: feature/lane-b-transport-fix
+**HEAD**: ce0a3c66
+
+## Manual Verification (2026-05-16)
+
+### Command
+
+```
+uv run rig-relay
+```
+
+### Observed Stages
+
+```
+✅ [bridge:01] resolve frontend_dir: frontend/desktop
+✅ [bridge:02] resolve index.html: 3.7 KB
+✅ [bridge:03] verify asset files: js/main.js=8.0KB, css dir ok
+✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True
+✅ [bridge:05] create WS server: ProjectionWebSocketServer ready
+✅ [bridge:06] bind host/port: http://127.0.0.1:9876
+✅ [bridge:07] probe /healthz: HTTP 200, ok=True
+✅ [bridge:08] probe /index.html: HTTP 200, text/html
+✅ [bridge:09] probe /js/main.js (compat): HTTP 200, text/javascript
+✅ [bridge:09a] probe active entrypoint /js/boot/orchestrator.js: HTTP 200, text/javascript
+✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css
+✅ [bridge:14] websocket upgrade accepted
+✅ [bridge:15] websocket auth message received
+✅ [bridge:16] websocket auth accepted
+✅ [bridge:17] first projection sent
+✅ [bridge:18] projection rendered
+
+Frontend: connected → idle (expected with no active job)
+```
+
+### Key Metrics
+
+| Metric | Value |
+|---|---|
+| frontend_url | http://127.0.0.1:9876/index.html |
+| websocket_url | ws://127.0.0.1:9876/ws |
+| active_entrypoint | /js/boot/orchestrator.js |
+| compat_module | /js/main.js |
+| handshake_id | corr_c6c5d9bf45a2 |
+| transport_label | Loopback Token Bridge |
+| token_present | True |
+| tls_enabled | False |
+| result | **passed_with_followup** |
+
+### Follow-Up: Duplicate WebSocket Connection Cycle
+
+Two auth cycles observed 19 seconds apart (T+46s and T+65s):
+
+```
+T+46s: websocket_connecting → auth_ok → frontend_auth_ok
+T+65s: websocket_connecting → websocket_connected → auth_ok → frontend_auth_ok
+```
+
+**Classification**: Expected reconnect/reload lifecycle. pywebview may reload the page or the browser may reconnect the WebSocket after the initial handshake.
+
+**Impact**: None observed. No duplicate state mutation or resource leak detected. Both cycles complete cleanly with auth_ok and projection.
+
+**Action**: Monitor in future manual verification passes. If duplicate cycles accumulate (>3 in one launch), investigate pywebview page reload behavior or WebSocket reconnect logic.
+
+### Trace Summary
+
+```
+Trace events: 1574 total
+Latest handshake: corr_c6c5d9bf45a2 (3 bootstrap_loaded events)
+Frontend handshake: hs_xj8y7p7j4xug
+```
+
+No token values observed in any trace event, URL, or log.
+No "opening handshake failed" tracebacks observed (logger filter active).
+
+---
+
+## Previous Verification (2026-05-16)
+
 **Branch**: main
 **HEAD**: 8d0b13c
 

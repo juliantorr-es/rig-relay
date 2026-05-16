@@ -1,0 +1,556 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "ide-capability-map",
+  "document_type": "reference",
+  "title": "IDE Capability Map",
+  "summary": "Canonical capability registry for Rig Relay IDE bridges. Generated from `etc/rig.ide.capability_manifest.v1.json`. Do not edit by hand.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/protocols/ide-capability-map.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "IDE Capability Map",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Canonical capability registry for Rig Relay IDE bridges. Generated from `etc/rig.ide.capability_manifest.v1.json`. Do not edit by hand.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Total capabilities:** 42",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "IDE Capabilities",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Capability",
+        "Risk",
+        "Mutates",
+        "Policy",
+        "Workspace Trust",
+        "Implemented"
+      ],
+      "rows": [
+        [
+          "`ide.buffer.apply_preview_patch`",
+          "🔴 High",
+          "Yes",
+          "Always ask",
+          "Required",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.buffer.get_unsaved_changes`",
+          "🟡 Medium",
+          "No",
+          "Allow (trusted)",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.buffer.read`",
+          "🟡 Medium",
+          "No",
+          "Allow (trusted)",
+          "Required",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.buffer.read_range`",
+          "🟡 Medium",
+          "No",
+          "Allow (trusted)",
+          "Required",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.call_hierarchy`",
+          "🟡 Medium",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.debug.breakpoints.list`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.debug.evaluate_readonly`",
+          "🔴 High",
+          "Possible",
+          "Always ask",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.debug.sessions`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.debug.stack`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.debug.variables`",
+          "🟡 Medium",
+          "No",
+          "Ask once/session",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.definition.goto`",
+          "🟡 Medium",
+          "No",
+          "Allow (trusted)",
+          "Required",
+          "✅ Sidecar"
+        ],
+        [
+          "`ide.diagnostics.file`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.diagnostics.range`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.diagnostics.workspace`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ Sidecar"
+        ],
+        [
+          "`ide.quickfixes.list`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.references.find`",
+          "🟡 Medium",
+          "No",
+          "Allow (trusted)",
+          "Required",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.rename_preview`",
+          "🟡 Medium",
+          "No",
+          "Ask once/session",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.symbols.document`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.symbols.workspace`",
+          "🟡 Medium",
+          "No",
+          "Allow (trusted)",
+          "—",
+          "✅ Sidecar"
+        ],
+        [
+          "`ide.tasks.list`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.tests.discover`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.tests.run_at_cursor`",
+          "🟡 Medium",
+          "Possible",
+          "Ask once/session",
+          "Required",
+          "✅ Sidecar"
+        ],
+        [
+          "`ide.tests.run_failed`",
+          "🟡 Medium",
+          "Possible",
+          "Ask once/session",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.tests.run_file`",
+          "🟡 Medium",
+          "Possible",
+          "Ask once/session",
+          "Required",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.type_hierarchy`",
+          "🟡 Medium",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.vcs.annotate`",
+          "🟡 Medium",
+          "No",
+          "Allow (trusted)",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.vcs.changed_files`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ Sidecar"
+        ],
+        [
+          "`ide.vcs.diff_file`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.vcs.diff_selection`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.vcs.status`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.workspace.active_file`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.workspace.describe`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.workspace.open_tabs`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.workspace.selection`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.workspace.visible_ranges`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "UI Capabilities",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Capability",
+        "Risk",
+        "Mutates",
+        "Policy",
+        "Workspace Trust",
+        "Implemented"
+      ],
+      "rows": [
+        [
+          "`ide.buffer.show_diff`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.ui.notify`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.ui.request_approval`",
+          "🔴 High",
+          "No",
+          "Always ask",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.ui.show_consult_result`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.ui.show_context_packet`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "⬜ Not implemented"
+        ],
+        [
+          "`ide.ui.show_diff`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ],
+        [
+          "`ide.ui.show_receipt`",
+          "🟢 Low",
+          "No",
+          "Allow",
+          "—",
+          "✅ VS Code • ✅ Sidecar"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Policy Meanings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "Policy",
+        "Behavior"
+      ],
+      "rows": [
+        [
+          "`allow`",
+          "No prompt. Capability executes immediately."
+        ],
+        [
+          "`allow_if_workspace_trusted`",
+          "No prompt in trusted workspaces. Refused in untrusted."
+        ],
+        [
+          "`ask_once_per_session`",
+          "Prompts the first time per session. Auto-allows subsequent calls."
+        ],
+        [
+          "`always_ask`",
+          "Prompts every time. Never auto-allows."
+        ],
+        [
+          "`deny`",
+          "Always blocked. Agent receives `refused`."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Workspace Trust",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Some capabilities require VS Code Workspace Trust. If the workspace is not trusted, capabilities with `requires_workspace_trust: true` are refused and the receipt records `workspace_trusted: false`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Receipt Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Every capability execution emits a receipt (schema: `rig.ide.capability.receipt.v1`). Receipts record: capability name, input/output SHA256, user approval status, approval method, mutation status, workspace trust, and timestamp.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/protocols/ide-capability-map.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

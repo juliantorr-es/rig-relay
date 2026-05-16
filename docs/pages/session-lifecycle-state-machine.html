@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Session Lifecycle State Machine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Session Lifecycle State Machine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Session Lifecycle State Machine</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: e389b446706173ebc5950931994ba4cdb6a7d9f4 Scope: Read-only lifecycle audit Owner area: core</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">This document maps the Rig Relay session lifecycle. It identifies the sequence of events and file emissions required to reconstruct a session from its evidence trail.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">State Machine Diagram</h2>
+
+<pre id="code-6"><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; CREATED: session_id generated
+    CREATED --&gt; READY: AgentLoop initialized
+    READY --&gt; TURN_START: user prompt / resume
+    
+    state TURN_PROCESS {
+        TURN_START --&gt; CONTEXT_ASSEMBLY: build blocks
+        CONTEXT_ASSEMBLY --&gt; REQUEST_SENT: backend call
+        REQUEST_SENT --&gt; RESPONSE_RECEIVED: stream/chunk
+        RESPONSE_RECEIVED --&gt; TOOL_EXECUTION: tool call
+        TOOL_EXECUTION --&gt; TURN_END: tool result
+        RESPONSE_RECEIVED --&gt; TURN_END: final message
+    }
+    
+    TURN_END --&gt; TURN_START: next turn
+    TURN_END --&gt; CLOSED: session exit
+    CLOSED --&gt; [*]</code></pre>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Event/State Table</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>State</th><th>Event Emitted</th><th>Files Produced</th></tr></thead>
+<tbody>
+<tr><td>**CREATED**</td><td>`SESSION_STARTED`</td><td>`observability.jsonl` (init)</td></tr>
+<tr><td>**CONTEXT_ASSEMBLY**</td><td>`CONTEXT_ASSEMBLY_REPORTED`</td><td>`context/assembly_*.json`</td></tr>
+<tr><td>**CONTEXT_ASSEMBLY**</td><td>`CONTEXT_LAYOUT_PLANNED`</td><td>`context/layout_*.json`</td></tr>
+<tr><td>**REQUEST_SENT**</td><td>`REQUEST_ACCOUNTED` (init)</td><td>N/A</td></tr>
+<tr><td>**TOOL_EXECUTION**</td><td>`ARTIFACT_WRITTEN`</td><td>`artifacts/tool-results/*.json`</td></tr>
+<tr><td>**TURN_END**</td><td>`TURN_SUMMARY`</td><td>N/A</td></tr>
+<tr><td>**CLOSED**</td><td>`SESSION_CLOSED`</td><td>Finalized JSONL</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Missing Transition List</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- **RECOVERY**: No current state for &quot;Resuming a session with broken evidence&quot;. - **ABORT**: User cancellation is handled as a message, but not as a formal state transition that ensures evidence finalization.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Failure-Mode Inventory</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- **Provider Timeout**: Session stays in `REQUEST_SENT`. - **Tool Crash**: `TOOL_EXECUTION` emits an error event but must still reach `TURN_END`. - **Disk Full**: Evidence writing fails; session should probably enter a read-only `ERROR` state.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Recommended Tests</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- `test_lifecycle_recovers_from_early_exit` - `test_mandatory_events_present_on_completion`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/session-lifecycle-state-machine.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

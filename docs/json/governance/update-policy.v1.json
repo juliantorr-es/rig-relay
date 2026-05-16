@@ -1,0 +1,275 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "update-policy",
+  "document_type": "governance",
+  "title": "Rig Relay Update Policy",
+  "summary": "1. **Notification-first**: Update checks are informational. The user or parent",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/update-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig Relay Update Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Principles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "1. **Notification-first**: Update checks are informational. The user or parent orchestrator decides when to act. 2. **No restart during active sessions**: Sessions MUST NOT be interrupted. Restart is deferred to idle/session boundaries. 3. **Install-channel-aware**: The recommended update command depends on how Rig Relay was installed. 4. **User-controlled**: Automatic restart is opt-in only (`auto_restart_at_idle`). 5. **Structured events**: Agents receive `update_status` via current_state, not random terminal spam.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Update State Machine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "text",
+      "content": "up_to_date → update_available → update_downloaded → restart_pending\n                                                      ↓\n                    restart_blocked_active_sessions ← restart_pending\n                                                      ↓\n                                              restart_ready\n                                                      ↓\n                                            restart_completed",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "State",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "`up_to_date`",
+          "Current version matches latest known"
+        ],
+        [
+          "`update_available`",
+          "New version detected, not yet downloaded"
+        ],
+        [
+          "`update_downloaded`",
+          "Package downloaded, awaiting restart"
+        ],
+        [
+          "`restart_pending`",
+          "Restart queued"
+        ],
+        [
+          "`restart_blocked_active_sessions`",
+          "Restart deferred because sessions > 0"
+        ],
+        [
+          "`restart_ready`",
+          "No active sessions, restart can proceed"
+        ],
+        [
+          "`restart_completed`",
+          "Restart finished successfully"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Update Commands",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Install Source",
+        "Update Command"
+      ],
+      "rows": [
+        [
+          "`uv_tool`",
+          "`uv tool upgrade rig-relay`"
+        ],
+        [
+          "`pipx`",
+          "`pipx upgrade rig-relay`"
+        ],
+        [
+          "`pip`",
+          "`pip install --upgrade rig-relay`"
+        ],
+        [
+          "`homebrew`",
+          "`brew upgrade rig-relay`"
+        ],
+        [
+          "`npm`",
+          "`npm update -g rig-relay`"
+        ],
+        [
+          "`source`",
+          "`git pull && uv sync`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Safe Restart Flow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "1. Update check detects new version. 2. Emit `rig.relay.update.available` event. 3. Parent/reviewer sees `update_status` in `current_state`. 4. If `active_sessions > 0`, mark `restart_blocked_active_sessions`. 5. When all child sessions finish: - Checkpoint if allowed. - Export pending artifacts. - Prompt user or orchestrator. 6. If `auto_restart_at_idle` is enabled, restart automatically. 7. After restart, emit `restart_completed`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Agent Visibility",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Agents see updates via `current_state`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-13",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"update_status\": {\n    \"current_version\": \"0.1.0a1\",\n    \"latest_version\": \"0.1.0a2\",\n    \"update_available\": true,\n    \"install_source\": \"uv_tool\",\n    \"recommended_update_command\": \"uv tool upgrade rig-relay\",\n    \"restart_required\": false,\n    \"restart_safe\": false,\n    \"blocked_by_active_sessions\": 2,\n    \"update_state\": \"restart_blocked_active_sessions\",\n    \"checked_at\": \"...\"\n  }\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "CLI Update Check",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-15",
+      "type": "code",
+      "language": "bash",
+      "content": "rig-relay update check           # Check for update, print status\nrig-relay update status          # Show current update state",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "These commands do not modify the system. They only check and report.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "- [Versioning Policy](release/versioning-policy.md) - [Install Channels](../install.md) - [Current State Pulse](../../scripts/rig_relay_current_state.py)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/update-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

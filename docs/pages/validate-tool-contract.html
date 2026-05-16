@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validate Tool Contract — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="`validate` is a deterministic, read-only validation surface for repeated command families that currently run through bash.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Validate Tool Contract</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validate Tool Contract</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">`validate` is a deterministic, read-only validation surface for repeated command families that currently run through bash.</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">It answers:</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- did the lane pass? - what failed? - is the failure code, environment, or workspace state? - is the patch or lane eligible for promotion?</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">It is not a general shell wrapper.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Proposed Models</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">ValidateArgs</h3>
+
+<details id="table-9" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-9" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`profile`</td><td>`str`</td><td>Required named validation profile</td></tr>
+<tr><td>`scope`</td><td>`str</td><td>None`</td><td>Optional mission scope label</td></tr>
+<tr><td>`paths`</td><td>`list[str]`</td><td>Optional path scope</td></tr>
+<tr><td>`workspace_root`</td><td>`str</td><td>None`</td><td>Working root for deterministic resolution</td></tr>
+<tr><td>`timeout_seconds`</td><td>`int</td><td>None`</td><td>Per-profile override</td></tr>
+<tr><td>`check_only`</td><td>`bool`</td><td>Default `true`</td></tr>
+<tr><td>`allow_network`</td><td>`bool`</td><td>Default `false`</td></tr>
+<tr><td>`allow_mutation`</td><td>`bool`</td><td>Default `false`</td></tr>
+<tr><td>`env_profile`</td><td>`str</td><td>None`</td><td>Restricted env profile</td></tr>
+<tr><td>`expected_dirty_policy`</td><td>`str</td><td>None`</td><td>`clean`, `allow_dirty`, `allow_listed_dirty`</td></tr>
+<tr><td>`output_cap_bytes`</td><td>`int</td><td>None`</td><td>Output cap before truncation</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">ValidateCheckResult</h3>
+
+<details id="table-11" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-11" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`check_id`</td><td>`str`</td><td>Stable check identifier</td></tr>
+<tr><td>`command_kind`</td><td>`str`</td><td>`pytest`, `ruff`, `pyright`, `git`, `schema`, `policy`, `custom`</td></tr>
+<tr><td>`command_display`</td><td>`str</td><td>None`</td><td>Human-readable command summary, not raw transcript</td></tr>
+<tr><td>`command_fingerprint`</td><td>`str</td><td>None`</td><td>Hash of normalized command</td></tr>
+<tr><td>`status`</td><td>`str`</td><td>`passed`, `failed`, `skipped`, `blocked`, `timed_out`, `refused`</td></tr>
+<tr><td>`exit_code`</td><td>`int</td><td>None`</td><td>Tool exit code when present</td></tr>
+<tr><td>`duration_ms`</td><td>`float</td><td>None`</td><td>Measured runtime</td></tr>
+<tr><td>`stdout_sha256`</td><td>`str</td><td>None`</td><td>Content-light output hash</td></tr>
+<tr><td>`stderr_sha256`</td><td>`str</td><td>None`</td><td>Content-light output hash</td></tr>
+<tr><td>`stdout_bytes`</td><td>`int</td><td>None`</td><td>Byte count</td></tr>
+<tr><td>`stderr_bytes`</td><td>`int</td><td>None`</td><td>Byte count</td></tr>
+<tr><td>`stdout_truncated`</td><td>`bool`</td><td>Default `false`</td></tr>
+<tr><td>`stderr_truncated`</td><td>`bool`</td><td>Default `false`</td></tr>
+<tr><td>`parsed_summary`</td><td>`dict</td><td>None`</td><td>Optional structured summary</td></tr>
+<tr><td>`failure_kind`</td><td>`str</td><td>None`</td><td>Blocker kind</td></tr>
+<tr><td>`affected_paths`</td><td>`list[str]`</td><td>Optional hash-safe path list</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">ValidateResult</h3>
+
+<details id="table-13" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-13" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`status`</td><td>`str`</td><td>`passed`, `failed`, `blocked`, `refused`, `timed_out`</td></tr>
+<tr><td>`profile`</td><td>`str`</td><td>Echoed input profile</td></tr>
+<tr><td>`scope`</td><td>`str</td><td>None`</td><td>Echoed input scope</td></tr>
+<tr><td>`command_count`</td><td>`int`</td><td>Total commands run</td></tr>
+<tr><td>`passed_count`</td><td>`int`</td><td>Count of passing checks</td></tr>
+<tr><td>`failed_count`</td><td>`int`</td><td>Count of failing checks</td></tr>
+<tr><td>`skipped_count`</td><td>`int`</td><td>Count of skipped checks</td></tr>
+<tr><td>`duration_ms`</td><td>`float</td><td>None`</td><td>Total elapsed time</td></tr>
+<tr><td>`checks`</td><td>`list[ValidateCheckResult]`</td><td>One row per check</td></tr>
+<tr><td>`blocker_summary`</td><td>`dict[str, int]`</td><td>Blocker counts by type</td></tr>
+<tr><td>`changed_files`</td><td>`list[str]</td><td>None`</td><td>Only when the profile explicitly allows it</td></tr>
+<tr><td>`before_git_state`</td><td>`ValidateGitState</td><td>None`</td><td>Optional pre-state git snapshot</td></tr>
+<tr><td>`after_git_state`</td><td>`ValidateGitState</td><td>None`</td><td>Optional post-state git snapshot</td></tr>
+<tr><td>`error_kind`</td><td>`str</td><td>None`</td><td>Final error category</td></tr>
+<tr><td>`refusal_reason`</td><td>`str</td><td>None`</td><td>Human-readable refusal summary</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">ValidateReceipt</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Content-light only.</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Required fields:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- profile - status - timestamp - duration_ms - blocker_summary - check counts - per-check hashes and byte counts - validator schema version</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Forbidden fields:</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- raw stdout - raw stderr - raw prompts - raw command transcripts - raw args bodies - raw file contents</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Path Representation Policy</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">`validate` uses workspace-relative POSIX paths for all long-lived evidence and exposed outputs. Absolute paths are used only internally for containment safety checks and are never leaked into argv, fingerprints, affected_paths, or receipts.</p>
+
+<table id="table-22" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Layer</th><th>Path form</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Input (`args.paths`)</td><td>User-provided (any form)</td><td>Natural interface</td></tr>
+<tr><td>Containment check</td><td>Absolute resolved</td><td>Safety: detect traversal and outside-root</td></tr>
+<tr><td>Exposed scoped paths</td><td>Workspace-relative POSIX</td><td>Stable fingerprints, portable receipts</td></tr>
+<tr><td>Command argv</td><td>Relative (from workspace_root)</td><td>Valid because subprocess cwd = workspace_root</td></tr>
+<tr><td>`command_fingerprint`</td><td>SHA256 of relative-path argv</td><td>Machine-independent</td></tr>
+<tr><td>`affected_paths`</td><td>Workspace-relative</td><td>Receipt portability</td></tr>
+<tr><td>ValidateReceipt</td><td>Workspace-relative</td><td>Cross-machine evidence compatibility</td></tr>
+</tbody>
+</table>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Why this matters for future worktrees and lane validation: - Worktrees have different absolute paths. Relative paths make fingerprints, receipts, and evidence comparable across worktrees without re-hashing. - Lane validation compares validation evidence from multiple sessions. Absolute paths would break comparison. - Cross-machine evidence (CI, remote agents) requires location-independent paths.</p>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Contract Rules</h2>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">1. Deterministic by default. 2. Read-only by default. 3. Mutation disabled unless a profile explicitly opts in. 4. Network disabled unless a profile explicitly opts in. 5. Raw output forbidden from receipts. 6. Raw output in result objects must be capped, summarized, and hashable. 7. Profile must imply command bundle and success criteria. 8. Exit code alone is not enough; blocker taxonomy must be produced.</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Stage 2 Implementation Status ✅</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Stage 2 (Content-Light ValidateReceipt) is implemented in `vibe/core/tools/builtins/validate.py` with 11 new receipt tests in `tests/tools/test_validate.py` and 5 validate index tests in `tests/evidence/test_receipt_index.py`.</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Receipt models: - `ValidateCheckReceipt`: content-light per-check receipt (no raw stdout/stderr) - `ValidateReceipt`: top-level receipt with profile, status, counts, blocker_summary, check_receipts - `Validate.build_receipt(result)`: duck-typed method deriving receipt from result</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">New schema: `docs/schemas/rig.relay.validate_receipt.v1.schema.json` (78/78 validated)</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">Receipt index updated: `rig_relay/evidence/receipt_index.py` handles validate tool</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Total: 48 validate tests + 37 receipt index tests, all passing</p>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Stage 3 Implementation Status ✅</h2>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Stage 3 (Path-Scoped Validation Profiles) is implemented in `vibe/core/tools/builtins/validate.py` with 71 tests in `tests/tools/test_validate.py`.</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Key design decisions: - argv-based subprocess execution (`asyncio.create_subprocess_exec`), no shell - path normalization via `_normalize_validate_paths()`: de-duplicates, sorts, refuses nonexistent/outside-workspace paths - path scoping via `_scope_check_argv()`: filters paths by domain (Python paths for ruff, test paths for pytest, schema/receipt paths for domain checks) - `ruff` is scoped to Python-relevant paths only; non-Python paths skip ruff - `pytest` is scoped to paths under `tests/` only; source-only paths skip pytest - `pyright` is left repo-wide (unreliable single-file scoping in this project) - `schemas` runs only when paths contain &quot;schema&quot; or `docs/schemas/` - `receipt-policy` runs only when paths contain &quot;receipt&quot; - `quick` profile adds scoped `ruff check` dynamically when Python paths provided - `tool-hardening` scopes pytest to test paths only - unsafe paths (outside workspace, nonexistent) are refused with structured result - affected_paths populated on scoped checks; preserves content-light receipts - output is capped (default 65KB, max 512KB), hashed (SHA256), and byte-counted - raw output is included in check results for debugging but capped - blocker taxonomy maps exit codes to structured kinds - profile registry is a simple dict in the module, not a database - content-light enforced via `extra=&quot;forbid&quot;` on all result models - `command_fingerprint` provides stable identity for normalized argv</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Supported profiles: `quick` (scoped), `python` (scoped), `schemas` (domain-filtered), `receipt-policy` (domain-filtered), `tool-hardening` (scoped)</p>
+
+<h2 id="h2-36" class="disclosure-standard" data-disclosure-level="standard">Output Policy</h2>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- `stdout` and `stderr` may exist only in the immediate result path. - receipts must contain only hashes, counts, and summaries. - parsed summaries are allowed only when the parser is profile-specific and deterministic.</p>
+
+<h2 id="h2-38" class="disclosure-standard" data-disclosure-level="standard">Deterministic Result Envelope</h2>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">`validate` should normalize every check into:</p>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- what ran - what kind of check it was - how long it ran - whether it passed - what blocker kind, if any, it produced - whether the check touched files or the workspace - whether the output was truncated</p>
+
+<h2 id="h2-41" class="disclosure-standard" data-disclosure-level="standard">Stage 5 Implementation Status ✅</h2>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">Stage 5 (Worktree/Lane Awareness and Dirty-State Policy) is implemented in `vibe/core/tools/builtins/validate.py` with 27 new tests in `tests/tools/test_validate_git_state.py`.</p>
+
+<h3 id="h3-43" class="disclosure-standard" data-disclosure-level="standard">ValidateGitState Fields</h3>
+
+<details id="table-44" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-44" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`branch`</td><td>`str</td><td>None`</td><td>Current git branch</td></tr>
+<tr><td>`head`</td><td>`str</td><td>None`</td><td>Full SHA of HEAD</td></tr>
+<tr><td>`is_git_repo`</td><td>`bool`</td><td>Whether cwd is inside a git worktree</td></tr>
+<tr><td>`is_worktree`</td><td>`bool`</td><td>Whether HEAD is detached (branch is None)</td></tr>
+<tr><td>`upstream`</td><td>`str</td><td>None`</td><td>Upstream tracking branch</td></tr>
+<tr><td>`ahead_count`</td><td>`int`</td><td>Commits ahead of upstream</td></tr>
+<tr><td>`behind_count`</td><td>`int`</td><td>Commits behind upstream</td></tr>
+<tr><td>`dirty_count`</td><td>`int`</td><td>Total dirtied paths</td></tr>
+<tr><td>`modified_count`</td><td>`int`</td><td>Working tree modifications</td></tr>
+<tr><td>`deleted_count`</td><td>`int`</td><td>Working tree deletions</td></tr>
+<tr><td>`untracked_count`</td><td>`int`</td><td>Untracked files</td></tr>
+<tr><td>`staged_count`</td><td>`int`</td><td>Staged changes</td></tr>
+<tr><td>`conflicted_count`</td><td>`int`</td><td>Conflicted files</td></tr>
+<tr><td>`dirty_paths`</td><td>`list[str]`</td><td>Workspace-relative POSIX paths</td></tr>
+<tr><td>`untracked_paths`</td><td>`list[str]`</td><td>Workspace-relative POSIX paths</td></tr>
+<tr><td>`changed_paths`</td><td>`list[str]`</td><td>All changed paths (dirty + untracked)</td></tr>
+<tr><td>`status_porcelain_sha256`</td><td>`str</td><td>None`</td><td>SHA256 hash of raw git status output</td></tr>
+<tr><td>`error_kind`</td><td>`str</td><td>None`</td><td>Error category if git state collection failed</td></tr>
+<tr><td>`refusal_reason`</td><td>`str</td><td>None`</td><td>Human-readable failure reason</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">expected_dirty_policy Behavior</h3>
+
+<table id="table-46" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Policy</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>`None` or not set</td><td>No dirty-state enforcement</td></tr>
+<tr><td>`allow_dirty`</td><td>Passes regardless of dirty files</td></tr>
+<tr><td>`clean`</td><td>Blocks/fails if any dirty files exist (dirty_count &gt; 0 or conflicted_count &gt; 0)</td></tr>
+<tr><td>`allow_listed_dirty`</td><td>Allows dirty paths listed in `ValidateArgs.paths`; blocks if unlisted dirty paths exist</td></tr>
+</tbody>
+</table>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Dirty-policy enforcement runs after path normalization. `ValidateArgs.paths` are normalized via `_normalize_validate_paths()` before being compared against `before_git_state.dirty_paths` (workspace-relative POSIX paths from git porcelain parsing). This means relative, absolute, and `./`-prefixed paths are all resolved to their canonical workspace-relative form before the `allow_listed_dirty` comparison.</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">`_check_dirty_policy()` from `validate_git.py` is the single policy authority. `Validate.run()` no longer inlines dirty-policy logic that compares raw `args.paths` against dirty paths.</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">When `expected_dirty_policy` is set and the policy fails, the validation yields a `ValidateResult` with `status=&quot;failed&quot;`, `error_kind=&quot;dirty_workspace&quot;`, and a `blocker_summary` containing `dirty_workspace: 1`.</p>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">worktree-readiness Profile</h3>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">A new profile with no lint/test/schema commands. Purely git state collection and dirty policy enforcement. Suitable for answering &quot;is this lane clean enough for handoff or aggregation?&quot;</p>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">Checks: none (git state is collected by the run() method, not profile checks)</p>
+
+<h3 id="h3-53" class="disclosure-standard" data-disclosure-level="standard">Receipt Content-Light Behavior</h3>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">- Full `ValidateGitState` is available in `ValidateResult.before_git_state` and `after_git_state` - Receipt contains only `before_git_summary` and `after_git_summary` with counts only (dirty_count, modified_count, deleted_count, untracked_count, staged_count, conflicted_count) - No path data, no hashes, no raw status text in receipts</p>
+
+<h3 id="h3-55" class="disclosure-standard" data-disclosure-level="standard">Known Limitations</h3>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">- `promotion-readiness` profile not implemented - Fleet/delegate integration not implemented - Aggregate patch planning not implemented - Automatic promotion logic not implemented</p>
+
+<h2 id="h2-57" class="disclosure-standard" data-disclosure-level="standard">Current Repository Fit</h2>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">The repository already has clear precedents:</p>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">- bash envelope and receipt policy - schema validation script - tool receipt validation script - tool hardening audits - promotion/readiness tests</p>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">`validate` should compose those patterns rather than invent a second ad hoc convention.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/validate-tool/validate-tool-contract.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

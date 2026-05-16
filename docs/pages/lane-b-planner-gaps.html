@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lane B — Planner Failure Warnings, RepoIndex Reality, Budget Semantics — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Date: 2026-05-15. HEAD: 63cdc9e2.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Lane B — Planner Failure Warnings, RepoIndex Reality, Budget Semantics</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Lane B — Planner Failure Warnings, RepoIndex Reality, Budget Semantics</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Date: 2026-05-15. HEAD: 63cdc9e2.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Other lane reports read</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Report</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>`docs/audits/context/context-assembly-plan-v1.md`</td><td>Not found</td></tr>
+<tr><td>`docs/audits/context/context-planner-v1.md`</td><td>Not found</td></tr>
+<tr><td>`docs/audits/context/context-renderer-contract-unification-v1.md`</td><td>Not found</td></tr>
+<tr><td>`docs/audits/context/context-failure-security-hardening-v1.md`</td><td>Not found</td></tr>
+<tr><td>`docs/audits/context/context-assembler-final-reconciliation.md`</td><td>Not found</td></tr>
+<tr><td>`docs/audits/context/gap-reports/lane-a-compiler-renderer-gaps.md`</td><td>Not found</td></tr>
+<tr><td>`docs/audits/context/gap-reports/lane-c-security-final-gaps.md`</td><td>Not found</td></tr>
+</tbody>
+</table>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">No other lane reports exist yet. Lane B is the first reconciliation lane.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Files changed</h2>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Δ</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/context/planner.py`</td><td>+20/-25</td><td>Refactored `_safe_find()` and `_safe_find_dict()` to return `(result, error)` tuples. Removed outer `try/except Exception` wrapper from RepoIndex expansion. Added per-method warning emission for `find_tests`, `find_docs`, `find_schemas`, `find_related`. Clamped negative `max_tokens` to 0.</td></tr>
+<tr><td>`tests/context/test_context_planner_failure_hardening.py`</td><td>**new** (7 tests)</td><td>Per-method failure warnings, repo_index_none warnings, content-light error messages</td></tr>
+<tr><td>`tests/context/test_context_planner_budget_semantics.py`</td><td>**new** (12 tests)</td><td>Budget invariants (never exceeded, tiny budget priority, negative clamped, omissions preserve IDs), privacy (no absolute paths, collision omission), candidate defaults (trust/cache tiers)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Planner warnings — query-level failure model</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">**Before:** `_safe_find` and `_safe_find_dict` returned empty results on failure. Individual method failures were invisible — only a broad `repo_index_unavailable` warning fired if ALL methods failed (wrapped in outer `try/except`).</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**After:** Each RepoIndex method call (`find_tests`, `find_docs`, `find_schemas`, `find_related`) independently records a `repo_index_query_failed` warning with the method name and truncated error. Planning continues with whatever results succeeded.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Budget semantics</h2>
+
+<table id="table-12" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Behavior</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>`max_tokens` positive → never exceeded</td><td>✅ Tested</td></tr>
+<tr><td>Tiny budget keeps highest priority</td><td>✅ Tested</td></tr>
+<tr><td>Negative `max_tokens` → clamped to 0</td><td>✅ Tested</td></tr>
+<tr><td>Budget omissions preserve `candidate_id` + `estimated_tokens`</td><td>✅ Tested</td></tr>
+<tr><td>Large budget selects all non-risk</td><td>✅ Tested</td></tr>
+<tr><td>`include_receipts` only as omission gate</td><td>Documented: discovery is compiler-owned</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Gaps closed</h2>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gap</th><th>Resolution</th></tr></thead>
+<tbody>
+<tr><td>`_safe_find` silent failures</td><td>Now returns `(result, error)` tuples with truncated error strings</td></tr>
+<tr><td>Individual RepoIndex method failures invisible</td><td>Per-method `repo_index_query_failed` warnings emitted</td></tr>
+<tr><td>`workspace_root` unused</td><td>Kept as reserved for future repo-relative validation</td></tr>
+<tr><td>`max_tokens` negative allowed</td><td>Clamped to 0 with `max(0, ...)`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Gaps left open</h2>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gap</th><th>Owner</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>Receipt discovery not implemented</td><td>Compiler/Lane A</td><td>Planner marks `include_receipts` as omission-only gate; actual receipt candidates come from compiler</td></tr>
+<tr><td>`workspace_root` not used for validation</td><td>Full planner slice</td><td>Reserved for repo-relative path validation in a future hardening slice</td></tr>
+<tr><td>`include_other_agents` not gated</td><td>Planner slice</td><td>Flag exists in model but active work candidates not yet filtered by this flag</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Cross-lane follow-up</h2>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>What</th><th>Who</th></tr></thead>
+<tbody>
+<tr><td>Wire planner into `compiler.execute()`</td><td>Lane A</td></tr>
+<tr><td>Add receipt discovery candidates</td><td>Lane A</td></tr>
+<tr><td>Add `include_other_agents` gating</td><td>Planner hardening slice</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Final status recommendation: **INTEGRATED_WITH_GAPS**</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">The planner is now truthful about RepoIndex failures, budget semantics are explicit, and trust/cache tier defaults are verified. The remaining gaps (receipt discovery, workspace validation, agent filtering) are well-scoped and owned by specific lanes.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/context/gap-reports/lane-b-planner-gaps.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

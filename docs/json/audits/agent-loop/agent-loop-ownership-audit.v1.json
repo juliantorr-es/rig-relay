@@ -1,0 +1,327 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "agent-loop-ownership-audit",
+  "document_type": "audit",
+  "title": "AgentLoop Ownership Audit",
+  "summary": "Audit date: 2026-05-15",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/agent-loop/agent-loop-ownership-audit.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "AgentLoop Ownership Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Audit date: 2026-05-15",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Count"
+      ],
+      "rows": [
+        [
+          "AgentLoop construction sites",
+          "8"
+        ],
+        [
+          "VibeAcpAgentLoop (subclass) construction sites",
+          "7"
+        ],
+        [
+          "PatchedAgentLoop (test subclass) sites",
+          "9"
+        ],
+        [
+          "`is_subagent=True` construction",
+          "1"
+        ],
+        [
+          "`fork()` constructions",
+          "1"
+        ],
+        [
+          "Total unique callers of full AgentLoop",
+          "~16"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Complete inventory",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "#",
+        "Path",
+        "Symbol",
+        "Purpose",
+        "Owner type",
+        "Should have full loop?",
+        "Recommended boundary",
+        "Risk"
+      ],
+      "rows": [
+        [
+          "1",
+          "`rig_relay/cli/desktop_cockpit.py:172`",
+          "`self._agent_loop = AgentLoop(...)`",
+          "Desktop cockpit owner agent",
+          "orchestrator",
+          "**Yes**",
+          "`OrchestratorLoop` (future)",
+          "Low — canonical owner"
+        ],
+        [
+          "2",
+          "`rig_relay/acp/_session_lifecycle.py:175`",
+          "`agent_loop = AgentLoop(...)`",
+          "ACP session creation",
+          "orchestrator",
+          "**Yes**",
+          "`OrchestratorLoop` (future)",
+          "Low — ACP entry"
+        ],
+        [
+          "3",
+          "`rig_relay/core/agent_loop.py` (fork)",
+          "`forked = AgentLoop(...)`",
+          "Child session fork",
+          "orchestrator copy",
+          "**Yes** (inherits owner scope)",
+          "`OrchestratorLoop.fork()`",
+          "Low — fork creates full loop"
+        ],
+        [
+          "4",
+          "`rig_relay/core/tools/builtins/task.py`",
+          "`subagent_loop = AgentLoop(... is_subagent=True)`",
+          "Spawned subagent for mission",
+          "subagent",
+          "**No** — should use bounded runtime",
+          "`SubagentRuntime` (not yet built)",
+          "**High** — full loop for bounded worker"
+        ],
+        [
+          "5",
+          "`rig_relay/acp/acp_agent_loop.py:228`",
+          "`agent = VibeAcpAgentLoop()`",
+          "ACP agent construction (main entry)",
+          "orchestrator adapter",
+          "**Yes** (ACP wrapper)",
+          "`OrchestratorLoop` + ACP adapter",
+          "Low — ACP facade"
+        ],
+        [
+          "6",
+          "`rig_relay/cli/ide_sidecar.py:102`",
+          "`agent = VibeAcpAgentLoop()`",
+          "IDE sidecar ACP",
+          "orchestrator adapter",
+          "**Yes** (thin IPC host)",
+          "`OrchestratorLoop` + ACP adapter",
+          "Low — sidecar"
+        ],
+        [
+          "7",
+          "`tests/conftest.py`",
+          "`build_test_agent_loop(config, ...)`",
+          "Test fixture",
+          "test_fixture",
+          "N/A",
+          "`FakeAgentLoop` or parameterized test builder",
+          "Low — test infrastructure"
+        ],
+        [
+          "8",
+          "`tests/acp/conftest.py:29`",
+          "`VibeAcpAgentLoop()`",
+          "ACP test fixture",
+          "test_fixture",
+          "N/A",
+          "ACP test double",
+          "Low"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Ownership categories",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Category",
+        "Count",
+        "Should have full AgentLoop?"
+      ],
+      "rows": [
+        [
+          "**Orchestrator**",
+          "4 (desktop cockpit, ACP sessions, fork, ACP main)",
+          "**Yes** — these are the owners"
+        ],
+        [
+          "**Orchestrator adapter**",
+          "2 (IDE sidecar, ACP entry)",
+          "**Yes** — thin wrappers"
+        ],
+        [
+          "**Subagent spawn**",
+          "1 (task.py `is_subagent=True`)",
+          "**No** — should be bounded worker"
+        ],
+        [
+          "**Test fixtures**",
+          "2 (conftest.py, acp/conftest.py)",
+          "N/A — test infrastructure"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "High-risk usages",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "`task.py` — Subagent spawn with full AgentLoop",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-11",
+      "type": "code",
+      "language": "python",
+      "content": "subagent_loop = AgentLoop(\n    config=call_config,\n    agent_name=agent_profile_name,\n    is_subagent=True,\n    defer_heavy_init=True,\n)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "**Problem:** Creates a full `AgentLoop` with conversation loop, middleware, hooks, and all mixins for a bounded mission worker. The subagent should not need: - Full conversation loop (should be single-turn or bounded mission) - Middleware pipeline (should inherit owner policy) - Hooks (subagent is not user-facing) - Fork/compact/switch_agent (bounded lifecycle)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "**Recommendation:** Replace with `SubagentRuntime` that owns bounded mission execution: assigned worktree, allowed tools/profile binding, budget, artifact contract, validation receipt.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "No Ralph loop exists",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Ralph (`rig_relay/ralph/`) currently has no AgentLoop construction. It is an observe-only scanner. Any future `RalphRuntime` should NOT be built on AgentLoop — it should use `SubagentRuntime` with `profile_kind=AUTONOMOUS_BACKGROUND` and `trust_tier=OBSERVE`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/agent-loop/agent-loop-ownership-audit.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

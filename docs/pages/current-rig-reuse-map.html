@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Current Rig Reuse Map — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document maps existing Rig Relay components to their roles in the VSCodium Shell Lane.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Current Rig Reuse Map</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Current Rig Reuse Map</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document maps existing Rig Relay components to their roles in the VSCodium Shell Lane.</p>
+
+<table id="table-3" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Existing Component</th><th>Current Path</th><th>Reuse Role in VSCodium Lane</th><th>Required Adapter</th><th>Risk</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>**AgentLoop**</td><td>`vibe/core/agent_loop.py`</td><td>Primary execution engine. Runs turns and manages tools.</td><td>None (runs in daemon)</td><td>Low</td><td>Solid foundation.</td></tr>
+<tr><td>**RuntimeSessionAdapter**</td><td>`vibe/cli/textual_ui/rig_console/session_bridge.py`</td><td>Turn state manager and event streamer.</td><td>WebSocket wrapper</td><td>Low</td><td>Already supports push events.</td></tr>
+<tr><td>**RigConsoleBackend**</td><td>`vibe/cli/webview_console/backend.py`</td><td>API Facade for the extension.</td><td>Extension-specific API endpoints</td><td>Low</td><td>Good existing abstraction.</td></tr>
+<tr><td>**ContextCompiler**</td><td>`rig_relay/context/compiler.py`</td><td>Context assembly logic.</td><td>None (runs in daemon)</td><td>Medium</td><td>Needs careful sync with editor open files.</td></tr>
+<tr><td>**DirtyGuard**</td><td>`rig_relay/governance/dirty_guard.py`</td><td>Preservation of user-owned uncommitted changes.</td><td>None (runs in daemon)</td><td>Low</td><td>Essential for safety.</td></tr>
+<tr><td>**FleetQueue**</td><td>`rig_relay/coordination/fleet_queue.py`</td><td>Multi-agent task orchestration.</td><td>None (runs in daemon)</td><td>Medium</td><td>Complexity in multi-agent sync.</td></tr>
+<tr><td>**ReceiptStore**</td><td>`rig_relay/evidence/receipt_store.py`</td><td>Evidence persistence and retrieval.</td><td>Receipt Projection service</td><td>Low</td><td>High reuse value.</td></tr>
+<tr><td>**WorktreeManager**</td><td>`rig_relay/coordination/worktree_manager.py`</td><td>Safe agent workspace management.</td><td>Worktree selection UI in extension</td><td>High</td><td>Critical for &quot;lane&quot; concept.</td></tr>
+<tr><td>**PatchProposal**</td><td>`rig_relay/coordination/patch_proposal.py`</td><td>Review/Approval of file modifications.</td><td>Custom Diff View in extension</td><td>Medium</td><td>Core governance surface.</td></tr>
+<tr><td>**WebSocket API**</td><td>`vibe/cli/webview_console/ws_api.py`</td><td>Transport layer between Daemon and Extension.</td><td>Token-based auth wrapper</td><td>Low</td><td>Established pattern.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Reuse Strategy: &quot;The Governance Spine&quot;</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">The reuse strategy is to keep the **Governance Spine** (DirtyGuard, AgentLoop, ReceiptStore, PatchProposal) entirely in the daemon. The VSCodium extension acts as a **Content-Light Projector**. It never performs file I/O directly for agent tasks; it merely observes the daemon performing it through the coordination layer.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vscodium-shell-lane/current-rig-reuse-map.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContextAssemblyPlan Contract Spine v1 — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-18">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>ContextAssemblyPlan Contract Spine v1</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ContextAssemblyPlan Contract Spine v1</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-18 **Schema**: `rig.context_assembly_plan.v1`</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Provide the contract spine for context assembly planning so downstream lanes (discovery, scoring, budget, rendering, compression, provenance) can plug in without inventing ad hoc dictionaries.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Models</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">ContextCandidate</h3>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">A discovered possible context item. Deterministic `candidate_id` derived from `path|kind|source|relation`. Carries `estimated_tokens`, `priority`, `risk_flags`, `trust_tier`, `cache_tier`. No raw content fields.</p>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">ContextSelection</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">A candidate selected for inclusion. Links to `candidate_id`, specifies `selected_tokens`, `include_mode` (full/summary/path_only/hash_only), `selection_reason`, and target `section_name`.</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">ContextOmission</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">A candidate omitted from the packet. Links to `candidate_id`, specifies `omission_reason` (budget_exceeded/disabled_by_scope/duplicate/risk_policy/unavailable/unsupported/not_relevant).</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">ContextBudgetLedger</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Token budget accounting: requested, used, remaining, selection overhead, compression ratio.</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">ContextAssemblyPlan</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Full plan with `candidates`, `selections`, `omissions`, `budget`, `warnings`, `deterministic_inputs`. Carries `plan_sha256` and `selection_sha256` for content-addressed identity.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Hash Model</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- `plan_sha256`: `sha256:&lt;64 hex&gt;` over all stable fields (excludes `plan_sha256`, `selection_sha256`, `generated_at`) - `selection_sha256`: `sha256:&lt;64 hex&gt;` over selections only - Candidate IDs: `sha256:&lt;hex&gt;` truncated to 20 chars, derived from `path|kind|source|relation` - `plan_id`: first 24 chars of `plan_sha256`</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Cache Tiers</h2>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tier</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`stable`</td><td>Static across many turns (committed files, schemas)</td></tr>
+<tr><td>`semi_stable`</td><td>Changes infrequently (work map, config)</td></tr>
+<tr><td>`dynamic`</td><td>Changes per turn (tool outputs, recent messages)</td></tr>
+<tr><td>`volatile`</td><td>Must be recomputed every time</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Trust Tiers</h2>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tier</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`first_party`</td><td>Rig Relay internal (doctrine, governance)</td></tr>
+<tr><td>`repo_content`</td><td>User&#x27;s repository files</td></tr>
+<tr><td>`tool_output`</td><td>Tool result content</td></tr>
+<tr><td>`external`</td><td>External provider/model output</td></tr>
+<tr><td>`untrusted`</td><td>Unknown origin, treat with caution</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Privacy Model</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">No raw content fields: `content`, `raw_text`, `stdout`, `stderr`, `env`, `cwd`, `token`, `output`, `file_contents`, `snippet`, `prompt` are excluded from all assembly plan models. Candidates are evidence/provenance descriptors, not content buckets.</p>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Tests</h2>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">`tests/context/test_context_assembly_plan.py` — 19 tests covering: - Candidate/selection/omission/plan rejects extra fields (4 tests) - Candidate ID determinism and uniqueness (3 tests) - Negative tokens rejected (2 tests) - Plan hash determinism and generated_at exclusion (2 tests) - Selection hash determinism (1 test) - JSON roundtrip (1 test) - Plan ID derivation (1 test) - No raw content fields on candidate/plan (2 tests) - Canonical hash stability (1 test) - Budget ledger negative validation (1 test)</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Next Lanes</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- **Planner**: populate candidates from repo map, repo index, work map, recent messages - **Scorer**: compute priority from relation/trust/cache tiers - **Budget enforcer**: select candidates up to token budget, record omissions - **Renderer**: produce ContextRenderedSection from selections - **Provenance**: use plan_sha256 and selection_sha256 for cache invalidation</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/context/context-assembly-plan-v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

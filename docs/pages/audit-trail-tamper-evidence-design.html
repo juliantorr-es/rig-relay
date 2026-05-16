@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Trail Tamper-Evidence Design Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Design audit (2026-05).** Produced after P3b (AuditTrailStore) implementation.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit Trail Tamper-Evidence Design Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit Trail Tamper-Evidence Design Audit</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Design audit (2026-05).** Produced after P3b (AuditTrailStore) implementation. Design is documented in `docs/governance/audit-trail-tamper-evidence.md`. Decision log: `docs/audits/rig-runtime-port/data/audit_tamper_evidence_decisions.jsonl`.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Files Inspected</h2>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/evidence/audit_trail.py`</td><td>Current AuditTrailStore implementation (297 lines)</td></tr>
+<tr><td>`rig_relay/evidence/receipt_envelope.py`</td><td>ReceiptEnvelope models (294 lines)</td></tr>
+<tr><td>`tests/evidence/test_audit_trail.py`</td><td>Existing audit trail tests (545 lines)</td></tr>
+<tr><td>`tests/evidence/test_receipt_envelope.py`</td><td>Receipt envelope tests (651 lines)</td></tr>
+<tr><td>`docs/governance/audit-trail.md`</td><td>Current audit trail governance doc (64 lines)</td></tr>
+<tr><td>`docs/governance/receipt-envelope.md`</td><td>Receipt envelope governance doc (139 lines)</td></tr>
+<tr><td>`docs/schemas/rig.relay.audit_event.v1.schema.json`</td><td>Current audit event JSON Schema</td></tr>
+<tr><td>`docs/schemas/rig.relay.receipt_envelope.v1.schema.json`</td><td>Receipt envelope JSON Schema</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Current Limitations (as of P3b)</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">1. **No cryptographic identity per event.** `AuditEvent` has `event_id` (UUID-style string) but no `event_hash` or `previous_event_hash`. An attacker can rewrite any line in `audit.jsonl` without detection. 2. **Sequence is derived from line count.** `next_sequence()` counts lines. An attacker can insert, delete, or reorder lines and the sequence counter adjusts to match. 3. **No checkpoint mechanism.** There is no periodic summary record that could serve as a tamper-evident root. 4. **No verification method.** `read_events()` returns events and parse errors but does not validate chain integrity. 5. **No signature or external anchor.** Even if events were hash-chained, a local attacker with write access to the trail file could rewrite both events and checkpoints. 6. **Malformed-line tolerance is correct but incomplete.** Malformed lines are reported as read errors — a correct and necessary behavior — but the store provides no mechanism to quarantine or repair them.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Design Decisions</h2>
+
+<details id="table-9" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-9" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Decision</th><th>Choice</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td>Tamper evidence layer</td><td>Event hash chain + checkpoint records</td><td>Minimal, local-first, no external dependencies</td></tr>
+<tr><td>Merkle roots</td><td>Optional in v0.1</td><td>Reduces implementation complexity; linear chain suffices for single-host detection</td></tr>
+<tr><td>Checkpoint storage</td><td>Separate `audit.checkpoints.jsonl` file</td><td>Avoids schema mixing; simpler reader logic</td></tr>
+<tr><td>Checkpoint frequency</td><td>Every 1000 events or explicit</td><td>Balances I/O overhead with detection granularity</td></tr>
+<tr><td>Hash algorithm</td><td>SHA-256</td><td>Fast, well-supported, already used elsewhere in codebase</td></tr>
+<tr><td>Canonical serialization</td><td>Existing `dump_canonical_json`</td><td>Reuse existing deterministic JSON serializer</td></tr>
+<tr><td>`event_hash` field</td><td>Stored in each AuditEvent</td><td>Enables per-event integrity check without recomputing from scratch</td></tr>
+<tr><td>`previous_event_hash`</td><td>Null for genesis</td><td>Standard chain pattern; null is unambiguous</td></tr>
+<tr><td>Backward compatibility</td><td>`event_hash`/`previous_event_hash` are optional null fields</td><td>Existing events without hashes are valid but unverifiable</td></tr>
+<tr><td>Auto-repair on chain break</td><td>Never</td><td>Auto-repair destroys tamper evidence</td></tr>
+<tr><td>Verification stops at break</td><td>Yes</td><td>First broken link blocks subsequent verification</td></tr>
+<tr><td>CLI commands</td><td>Deferred to phases 0.3/0.6</td><td>Store-level methods suffice for programmatic verification first</td></tr>
+<tr><td>External anchoring</td><td>Deferred to phase 0.5</td><td>Requires keychain module and signing infrastructure</td></tr>
+<tr><td>Blockchain</td><td>Not adopted</td><td>Consensus/network/operational overhead is unjustified for local dogfood</td></tr>
+<tr><td>NIST SP 800-92 alignment</td><td>Noted for future retention/compliance</td><td>Design addresses integrity checking; retention/disposal deferred</td></tr>
+<tr><td>Certificate Transparency alignment</td><td>Merkle root + inclusion proof</td><td>Deferred to v0.2; CT-style auditability is aspirational</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- [Audit Trail Tamper Evidence Design](../../governance/audit-trail-tamper-evidence.md) - [Audit Trail Governance](../../governance/audit-trail.md) - [Receipt Envelope Governance](../../governance/receipt-envelope.md) - [Rig Runtime Port Roadmap](./port-roadmap.md) - [Rig-to-Relay Runtime Audit](./rig-to-relay-runtime-audit.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/audit-trail-tamper-evidence-design.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

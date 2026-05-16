@@ -1,0 +1,706 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "validate-blocker-taxonomy",
+  "document_type": "audit",
+  "title": "Validate Blocker Taxonomy",
+  "summary": "`validate` should return structured blockers, not just exit codes.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/validate-tool/validate-blocker-taxonomy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Validate Blocker Taxonomy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Goal",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "`validate` should return structured blockers, not just exit codes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Blocker Kinds",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-5",
+      "type": "heading",
+      "level": 3,
+      "content": "`test_failure`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- one or more tests failed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- `pytest`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "`lint_failure`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- style or static analysis failure",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "- `ruff check`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "`typecheck_failure`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- pyright or type analysis failure",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- `pyright`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "`schema_failure`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "- JSON, JSONL, or schema validation failed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "- schema validation scripts - receipt validators",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "`governance_failure`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "- policy or doctrine mismatch",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "- governance checks - retention policy checks",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-30",
+      "type": "heading",
+      "level": 3,
+      "content": "`dirty_workspace`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "- workspace state does not satisfy the profile's dirty policy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "- git readiness checks",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-35",
+      "type": "heading",
+      "level": 3,
+      "content": "`forbidden_mutation`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "- a command attempted mutation under a read-only profile",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "- any check bundle that tries to write",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-40",
+      "type": "heading",
+      "level": 3,
+      "content": "`timeout`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "- profile exceeded allowed time",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "- long-running pytest or repo scans",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-45",
+      "type": "heading",
+      "level": 3,
+      "content": "`tool_refusal`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-47",
+      "type": "paragraph",
+      "content": "- governed tool refused the command or scope",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "- path policy - permission policy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-50",
+      "type": "heading",
+      "level": 3,
+      "content": "`missing_dependency`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "- required binary or package is unavailable",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "- `pyright`, `ruff`, `pytest`, schema validators",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-55",
+      "type": "heading",
+      "level": 3,
+      "content": "`environment_failure`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "- environment is misconfigured but command logic is not necessarily wrong",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "- missing venv, wrong PATH, broken interpreter, invalid locale",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-60",
+      "type": "heading",
+      "level": 3,
+      "content": "`command_internal_error`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-62",
+      "type": "paragraph",
+      "content": "- tool crashed or raised unexpected internal error",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-64",
+      "type": "paragraph",
+      "content": "- script exception",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-65",
+      "type": "heading",
+      "level": 3,
+      "content": "`unknown_failure`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "Meaning:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-67",
+      "type": "paragraph",
+      "content": "- blocker could not be classified safely",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-68",
+      "type": "paragraph",
+      "content": "Typical source:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-69",
+      "type": "paragraph",
+      "content": "- malformed output - mixed failures",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-70",
+      "type": "heading",
+      "level": 2,
+      "content": "Mapping Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-71",
+      "type": "paragraph",
+      "content": "- test runner failure -> `test_failure` - linter failure -> `lint_failure` - type checker failure -> `typecheck_failure` - schema validator failure -> `schema_failure` - dirty repo gate -> `dirty_workspace` - permission refusal -> `tool_refusal` - timeout exit or signal -> `timeout` - missing binary -> `missing_dependency` - script exception -> `command_internal_error`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-72",
+      "type": "heading",
+      "level": 2,
+      "content": "What the Blocker Taxonomy Should Not Do",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-73",
+      "type": "paragraph",
+      "content": "- should not store raw stdout - should not store raw stderr - should not echo entire command transcripts - should not hide environment failures inside generic failure",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-74",
+      "type": "heading",
+      "level": 2,
+      "content": "Blocker Summary Contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-75",
+      "type": "paragraph",
+      "content": "`ValidateResult.blocker_summary` should report counts per blocker kind.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-76",
+      "type": "paragraph",
+      "content": "This lets validate answer:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-77",
+      "type": "paragraph",
+      "content": "- is this a real code blocker? - is this a tooling blocker? - is this a workspace-state blocker? - is this an environment blocker?",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-78",
+      "type": "paragraph",
+      "content": "That distinction is the whole point of making validation first-class.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/validate-tool/validate-blocker-taxonomy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

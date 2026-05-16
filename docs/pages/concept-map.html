@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig-to-Relay Runtime Concept Map — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Maps each Rig runtime/control-plane concept to its Rig Relay equivalent,">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig-to-Relay Runtime Concept Map</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig-to-Relay Runtime Concept Map</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Maps each Rig runtime/control-plane concept to its Rig Relay equivalent, porting status, and adaptation notes.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Legend</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`port_direct`</td><td>Close 1:1 match; port with minimal adaptation</td></tr>
+<tr><td>`reimplement`</td><td>Pattern worth reimplementing with relay-native interface</td></tr>
+<tr><td>`already_ported`</td><td>Already exists in Rig Relay</td></tr>
+<tr><td>`leave_behind`</td><td>Not applicable to Rig Relay; document why</td></tr>
+<tr><td>`deferred`</td><td>Postponed to a future slice</td></tr>
+</tbody>
+</table>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Governance Layer</h2>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">GateDecision</h3>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.governance.decisions.GateDecision` — Frozen dataclass with workspace_id, decision, gate, reasons, allowed/blocked intents - **Relay:** `rig_relay.governance.governance_engine.GateDecision` — **implemented** (P1a) - **Port:** `port_direct` (P1a) - **Rig sources:** `src/rig/domain/governance/decisions.py`, `engine.py` - **Implementation:** `rig_relay/governance/decisions.py` + `governance_engine.py`. Uses Pydantic BaseModel with extra=&quot;forbid&quot;. Includes `AllowedIntent` model (Rig used plain str list). Adds `GovernanceReasonSeverity.CRITICAL`. Schema at `docs/schemas/rig.relay.governance_decision.v1.schema.json`.</p>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">LocalActionEnvelope</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** Not present (Rig has no local envelope pattern) - **Relay:** `rig_relay.governance.local_action_envelope` — Signed envelope for protected intents - **Port:** `already_ported` (relay_native)</p>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">DirtyFileGuard</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** Not present (Rig uses worktree isolation instead) - **Relay:** `rig_relay.governance.dirty_guard` — Path-level write protection - **Port:** `already_ported` (relay_native)</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Execution Plane</h2>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">WorktreeManager</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig_tools.worktree_manager.WorktreeManager` — Git worktree create/remove/get_head - **Relay:** `rig_relay.coordination.worktree_manager.WorktreeManager` — **implemented** (P1b) - **Port:** `reimplement` (P1b) - **Adaptation:** Relay-native reimplementation with Pydantic models, structured results, input sanitization, `git worktree list --porcelain` parsing, dirty detection. Coordination lease integration deferred (P2 follow-up). - **Rig sources:** `src/rig_tools/worktree_manager.py` - **Implementation:** `rig_relay/coordination/worktree_manager.py`. Pydantic models: WorktreeStatus, WorktreeRecord, WorktreeOperationResult, WorktreeOperationKind. Methods: create (with sanitization), remove (refuses dirty without force), get_head_hash, list_worktrees (porcelain parsing), inspect (with dirty detection). Schema at `docs/schemas/rig.relay.worktree.v1.schema.json`. Governance doc at `docs/governance/worktree-manager.md`.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">ExecutionLease</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.execution.models.ExecutionLease` — Time-bounded auth to execute - **Relay:** `rig_relay.coordination.execution_lease.ExecutionLease` — **implemented** (P2c) - **Port:** `reimplement` (P2c) - **Adaptation:** Standalone file-backed store (ExecutionLeaseStore) with atomic writes, TTL enforcement, path-traversal protection. Not embedded in CoordinationStore. - **Rig sources:** `src/rig/domain/execution/models.py` - **Implementation:** `rig_relay/coordination/execution_lease.py` + `docs/schemas/rig.relay.execution_lease.v1.schema.json`. Uses Pydantic BaseModel with extra=&quot;forbid&quot;. Adds lease state machine (active→released/expired/cancelled/failed). 32 store/validation tests.</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">ExecutionRequest</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.execution.models.ExecutionRequest` — argv, cwd, env, timeout, purpose - **Relay:** `rig_relay.runtime.execution_request.ExecutionRequest` — **implemented** (P2c) - **Port:** `reimplement` (P2c) - **Adaptation:** Use `list[str]` for argv (security), NOT shell strings. No `shell=True`. Adds SHA256 content fingerprint. Adds requested_capabilities for future governance hooks. - **Rig sources:** `src/rig/domain/execution/models.py` - **Implementation:** `rig_relay/runtime/execution_request.py`. Pydantic BaseModel with extra=&quot;forbid&quot;, argv non-empty validation, timeout_ms &gt; 0 validation, SHA256 fingerprint. 22 tests.</p>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.runtime_supervisor` — asyncio subprocess with bounded buffers, stall detection, cancellation - **Relay:** `rig_relay.runtime.supervisor.RuntimeSupervisor` — **implemented** (P2b) - **Port:** `reimplement` (P2b) - **Adaptation:** Relay-native Pydantic stream events (RuntimeStreamEvent discriminated union). Lease-gated execution (requires active ExecutionLease). Bounded concurrent stream draining with SHA256 hashing past truncation cap. Timeout and cancellation use terminate→kill escalation. Content-light terminal events (hashes, byte counts, truncated flags, no raw output). Governance gate wired via optional GovernanceEngine constructor arg — BLOCKED/REQUIRES_REVIEW blocks subprocess creation (P2b-follow-up, 2026-06). Active lease conflict detection in ExecutionLeaseStore — same worktree_path refused (P2b-follow-up, 2026-06). Heartbeats and stall detection implemented (P2b-follow-up, 2026-06). Dry-run mode remains deferred. - **Rig sources:** `src/rig/domain/runtime_supervisor.py` (deprecated), `src/rig/domain/runtime_stream.py` - **Implementation:** `rig_relay/runtime/supervisor.py` + `rig_relay/runtime/stream_types.py`. Stream events: RuntimeStatusEvent, RuntimeOutputChunkEvent, RuntimeHeartbeatEvent (model only), RuntimeWarningEvent (model only), RuntimeCompletionEvent, RuntimeFailureEvent. Schema at `docs/schemas/rig.relay.runtime_stream_event.v1.schema.json`. Governance doc at `docs/governance/runtime-supervisor.md`. 39 tests (23 stream types + 16 supervisor).</p>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">RuntimeProvider</h3>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.runtime.RuntimeProvider` — Provider kind, trust tier, status, capabilities - **Relay:** `rig_relay.runtime.models.RuntimeProviderDescriptor` — Content-light descriptor (provider_id, kind, trust_tier, status, version) - **Port:** `port_direct` (P1c) — **implemented** - **Rig sources:** `src/rig/domain/runtime.py` - **Implementation:** `RuntimeProviderDescriptor` is content-light (no executable paths, manifests, or capability details). Separate enums: `RuntimeProviderKind`, `RuntimeProviderTrustTier`, `RuntimeProviderStatus`. Schema at `docs/schemas/rig.relay.runtime_types.v1.schema.json`.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">RuntimeCapability</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.runtime.RuntimeCapabilityKind` — FILE_READ, FILE_WRITE_PROPOSAL, SHELL_PROPOSAL, etc. - **Relay:** `rig_relay.runtime.models.RuntimeCapabilityKind` + `RuntimeCapability` model — **implemented** - **Port:** `port_direct` (P1c) — **implemented** - **Adaptation:** Includes 8 Rig-original kinds plus 6 Relay extensions: VALIDATION, RECEIPT_READ, COORDINATION_READ, COORDINATION_WRITE, WORKTREE_READ, WORKTREE_WRITE - **Rig sources:** `src/rig/domain/runtime.py` - **Implementation:** `RuntimeCapability` model with `capability_kind: RuntimeCapabilityKind` and `scope: str = &quot;request&quot;` (simplified from Rig&#x27;s `RuntimeCapabilityScope` enum). Schema at `docs/schemas/rig.relay.runtime_types.v1.schema.json`.</p>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">RuntimeContextResolver</h3>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** No direct equivalent; Rig agents typically carried session/task identifiers through the runtime stack. - **Relay:** `rig_relay.runtime.context_resolver.RuntimeContextResolver` — relay-native control-plane helper - **Port:** `relay_native` - **Adaptation:** Derives canonical runtime coordination context from an intent, infers session/task/worktree metadata when available, and refuses unsafe paths or missing required scope. Content-light only; does not acquire reservations or execute tools.</p>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">MissionEnvelope</h3>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** Mission-shaped orchestration exists conceptually in docs and workflow direction, but not as a fully executable runtime path. - **Relay:** `docs/governance/mission-envelope.md` — minimal bridge object for governed runs - **Port:** `relay_native` - **Adaptation:** Mission-first envelope that can later carry ADR/sprint metadata as optional references. Keeps executable context packet compilation ahead of full orchestration.</p>
+
+<h3 id="h3-31" class="disclosure-standard" data-disclosure-level="standard">WorkspaceRuntime</h3>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.workspace_runtime.WorkspaceRuntime` — Lane-scoped execution context (worktree, replay, artifact namespaces) - **Relay:** `rig_relay.coordination.workspace_runtime.WorkspaceRuntime` — **new** - **Port:** `reimplement` (P2a) - **Rig sources:** `src/rig/domain/workspace_runtime.py`</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-34" class="disclosure-standard" data-disclosure-level="standard">Evidence / Receipts</h2>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">ReceiptEnvelope</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.receipt_envelope` — ReceiptActor, ReceiptSubject, ReceiptInput, ReceiptOutput, ReceiptDecision, ReceiptEvidence - **Relay:** `rig_relay.evidence.receipt_envelope` — **implemented** (P3a) - **Port:** `reimplement` (P3a) - **Adaptation:** Pydantic BaseModel with extra=&quot;forbid&quot;, StrEnum enums, content-light (no raw payloads). `build_receipt_envelope()` hashes payload and discards raw data. Pure function, no side effects. Standalone module (no dependency on tool receipts, receipt index, or governance decisions at import time). - **Rig sources:** `src/rig/domain/receipt_envelope.py` - **Implementation:** `rig_relay/evidence/receipt_envelope.py` + `docs/schemas/rig.relay.receipt_envelope.v1.schema.json`. Models: ReceiptActor (5 fields), ReceiptSubject (5 fields), ReceiptInput (4 fields), ReceiptOutput (5 fields), ReceiptEvidence (5 fields), ReceiptDecision (4 fields), ReceiptEnvelope (10 fields). Enums: ReceiptActorKind, ReceiptSubjectKind, ReceiptEvidenceKind. Builder: `build_receipt_envelope()` with payload hashing. 46 tests. Content-light policy enforced: no forbidden raw fields in any model or schema.</p>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">WorkspaceAuditTrail</h3>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.workspace_audit` — AuditAction, AuditActor, AuditSubject, AuditEvent, AuditDecision - **Relay:** `rig_relay.evidence.audit_trail` — **implemented** - **Port:** `reimplement` (P3b) ✅ - **Adaptation:** Replace Rig&#x27;s workspace-specific audit model with relay-native session-centric model. Keep event_id, actor, action, subject, decision pattern. - **Rig sources:** `src/rig/domain/workspace_audit.py`</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">ExecutionReceipt</h3>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.receipts.ExecutionReceipt` — argv, cwd, exit_code, stdout/stderr refs, timing - **Relay:** `rig.relay.execution_receipt.v1` schema — **new** - **Port:** `reimplement` (P3a) - **Adaptation:** Content-light only (SHA256 of stdout/stderr, never full content). - **Rig sources:** `src/rig/domain/receipts.py`</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-42" class="disclosure-standard" data-disclosure-level="standard">Projection / UI</h2>
+
+<h3 id="h3-43" class="disclosure-standard" data-disclosure-level="standard">ProjectionContract</h3>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.projection_contracts` — ProjectionField, AuthorityBindingType, ReceiptBackingRequirement, ContractViolationCode - **Relay:** Already have `docs/governance/relay-desktop-projection-contract.md` - **Port:** `already_ported` (adapted as relay-native contract)</p>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">ProjectionBuilder</h3>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.projection_builder` — Full projection from receipts, audit, integrity checks - **Relay:** `rig_relay.desktop.projection` + `rig_relay.desktop.projection_integrity` — Content-light with integrity checks - **Port:** `reimplement` (P2a) — **implemented** (2026-05) - **Implementation:** `build_projection_integrity_assessment()` pure function added. `_build_integrity()` helper in projection.py loads receipt index via `build_receipt_index()`. Schema at `docs/schemas/rig.relay.projection_integrity.v1.schema.json`. Desktop projection schema updated with optional `integrity` field. 33 tests.</p>
+
+<h3 id="h3-47" class="disclosure-standard" data-disclosure-level="standard">WidgetProjection</h3>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.projections.WidgetProjection` — Named widgets with typed fields - **Relay:** `rig_relay.desktop.projection_widgets` — Canonical widget names + mode mapping - **Port:** `already_ported` (widget names differ; rig-relay has its own taxonomy: SafetyState, NextAction, etc.)</p>
+
+<h3 id="h3-49" class="disclosure-standard" data-disclosure-level="standard">IntentDispatch</h3>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig.domain.intent_defs.Intent` + `rig_tools.intent_decoder` - **Relay:** `rig_relay.desktop.intents` — Read-only + dry-run intents - **Port:** `already_ported` (relay-native, no Rig dependency)</p>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-52" class="disclosure-standard" data-disclosure-level="standard">Queue / Jobs</h2>
+
+<h3 id="h3-53" class="disclosure-standard" data-disclosure-level="standard">WorkQueue</h3>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig_tools.work_queue` — JSON file-backed queue with checkpoints - **Relay:** `rig.relay.work_queue.v1.schema.json` (schema only) - **Port:** `deferred` — rig-relay has the schema but no queue implementation yet</p>
+
+<h3 id="h3-55" class="disclosure-standard" data-disclosure-level="standard">OrchestrationJob</h3>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** `rig_tools.orchestration` — Agent loop orchestration jobs with task/provider/model - **Relay:** No equivalent; uses Vibe agent loop (legacy) - **Port:** `leave_behind` — Rig Relay has its own agent loop path</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-58" class="disclosure-standard" data-disclosure-level="standard">CLI Commands</h2>
+
+<h3 id="h3-59" class="disclosure-standard" data-disclosure-level="standard">`rig workspace status/lanes/projection/receipts/recommend`</h3>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">- **Rig:** Read-only workspace control-plane status - **Relay:** No equivalent; use `relay current-state --summary` + desktop projection - **Port:** `deferred` — UI projection already provides equivalent info</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/concept-map.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

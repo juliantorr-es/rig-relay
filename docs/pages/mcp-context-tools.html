@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP Context Tools — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Status:** Planning. MCP resource/tool exposure of `rig.get_context`.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>MCP Context Tools</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">MCP Context Tools</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status:** Planning. MCP resource/tool exposure of `rig.get_context`.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">MCP Tool: `rig.get_context`</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Exposed as an MCP tool with the same schema as the built-in tool. Returns a structured JSON context packet.</p>
+
+<pre id="code-5"><code class="language-json">{
+  &quot;name&quot;: &quot;rig.get_context&quot;,
+  &quot;description&quot;: &quot;Get governed repository context. Read-only, receipt-backed.&quot;,
+  &quot;inputSchema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;mode&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;enum&quot;: [&quot;map&quot;, &quot;packet&quot;, &quot;handoff&quot;, &quot;collision&quot;, &quot;symbols&quot;] },
+      &quot;scope_paths&quot;: { &quot;type&quot;: &quot;array&quot;, &quot;items&quot;: { &quot;type&quot;: &quot;string&quot; } },
+      &quot;include_receipts&quot;: { &quot;type&quot;: &quot;boolean&quot; },
+      &quot;include_other_agents&quot;: { &quot;type&quot;: &quot;boolean&quot; },
+      &quot;max_tokens&quot;: { &quot;type&quot;: &quot;integer&quot; }
+    }
+  }
+}</code></pre>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">MCP Resources (future)</h2>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Resource</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`rig://context/current`</td><td>Latest context packet for this session.</td></tr>
+<tr><td>`rig://repo/map`</td><td>Fast repository topology.</td></tr>
+<tr><td>`rig://work/active`</td><td>Active work lanes and collision state.</td></tr>
+<tr><td>`rig://receipts/latest`</td><td>Most recent receipts.</td></tr>
+<tr><td>`rig://symbols/index`</td><td>Symbol substitution table.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Policy</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- All context MCP surfaces are read-only. - `requires_workspace_trust: true` — semantic repo inspection requires trust. - Receipts are emitted but not persisted on the MCP side (persistence is the callers&#x27;s responsibility).</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/protocols/mcp-context-tools.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,360 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "test-purge-pass-1-report",
+  "document_type": "audit",
+  "title": "Test Purge Pass 1 Report",
+  "summary": "All 177 deletions were already staged by a prior agent in the main branch. No additional deletions were performed in this pass.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/test-suite/test_purge_pass_1_report.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Purge Pass 1 Report",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Baseline Metrics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-3",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Value"
+      ],
+      "rows": [
+        [
+          "Branch/HEAD",
+          "main / 8d0b13c802e182c72ade51e58ae70b6abafdadc3"
+        ],
+        [
+          "Collected test count",
+          "6085"
+        ],
+        [
+          "Test files (test_*.py)",
+          "325"
+        ],
+        [
+          "Total .py files in tests/",
+          "360"
+        ],
+        [
+          "Layout guard",
+          "PASSED"
+        ],
+        [
+          "Conftest hygiene",
+          "PASSED"
+        ],
+        [
+          "Collect-only errors",
+          "0"
+        ],
+        [
+          "Dirty files (modified in tree)",
+          "~36 M + ~177 D staged"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Deletions Executed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "All 177 deletions were already staged by a prior agent in the main branch. No additional deletions were performed in this pass.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Deletion Categories",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Category",
+        "Count",
+        "Examples"
+      ],
+      "rows": [
+        [
+          "Old TUI autocomplete",
+          "2",
+          "tests/autocompletion/test_path_completion_controller.py, test_slash_command_controller.py"
+        ],
+        [
+          "Old TUI plan offer",
+          "3",
+          "tests/cli/plan_offer/*"
+        ],
+        [
+          "Old TUI CLI features",
+          "7",
+          "tests/cli/test_cache.py, test_clipboard.py, test_commands.py, test_doctor.py, test_initial_agent_name.py, test_programmatic_setup.py, test_stderr_guard.py"
+        ],
+        [
+          "Old TUI narrator",
+          "2",
+          "tests/narrator_manager/*"
+        ],
+        [
+          "Duplicate scripts tests",
+          "8",
+          "tests/scripts/test_desktop_*.py, test_websocket_server.py, etc."
+        ],
+        [
+          "Old TUI snapshots",
+          "~90",
+          "tests/snapshots/__snapshots__/*.svg, test_ui_snapshot_*.py"
+        ],
+        [
+          "Old TUI stubs",
+          "3",
+          "tests/stubs/fake_audio_recorder.py, fake_transcribe_client.py, fake_voice_manager.py"
+        ],
+        [
+          "Old update notifier",
+          "8",
+          "tests/update_notifier/*"
+        ],
+        [
+          "Old voice manager",
+          "2",
+          "tests/voice_manager/*"
+        ],
+        [
+          "Old webview console",
+          "1",
+          "tests/webview_console/*"
+        ],
+        [
+          "Root-level migration tests",
+          "20+",
+          "test_agents.py, test_cli_programmatic_preload.py, test_history_manager.py, test_message_id.py, test_message_merging.py, test_model_observations.py, test_observation_consent_integration.py, test_rig_relay.py, test_tagged_text.py, test_telemetry_consent.py, test_turn_summary.py"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Canonical Survivor Coverage",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "All desktop/WebSocket functionality from deleted tests/scripts/* is covered by canonical tests in tests/desktop/test_websocket_server.py, test_desktop_projection.py, test_intents.py, and test_protected_intents.py (all 44 + tests pass).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "All orchestration/projection functionality is covered by tests in tests/desktop/, tests/ralph/, tests/orchestrator/, tests/runtime/.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Purge Candidates",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Path",
+        "Category",
+        "Risk",
+        "Action"
+      ],
+      "rows": [
+        [
+          "purge-layout-split",
+          "tests/scripts/ surviving files",
+          "misc",
+          "low",
+          "Auditing remaining scripts/ tests for future relocation"
+        ],
+        [
+          "purge-demo-mcp",
+          "tests/demo/test_mcp_night_demo_fixtures.py",
+          "stale",
+          "low",
+          "Defer — imports redaction module, needs investigation"
+        ],
+        [
+          "purge-historical-migration",
+          "tests/docs/test_vibe_legacy_boundary.py",
+          "historical",
+          "low",
+          "Defer — documents migration, may be kept as audit"
+        ],
+        [
+          "purge-textual-retirement",
+          "tests/docs/test_textual_retirement_policy.py",
+          "policy",
+          "low",
+          "Defer — documents TUI retirement, useful as audit evidence"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Check",
+        "Result"
+      ],
+      "rows": [
+        [
+          "`PYTHONDONTWRITEBYTECODE=1 uv run pytest --collect-only -q`",
+          "6085 tests collected, 0 errors"
+        ],
+        [
+          "Layout guard",
+          "PASSED"
+        ],
+        [
+          "Conftest hygiene",
+          "PASSED"
+        ],
+        [
+          "demo-doctor",
+          "22/22 passed"
+        ],
+        [
+          "Desktop tests (full)",
+          "326/326 passed"
+        ],
+        [
+          "Runtime convergence tests",
+          "9/9 passed"
+        ],
+        [
+          "Ralph tests",
+          "All passing"
+        ],
+        [
+          "Orchestrator tests",
+          "All passing"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Inventories Created",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "- `docs/audits/test-suite/test_purge_candidates.jsonl` — 10 candidate groups documented - `docs/audits/test-suite/canonical_coverage_keep_list.jsonl` — 20 canonical test groups protected",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/test-suite/test_purge_pass_1_report.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -45,6 +45,7 @@ FRONTEND_STAGES = [
 SHUTDOWN_STAGES = ["desktop.websocket.closed", "desktop.bridge.shutdown"]
 
 _MAGIC_MIN_TOKEN_LEN = 8
+RECONNECT_LOOP_THRESHOLD = 3  # >3 cycles flags reconnect loop
 
 FAILURE_CHECK_NAMES = {
     "frontend.auth_ok": "desktop.websocket.auth_ok",
@@ -217,6 +218,50 @@ def _find_handshake_id(events: list[dict[str, Any]]) -> str:
     return "unknown"
 
 
+def _analyze_cycles(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Count WebSocket connection cycles. >3 = reconnect loop."""
+    connecting_events = [
+        e for e in events
+        if _event_name(e) in {"frontend_websocket_connecting", "frontend.websocket_connecting"}
+    ]
+    auth_events = [
+        e for e in events
+        if _event_name(e) in {"frontend_auth_ok", "frontend.auth_ok"}
+    ]
+    connecting_events.sort(key=lambda e: str(e.get("timestamp", "")))
+    auth_events.sort(key=lambda e: str(e.get("timestamp", "")))
+
+    # Pair each connecting with the next auth
+    used_auth: set[int] = set()
+    cycles: list[dict[str, Any]] = []
+    for ci, ce in enumerate(connecting_events):
+        paired: dict[str, Any] | None = None
+        paired_idx = -1
+        ce_ts = str(ce.get("timestamp", ""))
+        for ai, ae in enumerate(auth_events):
+            if ai in used_auth:
+                continue
+            ae_ts = str(ae.get("timestamp", ""))
+            if ae_ts >= ce_ts:
+                paired = ae
+                paired_idx = ai
+                break
+        if paired_idx >= 0:
+            used_auth.add(paired_idx)
+        cycles.append({
+            "cycle_index": ci,
+            "start_timestamp": ce_ts,
+            "auth_timestamp": str(paired.get("timestamp", "")) if paired else "",
+        })
+
+    reconnect_loop = len(cycles) > RECONNECT_LOOP_THRESHOLD
+    return {
+        "cycles": cycles,
+        "total_cycles": len(cycles),
+        "reconnect_loop": reconnect_loop,
+    }
+
+
 def summarize(events: list[dict[str, Any]], trace_id: str) -> dict[str, Any]:
     matched = _events_for_trace(events, trace_id)
     event_names = {_event_name(e) for e in matched}
@@ -273,6 +318,8 @@ def summarize(events: list[dict[str, Any]], trace_id: str) -> dict[str, Any]:
         if s not in event_names and s.replace(".", "_") not in event_names
     ]
 
+    cycle_analysis = _analyze_cycles(matched)
+
     return {
         "trace_id": trace_id,
         "handshake_id": handshake_id,
@@ -286,6 +333,7 @@ def summarize(events: list[dict[str, Any]], trace_id: str) -> dict[str, Any]:
         "contradiction_events": len(contradiction_events),
         "failures": failures,
         "required_missing": required_missing,
+        "cycle_analysis": cycle_analysis,
         "ok": len(required_missing) == 0 and len(failures) == 0,
     }
 
@@ -298,6 +346,21 @@ def print_summary(summary: dict[str, Any]) -> None:
     print(f"End:          {summary['end_timestamp']}")
     print(f"Events:       {summary['total_events']}")
     print()
+
+    # Print cycle analysis if present
+    cycle_analysis = summary.get("cycle_analysis", {})
+    cycles = cycle_analysis.get("cycles", [])
+    if cycles:
+        total = cycle_analysis.get("total_cycles", len(cycles))
+        print(f"WebSocket connection cycles: {total}")
+        if cycle_analysis.get("reconnect_loop"):
+            print("  ⚠️ RECONNECT LOOP DETECTED (>3 cycles)")
+        for c in cycles:
+            print(f"  [#{c['cycle_index']}] start={c.get('start_timestamp', '')}")
+        if total > 1 and not cycle_analysis.get("reconnect_loop"):
+            print("  ℹ️ Multiple cycles — likely page reload or reconnect lifecycle")
+        print()
+
     print("Stage checklist:")
     for stage in REQUIRED_STAGES + FRONTEND_STAGES + SHUTDOWN_STAGES:
         present = (
@@ -350,6 +413,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--path", type=Path, default=None, help="Path to trace_events.jsonl"
     )
+    parser.add_argument(
+        "--fail-on-reconnect-loop",
+        action="store_true",
+        default=False,
+        help="Exit nonzero if reconnect loop detected (>3 WebSocket connection cycles)",
+    )
     return parser
 
 
@@ -374,9 +443,15 @@ def main(argv: list[str] | None = None) -> int:
     summary = summarize(events, trace_id)
     print_summary(summary)
 
+    exit_code = 0
     if args.strict and not summary["ok"]:
-        return 1
-    return 0
+        exit_code = 1
+    if args.fail_on_reconnect_loop:
+        cycle_analysis = summary.get("cycle_analysis", {})
+        if cycle_analysis.get("reconnect_loop"):
+            print("❌ Reconnect loop detected (>3 cycles). Failing.")
+            exit_code = 1
+    return exit_code
 
 
 if __name__ == "__main__":

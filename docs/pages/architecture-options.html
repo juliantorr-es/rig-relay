@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Options: VSCodium Shell Lane — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="We evaluated three architectural approaches for integrating Rig Relay with VSCodium.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Architecture Options: VSCodium Shell Lane</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Architecture Options: VSCodium Shell Lane</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">We evaluated three architectural approaches for integrating Rig Relay with VSCodium.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Option A: Extension-only Control Plane (Recommended)</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">**Model:** User installs the standard VSCodium and adds the Rig Relay extension. *   **Pros:** *   Fastest path to dogfooding. *   Zero maintenance of the editor binary. *   Immediate compatibility with ChatGPT macOS &quot;Work with Apps&quot;. *   Least resistance for users who already have a preferred editor setup. *   **Cons:** *   Harder to &quot;WOW&quot; with a completely bespoke branded experience. *   User must manually install the extension (VSIX on VSCodium). *   **Security:** Extension host isolation; standard local WebSocket security.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Option B: Branded VSCodium Distribution</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">**Model:** A custom-built VSCodium binary (e.g., &quot;Rig Studio&quot;) with the extension pre-bundled and branding applied. *   **Pros:** *   Maximum product polish and &quot;premium&quot; feel. *   Can customize `product.json` to include proprietary APIs or marketplaces. *   **Cons:** *   Extremely high maintenance (upstream merges, CI/CD for binaries). *   Signing and notarization on macOS is a significant hurdle. *   Might be flagged as &quot;another AI IDE&quot; clone. *   **Security:** Harder to audit the base binary for telemetry/branding changes.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Option C: Hybrid pywebview + VSCodium</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">**Model:** Use the existing `pywebview` cockpit for mission control/chat, but communicate with a thin VSCodium extension purely for &quot;Go to File&quot; or &quot;Apply Patch&quot; actions. *   **Pros:** *   Reuses all current frontend investment. *   Keeps &quot;Control&quot; and &quot;Code&quot; strictly separated visually. *   **Cons:** *   Fragmented UX (switching windows constantly). *   Double the surface area for connections. *   **Security:** Most complex auth model (app &lt;-&gt; daemon &lt;-&gt; extension).</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Recommendation: Option A (Start with Extension)</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">Start with **Option A**. It allows us to prove the governance value of Rig Relay without getting bogged down in editor distribution mechanics. If the extension becomes indispensable, we can graduate to **Option B** (Branded Bundle) later for specific high-trust corporate environments.</p>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">Why not Option C?</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Rig should feel like a &quot;workbench&quot;, not a satellite. Integrating the prompt and evidence rails directly into the side-panel of the editor (Option A) provides a much tighter iteration loop for the developer.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vscodium-shell-lane/architecture-options.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Quality Audit Summary — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Generated**: 2026-05-16T04:45:48Z">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Quality Audit Summary</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Quality Audit Summary</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Generated**: 2026-05-16T04:45:48Z **Doctrine**: docs/governance/test-suite-doctrine.md</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Statistics</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Total test files</td><td>327</td></tr>
+<tr><td>Total findings</td><td>239</td></tr>
+<tr><td>conftest.py exists</td><td>True</td></tr>
+<tr><td>__pycache__/conftest*.pyc</td><td>1</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Findings by Severity</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- **critical**: 0 - **high**: 11 - **medium**: 20 - **low**: 64 - **info**: 144</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Findings by Rule</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- **DETERM_HARDCODED_PATH**: 11 - **DETERM_SLEEP**: 7 - **DUPLICATE_KNOWN_PAIR**: 2 - **DUPLICATE_SAME_MODULE**: 144 - **DUPLICATE_SAME_NAME_CROSS_DIR**: 55 - **LAYOUT_MIS_SCOPED_SCRIPTS**: 3 - **LAYOUT_ROOT_LEVEL**: 15 - **NAMING_VAGUE**: 2</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Marker Coverage</h2>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Marker</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>contract</td><td>3</td></tr>
+<tr><td>integration</td><td>7</td></tr>
+<tr><td>slow</td><td>8</td></tr>
+<tr><td>smoke</td><td>11</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Commands</h2>
+
+<pre id="code-12"><code class="language-bash"># Smoke suite (fastest confidence)
+uv run pytest -m smoke
+
+# Default developer suite (no slow/legacy/flaky/network/provider/destructive)
+uv run pytest -m &quot;not slow and not legacy and not flaky and not network and not provider and not destructive&quot;
+
+# Full suite
+uv run pytest
+
+# Test quality audit
+uv run python scripts/rig_relay_test_quality_audit.py</code></pre>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite/test_quality_summary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

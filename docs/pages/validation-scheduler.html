@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validation Scheduler — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="The Validation Scheduler is a Phase 0 control-plane system built into the Validate tool. It owns three responsibilities that parallel agents cannot reliably manage themselves: **caching**, **request c">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Validation Scheduler</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validation Scheduler</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">The Validation Scheduler is a Phase 0 control-plane system built into the Validate tool. It owns three responsibilities that parallel agents cannot reliably manage themselves: **caching**, **request coalescing**, and **bounded parallelism**.</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Agents do not choose wrappers, remember to check for running validations, or coordinate xdist flags. The Validate tool owns this.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Cache</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">How it works</h3>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">1. Before running a check, Validate computes an `input_fingerprint` from: - Normalized command fingerprint - `pyproject.toml` content hash (if present) - `uv.lock` content hash (if present) - `pytest.ini` / `setup.cfg` / `tox.ini` content hashes - `docs/schemas/*` file hashes (for `schema`-kind checks) - Python version - Tool versions (pytest, ruff, pyright) — hashed from `--version` output - Current working directory</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">2. A `cache_key` is derived from check identity + command fingerprint + input fingerprint + cwd.</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">3. The cache store is file-backed under `.build/rig/validation-cache/records/&lt;prefix&gt;/&lt;key&gt;.json`.</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Cache invalidation</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">A cache entry is invalidated when: - The command fingerprint changes (different args) - Any input file changes (pyproject.toml, uv.lock, pytest config, schemas) - Python version changes - Tool version changes - The cache record is corrupt (JSON parse failure) - `cache_policy=force_rerun` is set</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Reuse policy</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- **Passed results**: reused by default (`cache_status=&quot;hit&quot;`) - **Failed results**: written to cache but NOT reused unless `allow_failed_cache_reuse=true` - **Corrupt records**: treated as miss, rerun occurs - **`cache_policy=disabled`**: bypasses cache entirely - **`cache_policy=force_rerun`**: bypasses cache, forces re-execution</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Scheduler / Coalescing</h2>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Running lock</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Each cache key has a file-based running lock under `.build/rig/validation-scheduler/locks/`.</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- If a check with the same cache key is already running (`lock_running_checks=true`), the duplicate gets `scheduler_status=&quot;blocked_duplicate&quot;` and does NOT execute. - Locks expire after 5 minutes without heartbeat (stale detection). - Stale locks are cleaned up on next scheduler operation.</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Behavior</h3>
+
+<pre id="code-19"><code class="language-text">Check A starts → lock acquired for cache_key X
+Check B requested same X → lock active → B gets blocked_duplicate
+Check A finishes → lock released
+Check C requested X → lock free → runs normally</code></pre>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">Phase 0 limitation</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Following/waiting for in-flight checks is deferred. The requesting agent sees `blocked_duplicate` status and should retry later if needed.</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Bounded Parallelism</h2>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">Policy</h3>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Validate rewrites pytest commands to inject bounded xdist flags:</p>
+
+<table id="table-25" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Condition</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>Cache hit</td><td>No injection (no run occurs)</td></tr>
+<tr><td>Not pytest</td><td>Not applicable</td></tr>
+<tr><td>Already has `-n`</td><td>Not applicable (respects existing)</td></tr>
+<tr><td>Focused single file</td><td>Stays serial unless `parallel_policy=force`</td></tr>
+<tr><td>Schema validation</td><td>Stays serial</td></tr>
+<tr><td>ruff/pyright</td><td>Stays serial</td></tr>
+<tr><td>xdist unavailable</td><td>Falls back to serial, warning emitted</td></tr>
+<tr><td>Default</td><td>Injects `-n &lt;workers&gt; --dist &lt;mode&gt;`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">Worker limits</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- Default max workers: `min(4, os.cpu_count() or 1)` - Configurable via `max_workers` - Never `-n auto` by default — always bounded</p>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Why not `-n auto`</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">`-n auto` uses all CPU cores, which melts laptops during parallel agent activity. Bounded workers keep the machine usable.</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Validation Phases</h2>
+
+<table id="table-31" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Phase</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>`edit`</td><td>Full-suite validation emits `full_suite_during_edit_phase` warning. Cache still works normally.</td></tr>
+<tr><td>`pre_report`</td><td>Normal validation. No phase warnings.</td></tr>
+<tr><td>`cleanup`</td><td>Normal validation with cache.</td></tr>
+<tr><td>`final`</td><td>Normal validation with cache.</td></tr>
+</tbody>
+</table>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">Phases emit **warnings only** — never hard failures.</p>
+
+<h2 id="h2-33" class="disclosure-standard" data-disclosure-level="standard">Content-Light Records</h2>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Cache records contain: - `status`, `exit_code`, `duration_ms` - `stdout_sha256`, `stderr_sha256` - `stdout_bytes`, `stderr_bytes` - `failure_kind` - `cache_key`, `input_fingerprint`, `input_file_fingerprints` - `validation_phase`, `worker_count`, `distribution` - `warnings`</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Cache records do NOT contain: - Raw `stdout` / `stderr` content - File diffs or patches - Prompts or secrets - Full raw `argv` (only fingerprint)</p>
+
+<h2 id="h2-36" class="disclosure-standard" data-disclosure-level="standard">End-to-End Integration</h2>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">ValidateTool.run() directly owns cache and scheduler behavior — agents do not opt in:</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">1. Every `run()` call creates `ValidationCacheStore` and `ValidationSchedulerStore` from args. 2. For each check, the tool computes `input_fingerprint` and `cache_key`, looks up cache, and checks eligibility. 3. Cache hits return `_build_cached_result()` with `cache_status=&quot;hit&quot;` and the stored record&#x27;s metadata. 4. Cache misses run the check, store the result, and annotate the check with `cache_status=&quot;miss_ran&quot;`. 5. Scheduler acquires a file-based lock before running; duplicate cache keys get `scheduler_status=&quot;blocked_duplicate&quot;`. 6. `apply_parallel_policy()` injects bounded xdist flags for eligible pytest commands. 7. `check_lifecycle_policy()` emits `full_suite_during_edit_phase` warnings when appropriate. 8. On cache/scheduler errors, the tool falls through to the real check — never crashes.</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Test coverage (216 tests passing)</h3>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">End-to-end tests through `ValidateTool.run()` prove:</p>
+
+<table id="table-41" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test</th><th>What it proves</th></tr></thead>
+<tbody>
+<tr><td>`test_run_end_to_end_cache_hit`</td><td>First run executes; second identical call returns cached result with `cache_status=&quot;hit&quot;`</td></tr>
+<tr><td>`test_run_end_to_end_cache_miss_on_invalidation`</td><td>Unrelated file changes don&#x27;t invalidate; scope-based invalidation requires fingerprint change</td></tr>
+<tr><td>`test_run_end_to_end_cache_content_light`</td><td>Result has no raw stdout/stderr in JSON dump; cache metadata always present</td></tr>
+<tr><td>`test_run_end_to_end_cache_disabled_produces_no_cache`</td><td>`cache_policy=disabled` skips cache entirely, all checks show `cache_status=&quot;disabled&quot;`</td></tr>
+<tr><td>`test_run_end_to_end_force_rerun_ignores_cache`</td><td>`cache_policy=force_rerun` bypasses cache, re-runs check</td></tr>
+<tr><td>`test_run_end_to_end_scheduler_disabled_no_block`</td><td>`scheduler_policy=disabled` does not acquire locks</td></tr>
+<tr><td>`test_run_end_to_end_cache_error_resilient`</td><td>Corrupt cache JSON doesn&#x27;t crash — falls through to real check with `cache_status!=&quot;hit&quot;`</td></tr>
+<tr><td>`test_run_end_to_end_cache_on_profile_with_focused_test`</td><td>Path-scoped validation still caches properly</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">Pre-existing bug fix</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">`check_missing_dependency()` previously checked every non-flag token as a potential binary, which broke multi-word commands like `git status --short` (would check `status` as a binary). Fixed to only check the first resolvable binary token.</p>
+
+<h2 id="h2-44" class="disclosure-standard" data-disclosure-level="standard">Phase 0 Limitations</h2>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">- No full coverage dependency graph - No pytest-testmon integration - No remote cache - No wait/follow for in-flight checks (deferred) - No cross-machine cache - No heartbeat renewal on running locks - No `$HOME/.rig/relay` writes — cache is project-local under `.build/rig/` - Schema validation stays serial even with `parallel_policy=auto`</p>
+
+<h2 id="h2-46" class="disclosure-standard" data-disclosure-level="standard">Configuration</h2>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Via `ValidateArgs`:</p>
+
+<table id="table-48" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`cache_policy`</td><td>`&quot;enabled&quot;`</td><td>Cache: enabled, disabled, force_rerun</td></tr>
+<tr><td>`allow_failed_cache_reuse`</td><td>`false`</td><td>Reuse failed cache records</td></tr>
+<tr><td>`cache_root`</td><td>`None`</td><td>Override cache directory</td></tr>
+<tr><td>`scheduler_policy`</td><td>`&quot;enabled&quot;`</td><td>Scheduler: enabled, disabled</td></tr>
+<tr><td>`lock_running_checks`</td><td>`true`</td><td>Prevent duplicate execution</td></tr>
+<tr><td>`validation_phase`</td><td>`&quot;pre_report&quot;`</td><td>Lifecycle phase</td></tr>
+<tr><td>`parallel_policy`</td><td>`&quot;auto&quot;`</td><td>Parallel: auto, disabled, force</td></tr>
+<tr><td>`max_workers`</td><td>`None`</td><td>Max parallel workers</td></tr>
+<tr><td>`xdist_distribution`</td><td>`&quot;loadfile&quot;`</td><td>xdist distribution mode</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/validation-scheduler.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

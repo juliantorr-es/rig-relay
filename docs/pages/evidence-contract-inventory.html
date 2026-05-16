@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Evidence Contract Inventory — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Evidence Contract Inventory</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Evidence Contract Inventory</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: evidence</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s evidence model is centered around a sequential, append-only JSONL observability log (`observability.jsonl`) and side-loaded JSON artifacts for large data blobs (context assembly, layouts, tool outputs). The system relies on `dump_canonical_json` (sorted keys, compact separators) for most evidence-grade outputs, providing a strong baseline for determinism. However, session-level isolation and current-run guarantees are still maturing.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Evidence Contract Inventory Table</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Evidence type</th><th>File pattern</th><th>Event name</th><th>Writer</th><th>Reader</th><th>Current guarantees</th><th>Missing guarantees</th><th>Test coverage</th><th>Maturity</th></tr></thead>
+<tbody>
+<tr><td>**Observability Log**</td><td>`observability.jsonl`</td><td>Multiple</td><td>`local.log_local_event`</td><td>`DuckDBProjection`</td><td>Canonical JSON, Sequential</td><td>Monotonic sequence IDs</td><td>High</td><td>Evidence-Grade Candidate</td></tr>
+<tr><td>**Tool Artifact**</td><td>`tool-results/*.json`</td><td>`artifact.tool_output_written`</td><td>`ArtifactWriter`</td><td>User/Manual</td><td>Atomic write, SHA256 record</td><td>Content-addressed naming</td><td>Med</td><td>Evidence-Grade</td></tr>
+<tr><td>**Assembly Report**</td><td>`context/assembly_*.json`</td><td>`context.assembly_reported`</td><td>`assembler.py`</td><td>`DuckDBProjection`</td><td>Canonical JSON</td><td>Hash-based identity</td><td>Med</td><td>Telemetry</td></tr>
+<tr><td>**Layout Plan**</td><td>`context/layout_*.json`</td><td>`context.layout_planned`</td><td>`assembler.py`</td><td>`AgentLoop`</td><td>Canonical JSON</td><td>Hash-based identity</td><td>Med</td><td>Telemetry</td></tr>
+<tr><td>**Shadow Request**</td><td>`context/shadow_*.json`</td><td>`context.shadow_request_assembled`</td><td>`assembler.py`</td><td>Manual/CI</td><td>Canonical JSON</td><td>Consistent triggering</td><td>Low</td><td>Telemetry</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Evidence Lifecycle Map</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">1.  **Session Start**: `SESSION_STARTED` event emitted to `observability.jsonl`. 2.  **Tool Execution**: Output captured; if &gt;16KB, `ArtifactWriter` writes side-artifact and emits `ARTIFACT_WRITTEN`. 3.  **Context Prep**: `AgentLoop` calls `assembler` to build assembly report and layout plan. 4.  **Reporting**: `ASSEMBLY_REPORTED` and `LAYOUT_PLANNED` events emitted; JSON files written to `context/`. 5.  **LLM Call**: `REQUEST_ACCOUNTED` event emitted with usage/token data. 6.  **Projection**: `DuckDBProjection` sweeps `observability.jsonl` files to produce `ObservabilitySummary`.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Contract Gaps</h2>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">EVIDENCE-CONTRACT-001: Shadow Request Inconsistency</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- **Location**: `vibe/core/agent_loop.py` - **Current behavior**: Shadow requests are only generated during `_chat` turns. - **Risk**: Turns that stop early (max turns, user cancel) may leave incomplete evidence of the context assembly. - **Recommended refinement**: Trigger assembly reporting at the start of every turn, regardless of backend call. - **Priority**: P1</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">EVIDENCE-CONTRACT-002: Content-Addressed Artifacts</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- **Location**: `vibe/core/telemetry/artifacts.py` - **Current behavior**: Filenames use UUIDs. - **Risk**: Harder to deduplicate or verify without reading the payload. - **Recommended refinement**: Use SHA256 of the payload for the filename. - **Priority**: P2</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Test Coverage Map</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- `tests/telemetry/test_observability_e2e.py`: Covers the full chain from emission to DuckDB. - `tests/telemetry/test_artifacts.py`: Covers atomic writing and threshold logic. - `tests/telemetry/test_context_blocks.py`: Covers assembly and layout schema validation.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Recommended Documentation Structure</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- `docs/evidence/observability_schema.md`: Definitions of every event and field. - `docs/evidence/artifact_lifecycle.md`: How large outputs are handled. - `docs/evidence/validation_doctrine.md`: How to verify a run&#x27;s integrity.</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Next Mission Recommendation</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">**Mission: Monotonic Sequence Enforcement** Implement a session-local monotonic counter for `observability.jsonl` events to guarantee gap detection and prevent event reordering during high-concurrency async operations.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/evidence-contract-inventory.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

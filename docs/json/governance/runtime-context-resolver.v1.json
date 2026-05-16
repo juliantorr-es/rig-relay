@@ -1,0 +1,186 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-context-resolver",
+  "document_type": "governance",
+  "title": "Runtime Context Resolver",
+  "summary": "`RuntimeContextResolver` is the relay-native control-plane helper for deriving canonical runtime coordination context from an intent.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/runtime-context-resolver.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Runtime Context Resolver",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "`RuntimeContextResolver` is the relay-native control-plane helper for deriving canonical runtime coordination context from an intent.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Agents should emit intents. They should not have to manually manage fragile coordination identifiers such as `session_id`, `task_id`, `lane_id`, or `lease_id`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "The resolver derives a read-mostly `RuntimeContext` that can be passed into tool and runtime control logic.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "What It Resolves",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- `session_id` - `task_id` - `lane_id` - `workspace_id` - `worktree_path` - `repo_root` - `coordination_scope` - `receipt_index_path` - `dirty_policy`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "What It Does Automatically",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- Infers `session_id` from current session metadata when available. - Derives a deterministic `task_id` from the session plus intent shape when explicit `task_id` is missing and task creation is allowed. - Infers `lane_id` from workspace/worktree context when available. - Refuses unsafe paths outside the resolved repo/worktree scope.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "What It Does Not Do",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- It does not acquire path reservations. - It does not run subprocesses. - It does not weaken the dirty guard. - It does not force-remove worktrees. - It does not perform mutation by itself.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Error Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- `session_required` when no session can be inferred. - `task_required` when task creation is disallowed and no task_id is provided. - `worktree_required` when a worktree is required but unavailable. - `unsafe_path` when a requested path escapes the resolved scope.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Future Integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Later runtime and mutation surfaces can consume the resolved context instead of making every agent thread carry bookkeeping IDs directly. That keeps lease and session handling in the control plane, where it belongs.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "The next bridge layer is the mission envelope documented in [mission-envelope.md](mission-envelope.md), which can compile a concrete runtime packet from the resolved context without requiring a full ADR/Sprint/Mission execution tree.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/runtime-context-resolver.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

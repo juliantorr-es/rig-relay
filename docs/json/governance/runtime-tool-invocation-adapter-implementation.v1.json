@@ -1,0 +1,556 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-tool-invocation-adapter-implementation",
+  "document_type": "governance",
+  "title": "Runtime Tool Invocation Adapter — Implementation",
+  "summary": "**Implemented (Phase 1, 2026-05).** Source: `rig_relay/runtime/tool_invocation_adapter.py`.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/runtime-tool-invocation-adapter-implementation.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Runtime Tool Invocation Adapter — Implementation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Implemented (Phase 1, 2026-05).** Source: `rig_relay/runtime/tool_invocation_adapter.py`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Scope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "This document covers the first implementation of the `RuntimeToolInvocationAdapter`. It converts a `RuntimeToolIntent` + `RuntimeContextResolution` into a safe `RuntimeToolInvocationEnvelope` or a structured refusal. The adapter does NOT execute tools, mutate files, acquire leases, or persist envelopes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Supported Tools",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Tool Name",
+        "Status",
+        "Behavior"
+      ],
+      "rows": [
+        [
+          "`write_file`",
+          "Implemented",
+          "Prepares write_file envelopes with path/content validation, expected hash enforcement for protected overwrites, and worktree-aware cwd"
+        ],
+        [
+          "`search_replace`",
+          "Implemented",
+          "Prepares search_replace envelopes with file_path/content validation, canonical metadata injection"
+        ],
+        [
+          "`validate`",
+          "Implemented",
+          "Prepares validate envelopes with profile/paths/dirty_policy injection from context"
+        ],
+        [
+          "`runtime_exec`",
+          "Implemented",
+          "Builds ExecutionRequest-shaped payload, validates via model construction, never acquires lease or executes"
+        ],
+        [
+          "`bash_legacy`",
+          "Implemented",
+          "Refused by default unless `legacy_fallback_allowed=True`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Refusal Taxonomy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Error Kind",
+        "Trigger"
+      ],
+      "rows": [
+        [
+          "`context_unresolved`",
+          "Resolution status is `blocked` or `refused`, or context is None"
+        ],
+        [
+          "`worktree_required`",
+          "`require_worktree=True` but no `worktree_path` in context"
+        ],
+        [
+          "`unsafe_path`",
+          "Requested path is outside repo_root or worktree scope"
+        ],
+        [
+          "`unsupported_mutation_location`",
+          "Mutation tool without worktree and `allow_main_repo_mutation=False`"
+        ],
+        [
+          "`expected_hash_missing`",
+          "`allow_overwrite_protected=True` without `expected_before_sha256`"
+        ],
+        [
+          "`invalid_payload`",
+          "Missing required payload fields (path, content, argv, file_path)"
+        ],
+        [
+          "`unsupported_tool`",
+          "Unrecognized tool name (or bash_legacy without explicit opt-in)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Enums",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeToolName",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "`write_file`, `search_replace`, `validate`, `runtime_exec`, `bash_legacy`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeToolInvocationStatus",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "`prepared`, `blocked`, `refused`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeToolInvocationErrorKind",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "`context_unresolved`, `session_required`, `task_required`, `worktree_required`, `unsafe_path`, `dirty_policy_failed`, `lease_conflict`, `path_reserved`, `expected_hash_missing`, `unsupported_tool`, `unsupported_mutation_location`, `invalid_payload`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Models",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeToolIntent",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- `intent_id`: str (required) - `tool_name`: RuntimeToolName (required) - `payload`: dict[str, Any] (default {}) - `requested_paths`: list[str] (default []) - `require_worktree`: bool (default False) - `allow_main_repo_mutation`: bool (default False)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeToolInvocationEnvelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "- `schema_version`: str (const `rig.relay.runtime_tool_invocation.v1`) - `invocation_id`: str (required) - `intent_id`: str (required) - `tool_name`: RuntimeToolName (required) - `status`: RuntimeToolInvocationStatus (required) - `session_id`, `task_id`, `lane_id`, `workspace_id`: optional str - `worktree_path`, `repo_root`, `cwd`: optional str - `payload`: dict[str, Any] - `requested_paths`: list[str] - `error_kind`, `refusal_reason`: optional",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "All models use `extra=\"forbid\"` and stable StrEnum serialization.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Adapter: `prepare()` Method",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Signature:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-25",
+      "type": "code",
+      "language": "python",
+      "content": "def prepare(\n    self,\n    intent: RuntimeToolIntent,\n    resolution: RuntimeContextResolution,\n) -> RuntimeToolInvocationEnvelope",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Behavior: 1. If resolution is blocked/refused → BLOCKED with CONTEXT_UNRESOLVED 2. If context is None → BLOCKED with CONTEXT_UNRESOLVED 3. If require_worktree and no worktree_path → BLOCKED with WORKTREE_REQUIRED 4. Resolve cwd: worktree_path → repo_root → None 5. If mutation tool and no worktree without allow_main_repo_mutation → REFUSED with UNSUPPORTED_MUTATION_LOCATION 6. Validate paths against repo/worktree scope → REFUSED with UNSAFE_PATH 7. Delegate to tool-specific handler",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-27",
+      "type": "heading",
+      "level": 2,
+      "content": "Tool-Specific Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-28",
+      "type": "heading",
+      "level": 3,
+      "content": "write_file",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "- Requires `path` and `content` in payload - If `allow_overwrite_protected=True` without `expected_before_sha256` → REFUSED with EXPECTED_HASH_MISSING - Uses worktree cwd when available",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-30",
+      "type": "heading",
+      "level": 3,
+      "content": "search_replace",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "- Requires `file_path` (or `file`) in payload - Preserves canonical session/task metadata - Refuses mutation into main repo without `allow_main_repo_mutation=True`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-32",
+      "type": "heading",
+      "level": 3,
+      "content": "validate",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "- Defaults profile to `\"quick\"` if not specified - Injects `workspace_root` from cwd if not set - Injects `paths` from intent's requested_paths if not set - Injects `expected_dirty_policy` from context if not set",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-34",
+      "type": "heading",
+      "level": 3,
+      "content": "runtime_exec",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "- Requires `argv` as non-empty list of strings - Validates payload shape by constructing an `ExecutionRequest` model (no persistence) - Puts ExecutionRequest fields flat in the payload (not nested under `_execution_request`) - Does NOT acquire lease or execute",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-36",
+      "type": "heading",
+      "level": 3,
+      "content": "bash_legacy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "- Refused by default unless `legacy_fallback_allowed=True` in payload - When allowed, requires `command` in payload",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-38",
+      "type": "heading",
+      "level": 2,
+      "content": "Raw Payload vs Receipt Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "Invocation envelopes carry operational input payloads that the tool needs to execute (file content, SEARCH/REPLACE blocks, argv). These are NOT content-light. Receipts, audit events, and projection integrity assessments derived from these envelopes MUST be content-light — they must not carry raw payloads.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-40",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "Schema file: `docs/schemas/rig.relay.runtime_tool_invocation.v1.schema.json`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "- Draft 7 - `additionalProperties: false` at all levels - Nullable fields for optional metadata - Enum validation for tool names, statuses, error kinds - Schema version constant: `rig.relay.runtime_tool_invocation.v1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-43",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "- **Dry-run runner**: `rig_relay/runtime/tool_invocation_dry_run.py` — validates adapter envelopes without executing tools. See [runtime-tool-invocation-dry-run.md](runtime-tool-invocation-dry-run.md).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-45",
+      "type": "heading",
+      "level": 2,
+      "content": "Deferred Features",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-46",
+      "type": "table",
+      "columns": [
+        "Feature",
+        "Phase",
+        "Reason"
+      ],
+      "rows": [
+        [
+          "Result/receipt schemas",
+          "Phase 2",
+          "Content-light receipt delivery after tool execution"
+        ],
+        [
+          "Lease acquisition",
+          "Phase 2",
+          "Requires ExecutionLease integration"
+        ],
+        [
+          "Supervisor dispatch",
+          "Phase 2",
+          "Requires RuntimeSupervisor integration"
+        ],
+        [
+          "Audit trail persistence",
+          "Phase 3",
+          "Requires AuditTrailStore integration"
+        ],
+        [
+          "Result validation",
+          "Phase 2",
+          "Schema-driven result contract after execution"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/runtime-tool-invocation-adapter-implementation.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

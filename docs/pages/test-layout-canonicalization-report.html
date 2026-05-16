@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Layout Canonicalization Report — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Generated**: 2026-05-16">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Layout Canonicalization Report</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Layout Canonicalization Report</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Generated**: 2026-05-16 **Branch**: main **HEAD**: 8d0b13c **Doctrine**: docs/governance/test-suite-doctrine.md</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Baseline Metrics</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Before</th><th>After</th></tr></thead>
+<tbody>
+<tr><td>Collected tests</td><td>6085</td><td>6085</td></tr>
+<tr><td>Collection errors</td><td>0</td><td>0</td></tr>
+<tr><td>Total test files</td><td>325</td><td>325</td></tr>
+<tr><td>Root-level warnings</td><td>23</td><td>15</td></tr>
+<tr><td>tests/scripts mis-scope warnings</td><td>11</td><td>3</td></tr>
+<tr><td>Known duplicate pairs</td><td>2</td><td>2</td></tr>
+<tr><td>Relocation manifest: pending</td><td>51</td><td>33</td></tr>
+<tr><td>Relocation manifest: moved</td><td>0</td><td>18</td></tr>
+<tr><td>Relocation manifest: resolved</td><td>2</td><td>2</td></tr>
+<tr><td>Relocation manifest: allowlisted</td><td>1</td><td>1</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Markers</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">All 13 markers registered in pyproject.toml: `smoke`, `contract`, `integration`, `e2e`, `packaging`, `slow`, `legacy`, `flaky`, `network`, `provider`, `destructive`, `migration`, `quarantine`</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Moves Performed (18 files)</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Identity → tests/identity/ (2)</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>From</th><th>To</th></tr></thead>
+<tbody>
+<tr><td>`tests/test_telemetry_consent.py`</td><td>`tests/identity/test_telemetry_consent.py`</td></tr>
+<tr><td>`tests/scripts/test_identity_providers.py`</td><td>`tests/identity/test_identity_providers.py`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Evidence → tests/evidence/ (3)</h3>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>From</th><th>To</th></tr></thead>
+<tbody>
+<tr><td>`tests/test_model_observations.py`</td><td>`tests/evidence/test_model_observations.py`</td></tr>
+<tr><td>`tests/test_observation_consent_integration.py`</td><td>`tests/evidence/test_observation_consent_integration.py`</td></tr>
+<tr><td>`tests/scripts/test_google_drive_upload.py`</td><td>`tests/evidence/test_google_drive_upload.py`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">CLI / Core → tests/cli/ and tests/core/ (6)</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>From</th><th>To</th></tr></thead>
+<tbody>
+<tr><td>`tests/test_cli_programmatic_preload.py`</td><td>`tests/cli/test_programmatic_preload.py`</td></tr>
+<tr><td>`tests/test_rig_relay.py`</td><td>`tests/cli/test_rig_relay.py`</td></tr>
+<tr><td>`tests/test_agents.py`</td><td>`tests/core/agents/test_agents.py`</td></tr>
+<tr><td>`tests/test_message_id.py`</td><td>`tests/core/test_message_id.py`</td></tr>
+<tr><td>`tests/test_message_merging.py`</td><td>`tests/core/test_message_merging.py`</td></tr>
+<tr><td>`tests/test_tagged_text.py`</td><td>`tests/core/utils/test_tagged_text.py`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Desktop → tests/desktop/ (7)</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>From</th><th>To</th></tr></thead>
+<tbody>
+<tr><td>`tests/scripts/test_desktop_projection.py`</td><td>`tests/desktop/test_projection.py`</td></tr>
+<tr><td>`tests/scripts/test_desktop_projection_contract.py`</td><td>`tests/desktop/test_projection_contract.py`</td></tr>
+<tr><td>`tests/scripts/test_websocket_server.py`</td><td>`tests/desktop/test_websocket_server.py`</td></tr>
+<tr><td>`tests/scripts/test_progress_events.py`</td><td>`tests/desktop/test_progress_events.py`</td></tr>
+<tr><td>`tests/scripts/test_desktop_authorization_receipts.py`</td><td>`tests/desktop/test_authorization_receipts.py`</td></tr>
+<tr><td>`tests/scripts/test_protected_intents_phase1.py`</td><td>`tests/desktop/test_protected_intents.py`</td></tr>
+<tr><td>`tests/scripts/test_desktop_intents.py`</td><td>`tests/desktop/test_intents.py`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Trivial Path Fixes</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- `tests/identity/test_telemetry_consent.py`: fixed `SCHEMA_PATH` from `.parent.parent` to `.parent.parent.parent` (depth change from root-level to identity/) - `tests/evidence/test_model_observations.py`: fixed `SCHEMA_DIR` same issue</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Pre-existing Failures (not caused by moves)</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- `tests/evidence/test_observation_consent_integration.py` (10 errors): `HarnessFilesManager already initialized` — global state, pre-existing - `tests/cli/test_programmatic_preload.py` (3 failures): monkeypatches `vibe.core.programmatic` (stale vibe-era reference) - `tests/core/agents/test_agents.py` (5 failures): Agent list changed (ORCHESTRATOR added), test expects old set - `tests/desktop/test_intents.py` (1 failure): Frontend button mismatch — pre-existing - `tests/desktop/test_projection.py` (1 failure): References deleted `scripts/rig_relay_desktop_cockpit.py`</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Remaining Debt</h2>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">Root-level warnings (15)</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">`test_agent_auto_compact`, `test_agent_backend`, `test_agent_observer_streaming`, `test_agent_override_resolve_permission`, `test_agent_stats`, `test_agent_tool_call`, `test_approve_always_permanent`, `test_config_paths`, `test_conftest_hygiene`, `test_deferred_init`, `test_install_script`, `test_middleware`, `test_reasoning_content`, `test_system_prompt`, `test_tracing`</p>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">Mis-scoped scripts (3)</h3>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">`tests/scripts/test_rig_relay_authorization_policy.py`, `tests/scripts/test_rig_relay_drive_and_cleanup.py`, `tests/scripts/test_rig_relay_telemetry_bundle.py`</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Duplicates Consolidated</h3>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">Observability</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- **Deferred**: `test_observability.py` and `test_observability_e2e.py` test different tiers (contract vs. integration/e2e). Consolidation blocked by pre-existing `vibe` module references in `real_telemetry_client` fixture. Both files have 12/20 broken tests due to stale `import vibe.core.*` calls that need `rig_relay` migration. - **Surviving canonical coverage**: Both files retained. Mark with `@pytest.mark.integration` after `vibe` → `rig_relay` fix.</p>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Bash</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- **Deferred**: `test_bash.py` is dirty (modified by parallel lane). Do not touch until RuntimeSupervisor Bash work stabilizes.</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Recommended Next Batch</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">1. Move remaining root-level agent tests → `tests/core/` (8 files) 2. Move remaining root-level core tests → `tests/core/` (5 files: config_paths, middleware, reasoning_content, system_prompt, tracing) 3. Move remaining 3 mis-scoped scripts to governance/evidence/telemetry 4. Consolidate observability duplicate pair 5. Consolidate Bash duplicate pair (after RuntimeSupervisor stabilizes)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite/test_layout_canonicalization_report.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

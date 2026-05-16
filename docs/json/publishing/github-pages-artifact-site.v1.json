@@ -1,0 +1,217 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "github-pages-artifact-site",
+  "document_type": "reference",
+  "title": "GitHub Pages — Artifact-Rendered Documentation Site",
+  "summary": "Rig Relay's documentation site is generated from structured artifacts, not",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/publishing/github-pages-artifact-site.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "GitHub Pages — Artifact-Rendered Documentation Site",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Rig Relay's documentation site is generated from structured artifacts, not raw Markdown. The pipeline is:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-3",
+      "type": "code",
+      "language": "text",
+      "content": "Markdown files (docs/, non-root)\n  → inventory_markdown()      scan + extract metadata\n  → write_all_artifacts()     JSON/JSONL/CSV artifacts\n  → render_site()             static HTML + CSS\n  → GitHub Pages deploy       actions/pages",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Local render",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run python scripts/rig_relay_docs_artifacts.py --render",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Outputs under `site/` (not committed): - `index.html` — overview, counts, recent docs - `documents.html` — all documents - `governance.html`, `audits.html`, `demos.html` — by kind - `code-fences.html` — extracted code blocks - `links.html` — extracted hyperlinks - `assets/site.css` — dark theme, no external CDN - `.nojekyll` — disables Jekyll processing",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Local doctor",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-8",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run python scripts/rig_relay_docs_artifacts.py --doctor",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Checks: artifacts exist, `site/index.html` exists, `.nojekyll` exists, no private paths leaked, no root Markdown converted.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Excluded files",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Root Markdown files (README.md, AGENTS.md, CONTRIBUTING.md, etc.) are excluded from the artifact pipeline. They remain as project-level documentation, not docs-site content.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Vendor/cache directories (`.git`, `.venv`, `.build`, `node_modules`, `__pycache__`) are excluded from scanning.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "GitHub Pages deployment",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "The workflow at `.github/workflows/pages.yml` runs on push to `main` when `docs/`, `rig_relay/docs_render/`, or the workflow itself changes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "It: 1. Checks out the repo 2. Installs uv and syncs dependencies 3. Runs `scripts/rig_relay_docs_artifacts.py --render` 4. Verifies `site/index.html` and `.nojekyll` 5. Uploads `site/` as a Pages artifact 6. Deploys to GitHub Pages",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Manual dispatch is also available from the Actions tab.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Configuration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "GitHub Pages source must be set to \"GitHub Actions\" in the repository settings: Settings → Pages → Build and deployment → Source: GitHub Actions.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "No branch-based deployment is needed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/publishing/github-pages-artifact-site.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Textual TUI Retirement Policy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Established.** The Textual TUI is a legacy/deprecated product UI, but it">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Textual TUI Retirement Policy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Textual TUI Retirement Policy</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Established.** The Textual TUI is a legacy/deprecated product UI, but it remains an active development compatibility surface until Relay CLI and the pywebview cockpit reach operational parity.</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">For Rig Relay&#x27;s supported terminal-native coding cockpit, see [Textual Rig Console](textual-rig-console.md).</p>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">Lifecycle States</h3>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>State</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`active-dev-compatibility`</td><td>Used by developers today; compatible fixes allowed; not the future product UI</td></tr>
+<tr><td>`deprecated-product-ui`</td><td>Explicitly not the future product UI; new product-only features do not target it</td></tr>
+<tr><td>`delete-candidate`</td><td>Potential removal target once parity is proven and no users need it for development</td></tr>
+<tr><td>`removed`</td><td>No longer present</td></tr>
+</tbody>
+</table>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">Current state:</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- Textual TUI: `active-dev-compatibility` - Textual TUI: `deprecated-product-ui`</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Core Policy</h2>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Textual TUI Is Legacy</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">The `vibe/cli/` Textual TUI (legacy_tui mode) is retained only as a compatibility surface for SSH, headless diagnostics, and development environments where the Relay cockpit or Relay CLI are not sufficient yet. It is **not** the primary product UI and is on the retirement path.</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- **No new product features should target the Textual TUI.** - Compatibility fixes are allowed when they preserve current development workflow. - No new widget, intent, or visual component should be developed for Textual. - Bug fixes and critical security patches for existing Textual code are acceptable during the alpha period to maintain compatibility.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Primary Desktop Surface</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">The **pywebview desktop cockpit** (`frontend/desktop/`) is the primary local human UX. All new cockpit features, widgets, and visual refinements target the HTML/CSS/JS frontend rendered by pywebview.</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Relay CLI Is Canonical For Scriptable Workflows</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Relay CLI is the canonical scriptable surface for status, validation, refinement, provider, consent, telemetry bundle, and storage workflows. Textual is not the long-term product surface, but it stays available while the Relay CLI and cockpit finish reaching operational parity.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">CLI Remains for Automation</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">The CLI interface (`bash`, scripting, CI, automation workers) remains supported for headless/automation use cases. The CLI is not a replacement for the desktop cockpit; it is a separate interface for non-interactive workflows.</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Textual Deletion Criteria</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">The Textual TUI may be removed when all of the following are true:</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">1. Relay CLI can run status, validation, refinement report, refinement packets, storage audit, provider status, consent status, telemetry bundle create/validate. 2. The pywebview cockpit can run safe intents reliably. 3. Progress timeline works in the cockpit. 4. Provider, consent, and identity setup are visible in the product surface. 5. Tests cover the replacement surfaces. 6. The user confirms the Textual workflow is no longer needed for development. 7. Removing Textual would not break packaging or compatibility entry points.</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Until these criteria are met, the Textual TUI remains only as a compat shim.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Migration Status</h2>
+
+<details id="table-24" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-24" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Area</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>pywebview cockpit IA</td><td>✅ Three-mode (Operate/Review/System)</td></tr>
+<tr><td>Safe intents (read-only)</td><td>✅ Implemented</td></tr>
+<tr><td>Protected intents</td><td>✅ Receipt-gated</td></tr>
+<tr><td>Provider onboarding</td><td>✅ Desktop-only (pywebview)</td></tr>
+<tr><td>Progress timeline</td><td>✅ Desktop-only (WebSocket)</td></tr>
+<tr><td>Consent management</td><td>✅ Desktop-only</td></tr>
+<tr><td>Model observation dataset</td><td>✅ Desktop-only (schemas/models)</td></tr>
+<tr><td>Textual-equivalent validation view</td><td>✅ Review mode</td></tr>
+<tr><td>Textual-equivalent system view</td><td>✅ System mode</td></tr>
+<tr><td>Textual shell commands</td><td>⏳ CLI/scripting workaround</td></tr>
+<tr><td>Textual development compatibility</td><td>✅ Active until parity</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Vibe Legacy Deprecation](vibe-legacy-deprecation.md) - [Relay Surface Matrix](relay-surface-matrix.md) - [Desktop Projection Contract](relay-desktop-projection-contract.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/textual-retirement-policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

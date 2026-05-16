@@ -1,0 +1,256 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "mission-router",
+  "document_type": "governance",
+  "title": "Rig Mission Router — Phase 0",
+  "summary": "**Status: Phase 0 — Deterministic Planning & Routing (Complete).**",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/mission-router.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig Mission Router — Phase 0",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Status: Phase 0 — Deterministic Planning & Routing (Complete).**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Vision",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "The Rig Mission Router is the \"brain\" of the fleet orchestrator. It accepts unstructured or semi-structured mission requests from users, normalizes them into a graph of mission nodes, classifies them according to risk and capability, and produces a deterministic execution plan.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "The router moves Rig from \"one mission at a time\" to \"batch mission orchestration\".",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Core Workflow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "1.  **Intake**: Accept a `MissionBatch` (a bundle of raw mission texts). 2.  **Normalization**: Parse raw text into `MissionNode` metadata (titles, domains, paths, size). 3.  **Classification**: Determine the `MissionRoute` for each node based on heuristics. 4.  **Dependency Planning**: Detect path and domain overlaps; serialize conflicting missions. 5.  **Grouping**: Organize nodes into `runnable_groups` that can be dispatched sequentially or in parallel. 6.  **Compilation**: Compile the plan into `FleetQueueItem` templates for the fleet queue.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Mission Route Types",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Route",
+        "Destination",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`local_runtime`",
+          "Local orchestrator",
+          "High-trust, low-risk missions requiring direct tool access."
+        ],
+        [
+          "`delegated_agent`",
+          "Remote agent",
+          "Isolated missions (e.g., docs, tests) that can run in a separate process."
+        ],
+        [
+          "`fleet`",
+          "Fleet decomposition",
+          "Massive missions that need to be broken down into sub-missions."
+        ],
+        [
+          "`patch_proposal`",
+          "Patch submission",
+          "Missions mutating shared core components; requires orchestrator review."
+        ],
+        [
+          "`human_review`",
+          "Human operator",
+          "High-risk or destructive missions requiring explicit user approval."
+        ],
+        [
+          "`blocked`",
+          "None",
+          "Invalid or impossible missions."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Routing Heuristics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "The Phase 0 router uses a deterministic heuristic classifier:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "*   **Destructive language**: Mentions of `git reset`, `git clean`, `git delete`, etc., route to `human_review`. *   **Approval/Merge language**: Mentions of `approve`, `apply`, `merge`, or `PR` route to `patch_proposal`. *   **Domain Isolation**: Missions restricted to `documentation`, `testing`, or `schema` domains route to `delegated_agent`. *   **Runtime Core**: Missions touching `rig_relay/runtime` route to `patch_proposal` to ensure shared-state integrity. *   **Scale**: Missions involving >= 3 domains or > 1000 chars of prompt route to `fleet` for further decomposition. *   **Conflict Serialization**: If two missions in a batch overlap on candidate paths, the router adds a dependency to ensure they run sequentially.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "5. Content-Light Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "The Mission Router adheres to the strict content-light principle:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "*   **No raw prompts** in `MissionPlan` or `MissionNode` output. *   **Summaries only**: `MissionNode` contains a `sanitized_text_summary` (first 200 chars) for UI/observability. *   **Payload Ref**: The raw mission text is retained only behind a `payload_ref` or in the original `MissionBatch` artifact. *   **No Blobs**: Projections never include file contents, diffs, secrets, or tool outputs.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "6. Relationship to Fleet Queue",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "The `MissionPlan` is a static blueprint. To execute, it must be compiled into `FleetQueueItem` templates.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "*   `local_runtime` and `delegated_agent` nodes become `runtime_exec` queue items. *   `patch_proposal` and `fleet` nodes become `message` queue items in Phase 0 (signaling intent). *   `human_review` and `blocked` nodes become `pause` queue items, blocking downstream progress until resolved.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "7. Deferred Features (Post-Phase 0)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "*   **LLM Decomposition**: Phase 0 uses simple regex/keyword heuristics. Future phases will use LLMs for deeper semantic planning. *   **Dynamic Re-routing**: The plan is currently static at intake. Future versions will support mid-mission plan revision. *   **Agent Spawning**: Real process/container management for `delegated_agent` is deferred. *   **Patch Application**: Automatic application of patches from `patch_proposal` routes is deferred.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/mission-router.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

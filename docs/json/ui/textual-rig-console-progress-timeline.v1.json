@@ -1,0 +1,477 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-rig-console-progress-timeline",
+  "document_type": "audit",
+  "title": "ProgressTimelineWidget — Design",
+  "summary": "**P4c implemented.** A dumb Textual widget that renders an",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/ui/textual-rig-console-progress-timeline.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "ProgressTimelineWidget — Design",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**P4c implemented.** A dumb Textual widget that renders an `ExecutionProgressProjection` without reading runtime events directly. Integrated into `DashboardProjection` and `DashboardScreen`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Motivation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "The Rig Console Dashboard needs to display runtime execution progress (status, timing, output byte counts, warnings, exit code) for the current invocation. Direct access to `RuntimeStreamEvent` objects from the widget would violate the projection pattern and risk accidental content leakage.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "`ProgressTimelineWidget` follows the `EvidenceRailWidget` pattern: it consumes a pre-aggregated `ExecutionProgressProjection` and renders it as a compact card in the dashboard's vertical layout.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Widget Architecture",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Location",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- Source: `vibe/cli/textual_ui/rig_console/widgets/progress_timeline.py` - Projection model: `rig_relay.desktop.execution_progress.ExecutionProgressProjection` - Exported via `__all__ = [\"ProgressTimelineWidget\"]`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Pattern",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Mirrors `EvidenceRailWidget` / `SessionPaneWidget` exactly:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-12",
+      "type": "code",
+      "language": "python",
+      "content": "class ProgressTimelineWidget(Vertical):\n    class Updated(Message):\n        def __init__(self, projection: ExecutionProgressProjection) -> None: ...\n\n    def __init__(self, projection: ExecutionProgressProjection | None = None, ...) -> None\n    def compose(self) -> ComposeResult\n    def update_projection(self, projection: ExecutionProgressProjection) -> None\n    def _render_all(self) -> None\n    def _update_static(self, css_class: str, text: str) -> None",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Children",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "1. A header `Static` with class `.progress-timeline-header`, always showing `\"Progress\"`. 2. A body `Static` with class `.progress-timeline-body`, whose text is rebuilt by `_build_body_text()` on each update.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Rendering",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "`_build_body_text()` returns a multi-line string. Sections:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "1. **Status line**: `\"status: <status>\"` + optional `\"  <elapsed_ms>ms\"` 2. **Identity line**: Space-separated short IDs — `\"inv: <12chars>\"`, `\"lease: <12chars>\"`, `\"req: <12chars>\"`. Only present if field is set. 3. **Heartbeat line**: `\"heartbeats: <count>\"`. Only if `heartbeat_count > 0`. 4. **Output line**: `\"stdout: <bytes>b\"` and/or `\"stderr: <bytes>b\"` plus `\"(truncated)\"` badge when respective truncation flag is set. 5. **Warning line**: `\"warnings: <count>\"` + `\" [<kind>]\"` + `\" <message>\"`. Only if `warning_count > 0`. Messages capped at 200 chars. 6. **Terminal lines**: Separate lines for `exit: <code>`, `error: <kind>`, `refused: <reason>`. Only present when respective field is set.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "If the projection is empty (no meaningful data), renders: `\"No runtime execution yet.\"`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "Empty-state detection (`_is_empty`)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "A projection is considered empty when all of the following are true:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "- `status == \"pending\"` (default) - `invocation_id` is None - `lease_id` is None - `request_id` is None - `heartbeat_count == 0` - `warning_count == 0` - `last_event_at` is None - `exit_code` is None - `error_kind` is None - `refusal_reason` is None - `stdout_bytes` is None - `stderr_bytes` is None - `elapsed_ms` is None",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "CSS",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-23",
+      "type": "code",
+      "language": "css",
+      "content": "ProgressTimelineWidget {\n    width: 100%;\n    height: auto;\n    padding: 0 1;\n    margin: 0 0 1 0;\n    background: $surface;\n    border: solid $border;\n}\n\nProgressTimelineWidget > .progress-timeline-header {\n    width: 100%;\n    height: auto;\n    text-style: bold;\n    color: $text;\n}\n\nProgressTimelineWidget > .progress-timeline-body {\n    width: 100%;\n    height: auto;\n    color: $text;\n    padding: 0 0 0 1;\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-24",
+      "type": "heading",
+      "level": 2,
+      "content": "Projection Integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "DashboardProjection changes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "An optional field was added to `DashboardProjection`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-27",
+      "type": "code",
+      "language": "python",
+      "content": "execution_progress: ExecutionProgressProjection | None = None",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "When `None`, the widget defaults to `ExecutionProgressProjection()` (empty state).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-29",
+      "type": "heading",
+      "level": 3,
+      "content": "DashboardScreen integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "In `compose()`, the widget is yielded between the activity zone and the footer, always present:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-31",
+      "type": "code",
+      "language": "python",
+      "content": "yield Horizontal(\n    SessionPaneWidget(proj.session),\n    EvidenceRailWidget(proj.evidence),\n    classes=\"dashboard-activity\",\n)\nyield ProgressTimelineWidget(proj.execution_progress or None)\nyield FooterStatusWidget(proj)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "In `_render_all()`, the widget's projection is updated:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-33",
+      "type": "code",
+      "language": "python",
+      "content": "ep = proj.execution_progress or ExecutionProgressProjection()\ntimeline = self.query_one(ProgressTimelineWidget)\ntimeline.update_projection(ep)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Widget is always present in `compose()` to avoid conditional DOM issues with `query_one()`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-35",
+      "type": "heading",
+      "level": 2,
+      "content": "Content-light Guarantee",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "The widget renders only metadata from `ExecutionProgressProjection`. It never accesses:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "- `chunk_text` — raw output chunks - `stdout` / `stderr` (raw) — only byte counts `stdout_bytes`/`stderr_bytes` - `content` — generic raw content - `diff` / `snippet` / `patch` — diffs - `argv` — raw command - `output` — raw command output",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "Verified by: - Model `extra=\"forbid\"` prevents accidental field addition - Widget only accesses model fields via `proj.<field>` getters - Widget does not accept raw event objects - Test `test_widget_does_not_render_raw_output` asserts no raw patterns in rendered text - Test `test_no_forbidden_raw_field_names_in_widget` checks no forbidden attribute names on the widget class",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-39",
+      "type": "heading",
+      "level": 2,
+      "content": "Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "- Location: `tests/cli/textual_ui/rig_console/test_progress_timeline.py` - 40 tests covering: - Model validation (rejects raw fields, rejects extras, no raw field names) - Empty state (both explicit and default constructor) - Status line (with/without elapsed, different statuses) - Identity line (each ID separately, combined, truncated, none) - Heartbeat line (count shown, hidden when zero) - Output line (stdout, stderr, combined, truncated badges, missing) - Warning line (count, kind, message, long message truncation, hidden) - Terminal lines (exit code, error kind, refusal, combined, hidden) - Full projection (all sections rendered) - Failure projection (error + refusal rendered) - Update method (replaces data) - Content-light (no raw field names in widget, no raw output in text) - Edge cases (zero bytes, only warnings, only heartbeats, long IDs)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-41",
+      "type": "heading",
+      "level": 2,
+      "content": "Widget Behavior Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "1. **Always present in DOM** — even when `execution_progress` is `None`, the widget renders the empty state. No conditional mounting.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "2. **Content-light only** — never reads runtime events or raw output streams. Only renders already-aggregated projection data.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "3. **Projection-absent → empty state** — when `execution_progress` field is not set (None), the widget defaults to an empty projection.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "4. **Projection-present → full render** — when a non-empty projection is received, the widget renders all available sections.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "5. **Re-render via update_projection** — calling `update_projection()` replaces internal state, re-renders, and posts an `Updated` message.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-47",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "- [Execution Progress Projection](../governance/execution-progress-projection.md) - [EvidenceRailWidget](textual-rig-console-evidence-rail.md) - [Dashboard Screen](textual-rig-console-dashboard.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/ui/textual-rig-console-progress-timeline.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

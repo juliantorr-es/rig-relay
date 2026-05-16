@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversation Summary: Test Suite Quality Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date:** 2025-06-13">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Conversation Summary: Test Suite Quality Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Conversation Summary: Test Suite Quality Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2025-06-13 **Branch:** main (HEAD `384e4860b14959769a14fbcb5b4ca27618dad861`) **Session ID:** test-suite-quality-audit</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Mission</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Audit the current test suite for redundancy, low-value assertions, brittle tests, oversized files, slow/poorly scoped tests, and gaps in meaningful behavioral coverage. Produce a cleanup and consolidation roadmap without changing tests.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Performed a comprehensive audit focused on validate tests, receipt emission/policy/index, mutation tool tests (bash, search_replace, write_file), schema validation, governance tests, and subprocess/git test patterns.</p>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">Key findings</h3>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">1. **11 duplicate/near-duplicate groups** identified across 16 focus files 2. **1 exact duplicate** (test_collect_git_state_non_repo) and **~15 near-duplicates** between test_validate.py and test_validate_git_state.py 3. **test_validate.py** is the largest test file at 1,797 lines / 127 tests; removing 19 git-state duplicates would reduce it to ~1,480 lines / 108 tests with zero coverage loss 4. **11 coverage gaps** across receipt pipeline E2E, model-dump vs schema validation, dirty policy E2E, and write_file receipt testing 5. **5 untracked validate_*.py module files** appeared mid-session (from prior session&#x27;s work — not touched) 6. **Brittle patterns:** private helper assertion tests, exact string matching on refusal messages, one remaining `# type: ignore` 7. **Subprocess/git tests** span 7 files; only 1 file (test_validation_suite.py) uses pytest-from-inside-pytest</p>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">Created artifacts</h3>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Type</th></tr></thead>
+<tbody>
+<tr><td>`docs/audits/tests/test-suite-quality-audit.md`</td><td>Main audit report</td></tr>
+<tr><td>`docs/audits/tests/test-quality-taxonomy.md`</td><td>Category definitions</td></tr>
+<tr><td>`docs/audits/tests/test-cleanup-roadmap.md`</td><td>7-stage cleanup plan</td></tr>
+<tr><td>`docs/audits/tests/data/test_file_inventory.jsonl`</td><td>16 file records</td></tr>
+<tr><td>`docs/audits/tests/data/test_duplicate_candidates.jsonl`</td><td>11 duplicate groups</td></tr>
+<tr><td>`docs/audits/tests/data/test_coverage_gap_inventory.jsonl`</td><td>11 coverage gaps</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">Out-of-scope finding recorded</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- `finding_20250613_validate_test_duplication` — test_validate.py / test_validate_git_state.py overlap (appended to `docs/findings/out-of-scope-findings.jsonl`)</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Recommended next slice</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Stage 2 (Validate dedup — safest, highest ROI) + Stage 3 (Schema contract tests — fills most critical coverage gap).</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/conversations/2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

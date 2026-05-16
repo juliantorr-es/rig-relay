@@ -1,0 +1,216 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "extension-spike-results",
+  "document_type": "audit",
+  "title": "Audit: VSCodium Extension Feasibility Spike Results",
+  "summary": "The spike confirms that a standard VSCodium extension can serve as a high-fidelity, governed shell for Rig Relay. Connectivity is robust, the protocol is stable for remote projections, and the develop",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/vscodium-shell-lane/extension-spike-results.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Audit: VSCodium Extension Feasibility Spike Results",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Executive Summary: GO",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The spike confirms that a standard VSCodium extension can serve as a high-fidelity, governed shell for Rig Relay. Connectivity is robust, the protocol is stable for remote projections, and the development model avoids the risks of an IDE fork.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Connectivity & Protocol",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "*   **WebSocket Bridge**: Successfully implemented a `ws` client in the extension host. *   **Authentication**: Token-gated handshake works as expected. *   **Idempotency**: Sequence tracking (`seq`) successfully filters stale messages during reconnects. *   **Event Handling**: The `rig.ws.server.delta.v1` schema correctly updates the frontend without requiring a full re-snapshot.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Protocol Gaps Found",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "*   **Token Discovery**: The token currently must be manually copied. Future iterations should use a local discovery file (e.g. `~/.rig/relay/ws_discovery.json`) with restricted permissions. *   **Binary Content**: The current protocol is JSON-only. While content-light projections avoid large payloads, very long reasoning streams may benefit from compression or chunking.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Packaging & Distribution",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "*   **Open VSX**: The extension uses standard VS Code APIs (v1.90) and is compatible with Open VSX. *   **Sideloading**: Sideloading via VSIX is confirmed as a viable path for VSCodium users. *   **Dependencies**: The `ws` library must be bundled. Recommend using `esbuild` or `webpack` for final packaging to minimize the VSIX size.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "5. ChatGPT macOS \"Work with Apps\" Compatibility",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "*   **Standard Binary**: By using a standard VSCodium extension rather than a fork, we remain compatible with OpenAI's macOS accessibility hooks. *   **Context Visibility**: ChatGPT can \"see\" the Rig side-panel because it is a standard Webview. This is a product advantage (collaborative agents) rather than a risk, provided governance remains in the daemon.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "6. Security Posture",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "*   **Safe-by-Design**: The extension never performs file I/O or shell execution. It acts strictly as a display for the daemon's projections. *   **Raw Data Isolation**: The spike successfully maintained the content-light boundary. Raw stdout/stderr never left the daemon.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "7. MVP Hardening Results (Current Status)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "The feasibility spike has been hardened into a product-ready MVP architecture: *   **Secure Token Storage**: Switched from standard settings to `SecretStorage` to prevent token leakage in `settings.json`. *   **Theme Integration**: The UI now dynamically adapts to VS Code's Light, Dark, and High Contrast themes using native CSS variables. *   **Protocol Negotiation**: Handshake now includes `client_protocol_version` and compatibility checks. *   **Webview Security**: Implemented strict CSP and nonces; Webview is restricted to the extension's local resource roots. *   **Daemon Discovery**: Support for `.rig/daemon/console.json` enables zero-config connection for project-specific daemons.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "8. Remaining Risks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "*   **Worktree Lane Sync**: Ensuring the editor accurately reflects the agent's worktree lane without confusing the developer. *   **Marketplace Friction**: Managing sideloading/distribution for VSCodium users who lack access to the Microsoft Marketplace.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "9. Final Verdict: PROCEED TO GOVERNANCE HARDENING",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "The MVP client is stable. The next phase should focus on the **Evidence Rail** (Tree View for receipts) and **Governed Patch Review**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/vscodium-shell-lane/extension-spike-results.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

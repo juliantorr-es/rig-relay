@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture guard tests — proposed (not implemented) — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Proposed date: 2026-05-15">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Architecture guard tests — proposed (not implemented)</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Architecture guard tests — proposed (not implemented)</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Proposed date: 2026-05-15</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">When to implement</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">After SubagentRuntime exists and AgentLoop is renamed to OrchestratorLoop.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Guard tests</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Test</th><th>Assertion</th><th>Risk</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>`test_ralph_cannot_instantiate_agent_loop`</td><td>Ralph modules import none of `AgentLoop`, `OrchestratorLoop`, `VibeAcpAgentLoop`</td><td>Low — Ralph is already observe-only</td></tr>
+<tr><td>2</td><td>`test_subagent_profile_uses_subagent_runtime`</td><td>Assignable `SubagentProfile` constructs via `SubagentRuntime`, not full `AgentLoop`</td><td>High — currently `task.py` spawns full AgentLoop</td></tr>
+<tr><td>3</td><td>`test_only_orchestrator_calls_conversation_loop`</td><td>`_conversation_loop` is called only from `OrchestratorLoop` (formerly AgentLoop)</td><td>Medium — desktop and ACP both call it</td></tr>
+<tr><td>4</td><td>`test_tool_runtime_is_only_tool_execution_path`</td><td>All tool execution goes through `ToolRuntime.execute_one()` — no bypass</td><td>Low — already true</td></tr>
+<tr><td>5</td><td>`test_runtime_supervisor_is_only_subprocess_authority`</td><td>All subprocess creation goes through `RuntimeSupervisor` — no raw `subprocess.run()`</td><td>Medium — bash tool and validate runner both use it</td></tr>
+<tr><td>6</td><td>`test_ralph_never_constructs_toolruntime_or_agent`</td><td>Ralph modules import no tool execution or agent infrastructure</td><td>Low — already observe-only</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Implementation notes</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- Tests 1, 2, 3, and 6 can use AST-based import scanning (like existing `test_architecture_boundaries.py`) - Tests 4 and 5 need runtime/monkeypatch verification - All tests are `pytest.mark.xfail` until SubagentRuntime exists</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/agent-loop/architecture-guards-proposal.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

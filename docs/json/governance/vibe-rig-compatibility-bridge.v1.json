@@ -1,0 +1,168 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "vibe-rig-compatibility-bridge",
+  "document_type": "governance",
+  "title": "Vibe / Rig Compatibility Bridge",
+  "summary": "This document records the temporary Route 3 bridge between the base vibe session",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/vibe-rig-compatibility-bridge.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Vibe / Rig Compatibility Bridge",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "This document records the temporary Route 3 bridge between the base vibe session path and the Rig Relay harness.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- Ordinary prompt text enters through `CodingSessionBridge`. - `RuntimeSessionAdapter` uses the base vibe `AgentLoop.act(...)` turn path for normal coding prompts when no hardened Rig equivalent exists. - `FixtureSessionAdapter` provides deterministic transcript events for tests. - Hardened Rig primitives stay authoritative for validate, queue, fleet, mission routing, audit, receipts, and governance. - Widgets and Textual surfaces must call the bridge or provider boundary, not raw agent-loop, tool, or SDK internals.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Content-Light Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- Transcript projections may show user-visible and assistant-visible chat text. - Tool summaries must be reduced to metadata, hashes, and sanitized status. - Raw stdout, stderr, diffs, file contents, argv, secrets, and raw payloads are forbidden in generic dashboard projections.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Streaming Turn Model (Phase K)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "`RuntimeSessionAdapter.submit_user_message()` no longer blocks until the turn completes. It starts an `asyncio.Task` that iterates `AgentLoop.act(...)` in the background, storing `CodingTranscriptItemProjection` records as each event arrives. The method returns immediately with `accepted=True, status=\"running\"`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "The dashboard worker polls `events_since(cursor)` in a 50ms loop to receive new events incrementally. Turn lifecycle is signalled via `kind=\"turn_status\"` records (`completed`/`failed`/`cancelled`).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Cancellation calls `cancel_turn()` on the adapter, which cancels the background task and sets `turn_status=\"cancelled\"`. The `AgentLoop` yields control at its next await point, propagating `CancelledError` through the background task.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Three new protocol members were added: - `cancel_turn()` — cancel the active background turn - `is_turn_active` — property, True while a turn is processing - `wait_for_turn()` — await the background task (test support) - `turn_status` — property, one of `idle`, `running`, `completed`, `failed`, `cancelled`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Fallback Order",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "1. Use hardened Rig functionality when available. 2. Fall back to the base vibe session path through the bridge when needed. 3. Refuse safely when neither exists.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/vibe-rig-compatibility-bridge.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

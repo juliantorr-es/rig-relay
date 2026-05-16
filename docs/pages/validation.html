@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evidence Validation — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Rig Relay stores evidence under a selected evidence root. A session is one">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Evidence Validation</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Evidence Validation</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Evidence Model</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Rig Relay stores evidence under a selected evidence root. A session is one directory under that root, and the session directory contains:</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">- `observability.jsonl`: append-only JSON Lines telemetry for the session - `context/`: context assembly, layout, and shadow-request reports when present - `artifacts/tool-results/`: tool-output artifact JSON files when present - `manifest.json`: a minimal session index when the session has been finalized</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">The validator checks the current session only. It does not repair, rewrite, or generate missing evidence.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Evidence Root Modes</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- `user_global` (**Default and preferred policy**) - `repo_local` (**Test/debug/isolation mode**) - `explicit_home` - `legacy_vibe_home` - `test_temp`</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Current precedence remains unchanged:</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">1. `RIG_RELAY_HOME` 2. default user-global Relay home 3. legacy fallback only when canonical home is absent and legacy config is allowed</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- Normal dogfood and project work should use the **User Global** Relay home. - Repo-local evidence is observable and supported for validation, but it is reserved for **isolated experiments, deterministic tests, and explicit exports**. - It is not the default doctrine for project history.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Doctor CLI</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Validate one selected session:</p>
+
+<pre id="code-13"><code class="language-bash">rig-relay doctor evidence --evidence-root &lt;path&gt; --session &lt;session-id&gt;
+rig-relay doctor evidence --evidence-root &lt;path&gt; --session &lt;session-id&gt; --json</code></pre>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Exit behavior:</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- `0` for `pass` and `warn` - `1` for `fail`</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Human output includes:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- status - evidence root - session id - root mode/source when available - event count - referenced file count - unreferenced evidence file count - malformed event count - warnings - failures</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">JSON output uses the same structured result fields.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">`doctor evidence` is read-only:</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- it reads existing evidence - it does not mutate sessions - it does not create manifests - it does not repair missing files - it does not change root resolution - it does not scan global sessions unless the caller explicitly points it there</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Smoke Workflow</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">The canonical evidence smoke is provider-independent:</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">1. run the repo-local evidence smoke 2. identify the session root 3. validate that selected session with `doctor evidence` 4. expect manifest, observability, context, and artifact evidence when the smoke exercises those paths</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Do not treat the CLI inspection smoke as evidence coverage. CLI inspection proves command viability; the repo-local smoke proves the evidence-producing internals.</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Manifest Semantics</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">`manifest.json` lives at:</p>
+
+<pre id="code-27"><code class="language-text">&lt;evidence_root&gt;/sessions/&lt;session_id&gt;/manifest.json</code></pre>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">It is a minimal canonical JSON index. Current entries include:</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- `observability.jsonl` - tool-output artifacts - context assembly reports - context layout reports - shadow-request reports</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">Each entry records:</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- `evidence_kind` - relative path only - file-byte SHA-256 - size in bytes - event name when known</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">The validator prefers the manifest when present and falls back to scan-based validation for legacy sessions without a manifest.</p>
+
+<h2 id="h2-33" class="disclosure-standard" data-disclosure-level="standard">Artifact Hash Semantics</h2>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Tool-output artifacts have two relevant hashes:</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">- `payload_sha256`: SHA-256 of the canonical payload object - `artifact_record_sha256`: SHA-256 of the canonical artifact envelope without the self-referential hash field</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">`evidence_sha256` in observability events references the evidence contract used by the current writer. For tool-output artifacts, the validator checks the artifact record hash contract rather than blindly assuming the raw file bytes are the event hash target.</p>
+
+<h2 id="h2-37" class="disclosure-standard" data-disclosure-level="standard">Partial Evidence Behavior</h2>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Expected behavior for incomplete sessions:</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">- missing evidence root: fail - missing session directory: fail - missing `observability.jsonl`: fail - malformed JSONL: fail - missing `rig.relay.session.started`: fail - missing root metadata on an old session: warn - missing manifest: warn, then scan fallback - missing `rig.relay.session.closed`: warn - missing referenced evidence file: fail - hash mismatch: fail - unsafe path or absolute path: fail - unreferenced governed evidence file: fail - optional context reports absent with no matching event: warn or ignore</p>
+
+<h2 id="h2-40" class="disclosure-standard" data-disclosure-level="standard">Next Layer</h2>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">The current validator and manifest give us a local integrity gate: selected session, file presence, relative-path safety, hash checks, and event/file parity. The next layer is a receipt-chain or Merkle-backed design that adds chained integrity across events and finalization receipts. That layer should build on the validator and manifest instead of replacing them.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/evidence/validation.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

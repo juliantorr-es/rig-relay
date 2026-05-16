@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Worktree Manager — Governance &amp; Safety — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="The `WorktreeManager` (`rig_relay.coordination.worktree_manager.py`) provides">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Worktree Manager — Governance &amp; Safety</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Worktree Manager — Governance &amp; Safety</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">The `WorktreeManager` (`rig_relay.coordination.worktree_manager.py`) provides relay-native git worktree lifecycle for agent/lane execution isolation. Worktrees are checked out under a configurable `worktree_root` (default: `&lt;repo&gt;/.rig/relay/worktrees/`) and are isolated from the main working tree.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">API</h2>
+
+<pre id="code-5"><code class="language-python">mgr = WorktreeManager(
+    repo_root=Path(&quot;/path/to/repo&quot;),
+    worktree_root=Path(&quot;/path/to/repo/.rig/relay/worktrees&quot;),
+)
+
+# Create a linked worktree with a new branch
+result = mgr.create(workspace_id=&quot;lane-42&quot;, branch_name=&quot;feat/lane-42&quot;)
+
+# Remove a clean worktree (refuses dirty without force=True)
+result = mgr.remove(&quot;lane-42&quot;)
+
+# Force-remove a dirty worktree (use with caution)
+result = mgr.remove(&quot;lane-42&quot;, force=True)
+
+# Get HEAD SHA
+sha = mgr.get_head_hash(&quot;lane-42&quot;)
+
+# List all managed worktrees
+records = mgr.list_worktrees()
+
+# Inspect a single worktree (includes dirty detection)
+record = mgr.inspect(&quot;lane-42&quot;)</code></pre>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Safety &amp; Path Policy</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- All worktree paths must be children of `worktree_root`. Path traversal (`../`, `~`, absolute paths) via `workspace_id` is rejected. - `workspace_id` is sanitized: no `/`, `\`, empty, too long, or path-traversal segments. - `branch_name` is sanitized: no spaces, unsafe git ref characters, empty, too long, `.lock` suffix, `..`, or `@{` syntax. - No `shell=True`. All git commands use argv subprocess calls via `_run_git()` with `cwd=repo_root`.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Git Commands Used</h2>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Operation</th><th>Command</th><th>Safety</th></tr></thead>
+<tbody>
+<tr><td>create</td><td>`git worktree add -b &lt;branch&gt; &lt;path&gt; [&lt;ref&gt;]`</td><td>argv only</td></tr>
+<tr><td>remove</td><td>`git worktree remove &lt;path&gt;` (refuses dirty)</td><td>argv only</td></tr>
+<tr><td>remove (force)</td><td>`git worktree remove --force &lt;path&gt;`</td><td>argv only</td></tr>
+<tr><td>list</td><td>`git worktree list --porcelain`</td><td>argv only, parsed</td></tr>
+<tr><td>get_head</td><td>`git -C &lt;path&gt; rev-parse HEAD`</td><td>argv only</td></tr>
+<tr><td>inspect</td><td>`git -C &lt;path&gt; status --porcelain`</td><td>argv only, no side effects</td></tr>
+<tr><td>git check</td><td>`git rev-parse --git-dir`</td><td>argv only</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Dirty Worktree Removal Behavior</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- `remove(workspace_id)` without `force=True` checks for uncommitted changes via `git status --porcelain`. If output is non-empty, removal is refused with `error_kind=&quot;dirty_worktree&quot;`. - `remove(workspace_id, force=True)` passes `--force` to `git worktree remove`, allowing removal of dirty worktrees. Use with caution — uncommitted changes are discarded. - Force removal is available but not the default. The calling layer (`ExecutionLease`, `RuntimeSupervisor`) should decide when force is appropriate (e.g., lease expiry).</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Coordination Integration Status</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- **Current:** Minimal (A). WorktreeManager only manages git worktrees. No CoordinationStore integration for path reservation or lease lifecycle. - **Planned (P2 follow-up):** Reserve worktree path via CoordinationStore before create; release on remove/failure.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">DirtyFileGuard Boundary</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- `DirtyFileGuard` protects paths in the **main working tree** from accidental overwrite. It is NOT bypassed by WorktreeManager — WorktreeManager operates under `worktree_root`, not the main tree. - WorktreeManager must not write arbitrary files in the main repo. Its filesystem footprint is limited to git worktree metadata (managed by `git worktree`) and the checked-out worktree files under `worktree_root`. - Future `ExecutionLease` will bind tool execution to a worktree path, ensuring mutation tools operate in the isolated worktree rather than the main tree.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Content-Light Policy</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- `WorktreeRecord` contains no raw git output, no diffs, and no file contents. - `WorktreeOperationResult` uses structured `error_kind` and `refusal_reason` fields — no raw stdout/stderr. - `_GitCommandResult` (internal) hashes raw output but does not persist it. - Schema (`docs/schemas/rig.relay.worktree.v1.schema.json`) enforces `additionalProperties: false` on all object types.</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Known Limitations</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- No coordination lease integration (P2 follow-up). - No execution integration — worktrees are created but not bound to `ExecutionLease` or `RuntimeSupervisor` yet. - No automatic stale worktree cleanup — `list_worktrees()` reports missing worktrees but does not remove them. - No `git worktree prune` or `git worktree repair` operations. - WorktreeManager does not validate that `worktree_root` is outside the main working tree — this is the caller&#x27;s responsibility.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/worktree-manager.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

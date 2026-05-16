@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Surface: Rig MVP for VSCodium — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document defines the user experience and visual components of the Rig Relay extension.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Product Surface: Rig MVP for VSCodium</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Product Surface: Rig MVP for VSCodium</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document defines the user experience and visual components of the Rig Relay extension.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">1. Primary Surfaces</h2>
+
+<h3 id="h3-4" class="disclosure-standard" data-disclosure-level="standard">A. The &quot;Mission Control&quot; Sidebar (Webview View)</h3>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">*   **Chat Interface**: Minimalist prompt input and response stream. *   **Turn Status**: Visual indicator of the current agent turn (Thinking, Running Tool, Waiting for Approval). *   **Context Indicator**: Compact list of files currently being used as context (with &quot;remove&quot; buttons).</p>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">B. The &quot;Evidence Rail&quot; (Tree View)</h3>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">*   List of recent sessions and their associated receipts. *   Clicking a receipt opens a custom &quot;Receipt Viewer&quot; (read-only document) showing the rationale and verifiable evidence.</p>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">C. The &quot;Governance Bar&quot; (Status Bar)</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">*   Current Rig status (Ready, Active, Blocked). *   Workspace lane indicator (e.g., &quot;Lane: main&quot; or &quot;Lane: rig-patch-001&quot;).</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">D. The &quot;Patch Review&quot; Surface (Native Diff View)</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">*   When an agent proposes a change, Rig triggers a native VSCodium Diff view. *   Floating &quot;Approve&quot; / &quot;Reject&quot; buttons inside the diff surface or as a notification toast.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">2. Competitive Positioning</h2>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Feature</th><th>Like Antigravity / Cursor</th><th>Unlike Antigravity (The Rig Wedge)</th></tr></thead>
+<tbody>
+<tr><td>**Inline Edit**</td><td>Yes, via diff view.</td><td>Always governed; requires approval by default.</td></tr>
+<tr><td>**Context**</td><td>Yes, auto-detects files.</td><td>Verifiable: Every byte of context is recorded in a receipt.</td></tr>
+<tr><td>**Tools**</td><td>Yes, runs bash/ls.</td><td>Deterministic: Tools are hardened and permissioned.</td></tr>
+<tr><td>**Workspace**</td><td>Yes, uses project root.</td><td>Lane-based: Heavy use of worktrees to isolate agent noise.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">3. Minimum Visibility Rules</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">*   **Default Visible**: Mission Control Sidebar, Governance Bar. *   **Hidden behind commands**: Full Receipt Browser, Debug logs, Configuration. *   **Do Not Build Yet**: AI-driven file tree manipulation, generic multi-agent chat, auto-commit.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">4. Design Aesthetics</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">*   **Phosphor Monochrome**: Use the green-phosphor palette for the Webview components to maintain the Rig brand identity. *   **Bauhaus Functional**: Avoid &quot;glass&quot; or &quot;glow&quot; effects in the editor; stick to sharp, functional, high-contrast layouts that match VSCodium&#x27;s native feel.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vscodium-shell-lane/product-surface.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

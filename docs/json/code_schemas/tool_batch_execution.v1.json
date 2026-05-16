@@ -1,0 +1,102 @@
+{
+  "schema_version": "rig.code_schema.v1",
+  "document_id": "tool-batch-execution",
+  "schema_id": "tool_batch_execution.v1",
+  "title": "Tool Batch Execution",
+  "summary": "Contract for agent-loop tool batch execution, lifecycle tracing, and single-use semantics.",
+  "change_kind": "agent_loop_tool_runtime",
+  "status": "active",
+  "authority": {
+    "authority_kind": "repo_governance",
+    "trusted": true,
+    "source_path": "docs/json/governance/runtime-tool-invocation-execution.v1.json",
+    "source_hash": "sha256:f6bcb90f6e368a5163d7bb2d3becca79168db51e08a0ba9505faa8c481a3f436",
+    "review_status": "active",
+    "last_reviewed_at": "2026-05-18"
+  },
+  "intent_patterns": [
+    "tool batch",
+    "single-use tool lifecycle",
+    "pending tool batch",
+    "tool tracing",
+    "result envelope"
+  ],
+  "applies_when": {
+    "symptoms": [
+      "tools run out of order",
+      "batch execution skips tracing",
+      "tool results replay more than once"
+    ],
+    "traceback_patterns": [
+      "_perform_llm_turn",
+      "_execute_pending_tool_batch",
+      "execute_tool_batch"
+    ],
+    "file_patterns": [
+      "rig_relay/core/agent_loop.py",
+      "rig_relay/core/_tool_response.py",
+      "rig_relay/core/tools/**"
+    ],
+    "test_patterns": [
+      "tests/core/test_tool_runtime_v1.py",
+      "tests/core/test_subagent_runtime_tracing.py"
+    ],
+    "user_prompt_patterns": [
+      "tool batch",
+      "pending tools",
+      "single-use semantics"
+    ]
+  },
+  "required_invariants": [
+    "Tool batches are single-use.",
+    "Trace and receipt evidence must be emitted for execution.",
+    "Pending batch lifecycle is explicit.",
+    "tool_batch_id is required.",
+    "execute_tool_batch with no pending batch is a structured no-op or refusal.",
+    "Failure or cancellation cannot leave stale executable pending state.",
+    "Trace events are content-light and contain no raw args or secrets."
+  ],
+  "forbidden_patterns": [
+    "silent batch reuse",
+    "multiple executions of the same batch",
+    "batch without trace evidence"
+  ],
+  "required_files": [
+    "rig_relay/core/agent_loop.py",
+    "rig_relay/core/_tool_response.py",
+    "tests/core/test_tool_runtime_v1.py"
+  ],
+  "required_tests": [
+    "tests/core/test_tool_runtime_v1.py",
+    "tests/core/test_subagent_runtime_tracing.py"
+  ],
+  "validation_commands": [
+    "uv run pytest tests/core/test_conversation_runtime_phase3_loop_transfer.py -q",
+    "uv run pytest tests/core/test_tool_runtime_v1.py tests/core/test_subagent_runtime_tracing.py -q"
+  ],
+  "required_trace_events": [],
+  "required_receipts": [
+    "result envelope",
+    "tool batch receipt"
+  ],
+  "context_pack": {
+    "include_files": [
+      "rig_relay/core/agent_loop.py",
+      "rig_relay/core/_tool_response.py"
+    ],
+    "include_docs": [
+      "docs/json/governance/runtime-tool-invocation-execution.v1.json",
+      "docs/json/governance/session-lifecycle-finalize-tool.v1.json"
+    ],
+    "include_schemas": [
+      "docs/schemas/rig.code_schema.v1.schema.json",
+      "docs/schemas/rig.documentation.page.v1.schema.json"
+    ],
+    "exclude_patterns": [
+      "docs/pages/**",
+      "**/*.html"
+    ],
+    "max_context_notes": 12
+  },
+  "model_facing_summary": "Use the tool-batch lifecycle as a governed runtime seam. Preserve single-use execution, trace evidence, and result envelopes."
+}

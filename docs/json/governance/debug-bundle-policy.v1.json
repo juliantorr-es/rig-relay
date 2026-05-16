@@ -1,0 +1,150 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "debug-bundle-policy",
+  "document_type": "governance",
+  "title": "Debug Bundle Policy",
+  "summary": "**Deferred.** A consolidated `rig-relay debug bundle` command is deferred.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/debug-bundle-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Debug Bundle Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Deferred.** A consolidated `rig-relay debug bundle` command is deferred. Existing ChatGPT dev bundle and telemetry bundle scripts remain available independently.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Current State",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Rig Relay currently has two bundle scripts:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- `scripts/rig_relay_create_chatgpt_dev_bundle.py` — produces a ChatGPT development bundle from session artifacts. - `scripts/rig_relay_create_telemetry_bundle.py` — produces a telemetry bundle with consent status and content-light event rows.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "Both scripts produce content-light bundles with no raw prompts, model outputs, source code, diffs, or secrets.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Deferred Consolidation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "A future `rig-relay debug bundle` command would:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- Unify both bundle types under one CLI command. - Accept a `--kind` flag (`chatgpt_dev`, `telemetry`, `full`). - Include a debug metadata header with session ID, version, and source artifact timestamps. - Route through the shared redaction module for content-light guarantees.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [ChatGPT Dev Bundle Schema](../schemas/rig.relay.chatgpt_dev_bundle_manifest.v1.schema.json) - [Telemetry Bundle Manifest Schema](../schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/debug-bundle-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

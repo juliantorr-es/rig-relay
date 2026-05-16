@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Evidence Root Product Semantics and Policy Doctrine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Evidence Root Product Semantics and Policy Doctrine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Evidence Root Product Semantics and Policy Doctrine</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: e389b446706173ebc5950931994ba4cdb6a7d9f4 Scope: Read-only audit Owner area: config</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">This doctrine defines where Rig Relay evidence should live. The primary policy is to use the **User Global** Relay home (`~/.rig/relay`) by default for all normal dogfood and operational work. This ensures a centralized, durable control plane for session history.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Repo-Local evidence (`./.rig/relay`) is supported and useful for deterministic tests, smoke fixtures, isolated experiments, and explicit exports, but it is not the recommended default for project work.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Current implementation note: - root defaults remain `user_global` - root mode is observable in session-start telemetry - repo-local validation is supported as a selected root via `--evidence-root`</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Root Mode Definitions</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- **USER_GLOBAL**: `~/.rig/relay/`. **Default and preferred** for normal work. - **REPO_LOCAL**: `./.rig/relay/`. Reserved for **test/debug/export** mode only. - **EXPLICIT_HOME**: Set via `RIG_RELAY_HOME`. Overrides all logic. - **TEST_TEMP**: Managed by pytest. Isolated from real state.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Precedence Doctrine (Current Runtime)</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">1.  **Explicit Environment**: `RIG_RELAY_HOME`. 2.  **User Global**: Default fallback (canonical home). 3.  **Legacy Fallback**: `~/.rig-relay`, `~/.vibe`, etc. (only if allowed).</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Note: `--evidence-root &lt;path&gt;` in `doctor evidence` overrides discovery for validation tasks but does not change the runtime recording root.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">UX Behavior</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- On session start, the CLI should print: `Evidence Root: user_global (~/.rig/relay)`. - If a user intentionally wants to isolate a project, they should use `export RIG_RELAY_HOME=./.rig/relay`.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Warnings/Errors Proposal</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- **Warning**: If `REPO_LOCAL` is active but `.gitignore` does not exclude `.rig/relay`. - **Warning**: If both `REPO_LOCAL` and `USER_GLOBAL` contain active sessions (potential confusion). - **Error**: If the resolved root is not writable.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Migration Path</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- Add a `rig-relay move-evidence --to-global` command to help users consolidate isolated repo-local history into their central global home.</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">CI/Local Doctor Recommendations</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- `rig-relay doctor` must report the active root mode and detect &quot;stray&quot; evidence in unexpected locations. - CI should enforce `TEST_TEMP` mode to avoid polluting runner home directories.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Future Implementation Backlog</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- [ ] Add `--evidence-root-mode` CLI flag (enum: auto, global, local). - [ ] Implement automatic `.gitignore` injection for `.rig/relay`. - [ ] Add `root_mode` field to `SESSION_STARTED` event.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/evidence-root-policy-doctrine.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

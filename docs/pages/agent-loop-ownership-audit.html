@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentLoop Ownership Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Audit date: 2026-05-15">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>AgentLoop Ownership Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">AgentLoop Ownership Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Audit date: 2026-05-15</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>AgentLoop construction sites</td><td>8</td></tr>
+<tr><td>VibeAcpAgentLoop (subclass) construction sites</td><td>7</td></tr>
+<tr><td>PatchedAgentLoop (test subclass) sites</td><td>9</td></tr>
+<tr><td>`is_subagent=True` construction</td><td>1</td></tr>
+<tr><td>`fork()` constructions</td><td>1</td></tr>
+<tr><td>Total unique callers of full AgentLoop</td><td>~16</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Complete inventory</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Path</th><th>Symbol</th><th>Purpose</th><th>Owner type</th><th>Should have full loop?</th><th>Recommended boundary</th><th>Risk</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>`rig_relay/cli/desktop_cockpit.py:172`</td><td>`self._agent_loop = AgentLoop(...)`</td><td>Desktop cockpit owner agent</td><td>orchestrator</td><td>**Yes**</td><td>`OrchestratorLoop` (future)</td><td>Low — canonical owner</td></tr>
+<tr><td>2</td><td>`rig_relay/acp/_session_lifecycle.py:175`</td><td>`agent_loop = AgentLoop(...)`</td><td>ACP session creation</td><td>orchestrator</td><td>**Yes**</td><td>`OrchestratorLoop` (future)</td><td>Low — ACP entry</td></tr>
+<tr><td>3</td><td>`rig_relay/core/agent_loop.py` (fork)</td><td>`forked = AgentLoop(...)`</td><td>Child session fork</td><td>orchestrator copy</td><td>**Yes** (inherits owner scope)</td><td>`OrchestratorLoop.fork()`</td><td>Low — fork creates full loop</td></tr>
+<tr><td>4</td><td>`rig_relay/core/tools/builtins/task.py`</td><td>`subagent_loop = AgentLoop(... is_subagent=True)`</td><td>Spawned subagent for mission</td><td>subagent</td><td>**No** — should use bounded runtime</td><td>`SubagentRuntime` (not yet built)</td><td>**High** — full loop for bounded worker</td></tr>
+<tr><td>5</td><td>`rig_relay/acp/acp_agent_loop.py:228`</td><td>`agent = VibeAcpAgentLoop()`</td><td>ACP agent construction (main entry)</td><td>orchestrator adapter</td><td>**Yes** (ACP wrapper)</td><td>`OrchestratorLoop` + ACP adapter</td><td>Low — ACP facade</td></tr>
+<tr><td>6</td><td>`rig_relay/cli/ide_sidecar.py:102`</td><td>`agent = VibeAcpAgentLoop()`</td><td>IDE sidecar ACP</td><td>orchestrator adapter</td><td>**Yes** (thin IPC host)</td><td>`OrchestratorLoop` + ACP adapter</td><td>Low — sidecar</td></tr>
+<tr><td>7</td><td>`tests/conftest.py`</td><td>`build_test_agent_loop(config, ...)`</td><td>Test fixture</td><td>test_fixture</td><td>N/A</td><td>`FakeAgentLoop` or parameterized test builder</td><td>Low — test infrastructure</td></tr>
+<tr><td>8</td><td>`tests/acp/conftest.py:29`</td><td>`VibeAcpAgentLoop()`</td><td>ACP test fixture</td><td>test_fixture</td><td>N/A</td><td>ACP test double</td><td>Low</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Ownership categories</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Category</th><th>Count</th><th>Should have full AgentLoop?</th></tr></thead>
+<tbody>
+<tr><td>**Orchestrator**</td><td>4 (desktop cockpit, ACP sessions, fork, ACP main)</td><td>**Yes** — these are the owners</td></tr>
+<tr><td>**Orchestrator adapter**</td><td>2 (IDE sidecar, ACP entry)</td><td>**Yes** — thin wrappers</td></tr>
+<tr><td>**Subagent spawn**</td><td>1 (task.py `is_subagent=True`)</td><td>**No** — should be bounded worker</td></tr>
+<tr><td>**Test fixtures**</td><td>2 (conftest.py, acp/conftest.py)</td><td>N/A — test infrastructure</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">High-risk usages</h2>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">`task.py` — Subagent spawn with full AgentLoop</h3>
+
+<pre id="code-11"><code class="language-python">subagent_loop = AgentLoop(
+    config=call_config,
+    agent_name=agent_profile_name,
+    is_subagent=True,
+    defer_heavy_init=True,
+)</code></pre>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">**Problem:** Creates a full `AgentLoop` with conversation loop, middleware, hooks, and all mixins for a bounded mission worker. The subagent should not need: - Full conversation loop (should be single-turn or bounded mission) - Middleware pipeline (should inherit owner policy) - Hooks (subagent is not user-facing) - Fork/compact/switch_agent (bounded lifecycle)</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Replace with `SubagentRuntime` that owns bounded mission execution: assigned worktree, allowed tools/profile binding, budget, artifact contract, validation receipt.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">No Ralph loop exists</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Ralph (`rig_relay/ralph/`) currently has no AgentLoop construction. It is an observe-only scanner. Any future `RalphRuntime` should NOT be built on AgentLoop — it should use `SubagentRuntime` with `profile_kind=AUTONOMOUS_BACKGROUND` and `trust_tier=OBSERVE`.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/agent-loop/agent-loop-ownership-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

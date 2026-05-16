@@ -1,0 +1,983 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-rig-console",
+  "document_type": "governance",
+  "title": "Textual Rig Console",
+  "summary": "Deprecated. The Textual Rig Console is retained only as a development",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/textual-rig-console.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Textual Rig Console",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Deprecated. The Textual Rig Console is retained only as a development compatibility surface while the pywebview cockpit is the primary product UI.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Route 3 Compatibility Mode",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Rig Console now follows a prompt-first compatibility shell model:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- Ordinary prompt text goes through the coding-session bridge and real `AgentLoop.act(...)` runtime path when runtime mode is available. - Explicit slash commands own governable actions such as validate, queue, fleet, router, mission, inspect, and help. - The UI should feel like a coding-agent terminal, not an admin dashboard. - Hardened Rig paths are preferred when they exist. - Base vibe session behavior is only used through the compatibility bridge. - Widgets must not import raw tools or agent-loop internals directly.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Launch",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Use `rig-relay` for the default product launcher. `rig-console-textual` has been removed. The legacy Textual app remains only for compatibility and test coverage.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-9",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run rig-relay",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "code-10",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run rig-console",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Available flags:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- `--mode fixture|runtime` - `--session-id <id>` - `--session-path <path>` - `--workspace-root <path>` - `--coordination-root <path>` - `--audit-root <path>` - `--refresh-interval <seconds>`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Modes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Fixture mode",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Fixture mode is the safe default. It renders canned content-light projections for layout checks and headless smoke tests.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Runtime mode",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Runtime mode reads existing projection artifacts in a read-only way. It tolerates missing roots and missing files. It does not write to disk, mutate the workspace, or invoke raw tool execution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "What The Dashboard Shows",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "The dashboard is built from content-light projections and is intentionally plain for stable dogfooding. By default, it shows a vertically stacked layout:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- **Top**: Compact header and status bar for session/queue metrics. - **Main**: Session activity (left) and evidence rail (right) for real-time situational awareness. - **Bottom**: PromptBar for input, activity log for recent history, and a persistent footer hint.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Experimental or high-density dashboards are hidden by default to reduce visual noise:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "- **Fleet Panel (`f`)**: Agent workforce monitoring. - **Queue Panel (`u`)**: Detailed queue orchestration state. - **Inspector Drawer (`i`)**: Metadata and summary inspection. - **Mission Router (`m`)**: Multi-step mission plan previews (Phase 0). - **Progress Timeline**: Execution event distribution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Keybindings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "- `Enter` — Focus prompt - `r` — Refresh projection - `v` — Run validate (async) - `x` — Run next queued item - `f` — Toggle fleet panel - `u` — Toggle queue panel - `i` — Toggle inspector drawer - `?` or `h` — Help overlay - `Esc` — Cancel active turn / Discard plan / Close overlay - `q` — Quit",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Design Philosophy: \"Stable & Boring\"",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "The legacy TUI was designed to be a transparent, reliable command center. It uses standard Textual theme variables, avoids theatrical visual effects, and enforces a strict content-light boundary. It is optimized for keyboard-only operation during deep coding tasks.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "The Prompt Bar (`vibe/cli/textual_ui/rig_console/widgets/prompt_bar.py`) is the **primary** input surface. It uses Textual `Input` (single line).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Behavior: - **Enter** submits ordinary text to the session bridge. - **Slash commands** are explicit escape hatches and do not share the normal prompt path. - **Double-slash escape** (`//hello`) submits a literal `/hello` prompt. - **Empty/whitespace** input does nothing. - **Successful submission** clears the input only after the bridge accepts it. - **Rejected submission** keeps the current input in place. - **Focus**: Press `f` to focus the prompt bar.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "The prompt bar does NOT execute anything directly. It only emits text into the coding-session bridge or explicit slash-command handlers.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-30",
+      "type": "heading",
+      "level": 3,
+      "content": "Live Turn Streaming",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "When the user submits a normal prompt:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "1. PromptBar disables immediately (`disabled=True, \"Starting\"`). 2. `DashboardScreen._do_turn(text)` worker starts via `run_worker`. 3. `RuntimeSessionAdapter.submit_user_message(text)` returns immediately (`accepted=True, status=\"running\"`). A background task iterates `AgentLoop.act(...)` events and stores them incrementally. 4. Dashboard polls `provider.events_since(cursor)` every 50ms. 5. Each new event updates the TranscriptWidget (via `append_item`), the ActivityLog (via `_set_status`), and the StatusBar. 6. When the bridge emits a `turn_status` event (completed/failed/cancelled), the polling loop exits. 7. A final `provider.snapshot()` replaces the transcript projection. 8. PromptBar re-enables (`disabled=False, \"Ready\"`).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "Escape key calls `action_cancel_or_discard()` which invokes `provider.cancel_turn()`, cancelling the background `asyncio.Task` and propagating `CancelledError` through `AgentLoop`. Cancel is UI-safe even if the backend cannot fully interrupt the LLM mid-turn—the subscription stops, and state reverts to `turn_status=\"cancelled\"`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-34",
+      "type": "heading",
+      "level": 2,
+      "content": "Unified Prompt Input",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "The **PromptBar** is the single active input surface for the dashboard. It handles:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "- Ordinary coding prompts through the session bridge - Explicit slash commands for governable actions - Transcript-style rendering of user and assistant text",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "The bridge normalizes session events into content-light projections. Generic panels do not render raw stdout, stderr, diffs, file contents, argv arrays, secrets, or raw model payloads.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-38",
+      "type": "heading",
+      "level": 2,
+      "content": "Prompt Bridge",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "The session bridge owns the prompt-to-session boundary:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "- `FixtureSessionAdapter` produces deterministic transcript items for tests. - `RuntimeSessionAdapter` reuses the base vibe `AgentLoop.act(...)` turn path. - Dashboard widgets only talk to the bridge/provider boundary. - Transcript projections stay content-light outside the conversation surface.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-41",
+      "type": "heading",
+      "level": 2,
+      "content": "Queue Runner Integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "The queue panel is backed by a **QueueRunnerBridge** — the TUI's sole surface for triggering queue item execution through governed runtime paths.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-43",
+      "type": "heading",
+      "level": 3,
+      "content": "Architecture",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-44",
+      "type": "code",
+      "language": "text",
+      "content": "Queue Panel (read-only projection)\n        │\n        ▼  (action: queue_run_next)\nDashboard action handler\n        │\n        ▼  (Textual worker)\nQueueRunnerBridge.run_next()\n        │\n        ▼\nQueueRunnerBridge dispatches the selected item once\n        │\n        ├── VALIDATE  → runtime_exec intent → RuntimeToolExecutionRunner.execute_runtime_exec()\n        └── RUNTIME_EXEC → runtime_exec intent → RuntimeToolExecutionRunner.execute_runtime_exec()",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "The TUI never calls raw tools (`BaseTool`, `ToolError`, file I/O tools, bash) directly. All executable queued actions route through the governed `FleetQueueRunner` / `RuntimeToolExecutionRunner` path.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-46",
+      "type": "heading",
+      "level": 3,
+      "content": "Supported Queue Item Kinds",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-47",
+      "type": "table",
+      "columns": [
+        "Kind",
+        "Runtime Method",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "`VALIDATE`",
+          "`execute_runtime_exec()`",
+          "Lint/type-check the workspace through governed runtime_exec"
+        ],
+        [
+          "`RUNTIME_EXEC`",
+          "`execute_runtime_exec()`",
+          "Run a named sub-tool"
+        ],
+        [
+          "`MESSAGE`",
+          "_(none)_",
+          "Completes synchronously, no exec"
+        ],
+        [
+          "`HANDOFF_NOTE`",
+          "_(none)_",
+          "Completes synchronously, no exec"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-48",
+      "type": "heading",
+      "level": 3,
+      "content": "Phase 0 Behavior (Current)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "- **One item per action**: Each `queue_run_next` call processes exactly one queue item. No looping. - **Content-light results**: `FleetQueueRunnerResult` contains only metadata: `decision`, `queue_item_id`, `runtime_result_sha256`, `receipt_sha256`, `tool_name`, `error_kind`, `reason`, `changed_paths`. No raw content. - **Missing-root safety**: When `coordination_root` or `executor` is `None`, `run_next()` returns a blocked result (`decision=\"blocked\"`, `error_kind=\"missing_runner_roots\"`). Never crashes, never writes to `~/.rig/relay`. - **Empty-queue idle**: When no items are eligible, returns `decision=\"idle\"` with `queue_item_id=None`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-50",
+      "type": "heading",
+      "level": 3,
+      "content": "Deferred Actions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "The following are explicitly **not** exposed as queue buttons in Phase 0:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "- Direct `write_file` / `search_replace` / `bash` tool buttons - File-system mutation from the TUI - Any action that bypasses `FleetQueueRunner`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "These may be added in future phases as `RUNTIME_EXEC` items with governed sub-tools.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-54",
+      "type": "heading",
+      "level": 3,
+      "content": "Queue Action Keybindings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "- `u` — Toggle queue panel - `j` / `k` — Navigate queue items - `o` — Inspect selected queue item - `Ctrl+r` — Run next queued item (via QueueRunnerBridge) - `Ctrl+v` — Enqueue a validate item - `Ctrl+Enter` — Request steering for the current task - `f` — Toggle fleet panel - `Shift+f` — Inspect selected fleet summary - `Ctrl+f` — Refresh fleet snapshot",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-56",
+      "type": "heading",
+      "level": 2,
+      "content": "What It Refuses To Show",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "The console must not display raw:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "- `stdout` - `stderr` - `content` - `file_contents` - `chunk_text` - `old_text` - `new_text` - `diff` - `patch` - `prompt` - `secret` - `argv` - `snippet`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "Only metadata, counts, summaries, hashes, and safe display strings belong in the projection layer.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-60",
+      "type": "heading",
+      "level": 2,
+      "content": "Contract Boundaries",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "- Runtime adapters own execution and govern mutation. - Audit events provide content-light history and proof. - Coordination leases and blockers provide read-only state for concurrent work. - The Textual UI is a consumer of those projections, not a tool executor. - Mutating actions must continue to route through governed intents and runtime adapters.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-62",
+      "type": "heading",
+      "level": 2,
+      "content": "Keybindings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "- `r` refresh - `?` or `h` help - `t` toggle detail hints - `q` quit",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-64",
+      "type": "paragraph",
+      "content": "No mutation keybindings are defined here.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-65",
+      "type": "heading",
+      "level": 2,
+      "content": "Command Palette",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "The dashboard also exposes safe actions through the Textual command palette. Entries are auto-generated from `SAFE_ACTIONS` in `actions.py`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-67",
+      "type": "paragraph",
+      "content": "- Refresh - Run Validate - Help - Toggle Details - Queue Message - Steer Current Task - Clear Input - Toggle Queue Panel - Run Next Queued Item - Queue Validate - Refresh Queue - Runtime Status - Leases - Audit Timeline - Copy Receipt Ref",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-68",
+      "type": "paragraph",
+      "content": "Command execution routes through the dashboard action registry. The palette is read-only and must not bypass governed runtime execution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-69",
+      "type": "heading",
+      "level": 2,
+      "content": "Queue Actions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-70",
+      "type": "paragraph",
+      "content": "Three safe queue actions are exposed through palette/keybindings:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-71",
+      "type": "table",
+      "columns": [
+        "Action",
+        "Key",
+        "Behavior"
+      ],
+      "rows": [
+        [
+          "Run Next Queued Item",
+          "`action_queue_run_next`",
+          "Runs one eligible queue item through `FleetQueueRunner` via the `QueueRunnerBridge`"
+        ],
+        [
+          "Queue Validate",
+          "`action_queue_validate`",
+          "Enqueues a validate item; does NOT execute it"
+        ],
+        [
+          "Refresh Queue",
+          "`action_queue_refresh`",
+          "Rebuilds queue projection from stored events"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-72",
+      "type": "paragraph",
+      "content": "**One item per action.** Phase 0 — no batch execution. Each call to `action_queue_run_next` processes exactly one item via `runner.run_once()`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-73",
+      "type": "paragraph",
+      "content": "**Non-blocking.** Queue actions use Textual `run_worker()` to avoid freezing the UI. Running state is shown in the footer status line.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-74",
+      "type": "paragraph",
+      "content": "**State transitions.** After execution, `FleetQueueRunner` transitions items through event-sourced states: `queued → running → completed / failed / blocked`. Failures from the runner (e.g. `mark_failed`, `mark_blocked`) are reflected in queue projection counts.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-75",
+      "type": "paragraph",
+      "content": "**Missing roots.** If `QueueRunnerBridge` is unavailable (no coordination root or runtime executor), actions return `blocked` status with a descriptive `error_kind`. The UI shows the status in the footer and never crashes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-76",
+      "type": "paragraph",
+      "content": "**No bypass.** Queue actions never call raw tools directly. All executable items route through `FleetQueueRunner._dispatch_runtime_exec()` which creates a `RuntimeToolIntent` and resolves through governed `runtime_exec` paths.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-77",
+      "type": "heading",
+      "level": 2,
+      "content": "Queue Runner Integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-78",
+      "type": "paragraph",
+      "content": "The `QueueRunnerBridge` in `queue_runner.py` is the TUI's sole surface for triggering queue item execution. It:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-79",
+      "type": "paragraph",
+      "content": "- Locates the `FleetQueue` at `<coordination_root>/queue/events.jsonl` - Constructs a `FleetQueueRunner` with the coordination root's executor - Calls `run_once()` for one item per action - Returns a `FleetQueueRunnerResult` with content-light metadata only - Never blocks — callers use Textual workers",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-80",
+      "type": "paragraph",
+      "content": "The bridge is lazily constructed by `RuntimeDashboardProjectionProvider` via `_queue_bridge()`, which creates a `QueueRunnerBridge` from the provider's `coordination_root` and `_runner()` when first needed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-81",
+      "type": "heading",
+      "level": 2,
+      "content": "Deferred Actions (Phase 0)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-82",
+      "type": "paragraph",
+      "content": "The following are NOT implemented in Phase 0:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-83",
+      "type": "paragraph",
+      "content": "- **Steer current task** — steering is a safe-placeholder; no live steering semantics - **Full prompt persistence** — prompt bodies are stored behind `payload_ref` only; no durable persistence UI - **Multi-item scheduler** — one item per action; no batch execution - **write_file/search_replace/bash dedicated controls** — not added to TUI - **Patch proposal review/apply** — future phase - **Persistent multi-agent queue orchestration** — future phase",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-84",
+      "type": "heading",
+      "level": 2,
+      "content": "UI Truthfulness Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-85",
+      "type": "paragraph",
+      "content": "Adapted from Intake's UI inventory pattern. Every visible surface is categorized:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-86",
+      "type": "table",
+      "columns": [
+        "Surface",
+        "Category",
+        "Status"
+      ],
+      "rows": [
+        [
+          "PromptBar input",
+          "REAL",
+          "Functional, handles submit/slash/escape"
+        ],
+        [
+          "TranscriptWidget",
+          "REAL",
+          "Shows user/assistant/status events incrementally"
+        ],
+        [
+          "StatusBar (mode/hint/metrics)",
+          "REAL",
+          "Reads from projection, renders live"
+        ],
+        [
+          "FooterStatusWidget (hints)",
+          "REAL",
+          "Reads from projection"
+        ],
+        [
+          "ActivityLogWidget",
+          "REAL",
+          "Shows compact action status entries"
+        ],
+        [
+          "OperatorHeaderWidget",
+          "PARTIAL",
+          "Title/subtitle rendered, session details partial"
+        ],
+        [
+          "SessionPaneWidget",
+          "PARTIAL",
+          "Shows summary, no live turn progress"
+        ],
+        [
+          "EvidenceRailWidget",
+          "PARTIAL",
+          "Shows receipt metadata, no live updates"
+        ],
+        [
+          "QueuePanelWidget",
+          "REAL",
+          "Toggleable, reads queue projection"
+        ],
+        [
+          "FleetPanelWidget",
+          "REAL",
+          "Toggleable, reads fleet projection"
+        ],
+        [
+          "InspectorDrawerWidget",
+          "REAL",
+          "Toggleable, navigates items"
+        ],
+        [
+          "MissionRouterPanelWidget",
+          "REAL",
+          "Toggleable, reads mission projection"
+        ],
+        [
+          "ProgressTimelineWidget",
+          "PARTIAL",
+          "Reads execution_progress, no live update"
+        ],
+        [
+          "HelpOverlayWidget",
+          "REAL",
+          "Toggleable help text"
+        ],
+        [
+          "NotificationPanelWidget",
+          "REAL",
+          "Shows recovery hints"
+        ],
+        [
+          "/validate command",
+          "REAL",
+          "Routes to governed validate"
+        ],
+        [
+          "/queue, /fleet, /inspect",
+          "REAL",
+          "Toggle panels"
+        ],
+        [
+          "/router, /plan, /mission",
+          "REAL",
+          "Routes mission batch"
+        ],
+        [
+          "/doctor command",
+          "REAL",
+          "Runs diagnostics checks"
+        ],
+        [
+          "/help command",
+          "REAL",
+          "Shows help overlay"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "p-87",
+      "type": "paragraph",
+      "content": "**Definitions:** - **REAL**: Backed by functioning code; does what it says. - **PARTIAL**: Works but surface is incomplete or lacks live updates. - **PLACEHOLDER**: Exists but is not wired to backend. - **UNWIRED**: Code present but no UI surface accessible.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-88",
+      "type": "paragraph",
+      "content": "There are currently no PLACEHOLDER or UNWIRED surfaces. The two PARTIAL surfaces (SessionPaneWidget, EvidenceRailWidget, ProgressTimelineWidget) show static snapshot data rather than live streaming — acceptable for Phase K dogfood.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-89",
+      "type": "heading",
+      "level": 2,
+      "content": "Related Docs",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-90",
+      "type": "paragraph",
+      "content": "- [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Runtime Tool Invocation Execution](runtime-tool-invocation-execution.md) - [Usage Data Doctrine](usage-data-doctrine.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/textual-rig-console.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

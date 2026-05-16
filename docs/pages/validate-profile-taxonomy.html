@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validate Profile Taxonomy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Profiles should be stable, narrow, and named by purpose rather than by implementation detail.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Validate Profile Taxonomy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validate Profile Taxonomy</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Profile Principles</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Profiles should be stable, narrow, and named by purpose rather than by implementation detail.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Initial Profiles</h2>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">`quick`</h3>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Purpose:</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- fast sanity check for lane readiness</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Command bundle:</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- `git status --short --branch` - focused `ruff check` - focused `pytest`</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- low</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- agent needs a quick pass/fail before deeper work</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- lane is not obviously broken - repository state is not obviously dirty beyond policy</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- full suite health - type correctness - schema compliance</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">`python`</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">Purpose:</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- Python surface sanity</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Command bundle:</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- `uv run ruff check ...` - `uv run pyright ...` - focused `pytest`</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- medium</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">- validating Python code changes</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- lint - type safety - targeted test coverage</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">- schema validation - governance policy compliance</p>
+
+<h3 id="h3-31" class="disclosure-standard" data-disclosure-level="standard">`schemas`</h3>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">Purpose:</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- schema and receipt correctness</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Command bundle:</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">- `uv run python scripts/rig_relay_validate_schemas.py` - `uv run python scripts/rig_relay_validate_tool_receipts.py ...`</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- low</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">- schemas or receipts changed</p>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">- schema files parse - schema files validate - content-light receipts remain clean</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">- runtime behavior - tool semantics</p>
+
+<h3 id="h3-44" class="disclosure-standard" data-disclosure-level="standard">`tool-hardening`</h3>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">Purpose:</p>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">- validate deterministic tool envelopes and receipts</p>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Command bundle:</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">- targeted tool tests - receipt policy tests - tool hardening tests</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">- medium</p>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">- hardening `bash`, `search_replace`, `write_file`, or similar surfaces</p>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">- structured statuses - refusal behavior - receipt emission - truncation behavior</p>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">- end-to-end promotion readiness</p>
+
+<h3 id="h3-57" class="disclosure-standard" data-disclosure-level="standard">`receipt-policy`</h3>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">Purpose:</p>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">- prove content-light receipts stay content-light</p>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">Command bundle:</p>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">- receipt validator - emission tests</p>
+
+<p id="p-62" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">- low</p>
+
+<p id="p-64" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">- any receipt or event payload changes</p>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">- no raw stdout/stderr - hashes and counts are present</p>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">- underlying tool correctness</p>
+
+<h3 id="h3-70" class="disclosure-standard" data-disclosure-level="standard">`governance`</h3>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">Purpose:</p>
+
+<p id="p-72" class="disclosure-standard" data-disclosure-level="standard">- validate policy and doctrine constraints</p>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">Command bundle:</p>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">- governance docs checks - policy scripts - targeted tests for policy edges</p>
+
+<p id="p-75" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">- low to medium</p>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-78" class="disclosure-standard" data-disclosure-level="standard">- governance surfaces or policy-driven tools change</p>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-80" class="disclosure-standard" data-disclosure-level="standard">- policy conformance - schema alignment</p>
+
+<p id="p-81" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">- core runtime functionality</p>
+
+<h3 id="h3-83" class="disclosure-standard" data-disclosure-level="standard">`worktree-readiness`</h3>
+
+<p id="p-84" class="disclosure-standard" data-disclosure-level="standard">Purpose:</p>
+
+<p id="p-85" class="disclosure-standard" data-disclosure-level="standard">- determine whether a lane/worktree is clean enough for handoff or aggregation</p>
+
+<p id="p-86" class="disclosure-standard" data-disclosure-level="standard">Command bundle:</p>
+
+<p id="p-87" class="disclosure-standard" data-disclosure-level="standard">- git state collection (automatic in run() method) - dirty policy enforcement via expected_dirty_policy</p>
+
+<p id="p-88" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-89" class="disclosure-standard" data-disclosure-level="standard">- low (no lint/test/schema commands)</p>
+
+<p id="p-90" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-91" class="disclosure-standard" data-disclosure-level="standard">- determining workspace readiness before deeper validation - enforcing expected_dirty_policy constraints</p>
+
+<p id="p-92" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-93" class="disclosure-standard" data-disclosure-level="standard">- lane cleanliness - git state availability - dirty policy compliance</p>
+
+<p id="p-94" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-95" class="disclosure-standard" data-disclosure-level="standard">- full suite health - schema compliance - promotion readiness</p>
+
+<p id="p-96" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-97" class="disclosure-standard" data-disclosure-level="standard">- medium</p>
+
+<p id="p-98" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-99" class="disclosure-standard" data-disclosure-level="standard">- deciding whether a patch lane is clean enough for promotion</p>
+
+<p id="p-100" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-101" class="disclosure-standard" data-disclosure-level="standard">- lane eligibility - blocker classification</p>
+
+<p id="p-102" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-103" class="disclosure-standard" data-disclosure-level="standard">- fleet-wide health</p>
+
+<h3 id="h3-104" class="disclosure-standard" data-disclosure-level="standard">`promotion-readiness` (not implemented)</h3>
+
+<p id="p-105" class="disclosure-standard" data-disclosure-level="standard">Purpose:</p>
+
+<p id="p-106" class="disclosure-standard" data-disclosure-level="standard">- final gate before promotion</p>
+
+<p id="p-107" class="disclosure-standard" data-disclosure-level="standard">Command bundle:</p>
+
+<p id="p-108" class="disclosure-standard" data-disclosure-level="standard">- quick - python - schemas - governance - targeted integration tests</p>
+
+<p id="p-109" class="disclosure-standard" data-disclosure-level="standard">Runtime tier:</p>
+
+<p id="p-110" class="disclosure-standard" data-disclosure-level="standard">- high</p>
+
+<p id="p-111" class="disclosure-standard" data-disclosure-level="standard">Use when:</p>
+
+<p id="p-112" class="disclosure-standard" data-disclosure-level="standard">- patch is candidate for promotion or merge</p>
+
+<p id="p-113" class="disclosure-standard" data-disclosure-level="standard">Proves:</p>
+
+<p id="p-114" class="disclosure-standard" data-disclosure-level="standard">- lane is promotable - blockers are classified</p>
+
+<p id="p-115" class="disclosure-standard" data-disclosure-level="standard">Does not prove:</p>
+
+<p id="p-116" class="disclosure-standard" data-disclosure-level="standard">- future changes outside the lane</p>
+
+<h2 id="h2-117" class="disclosure-standard" data-disclosure-level="standard">Path Scoping Behavior</h2>
+
+<p id="p-118" class="disclosure-standard" data-disclosure-level="standard">All profiles support deterministic path scoping via `ValidateArgs.paths`.</p>
+
+<h3 id="h3-119" class="disclosure-standard" data-disclosure-level="standard">Path Normalization Rules</h3>
+
+<p id="p-120" class="disclosure-standard" data-disclosure-level="standard">- Paths are resolved relative to `workspace_root` (or cwd if None). - Absolute paths are accepted only if they resolve inside the workspace root. - `..` traversal outside the workspace root is refused with `unsafe_paths` error. - Nonexistent paths are refused with a blocked result (`unknown_failure` kind). - Duplicate paths are de-duplicated deterministically. - Normalized paths are sorted for stable `command_fingerprint` values.</p>
+
+<h3 id="h3-121" class="disclosure-standard" data-disclosure-level="standard">Per-Profile Path Behavior</h3>
+
+<table id="table-122" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Profile</th><th>Path Behavior</th></tr></thead>
+<tbody>
+<tr><td>`quick`</td><td>Adds scoped `ruff check` dynamically when Python paths are provided; non-Python paths do not trigger ruff</td></tr>
+<tr><td>`python`</td><td>Scopes `ruff check` to provided Python-relevant paths; skips ruff when no Python paths provided; leaves `pyright` repo-wide (pyright path scoping is unreliable in this project)</td></tr>
+<tr><td>`schemas`</td><td>Runs schema validation only when paths contain &quot;schema&quot; or are under `docs/schemas/`; skips otherwise</td></tr>
+<tr><td>`receipt-policy`</td><td>Runs receipt policy validation only when paths contain &quot;receipt&quot; or are under receipt-related paths; skips otherwise</td></tr>
+<tr><td>`tool-hardening`</td><td>Scopes `pytest` to provided test paths (under `tests/`); skips pytest when only source paths are provided (no fragile source-to-test inference)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-123" class="disclosure-standard" data-disclosure-level="standard">Content-Light Receipts</h3>
+
+<p id="p-124" class="disclosure-standard" data-disclosure-level="standard">- Path-scoped `affected_paths` in `ValidateCheckResult` and `ValidateCheckReceipt` contain only normalized relative paths. - No raw file contents, stdout/stderr, or command transcripts in receipts. - Receipts pass `tool_receipt_policy` validation.</p>
+
+<h3 id="h3-125" class="disclosure-standard" data-disclosure-level="standard">Pyright Scoping Decision</h3>
+
+<p id="p-126" class="disclosure-standard" data-disclosure-level="standard">`pyright` is left repo-wide in all scoped modes. Pyright does not support efficient single-file scoping in this project&#x27;s configuration, and scoping it would produce unreliable type-check results. This is documented as a known limitation.</p>
+
+<h3 id="h3-127" class="disclosure-standard" data-disclosure-level="standard">Pytest Scoping Decision</h3>
+
+<p id="p-128" class="disclosure-standard" data-disclosure-level="standard">`pytest` is scoped only to paths under `tests/`. Source-only scoped validation does not run pytest unless an explicit test path is provided. No source-to-test inference is implemented (Stage 4+).</p>
+
+<h2 id="h2-129" class="disclosure-standard" data-disclosure-level="standard">Profile Taxonomy Notes</h2>
+
+<p id="p-130" class="disclosure-standard" data-disclosure-level="standard">- `quick` should be the default entry profile. - `python` should absorb the most common bash validation patterns. - `schemas` should own schema and receipt checks. - `tool-hardening` should be used for deterministic tool contract work. - `promotion-readiness` should stay narrow and policy-heavy.</p>
+
+<h3 id="h3-131" class="disclosure-standard" data-disclosure-level="standard">`worktree-readiness`</h3>
+
+<table id="table-132" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Attribute</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Runtime Tier**</td><td>3 (local preflight)</td></tr>
+<tr><td>**Command Bundle**</td><td>Git state collection only (no test/lint/schema commands)</td></tr>
+<tr><td>**Timeout**</td><td>30s</td></tr>
+<tr><td>**Mutation**</td><td>Never</td></tr>
+<tr><td>**Network**</td><td>Never</td></tr>
+<tr><td>**Purpose**</td><td>Answer lane readiness purely through git workspace state + dirty policy. No tool invocations.</td></tr>
+<tr><td>**Use Cases**</td><td>Preflight before mutation operations; lane occupancy checks; workspace dirtiness audits.</td></tr>
+<tr><td>**Path Scoping**</td><td>No commands to scope; dirty policy applies to all paths.</td></tr>
+<tr><td>**Blocker Types**</td><td>`dirty_workspace` when `expected_dirty_policy` rejects state.</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/validate-tool/validate-profile-taxonomy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

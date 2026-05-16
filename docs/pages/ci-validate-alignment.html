@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI–Validate Alignment — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="&gt; **Status**: Design Proposal">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>CI–Validate Alignment</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">CI–Validate Alignment</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **Status**: Design Proposal &gt; **Date**: 2026-05-17 &gt; **Scope**: Mapping between CI gate tiers and future `validate` tool profiles.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Principle</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Every CI gate should have a corresponding `validate` profile so that: - Agents can run the same checks locally via `validate &lt;profile&gt;` that CI runs remotely. - The `validate` tool becomes the single source of truth for check definitions. - CI workflow files become thin wrappers that call `validate` profiles.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Profile Mapping</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Validate Profile → CI Gate Tier</h3>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Validate Profile</th><th>CI Tier</th><th>CI Gate(s)</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`quick`</td><td>Tier 0</td><td>Local smoke (git status, focused ruff, focused pytest, lock check)</td><td>Agents use before handoff. Not in CI.</td></tr>
+<tr><td>`python`</td><td>Tier 1</td><td>Ruff, pyright, focused unit tests</td><td>Core Python surface. Runs via pre-commit today.</td></tr>
+<tr><td>`schemas`</td><td>Tier 1</td><td>Schema validation script, Python contamination regression</td><td>Should be in every PR baseline.</td></tr>
+<tr><td>`schemas` (extended)</td><td>Tier 2</td><td>Artifact schemas, telemetry contribution schemas</td><td>Path-triggered on schema changes.</td></tr>
+<tr><td>`receipt-policy`</td><td>Tier 1</td><td>Tool receipt emission tests</td><td>Core agent loop wiring — always run.</td></tr>
+<tr><td>`receipt-policy` (extended)</td><td>Tier 2</td><td>Receipt index tests, evidence tests, redaction tests</td><td>Path-triggered on evidence changes.</td></tr>
+<tr><td>`tool-hardening`</td><td>Tier 2</td><td>Bash hardening, SearchReplace hardening, determinism tests</td><td>Path-triggered on tool changes.</td></tr>
+<tr><td>`governance`</td><td>Tier 2</td><td>Governance tests, docs tests, conversation names</td><td>Path-triggered on governance/doc changes.</td></tr>
+<tr><td>`worktree-readiness`</td><td>Tier 3</td><td>Dirty workspace check, coordination tests, script tests</td><td>Pre-promotion check.</td></tr>
+<tr><td>`promotion-readiness`</td><td>Tier 3</td><td>All Tiers 1+2 scoped + full suite + uv sync + build</td><td>Final gate before merge.</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">CI Gate → Validate Profile (reverse map)</h3>
+
+<details id="table-9" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-9" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>CI Gate</th><th>Validate Profile</th><th>Ownership</th></tr></thead>
+<tbody>
+<tr><td>Ruff check</td><td>`python` (part of)</td><td>Built-in</td></tr>
+<tr><td>Pyright</td><td>`python` (part of)</td><td>Built-in</td></tr>
+<tr><td>Schema validation</td><td>`schemas`</td><td>Built-in</td></tr>
+<tr><td>Schema Python contamination</td><td>`schemas`</td><td>Built-in</td></tr>
+<tr><td>Tool receipt emission</td><td>`receipt-policy`</td><td>Built-in</td></tr>
+<tr><td>uv lock check</td><td>`python` (part of)</td><td>Built-in</td></tr>
+<tr><td>CLI smoke</td><td>`quick` (part of)</td><td>Built-in</td></tr>
+<tr><td>Bash hardening</td><td>`tool-hardening`</td><td>Domain</td></tr>
+<tr><td>SearchReplace hardening</td><td>`tool-hardening`</td><td>Domain</td></tr>
+<tr><td>Tool determinism</td><td>`tool-hardening`</td><td>Domain</td></tr>
+<tr><td>Receipt policy validation</td><td>`receipt-policy`</td><td>Domain</td></tr>
+<tr><td>Coordination tests</td><td>`worktree-readiness`</td><td>Domain</td></tr>
+<tr><td>Evidence tests</td><td>`receipt-policy`</td><td>Domain</td></tr>
+<tr><td>Script tests</td><td>`worktree-readiness`</td><td>Domain</td></tr>
+<tr><td>Governance tests</td><td>`governance`</td><td>Domain</td></tr>
+<tr><td>Docs tests</td><td>`governance`</td><td>Domain</td></tr>
+<tr><td>Full pytest suite</td><td>`promotion-readiness`</td><td>Domain</td></tr>
+<tr><td>Snapshot tests</td><td>`promotion-readiness`</td><td>Domain</td></tr>
+<tr><td>Dirty workspace check</td><td>`worktree-readiness`</td><td>Built-in</td></tr>
+<tr><td>Build check</td><td>`promotion-readiness`</td><td>Built-in</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">What CI Should Do Now vs What Validate Should Own Later</h2>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">CI owns now (before validate tool exists):</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">1. Orchestrate pre-commit hooks (ruff, pyright, typos, formatting) 2. Run focused test files as separate CI jobs 3. Run validation scripts as CI steps 4. Enforce path-based gating via `paths:` filters 5. Run full pytest suite as promotion gate 6. Build and publish artifacts 7. Check uv lock consistency</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Validate should own later (after validate tool is implemented):</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1. Define check commands and profiles in a registry (not in CI YAML) 2. Run the same checks locally and in CI 3. Emit content-light receipts for each check 4. Classify blockers (test_failure, lint_failure, schema_failure, etc.) 5. Support `--check-only` (CI mode) and `--fix` (local mode) variants 6. Consolidate duplicate check commands across scripts</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Migration Path</h3>
+
+<pre id="code-16"><code class="language-text">Stage 0-1 (today):             CI YAML defines all commands directly
+Stage 2 (CI refactor):         CI YAML calls validate profiles
+Stage 3 (validate maturity):   validate tool has profile registry, CI is thin wrapper</code></pre>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Consolidation Opportunities</h2>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">The following duplicate or overlapping commands should eventually consolidate under `validate`:</p>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Current</th><th>Redundant With</th><th>Consolidate Into</th></tr></thead>
+<tbody>
+<tr><td>`scripts/rig_relay_validate_schemas.py`</td><td>`tests/coordination/test_schema_validation.py::test_no_schema_contains_python_syntax`</td><td>`validate schemas`</td></tr>
+<tr><td>`scripts/rig_relay_validate_tool_receipts.py`</td><td>`tests/evidence/test_tool_receipt_policy.py`</td><td>`validate receipt-policy`</td></tr>
+<tr><td>`scripts/rig_relay_validate_telemetry_bundle.py`</td><td>Manual testing only</td><td>`validate schemas` or `validate governance`</td></tr>
+<tr><td>`pylint.yml` (stale)</td><td>`ruff` via pre-commit</td><td>Remove, no consolidation needed</td></tr>
+<tr><td>`python-package-conda.yml` (stale)</td><td>`ruff` via pre-commit</td><td>Remove, no consolidation needed</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Validate Profile Definitions (for CI wiring)</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">When the validate tool is implemented, each profile should map to these commands:</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">`validate quick`</h3>
+
+<pre id="code-23"><code class="language-yaml">steps:
+  - git status --short --branch
+  - uv run ruff check --fix &lt;changed-files&gt;
+  - uv run pytest -n0 &lt;changed-test-files&gt;
+  - uv lock --check</code></pre>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">`validate python`</h3>
+
+<pre id="code-25"><code class="language-yaml">steps:
+  - uv run ruff check .
+  - uv run ruff format --check .
+  - uv run pyright</code></pre>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">`validate schemas`</h3>
+
+<pre id="code-27"><code class="language-yaml">steps:
+  - uv run python scripts/rig_relay_validate_schemas.py
+  - uv run pytest tests/coordination/test_schema_validation.py -k test_no_schema_contains_python_syntax -n0
+  - uv run pytest tests/schemas/ -n0
+  - uv run pytest tests/scripts/test_telemetry_contribution_schemas.py -n0</code></pre>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">`validate receipt-policy`</h3>
+
+<pre id="code-29"><code class="language-yaml">steps:
+  - uv run pytest tests/tools/test_tool_receipt_emission.py -n0
+  - uv run pytest tests/evidence/ -n0</code></pre>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">`validate tool-hardening`</h3>
+
+<pre id="code-31"><code class="language-yaml">steps:
+  - uv run pytest tests/tools/test_bash_hardening.py tests/tools/test_bash.py -n0
+  - uv run pytest tests/tools/test_hardened_tools.py tests/tools/test_arity.py -n0
+  - uv run pytest tests/tools/test_determinism.py -n0</code></pre>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">`validate governance`</h3>
+
+<pre id="code-33"><code class="language-yaml">steps:
+  - uv run pytest tests/governance/ -n0
+  - uv run pytest tests/docs/ -n0</code></pre>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">`validate worktree-readiness`</h3>
+
+<pre id="code-35"><code class="language-yaml">steps:
+  - git status --porcelain
+  - uv run pytest tests/coordination/ -n0
+  - uv run pytest tests/scripts/ -n0 (filtered)
+  - uv run pytest tests/tools/ -n0 (targeted tool tests)</code></pre>
+
+<h3 id="h3-36" class="disclosure-standard" data-disclosure-level="standard">`validate promotion-readiness`</h3>
+
+<pre id="code-37"><code class="language-yaml">steps:
+  - validate quick
+  - validate python
+  - validate schemas
+  - validate receipt-policy
+  - validate governance
+  - uv run pytest --ignore tests/snapshots
+  - uv run pytest tests/snapshots (continue-on-error)
+  - uv sync --locked
+  - uv build</code></pre>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/ci/ci-validate-alignment.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

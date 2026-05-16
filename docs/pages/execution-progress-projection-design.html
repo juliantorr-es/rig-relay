@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExecutionProgress Projection Design — Audit Record — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="RuntimeSupervisor (P2b) now emits structured `RuntimeStreamEvent` objects">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>ExecutionProgress Projection Design — Audit Record</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ExecutionProgress Projection Design — Audit Record</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Design Authority</h2>
+
+<table id="table-3" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Date**</td><td>2026-06</td></tr>
+<tr><td>**Author**</td><td>Rig Relay agent (governance-audit)</td></tr>
+<tr><td>**Status**</td><td>Design draft — not implemented</td></tr>
+<tr><td>**Scope**</td><td>Runtime event → projection aggregation contract</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Context</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor (P2b) now emits structured `RuntimeStreamEvent` objects during subprocess execution. These include:</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- STATUS events (starting, running) - STDOUT_CHUNK / STDERR_CHUNK events (bounded, capped) - HEARTBEAT events (periodic liveness) - WARNING events (stall detected, truncation applied, etc.) - COMPLETION events (succeeded, failed — content-light) - FAILURE events (timed_out, cancelled, blocked — content-light)</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The existing `projection.py` builder and `projection_widgets.py` taxonomy already define a `ProgressTimeline` widget and a `progress_events` field in the `PROJECTION_FIELD_TO_WIDGET` map — but **no data source populates it**.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Design Decisions</h2>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">Decision 1: Pure aggregation function</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**Decision:** Build `execution_progress_from_runtime_events()` as a pure function (no I/O, no side effects) that transforms a `list[RuntimeStreamEvent]` into a single `ExecutionProgressProjection`.</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">**Rationale:** Pure functions are testable, deterministic, and composable. The projection builder (`projection.py`) can call this function when runtime event data is available.</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">**Risk:** Low. The function depends only on Pydantic models that are already stable.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Decision 2: No new schema</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">**Decision:** Do not create a new JSON Schema for ExecutionProgressProjection. The data flows through the existing `DesktopProjection.progress_events` array, which is already schema-defined as `&quot;type&quot;: &quot;array&quot;` with no item schema enforcement at v1.</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">**Rationale:** Adding a schema creates maintenance burden. The projection&#x27;s top-level `progress_events` field is already reserved in the schema and widget taxonomy. The Pydantic model `ExecutionProgressProjection` at the code level provides type safety.</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">**Risk:** Low. Schema enforcement can be added in a future v2 if needed.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">Decision 3: No chunk_text in projection</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">**Decision:** `chunk_text` from `RuntimeOutputChunkEvent` is NEVER included in the projection. Only aggregated byte counts and SHA256 hashes from terminal events appear.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">**Rationale:** Content-light terminal events are the contract. Raw chunks are ephemeral — they exist only in the stream/chat pane during live execution.</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">**Risk:** None. This is an explicit content-light policy.</p>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">Decision 4: Terminal event wins status</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">**Decision:** Once a COMPLETION or FAILURE event is processed, its status overrides any non-terminal status (STATUS, HEARTBEAT). WARNING events after terminal are ignored.</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">**Rationale:** Terminal events are authoritative. Non-terminal events after completion are logically impossible (heartbeats stop after terminal event by construction), but the aggregation handles out-of-order or malformed streams defensively.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">**Risk:** Low. RuntimeSupervisor guarantees heartbeat stop after terminal event, but the projection layer should be defensive.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Decision 5: Existing integrity codes suffice</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">**Decision:** Do not add new `ProjectionViolationCode` entries for execution progress. Existing codes (`MISSING_RECEIPT`, `STALE_RECEIPT`, `AUTHORITY_UNBACKED`) cover all assessment scenarios.</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">**Rationale:** The execution progress is assessed the same way as other projection data: check for receipt/envelope/audit backing on the terminal event. No new violation semantics are needed.</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">**Risk:** None.</p>
+
+<h2 id="h2-29" class="disclosure-standard" data-disclosure-level="standard">Gap Analysis</h2>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">Gap A: No runtime event collection in projection builder</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">`projection.py` has no mechanism to collect or pass runtime events into `build_projection()`. Currently the builder collects receipts, coordination state, provider status, and storage data — but not runtime stream events.</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">**Resolution:** P4b. The `build_projection()` signature would gain an optional `runtime_events` parameter. When provided, the function calls `execution_progress_from_runtime_events()` and populates `progress_events`.</p>
+
+<h3 id="h3-33" class="disclosure-standard" data-disclosure-level="standard">Gap B: ProgressTimeline widget has no renderer</h3>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">The widget name exists in the taxonomy but no Textual widget class renders it.</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">**Resolution:** P4c. Implement `ProgressTimelineWidget` in `vibe/cli/textual_ui/rig_console/widgets/` following the pattern of `EvidenceRailWidget` (content-light, scrollable, status-driven).</p>
+
+<h3 id="h3-36" class="disclosure-standard" data-disclosure-level="standard">Gap C: No session-to-execution linkage</h3>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">`SessionPaneProjection` has `status` and `last_heartbeat_at` fields but no way to link to an `ExecutionProgressProjection`. Multiple executions may exist per session (e.g., fleet tasks).</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">**Resolution:** Deferred. The `ExecutionProgressProjection` carries `request_id` and `lease_id` which can be matched to session leases via the coordination store. This is a UI composition concern, not a data model concern.</p>
+
+<h2 id="h2-39" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- [ExecutionProgressProjection Design](../governance/execution-progress-projection.md) - [RuntimeSupervisor Architecture](../governance/runtime-supervisor.md) - [Relay Desktop Projection Contract](../governance/relay-desktop-projection-contract.md) - [Rig-to-Relay Runtime Audit](rig-to-relay-runtime-audit.md) - [Port Roadmap](port-roadmap.md) - [Concept Map](concept-map.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/execution-progress-projection-design.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

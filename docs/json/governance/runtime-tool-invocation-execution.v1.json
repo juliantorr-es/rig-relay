@@ -1,0 +1,845 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-tool-invocation-execution",
+  "document_type": "governance",
+  "title": "Runtime Tool Invocation Execution",
+  "summary": "**File:** `docs/governance/runtime-tool-invocation-execution.md`",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/runtime-tool-invocation-execution.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Runtime Tool Invocation Execution",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**File:** `docs/governance/runtime-tool-invocation-execution.md`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "The execution layer bridges the runtime adapter and concrete tools (validate, search_replace, write_file, bash), providing structured, content-light execution paths that return `RuntimeToolExecutionResult` objects. Phase 3 adds `execute_runtime_exec()` as a top-level router above all four Phase 2 adapters.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Execution Paths",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Validate (read-only) — `execute_validate()`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- Runs the `Validate` tool through the adapter - Returns content-light `RuntimeToolExecutionResult` - First read-only execution behind the adapter (Phase 1) - No InvokeContext passed (read-only, no coordination needed)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "SearchReplace (mutation) — `execute_search_replace()`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- Runs the `SearchReplace` tool through its hardened interface - Returns content-light `RuntimeToolExecutionResult` - First mutation execution behind the adapter (Phase 1) - **InvokeContext injected**: session_id and task_id are passed through the invocation path via `_build_invoke_context()` - **CWD managed**: `_cwd_for_envelope()` temporarily sets CWD to `envelope.cwd` during execution, restoring the original on exit - **Coordination enabled**: the tool's internal coordination runs using the injected context (session_id, task_id). Same-owner renewal succeeds. Reservations are released immediately after execution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "WriteFile (mutation) — `execute_write_file()`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- Runs the `WriteFile` tool through its hardened interface (Phase 2) - Returns content-light `RuntimeToolExecutionResult` - **InvokeContext injected**: session_id and task_id are passed through the invocation path via `_build_invoke_context()` - **CWD managed**: `_cwd_for_envelope()` temporarily sets CWD to `envelope.cwd` during execution, restoring the original on exit - **Coordination enabled**: the tool's internal coordination runs using the injected context (session_id, task_id). - **Dirty guard**: the tool internally handles dirty-file protection, protected-file permission, and expected-before-SHA256 validation. - **Receipt**: `WriteFileReceipt` is built via `_build_write_file_receipt()` and converted to a `RuntimeToolInvocationReceipt` through `_attach_receipt()`. - **Linkage**: `tool_receipt_kind='write_file'`, `tool_receipt_schema_version='rig.relay.write_file_receipt.v1'`, `changed_paths=[path]` populated on success.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "Bash (subprocess) — `execute_bash()`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- Runs the `Bash` tool through its hardened interface (Phase 2) - Returns content-light `RuntimeToolExecutionResult` - **InvokeContext injected**: session_id and task_id are passed through the invocation path via `_build_invoke_context()` - **CWD managed**: `_cwd_for_envelope()` temporarily sets CWD to `envelope.cwd` during execution, restoring the original on exit - **Timeout handled by bash tool**: the hardened `Bash._run_subprocess()` uses `asyncio.wait_for()` with the configured timeout; timeouts produce `BashResult(status=\"timed_out\", error_kind=\"timeout\")` which maps to `RuntimeToolExecutionResult(tool_status=\"timed_out\", error_kind=\"timeout\")` - **Guard integration**: destructive git commands (`git restore`, `git checkout`, `git reset`, `git clean`, `git stash`) are refused by the dirty-file guard before execution, producing `BashResult(status=\"refused\")` - **Error handling**: non-zero exit codes raise `ToolError` (preserving existing hardened contract), caught by the adapter as `FAILED` with `error_kind=\"execution_error\"` - **Receipt**: `BashReceipt` is built via `_build_bash_receipt()` and converted to a `RuntimeToolInvocationReceipt` through `_attach_receipt()`. The receipt is content-light — no raw stdout/stderr, only SHA256 hashes and byte counts. - **Linkage**: `tool_receipt_kind='bash'`, `tool_receipt_schema_version='rig.relay.bash_receipt.v1'`, `changed_paths=[]` (bash does not track file changes)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Constraints",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- **bash_legacy** — ✅ Supported (Phase 2) - **runtime_exec** — ✅ Supported (Phase 3) - Lease acquisition — ✅ Supported (Phase 3) - RuntimeSupervisor integration — ❌ Deferred - Audit persistence — ✅ Supported (Phase 3)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Audit Persistence (Phase 3)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "RuntimeToolExecutionResult outcomes are persisted as RuntimeAuditEvent records to an append-only JSONL store. Each execute_*() method in RuntimeToolExecutionRunner calls _persist_if_configured() before returning, writing a content-light audit event. Early returns (blocked, refused, failed) are also persisted. Persistence is best-effort: failures are silently ignored so audit never breaks tool execution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeAuditEvent",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- Content-light: no raw payloads, stdout, stderr, diffs, snippets, secrets - Records: invocation_id, tool_name, status, tool_status, receipt_sha256, runtime_result_sha256 (SHA-256 of the execution result's canonical JSON), changed_paths, duration_ms, error fields, created_at - Context propagation (Otel-inspired): mission_id, agent_id, lease_id, parent_event_id carried when available - Schema: `rig.relay.runtime_audit_event.v1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "RuntimeAuditPersistenceStore",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "- Append-only JSONL persistence under an injected root path - Creates parent directories automatically - Uses flush + fsync for best-effort durability - Example: `RuntimeAuditPersistenceStore(tmp_path / \"audit.jsonl\")`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Supervisor Projection (Phase 3)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "`RuntimeSupervisorProjection` is a content-light summary derived from `RuntimeAuditEvent` records. It is not derived from raw tool payloads.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-24",
+      "type": "heading",
+      "level": 3,
+      "content": "Projection contents",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "- total_invocations: total count - status_counts: counts per status (completed, blocked, refused, failed) - recent_invocations: most recent events (capped, sorted by created_at desc) - changed_path_count: total changed paths across recent events - changed_path_hashes: SHA-256 hashes of recent runtime results",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Builder: `build_runtime_supervisor_projection(store_or_events)` Schema: `rig.relay.runtime_supervisor_projection.v1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-27",
+      "type": "heading",
+      "level": 2,
+      "content": "Context Injection",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-28",
+      "type": "heading",
+      "level": 3,
+      "content": "`_build_invoke_context(envelope)`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Builds an `InvokeContext` from the invocation envelope:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-30",
+      "type": "table",
+      "columns": [
+        "Envelope field",
+        "InvokeContext field"
+      ],
+      "rows": [
+        [
+          "`session_id`",
+          "`session_dir` (as `Path(\"/runtime/sessions/{session_id}\")`)"
+        ],
+        [
+          "`task_id`",
+          "`tool_call_id`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Returns `None` when the envelope lacks `session_id` or `task_id`, preserving backward compatibility (coordination skipped).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-32",
+      "type": "heading",
+      "level": 3,
+      "content": "`_cwd_for_envelope(envelope)`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "Context manager that sets `os.chdir()` to `envelope.cwd` during tool execution. This allows the tool's `Path.cwd()`-based checks (path validation via `require_path_within_workdir`, coordination store resolution via `Path.cwd() / \".build\" / \"rig-relay\" / \"coordination\"`) to operate within the correct scope.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "- If `envelope.cwd` is `None`, the context manager is a no-op - The original CWD is always restored in a `finally` block - Tool execution (path resolution, guard checks, file mutation) happens within the scope of this context manager",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-35",
+      "type": "heading",
+      "level": 3,
+      "content": "Receipt Model Attachment",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "Both `execute_validate()` and `execute_search_replace()` call `build_runtime_tool_invocation_receipt()` after constructing the result, storing the returned `RuntimeToolInvocationReceipt` directly in the `receipt` field of `RuntimeToolExecutionResult`. Receipt building failures are silently caught — `receipt` remains `None`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "The `RuntimeToolInvocationReceipt` model has `extra=\"forbid\"` and the execution result schema validates it through a `$ref` to `#/$defs/runtime_tool_invocation_receipt` with `additionalProperties: false`. This provides strict type safety at both the Python and schema level, replacing the previous `dict[str, Any]` bridge.## Coordination Behavior",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "The `SearchReplace` tool internally handles coordination via `_build_coordination_state()` and `_claim_coordination()`. When an InvokeContext with `session_dir` and `tool_call_id` is provided:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "1. **Claim task**: `store.claim_task(session_id, task_id, ...)` — reserves the task for the session 2. **Reserve path**: `store.reserve_paths(session_id, task_id, mode=\"write\", paths=[...])` — reserves the target file path 3. **Same-owner renewal**: same `(session_id, task_id)` refreshes the claim without conflict 4. **Release**: reservations are released in a `finally` block after execution completes",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "The coordination store is created at `Path.cwd() / \".build\" / \"rig-relay\" / \"coordination\"`. Since the runner sets CWD to `envelope.cwd`, the store is scoped to the worktree directory.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-41",
+      "type": "heading",
+      "level": 2,
+      "content": "CWD/Worktree Scope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "Tests no longer require `monkeypatch.chdir()` for search_replace execution. The runner's `_cwd_for_envelope()` context manager handles CWD management.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "If `monkeypatch.chdir()` is still used in a test, it overrides the runner's CWD setting. This is acceptable for tests intentionally testing CWD behavior but is not required for normal operation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-44",
+      "type": "heading",
+      "level": 2,
+      "content": "Receipt Hashing",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "- Receipts are built from tool results via the tool's `build_receipt()` method - The receipt is serialized to canonical JSON (`sort_keys=True`) and SHA-256 hashed - Receipt building failures are silently caught — `receipt_sha256` remains `None`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-46",
+      "type": "heading",
+      "level": 2,
+      "content": "Status Mapping",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-47",
+      "type": "table",
+      "columns": [
+        "Tool (any) status",
+        "Execution result status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "`success` / `passed` / `failed`",
+          "`COMPLETED`",
+          "Tool ran to completion"
+        ],
+        [
+          "`skipped` / `timed_out`",
+          "`COMPLETED`",
+          "Timeout captured via `tool_status` and `error_kind`"
+        ],
+        [
+          "`refused` / `blocked`",
+          "`REFUSED`",
+          "Guard or adapter refusal"
+        ],
+        [
+          "bash `failure` (non-zero exit)",
+          "`FAILED`",
+          "`ToolError` raised by hardened bash contract, caught as `execution_error`"
+        ],
+        [
+          "bash `refused` (guard)",
+          "`REFUSED`",
+          "Destructive git commands blocked by dirty-file guard"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "Adapter-level `BLOCKED` → `BLOCKED`. Adapter-level `REFUSED` → `REFUSED`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-49",
+      "type": "heading",
+      "level": 2,
+      "content": "Linkage Field Population",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "The `RuntimeToolExecutionResult` model carries linkage fields that bridge the execution result to tool receipts, receipt envelopes, and audit events:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-51",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Validate",
+        "SearchReplace",
+        "Bash",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`tool_receipt_kind`",
+          "`\"validate\"`",
+          "`\"search_replace\"`",
+          "`\"bash\"`",
+          "Identifies which receipt schema applies"
+        ],
+        [
+          "`tool_receipt_schema_version`",
+          "From `ValidateReceipt.schema_version`",
+          "From `SearchReplaceReceipt.schema_version`",
+          "From `BashReceipt.schema_version`",
+          "Records which schema version produced the receipt hash"
+        ],
+        [
+          "`changed_paths`",
+          "`[]` (empty)",
+          "`[file_path]`",
+          "`[]` (bash does not track file changes)",
+          "Files affected by mutation tools"
+        ],
+        [
+          "`receipt`",
+          "`RuntimeToolInvocationReceipt`",
+          "`RuntimeToolInvocationReceipt`",
+          "`RuntimeToolInvocationReceipt`",
+          "Produced by `build_runtime_tool_invocation_receipt()` and stored directly as the Pydantic model"
+        ],
+        [
+          "`invocation_id`",
+          "From envelope",
+          "From envelope",
+          "From envelope",
+          "Links result back to invocation"
+        ],
+        [
+          "`receipt_envelope_id`",
+          "`None` (Phase 2)",
+          "`None` (Phase 2)",
+          "`None` (Phase 2)",
+          "Populated by envelope builder"
+        ],
+        [
+          "`audit_event_id`",
+          "`None` (Phase 2)",
+          "`None` (Phase 2)",
+          "`None` (Phase 2)",
+          "Populated by audit integration"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "The `receipt` field stores a `RuntimeToolInvocationReceipt` Pydantic model (not a dict). The model has `extra=\"forbid\"` and the execution result schema references it via `$ref` to `#/$defs/runtime_tool_invocation_receipt` with `additionalProperties: false`. This guarantees content-light conformance at both the type and schema level — no dicts, no raw content, no arbitrary properties.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-53",
+      "type": "heading",
+      "level": 2,
+      "content": "Raw Payload Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "WriteFileResult has a `content: str` field that contains the raw file content. This field is explicitly governed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "- **Local operational payload only** — used by the agent loop for display and verification during the same session - **Not emitted in receipt** — `WriteFileReceipt` has no `content` field; `build_receipt()` never copies it - **Not emitted in runtime execution result** — `RuntimeToolExecutionResult` has no `content` field; write_file is not wired into the runner - **Not emitted in telemetry/projections** — tool output artifacts and observability events use only SHA256 hashes and metadata",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "BashResult has `stdout: str` and `stderr: str` fields that contain raw command output. These fields are explicitly governed:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "- **Local operational payload only** — used by the agent loop for display and verification during the same session - **Not emitted in receipt** — `BashReceipt` has no `stdout`/`stderr` fields; `build_receipt()` computes SHA256 hashes and byte counts instead - **Not emitted in runtime execution result** — `RuntimeToolExecutionResult` has no `stdout`/`stderr` fields; the content-light contract is enforced by `ConfigDict(extra=\"forbid\")` on all models and `additionalProperties: false` on all schemas - **Not emitted in telemetry/projections** — only hashes and metadata",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "This boundary is enforced by the receipt schema (`rig.relay.write_file_receipt.v1`, `additionalProperties: false`) and the execution result schema (`rig.relay.runtime_tool_execution_result.v1`, `additionalProperties: false`).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-59",
+      "type": "heading",
+      "level": 2,
+      "content": "Content-Light Contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-60",
+      "type": "paragraph",
+      "content": "The `RuntimeToolExecutionResult` model contains no raw file contents, stdout, stderr, diffs, snippets, or secrets. Only status indicators, hashes, timing, and structured error/refusal information.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-61",
+      "type": "heading",
+      "level": 2,
+      "content": "Usage",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-62",
+      "type": "code",
+      "language": "python",
+      "content": "from rig_relay.runtime.context import RuntimeContext, RuntimeContextResolution\nfrom rig_relay.runtime.tool_invocation_adapter import RuntimeToolIntent, RuntimeToolName\nfrom rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionRunner\n\nctx = RuntimeContext(\n    session_id=\"sess-001\",\n    task_id=\"task-001\",\n    worktree_path=\"/tmp/worktree\",\n    repo_root=\"/tmp/repo\",\n)\nresolution = RuntimeContextResolution(status=\"resolved\", context=ctx)\n\n# Validate execution (no InvokeContext)\nv_intent = RuntimeToolIntent(\n    intent_id=\"intent-001\",\n    tool_name=RuntimeToolName.VALIDATE,\n    payload={\"profile\": \"quick\"},\n)\nrunner = RuntimeToolExecutionRunner()\nv_result = await runner.execute_validate(v_intent, resolution)\n\n# SearchReplace execution (InvokeContext injected, CWD managed)\nsr_intent = RuntimeToolIntent(\n    intent_id=\"intent-002\",\n    tool_name=RuntimeToolName.SEARCH_REPLACE,\n    payload={\n        \"file_path\": \"src/main.py\",\n        \"content\": \"<<<<<<< SEARCH\\nold\\n=======\\nnew\\n>>>>>>> REPLACE\",\n    },\n)\nsr_result = await runner.execute_search_replace(sr_intent, resolution)\n\n# Bash execution\nb_intent = RuntimeToolIntent(\n    intent_id=\"intent-003\",\n    tool_name=RuntimeToolName.BASH_LEGACY,\n    payload={\"command\": \"echo hello\", \"legacy_fallback_allowed\": True},\n)\nb_result = await runner.execute_bash(b_intent, resolution)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-63",
+      "type": "heading",
+      "level": 2,
+      "content": "Implementation Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-64",
+      "type": "table",
+      "columns": [
+        "Feature",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "`execute_validate()`",
+          "✅ Implemented",
+          "Read-only, runs Validate tool"
+        ],
+        [
+          "`execute_search_replace()`",
+          "✅ Implemented",
+          "Mutation, runs SearchReplace through hardened interface"
+        ],
+        [
+          "Context injection (InvokeContext)",
+          "✅ Implemented",
+          "session_id, task_id passed to tool"
+        ],
+        [
+          "CWD management",
+          "✅ Implemented",
+          "`_cwd_for_envelope()` context manager"
+        ],
+        [
+          "Coordination via injected context",
+          "✅ Implemented",
+          "Same-owner renewal, released after execution"
+        ],
+        [
+          "Adapter prepare → blocked → refused",
+          "✅ Implemented",
+          "Both paths handle BLOCKED and REFUSED envelopes"
+        ],
+        [
+          "Envelope schema validation",
+          "✅ Implemented",
+          "Draft7 validation against runtime_tool_invocation schema"
+        ],
+        [
+          "Receipt hashing",
+          "✅ Implemented",
+          "SHA-256 of canonical JSON receipt"
+        ],
+        [
+          "Linkage fields (validate)",
+          "✅ Implemented",
+          "`tool_receipt_kind`, `tool_receipt_schema_version` populated"
+        ],
+        [
+          "Linkage fields (search_replace)",
+          "✅ Implemented",
+          "`tool_receipt_kind`, `tool_receipt_schema_version`, `changed_paths` populated"
+        ],
+        [
+          "Receipt model attachment",
+          "✅ Implemented",
+          "`build_runtime_tool_invocation_receipt()` stores model directly as `RuntimeToolInvocationReceipt`"
+        ],
+        [
+          "Schema validation (no workarounds)",
+          "✅ Implemented",
+          "Tests validate full model dumps without `exclude_none`"
+        ],
+        [
+          "Content-light results",
+          "✅ Implemented",
+          "No raw content in result model"
+        ],
+        [
+          "Schema validation of result",
+          "✅ Implemented",
+          "Against `rig.relay.runtime_tool_execution_result.v1`"
+        ],
+        [
+          "`execute_write_file()`",
+          "✅ Implemented",
+          "Mutation, runs WriteFile through hardened interface"
+        ],
+        [
+          "`execute_bash()`",
+          "✅ Implemented",
+          "Subprocess, runs Bash through hardened interface"
+        ],
+        [
+          "Lease acquisition",
+          "✅ Implemented",
+          "Acquire before mutation, release in finally, TTL crash recovery"
+        ],
+        [
+          "RuntimeSupervisor integration",
+          "❌ Deferred",
+          "Phase 4"
+        ],
+        [
+          "Coordination policy",
+          "✅ Implemented",
+          "coordination_enabled flag, lease error => BLOCKED"
+        ],
+        [
+          "Lease TTL",
+          "✅ Implemented",
+          "DEFAULT_LEASE_TTL_SECONDS=120, configurable per envelope"
+        ],
+        [
+          "Audit persistence",
+          "✅ Implemented",
+          "Content-light JSONL audit trail"
+        ],
+        [
+          "Context propagation",
+          "✅ Implemented",
+          "mission_id, agent_id, etc. propagated to audit"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-65",
+      "type": "heading",
+      "level": 2,
+      "content": "Dependencies",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "- `RuntimeToolInvocationAdapter` — translates intent + context to envelope - `RuntimeToolInvocationEnvelope` — carries session_id, task_id, cwd, payload - `InvokeContext` (`vibe.core.tools.base`) — passed to SearchReplace tool - `Validate` tool (`vibe/core/tools/builtins/validate.py`) — actual validation logic - `SearchReplace` tool (`vibe/core/tools/builtins/search_replace.py`) — actual search/replace logic - `Bash` tool (`vibe/core/tools/builtins/bash.py`) — actual command execution with timeout/refusal/error handling (`vibe/core/tools/builtins/search_replace.py`) — actual search/replace logic - `jsonschema` — envelope schema validation - Schema: `rig.relay.runtime_tool_execution_result.v1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/runtime-tool-invocation-execution.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

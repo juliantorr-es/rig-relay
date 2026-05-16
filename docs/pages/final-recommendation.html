@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Final Recommendation: VSCodium Shell Lane — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="The VSCodium Shell Lane is the most logical evolution for Rig Relay as it transforms into a &quot;workbench&quot;. It leverages a world-class editor shell while keeping the governance logic isolated in the Rig ">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Final Recommendation: VSCodium Shell Lane</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Final Recommendation: VSCodium Shell Lane</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">1. Recommendation: BUILD NOW</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">The VSCodium Shell Lane is the most logical evolution for Rig Relay as it transforms into a &quot;workbench&quot;. It leverages a world-class editor shell while keeping the governance logic isolated in the Rig daemon.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">2. Strategy: Extension-First</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">*   **Architecture**: Option A (Extension-only control plane). *   **Platform**: Target VSCodium on macOS/Linux/Windows. *   **Marketplace**: Publish to Open VSX; provide direct VSIX downloads.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">3. First 3 Agent Missions</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">1.  **Mission: Skeleton Bridge**: Implement the WebSocket handshake and sidebar activation. 2.  **Mission: Prompt Sync**: Connect the sidebar chat to the `AgentLoop` turns. 3.  **Mission: Patch Review**: Implement the transition from a tool-generated `PatchProposal` to a native VSCodium Diff View.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">4. Exit Criteria for abandoning pywebview/Textual</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Do not kill the Textual or pywebview consoles until the VSCodium extension can: 1.  Successfully execute a &quot;Bash&quot; turn with human approval. 2.  Correctly project a multi-item evidence receipt in a side panel. 3.  Maintain a stable daemon connection for 4+ hours of active coding.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">5. What must be proven before a Branded Bundle</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Only graduate to a branded VSCodium bundle (Option B) if: 1.  Users report extreme friction with manual VSIX installation in VSCodium. 2.  The product requires deep integration that the Extension API cannot provide (e.g., custom UI in the editor gutter or tab bar). 3.  We have the engineering capacity to maintain a fork of a major IDE.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">6. Closing Thought</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Rig&#x27;s strength is **verifiable governance**. VSCodium provides the **surface area** to make that governance comfortable. By building the extension first, we deliver the most value with the least risk.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vscodium-shell-lane/final-recommendation.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,250 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-supervisor-result-envelope-v1",
+  "document_type": "audit",
+  "title": "RuntimeSupervisor Result Envelope v1",
+  "summary": "**Date**: 2026-05-16",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/runtime/runtime-supervisor-result-envelope-v1.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "RuntimeSupervisor Result Envelope v1",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date**: 2026-05-16",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "`RuntimeSupervisorResultEnvelope` is the canonical terminal evidence shape for supervised subprocess execution. It is built at the invocation boundary by `SupervisorCommandInvoker` from:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- terminal stream event classification - command and cwd digests - timing facts - output digests and byte counts - safe trace context - state machine projection facts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "The envelope is content-light and privacy-preserving. It does not carry raw stdout, raw stderr, raw argv strings, or raw cwd values.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Root Cause",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Before this slice, `RuntimeSupervisor` produced terminal stream events and `SupervisorCommandInvoker` converted those events into a flat result model. Downstream layers could only infer subprocess meaning by reinterpreting raw fields, which encouraged divergent vocabularies and duplicated result shapes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Cleanup / Normalization",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "This slice introduced a stable envelope model with a single terminal classification vocabulary:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- `completed` - `failed` - `timed_out` - `killed` - `cancelled` - `spawn_failed` - `cleanup_failed` - `errored` - `refused`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "The envelope also carries:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- command digest - cwd digest - output digest - timing - resource usage - safe error details - cleanup status - trace/evidence identifiers - state machine projection",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Existing caller-facing subprocess output behavior remains unchanged. The flat result still exposes stdout/stderr text to direct callers that expect it. The envelope is additive evidence, not a replacement for the user-facing result.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Covered by:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "- `tests/runtime/test_runtime_supervisor_result_envelope.py` - `tests/runtime/test_runtime_supervisor.py` - `tests/runtime/test_runtime_supervisor_state_machine.py` - `tests/runtime/test_runtime_supervisor_teardown.py` - `tests/tracing/test_runtime_supervisor_tracing.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "These tests prove:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- success, non-zero exit, timeout, spawn failure, and cancellation all produce envelopes - privacy-sensitive fields are excluded from the envelope - trace classification stays aligned with the envelope classification - the state projection matches the terminal lifecycle - the envelope builder is pure",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Gaps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "The envelope is wired at the supervisor invocation boundary, and ToolRuntime now preserves it through subprocess-backed tool calls. Remaining downstream consumers still need to adopt it directly:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "- `validate` - desktop diagnostics - future `SubagentRuntime`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Those consumers currently still rely on the existing flat result contract.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/runtime/runtime-supervisor-result-envelope-v1.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

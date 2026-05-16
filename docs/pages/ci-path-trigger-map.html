@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI Path Trigger Map — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="&gt; **Status**: Design Proposal">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>CI Path Trigger Map</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">CI Path Trigger Map</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **Status**: Design Proposal &gt; **Date**: 2026-05-17 &gt; **Scope**: Path-based trigger rules for domain-specific CI gates.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Path Pattern Syntax</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">All paths are relative to repository root. Patterns use glob-style matching consistent with GitHub Actions `paths:` filters.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Trigger Map</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Core Python Changes — Tier 1 (always run)</h3>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`**.py`</td><td>Ruff check, Ruff format (via pre-commit), pyright (via pre-commit)</td></tr>
+<tr><td>`**.pyi`</td><td>Ruff check, Ruff format (via pre-commit), pyright (via pre-commit)</td></tr>
+<tr><td>`pyproject.toml`</td><td>Ruff check, Ruff format, pre-commit, uv lock check</td></tr>
+<tr><td>`uv.lock`</td><td>uv lock check, uv sync</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Schema Changes — Tier 1 (always run when triggered)</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`docs/schemas/*.json`</td><td>Schema validation (validate schemas script), Python contamination regression</td></tr>
+<tr><td>`docs/schemas/rig.relay.artifact.*.json`</td><td>Artifact schema tests</td></tr>
+<tr><td>`docs/schemas/rig.relay.contribution_*.json`</td><td>Telemetry contribution schema tests</td></tr>
+<tr><td>`docs/schemas/rig.relay.bash_*.json`</td><td>Bash hardening tests</td></tr>
+<tr><td>`docs/schemas/rig.relay.search_replace_*.json`</td><td>SearchReplace hardening tests</td></tr>
+<tr><td>`docs/schemas/rig.relay.tool_receipt_index.v1.json`</td><td>Receipt index tests</td></tr>
+<tr><td>`scripts/rig_relay_validate_schemas.py`</td><td>Schema validation gate (self-test)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Tool Hardening Changes — Tier 2</h3>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`vibe/core/tools/builtins/bash.py`</td><td>Bash hardening tests, tool determinism tests</td></tr>
+<tr><td>`vibe/core/tools/builtins/search_replace.py`</td><td>SearchReplace hardening tests, arity tests, tool determinism tests</td></tr>
+<tr><td>`vibe/core/tools/builtins/**`</td><td>Tool determinism tests</td></tr>
+<tr><td>`vibe/core/tools/base.py`</td><td>Tool determinism tests, validation suite tests</td></tr>
+<tr><td>`vibe/core/tools/**`</td><td>Tool determinism tests, tool contract coverage tests</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Receipt / Evidence Changes — Tier 2</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/evidence/**`</td><td>Receipt policy tests, receipt index tests, evidence tests</td></tr>
+<tr><td>`rig_relay/evidence/model_observations.py`</td><td>Tool receipt emission tests</td></tr>
+<tr><td>`rig_relay/evidence/tool_receipt_policy.py`</td><td>Receipt policy tests</td></tr>
+<tr><td>`rig_relay/evidence/receipt_index.py`</td><td>Receipt index tests</td></tr>
+<tr><td>`rig_relay/evidence/redaction.py`</td><td>Redaction tests</td></tr>
+<tr><td>`vibe/core/agent_loop.py`</td><td>Tool receipt emission tests</td></tr>
+<tr><td>`vibe/core/telemetry/constants.py`</td><td>Tool receipt emission tests</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Agent Loop / Telemetry Changes — Tier 1 (always run)</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`vibe/core/agent_loop.py`</td><td>Tool receipt emission tests</td></tr>
+<tr><td>`vibe/core/telemetry/**`</td><td>Tool receipt emission tests</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Coordination Changes — Tier 2</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/coordination/**`</td><td>Coordination tests, coordination lease dry-run</td></tr>
+<tr><td>`tests/coordination/**`</td><td>Coordination tests</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Governance / Policy Changes — Tier 2</h3>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`docs/governance/**`</td><td>Governance tests</td></tr>
+<tr><td>`docs/governance/usage-data-doctrine.md`</td><td>Telemetry contribution validation</td></tr>
+<tr><td>`docs/governance/telemetry-contribution-policy.md`</td><td>Telemetry contribution validation</td></tr>
+<tr><td>`docs/governance/cross-session-coordination.md`</td><td>Coordination tests</td></tr>
+<tr><td>`AGENTS.md`</td><td>Conversation summary name tests, governance tests</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">Documentation Changes — Tier 2</h3>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`docs/conversations/*.md`</td><td>Conversation summary name tests</td></tr>
+<tr><td>`docs/audits/**`</td><td>Docs tests (if any exist for audit data)</td></tr>
+<tr><td>`docs/**/*.md`</td><td>Docs tests</td></tr>
+<tr><td>`docs/schemas/*.json`</td><td>(See schema changes above)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Script Changes — Tier 2</h3>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`scripts/*.py`</td><td>Script tests</td></tr>
+<tr><td>`scripts/rig_relay_validate_*.py`</td><td>Schema validation, receipt policy validation (self-test)</td></tr>
+<tr><td>`tests/scripts/**`</td><td>Script tests</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">CI Workflow Changes — Tier 1 (always run)</h3>
+
+<table id="table-25" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`.github/workflows/*.yml`</td><td>action-validator (via pre-commit)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">Build / Packaging Changes — Tier 3</h3>
+
+<table id="table-27" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`pyproject.toml`</td><td>uv lock check, build check</td></tr>
+<tr><td>`uv.lock`</td><td>uv lock check, uv sync</td></tr>
+<tr><td>`pyinstaller/**`</td><td>Build check</td></tr>
+<tr><td>`vibe-acp.spec`</td><td>Build check</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Desktop Cockpit Changes — Tier 4</h3>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Path Pattern</th><th>Gate(s)</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/desktop/**`</td><td>Desktop tests (manual only)</td></tr>
+<tr><td>`tests/desktop/**`</td><td>Desktop tests (manual only)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Combined Path Logic</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">When a PR modifies files matching multiple patterns, **all matching Tier 1 and Tier 2 gates run**. For example:</p>
+
+<pre id="code-32"><code class="language-text">PR changes: vibe/core/tools/builtins/bash.py + docs/schemas/rig.relay.bash_receipt.v1.schema.json
+Runs:
+  Tier 1: full baseline (ruff, pyright, schema validation, receipt emission, lock check)
+  Tier 2: bash hardening tests
+  Tier 2: tool determinism tests</code></pre>
+
+<h2 id="h2-33" class="disclosure-standard" data-disclosure-level="standard">Anti-Patterns</h2>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">1. **Don&#x27;t run Tier 2 on every PR** — path-filtering must prevent this. 2. **Don&#x27;t duplicate Tier 1 checks in Tier 2** — Tier 1 always runs. 3. **Don&#x27;t gate on test file changes alone** — test changes without source changes don&#x27;t need domain-specific gates (full suite will catch them). 4. **Don&#x27;t use `paths-ignore` where `paths` is clearer** — prefer positive `paths:` over negative `paths-ignore:`.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/ci/ci-path-trigger-map.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

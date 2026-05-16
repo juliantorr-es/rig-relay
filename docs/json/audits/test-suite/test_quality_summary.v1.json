@@ -1,0 +1,197 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "test-quality-summary",
+  "document_type": "audit",
+  "title": "Test Quality Audit Summary",
+  "summary": "**Generated**: 2026-05-16T04:45:48Z",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/test-suite/test_quality_summary.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Quality Audit Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Generated**: 2026-05-16T04:45:48Z **Doctrine**: docs/governance/test-suite-doctrine.md",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Statistics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Value"
+      ],
+      "rows": [
+        [
+          "Total test files",
+          "327"
+        ],
+        [
+          "Total findings",
+          "239"
+        ],
+        [
+          "conftest.py exists",
+          "True"
+        ],
+        [
+          "__pycache__/conftest*.pyc",
+          "1"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Findings by Severity",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- **critical**: 0 - **high**: 11 - **medium**: 20 - **low**: 64 - **info**: 144",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Findings by Rule",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- **DETERM_HARDCODED_PATH**: 11 - **DETERM_SLEEP**: 7 - **DUPLICATE_KNOWN_PAIR**: 2 - **DUPLICATE_SAME_MODULE**: 144 - **DUPLICATE_SAME_NAME_CROSS_DIR**: 55 - **LAYOUT_MIS_SCOPED_SCRIPTS**: 3 - **LAYOUT_ROOT_LEVEL**: 15 - **NAMING_VAGUE**: 2",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Marker Coverage",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Marker",
+        "Count"
+      ],
+      "rows": [
+        [
+          "contract",
+          "3"
+        ],
+        [
+          "integration",
+          "7"
+        ],
+        [
+          "slow",
+          "8"
+        ],
+        [
+          "smoke",
+          "11"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Commands",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-12",
+      "type": "code",
+      "language": "bash",
+      "content": "# Smoke suite (fastest confidence)\nuv run pytest -m smoke\n\n# Default developer suite (no slow/legacy/flaky/network/provider/destructive)\nuv run pytest -m \"not slow and not legacy and not flaky and not network and not provider and not destructive\"\n\n# Full suite\nuv run pytest\n\n# Test quality audit\nuv run python scripts/rig_relay_test_quality_audit.py",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/test-suite/test_quality_summary.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

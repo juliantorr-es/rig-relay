@@ -1,0 +1,932 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "search-replace-patch-contract",
+  "document_type": "audit",
+  "title": "SearchReplace Patch Contract",
+  "summary": "This document audits the hardening of the `search_replace` tool into a",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/tool-hardening/search-replace-patch-contract.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "SearchReplace Patch Contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Overview",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "This document audits the hardening of the `search_replace` tool into a deterministic, schema-validated, content-light patch contract.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Motivation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Local Relay tool-usage audit evidence:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Value"
+      ],
+      "rows": [
+        [
+          "Total calls",
+          "2,057"
+        ],
+        [
+          "Failures",
+          "217"
+        ],
+        [
+          "Failure rate",
+          "~10.55%"
+        ],
+        [
+          "Risk tier",
+          "2 (high)"
+        ],
+        [
+          "p95 latency",
+          "~3,200 ms"
+        ],
+        [
+          "p95 output",
+          "~2,400 bytes"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "SearchReplace has the highest **failure rate** of any tool at ~10.55%. While total call volume is lower than bash (5,023), the friction cost of failed patches is high — each failure requires a human to re-read the file, adjust the patch, and retry.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "What Changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-9",
+      "type": "heading",
+      "level": 3,
+      "content": "Result Model Extensions (`SearchReplaceResult`)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "Added structured status, error classification, and timing:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Default"
+      ],
+      "rows": [
+        [
+          "`status`",
+          "`str`",
+          "`\"success\"`"
+        ],
+        [
+          "`error_kind`",
+          "`str \\",
+          "None`",
+          "`None`"
+        ],
+        [
+          "`refusal_reason`",
+          "`str \\",
+          "None`",
+          "`None`"
+        ],
+        [
+          "`duration_ms`",
+          "`float \\",
+          "None`",
+          "`None`"
+        ],
+        [
+          "`replacements`",
+          "`int`",
+          "`0`"
+        ],
+        [
+          "`before_bytes`",
+          "`int`",
+          "`0`"
+        ],
+        [
+          "`after_bytes`",
+          "`int`",
+          "`0`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Status values: `success`, `no_match`, `ambiguous_match`, `count_mismatch`, `refused`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Error Classification",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "The `_classify_block_errors()` function maps block parser error messages to structured `error_kind` values:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-15",
+      "type": "table",
+      "columns": [
+        "Mismatch Pattern",
+        "`error_kind`"
+      ],
+      "rows": [
+        [
+          "`\"Search text not found\"`",
+          "`old_text_not_found`"
+        ],
+        [
+          "`\"search text hasn't been modified\"`",
+          "`unchanged_replacement`"
+        ],
+        [
+          "Fallback",
+          "`old_text_not_found`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "The `_classify_status_from_error_kind()` function maps `error_kind` to status:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-17",
+      "type": "table",
+      "columns": [
+        "`error_kind`",
+        "`status`"
+      ],
+      "rows": [
+        [
+          "`old_text_not_found`, `unchanged_replacement`, `encoding_error`",
+          "`no_match`"
+        ],
+        [
+          "`multiple_matches_when_single_required`",
+          "`ambiguous_match`"
+        ],
+        [
+          "`replacement_count_mismatch`",
+          "`count_mismatch`"
+        ],
+        [
+          "Unknown",
+          "`mismatch`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Refusal Classification",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "The `_classify_refusal()` function inspects `GuardCheck` attributes to classify refusals. Currently heuristic-based; covers hash mismatch, destructive path patterns, and guard policy violations.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "Structured Block Mismatch",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Previously, block errors raised `ToolError`. Now they return a `SearchReplaceResult(status=\"no_match\", ...)` with block-level details.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "Structured Guard Refusal",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "Previously, guard refusal raised `ToolError`. Now the `run()` method yields `SearchReplaceResult(status=\"refused\", ...)` with the guard check detail.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-24",
+      "type": "heading",
+      "level": 3,
+      "content": "Content-Light Receipt",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "New `SearchReplaceReceipt` model — identical to `SearchReplaceResult` minus the `content` field. Used for telemetry and audit trails without exposing file contents.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-26",
+      "type": "heading",
+      "level": 3,
+      "content": "Schema Files",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Three new JSON schemas:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- `docs/schemas/rig.relay.search_replace_invocation.v1.schema.json` - `docs/schemas/rig.relay.search_replace_result.v1.schema.json` - `docs/schemas/rig.relay.search_replace_receipt.v1.schema.json`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-29",
+      "type": "heading",
+      "level": 2,
+      "content": "Backward Compatibility",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "- All new `SearchReplaceResult` fields are optional with defaults - `content` field preserved in result for legacy consumers - `run()` signature unchanged — still yields `SearchReplaceResult` - `SearchReplaceReceipt` is an additive model, not required - File-not-found, outside-workdir, content-size, empty-content, directory-path, binary-file, and parse failures now return structured `SearchReplaceResult(status=\"refused\")` with domain-specific `error_kind` instead of raising `ToolError`. Receipt emission follows automatically.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-31",
+      "type": "heading",
+      "level": 2,
+      "content": "Bugs Fixed Incidentally",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "1. **CoordinationStore release_paths key mismatch** (`rig_relay/coordination/store.py`): `reserve_paths()` wrote lease files using `_path_key(session_id+task_id+paths)` while `release_paths()` looked for them using `_lease_path(sha256(path))` — completely different filenames. Fixed `release_paths()` to use the same key construction as `reserve_paths()`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "2. **SearchReplace class structure corruption**: A previous edit accidentally placed `_classify_status_from_error_kind()` at module level (indent 0), which closed the `SearchReplace` class and made all subsequent methods (`run`, `_apply_blocks`, etc.) nested functions inside it. Restored proper class membership with `@staticmethod`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-34",
+      "type": "heading",
+      "level": 2,
+      "content": "Receipt Emission Verification",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-35",
+      "type": "heading",
+      "level": 3,
+      "content": "Automatic Integration (verified)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "SearchReplace receipts are **automatically emitted** through the generic duck-typed receipt path in the agent loop (`vibe/core/agent_loop.py` lines 1114–1130):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "1. Agent loop calls `getattr(tool_instance, \"build_receipt\", None)` — finds `SearchReplace.build_receipt` via duck typing 2. Calls `build_receipt(result_model)` with the `SearchReplaceResult` yielded from `run()` 3. Calls `capture_tool_receipt()` to write `rig.relay.tool_receipt.captured` event to local observability JSONL",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "**No code change was required for SearchReplace receipt emission.** The Phase 5 addition of `build_receipt()` to the `SearchReplace` class was sufficient for automatic integration.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-39",
+      "type": "heading",
+      "level": 3,
+      "content": "Statuses That Emit Receipts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-40",
+      "type": "table",
+      "columns": [
+        "Status",
+        "Source",
+        "Emits Receipt?"
+      ],
+      "rows": [
+        [
+          "`success`",
+          "`_build_search_replace_result()`",
+          "Yes"
+        ],
+        [
+          "`no_match`",
+          "`_apply_search_replace()` when `block_result.errors`",
+          "Yes"
+        ],
+        [
+          "`ambiguous_match`",
+          "`_apply_search_replace()` when `allow_multiple=False`",
+          "Yes"
+        ],
+        [
+          "`count_mismatch`",
+          "`_apply_search_replace()` when `expected_replacements` mismatches",
+          "Yes"
+        ],
+        [
+          "`refused`",
+          "`run()` guard check failure",
+          "Yes"
+        ],
+        [
+          "`ToolError` (file not found, outside workdir, parse failure)",
+          "`_prepare_and_validate_args()`",
+          "No — exception path, not a result"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-41",
+      "type": "heading",
+      "level": 3,
+      "content": "Receipt Fields (Content-Light Proof)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "`SearchReplaceReceipt` model fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-43",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Content-Light?",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "`file`",
+          "Yes",
+          "Path string (repo-relative)"
+        ],
+        [
+          "`status`",
+          "Yes",
+          "Structured enum value"
+        ],
+        [
+          "`blocks_applied`",
+          "Yes",
+          "Integer count"
+        ],
+        [
+          "`lines_changed`",
+          "Yes",
+          "Integer count"
+        ],
+        [
+          "`replacements`",
+          "Yes",
+          "Integer count"
+        ],
+        [
+          "`warnings`",
+          "⚠️",
+          "May contain file context snippets from fuzzy match"
+        ],
+        [
+          "`before_file_sha256`",
+          "Yes",
+          "SHA256 hash only"
+        ],
+        [
+          "`after_file_sha256`",
+          "Yes",
+          "SHA256 hash only"
+        ],
+        [
+          "`changed_files`",
+          "Yes",
+          "Filenames only"
+        ],
+        [
+          "`failed_block_count`",
+          "Yes",
+          "Integer count"
+        ],
+        [
+          "`total_block_count`",
+          "Yes",
+          "Integer count"
+        ],
+        [
+          "`before_bytes`",
+          "Yes",
+          "Integer count"
+        ],
+        [
+          "`after_bytes`",
+          "Yes",
+          "Integer count"
+        ],
+        [
+          "`error_kind`",
+          "Yes",
+          "Structured string"
+        ],
+        [
+          "`refusal_reason`",
+          "⚠️",
+          "May contain file context from `_find_search_context()`"
+        ],
+        [
+          "`duration_ms`",
+          "Yes",
+          "Float"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "Explicitly excluded: `content`, `old_text`, `new_text`, `diff`, `patch`, `snippet`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-45",
+      "type": "heading",
+      "level": 3,
+      "content": "Remaining Risks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "1. **Warnings and refusal_reason may contain file content**: The `_find_search_context()` helper includes file context lines in error messages, which propagate to `refusal_reason` and `warnings`. A follow-up pass should strip or hash these context snippets before they enter the receipt. 2. **Legacy ToolError paths bypass receipt emission**: File-not-found, outside-workdir, and parse-failure errors raise `ToolError`, which the agent loop catches before reaching the receipt seam. This is acceptable — these are caller errors, not tool outcomes. 3. **No end-to-end agent-loop integration test**: The existing tests verify the `build_receipt` + `capture_tool_receipt` pipeline in isolation but do not exercise the full agent-loop code path. A synthetic agent-loop test would improve confidence. 4. **Schema `schema_version` field**: The receipt schema requires `schema_version` but the model does not emit it. The schema is descriptive/documentation rather than prescriptive for model_dump(). This is consistent with bash's pattern. 5. **Refusal classification heuristic**: `_classify_refusal()` inspects `GuardCheck` attributes rather than using explicit refusal codes. 6. **No ToolReceipt content-light policy validator**: Should follow as the next slice — a validator over the full receipt stream.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-47",
+      "type": "heading",
+      "level": 3,
+      "content": "Receipt Sanitization",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "The `build_receipt()` method sanitizes `refusal_reason` via ``_sanitize_refusal_for_receipt()`` before it enters the receipt model.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-49",
+      "type": "table",
+      "columns": [
+        "Rule",
+        "Applied?"
+      ],
+      "rows": [
+        [
+          "Strip search text (``old``/``new``) from ``refusal_reason``",
+          "✅"
+        ],
+        [
+          "Strip context analysis lines (file content)",
+          "✅"
+        ],
+        [
+          "Strip fuzzy match diffs",
+          "✅"
+        ],
+        [
+          "Keep summary lines (``SEARCH/REPLACE block …``)",
+          "✅"
+        ],
+        [
+          "Keep ``Expected …`` lines (count mismatch)",
+          "✅"
+        ],
+        [
+          "Keep debugging tips",
+          "✅"
+        ],
+        [
+          "Return ``None`` for ``None`` or empty input",
+          "✅"
+        ],
+        [
+          "Pass through safe strings unchanged",
+          "✅"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "**Before sanitization** (rich error sent to user):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-51",
+      "type": "code",
+      "language": "text",
+      "content": "SEARCH/REPLACE block 1 failed: Search text not found in test.py\nSearch text was:\n'NonExistent'\nContext analysis:\nPotential match area around line 1:\n>>>   1: x = 1\n      2: y = 2\nDebugging tips:\n1. Check for exact whitespace/indentation match",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "**After sanitization** (content-light receipt):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-53",
+      "type": "code",
+      "language": "text",
+      "content": "SEARCH/REPLACE block 1 failed: Search text not found in test.py\nDebugging tips:\n1. Check for exact whitespace/indentation match",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-54",
+      "type": "heading",
+      "level": 3,
+      "content": "Policy Validator Integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "SearchReplace receipts in all statuses (`success`, `no_match`, `refused`) pass the content-light policy validator (``validate_receipt_payload`` and ``validate_event``). No forbidden fields or value-shape violations are produced.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-56",
+      "type": "heading",
+      "level": 3,
+      "content": "Instantiation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "The abstract-class instantiation bug reported earlier was fixed in Phase 5 by restoring proper class indentation for ``_classify_status_from_error_kind``. SearchReplace now instantiates cleanly and exposes ``run()`` and ``build_receipt()`` as expected.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-58",
+      "type": "heading",
+      "level": 3,
+      "content": "Remaining Risks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "1. **Legacy ToolError paths** (file not found, outside workdir, parse failure, content size, empty content, directory target, binary file) now return structured `SearchReplaceResult(status=\"refused\")` with domain-specific `error_kind`. Receipt emission follows automatically. Only truly exceptional filesystem errors (PermissionError, OSError) in `_read_file`/`_write_file` remain as ToolError — these are system-level faults, not tool outcomes. 2. **No end-to-end agent-loop integration test**. ``build_receipt`` + ``capture_tool_receipt`` pipeline tested in isolation; full ``_execute_tool()`` path not exercised. 3. **``warnings`` field** is currently safe (counts and tips only) but could theoretically contain contextual strings in future. 4. **``refusal_reason`` for ``count_mismatch``** passes through unsanitized because count-mismatch errors contain only counts and expectations — no file content. This is safe by construction but worth noting.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-60",
+      "type": "heading",
+      "level": 3,
+      "content": "Existing Tests (in `tests/tools/test_hardened_tools.py`)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-61",
+      "type": "table",
+      "columns": [
+        "Test",
+        "What It Verifies"
+      ],
+      "rows": [
+        [
+          "`test_search_replace_rejects_outside_workdir_path`",
+          "Workdir boundary"
+        ],
+        [
+          "`test_search_replace_does_not_write_when_block_fails`",
+          "Structured mismatch status"
+        ],
+        [
+          "`test_search_replace_successful_records_hashes`",
+          "Before/after hashes"
+        ],
+        [
+          "`test_search_replace_noop_records_block_counts`",
+          "No-op block counts"
+        ],
+        [
+          "`test_search_replace_failed_does_not_emit_success_hash`",
+          "Failed block hashes"
+        ],
+        [
+          "`test_search_replace_block_counts_on_partial`",
+          "Partial apply counts"
+        ],
+        [
+          "`test_search_replace_dict_keys_relative`",
+          "Repo file key format"
+        ],
+        [
+          "`test_search_replace_result_serializes`",
+          "Pydantic serialization"
+        ],
+        [
+          "`test_search_replace_emits_coordination_events`",
+          "Coordination event ordering"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-62",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "- `vibe/core/tools/builtins/search_replace.py` — hardened result model, structured mismatch/refusal, receipt, error classification - `rig_relay/coordination/store.py` — fixed `release_paths` key mismatch - `tests/tools/test_hardened_tools.py` — updated tests for new status values",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-64",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Created",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-65",
+      "type": "paragraph",
+      "content": "- `docs/schemas/rig.relay.search_replace_invocation.v1.schema.json` - `docs/schemas/rig.relay.search_replace_result.v1.schema.json` - `docs/schemas/rig.relay.search_replace_receipt.v1.schema.json` - `docs/audits/tool-hardening/search-replace-patch-contract.md` (this file)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/tool-hardening/search-replace-patch-contract.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

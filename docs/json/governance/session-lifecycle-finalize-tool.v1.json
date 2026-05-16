@@ -1,0 +1,516 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "session-lifecycle-finalize-tool",
+  "document_type": "governance",
+  "title": "Session Lifecycle Finalize Tool",
+  "summary": "**File:** `docs/governance/session-lifecycle-finalize-tool.md`",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/session-lifecycle-finalize-tool.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Session Lifecycle Finalize Tool",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**File:** `docs/governance/session-lifecycle-finalize-tool.md`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "**Design.** Governed agent-callable tool for end-of-session lifecycle finalization. Wraps the existing `finalize_session_storage()` function in a Pydantic-contract tool.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Tool Name",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "`session_lifecycle_finalize`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Data Flow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-8",
+      "type": "code",
+      "language": "text",
+      "content": "SessionLifecycleFinalizeRequest\n       │\n       ▼\n  SessionLifecycleFinalizeTool.run()\n       │\n       ├── 1. Validate request (Pydantic)\n       ├── 2. Check dry_run flag → skip mutations\n       ├── 3. Call finalize_session_storage()\n       │       ├── audit → classify → protect → compact → prune\n       │       └── write manifest + receipt\n       └── 4. Return SessionLifecycleFinalizeResult",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Input Envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "`SessionLifecycleFinalizeRequest` (Pydantic model)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Default",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`session_id`",
+          "string",
+          "required",
+          "Session identifier"
+        ],
+        [
+          "`sessions_root`",
+          "string\\",
+          "null",
+          "`~/.rig/sessions/{session_id}`",
+          "Root path for session storage"
+        ],
+        [
+          "`older_than_days`",
+          "int",
+          "30",
+          "Age threshold for prune candidates"
+        ],
+        [
+          "`allow_compaction`",
+          "bool",
+          "`false`",
+          "Enable JSONL gzip rollup"
+        ],
+        [
+          "`allow_prune`",
+          "bool",
+          "`false`",
+          "Enable age-based file removal"
+        ],
+        [
+          "`write_receipt`",
+          "bool",
+          "`true`",
+          "Write lifecycle receipt to session root"
+        ],
+        [
+          "`reason`",
+          "string",
+          "`\"session_end\"`",
+          "Label for the finalization event"
+        ],
+        [
+          "`dry_run`",
+          "bool",
+          "`true`",
+          "Audit-only mode; no files modified"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Output Receipt",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "`SessionLifecycleFinalizeResult` (Pydantic model)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`status`",
+          "string",
+          "`ok`, `partial`, or `refused`"
+        ],
+        [
+          "`session_id`",
+          "string",
+          "Session identifier"
+        ],
+        [
+          "`scanned_files`",
+          "int",
+          "Number of files inspected"
+        ],
+        [
+          "`total_bytes_before`",
+          "int",
+          "Total bytes scanned"
+        ],
+        [
+          "`total_bytes_after`",
+          "int",
+          "Total bytes after compaction"
+        ],
+        [
+          "`compacted_count`",
+          "int",
+          "Files compacted"
+        ],
+        [
+          "`refused_count`",
+          "int",
+          "Files refused (protected or error)"
+        ],
+        [
+          "`prune_candidate_count`",
+          "int",
+          "Candidates eligible for pruning"
+        ],
+        [
+          "`deleted_count`",
+          "int",
+          "Files deleted (only when `allow_prune=true` and `dry_run=false`)"
+        ],
+        [
+          "`compacted_details`",
+          "list[dict]",
+          "Per-file compaction results (source, output, size before/after)"
+        ],
+        [
+          "`protected_details`",
+          "list[dict]",
+          "Protected files skipped"
+        ],
+        [
+          "`refused_details`",
+          "list[dict]",
+          "Refused files with reasons"
+        ],
+        [
+          "`manifest_path`",
+          "string\\",
+          "null",
+          "Path to written manifest"
+        ],
+        [
+          "`receipt_path`",
+          "string\\",
+          "null",
+          "Path to written receipt"
+        ],
+        [
+          "`warnings`",
+          "list[str]",
+          "Non-fatal warnings"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Dry-Run / Safe Default Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "- `dry_run` defaults to `true` - `allow_compaction` defaults to `false` - `allow_prune` defaults to `false` - When `dry_run=true`: - Audit runs (classify, scan) - No files are compacted, pruned, or deleted - Manifest and receipt are **not** written - Result contains full candidate lists but zero mutations - When `dry_run=false` and `allow_compaction=true`: - JSONL/progress/intent/validation files are gzip-rolled into `lifecycle/rollups/` - Protected files are never touched - When `dry_run=false` and `allow_prune=true`: - Age-based prune candidates are marked for deletion - Protected classes are never deleted - Active/pinned session markers block deletion",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Refusal Cases",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-18",
+      "type": "table",
+      "columns": [
+        "Condition",
+        "Behavior"
+      ],
+      "rows": [
+        [
+          "Session directory does not exist",
+          "`status: refused`, no files scanned"
+        ],
+        [
+          "Active session marker present",
+          "Files in `active/` or `pinned/` are refused"
+        ],
+        [
+          "Protected file (receipt, consent, upload, signed envelope)",
+          "Classified protected, never compacted/pruned"
+        ],
+        [
+          "Compaction I/O error",
+          "File recorded as refused, warning added"
+        ],
+        [
+          "`dry_run=true` with `allow_prune=true`",
+          "Prune candidates listed but not deleted"
+        ],
+        [
+          "`dry_run=true` with `allow_compaction=true`",
+          "Compaction candidates listed but not rolled up"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Retention Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "The tool uses `SessionRetentionPolicy` from `session_lifecycle.py`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-21",
+      "type": "table",
+      "columns": [
+        "Parameter",
+        "Default",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`older_than_days`",
+          "30",
+          "Prune candidates older than this threshold"
+        ],
+        [
+          "`preserve_receipts`",
+          "True",
+          "Never delete receipt files"
+        ],
+        [
+          "`preserve_consent`",
+          "True",
+          "Never delete consent files"
+        ],
+        [
+          "`preserve_upload_receipts`",
+          "True",
+          "Never delete upload receipt files"
+        ],
+        [
+          "`preserve_signed_envelopes`",
+          "True",
+          "Never delete signed envelope files"
+        ],
+        [
+          "`archive_dir`",
+          "None",
+          "Optional archive directory for pruned files"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Protected Paths",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "The following file classes are never compacted or pruned:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "- Receipts (`receipt`, `receipts` in filename) - Consent (`consent` in filename) - Upload receipts (`upload` + `receipt`) - Signed envelopes (`signed`, `envelope` in filename) - Active session markers (`active` in path or filename) - Pinned session markers (`pinned` in path or filename)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Content-Light Guarantees",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "The result model contains:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "- **Allowed:** counts, paths, hashes (`line_sha256`), byte totals, statuses, retention decisions, schema versions - **Forbidden:** raw prompts, raw model outputs, stdout/stderr bodies, secrets, source diffs, file content",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Compact rollups use gzip with content-light line hashes (SHA256 of each line, no raw content).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-29",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "- [Session Storage Lifecycle](session-storage-lifecycle.md) - [Storage Retention Policy](storage-retention-policy.md) - [Usage Data Doctrine](usage-data-doctrine.md) - `rig_relay/evidence/session_lifecycle.py` — core lifecycle functions - `rig_relay/evidence/session_lifecycle_tool.py` — Pydantic models + tool class - `tests/evidence/test_session_lifecycle_tool.py` — tool tests",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/session-lifecycle-finalize-tool.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

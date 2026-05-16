@@ -110,7 +110,28 @@
           "path": {"type": "string"},
           "schema_ref": {"type": "string"},
           "decision_id": {"type": "string"},
-          "outcome": {"type": "string"}
+          "outcome": {"type": "string"},
+          "disclosure": {
+            "type": "object",
+            "description": "Progressive disclosure for this block.",
+            "properties": {
+              "level": {"type": "string", "enum": ["summary", "standard", "detailed", "exhaustive"]},
+              "initially_visible": {"type": "boolean"},
+              "collapsible": {"type": "boolean"},
+              "collapsed_by_default": {"type": "boolean"},
+              "audience": {"type": "array", "items": {"type": "string"}},
+              "priority": {"type": "integer"},
+              "render_hint": {
+                "type": "object",
+                "properties": {
+                  "variant": {"type": "string", "enum": ["plain", "card", "callout", "compact_table", "full_table", "code_panel", "evidence_panel", "risk_panel", "decision_panel"]},
+                  "emphasis": {"type": "string", "enum": ["normal", "muted", "important", "warning", "critical"]},
+                  "icon": {"type": "string"},
+                  "group": {"type": "string"}
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -144,6 +165,19 @@
           "type": "array",
           "items": {"type": "string"}
         }
+      }
+    },
+    "disclosure": {
+      "type": "object",
+      "description": "Progressive disclosure policy for this document.",
+      "properties": {
+        "default_level": {"type": "string", "enum": ["summary", "standard", "detailed", "exhaustive"]},
+        "available_levels": {"type": "array", "items": {"type": "string", "enum": ["summary", "standard", "detailed", "exhaustive"]}},
+        "render_strategy": {"type": "string", "enum": ["linear", "cards", "accordion", "tabs", "timeline", "reference"]},
+        "show_table_of_contents": {"type": "boolean"},
+        "collapse_level": {"type": "integer"},
+        "progressive_summary": {"type": "string"},
+        "detail_policy": {"type": "string"}
       }
     }
   }

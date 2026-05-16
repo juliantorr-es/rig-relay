@@ -1,0 +1,494 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "receipt-envelope",
+  "document_type": "governance",
+  "title": "Receipt Envelope",
+  "summary": "**Implemented (P3a, 2026-05).** Source: `rig_relay/evidence/receipt_envelope.py`.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/receipt-envelope.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Receipt Envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Implemented (P3a, 2026-05).** Source: `rig_relay/evidence/receipt_envelope.py`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Provides a content-light canonical receipt envelope model and builder that wraps existing tool/runtime/governance receipts with actor, subject, decision, and evidence metadata.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "The ReceiptEnvelope is a **unified wrapper** for all receipt types in Rig Relay. It does not replace existing tool receipts (BashReceipt, WriteFileReceipt, etc.) or the receipt index — it wraps them with common metadata so that consumers (tools, audit trails, projections) get a consistent interface.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Core Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "1. **All envelope data is content-light.** - No raw payloads, stdout, stderr, file contents, diffs, snippets, or secrets. - SHA256 hashes replace raw content. - Byte counts replace full content references.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "2. **The builder is a pure function.** - No side effects, no file reads, no persistence. - Deterministic when `envelope_id` and `created_at` are supplied explicitly. - Accepts both dict and Pydantic BaseModel payloads.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "3. **Payloads are hashed, not stored.** - `build_receipt_envelope()` accepts an optional `receipt_payload` parameter. - The payload's canonical SHA256 is recorded as `ReceiptEvidence`. - The raw payload is discarded after hashing.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Models",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "Enums",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Enum",
+        "Values",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`ReceiptActorKind`",
+          "human, agent, tool, runtime, system",
+          "Kinds of actors"
+        ],
+        [
+          "`ReceiptSubjectKind`",
+          "tool_invocation, runtime_invocation, governance_decision, worktree, projection, session, artifact",
+          "Kinds of subjects"
+        ],
+        [
+          "`ReceiptEvidenceKind`",
+          "sha256, schema, receipt_index, governance_decision, runtime_event, tool_receipt, projection_integrity",
+          "Kinds of evidence"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Models",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-15",
+      "type": "table",
+      "columns": [
+        "Model",
+        "Key Fields",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`ReceiptActor`",
+          "actor_id, actor_kind, display_name, is_human, is_authoritative",
+          "Who/what performed the action"
+        ],
+        [
+          "`ReceiptSubject`",
+          "subject_id, subject_kind, workspace_id, session_id, path",
+          "What was acted upon"
+        ],
+        [
+          "`ReceiptInput`",
+          "input_id, input_kind, input_sha256, input_bytes",
+          "Input to the operation"
+        ],
+        [
+          "`ReceiptOutput`",
+          "output_id, output_kind, output_sha256, output_bytes, status",
+          "Output from the operation"
+        ],
+        [
+          "`ReceiptEvidence`",
+          "evidence_id, evidence_kind, evidence_sha256, schema_version, uri",
+          "Evidence artifact reference"
+        ],
+        [
+          "`ReceiptDecision`",
+          "decision, rationale, gate, governance_decision_id",
+          "Authority classification"
+        ],
+        [
+          "`ReceiptEnvelope`",
+          "schema_version, envelope_id, receipt_kind, actor, subject, input, output, decision, evidence, created_at",
+          "Canonical wrapper"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "All models use `ConfigDict(extra=\"forbid\")`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Builder",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-18",
+      "type": "code",
+      "language": "python",
+      "content": "def build_receipt_envelope(\n    *,\n    envelope_id: str | None = None,\n    receipt_kind: str,\n    actor: ReceiptActor,\n    subject: ReceiptSubject,\n    receipt_payload: dict[str, Any] | BaseModel | None = None,\n    decision: ReceiptDecision | None = None,\n    evidence_override: list[ReceiptEvidence] | None = None,\n    created_at: str | None = None,\n) -> ReceiptEnvelope",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- Auto-generates `envelope_id` (UUID4) and `created_at` (current UTC) when omitted. - Pass explicit values for deterministic output. - `receipt_payload` is hashed (SHA256) and recorded as `ReceiptEvidence` — never stored raw.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Placeholder Constants",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-21",
+      "type": "table",
+      "columns": [
+        "Constant",
+        "Value",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`PLACEHOLDER_UNKNOWN`",
+          "`\"unknown\"`",
+          "Unknown or missing value"
+        ],
+        [
+          "`PLACEHOLDER_UNAVAILABLE`",
+          "`\"unavailable\"`",
+          "Unavailable data"
+        ],
+        [
+          "`PLACEHOLDER_NO_RECEIPT`",
+          "`\"no_receipt\"`",
+          "Explicit absence of a receipt"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Relationship to Existing Systems",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-23",
+      "type": "heading",
+      "level": 3,
+      "content": "Tool Receipts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Existing tool receipts (BashReceipt, WriteFileReceipt, SearchReplaceReceipt, ValidateReceipt) contain the full, content-light receipt data for each tool. The ReceiptEnvelope wraps these with actor/subject/decision/evidence metadata without duplicating their fields.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "Receipt Index",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "The receipt index (`rig_relay/evidence/receipt_index.py`) stores indexed records from observability JSONL. These `ToolReceiptIndexRecord` instances are natural inputs to `build_receipt_envelope()` — their `model_dump(mode=\"json\")` dict can be passed as `receipt_payload`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-27",
+      "type": "heading",
+      "level": 3,
+      "content": "Governance Decisions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "`GateDecision` models (from `rig_relay/governance/decisions.py`) can be wrapped using `ReceiptEnvelope(receipt_kind=\"governance_decision\")` with the decision's key fields mapped into `ReceiptDecision`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-29",
+      "type": "heading",
+      "level": 3,
+      "content": "Runtime Models",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "`RuntimeProviderDescriptor` and `RuntimeCapability` (from `rig_relay/runtime/models.py`) can be referenced via `ReceiptEvidence` with `evidence_kind=\"schema\"` and the model's `schema_version`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-31",
+      "type": "heading",
+      "level": 2,
+      "content": "Audit Trail Integration (P3b)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "The `RuntimeSupervisor` uses `ReceiptEnvelope` as the content-light envelope for audit events. When a terminal execution event occurs, a `ReceiptEnvelope` is built with:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "- **Actor**: `audit_actor` or a runtime default - **Subject**: `RUNTIME_INVOCATION` with lease/request context - **Input**: Execution request reference (request SHA256) - **Output**: Terminal status, stdout/stderr hashes and byte counts - **Evidence**: SHA256 hash of the terminal event - **Decision**: Completed/failed/refused mapping",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "The envelope is embedded directly in the `AuditEvent` via the ``envelope`` field. ReceiptEnvelopes are not persisted independently — they are embedded in audit events for append-only storage.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-35",
+      "type": "heading",
+      "level": 2,
+      "content": "Future Integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "- **Receipt Persistence:** ReceiptEnvelopes can be persisted as JSONL (same pattern as observability JSONL). No persistence is implemented yet. - **Receipt Signing:** Future signing would operate on the canonical JSON representation of the ReceiptEnvelope (not on inner payloads).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-37",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "Schema file: `docs/schemas/rig.relay.receipt_envelope.v1.schema.json`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "- Draft 7 - `additionalProperties: false` at all levels - Nullable fields (`[\"string\", \"null\"]`, `[\"integer\", \"null\"]`) - Enum validation for `ReceiptActorKind`, `ReceiptSubjectKind`, `ReceiptEvidenceKind` - Schema version constant: `rig.relay.receipt_envelope.v1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-40",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "- [Rig Runtime Port Roadmap](../audits/rig-runtime-port/port-roadmap.md) - [Rig-to-Relay Runtime Audit](../audits/rig-runtime-port/rig-to-relay-runtime-audit.md) - [Rig-to-Relay Concept Map](../audits/rig-runtime-port/concept-map.md) - [Receipt Envelope Schema](../schemas/rig.relay.receipt_envelope.v1.schema.json) - [Receipt Index](../evidence/receipt_index.py) - [Governance Decisions](../governance/decisions.py) - [Runtime Models](../runtime/models.py)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/receipt-envelope.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

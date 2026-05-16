@@ -1,0 +1,390 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "test-purge-acceptance-gate",
+  "document_type": "audit",
+  "title": "Test Purge Pass 1 — Acceptance Gate",
+  "summary": "All 177 working-tree deletions are certified as:",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/test-suite/test_purge_acceptance_gate.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Purge Pass 1 — Acceptance Gate",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Decision: ACCEPT",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "All 177 working-tree deletions are certified as: - Stale removed-feature tests (old TUI, update notifier, voice, webview) - Duplicate tests with canonical survivors in current test layout",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Deletion Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-5",
+      "type": "heading",
+      "level": 3,
+      "content": "Git Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Value"
+      ],
+      "rows": [
+        [
+          "Staged deletions (`git diff --cached`)",
+          "**0** (not yet staged)"
+        ],
+        [
+          "Working-tree deletions (`git status -s",
+          "grep \" D\"`)",
+          "**177**"
+        ],
+        [
+          "Working-tree modified",
+          "11"
+        ],
+        [
+          "New untracked",
+          "34"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-7",
+      "type": "heading",
+      "level": 3,
+      "content": "Deletion Groups Accepted",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Group",
+        "Count",
+        "Category",
+        "Reason"
+      ],
+      "rows": [
+        [
+          "tests/autocompletion/*",
+          "2",
+          "deleted feature",
+          "Old TUI autocomplete controllers"
+        ],
+        [
+          "tests/cli/plan_offer/*",
+          "3",
+          "deleted feature",
+          "Old TUI plan offer"
+        ],
+        [
+          "tests/cli/test_*.py",
+          "7",
+          "deleted feature",
+          "Old TUI CLI features (cache, clipboard, commands, doctor, initial_agent_name, programmatic_setup, stderr_guard)"
+        ],
+        [
+          "tests/narrator_manager/*",
+          "3",
+          "deleted feature",
+          "Old TUI narrator manager"
+        ],
+        [
+          "tests/scripts/test_desktop_*.py + test_websocket_server.py",
+          "10",
+          "duplicate",
+          "Canonical in tests/desktop/test_websocket_server.py, test_intents.py, test_protected_intents.py, test_projection.py"
+        ],
+        [
+          "tests/snapshots/*",
+          "~95",
+          "deleted feature",
+          "Old TUI snapshot SVG tests"
+        ],
+        [
+          "tests/stubs/fake_*.py",
+          "3",
+          "deleted feature",
+          "Old TUI audio stubs"
+        ],
+        [
+          "tests/update_notifier/*",
+          "8",
+          "deleted feature",
+          "Old CLI update notifier"
+        ],
+        [
+          "tests/voice_manager/*",
+          "3",
+          "deleted feature",
+          "Old TUI voice manager"
+        ],
+        [
+          "tests/webview_console/*",
+          "1",
+          "deleted feature",
+          "Old webview console"
+        ],
+        [
+          "tests/test_*.py (root-level)",
+          "~42",
+          "deleted feature / migration relic",
+          "Old root-level tests without current source domain"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h3-9",
+      "type": "heading",
+      "level": 3,
+      "content": "Deletion Groups Rejected",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "**None.** All 177 deletions pass the acceptance criteria.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "Protected Domain Check",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Domain",
+        "Files",
+        "Deleted?"
+      ],
+      "rows": [
+        [
+          "ToolRuntime",
+          "tests/core/test_tool_runtime_ledger.py",
+          "**No**"
+        ],
+        [
+          "RuntimeSupervisor",
+          "tests/runtime/test_runtime_tool_convergence_boundary.py",
+          "**No**"
+        ],
+        [
+          "Bash supervised subprocess",
+          "tests/tools/test_bash.py, test_bash_hardening.py",
+          "**No**"
+        ],
+        [
+          "Desktop WebSocket",
+          "tests/desktop/test_websocket_server.py",
+          "**No** (scripts/ shadow deleted)"
+        ],
+        [
+          "Desktop projection",
+          "tests/desktop/test_projection.py, test_desktop_projection.py",
+          "**No**"
+        ],
+        [
+          "Desktop intents",
+          "tests/desktop/test_intents.py, test_protected_intents.py",
+          "**No**"
+        ],
+        [
+          "Desktop TLS",
+          "tests/desktop/test_tls.py",
+          "**No**"
+        ],
+        [
+          "Ralph",
+          "tests/ralph/* (11 files)",
+          "**No**"
+        ],
+        [
+          "Orchestrator",
+          "tests/orchestrator/* (2 files)",
+          "**No**"
+        ],
+        [
+          "Demo doctor",
+          "tests/demo/*",
+          "**No**"
+        ],
+        [
+          "Layout guard",
+          "tests/architecture/test_test_layout.py",
+          "**No**"
+        ],
+        [
+          "Conftest hygiene",
+          "tests/test_conftest_hygiene.py",
+          "**No**"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Test Count Resolution",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "The 6085 collected test count IS the post-deletion count. The deleted files were dead-on-arrival (importing non-existent modules from removed TUI features), contributing 0 tests to collection even before deletion.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Validation Results",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-16",
+      "type": "table",
+      "columns": [
+        "Check",
+        "Result"
+      ],
+      "rows": [
+        [
+          "Collect-only",
+          "6085 tests, 0 errors"
+        ],
+        [
+          "Layout guard",
+          "PASSED"
+        ],
+        [
+          "Conftest hygiene",
+          "PASSED"
+        ],
+        [
+          "Demo-doctor",
+          "22/22 passed"
+        ],
+        [
+          "WebSocket server tests",
+          "44/44 passed"
+        ],
+        [
+          "Orchestrator tests",
+          "20/20 passed"
+        ],
+        [
+          "Ralph tests",
+          "98 passed, 6 pre-existing failures (ralph_intents.py binding/state issues — not purge-related)"
+        ],
+        [
+          "Runtime convergence",
+          "9/9 passed"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/test-suite/test_purge_acceptance_gate.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

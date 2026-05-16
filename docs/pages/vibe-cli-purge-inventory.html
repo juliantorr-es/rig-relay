@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe CLI Purge Inventory — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Inventory of user-facing Vibe CLI and Textual surfaces that should">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Vibe CLI Purge Inventory</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Vibe CLI Purge Inventory</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Inventory of user-facing Vibe CLI and Textual surfaces that should be retired, quarantined, or retained only as compatibility shims.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Goal</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Rig Relay should present as a Relay-native product surface. Legacy Vibe CLI internals may remain for compatibility, but new users should not be steered into `vibe` as the product interface.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Surface Classes</h2>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Class</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`retire`</td><td>User-facing surface should disappear from product docs and primary guidance</td></tr>
+<tr><td>`quarantine`</td><td>Legacy surface remains for compatibility but is hidden from primary docs</td></tr>
+<tr><td>`retain`</td><td>Needed compatibility adapter or runtime internals; keep in place</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">User-Facing CLI Entry Points</h2>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Surface</th><th>Current Path</th><th>Classification</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`rig-relay`</td><td>`pyproject.toml`, `rig_relay.cli.entrypoint:main`</td><td>`retain`</td><td>Primary product command</td></tr>
+<tr><td>`rig-relay-acp`</td><td>`pyproject.toml`, `rig_relay.cli.acp_entrypoint:main`</td><td>`retain`</td><td>Primary ACP command</td></tr>
+<tr><td>`vibe`</td><td>`pyproject.toml`, `vibe.cli.entrypoint:main`</td><td>`quarantine`</td><td>Legacy alias; keep for alpha compatibility</td></tr>
+<tr><td>`vibe-acp`</td><td>`pyproject.toml`, `vibe.acp.entrypoint:main`</td><td>`quarantine`</td><td>Legacy alias; keep for alpha compatibility</td></tr>
+<tr><td>`rig-relay-cockpit`</td><td>`docs/install.md` only</td><td>`retain`</td><td>Primary cockpit launcher reference</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Textual Imports</h2>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Surface</th><th>Current Path</th><th>Classification</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`vibe.cli.textual_ui.app`</td><td>`vibe/cli/textual_ui/app.py`</td><td>`quarantine`</td><td>Legacy TUI runtime retained for compat and tests</td></tr>
+<tr><td>`vibe.cli.textual_ui.widgets.*`</td><td>`vibe/cli/textual_ui/widgets/`</td><td>`retain`</td><td>Legacy implementation internals</td></tr>
+<tr><td>`vibe.cli.stderr_guard`</td><td>`vibe/cli/stderr_guard.py`</td><td>`retain`</td><td>Compatibility helper for Textual UI</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Setup and Install References</h2>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Surface</th><th>Current Path</th><th>Classification</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`rig-relay --setup`</td><td>`README.md`</td><td>`retain`</td><td>Product onboarding path</td></tr>
+<tr><td>`vibe --setup`</td><td>compatibility alias via entrypoint</td><td>`quarantine`</td><td>Legacy alias; should not be centered in docs</td></tr>
+<tr><td>`uv run rig-relay`</td><td>`README.md`, `docs/install.md`</td><td>`retain`</td><td>Product-first install/run path</td></tr>
+<tr><td>`uv run python scripts/rig_relay_desktop_cockpit.py`</td><td>`README.md`, `docs/demo/mcp-night-development-harness-demo.md`</td><td>`retain`</td><td>Primary desktop cockpit path</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">README References</h2>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Reference</th><th>Classification</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Product headline and overview</td><td>`retain`</td><td>Should describe Rig Relay as the product</td></tr>
+<tr><td>Legacy compatibility section</td><td>`quarantine`</td><td>Must clearly label `vibe` as legacy</td></tr>
+<tr><td>Install / run instructions</td><td>`retain`</td><td>Must prefer `rig-relay` and the cockpit</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Tests That Still Exercise Legacy CLI</h2>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test Path</th><th>Surface</th><th>Classification</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`tests/test_ui_rewind.py`</td><td>`vibe.cli.textual_ui.app.VibeApp`</td><td>`retain`</td><td>Textual behavior coverage</td></tr>
+<tr><td>`tests/cli/test_ui_clipboard_notifications.py`</td><td>`vibe.cli.textual_ui.app.VibeApp`</td><td>`retain`</td><td>Textual behavior coverage</td></tr>
+<tr><td>`tests/cli/test_ui_session_incremental_renderer.py`</td><td>`vibe.cli.textual_ui.app.VibeApp`</td><td>`retain`</td><td>Textual behavior coverage</td></tr>
+<tr><td>`tests/cli/test_ui_skill_dispatch.py`</td><td>`vibe.cli.textual_ui.app.VibeApp`</td><td>`retain`</td><td>Textual behavior coverage</td></tr>
+<tr><td>`tests/update_notifier/test_ui_update_notification.py`</td><td>`vibe.cli.textual_ui.app.VibeApp`</td><td>`retain`</td><td>Textual behavior coverage</td></tr>
+<tr><td>`tests/tools/test_ui_bash_execution.py`</td><td>`vibe.cli.textual_ui.app.VibeApp`</td><td>`retain`</td><td>Textual behavior coverage</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Safe-To-Retire vs Compatibility-Required</h2>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Safe To Retire</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- Product prose that centers `vibe` over Rig Relay - New docs that frame Textual as primary UI - User onboarding copy that omits the pywebview cockpit</p>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">Compatibility Required</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- `vibe` and `vibe-acp` entry points during alpha - `vibe/cli/textual_ui/` runtime internals while tests still depend on them - Legacy config and environment fallbacks required by alpha compatibility - Compatibility adapters that bridge `vibe.*` to `rig_relay.*`</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- [Textual TUI Retirement Policy](../governance/textual-retirement-policy.md) - [Vibe Legacy Deprecation Doctrine](../governance/vibe-legacy-deprecation.md) - [Vibe Legacy Boundary Inventory](vibe-legacy-boundary-inventory.md) - [Rig Relay Install Channels](../install.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vibe-cli-purge-inventory.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

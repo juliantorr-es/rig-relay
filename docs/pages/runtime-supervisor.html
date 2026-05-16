@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RuntimeSupervisor Architecture — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="The **RuntimeSupervisor** is the relay-native subprocess execution engine. It supersedes the Rig domain&#x27;s `runtime_supervisor.py` and `runtime_stream.py` with a lease-gated, streaming-first design.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>RuntimeSupervisor Architecture</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">RuntimeSupervisor Architecture</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">The **RuntimeSupervisor** is the relay-native subprocess execution engine. It supersedes the Rig domain&#x27;s `runtime_supervisor.py` and `runtime_stream.py` with a lease-gated, streaming-first design.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Core Contract</h2>
+
+<pre id="code-4"><code class="language-python">supervisor = RuntimeSupervisor(lease_store=store)
+async for event in supervisor.execute(lease):
+    # handle event</code></pre>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- **Input**: An active `ExecutionLease` containing an `ExecutionRequest` with `argv: list[str]`. - **Output**: An `AsyncIterator[RuntimeStreamEvent]` — status updates, output chunks, and a terminal event. - **No shell**: `asyncio.create_subprocess_exec(*argv)` — no shell wrapping, no shell string parsing.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Stream Event Lifecycle</h2>
+
+<pre id="code-7"><code class="language-text">STATUS(starting) → STATUS(running) → [chunks* | heartbeats* | warnings*] → COMPLETION | FAILURE</code></pre>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Phase</th><th>Events</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Validation</td><td>`FAILURE` (blocked)</td><td>Lease inactive/expired, cwd missing, invalid request</td></tr>
+<tr><td>Spawn</td><td>`STATUS(starting)`</td><td>Emitted before `create_subprocess_exec`</td></tr>
+<tr><td>Running</td><td>`STATUS(running)`</td><td>Emitted after process starts</td></tr>
+<tr><td>Drain</td><td>`STDOUT_CHUNK` / `STDERR_CHUNK`</td><td>Bounded concurrent stream draining</td></tr>
+<tr><td>Heartbeat</td><td>`HEARTBEAT`</td><td>Periodic liveness signal during execution</td></tr>
+<tr><td>Stall</td><td>`WARNING` (stall_detected)</td><td>Non-fatal warning when no output for threshold</td></tr>
+<tr><td>Terminal</td><td>`COMPLETION` (succeeded/failed)</td><td>Content-light — hashes + byte counts</td></tr>
+<tr><td>Terminal</td><td>`FAILURE` (timed_out/cancelled)</td><td>Content-light — no raw output</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Bounded Output</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- `max_stdout_bytes`: 65,536 default (configurable) - `max_stderr_bytes`: 65,536 default (configurable) - `chunk_size`: 4,096 bytes per read - SHA256 hashing continues past the cap for accurate summaries - `chunk_text` is set to `None` (not emitted) after truncation - Terminal events carry `*_truncated` flags and final byte counts</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Timeout and Cancellation</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Both use the same termination pattern:</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">1. `process.terminate()` (SIGTERM on Unix) 2. Wait 5 seconds for graceful shutdown 3. `process.kill()` (SIGKILL on Unix) 4. Wait for final exit</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Timeout produces a `FAILURE` event with `status=timed_out`. Cancellation produces a `FAILURE` event with `status=cancelled`.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Lease Integration</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- Supervisor checks `lease.status == ACTIVE` before execution - Validates `expires_at` against current UTC time - Calls `lease_store.release(lease_id)` on terminal events - Refuses execution without an active, non-expired lease</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Content-Light Design</h2>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Terminal events (`COMPLETION`, `FAILURE`) carry only:</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- SHA256 hashes of stdout/stderr - Total byte counts (before and regardless of truncation) - Truncation flags - Exit code and duration in milliseconds</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Raw output text is only present in intermediate `RuntimeOutputChunkEvent` objects, never in terminal summaries.</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Deferred Features</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">1. **Dry-run mode** — Not implemented. Would validate lease and environment without actually spawning the subprocess. 2. **Watchable filesystem backend** for lease coordination — currently uses `ExecutionLeaseStore` with file-backed persistence.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Porting Notes</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- **Rig source**: `rig/domain/runtime_supervisor.py` (deprecated), `rig/domain/runtime_stream.py` - **Porting status**: Reimplemented with relay-native vocabulary - **Key adaptations**: - Pydantic `BaseModel` with `extra=&quot;forbid&quot;` instead of frozen dataclasses - Discriminated union `RuntimeStreamEvent` for type-safe event handling - `ExecutionLease` gate instead of internal process lifecycle tracking - No forbidden-command lists (governance is deferred) - Simplified: no `RuntimeProvider` integration, no event store persistence</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Governance Gate</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeSupervisor` can optionally evaluate governance policy before spawning a subprocess.</p>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">Integration</h3>
+
+<pre id="code-28"><code class="language-python">supervisor = RuntimeSupervisor(
+    lease_store=store,
+    governance_engine=GovernanceEngine(),
+    allow_mutation=False,
+    allow_network=False,
+)</code></pre>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">Constructor Args</h3>
+
+<table id="table-30" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Arg</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`governance_engine`</td><td>`None`</td><td>Optional `GovernanceEngine` instance. If `None`, no governance check is performed.</td></tr>
+<tr><td>`provider_trust_tier`</td><td>`EXECUTOR_CANDIDATE`</td><td>Default trust tier passed to governance evaluation.</td></tr>
+<tr><td>`provider_status`</td><td>`AVAILABLE`</td><td>Default provider status passed to governance evaluation.</td></tr>
+<tr><td>`allow_mutation`</td><td>`False`</td><td>Whether mutation capabilities are allowed. If `False` and mutation capabilities are requested, governance returns `REQUIRES_REVIEW`.</td></tr>
+<tr><td>`allow_network`</td><td>`False`</td><td>Whether network capabilities are allowed. If `False` and network capabilities are requested, governance returns `REQUIRES_REVIEW`.</td></tr>
+<tr><td>`dirty_policy_satisfied`</td><td>`True`</td><td>Whether the dirty-file policy is satisfied for this execution.</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-31" class="disclosure-standard" data-disclosure-level="standard">Behavior</h3>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">- `decision == allowed` → execution proceeds normally. - `decision == requires_review` → emits `RuntimeFailureEvent` with `status=blocked`, `error_kind=&quot;requires_review&quot;`. No subprocess created. Lease is released. - `decision == blocked` → emits `RuntimeFailureEvent` with `status=blocked`, `error_kind=&quot;governance_blocked&quot;`. No subprocess created. Lease is released. - `decision == not_applicable` → only proceeds if no `requested_capabilities` are present; otherwise blocks defensively. - Governance is evaluated **after** lease validation and cwd resolution, but **before** spawning the subprocess and emitting the STARTING status event.</p>
+
+<h2 id="h2-33" class="disclosure-standard" data-disclosure-level="standard">Active Lease Conflict Detection</h2>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">`ExecutionLeaseStore.acquire()` enforces exclusivity for active leases targeting the same worktree or workspace.</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Behavior</h3>
+
+<table id="table-36" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Scenario</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Active lease exists for same `worktree_path`</td><td>`status=&quot;refused&quot;`, `error_kind=&quot;active_worktree_lease_exists&quot;`</td></tr>
+<tr><td>Active lease exists for same `workspace_id` (no worktree_path)</td><td>`status=&quot;refused&quot;`, `error_kind=&quot;active_workspace_lease_exists&quot;`</td></tr>
+<tr><td>Released lease for same worktree_path</td><td>New lease granted</td></tr>
+<tr><td>Expired lease for same worktree_path</td><td>New lease granted (after expiry check)</td></tr>
+<tr><td>Different worktree_path</td><td>Both leases coexist</td></tr>
+<tr><td>`enforce_exclusive_worktree=False`</td><td>Overrides exclusivity; same worktree allowed</td></tr>
+</tbody>
+</table>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">Expired leases are detected by comparing `expires_at` against the current UTC time. Leases in terminal states (`RELEASED`, `EXPIRED`, `CANCELLED`, `FAILED`) do not block new acquisitions.</p>
+
+<h2 id="h2-38" class="disclosure-standard" data-disclosure-level="standard">Heartbeat Emission</h2>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeSupervisor` emits periodic `RuntimeHeartbeatEvent` events while the subprocess is running.</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">Behavior</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">- Heartbeat interval is configured via `heartbeat_interval_ms` constructor arg (default: `1000`). - If `heartbeat_interval_ms &lt;= 0`, heartbeat emission is fully disabled. - Heartbeat events contain `elapsed_ms` (milliseconds since process start) and correct `lease_id`/`request_id`. - Heartbeats are emitted in the poll loop alongside process-wait, so they do not block stdout/stderr draining. - Heartbeats stop after the process exits (completion, failure, timeout, or cancellation). - The terminal event is always the last event yielded (never a heartbeat).</p>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">Constructor Args</h3>
+
+<table id="table-43" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Arg</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`heartbeat_interval_ms`</td><td>`1000`</td><td>Interval between heartbeat events in ms. `&lt;= 0` disables heartbeats.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-44" class="disclosure-standard" data-disclosure-level="standard">Stall Detection</h2>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeSupervisor` can detect stalled output and emit `RuntimeWarningEvent` with `warning_kind=&quot;stall_detected&quot;`.</p>
+
+<h3 id="h3-46" class="disclosure-standard" data-disclosure-level="standard">Behavior</h3>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">- Stall detection is disabled unless `stall_warning_after_ms` is set (default: `None`). - When enabled, the supervisor tracks `last_output_at` timestamps updated by drain tasks on each chunk. - If no output (stdout or stderr) has been received for `stall_warning_after_ms` while the process is still running, a `RuntimeWarningEvent` is emitted. - Stall warnings are rate-limited to at most one per `stall_warning_after_ms` window to avoid spam. - Stall warnings do **not** terminate the process by default (`terminate_on_stall=False`). - If `terminate_on_stall=True` and `stall_terminate_after_ms` is set, the process is terminated (SIGTERM → SIGKILL) after exceeding the hard stall threshold, producing a `RuntimeFailureEvent` with `status=timed_out`. - If output resumes, the stall timer resets on the next chunk.</p>
+
+<h3 id="h3-48" class="disclosure-standard" data-disclosure-level="standard">Constructor Args</h3>
+
+<table id="table-49" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Arg</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`stall_warning_after_ms`</td><td>`None`</td><td>If set, emit stall warning after no output for this many ms. `None` disables.</td></tr>
+<tr><td>`stall_check_interval_ms`</td><td>`1000`</td><td>How often to check for stall in the poll loop.</td></tr>
+<tr><td>`terminate_on_stall`</td><td>`False`</td><td>If `True`, terminate the process on hard stall (warning-only by default).</td></tr>
+<tr><td>`stall_terminate_after_ms`</td><td>`None`</td><td>If set with `terminate_on_stall=True`, hard stall threshold before terminate/kill.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-50" class="disclosure-standard" data-disclosure-level="standard">Projection Integration</h2>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Execution stream events are consumed by the UI via the [ExecutionProgressProjection](execution-progress-projection.md) read model. See that design doc for the aggregation contract and projection-integrity relationship.</p>
+
+<h2 id="h2-52" class="disclosure-standard" data-disclosure-level="standard">Audit Integration (P3b)</h2>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeSupervisor` supports optional audit trail integration. When configured, terminal execution events produce a `ReceiptEnvelope` and `AuditEvent` appended to the `AuditTrailStore`.</p>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">Constructor Args</h3>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">- ``audit_trail_store: AuditTrailStore | None = None`` — If provided, terminal events are audited automatically. - ``audit_actor: ReceiptActor | None = None`` — Optional actor identity for the audit trail. Defaults to a ``runtime`` kind actor.</p>
+
+<h3 id="h3-56" class="disclosure-standard" data-disclosure-level="standard">Behavior</h3>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">1. After the terminal event (``RuntimeCompletionEvent`` or ``RuntimeFailureEvent``) is yielded, the supervisor builds a content-light ``ReceiptEnvelope`` with: - Actor from ``audit_actor`` or a runtime default - Subject as ``RUNTIME_INVOCATION`` with lease/request context - Input as execution request reference (request SHA256) - Output as terminal status, stdout/stderr hashes and byte counts - Evidence as SHA256 hash of the terminal event itself - Decision as completed/failed/refused mapping 2. An ``AuditEvent`` with ``action=EXECUTION_COMPLETED`` is appended to the store via ``AuditTrailStore.append_audit_event()``. 3. If envelope build or audit append fails, a ``RuntimeWarningEvent(warning_kind=&quot;audit_append_failed&quot;)`` is yielded and the terminal event is still delivered.</p>
+
+<h3 id="h3-58" class="disclosure-standard" data-disclosure-level="standard">Scope</h3>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">- **Terminal-event-only**: Only ``EXECUTION_COMPLETED`` audit events are emitted. ``EXECUTION_REQUESTED`` and ``EXECUTION_STARTED`` are not emitted in this slice. - **Content-light**: No raw stdout, stderr, file contents, diffs, snippets, or secrets in envelopes or audit events. - **No signing**: Audit events are not cryptographically signed or tamper-proof. Append-only guarantees are best-effort (fsync per append). - **Failure-safe**: Audit failures never cascade to the terminal event or the stream. A warning is emitted instead.</p>
+
+<h2 id="h2-60" class="disclosure-standard" data-disclosure-level="standard">What Remains Deferred</h2>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">The following features from the original P2b spec remain deferred:</p>
+
+<p id="p-62" class="disclosure-standard" data-disclosure-level="standard">1. **Dry-run mode** — Not implemented. Would validate lease and environment without spawning.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/runtime-supervisor.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

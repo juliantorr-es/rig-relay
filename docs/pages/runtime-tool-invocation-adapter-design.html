@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Tool Invocation Adapter Design — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Status: Phase 1 implemented** — adapter models, schema, and 38 tests complete.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Tool Invocation Adapter Design</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Adapter Design</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status: Phase 1 implemented** — adapter models, schema, and 38 tests complete.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Design Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The adapter is the missing bridge between `RuntimeContextResolution` and actual tool/runtime invocation envelopes.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Its job is to keep coordination identifiers, dirty policy, and path scope in the runtime control plane instead of making the agent manually repair them at call time.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Input</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- High-level intent - `RuntimeContextResolution` - tool name - requested paths and payload - optional mutation/validation policy hints</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Output</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- structured tool invocation envelope, or - structured blocked/refused result</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Canonical Behavior</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">1. Resolve context first. 2. Refuse if the context is blocked or unresolved. 3. Normalize paths against repo/worktree scope. 4. Inject canonical IDs from the resolved context. 5. Apply tool-specific policy. 6. Bind receipt/audit metadata for later evidence collection.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Tool-Specific Mapping</h2>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">WriteFile</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- Use the resolved worktree path if present. - Require `expected_before_sha256` for protected overwrites. - Preserve create vs overwrite semantics. - Refuse unsupported mutation locations instead of silently falling back.</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">SearchReplace</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- Use the resolved worktree or repo scope. - Require expected hash for protected files. - Keep block safety and reservation logic intact. - Prefer a structured refusal over a generic tool error.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">Validate</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- Choose a validate profile from the intent and scope. - Keep checks read-only unless a profile explicitly permits mutation. - Use dirty policy as an input, not a per-agent guess.</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Bash / Runtime Execution</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- Prefer `ExecutionRequest` and `ExecutionLease`. - Route governed execution through lease and supervisor plumbing. - Raw bash remains a compatibility fallback, not the default control path.</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Refusal Taxonomy</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- `context_unresolved` - `session_required` - `task_required` - `worktree_required` - `unsafe_path` - `dirty_policy_failed` - `lease_conflict` - `path_reserved` - `expected_hash_missing` - `unsupported_tool` - `unsupported_mutation_location`</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Dependencies</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay.runtime.context` - `rig_relay.runtime.context_resolver` - `rig_relay.coordination.store` - `rig_relay.coordination.worktree_manager` - `rig_relay.coordination.execution_lease` - `rig_relay.runtime.execution_request` - `rig_relay.runtime.supervisor` - `rig_relay.governance.governance_engine` - `rig_relay.evidence.receipt_index` - `rig_relay.evidence.receipt_envelope` - `rig_relay.evidence.audit_trail`</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Dry-Run Integration</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeToolDryRunRunner` provides a dry-run assessment layer:</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">1. Calls `RuntimeToolInvocationAdapter.prepare()` to produce an envelope. 2. Validates the envelope against `rig.relay.runtime_tool_invocation.v1` schema. 3. Validates tool-specific payload shape structurally (required fields per tool). 4. Returns `RuntimeToolDryRunResult` — always `would_execute=False`, `would_acquire_lease=False`, never stores raw payload content.</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Dry-run proves the adapter output is schema-valid and structurally valid without executing tools, acquiring leases, or mutating files.</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">See `docs/governance/runtime-tool-invocation-dry-run.md`.</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Future Schemas</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Proposed later:</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">- `rig.relay.runtime_tool_invocation.v1` (implemented) - `rig.relay.runtime_tool_invocation_result.v1` - `rig.relay.runtime_tool_invocation_receipt.v1` - `rig.relay.runtime_tool_invocation_dry_run.v1` (implemented)</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">These should remain content-light and should not carry raw prompts, raw stdout/stderr, raw diffs, or file bodies.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/runtime-tool-invocation-adapter-design.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

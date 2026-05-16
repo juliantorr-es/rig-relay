@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Runtime Port Audit — Rig to Rig Relay — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Systematic comparison of Rig and Rig Relay source trees, docs, schemas, and">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig Runtime Port Audit — Rig to Rig Relay</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Runtime Port Audit — Rig to Rig Relay</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Audit Metadata</h2>
+
+<table id="table-3" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Date**</td><td>2026-05-15</td></tr>
+<tr><td>**Source**</td><td>`../Rig` (HEAD `da71305`)</td></tr>
+<tr><td>**Target**</td><td>`rig-relay` (HEAD `384e4860`)</td></tr>
+<tr><td>**Scope**</td><td>Runtime/control-plane concepts, execution plane, governance plane</td></tr>
+<tr><td>**Status**</td><td>Draft</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Method</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Systematic comparison of Rig and Rig Relay source trees, docs, schemas, and test files to identify port candidates, gaps, and already-ported patterns.</p>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Files Inspected (Rig)</h3>
+
+<details id="table-7" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-7" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Domain</th><th>Key Files</th></tr></thead>
+<tbody>
+<tr><td>Governance engine</td><td>`src/rig/domain/governance/engine.py`, `decisions.py`</td></tr>
+<tr><td>Runtime domain</td><td>`src/rig/domain/runtime.py` (invocation, capability, provider models)</td></tr>
+<tr><td>Runtime supervisor</td><td>`src/rig/domain/runtime_supervisor.py` (asyncio subprocess)</td></tr>
+<tr><td>Runtime registry</td><td>`src/rig/domain/runtime_registry.py`</td></tr>
+<tr><td>Runtime streaming</td><td>`src/rig/domain/runtime_streaming/` (chunk, status, heartbeat, proposals)</td></tr>
+<tr><td>Workspace runtime</td><td>`src/rig/domain/workspace_runtime.py` (lane-scoped context)</td></tr>
+<tr><td>Execution domain</td><td>`src/rig/domain/execution/models.py` (request, lease, result)</td></tr>
+<tr><td>Receipt envelope</td><td>`src/rig/domain/receipt_envelope.py` (canonical receipt model)</td></tr>
+<tr><td>Workspace audit</td><td>`src/rig/domain/workspace_audit.py` (audit primitives)</td></tr>
+<tr><td>Receipt store</td><td>`src/rig/domain/receipts.py` (receipt models + store)</td></tr>
+<tr><td>Projection builder</td><td>`src/rig/domain/projection_builder.py`</td></tr>
+<tr><td>Projection contracts</td><td>`src/rig/domain/projection_contracts.py`</td></tr>
+<tr><td>Projections</td><td>`src/rig/domain/projections.py`</td></tr>
+<tr><td>Worktree manager</td><td>`src/rig_tools/worktree_manager.py`</td></tr>
+<tr><td>Workspace manager</td><td>`src/rig_tools/workspace_manager.py`</td></tr>
+<tr><td>Work queue</td><td>`src/rig_tools/work_queue.py`</td></tr>
+<tr><td>Execution engine</td><td>`src/rig_tools/execution_engine.py`</td></tr>
+<tr><td>CLI commands</td><td>`commands_workspace.py`, `commands_job.py`, `commands_queue.py`, `commands_runtime.py`</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Files Inspected (Rig Relay)</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Domain</th><th>Key Files</th></tr></thead>
+<tbody>
+<tr><td>Coordination</td><td>`rig_relay/coordination/models.py`, `store.py`, `tool.py`</td></tr>
+<tr><td>Evidence</td><td>`rig_relay/evidence/receipt_index.py`, `model_observations.py`</td></tr>
+<tr><td>Desktop projection</td><td>`rig_relay/desktop/projection.py`, `projection_widgets.py`</td></tr>
+<tr><td>Desktop intents</td><td>`rig_relay/desktop/intents.py`, `intent_audit.py`</td></tr>
+<tr><td>Governance</td><td>`rig_relay/governance/local_action_envelope.py`, `dirty_guard.py`</td></tr>
+<tr><td>Runtime</td><td>`rig_relay/runtime/update_status.py`</td></tr>
+<tr><td>Docs</td><td>`docs/governance/rig-to-relay-porting-doctrine.md`</td></tr>
+<tr><td>Docs</td><td>`docs/governance/rig-to-relay-pattern-inventory.md`</td></tr>
+<tr><td>Docs</td><td>`docs/governance/relay-desktop-projection-contract.md`</td></tr>
+</tbody>
+</table>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Decision Matrix</h2>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Direct Port Candidates (close 1:1 pattern match)</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Rig Pattern</th><th>Rig Relay Target</th><th>Complexity</th><th>Priority</th><th>Rationale</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Governance Engine (`decisions.py`, `engine.py`)</td><td>`rig_relay.governance.governance_engine`</td><td>Low</td><td>P1</td><td>Pure evaluation of gate legality; no dependencies; 190 lines</td><td>✅ **IMPLEMENTED** (P1a)</td></tr>
+<tr><td>Runtime Model Types (`runtime.py`)</td><td>`rig_relay.runtime.models`</td><td>Low</td><td>P1</td><td>Provider kinds, trust tiers, capabilities, invocations — all pure enums/models</td><td>✅ **IMPLEMENTED** (P1c)</td></tr>
+<tr><td>Runtime Streaming Types (`runtime_streaming/_types.py`)</td><td>`rig_relay.desktop.stream_types`</td><td>Low</td><td>P1</td><td>Stream chunk, status, heartbeat, proposal event types</td><td>Pending</td></tr>
+<tr><td>Workspace Runtime (`workspace_runtime.py`)</td><td>`rig_relay.coordination.workspace_runtime`</td><td>Low</td><td>P2</td><td>Lane-scoped execution context with worktree/replay/artifact namespaces</td><td>Pending</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Reimplement Patterns (relay-native adaptation required)</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Rig Pattern</th><th>Rig Relay Approach</th><th>Complexity</th><th>Priority</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td>Worktree Manager (`worktree_manager.py`)</td><td>`rig_relay.coordination.worktree_manager`</td><td>Medium</td><td>P1</td><td>Git worktree lifecycle with structured models, input sanitization, porcelain parsing, dirty detection; lease integration deferred</td><td>✅ **IMPLEMENTED** (P1b)</td></tr>
+<tr><td>Execution Request + Execution Lease (`execution/models.py`)</td><td>`rig_relay.runtime.execution_request` + `rig_relay.coordination.execution_lease`</td><td>Medium</td><td>P2</td><td>✅ **IMPLEMENTED** (P2c) — Pydantic models with extra=&quot;forbid&quot;, standalone file-backed store, TTL enforcement, path-traversal protection, 54 tests</td></tr>
+<tr><td>Runtime Supervisor (`runtime_supervisor.py`)</td><td>`rig_relay.runtime.supervisor`</td><td>High</td><td>P2</td><td>asyncio subprocess with bounded buffers, stall detection, cancellation, dry-run path</td><td>✅ **IMPLEMENTED** (P2b)</td></tr>
+<tr><td>Projection Builder (`projection_builder.py`)</td><td>`rig_relay.desktop.projection_builder` → `rig_relay.desktop.projection_integrity`</td><td>Medium</td><td>P2</td><td>Integrity checks implemented via relay-native `build_projection_integrity_assessment()` — **IMPLEMENTED** (P2a)</td></tr>
+<tr><td>Receipt Envelope (`receipt_envelope.py`)</td><td>`rig_relay.evidence.receipt_envelope`</td><td>Medium</td><td>P3</td><td>Canonical receipt envelope theme (actor, subject, decision, evidence) — **IMPLEMENTED** (P3a)</td></tr>
+<tr><td>Workspace Audit Trail (`workspace_audit.py`)</td><td>`rig_relay.evidence.audit_trail`</td><td>Medium</td><td>P3</td><td>Deterministic audit events with auth classification; no side effects</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Already Exists in Rig Relay (no port needed)</h3>
+
+<details id="table-17" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-17" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Rig Pattern</th><th>Rig Relay Equivalent</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Intent definitions</td><td>`rig_relay/desktop/intents.py`</td><td>**ported**</td><td>Read-only + dry-run intent API</td></tr>
+<tr><td>Projection model</td><td>`rig_relay/desktop/projection.py`</td><td>**ported**</td><td>Content-light, backend-authored</td></tr>
+<tr><td>Authorization receipts</td><td>`rig_relay/desktop/authorization_receipts.py`</td><td>**ported**</td><td>Local desktop auth receipts</td></tr>
+<tr><td>Coordination store</td><td>`rig_relay/coordination/store.py`</td><td>**ported**</td><td>Task claims, path leases, artifacts</td></tr>
+<tr><td>Coordination tool</td><td>`rig_relay/coordination/tool.py`</td><td>**ported**</td><td>Coordination plane tool</td></tr>
+<tr><td>Dirty-file guard</td><td>`rig_relay/governance/dirty_guard.py`</td><td>**ported**</td><td>Path-level write protection</td></tr>
+<tr><td>Local action envelope</td><td>`rig_relay/governance/local_action_envelope.py`</td><td>**ported**</td><td>Signed envelope for protected intents</td></tr>
+<tr><td>Receipt index</td><td>`rig_relay/evidence/receipt_index.py`</td><td>**ported**</td><td>Content-light receipt builder</td></tr>
+<tr><td>Tool receipt policy</td><td>`rig_relay/evidence/tool_receipt_policy.py`</td><td>**ported**</td><td>Content-light validation</td></tr>
+<tr><td>Session lifecycle</td><td>`rig_relay/evidence/session_lifecycle.py`</td><td>**ported**</td><td>Session state machine</td></tr>
+<tr><td>Update status</td><td>`rig_relay/runtime/update_status.py`</td><td>**ported**</td><td>Version check + restart policy</td></tr>
+<tr><td>Tool receipts</td><td>`rig.relay.*_receipt.v1` schemas</td><td>**ported**</td><td>Bash, search_replace, write_file, validate</td></tr>
+<tr><td>Desktop telemetry</td><td>`rig_relay/evidence/telemetry_bundle.py`</td><td>**ported**</td><td>Bundle + consent + budget</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Leave Behind (Rig product domain, not applicable to Relay)</h3>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Rig Pattern</th><th>Reason to Leave Behind</th></tr></thead>
+<tbody>
+<tr><td>ChatUI / Composer</td><td>Rig Relay is a CLI harness, not a chat product</td></tr>
+<tr><td>WorkspaceHeader / ProposalLifecycle</td><td>Rig-specific product domain; Rig Relay has no workspace model</td></tr>
+<tr><td>AuditTrail / IntegrityStatusCard</td><td>Rig-specific governance model; replaced by guard/coordination/telemetry</td></tr>
+<tr><td>Job store (SQLite)</td><td>Rig Relay uses CoordinationStore (file-backed, no SQLite)</td></tr>
+<tr><td>Intake auth/onboarding</td><td>Rig Relay has its own identity module (OAuth, consent store)</td></tr>
+<tr><td>UIServer</td><td>Too tightly coupled to Rig&#x27;s auth/receipt model</td></tr>
+<tr><td>Rig&#x27;s receipt store</td><td>Rig Relay uses structured events + artifacts</td></tr>
+<tr><td>Rig&#x27;s runtime providers (llama_cpp, mlx)</td><td>Rig Relay has its own provider registry/onboarding</td></tr>
+<tr><td>Rig&#x27;s agent loop</td><td>Rig Relay inherits Vibe agent loop (legacy, being replaced)</td></tr>
+<tr><td>Rig&#x27;s projection contract tests</td><td>Rig Relay has its own projection contract + widget modes</td></tr>
+</tbody>
+</table>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Gap Analysis</h2>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Gap 1: No Worktree Manager — ✅ **FILLED** (P1b)</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Rig Relay had no git worktree lifecycle. All execution was in-repo (no isolation).</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">**Impact:** ✅ **RESOLVED** — `WorktreeManager` provides git worktree lifecycle with: create (sanitized inputs, linked worktree), remove (refuses dirty without force), get_head_hash, list_worktrees (porcelain parsing), inspect (dirty detection). 52 tests. Schema at `docs/schemas/rig.relay.worktree.v1.schema.json`. Coordination lease integration deferred (P2 follow-up). Dirty-file guard boundary documented.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Gap 2: No Subprocess Supervisor — ✅ **FILLED** (P2b)</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s tool execution is in-process via asyncio. There is no bounded subprocess supervision with stall detection, output size caps, or dry-run path.</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">**Impact:** ✅ **RESOLVED** — `RuntimeSupervisor` provides lease-gated subprocess execution with bounded output (64KB configurable caps per stream), timeout (terminate→kill escalation), cancellation, concurrent stream draining with SHA256 hashing past truncation, and content-light completion/failure events. Schema at `docs/schemas/rig.relay.runtime_stream_event.v1.schema.json`. Governance doc at `docs/governance/runtime-supervisor.md`. **Governance gate and active lease conflict detection implemented P2b-follow-up (2026-06)** — GovernanceEngine evaluation wired before subprocess creation; ExecutionLeaseStore refuses concurrent active leases for same worktree_path. **Heartbeat emission and stall detection implemented P2b-follow-up (2026-06)** — RuntimeHeartbeatEvent emitted at configured interval, RuntimeWarningEvent emitted on stalled output. 108 tests (23 stream types + 36 supervisor incl. heartbeat/stall + 8 governance gate + 41 governance engine/lease conflict/existing). Dry-run mode remains deferred.</p>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Gap 3: No Execution Lease Model — ✅ **FILLED** (P2c)</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Rig Relay has coordination leases (path-based), but had no execution leases (time-bounded authorization to run a command in a specific worktree).</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">**Impact:** ✅ **RESOLVED** — `ExecutionLeaseStore` provides time-bounded authorization with TTL enforcement, state-machine transitions, and path-traversal-safe storage. 54 tests. Schema at `docs/schemas/rig.relay.execution_lease.v1.schema.json`.</p>
+
+<h3 id="h3-31" class="disclosure-standard" data-disclosure-level="standard">Gap 4: No Runtime Provider Registry</h3>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">Rig Relay has provider onboarding (rig_relay/providers/) but no runtime provider registry with trust tiers, capability scoping, or status tracking.</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">**Impact:** No way to declare &quot;provider X can read files but not write&quot; at the runtime level.</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">Gap 5: No Projection Builder with Integrity Checks — ✅ **FILLED** (P2a)</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s projection builder is content-light (counts/hashes/statuses). Missing integrity contract validation, authority binding verification, and stale receipt detection.</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">**Impact:** ✅ **RESOLVED** — `projection_integrity.py` provides `build_projection_integrity_assessment()` pure function with stale detection, orphaned receipt flagging, authority binding verification, and unknown widget detection. Schema at `docs/schemas/rig.relay.projection_integrity.v1.schema.json`. Desktop projection schema updated with optional `integrity` field. 33 tests.</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-38" class="disclosure-standard" data-disclosure-level="standard">Porting Priority (Weighted)</h2>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">Priority weights: Risk exposure (3), Implementation effort inverse (2), Dependency order (1)</p>
+
+<table id="table-40" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Slice</th><th>Pattern</th><th>Weight</th><th>Score</th></tr></thead>
+<tbody>
+<tr><td>P1a</td><td>Governance Engine</td><td>High</td><td>Direct port, unlocks GateDecision model</td></tr>
+<tr><td>P1b</td><td>Worktree Manager</td><td>High</td><td>Enables isolated execution</td></tr>
+<tr><td>P1c</td><td>Runtime Model Types</td><td>High</td><td>Foundation for all runtime work — **IMPLEMENTED**</td></tr>
+<tr><td>P2a</td><td>Projection Builder Upgrade</td><td>Medium</td><td>State-aware, integrity-verified</td></tr>
+<tr><td>P2b</td><td>Subprocess Supervisor</td><td>Medium</td><td>Bounded, monitored execution</td></tr>
+<tr><td>P2c</td><td>Execution Lease</td><td>Medium</td><td>Time-bounded auth</td></tr>
+<tr><td>P3a</td><td>Receipt Envelope</td><td>Low</td><td>Canonical theme</td></tr>
+<tr><td>P3b</td><td>Workspace Audit Trail</td><td>Low</td><td>Deterministic audit ✅ **IMPLEMENTED**</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/rig-to-relay-runtime-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

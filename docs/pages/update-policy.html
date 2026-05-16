@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Relay Update Policy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="1. **Notification-first**: Update checks are informational. The user or parent">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig Relay Update Policy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Update Policy</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Principles</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">1. **Notification-first**: Update checks are informational. The user or parent orchestrator decides when to act. 2. **No restart during active sessions**: Sessions MUST NOT be interrupted. Restart is deferred to idle/session boundaries. 3. **Install-channel-aware**: The recommended update command depends on how Rig Relay was installed. 4. **User-controlled**: Automatic restart is opt-in only (`auto_restart_at_idle`). 5. **Structured events**: Agents receive `update_status` via current_state, not random terminal spam.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Update State Machine</h2>
+
+<pre id="code-5"><code class="language-text">up_to_date → update_available → update_downloaded → restart_pending
+                                                      ↓
+                    restart_blocked_active_sessions ← restart_pending
+                                                      ↓
+                                              restart_ready
+                                                      ↓
+                                            restart_completed</code></pre>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>State</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`up_to_date`</td><td>Current version matches latest known</td></tr>
+<tr><td>`update_available`</td><td>New version detected, not yet downloaded</td></tr>
+<tr><td>`update_downloaded`</td><td>Package downloaded, awaiting restart</td></tr>
+<tr><td>`restart_pending`</td><td>Restart queued</td></tr>
+<tr><td>`restart_blocked_active_sessions`</td><td>Restart deferred because sessions &gt; 0</td></tr>
+<tr><td>`restart_ready`</td><td>No active sessions, restart can proceed</td></tr>
+<tr><td>`restart_completed`</td><td>Restart finished successfully</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Recommended Update Commands</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Install Source</th><th>Update Command</th></tr></thead>
+<tbody>
+<tr><td>`uv_tool`</td><td>`uv tool upgrade rig-relay`</td></tr>
+<tr><td>`pipx`</td><td>`pipx upgrade rig-relay`</td></tr>
+<tr><td>`pip`</td><td>`pip install --upgrade rig-relay`</td></tr>
+<tr><td>`homebrew`</td><td>`brew upgrade rig-relay`</td></tr>
+<tr><td>`npm`</td><td>`npm update -g rig-relay`</td></tr>
+<tr><td>`source`</td><td>`git pull &amp;&amp; uv sync`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Safe Restart Flow</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">1. Update check detects new version. 2. Emit `rig.relay.update.available` event. 3. Parent/reviewer sees `update_status` in `current_state`. 4. If `active_sessions &gt; 0`, mark `restart_blocked_active_sessions`. 5. When all child sessions finish: - Checkpoint if allowed. - Export pending artifacts. - Prompt user or orchestrator. 6. If `auto_restart_at_idle` is enabled, restart automatically. 7. After restart, emit `restart_completed`.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Agent Visibility</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Agents see updates via `current_state`:</p>
+
+<pre id="code-13"><code class="language-json">{
+  &quot;update_status&quot;: {
+    &quot;current_version&quot;: &quot;0.1.0a1&quot;,
+    &quot;latest_version&quot;: &quot;0.1.0a2&quot;,
+    &quot;update_available&quot;: true,
+    &quot;install_source&quot;: &quot;uv_tool&quot;,
+    &quot;recommended_update_command&quot;: &quot;uv tool upgrade rig-relay&quot;,
+    &quot;restart_required&quot;: false,
+    &quot;restart_safe&quot;: false,
+    &quot;blocked_by_active_sessions&quot;: 2,
+    &quot;update_state&quot;: &quot;restart_blocked_active_sessions&quot;,
+    &quot;checked_at&quot;: &quot;...&quot;
+  }
+}</code></pre>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">CLI Update Check</h2>
+
+<pre id="code-15"><code class="language-bash">rig-relay update check           # Check for update, print status
+rig-relay update status          # Show current update state</code></pre>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">These commands do not modify the system. They only check and report.</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- [Versioning Policy](release/versioning-policy.md) - [Install Channels](../install.md) - [Current State Pulse](../../scripts/rig_relay_current_state.py)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/update-policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

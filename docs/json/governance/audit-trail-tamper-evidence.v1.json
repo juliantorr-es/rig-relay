@@ -1,0 +1,925 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "audit-trail-tamper-evidence",
+  "document_type": "governance",
+  "title": "Audit Trail Tamper-Evidence Design",
+  "summary": "**Design (2026-05).** Not yet implemented. See",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/audit-trail-tamper-evidence.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Audit Trail Tamper-Evidence Design",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Design (2026-05).** Not yet implemented. See `docs/audits/rig-runtime-port/audit-trail-tamper-evidence-design.md` for the implementation audit and decision log.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Add tamper evidence to the existing `AuditTrailStore` (P3b) so that unauthorized modification of the audit trail — whether by a compromised process, a user with filesystem access, or a supply-chain attacker — is detectable at verification time.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "This is **tamper-evident**, not tamper-proof. Without external anchoring (signing, trusted timestamping, remote witness), a local attacker with write access to both the trail and the checkpoint file can rewrite both. The design makes that attack detectable as soon as any independently retained checkpoint root is compared.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Design Overview",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Three layers, implemented incrementally:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Layer",
+        "Mechanism",
+        "Detects"
+      ],
+      "rows": [
+        [
+          "1. Event hash chain",
+          "Each event stores `event_hash` and `previous_event_hash`",
+          "Line modification, deletion, insertion, reordering"
+        ],
+        [
+          "2. Checkpoint records",
+          "Periodic batch records store chain head hash + Merkle root",
+          "Missing/truncated sections, broken chain"
+        ],
+        [
+          "3. External anchoring (future)",
+          "Signing, TSA, remote witness",
+          "Local rewrite of both trail and checkpoints"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Layer 1: Event Hash Chain",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "**Canonical event representation:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Each `AuditEvent` gains two new optional fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-13",
+      "type": "code",
+      "language": "text",
+      "content": "event_hash: str | None          # sha256:<hex> of canonical event without event_hash/previous_event_hash\nprevious_event_hash: str | None # sha256:<hex> of the preceding event's event_hash, or null for genesis",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "**Computation:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-15",
+      "type": "code",
+      "language": "text",
+      "content": "canonical = dump_canonical_json(event.model_dump(mode=\"json\", exclude={\"event_hash\", \"previous_event_hash\"}, exclude_none=True))\nevent_hash = \"sha256:\" + sha256(canonical.encode(\"utf-8\")).hexdigest()",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Where `dump_canonical_json` is the existing `rig_relay.coordination._canonical_json.dump_canonical_json` — deterministic, sorted-keyed JSON without whitespace.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "**Chain rules:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "1. The genesis event (sequence=1) has `previous_event_hash = None`. 2. Every subsequent event has `previous_event_hash` = the preceding event's `event_hash`. 3. `event_hash` is computed **before append** and stored in the event. 4. `previous_event_hash` is read from the store's `latest_event()` before computing the new event. 5. On read, the store verifies the chain: every event's `event_hash` must match recomputation, and `previous_event_hash` must match the prior event's `event_hash`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "**Sequence monotonicity:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "`next_sequence()` remains a count of lines. After hash chaining, sequence gaps are still detectable (the chain breaks at a missing sequence). Duplicate sequence numbers become detectable because they produce a fork (two events claim the same parent).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "**Timestamp handling:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Timestamps are informational. The hash chain provides ordering, not timestamps. A future event with a backdated timestamp is still detected as a break in the hash chain if it claims the wrong `previous_event_hash`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "**Malformed lines:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "- Malformed lines (non-JSON, non-validating) are still reported as read errors. - The chain cannot verify past a malformed line. Verification stops at the last valid event before the malformed line. - A future repair workflow could quarantine malformed lines and splice the chain.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "**Redaction/deletion:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "- Deleting a line breaks the chain at that point. - The store cannot \"heal\" the chain after deletion without re-signing all subsequent events (which invalidates tamper evidence). - **Policy:** never auto-repair. Report the exact sequence where the break occurs.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "**Compaction (future):**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- If old events are archived/removed, the chain is broken. - Compaction must produce a new checkpoint that covers the surviving range, signed with the old checkpoint's root as `previous_checkpoint_hash`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-29",
+      "type": "heading",
+      "level": 3,
+      "content": "Layer 2: Checkpoint Records",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "**AuditCheckpoint model:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-31",
+      "type": "code",
+      "language": "python",
+      "content": "class AuditCheckpoint(BaseModel):\n    model_config = ConfigDict(extra=\"forbid\")\n\n    schema_version: str = \"rig.relay.audit_checkpoint.v1\"\n    checkpoint_id: str\n    trail_id: str                    # identifies which audit trail this checkpoint belongs to\n    created_at: str                  # ISO 8601\n    from_sequence: int               # first event sequence in this checkpoint window\n    to_sequence: int                 # last event sequence in this checkpoint window\n    event_count: int                 # number of events in this window\n    chain_head_hash: str             # event_hash of the last event in this window\n    merkle_root_sha256: str | None   # Merkle root over event hashes in this window (optional in v0.1)\n    previous_checkpoint_hash: str | None  # sha256 of the previous checkpoint, or null for genesis\n    checkpoint_sha256: str           # sha256 of this checkpoint's canonical JSON (excluding checkpoint_sha256)\n    signer_id: str | None = None     # reserved for future signing\n    signature: str | None = None     # reserved for future signing",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "**Storage decision:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "Checkpoint records are stored in a **separate file** — `audit.checkpoints.jsonl` alongside `audit.jsonl`. Reasons:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "- Avoids mixing event types in the same JSONL, which would complicate schema validation and reader logic. - Checkpoints have a different schema version and required fields. - Separate file simplifies replay: events are one file, checkpoints are another.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "**Checkpoint frequency:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "- **Default:** every 1000 events, or on explicit `checkpoint()` call. - **On demand:** `store.create_checkpoint()` produces a checkpoint at the current chain head. - **On read:** verification can use the latest checkpoint, or a specific checkpoint by `checkpoint_id`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "**Verification of checkpoints:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "1. Load all events up to `to_sequence`. 2. Recompute chain hashes from `from_sequence` to `to_sequence`. 3. Verify `chain_head_hash` matches. 4. If `merkle_root_sha256` is present, recompute the Merkle root and compare. 5. Load the previous checkpoint (if any) and verify `previous_checkpoint_hash` matches the previous checkpoint's `checkpoint_sha256`. 6. A checkpoint is **trusted** only if its own `checkpoint_sha256` matches recomputation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-39",
+      "type": "heading",
+      "level": 3,
+      "content": "Layer 3: Merkle Checkpoint Option",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "**Design decision:** Merkle roots are optional in v0.1. The checkpoint stores a `merkle_root_sha256` field that is `None` until Merkle tree computation is implemented.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "**Leaf hash:** `event_hash` of each event in the checkpoint window.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "**Tree shape:** Binary Merkle tree over the sequence of leaf hashes. If the number of leaves is not a power of two, duplicate the last leaf (or use a balanced tree — design deferred to implementation).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "**Inclusion proof (future):**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-44",
+      "type": "code",
+      "language": "python",
+      "content": "class MerkleInclusionProof(BaseModel):\n    model_config = ConfigDict(extra=\"forbid\")\n\n    leaf_hash: str\n    leaf_index: int\n    proof_hashes: list[str]   # sibling hashes from leaf to root\n    root_hash: str",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "**Consistency proof (future):** Deferred. Not needed until cross-checkpoint verification between two versions of the same trail is required.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "**Recommendation:** Implement v0.1 with linear hash chain + checkpoint root only. Add Merkle inclusion proofs in v0.2 when external verification/sharing matters.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-47",
+      "type": "heading",
+      "level": 2,
+      "content": "Verification Workflow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-48",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig-relay audit verify <trail>`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "Reads the trail and checkpoints, then reports:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-50",
+      "type": "table",
+      "columns": [
+        "Status",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "`verified`",
+          "All events pass hash chain check, latest checkpoint matches"
+        ],
+        [
+          "`broken_chain`",
+          "A hash mismatch was found at sequence N"
+        ],
+        [
+          "`missing_checkpoint`",
+          "No checkpoint file exists for this trail"
+        ],
+        [
+          "`malformed_event`",
+          "An event line is unparseable, chain stops there"
+        ],
+        [
+          "`sequence_gap`",
+          "Sequence numbers are not strictly monotonic"
+        ],
+        [
+          "`checkpoint_mismatch`",
+          "Checkpoint `chain_head_hash` does not match recomputed value"
+        ],
+        [
+          "`unsupported_version`",
+          "Event or checkpoint schema version is unknown"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "**Output:** JSON report with `verification_status`, `first_broken_sequence`, `event_count`, `checkpoint_count`, `error_count`, `warnings[]`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-52",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig-relay audit checkpoint <trail>`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "Creates a new checkpoint at the current chain head. Does not modify existing events or checkpoints.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-54",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig-relay audit inspect <event_id>`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "Prints a single event with its chain neighbors (previous and next event_id, sequence, event_hash).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-56",
+      "type": "heading",
+      "level": 2,
+      "content": "Failure/Recovery Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "1. **Never auto-repair.** The audit trail is append-only. Automatic repair would destroy tamper evidence. 2. **Report exact break location.** The verification report includes `first_broken_sequence` and the expected vs. actual hash values. 3. **Allow quarantining** (future): A manual repair workflow could export events up to the break point, then start a fresh chain from the last valid checkpoint. 4. **Never silently rewrite.** Any operation that modifies the trail or checkpoints must be explicit and user-approved.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "**Chain verification stops** at the first broken link. Subsequent events are reported as \"unverifiable\" rather than \"failed\".",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-59",
+      "type": "heading",
+      "level": 2,
+      "content": "Security Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-60",
+      "type": "heading",
+      "level": 3,
+      "content": "What tamper evidence detects",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "- Any modification of an event's fields (the `event_hash` will not match recomputation). - Deletion of a line (the chain breaks at the missing `previous_event_hash` reference). - Insertion of a forged event (cannot produce a valid `previous_event_hash` without the private key, and the chain will break). - Reordering of events (the `sequence` field changes, and the `previous_event_hash` will not match). - Truncation of the trail (the chain breaks at the cut point).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-62",
+      "type": "heading",
+      "level": 3,
+      "content": "What tamper evidence does NOT detect",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "- Simultaneous rewrite of both `audit.jsonl` and `audit.checkpoints.jsonl` by an attacker with filesystem write access. - Modification of events before the first checkpoint (all events prior to the genesis checkpoint have no checkpoint root to verify against).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-64",
+      "type": "heading",
+      "level": 3,
+      "content": "Trust model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-65",
+      "type": "table",
+      "columns": [
+        "Attacker capability",
+        "Detectable?",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Read-only access",
+          "N/A",
+          "No damage"
+        ],
+        [
+          "Write to audit.jsonl only",
+          "Yes",
+          "Chain breaks, checkpoint detects"
+        ],
+        [
+          "Write to audit.checkpoints.jsonl only",
+          "Yes",
+          "Event chain breaks, or checkpoint hash mismatch"
+        ],
+        [
+          "Write to both files",
+          "No (v0.1)",
+          "Need external anchoring"
+        ],
+        [
+          "Write to both + signing key",
+          "No",
+          "Need hardware-backed key"
+        ],
+        [
+          "Write to both files + timestamp authority",
+          "No",
+          "Need RFC 3161 TSA"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-66",
+      "type": "heading",
+      "level": 3,
+      "content": "Future hardening (not in v0.1)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-67",
+      "type": "paragraph",
+      "content": "- **Signing:** Each checkpoint is signed with an Ed25519 key. The public key is retained separately. - **Local keychain:** Key stored in OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager). - **Passkey anchoring:** Future passkey-based signing of checkpoints. - **Remote witness:** Periodically upload checkpoint roots to a remote witness service (IPFS, GitHub releases, S3).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-68",
+      "type": "heading",
+      "level": 3,
+      "content": "Documented contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-69",
+      "type": "paragraph",
+      "content": "The `audit-trail.md` governance document (and the docstring of `AuditTrailStore`) must state clearly:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-70",
+      "type": "paragraph",
+      "content": "> This store provides append-only JSONL persistence with best-effort fsync > durability. It does **not** provide cryptographic tamper evidence. Hash-chain > tamper evidence is designed separately — see > docs/governance/audit-trail-tamper-evidence.md.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-71",
+      "type": "heading",
+      "level": 2,
+      "content": "Required Schema Changes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-72",
+      "type": "heading",
+      "level": 3,
+      "content": "`AuditEvent` gains two optional fields",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-73",
+      "type": "code",
+      "language": "text",
+      "content": "event_hash: str | None = None\nprevious_event_hash: str | None = None",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-74",
+      "type": "paragraph",
+      "content": "Both are `[\"string\", \"null\"]` in the JSON Schema. Existing events without these fields are valid (backward compatibility). On read, events missing `event_hash`/`previous_event_hash` are treated as **unhashed** — verification skips them rather than failing.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-75",
+      "type": "heading",
+      "level": 3,
+      "content": "New schema: `rig.relay.audit_checkpoint.v1`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-76",
+      "type": "paragraph",
+      "content": "Schema file: `docs/schemas/rig.relay.audit_checkpoint.v1.schema.json`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-77",
+      "type": "paragraph",
+      "content": "Required fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-78",
+      "type": "code",
+      "language": "text",
+      "content": "checkpoint_id, trail_id, created_at, from_sequence, to_sequence,\nevent_count, chain_head_hash, checkpoint_sha256",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-79",
+      "type": "paragraph",
+      "content": "Optional fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-80",
+      "type": "code",
+      "language": "text",
+      "content": "merkle_root_sha256, previous_checkpoint_hash, signer_id, signature",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-81",
+      "type": "heading",
+      "level": 2,
+      "content": "Implementation Phases",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-82",
+      "type": "table",
+      "columns": [
+        "Phase",
+        "Scope",
+        "Dependencies"
+      ],
+      "rows": [
+        [
+          "0.1",
+          "Event hash chain on append + verify on read",
+          "None (pure store change)"
+        ],
+        [
+          "0.2",
+          "Checkpoint record model + `create_checkpoint()`",
+          "Phase 0.1"
+        ],
+        [
+          "0.3",
+          "`rig-relay audit verify` CLI command",
+          "Phase 0.2"
+        ],
+        [
+          "0.4",
+          "Merkle root computation in checkpoints",
+          "Phase 0.2"
+        ],
+        [
+          "0.5",
+          "External anchoring (signing, TSA)",
+          "Keychain module"
+        ],
+        [
+          "0.6",
+          "`rig-relay audit checkpoint` CLI command",
+          "Phase 0.2"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-83",
+      "type": "paragraph",
+      "content": "Phase 0.1 and 0.2 are the minimum viable tamper-evidence layer. They can be implemented without CLI changes — the store methods suffice for programmatic verification.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-84",
+      "type": "heading",
+      "level": 2,
+      "content": "Relationship to Receipt Envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-85",
+      "type": "paragraph",
+      "content": "`ReceiptEnvelope` (P3a) is separate from tamper evidence. The audit trail stores `AuditEvent` records which may reference or embed `ReceiptEnvelope` instances. The hash chain operates on the `AuditEvent` itself — not on the embedded envelope. This means:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-86",
+      "type": "paragraph",
+      "content": "- If the `AuditEvent` fields are tampered with (e.g., `decision` changed from `allowed` to `blocked`), the chain detects it. - If the embedded `ReceiptEnvelope` is tampered with inside a serialized `AuditEvent`, the chain detects it (because the canonical JSON of the `AuditEvent` changes). - `ReceiptEnvelope` objects stored independently (not embedded in audit events) are not covered by the audit trail's hash chain. They need their own integrity mechanism (deferred to future work).",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/audit-trail-tamper-evidence.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

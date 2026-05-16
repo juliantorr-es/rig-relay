@@ -1,0 +1,559 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "mcp-night-development-harness-demo",
+  "document_type": "guide",
+  "title": "MCP Night — Rig Relay Development Harness Demo",
+  "summary": "> **One-line thesis:** MCP connects agents to tools. Rig Relay makes that",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/demo/mcp-night-development-harness-demo.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "MCP Night — Rig Relay Development Harness Demo",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "> **One-line thesis:** MCP connects agents to tools. Rig Relay makes that > usable for real development: coordination, validation, receipts, progress, > provider setup, consent, redaction, and local authority.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Prerequisites",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "- Python 3.12+ - `uv` installed - Rig Relay cloned",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Setup",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-6",
+      "type": "code",
+      "language": "bash",
+      "content": "cd rig-relay\nuv sync --all-extras",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "No API keys required. No network setup. No local models to download. The cockpit runs in demo mode with safe intents only.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Launch",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-9",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run python scripts/rig_relay_desktop_cockpit.py --dry-run",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "This launches the pywebview desktop cockpit. The `--dry-run` flag ensures no protected state mutations occur.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "**Fallback:** If pywebview is unavailable, use:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-12",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run python scripts/rig_relay_desktop_cockpit.py --dry-run --headless",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "This prints the projection JSON to stdout instead of opening a window.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Five-Minute Talk Track",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "0:00 – Thesis (15s)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "> \"MCP gives agents a protocol to call tools. Rig Relay gives them a > governed harness to do real development work — coordination, validation, > progress, provider setup, consent, and content-light redaction.\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Click **System** tab.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "0:15 – Cockpit Layout (30s)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Three modes in the nav bar:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-20",
+      "type": "table",
+      "columns": [
+        "Mode",
+        "What It Shows"
+      ],
+      "rows": [
+        [
+          "**Operate**",
+          "Live state: provider health, validation counts, storage budget, Next Action"
+        ],
+        [
+          "**Review**",
+          "Progress Timeline, validation results, storage audit, bundle status"
+        ],
+        [
+          "**System**",
+          "Identity, provider keys, telemetry consent, authorization receipts, bundles"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-21",
+      "type": "heading",
+      "level": 3,
+      "content": "0:45 – Operate: Live State (45s)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Click **Operate**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "Six widgets: - **Operator** — version, mode, session - **Safety State** — dirty count, lease count, stale leases - **Validation** — passed/failed counts - **Storage Budget** — size, budget status, prune candidates - **Next Action** — recommended next step (computed from projection state) - **Provider Health** — provider status summary",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "> \"This is the live instrument panel. No guesswork — every number comes > from real artifact data.\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "1:30 – Run Safe Intents (90s)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Click the following buttons in **Operate** (or run from terminal):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "1. **Generate Refinement Report** - `runIntent('generate_refinement_report')` - Produces a content-light report from derived datasets - Result card shows report summary",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "2. **Create Refinement Packets** - `runIntent('create_refinement_packets', { limit: 3 })` - Produces mission packet artifacts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "3. **Run Validation Suite** - `runIntent('run_validation_suite')` - Runs all registered validators - Result shows passed/failed counts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "4. **Refresh Projection** - `runIntent('refresh_projection')` - Rebuilds Operate widgets from latest artifacts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "**Fallback:** If buttons are unresponsive, run from terminal:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-32",
+      "type": "code",
+      "language": "bash",
+      "content": "# These commands work headless:\nuv run python -c \"\nfrom scripts.rig_relay_desktop_cockpit import execute_intent\nresult = execute_intent({'intent_name': 'generate_refinement_report'})\nprint(result['status'], result.get('summary', ''))\n\"",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-33",
+      "type": "heading",
+      "level": 3,
+      "content": "3:00 – Review: Progress Timeline (60s)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Click **Review**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "Left column: - **Progress Timeline** — shows every operation as a card with type, phase, status, and message. Each card has a colored left border (green=ok, yellow=warn, red=error). - **Receipt Timeline** — authorization receipts (if any) - **Refinement Backlog** — generated packets",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "Right column: - **Validation Results** — per-validator outcomes - **Storage Audit** — budget details - **Telemetry Bundle** — bundle status (if created)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "> \"The Progress Timeline is a live event stream. Every intent, validation > step, and operation logs here. No second transport — it reuses the > existing WebSocket.\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-38",
+      "type": "heading",
+      "level": 3,
+      "content": "4:00 – System: Trust Infrastructure (60s)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "Click **System**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "Five cards: 1. **Identity Providers** — Sign in with GitHub or Google (or skip) 2. **Model Providers** — Manage API keys locally. Keys are: - Stored in file or keychain — never in telemetry/audit - Hashed to fingerprint — never raw in results - Input fields use `type=\"password\"` — cleared after save 3. **Telemetry Consent** — Granular scope checkboxes. Commercial scopes are never default. Must be explicitly checked. 4. **Authorization Receipts** — Mint and inspect receipts for step-up auth 5. **Bundles** — Dev bundle dry-run, telemetry bundle dry-run",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "**Protected controls are absent.** There are no buttons for: - `bash`, `shell`, `write_file`, `search_replace` - `spawn.execute`, `fleet.execute`, `delegate.execute` - `remote_upload.confirm` - `lease_cleanup.remove`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "> \"The System tab is the trust panel. Identity, keys, consent, receipts — > everything that makes agent tool use safe for real development.\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-43",
+      "type": "heading",
+      "level": 3,
+      "content": "4:45 – Dataset Close (15s)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "Open `docs/demo/fixtures/model-observation-demo.json`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-45",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"schema_version\": \"rig.relay.model_observation.v1\",\n  \"task_kind\": \"code_gen\",\n  \"provider_kind\": \"cloud\",\n  \"provider_name\": \"openai\",\n  \"model_id\": \"gpt-4o\",\n  \"latency_ms\": 2340.5,\n  \"tool_call_count\": 4,\n  \"tool_success_count\": 3,\n  \"content_light_guarantee\": true\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "And `docs/demo/fixtures/provider-ranking-demo.json`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-47",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"ranking_id\": \"rank_demo_mcp_night_001\",\n  \"provider_scores\": [\n    { \"provider_name\": \"openai\", \"overall_score\": 0.72 },\n    { \"provider_name\": \"anthropic\", \"overall_score\": 0.74 }\n  ],\n  \"confidence_level\": \"low\",\n  \"warnings\": [\"Low sample count (3): consider collecting more observations...\"]\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "> \"This is the dataset story: content-light observations, structured > rankings, consent-gated, early-alpha confidence labels. No raw prompts, > no raw outputs, no source code, no diffs, no secrets — just the signal. > Aggregation over time turns low-confidence rankings into > high-confidence recommendations.\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-49",
+      "type": "heading",
+      "level": 3,
+      "content": "5:00 – Closing Value Proposition",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "> **Rig Relay today:** > - Governed local harness with three-mode cockpit > - Safe intent execution (no protected mutation) > - Content-light telemetry with granular consent > - Provider onboarding with local key store > - Progress event streaming with Review timeline > - Validation artifacts with dashboard > - Model observation dataset for provider/local model ranking > > **Next (not today):** > - Full observation ingestion from all tool calls > - Dashboard visualization of ranking snapshots > - Automatic local model benchmarking > - Commercial/aggregate dataset export with consent",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-51",
+      "type": "heading",
+      "level": 2,
+      "content": "What Not to Show",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "- Do not click any button labeled \"Bash\", \"Shell\", \"Write File\", \"Search/Replace\", \"Spawn\", \"Fleet\", \"Delegate\". - Do not enter real API keys on a projector screen. - Do not click \"Upload to Google Drive\" — it requires real credentials. - Do not claim production readiness. This is alpha. - Do not show raw prompts, raw model outputs, source code diffs, or stdout/stderr bodies on screen. - Do not run `git commit`, `git push`, or any git mutation during demo.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-53",
+      "type": "heading",
+      "level": 2,
+      "content": "Trust/Data Use Line",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "> **Rig Relay collects no raw prompts, no raw model outputs, no source code, > no diffs, no stdout/stderr bodies, and no secrets.** All telemetry is > content-light: hashes, counts, timestamps, and statuses. Consent is > explicit, granular, and revocable. The redaction boundary is enforced > by a shared module that every bundle writer, audit builder, and export > helper must route through.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-55",
+      "type": "heading",
+      "level": 2,
+      "content": "Artifact References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "- Demo observation: `docs/demo/fixtures/model-observation-demo.json` - Demo ranking: `docs/demo/fixtures/provider-ranking-demo.json` - Observation schema: `docs/schemas/rig.relay.model_observation.v1.schema.json` - Ranking schema: `docs/schemas/rig.relay.provider_ranking_snapshot.v1.schema.json` - Model code: `rig_relay/evidence/model_observations.py` - Consent helpers: `rig_relay/identity/telemetry_consent.py` - Redaction: `rig_relay/evidence/redaction.py` - Dataset governance: `docs/governance/model-observation-dataset.md` - Commercial license: `docs/legal/usage-data-license-alpha.md` - Privacy notice: `docs/legal/privacy-notice-alpha.md`",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/demo/mcp-night-development-harness-demo.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

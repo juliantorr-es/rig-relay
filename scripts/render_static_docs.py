@@ -69,33 +69,133 @@ def _validate_page(data: dict, path: Path) -> list[str]:
     return errors
 
 
-def _render_block(block: dict) -> str:  # noqa: PLR0911, PLR0914
+def _wrap_collapsible(
+    body, bid, css_cls, data_attrs, collapsible, visible, collapsed, title, content
+):
+    """Wrap body in details/summary if collapsible."""
+    if not collapsible:
+        return body + "\n"
+    summary_text = html.escape(title or content[:100])
+    open_attr = " open" if visible and not collapsed else ""
+    return (
+        f'<details id="{bid}" class="disclosure-collapsible {css_cls}"'
+        f"{data_attrs}{open_attr}>"
+        f"<summary>{summary_text}</summary>"
+        f"{body}"
+        f"</details>\n"
+    )
+
+
+def _render_block(block: dict, doc_disc: dict | None = None) -> str:  # noqa: PLR0911, PLR0914
     btype = block.get("type", "paragraph")
     content = html.escape(str(block.get("content", "")))
     title = html.escape(str(block.get("title", "")))
     bid = html.escape(str(block.get("block_id", "")), quote=True)
 
+    # ── Progressive disclosure ──────────────────────────────
+    disc = block.get("disclosure", {})
+    ddoc = doc_disc or {}
+    level = disc.get("level") or ddoc.get("default_level", "standard")
+    collapsible = disc.get("collapsible", False)
+    collapsed = disc.get("collapsed_by_default", False)
+    visible = disc.get("initially_visible", True)
+    audience = disc.get("audience", [])
+    hint = disc.get("render_hint", {})
+    variant = hint.get("variant", "plain")
+    emphasis = hint.get("emphasis", "normal")
+
+    if (
+        level in ("detailed", "exhaustive")
+        and not disc.get("collapsible")
+        and not disc.get("initially_visible")
+    ):
+        collapsible = True
+        collapsed = True
+
+    css_parts = [f"disclosure-{level}"]
+    if variant != "plain":
+        css_parts.append(f"render-variant-{variant}")
+    if emphasis != "normal":
+        css_parts.append(f"emphasis-{emphasis}")
+    css_cls = " ".join(css_parts)
+
+    data_attrs = f' data-disclosure-level="{level}"'
+    if audience:
+        data_attrs += ' data-disclosure-audience="' + " ".join(audience) + '"'
+    if collapsible:
+        data_attrs += ' data-collapsible="true"'
+    if collapsed:
+        data_attrs += ' data-collapsed-default="true"'
+
     if btype == "heading":
-        level = min(max(block.get("level", 2), 1), 6)
-        return f'<h{level} id="{bid}">{content}</h{level}>\n'
+        hlevel = min(max(block.get("level", 2), 1), 6)
+        body = (
+            f'<h{hlevel} id="{bid}" class="{css_cls}"{data_attrs}>{content}</h{hlevel}>'
+        )
+        return _wrap_collapsible(
+            body,
+            bid,
+            css_cls,
+            data_attrs,
+            collapsible,
+            visible,
+            collapsed,
+            title,
+            content,
+        )
 
     if btype == "paragraph":
-        return f'<p id="{bid}">{content}</p>\n'
+        body = f'<p id="{bid}" class="{css_cls}"{data_attrs}>{content}</p>'
+        return _wrap_collapsible(
+            body,
+            bid,
+            css_cls,
+            data_attrs,
+            collapsible,
+            visible,
+            collapsed,
+            title,
+            content,
+        )
 
     if btype == "callout":
         severity = block.get("severity", "info")
-        return (
-            f'<div class="callout callout-{severity}" id="{bid}">\n'
+        body = (
+            f'<div class="callout callout-{severity} {css_cls}" id="{bid}"{data_attrs}>\n'
             f"  {f'<strong>{title}</strong>' if title else ''}\n"
             f"  <p>{content}</p>\n"
-            f"</div>\n"
+            f"</div>"
+        )
+        return _wrap_collapsible(
+            body,
+            bid,
+            css_cls,
+            data_attrs,
+            collapsible,
+            visible,
+            collapsed,
+            title,
+            content,
         )
 
     if btype == "list":
         tag = "ol" if block.get("ordered") else "ul"
         items = block.get("items", [])
         items_html = "\n".join(f"  <li>{html.escape(str(i))}</li>" for i in items)
-        return f'<{tag} id="{bid}">\n{items_html}\n</{tag}>\n'
+        body = (
+            f'<{tag} id="{bid}" class="{css_cls}"{data_attrs}>\n{items_html}\n</{tag}>'
+        )
+        return _wrap_collapsible(
+            body,
+            bid,
+            css_cls,
+            data_attrs,
+            collapsible,
+            visible,
+            collapsed,
+            title,
+            content,
+        )
 
     if btype == "table":
         columns = block.get("columns", [])
@@ -115,7 +215,18 @@ def _render_block(block: dict) -> str:  # noqa: PLR0911, PLR0914
             )
             + "\n</tbody>"
         )
-        return f'<table id="{bid}">\n{head}\n{body}\n</table>\n'
+        body = f'<table id="{bid}" class="{css_cls}"{data_attrs}>\n{head}\n{body}\n</table>'
+        return _wrap_collapsible(
+            body,
+            bid,
+            css_cls,
+            data_attrs,
+            collapsible,
+            visible,
+            collapsed,
+            title,
+            content,
+        )
 
     if btype == "code":
         language = block.get("language", "")
@@ -126,22 +237,58 @@ def _render_block(block: dict) -> str:  # noqa: PLR0911, PLR0914
         return f'<pre id="{bid}"><code class="language-json">{content}</code></pre>\n'
 
     if btype in {"risk", "decision", "test_evidence"}:
-        return (
-            f'<div class="{btype}" id="{bid}">\n'
+        body = (
+            f'<div class="{btype} {css_cls}" id="{bid}"{data_attrs}>\n'
             f"  {f'<h4>{title}</h4>' if title else ''}\n"
             f"  <p>{content}</p>\n"
-            f"</div>\n"
+            f"</div>"
+        )
+        return _wrap_collapsible(
+            body,
+            bid,
+            css_cls,
+            data_attrs,
+            collapsible,
+            visible,
+            collapsed,
+            title,
+            content,
         )
 
     if btype == "link":
         href = html.escape(str(block.get("href", "")), quote=True)
-        return f'<p id="{bid}"><a href="{href}">{content}</a></p>\n'
+        body = f'<p id="{bid}" class="{css_cls}"{data_attrs}><a href="{href}">{content}</a></p>'
+        return _wrap_collapsible(
+            body,
+            bid,
+            css_cls,
+            data_attrs,
+            collapsible,
+            visible,
+            collapsed,
+            title,
+            content,
+        )
 
     if btype == "file_reference":
         path = html.escape(str(block.get("path", "")))
-        return f'<p class="file-ref" id="{bid}"><code>{path}</code></p>\n'
+        body = f'<p class="file-ref {css_cls}" id="{bid}"{data_attrs}><code>{path}</code></p>'
+        return _wrap_collapsible(
+            body,
+            bid,
+            css_cls,
+            data_attrs,
+            collapsible,
+            visible,
+            collapsed,
+            title,
+            content,
+        )
 
-    return f'<p id="{bid}">{content}</p>\n'
+    body = f'<p id="{bid}" class="{css_cls}"{data_attrs}>{content}</p>'
+    return _wrap_collapsible(
+        body, bid, css_cls, data_attrs, collapsible, visible, collapsed, title, content
+    )
 
 
 def _render_page(data: dict) -> str:
@@ -150,8 +297,11 @@ def _render_page(data: dict) -> str:
     # document_id available via data(str(data.get("document_id", "")))
     status = html.escape(str(data.get("status", "draft")))
     updated = html.escape(str(data.get("updated_at", data.get("created_at", ""))))
+    doc_disc = data.get("disclosure", {})
 
-    sections_html = "\n".join(_render_block(s) for s in data.get("sections", []))
+    sections_html = "\n".join(
+        _render_block(s, doc_disc) for s in data.get("sections", [])
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -173,6 +323,105 @@ def _render_page(data: dict) -> str:
 </main>
 <footer>
   <p>Generated from <code>{html.escape(data.get("canonical_path", ""))}</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>
+"""
+
+
+def _render_code_schema(data: dict, source_path: str) -> str:
+    title = html.escape(str(data.get("title", "Untitled")))
+    summary = html.escape(str(data.get("summary", "")))
+    status = html.escape(str(data.get("status", "draft")))
+    updated = html.escape(str(data.get("updated_at", data.get("created_at", ""))))
+    schema_id = html.escape(str(data.get("schema_id", "")))
+    change_kind = html.escape(str(data.get("change_kind", "")))
+    model_summary = html.escape(str(data.get("model_facing_summary", "")))
+
+    def _list(items: object) -> str:
+        if not isinstance(items, list) or not items:
+            return "<li>None</li>"
+        return "\n".join(f"<li>{html.escape(str(item))}</li>" for item in items)
+
+    authority = data.get("authority", {})
+    context_pack = data.get("context_pack", {})
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title} — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="{summary}">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>{title}</h1>
+  <p class="meta">Status: {status} | Updated: {updated}</p>
+</header>
+<main>
+  <section>
+    <h2>Metadata</h2>
+    <table>
+      <tr><th>Schema ID</th><td>{schema_id}</td></tr>
+      <tr><th>Change kind</th><td>{change_kind}</td></tr>
+      <tr><th>Source</th><td class="file-ref"><code>{html.escape(source_path)}</code></td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Authority</h2>
+    <table>
+      <tr><th>Authority kind</th><td>{html.escape(str(authority.get('authority_kind', '')))}</td></tr>
+      <tr><th>Trusted</th><td>{html.escape(str(authority.get('trusted', False)))}</td></tr>
+      <tr><th>Source path</th><td class="file-ref"><code>{html.escape(str(authority.get('source_path', '')))}</code></td></tr>
+      <tr><th>Review status</th><td>{html.escape(str(authority.get('review_status', '')))}</td></tr>
+      <tr><th>Last reviewed</th><td>{html.escape(str(authority.get('last_reviewed_at', '')))}</td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Model Summary</h2>
+    <p>{model_summary}</p>
+  </section>
+  <section>
+    <h2>Required Invariants</h2>
+    <ul>{_list(data.get('required_invariants', []))}</ul>
+  </section>
+  <section>
+    <h2>Forbidden Patterns</h2>
+    <ul>{_list(data.get('forbidden_patterns', []))}</ul>
+  </section>
+  <section>
+    <h2>Required Files</h2>
+    <ul>{_list(data.get('required_files', []))}</ul>
+  </section>
+  <section>
+    <h2>Required Tests</h2>
+    <ul>{_list(data.get('required_tests', []))}</ul>
+  </section>
+  <section>
+    <h2>Required Trace Events</h2>
+    <ul>{_list(data.get('required_trace_events', []))}</ul>
+  </section>
+  <section>
+    <h2>Validation Commands</h2>
+    <ul>{_list(data.get('validation_commands', []))}</ul>
+  </section>
+  <section>
+    <h2>Context Pack</h2>
+    <h3>Include Files</h3>
+    <ul>{_list(context_pack.get('include_files', []))}</ul>
+    <h3>Include Docs</h3>
+    <ul>{_list(context_pack.get('include_docs', []))}</ul>
+    <h3>Include Schemas</h3>
+    <ul>{_list(context_pack.get('include_schemas', []))}</ul>
+    <h3>Exclude Patterns</h3>
+    <ul>{_list(context_pack.get('exclude_patterns', []))}</ul>
+  </section>
+</main>
+<footer>
+  <p>Generated from <code>{html.escape(data.get("canonical_path", source_path))}</code></p>
   <p>Rig Relay — AGPL-3.0-or-later</p>
 </footer>
 </body>
@@ -313,28 +562,48 @@ def main() -> int:
             errors.append(f"{jf.name}: invalid JSON — {e}")
             continue
 
-        # Skip non-documentation-page JSON files (governance artifacts, manifests, etc.)
         sv = data.get("schema_version", "")
-        if not sv.startswith("rig.documentation.page.v"):
+        if sv.startswith("rig.documentation.page.v"):
+            verr = _validate_page(data, jf)
+            if verr:
+                errors.extend(verr)
+                continue
+
+            did = data.get("document_id", "")
+            if did in seen_ids:
+                errors.append(f"{jf.name}: duplicate document_id '{did}'")
+                continue
+            seen_ids.add(did)
+
+            data["_source_path"] = str(jf.relative_to(REPO_ROOT))
+            pages.append(data)
+
+            html_content = _render_page(data)
+            out_path = PAGES_OUT / f"{did}.html"
+            out_path.write_text(html_content, encoding="utf-8")
             continue
+        if sv.startswith("rig.code_schema.v") or sv.startswith("rig.code_schema.plan.v"):
+            did = data.get("document_id") or data.get("schema_id") or jf.stem
+            if did in seen_ids:
+                errors.append(f"{jf.name}: duplicate document_id '{did}'")
+                continue
+            seen_ids.add(did)
 
-        verr = _validate_page(data, jf)
-        if verr:
-            errors.extend(verr)
-            continue
+            data.setdefault("document_id", did)
+            data["_source_path"] = str(jf.relative_to(REPO_ROOT))
+            pages.append(
+                {
+                    "document_id": did,
+                    "title": data.get("title", did),
+                    "summary": data.get("summary", ""),
+                    "tags": data.get("tags", []),
+                    "_source_path": str(jf.relative_to(REPO_ROOT)),
+                }
+            )
 
-        did = data.get("document_id", "")
-        if did in seen_ids:
-            errors.append(f"{jf.name}: duplicate document_id '{did}'")
-            continue
-        seen_ids.add(did)
-
-        data["_source_path"] = str(jf.relative_to(REPO_ROOT))
-        pages.append(data)
-
-        html_content = _render_page(data)
-        out_path = PAGES_OUT / f"{did}.html"
-        out_path.write_text(html_content, encoding="utf-8")
+            html_content = _render_code_schema(data, str(jf.relative_to(REPO_ROOT)))
+            out_path = PAGES_OUT / f"{did}.html"
+            out_path.write_text(html_content, encoding="utf-8")
 
     if errors:
         print("Validation errors:")

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpha Release Checklist — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Release-like alpha readiness checklist for Rig Relay.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Alpha Release Checklist</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Alpha Release Checklist</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Release-like alpha readiness checklist for Rig Relay.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Foundation Checks</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- `uv sync --all-extras` completes on a clean checkout - `uv run python scripts/rig_relay_validate_schemas.py` passes - `uv run python scripts/rig_relay_desktop_cockpit.py --dry-run` passes - `uv run pytest -n0 tests/frontend/test_no_inner_html_for_untrusted_fields.mjs` passes when present - `uv run pytest -n0 tests/test_model_observations.py tests/evidence/test_redaction.py` passes if observation flow changed - `uv run pytest -n0 tests/providers/test_providers.py tests/scripts/test_desktop_projection.py` passes if provider flow changed - `uv run pytest -n0 tests/test_telemetry_consent.py tests/scripts/test_identity_providers.py` passes if identity or consent changed - `uv run pytest -n0 tests/scripts/test_desktop_intents.py tests/scripts/test_progress_events.py tests/scripts/test_websocket_server.py` passes if desktop intent or progress flow changed</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Launch Checks</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- Cockpit opens in `Operate`, `Review`, and `System` modes - No protected execution buttons are present - Provider onboarding is local-only and content-light - Consent toggles remain separate from identity - Progress timeline and review mode render without raw prompts, raw outputs, diffs, secrets, or stdout/stderr bodies - Demo fixtures validate - Dry-run mode works without network or key material</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Security Checks</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- No `innerHTML` path renders untrusted content - No raw secrets appear in telemetry, audit, or frontend storage - No upload path is enabled by default - No protected actions are exposed to the frontend - Remote-facing data remains content-light and redacted</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Artifact Policy</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Keep `.build/` out of tracked source unless a file is an explicit doc fixture - Keep generated bundles, session state, coordination state, and projections out of release commits - Track only durable source, docs, schemas, and test fixtures</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Demo Readiness</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- Exact demo commands are documented - Fallback path exists if the cockpit UI cannot open - The demo narrative stays alpha-safe and does not claim production readiness - MCP Night fixtures are current and content-light</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/release/alpha-release-checklist.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

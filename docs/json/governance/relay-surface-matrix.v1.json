@@ -1,0 +1,175 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "relay-surface-matrix",
+  "document_type": "governance",
+  "title": "Relay Surface Matrix",
+  "summary": "**Draft.** Defines which user-facing surfaces are primary, transitional, or",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/relay-surface-matrix.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Relay Surface Matrix",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Draft.** Defines which user-facing surfaces are primary, transitional, or legacy-compatible during the alpha period.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Surface Matrix",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-5",
+      "type": "table",
+      "columns": [
+        "Surface",
+        "Intended Audience",
+        "Current Status",
+        "Allowed Changes",
+        "Forbidden Changes",
+        "Retirement Criteria"
+      ],
+      "rows": [
+        [
+          "Textual TUI",
+          "Developers, SSH sessions, compatibility workflows",
+          "`active-dev-compatibility` + `deprecated-product-ui`",
+          "Compatibility fixes, diagnostics, deprecation messaging",
+          "New product-only features, product repositioning, deletion before parity",
+          "Delete only after Relay CLI + pywebview parity and explicit user confirmation"
+        ],
+        [
+          "Relay CLI",
+          "Scriptable users, automation, reviewers, operators",
+          "Canonical scriptable surface",
+          "Status, validation, refinement, provider, consent, telemetry, storage workflows",
+          "Protected execution buttons, raw-content export, silent regressions to Vibe branding",
+          "Remains canonical while product matures; retire only if superseded by a new canonical automation surface"
+        ],
+        [
+          "pywebview cockpit",
+          "Interactive operators, demo flows, product UX",
+          "Primary visual alpha/product surface",
+          "Safe intents, progress timeline, provider/identity/consent views, read-only projections",
+          "Protected execution buttons, noisy motion, raw evidence exposure",
+          "Remains primary until a later product surface replaces it deliberately"
+        ],
+        [
+          "scripts",
+          "Maintainers, debug, release engineering",
+          "Low-level/dev escape hatches",
+          "Validation, bundle creation, projection generation, storage audits, release helpers",
+          "User-facing rebranding as primary UI, protected execution controls",
+          "Keep as developer tools; retire only if fully absorbed by higher-level Relay surfaces"
+        ],
+        [
+          "vibe/core",
+          "Legacy substrate and adapters",
+          "Compatibility substrate",
+          "Adapter maintenance, quarantine, focused migration, test support",
+          "New product identity, new user-facing flows, opportunistic rewrites",
+          "Retire only after all dependent surfaces are moved and compatibility is no longer needed"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Policy Notes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- Textual is retained because it still supports current development workflows. - Relay CLI is the canonical scriptable surface, not Textual. - pywebview is the future product UI, but it must remain safe and operational before any Textual deletion is considered. - `vibe/core` may remain as a compatibility substrate while Relay-native seams finish maturing.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- [Textual TUI Retirement Policy](textual-retirement-policy.md) - [Vibe Legacy Deprecation Doctrine](vibe-legacy-deprecation.md) - [Vibe Legacy Boundary Inventory](../audits/vibe-legacy-boundary-inventory.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/relay-surface-matrix.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

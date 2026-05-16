@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe Legacy Boundary Inventory — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Canonical inventory of Vibe-derived modules and their migration status.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Vibe Legacy Boundary Inventory</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Vibe Legacy Boundary Inventory</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Canonical inventory of Vibe-derived modules and their migration status. This inventory governs which modules are legacy substrate and where they target in the Relay-native architecture.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Migration Statuses</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`legacy`</td><td>Vibe-derived; not yet migrated</td></tr>
+<tr><td>`adapting`</td><td>Wrapper or import redirect exists</td></tr>
+<tr><td>`migrated`</td><td>Implementation lives in `rig_relay.*`</td></tr>
+<tr><td>`retained`</td><td>Kept intentionally (no migration planned)</td></tr>
+<tr><td>`deprecated`</td><td>Scheduled for deletion</td></tr>
+<tr><td>`deleted`</td><td>Removed</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Inventory</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">1. `vibe/core/tools/builtins/`</h3>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>Built-in tool implementations: bash, read_file, write_file, search_replace, checkpoint, coordination, task, grep, web_fetch, etc.</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — tools are the executor interface</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.runtime.tools`</td></tr>
+<tr><td>**Migration status**</td><td>`legacy`</td></tr>
+<tr><td>**Risk**</td><td>Tools are tightly coupled to `BaseTool`, `InvokeContext`, and telemetry types. Migration requires a stable tool interface first</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2 after coordinator/current_state migration</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">2. `vibe/core/llm/`</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>LLM backends: Anthropic, Mistral, OpenAI, Vertex. Message formatting, types, error handling.</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — core provider boundary</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.runtime.providers`</td></tr>
+<tr><td>**Migration status**</td><td>`legacy`</td></tr>
+<tr><td>**Risk**</td><td>Deeply coupled to Vibe message types and streaming semantics. High risk to change during alpha</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 4 (replace agent-loop boundary)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">3. `vibe/core/agent_loop.py`</h3>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>Main agent orchestration loop: prompt assembly, tool call dispatch, streaming, conversation management</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — central orchestration</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.runtime.agent_loop`</td></tr>
+<tr><td>**Migration status**</td><td>`legacy`</td></tr>
+<tr><td>**Risk**</td><td>Highest-risk migration. Deep coupling to LLM backends, tool system, session lifecycle, and event types</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 4 (replace agent-loop boundary)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">4. `vibe/core/telemetry/`</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>Telemetry event emission, artifact building, bundle creation, duckdb projection, doctor, validation</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — governance evidence pipeline</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.governance.telemetry`, `rig_relay.evidence.*`</td></tr>
+<tr><td>**Migration status**</td><td>`legacy`</td></tr>
+<tr><td>**Risk**</td><td>Telemetry events are used throughout the codebase. Migration requires stable event contracts</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2 after coordination migration. Start with bundle/dataset scripts</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">5. `vibe/core/coordination/`</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>Coordination store, models, path leases, task claims, conflict detection, state projections, tool execution helpers</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — multi-session governance</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.coordination.store`, `rig_relay.coordination.models`</td></tr>
+<tr><td>**Migration status**</td><td>`migrated` for models/store — `vibe.core.coordination` is now an adapter; see [Coordination Migration Inventory](coordination-migration-inventory.md)</td></tr>
+<tr><td>**Risk**</td><td>`CoordinationStore` is used by checkpoint tool and guard. Tool-layer migration still waits on the load-bearing store/model seam</td></tr>
+<tr><td>**Recommended slice**</td><td>Next: continue tool-layer migration in `rig_relay.coordination.tool` while leaving the registry adapter in place</td></tr>
+</tbody>
+</table>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">The coordination seam is the next planned governance boundary because it is the shared substrate for claims, reservations, artifacts, conflicts, and current-state readiness. The refinement pipeline independently marked coordination as P0.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">6. `vibe/core/guard/`</h3>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>Dirty file guard: capture, snapshot, report, touch tracking</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — core governance primitive</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.governance.guard`</td></tr>
+<tr><td>**Migration status**</td><td>`migrated` (guard module is now a compatibility adapter re-exporting from rig_relay.governance.dirty_guard)</td></tr>
+<tr><td>**Risk**</td><td>Tightly coupled to checkpoint tool. Migration requires coordination lease stability</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2. Dirty-file guard seam is migrated. Next: coordination store migration</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">7. `vibe/core/auth/`</h3>
+
+<table id="table-20" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>Crypto (encrypt/decrypt), GitHub auth provider, authorization receipts</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — authorization gates</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.governance.auth`</td></tr>
+<tr><td>**Migration status**</td><td>`migrated` (receipt.py is now a compatibility adapter re-exporting from rig_relay.governance.auth_receipts)</td></tr>
+<tr><td>**Risk**</td><td>GitHub auth is Vibe-specific (keyring). Crypto module has no Relay equivalent yet</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2. Auth receipt seam is migrated. Migrate crypto/auth adapters next</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">8. `vibe/cli/`</h3>
+
+<table id="table-22" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>CLI entrypoint, command definitions, Textual TUI, update notifier, voice manager, narrator, plan offer</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — user interface</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.cli.commands`, `rig_relay.cli.tui` (or replace TUI with desktop)</td></tr>
+<tr><td>**Migration status**</td><td>`legacy`</td></tr>
+<tr><td>**Risk**</td><td>CLI depends on agent loop and tool system. Textual TUI is being deprecated in favor of desktop</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 3 (after seams are migrated). Start with `rig-relay` entrypoint alias, then migrate commands</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">9. `scripts/`</h3>
+
+<table id="table-24" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>Standalone product scripts: upload, cleanup, desktop, projection, current_state, spawn, validation, update, export, dataset, telemetry bundle</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — product features</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.desktop.*`, `rig_relay.coordination.*`, `rig_relay.evidence.*`, `rig_relay.cli.doctor`</td></tr>
+<tr><td>**Migration status**</td><td>`adapting` (scripts call each other via importlib; no direct `vibe.*` dependency in modern scripts)</td></tr>
+<tr><td>**Risk**</td><td>Scripts are importable but not structured as a package. Migration is additive</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2 (lowest-risk migration). Start with `rig_relay.desktop.projection`, `rig_relay.coordination.current_state`, `rig_relay.evidence.telemetry_bundle`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">10. `frontend/desktop/`</h3>
+
+<table id="table-26" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>HTML/CSS/JS frontend assets for pywebview desktop cockpit</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — desktop UI</td></tr>
+<tr><td>**Relay-native target**</td><td>`rig_relay.desktop.frontend`</td></tr>
+<tr><td>**Migration status**</td><td>`legacy`</td></tr>
+<tr><td>**Risk**</td><td>Static assets with no build step. Low migration risk</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2 alongside desktop script migration. Move file paths to `rig_relay.desktop`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">11. `docs/schemas/`</h3>
+
+<table id="table-28" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>JSON Schema drafts for all telemetry, coordination, projection, and governance event types</td></tr>
+<tr><td>**Product-critical?**</td><td>Yes — data contract surface</td></tr>
+<tr><td>**Relay-native target**</td><td>`docs/schemas/` (stays in docs — no module migration needed)</td></tr>
+<tr><td>**Migration status**</td><td>`retained`</td></tr>
+<tr><td>**Risk**</td><td>Schemas are docs, not code. No migration needed</td></tr>
+<tr><td>**Recommended slice**</td><td>N/A — retain in docs/schemas/</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">12. `vibe/core/` (other modules)</h3>
+
+<table id="table-30" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Current responsibility**</td><td>Types, config, session, logger, loop, middleware, hooks, system_prompt, relay, skills, tracing, teleport, utils, paths</td></tr>
+<tr><td>**Product-critical?**</td><td>Mixed — config, session, types are critical; others are utility</td></tr>
+<tr><td>**Relay-native target**</td><td>Various `rig_relay.*` modules</td></tr>
+<tr><td>**Migration status**</td><td>`legacy`</td></tr>
+<tr><td>**Risk**</td><td>Medium — utilities can migrate individually</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 3 after governance seams are stable</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-31" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
+
+<details id="table-32" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-32" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Priority</th><th>Path</th><th>Status</th><th>Target</th><th>Slice</th></tr></thead>
+<tbody>
+<tr><td>P0</td><td>`vibe/core/agent_loop.py`</td><td>`legacy`</td><td>`rig_relay.runtime.agent_loop`</td><td>Phase 4</td></tr>
+<tr><td>P0</td><td>`vibe/core/llm/`</td><td>`legacy`</td><td>`rig_relay.runtime.providers`</td><td>Phase 4</td></tr>
+<tr><td>P0</td><td>`vibe/core/tools/builtins/`</td><td>`legacy`</td><td>`rig_relay.runtime.tools`</td><td>Phase 2</td></tr>
+<tr><td>P0</td><td>`vibe/core/coordination/`</td><td>`migrated`</td><td>`rig_relay.coordination.models`, `rig_relay.coordination.store`</td><td>Phase 2</td></tr>
+<tr><td>P0</td><td>`vibe/core/guard/`</td><td>`migrated`</td><td>`rig_relay.governance.dirty_guard`</td><td>Phase 2</td></tr>
+<tr><td>P0</td><td>`vibe/core/telemetry/`</td><td>`legacy`</td><td>`rig_relay.governance.telemetry`</td><td>Phase 2</td></tr>
+<tr><td>P0</td><td>`vibe/core/auth/`</td><td>`migrated`</td><td>`rig_relay.governance.auth`</td><td>Phase 2</td></tr>
+<tr><td>P0</td><td>`vibe/cli/`</td><td>`legacy`</td><td>`rig_relay.cli.*`</td><td>Phase 3</td></tr>
+<tr><td>P1</td><td>`scripts/`</td><td>`adapting`</td><td>`rig_relay.*`</td><td>Phase 2</td></tr>
+<tr><td>P1</td><td>`frontend/desktop/`</td><td>`legacy`</td><td>`rig_relay.desktop.frontend`</td><td>Phase 2</td></tr>
+<tr><td>P2</td><td>`docs/schemas/`</td><td>`retained`</td><td>`docs/schemas/`</td><td>N/A</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-33" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">- [Vibe Legacy Deprecation Doctrine](../governance/vibe-legacy-deprecation.md) - [Rig-to-Relay Porting Doctrine](../governance/rig-to-relay-porting-doctrine.md) - [Rig-to-Relay Pattern Inventory](../governance/rig-to-relay-pattern-inventory.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vibe-legacy-boundary-inventory.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

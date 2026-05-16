@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Relay Smoke and Validation Doctrine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Relay Smoke and Validation Doctrine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Relay Smoke and Validation Doctrine</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: tests</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">This doctrine defines the taxonomy of Rig Relay validation gates to ensure clear separation between &quot;does the CLI work?&quot; and &quot;is the evidence correct?&quot;. It clarifies the distinction between Command Viability, Provider Behavior, and Evidence Determinism.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Smoke Taxonomy</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Class</th><th>Goal</th><th>Evidence Requirement</th><th>Determinism</th></tr></thead>
+<tbody>
+<tr><td>**CLI Inspection Smoke**</td><td>Prove the CLI can boot, parse args, and display UI.</td><td>Visual/TUI check, Logs.</td><td>Low (depends on TUI/OS)</td></tr>
+<tr><td>**Evidence Smoke**</td><td>Prove the relay produces correct, isolated JSONL/artifacts.</td><td>JSONL + Schema + Artifact existence.</td><td>High (must be provider-independent)</td></tr>
+<tr><td>**Provider E2E**</td><td>Prove integration with live model backends.</td><td>Response quality, valid usage metrics.</td><td>None (stochastic)</td></tr>
+<tr><td>**Deterministic Unit**</td><td>Prove core logic (assembly, layout) in isolation.</td><td>Fixed hashes/content.</td><td>Absolute (Level 4)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">What each smoke proves</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- **Evidence Smoke**: Proves that if the model *were* to respond, the relay would record it correctly in the selected evidence root (e.g., repo-local for isolation). - **CLI Smoke**: Proves that the user&#x27;s environment is compatible with the `vibe` entrypoint.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">What each smoke does not prove</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- Evidence smoke does not prove the model will give a &quot;good&quot; answer. - CLI smoke does not prove the telemetry will survive a 100MB tool output.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Recommended CI/Local Doctor Gates</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">1.  **Gate: Evidence Parity**: Every successful `_chat` turn MUST result in a `REQUEST_ACCOUNTED` event. 2.  **Gate: Root Isolation**: Evidence MUST NOT bleed into the global home during repo-local runs. 3.  **Gate: Schema Strictness**: Every line in `observability.jsonl` MUST validate against the V1 schema.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Anti-patterns to avoid</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- **Avoid**: Using a live Mistral key for an &quot;Evidence Smoke&quot; (slow, non-deterministic). - **Avoid**: Using `tmp_path` without resetting the singleton `HarnessFilesManager` (causes cross-test pollution).</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Proposed Docs Path</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">`docs/architecture/validation_doctrine.md`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/relay-smoke-validation-doctrine.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

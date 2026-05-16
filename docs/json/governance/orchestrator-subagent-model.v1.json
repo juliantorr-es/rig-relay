@@ -1,0 +1,249 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "orchestrator-subagent-model",
+  "document_type": "governance",
+  "title": "Orchestrator, Subagent, Model, and Ralph Roles",
+  "summary": "Rig Relay uses an explicit role model to separate management, execution,",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/orchestrator-subagent-model.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Orchestrator, Subagent, Model, and Ralph Roles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Rig Relay uses an explicit role model to separate management, execution, capability configuration, and autonomous background work.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Roles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-4",
+      "type": "code",
+      "language": "text",
+      "content": "User → Orchestrator → Subagent Assignments (specialist workers)\n                     → Ralph (autonomous background convergence)\nRalph → RalphReport → Orchestrator Review → Adoption Decision",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-5",
+      "type": "heading",
+      "level": 3,
+      "content": "Orchestrator",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "The manager/supervisor. Creates sprints, assigns missions to configured subagent profiles, monitors lane projections, receives autonomous Ralph reports, and coordinates review/adoption decisions.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "Not a generic worker. The orchestrator profile has `profile_kind=orchestrator` (defined separately) and should not be represented as a normal worker lane.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Subagent Profiles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Configured specialist roles with specific capabilities, trust tiers, and lane behavior. Profiles define: - `profile_kind`: `standard_subagent` (assignable) or `autonomous_background_worker` (Ralph) - `assignable`: whether the orchestrator can assign missions - `reports_to_orchestrator`: whether the worker reports autonomously - `allowed_capabilities` / `forbidden_capabilities` - `trust_tier`: observe_only → safe_local → patch_proposal → main_mutation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "Demo profiles: runtime_agent, frontend_agent, docs_agent, tests_agent, analytics_agent, ralph_background_worker.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "Model/Provider Bindings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Runtime capability configuration attached to profiles. Model/provider selection is NOT role identity — it is capability config.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Each profile has a `default_binding_id`. Mission assignments may override the binding via `AssignmentBindingOverride`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "Local/demo mode uses `binding-local-demo` which requires no network and no API key.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Ralph",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Autonomous background convergence worker. Profile has: - `profile_kind=autonomous_background_worker` - `assignable=false` — not a normal assignable subagent - `reports_to_orchestrator=true` — delivers RalphReports - `requires_worktree=true` — works in isolated lanes - `merge_enabled=false`, `push_enabled=false`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Ralph observes projections across all lanes, identifies convergence threats, works inside Ralph-owned worktrees, commits to Ralph branches, seals review bundles, and delivers RalphReports to the orchestrator.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "RalphReport",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Durable report from Ralph to orchestrator after lane completion, blockage, or risk detection. Contains: - `report_kind`: completed_lane, blocked_lane, convergence_seam, etc. - `review_bundle_sha256`, `adoption_proposal_id` - `target_assignment_id` if relevant to an active assignment - `status`: created → delivered_to_orchestrator → reviewed → accepted/rejected/deferred",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "Review Session",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Orchestrator consumes Ralph reports, review bundles, and adoption proposals. The review session is explain-only by default — no merge, no push, no mutation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "Adoption/Merge/Push Gates",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "All remain separately gated. Review acceptance does not execute merge. Merge requires adoption approval. Push requires preproduction approval.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/orchestrator-subagent-model.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

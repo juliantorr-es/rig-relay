@@ -1,0 +1,473 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-rig-console-slice-6-coordination-session-enrichment",
+  "document_type": "audit",
+  "title": "Textual Rig Console — Slice 6: Coordination/Session Enrichment",
+  "summary": "**Complete.** Adds coordination store reading for lane_id, last_heartbeat_at,",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/ui/textual-rig-console-slice-6-coordination-session-enrichment.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Textual Rig Console — Slice 6: Coordination/Session Enrichment",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Complete.** Adds coordination store reading for lane_id, last_heartbeat_at, and current_step fields in `RuntimeDashboardProjectionProvider`, along with constructor overrides for lane_id and task_title. Tolerates missing/malformed coordination data gracefully.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Motivation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Slice 5 populated `SessionPaneProjection` from receipt index data alone, leaving several fields (`lane_id`, `task_title`, `last_heartbeat_at`, `current_step`) as `None` or a static fallback. These fields are available from the coordination store (`CoordinationSession` JSON files), which tracks cross-session task claims, heartbeats, and session lifecycle.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Adding coordination reading to the provider fills these gaps without changing widget code or the projection model surface.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "What Changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "`providers.py` (`CoordinationDashboardSummary` + `_read_coordination_summary`)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "1. **`CoordinationDashboardSummary` model** — content-light Pydantic model with `extra=\"forbid\"`. Fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Source"
+      ],
+      "rows": [
+        [
+          "`lane_id`",
+          "`str \\",
+          "None`",
+          "Coordination session `task_id`"
+        ],
+        [
+          "`task_title`",
+          "`str \\",
+          "None`",
+          "Not directly available from store"
+        ],
+        [
+          "`last_heartbeat_at`",
+          "`str \\",
+          "None`",
+          "Coordination `updated_at`"
+        ],
+        [
+          "`current_step`",
+          "`str \\",
+          "None`",
+          "Coordination `status`"
+        ],
+        [
+          "`pending_user_action`",
+          "`str \\",
+          "None`",
+          "Reserved (not yet available)"
+        ],
+        [
+          "`session_status`",
+          "`str \\",
+          "None`",
+          "Coordination `status`"
+        ],
+        [
+          "`warnings`",
+          "`list[str]`",
+          "Malformed-JSON flag"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "2. **`_read_coordination_summary()`** — file-level helper that reads `{coordination_root}/sessions/{session_id}.json` and parses with `CoordinationSession.model_validate()`. Returns a `CoordinationDashboardSummary` in all paths:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- `coordination_root is None` → empty summary - Session file missing → empty summary - Malformed JSON → empty summary with `warnings=[\"Malformed coordination session file\"]` - Valid JSON → populated summary from coordination fields",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "3. **Constructor params added** to `RuntimeDashboardProjectionProvider`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "```python coordination_root: Path | None = None session_root: Path | None = None  # Reserved lane_id: str | None = None        # Overrides coordination task_title: str | None = None     # Explicit only ```",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "4. **`_build_session()` updated** — calls `_read_coordination_summary()` and applies the precedence: explicit constructor params override coordination-derived values. Receipt-derived fields are unchanged.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Precedence Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-17",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Precedence"
+      ],
+      "rows": [
+        [
+          "`lane_id`",
+          "Constructor `lane_id` > coordination `task_id` > `None`"
+        ],
+        [
+          "`task_title`",
+          "Constructor `task_title` > `None`"
+        ],
+        [
+          "`last_heartbeat_at`",
+          "Coordination `updated_at` > `None`"
+        ],
+        [
+          "`current_step`",
+          "Coordination `status` > `\"No active session data\"`"
+        ],
+        [
+          "`validate_status`, `receipt_count`, `changed_paths`",
+          "Receipt index only (unchanged)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Error Tolerance",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "All three failure modes return a clean projection with coordination fields set to `None`/`\"No active session data\"` — no exception propagates to the caller. Receipt-derived data is unaffected.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Updates to Existing Files",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-21",
+      "type": "table",
+      "columns": [
+        "File",
+        "Change"
+      ],
+      "rows": [
+        [
+          "`vibe/cli/textual_ui/rig_console/providers.py`",
+          "Added `CoordinationDashboardSummary`, `_read_coordination_summary()`, 4 new constructor params, `_build_session()` calls `_read_coordination_summary()`"
+        ],
+        [
+          "`tests/cli/textual_ui/rig_console/test_providers.py`",
+          "12 new tests in `TestCoordinationEnrichment` class"
+        ],
+        [
+          "`docs/ui/textual-rig-console-slice-5-runtime-provider.md`",
+          "Updated constructor, data sources, field mapping table, Future Provider Path"
+        ],
+        [
+          "`docs/ui/textual-rig-console-slice-5-1-worker-refresh.md`",
+          "Added callable-vs-coroutine explanation for RuntimeWarning fix"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "What This Slice Intentionally Does Not Do",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "- Does not modify legacy VibeApp or its TCSS files - Does not wire mutation actions - Does not execute validate or any tool from the TUI - Does not parse raw observability payloads in widgets/screens - Does not add real-time/frequent polling - Does not add session lifecycle directory scanning (multi-session views) - Does not resolve branch_name (not available from coordination store) - Does not resolve pending_user_action (not yet tracked) - Does not mutate coordination files or repair leases - Does not crawl the coordination directory tree",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-24",
+      "type": "heading",
+      "level": 2,
+      "content": "New Test Coverage",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "`TestCoordinationEnrichment` (12 tests):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-26",
+      "type": "table",
+      "columns": [
+        "Test",
+        "What It Verifies"
+      ],
+      "rows": [
+        [
+          "`test_missing_coordination_root_returns_clean_projection`",
+          "`coordination_root=None` → fields stay None/default"
+        ],
+        [
+          "`test_missing_coordination_dir_returns_clean_projection`",
+          "Non-existent coordination dir → no crash"
+        ],
+        [
+          "`test_missing_session_file_is_tolerated`",
+          "Missing session JSON → clean projection, receipts still work"
+        ],
+        [
+          "`test_malformed_coordination_json_is_tolerated`",
+          "Garbage JSON → empty summary, receipt data unaffected"
+        ],
+        [
+          "`test_lane_id_from_coordination_propagates`",
+          "Coordination `task_id` → `lane_id`"
+        ],
+        [
+          "`test_explicit_lane_id_overrides_coordination`",
+          "Constructor `lane_id` overrides coordination `task_id`"
+        ],
+        [
+          "`test_explicit_task_title_propagates`",
+          "Constructor `task_title` appears in projection"
+        ],
+        [
+          "`test_last_heartbeat_at_from_coordination`",
+          "Coordination `updated_at` → `last_heartbeat_at`"
+        ],
+        [
+          "`test_current_step_from_coordination`",
+          "Coordination `status` → `current_step`"
+        ],
+        [
+          "`test_workspace_root_still_propagates_with_coordination`",
+          "`workspace_root` → `worktree_path` alongside coordination"
+        ],
+        [
+          "`test_no_forbidden_raw_fields_with_coordination`",
+          "No stdout/stderr/output/content/diff leakage"
+        ],
+        [
+          "`test_receipt_data_survives_with_coordination`",
+          "`validate_status`, `receipt_count`, `status` unchanged by coordination"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-27",
+      "type": "heading",
+      "level": 2,
+      "content": "Risk and Verification",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- **Risk**: None. Coordination store is read-only, missing data is tolerated, explicit overrides take priority. No change to receipt index or evidence rail logic. - **Verification**: 25 provider tests pass (13 existing + 12 new), all 29 dashboard screen tests pass, ruff/pyright clean.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-29",
+      "type": "heading",
+      "level": 2,
+      "content": "Next Slice (7)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "Add session lifecycle directory scanning for multi-session views — reading the coordination store's top-level session index to populate a session list/selector widget.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-31",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "- [Slice 5: Runtime Dashboard Provider](textual-rig-console-slice-5-runtime-provider.md) - [Slice 5.1: Worker-Safe Dashboard Refresh](textual-rig-console-slice-5-1-worker-refresh.md) - [Coordination Models](../../rig_relay/coordination/models.py) - [Coordination Store](../../rig_relay/coordination/store.py) - [Providers module](../../vibe/cli/textual_ui/rig_console/providers.py)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/ui/textual-rig-console-slice-6-coordination-session-enrichment.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

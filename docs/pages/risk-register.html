@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Register: VSCodium Shell Lane — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This register tracks the critical risks identified during the VSCodium shell lane audit.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Risk Register: VSCodium Shell Lane</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Risk Register: VSCodium Shell Lane</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This register tracks the critical risks identified during the VSCodium shell lane audit.</p>
+
+<table id="table-3" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Risk ID</th><th>Risk Name</th><th>Severity</th><th>Likelihood</th><th>Mitigation</th><th>Owner</th></tr></thead>
+<tbody>
+<tr><td>**R-001**</td><td>Open VSX Availability</td><td>Medium</td><td>High</td><td>Support sideloading from VSIX; maintain an official Rig VSIX download.</td><td>Product</td></tr>
+<tr><td>**R-002**</td><td>Extension Supply-Chain</td><td>High</td><td>Low</td><td>Rig daemon treats all editor-provided data as untrusted; strict validation of patches.</td><td>Governance</td></tr>
+<tr><td>**R-003**</td><td>Local WebSocket Hijacking</td><td>High</td><td>Medium</td><td>Use random ports; token-based authentication; 127.0.0.1 binding only.</td><td>Security</td></tr>
+<tr><td>**R-004**</td><td>Confused Deputy (Editor)</td><td>High</td><td>Medium</td><td>Do not expose &quot;Run in Terminal&quot; commands to the extension without human-in-the-loop.</td><td>Tooling</td></tr>
+<tr><td>**R-005**</td><td>Prompt Injection (Files)</td><td>Medium</td><td>High</td><td>Use the Rig `ContextCompiler` to scrub/filter context before LLM submission.</td><td>Context</td></tr>
+<tr><td>**R-006**</td><td>Worktree Corruption</td><td>High</td><td>Low</td><td>Use isolated `git worktree` lanes; enforce `DirtyGuard` on all project paths.</td><td>Coordination</td></tr>
+<tr><td>**R-007**</td><td>Custom Shell Maintenance</td><td>High</td><td>Medium</td><td>Avoid Option B (Custom Bundle) unless absolutely necessary. Stick to Extension-First.</td><td>Engineering</td></tr>
+<tr><td>**R-008**</td><td>&quot;Spyware&quot; Perception</td><td>Medium</td><td>Medium</td><td>Local-only processing; clear visual receipts; no cloud-sync of code by default.</td><td>Brand</td></tr>
+<tr><td>**R-009**</td><td>ChatGPT Compatibility Drift</td><td>Medium</td><td>Low</td><td>Use standard VSCodium paths; avoid renaming the binary or altering the macOS bundle ID.</td><td>Product</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">MVP Blockers</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">*   **R-003 (WebSocket Security)**: Must be solved before the first dogfood. *   **R-006 (Worktree Safety)**: Basic worktree isolation is required to prevent accidental data loss. *   **R-002 (Supply-Chain)**: Basic patch review governance must be in place.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vscodium-shell-lane/risk-register.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

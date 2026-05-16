@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontend Security Audit — Rig Relay Desktop — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bu">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Frontend Security Audit — Rig Relay Desktop</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Frontend Security Audit — Rig Relay Desktop</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Generated: 2026-05-14 | Scope: `frontend/desktop/` HTML/CSS/JS</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Overview</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bundler, no framework.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Audit Summary</h2>
+
+<details id="table-6" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-6" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Category</th><th>Finding</th><th>Severity</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>XSS</td><td>No `innerHTML` used for user content</td><td>—</td><td>✅</td></tr>
+<tr><td>XSS</td><td>Safe HTML via `&lt;template&gt;` for static widget structure</td><td>—</td><td>✅ Mild</td></tr>
+<tr><td>CSP</td><td>No Content-Security-Policy header</td><td>Medium</td><td>❌</td></tr>
+<tr><td>Transport</td><td>WS token in inline `&lt;script&gt;` via Python backend</td><td>—</td><td>✅</td></tr>
+<tr><td>Transport</td><td>No TLS (localhost only)</td><td>Low</td><td>⚠️ Accept</td></tr>
+<tr><td>DOM</td><td>All widget text uses `textContent` or `createTextNode`</td><td>—</td><td>✅</td></tr>
+<tr><td>DOM</td><td>`escapeHtml()` applied to all projection data before rendering</td><td>—</td><td>✅</td></tr>
+<tr><td>ARIA</td><td>Role/aria-label/aria-live on all interactive regions</td><td>—</td><td>✅</td></tr>
+<tr><td>Focus</td><td>Focus-visible styles on buttons, tabs, action buttons</td><td>—</td><td>✅</td></tr>
+<tr><td>Tab order</td><td>Chat input → mode tabs → widget cards → expanded close</td><td>—</td><td>✅</td></tr>
+<tr><td>Reduced motion</td><td>`@media (prefers-reduced-motion)` zeros all transitions</td><td>—</td><td>✅</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Findings detail</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">1. `innerHTML` eliminated (✅)</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">All `innerHTML` assignments replaced with DOM construction: - `widgets.js`: `renderCompactChip`, `renderStandardCard`, `renderExpandedWidget` all use `createElement` + `textContent` - `chat.js`: transcript clearing uses `while (firstChild) removeChild(firstChild)` - `status.js`: header chips use `createElement` + `createTextNode` - `main.js`: panel column clearing uses `removeChild` loop - `utils.js`: `setHTML` retained but unused (safe to remove)</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">One exception: `widgets.js` `setSafeHTML()` uses `&lt;template&gt;.innerHTML` to parse pre-sanitized HTML strings into DocumentFragment. This is the standard safe method — template content is inert (no script execution, no image loading).</p>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">2. No Content-Security-Policy (❌ Medium)</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">`index.html` has no `&lt;meta http-equiv=&quot;Content-Security-Policy&quot; ...&gt;` tag. The application loads from `file://` via pywebview, which means: - CSP is less critical (no external script injection vectors) - But a CSP would still prevent inline script execution if an XSS vector were found - Recommended: Add a restrictive CSP in `&lt;head&gt;`: ```html &lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot; default-src &#x27;self&#x27;; script-src &#x27;self&#x27;; style-src &#x27;self&#x27; &#x27;unsafe-inline&#x27;; connect-src ws://127.0.0.1:*; img-src &#x27;self&#x27; data:; &quot;&gt; ```</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">3. WS token delivery (✅)</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Token is injected into the HTML payload by Python `_open_window()` as:</p>
+
+<pre id="code-15"><code class="language-html">&lt;script&gt;window.__RIG_RELAY_WS_CONFIG__ = {host:&quot;127.0.0.1&quot;,port:9876,token:&quot;...&quot;};&lt;/script&gt;</code></pre>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Before `&lt;/body&gt;`. The token is NOT in URL query parameters. The Python backend generates the token and embeds it directly into the HTML string passed to `webview.create_window(html=...)`.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">4. No TLS (⚠️ Accept)</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">WebSocket connects to `ws://127.0.0.1` — plaintext. Acceptable for localhost-only communication. If remote access is ever needed, this must become `wss://` with certificate validation.</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">5. Bridge removal (✅)</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">All pywebview bridge (`window.pywebview.api`) calls removed: - `transport.js`: `bridgeCall()` and `hasBridge()` deleted - `chat.js`: no more `bridgeCall` fallback for send/intents - `main.js`: `loadFromBridge()` deleted, no periodic bridge refresh - Token delivery now via inline script (see #3)</p>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">6. Widget data flow (✅)</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Projection data flows through `escapeHtml()` before reaching any DOM: - `widgets.js` `row()` → `escapeHtml(value)` - `widgets.js` `renderStandardCard()` → `textContent` for title - `widgets.js` body content built by each renderer using `row()` and `escapeHtml()` - No raw projection fields rendered without escaping</p>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">7. Command injection (✅ Mild)</h3>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Slash commands are executed locally via a fixed command table (`commands.js`). User input after `/` is matched against a whitelist. No `eval()` or dynamic dispatch. `/intent` passes the command name to `dispatchIntent()` which sends a typed message to the WebSocket — no string concatenation into code.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">8. Mode switching (✅)</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Mode is set via `data-mode` attribute on `#main-grid`. CSS rules use attribute selectors. Mode buttons are tab roles with `aria-selected`. No injected class names or URL-based routing.</p>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Remaining Reinforcement Opportunities</h2>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">1. **CSP header**: ✅ Implemented — `&lt;meta&gt;` tag in `index.html` with restrictive policy 2. **WebSocket auth rotation**: ⚠️ Documented — token is static per session. Rotation requires protocol-level change (token refresh endpoint). Consider for future. 3. **Message validation**: ✅ Implemented — `_validate_message_shape()` checks required fields and types per message kind. Logs `audit.message.invalid_shape` on violation. 4. **Rate limiting granularity**: ✅ Implemented — `_RATE_LIMIT_BY_TYPE` applies per-message-type multipliers. Auth (2x stricter), chat (3x), subscribe (4x), ping (0.2x looser). 5. **Audit log**: ✅ Implemented — Server-side: structured `logger.warning(&quot;audit.&lt;domain&gt;.&lt;event&gt;&quot;)` calls with templated args. Client-side: `audit.js` module with `console.warn` format. Covers auth failures, rate limits, oversized messages, connection drops, message shape violations.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/frontend-security-audit-2026-05-14.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

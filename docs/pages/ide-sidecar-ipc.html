@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig IDE / Sidecar IPC Protocol (v1) — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Status:** Phase 0/1 bootstrap. Contract-hardening phase.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig IDE / Sidecar IPC Protocol (v1)</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig IDE / Sidecar IPC Protocol (v1)</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status:** Phase 0/1 bootstrap. Contract-hardening phase.</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">The IDE extension and the Rig Python sidecar communicate over the extension host&#x27;s **stdin/stdout** using newline-delimited JSON (JSONL). Each line is a complete JSON object. The sidecar also runs the Rig ACP agent on a separate async task within the same process.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Transport</h2>
+
+<pre id="code-5"><code class="language-text">IDE Extension Host (TypeScript)         Rig Python Sidecar
+     │                                        │
+     │──── JSON object + \n ────────────────→ stdin
+     │←─── JSON object + \n ───────────────── stdout
+     │                                        │
+     │                                        ├─ ACP Agent (asyncio task)
+     │                                        └─ IPC handler (asyncio task)</code></pre>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- **stdin**: Extension → Sidecar (commands, snapshots, approvals) - **stdout**: Sidecar → Extension (responses, receipts, approval requests, status) - **stderr**: Sidecar → Extension (logs, diagnostics — not protocol) - Line-buffered: `sys.stdout.reconfigure(line_buffering=True)`</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Message Catalog</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Extension → Sidecar</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Sent whenever the active editor changes or selection changes.</p>
+
+<pre id="code-10"><code class="language-json">{
+  &quot;type&quot;: &quot;workspace_snapshot&quot;,
+  &quot;roots&quot;: [&quot;/home/user/project&quot;],
+  &quot;active_file&quot;: &quot;/home/user/project/src/main.py&quot;,
+  &quot;open_tabs&quot;: [&quot;/home/user/project/src/main.py&quot;, &quot;/home/user/project/src/utils.py&quot;],
+  &quot;selection&quot;: {
+    &quot;file&quot;: &quot;/home/user/project/src/main.py&quot;,
+    &quot;startLine&quot;: 42,
+    &quot;startCol&quot;: 0,
+    &quot;endLine&quot;: 42,
+    &quot;endCol&quot;: 15
+  },
+  &quot;visible_ranges&quot;: [
+    { &quot;file&quot;: &quot;/home/user/project/src/main.py&quot;, &quot;startLine&quot;: 30, &quot;endLine&quot;: 60 }
+  ],
+  &quot;editor_state&quot;: {
+    &quot;language&quot;: &quot;python&quot;,
+    &quot;lineCount&quot;: 200,
+    &quot;eol&quot;: &quot;LF&quot;,
+    &quot;isUntitled&quot;: false,
+    &quot;isDirty&quot;: false
+  }
+}</code></pre>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Request execution of an IDE capability through the broker.</p>
+
+<pre id="code-12"><code class="language-json">{
+  &quot;type&quot;: &quot;capability_request&quot;,
+  &quot;id&quot;: &quot;req_abc123&quot;,
+  &quot;capability&quot;: &quot;ide.diagnostics.file&quot;,
+  &quot;args&quot;: { &quot;file&quot;: &quot;/home/user/project/src/main.py&quot; }
+}</code></pre>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">User responded to an approval prompt.</p>
+
+<pre id="code-14"><code class="language-json">{
+  &quot;type&quot;: &quot;approval_response&quot;,
+  &quot;id&quot;: &quot;approval_def456&quot;,
+  &quot;approved&quot;: true
+}</code></pre>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Sidecar → Extension</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Sent after successful connection and workspace snapshot receipt. Includes the capability manifest for the extension to reference.</p>
+
+<pre id="code-17"><code class="language-json">{
+  &quot;type&quot;: &quot;ack&quot;,
+  &quot;status&quot;: &quot;received&quot;,
+  &quot;capabilities&quot;: {
+    &quot;ide.workspace.describe&quot;: { &quot;risk&quot;: &quot;low&quot;, &quot;mutates&quot;: false },
+    ...
+  }
+}</code></pre>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Result of a capability execution.</p>
+
+<pre id="code-19"><code class="language-json">{
+  &quot;type&quot;: &quot;capability_response&quot;,
+  &quot;id&quot;: &quot;req_abc123&quot;,
+  &quot;capability&quot;: &quot;ide.diagnostics.file&quot;,
+  &quot;status&quot;: &quot;ok&quot;,
+  &quot;result&quot;: { &quot;diagnostics&quot;: [...] }
+}</code></pre>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Sidecar needs user approval before proceeding. The extension must show a modal dialog and respond with `approval_response`.</p>
+
+<pre id="code-21"><code class="language-json">{
+  &quot;type&quot;: &quot;approval_request&quot;,
+  &quot;id&quot;: &quot;approval_def456&quot;,
+  &quot;title&quot;: &quot;Allow ide.tests.run_file?&quot;,
+  &quot;description&quot;: &quot;Run all tests in a file. Test execution can run arbitrary project code.&quot;,
+  &quot;capability&quot;: &quot;ide.tests.run_file&quot;,
+  &quot;risk&quot;: &quot;medium&quot;,
+  &quot;mutates&quot;: &quot;possible&quot;
+}</code></pre>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Emitted for every capability execution. Content-light — no raw data.</p>
+
+<pre id="code-23"><code class="language-json">{
+  &quot;type&quot;: &quot;receipt&quot;,
+  &quot;kind&quot;: &quot;rig.ide.capability.receipt.v1&quot;,
+  &quot;capability&quot;: &quot;ide.diagnostics.file&quot;,
+  &quot;input_sha256&quot;: &quot;sha256:a1b2c3...&quot;,
+  &quot;output_sha256&quot;: &quot;sha256:d4e5f6...&quot;,
+  &quot;agent_id&quot;: &quot;agent.frontend-reviewer&quot;,
+  &quot;mission_id&quot;: &quot;M123&quot;,
+  &quot;user_approved&quot;: true,
+  &quot;mutated_workspace&quot;: false
+}</code></pre>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Connection status update.</p>
+
+<pre id="code-25"><code class="language-json">{
+  &quot;type&quot;: &quot;status&quot;,
+  &quot;status&quot;: &quot;ready&quot;,
+  &quot;message&quot;: &quot;ACP agent running&quot;
+}</code></pre>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Schema Validation</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">All messages MUST validate against the corresponding JSON Schema:</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- `docs/schemas/rig.ide.sidecar.message.v1.schema.json` - `docs/schemas/rig.ide.capability_receipt.v1.schema.json` - `docs/schemas/rig.ide.capability_manifest.v1.schema.json`</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">The sidecar validates incoming messages. The extension SHOULD validate outgoing messages before sending.</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Capability Manifest</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">The canonical capability registry lives at `etc/rig.ide.capability_manifest.v1.json`. Both the Python sidecar and the TypeScript broker MUST generate their permission tables from this file. Validation tests MUST fail if the implemented permission tables drift from the manifest.</p>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Versioning</h2>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- Sidecar protocol: `rig.ide.v1` (header in sidecar-protocol.ts) - Capability manifest: `rig.ide.capability_manifest.v1` - Capability receipt: `rig.ide.capability.receipt.v1`</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Breaking changes require incrementing the major version. Adding new capabilities to the manifest is non-breaking. Adding new fields to the sidecar message schema is non-breaking if `additionalProperties: false` is not violated.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/protocols/ide-sidecar-ipc.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

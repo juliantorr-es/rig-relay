@@ -1,0 +1,610 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "ci-validate-alignment",
+  "document_type": "audit",
+  "title": "CI–Validate Alignment",
+  "summary": "> **Status**: Design Proposal",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/ci/ci-validate-alignment.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "CI–Validate Alignment",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "> **Status**: Design Proposal > **Date**: 2026-05-17 > **Scope**: Mapping between CI gate tiers and future `validate` tool profiles.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Principle",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Every CI gate should have a corresponding `validate` profile so that: - Agents can run the same checks locally via `validate <profile>` that CI runs remotely. - The `validate` tool becomes the single source of truth for check definitions. - CI workflow files become thin wrappers that call `validate` profiles.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Profile Mapping",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Validate Profile → CI Gate Tier",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Validate Profile",
+        "CI Tier",
+        "CI Gate(s)",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "`quick`",
+          "Tier 0",
+          "Local smoke (git status, focused ruff, focused pytest, lock check)",
+          "Agents use before handoff. Not in CI."
+        ],
+        [
+          "`python`",
+          "Tier 1",
+          "Ruff, pyright, focused unit tests",
+          "Core Python surface. Runs via pre-commit today."
+        ],
+        [
+          "`schemas`",
+          "Tier 1",
+          "Schema validation script, Python contamination regression",
+          "Should be in every PR baseline."
+        ],
+        [
+          "`schemas` (extended)",
+          "Tier 2",
+          "Artifact schemas, telemetry contribution schemas",
+          "Path-triggered on schema changes."
+        ],
+        [
+          "`receipt-policy`",
+          "Tier 1",
+          "Tool receipt emission tests",
+          "Core agent loop wiring — always run."
+        ],
+        [
+          "`receipt-policy` (extended)",
+          "Tier 2",
+          "Receipt index tests, evidence tests, redaction tests",
+          "Path-triggered on evidence changes."
+        ],
+        [
+          "`tool-hardening`",
+          "Tier 2",
+          "Bash hardening, SearchReplace hardening, determinism tests",
+          "Path-triggered on tool changes."
+        ],
+        [
+          "`governance`",
+          "Tier 2",
+          "Governance tests, docs tests, conversation names",
+          "Path-triggered on governance/doc changes."
+        ],
+        [
+          "`worktree-readiness`",
+          "Tier 3",
+          "Dirty workspace check, coordination tests, script tests",
+          "Pre-promotion check."
+        ],
+        [
+          "`promotion-readiness`",
+          "Tier 3",
+          "All Tiers 1+2 scoped + full suite + uv sync + build",
+          "Final gate before merge."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "CI Gate → Validate Profile (reverse map)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "CI Gate",
+        "Validate Profile",
+        "Ownership"
+      ],
+      "rows": [
+        [
+          "Ruff check",
+          "`python` (part of)",
+          "Built-in"
+        ],
+        [
+          "Pyright",
+          "`python` (part of)",
+          "Built-in"
+        ],
+        [
+          "Schema validation",
+          "`schemas`",
+          "Built-in"
+        ],
+        [
+          "Schema Python contamination",
+          "`schemas`",
+          "Built-in"
+        ],
+        [
+          "Tool receipt emission",
+          "`receipt-policy`",
+          "Built-in"
+        ],
+        [
+          "uv lock check",
+          "`python` (part of)",
+          "Built-in"
+        ],
+        [
+          "CLI smoke",
+          "`quick` (part of)",
+          "Built-in"
+        ],
+        [
+          "Bash hardening",
+          "`tool-hardening`",
+          "Domain"
+        ],
+        [
+          "SearchReplace hardening",
+          "`tool-hardening`",
+          "Domain"
+        ],
+        [
+          "Tool determinism",
+          "`tool-hardening`",
+          "Domain"
+        ],
+        [
+          "Receipt policy validation",
+          "`receipt-policy`",
+          "Domain"
+        ],
+        [
+          "Coordination tests",
+          "`worktree-readiness`",
+          "Domain"
+        ],
+        [
+          "Evidence tests",
+          "`receipt-policy`",
+          "Domain"
+        ],
+        [
+          "Script tests",
+          "`worktree-readiness`",
+          "Domain"
+        ],
+        [
+          "Governance tests",
+          "`governance`",
+          "Domain"
+        ],
+        [
+          "Docs tests",
+          "`governance`",
+          "Domain"
+        ],
+        [
+          "Full pytest suite",
+          "`promotion-readiness`",
+          "Domain"
+        ],
+        [
+          "Snapshot tests",
+          "`promotion-readiness`",
+          "Domain"
+        ],
+        [
+          "Dirty workspace check",
+          "`worktree-readiness`",
+          "Built-in"
+        ],
+        [
+          "Build check",
+          "`promotion-readiness`",
+          "Built-in"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "What CI Should Do Now vs What Validate Should Own Later",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "CI owns now (before validate tool exists):",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "1. Orchestrate pre-commit hooks (ruff, pyright, typos, formatting) 2. Run focused test files as separate CI jobs 3. Run validation scripts as CI steps 4. Enforce path-based gating via `paths:` filters 5. Run full pytest suite as promotion gate 6. Build and publish artifacts 7. Check uv lock consistency",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Validate should own later (after validate tool is implemented):",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "1. Define check commands and profiles in a registry (not in CI YAML) 2. Run the same checks locally and in CI 3. Emit content-light receipts for each check 4. Classify blockers (test_failure, lint_failure, schema_failure, etc.) 5. Support `--check-only` (CI mode) and `--fix` (local mode) variants 6. Consolidate duplicate check commands across scripts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Migration Path",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-16",
+      "type": "code",
+      "language": "text",
+      "content": "Stage 0-1 (today):             CI YAML defines all commands directly\nStage 2 (CI refactor):         CI YAML calls validate profiles\nStage 3 (validate maturity):   validate tool has profile registry, CI is thin wrapper",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Consolidation Opportunities",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "The following duplicate or overlapping commands should eventually consolidate under `validate`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-19",
+      "type": "table",
+      "columns": [
+        "Current",
+        "Redundant With",
+        "Consolidate Into"
+      ],
+      "rows": [
+        [
+          "`scripts/rig_relay_validate_schemas.py`",
+          "`tests/coordination/test_schema_validation.py::test_no_schema_contains_python_syntax`",
+          "`validate schemas`"
+        ],
+        [
+          "`scripts/rig_relay_validate_tool_receipts.py`",
+          "`tests/evidence/test_tool_receipt_policy.py`",
+          "`validate receipt-policy`"
+        ],
+        [
+          "`scripts/rig_relay_validate_telemetry_bundle.py`",
+          "Manual testing only",
+          "`validate schemas` or `validate governance`"
+        ],
+        [
+          "`pylint.yml` (stale)",
+          "`ruff` via pre-commit",
+          "Remove, no consolidation needed"
+        ],
+        [
+          "`python-package-conda.yml` (stale)",
+          "`ruff` via pre-commit",
+          "Remove, no consolidation needed"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Validate Profile Definitions (for CI wiring)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "When the validate tool is implemented, each profile should map to these commands:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate quick`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-23",
+      "type": "code",
+      "language": "yaml",
+      "content": "steps:\n  - git status --short --branch\n  - uv run ruff check --fix <changed-files>\n  - uv run pytest -n0 <changed-test-files>\n  - uv lock --check",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-24",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate python`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-25",
+      "type": "code",
+      "language": "yaml",
+      "content": "steps:\n  - uv run ruff check .\n  - uv run ruff format --check .\n  - uv run pyright",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-26",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate schemas`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-27",
+      "type": "code",
+      "language": "yaml",
+      "content": "steps:\n  - uv run python scripts/rig_relay_validate_schemas.py\n  - uv run pytest tests/coordination/test_schema_validation.py -k test_no_schema_contains_python_syntax -n0\n  - uv run pytest tests/schemas/ -n0\n  - uv run pytest tests/scripts/test_telemetry_contribution_schemas.py -n0",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-28",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate receipt-policy`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-29",
+      "type": "code",
+      "language": "yaml",
+      "content": "steps:\n  - uv run pytest tests/tools/test_tool_receipt_emission.py -n0\n  - uv run pytest tests/evidence/ -n0",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-30",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate tool-hardening`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-31",
+      "type": "code",
+      "language": "yaml",
+      "content": "steps:\n  - uv run pytest tests/tools/test_bash_hardening.py tests/tools/test_bash.py -n0\n  - uv run pytest tests/tools/test_hardened_tools.py tests/tools/test_arity.py -n0\n  - uv run pytest tests/tools/test_determinism.py -n0",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-32",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate governance`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-33",
+      "type": "code",
+      "language": "yaml",
+      "content": "steps:\n  - uv run pytest tests/governance/ -n0\n  - uv run pytest tests/docs/ -n0",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-34",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate worktree-readiness`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-35",
+      "type": "code",
+      "language": "yaml",
+      "content": "steps:\n  - git status --porcelain\n  - uv run pytest tests/coordination/ -n0\n  - uv run pytest tests/scripts/ -n0 (filtered)\n  - uv run pytest tests/tools/ -n0 (targeted tool tests)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-36",
+      "type": "heading",
+      "level": 3,
+      "content": "`validate promotion-readiness`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-37",
+      "type": "code",
+      "language": "yaml",
+      "content": "steps:\n  - validate quick\n  - validate python\n  - validate schemas\n  - validate receipt-policy\n  - validate governance\n  - uv run pytest --ignore tests/snapshots\n  - uv run pytest tests/snapshots (continue-on-error)\n  - uv sync --locked\n  - uv build",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/ci/ci-validate-alignment.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

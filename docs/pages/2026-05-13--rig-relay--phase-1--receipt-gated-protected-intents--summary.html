@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026-05-13 — Phase 1: Receipt-Gated Protected Intents — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Enable a fast &quot;quick-suite&quot; default for validation and establish the first phase of receipt-gated protected intents in the Desktop Cockpit.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>2026-05-13 — Phase 1: Receipt-Gated Protected Intents</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">2026-05-13 — Phase 1: Receipt-Gated Protected Intents</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Objective</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Enable a fast &quot;quick-suite&quot; default for validation and establish the first phase of receipt-gated protected intents in the Desktop Cockpit.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Accomplishments</h2>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">1. Validation Suite Reconciliation</h3>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- Updated `run_validation_suite` default steps to remove `pytest` (reserved for explicit heavy validation). - New &quot;Quick Suite&quot;: `ruff_check`, `ruff_format_check`, `pyright`, `schema_validation`, `storage_audit`, `desktop_cockpit_dry_run`. - Reconciled documentation in `docs/governance/desktop-cockpit-ui.md`, `docs/dogfood/rig-relay-self-dogfood.md`, and `docs/audits/current-built-in-tools.md`. - Fixed duplicate entry in `docs/governance/desktop-cockpit-ui.md`.</p>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">2. Phase 1 Protected Intents</h3>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- Updated `rig.relay.desktop_intent_request.v1` schema to include `authorization_receipt`. - Enabled `checkpoint.commit` and `lease_cleanup.archive` in the Desktop Intent API. - Implemented `validate_protected_intent_authorization` gate in `rig_relay/desktop/intents.py`. - Verified that protected intents are refused without a valid receipt and execute correctly with one. - Maintained strict refusal for high-risk intents: `bash`, `shell`, `write_file`, `search_replace`, `remote_upload.confirm`, `lease_cleanup.remove`, `spawn.execute`, `fleet.execute`, `delegate.execute`.</p>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">3. Verification</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- All existing tests pass. - Added 6 new tests in `tests/scripts/test_protected_intents_phase1.py` covering the receipt-gated intent lifecycle.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Next Steps</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- Implement &quot;Step-up Authorization&quot; UI in the pywebview cockpit to allow users to generate receipts. - Enable Phase 2 protected intents (`remote_upload.confirm`, `spawn.execute`) once the receipt-gated flow is battle-tested.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/conversations/2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

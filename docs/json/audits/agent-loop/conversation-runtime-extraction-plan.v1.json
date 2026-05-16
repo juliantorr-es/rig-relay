@@ -1,0 +1,346 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "conversation-runtime-extraction-plan",
+  "document_type": "audit",
+  "title": "ConversationRuntime extraction plan",
+  "summary": "Audit dates: 2026-05-15 (Phase 0), 2026-05-15 (Phase 1), 2026-05-15 (Phase 2B)",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/agent-loop/conversation-runtime-extraction-plan.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "ConversationRuntime extraction plan",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Audit dates: 2026-05-15 (Phase 0), 2026-05-15 (Phase 1), 2026-05-15 (Phase 2B)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase progression",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Phase",
+        "Status",
+        "Description"
+      ],
+      "rows": [
+        [
+          "Phase 0",
+          "✅ Complete",
+          "Observer/runtime-result seam."
+        ],
+        [
+          "Phase 1",
+          "✅ Complete",
+          "Trace evidence (`PhaseTraceHook`, `PhaseTraceAttributes`)."
+        ],
+        [
+          "Phase 2A",
+          "✅ Complete",
+          "Terminal/near-terminal decisions: `decide_after_middleware`, `decide_after_model_turn`, `decide_on_exception`."
+        ],
+        [
+          "Phase 2B",
+          "✅ Complete",
+          "Hook/tool/budget decisions: `decide_after_hook_processing`, `decide_after_tool_batch`, `decide_after_budget_check`. AgentLoop still holds execution mechanics."
+        ],
+        [
+          "Phase 3",
+          "**✅ COMPLETE**",
+          "Loop ownership transferred. `ConversationRuntime.execute_turn_loop()` owns the while-loop. AgentLoop delegates via `_ConversationLoopAdapter`. Middleware is real (async). Context build is async-safe (no `run_until_complete`). Tool execution is single-pass via `_perform_llm_turn()`. 73/73 tests pass."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 2B — Decision policy moved to ConversationRuntime",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Decision methods",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Method",
+        "Owns"
+      ],
+      "rows": [
+        [
+          "`decide_after_middleware(action)`",
+          "STOP → stop_middleware, else continue"
+        ],
+        [
+          "`decide_after_model_turn(user_cancelled, assistant_final, error)`",
+          "stop_cancelled, stop_completed, run_tools, fail_error"
+        ],
+        [
+          "`decide_on_exception(exc)`",
+          "fail_error"
+        ],
+        [
+          "`decide_after_hook_processing(hook_returned_user_message)`",
+          "retry_hooks or stop_completed"
+        ],
+        [
+          "`decide_after_tool_batch()`",
+          "continue_turn"
+        ],
+        [
+          "`decide_after_budget_check(current_turn, max_turns)`",
+          "fail_budget_exceeded or continue_turn"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Decision kinds",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Kind",
+        "should_break",
+        "should_run_tools",
+        "should_retry_hooks"
+      ],
+      "rows": [
+        [
+          "`continue_turn`",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "`stop_completed`",
+          "True",
+          "False",
+          "False"
+        ],
+        [
+          "`stop_middleware`",
+          "True",
+          "False",
+          "False"
+        ],
+        [
+          "`stop_cancelled`",
+          "True",
+          "False",
+          "False"
+        ],
+        [
+          "`run_tools`",
+          "False",
+          "True",
+          "False"
+        ],
+        [
+          "`retry_hooks`",
+          "False",
+          "False",
+          "True"
+        ],
+        [
+          "`fail_error`",
+          "True",
+          "False",
+          "False"
+        ],
+        [
+          "`fail_budget_exceeded`",
+          "True",
+          "False",
+          "False"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "What stays in AgentLoop",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- Hook execution loop (`async for hook_event in self._hooks_manager.run(...)`) - Hook message injection (`self.messages.append(...)`) - Tool execution (delegates to ToolRuntime) - Event yielding - Middleware execution - Context building - LLM turn dispatch",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Current flow (AgentLoop._conversation_loop)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-13",
+      "type": "code",
+      "language": "text",
+      "content": "act()  →  _conversation_loop()\n           ├─ create ConversationTurnRuntime\n           ├─ create ConversationRuntime (observer)\n           ├─ cr.set_turn_id()\n           ├─ append user message → yield UserMessageEvent\n           ├─ while not should_break:\n           │    ├─ middleware → cr.decide_after_middleware()\n           │    ├─ first turn: context build\n           │    ├─ _perform_llm_turn()\n           │    ├─ cr.decide_after_model_turn()\n           │    ├─ stop_cancelled? → return\n           │    ├─ stop_completed? → hooks →\n           │    │   cr.decide_after_hook_processing()\n           │    │   retry_hooks? → inject message, continue loop\n           │    ├─ run_tools? → cr.decide_after_tool_batch()\n           │    ├─ cr.decide_after_budget_check()\n           │    └─ fail_budget_exceeded? → return\n           ├─ cr._finish(SUCCESS)\n           └─ turn.mark_outcome(SUCCESS)\n\nact() finally:\n  ├─ self._conversation_runtime = None\n  └─ self._current_turn = None",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 3 — Loop ownership transfer (planned)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Phase 3 should move the while-loop into `ConversationRuntime.execute_turn()`, but with an important distinction:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "1. **OrchestratorLoop** (renamed from AgentLoop) is the ONLY owner of a full turn loop. Only the desktop cockpit, ACP server, and IDE sidecar should instantiate it.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "2. **SubagentRuntime v1** is built and now owns lifecycle evidence, trace propagation, and explicit tool execution mode markers. `task.py` delegates to `SubagentRuntime`, NOT `AgentLoop`. The `is_subagent=True` pattern is dead and blocked by guard tests.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "3. **RalphRuntime** should use SubagentRuntime with `profile_kind=AUTONOMOUS_BACKGROUND` — it must never own a full turn loop.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "4. **Handoff receipts** are required for ownership transfer: owner_before, owner_after, reason, scope, budget, return_condition, trace_id.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "5. AgentLoop → OrchestratorLoop rename should occur AFTER SubagentRuntime exists, to prevent confusion between \"agent\" and \"subagent.\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "See `docs/governance/orchestrator-loop-boundary.md` for the full doctrine.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/agent-loop/conversation-runtime-extraction-plan.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

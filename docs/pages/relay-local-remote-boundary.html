@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relay Local/Remote Authority Boundary — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Derived from Intake&#x27;s">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Relay Local/Remote Authority Boundary</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Relay Local/Remote Authority Boundary</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Derived from Intake&#x27;s [Hosted/Local Boundary](https://github.com/juliantorr-es/Intake/blob/main/docs/architecture/hosted-local-boundary.md) and adapted for Rig Relay&#x27;s telemetry and alpha-sharing model.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Doctrine</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Rig Relay follows a split-brain architecture for all remote communication:</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- **Local Rig Relay Cockpit** is the authority. It holds raw artifacts, receipts, private code context, and protected action authority. It connects **outbound only** to any remote service. - **Remote Telemetry Store** (future) is a boring, append-only, content-light store. It receives ciphertext, redacted metadata, hashes, counts, and opaque artifact references. It has **no mutation authority**. - **External Agents** (future ACP/MCP) propose work. They do not own authority.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Canonical Redaction Boundary</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">The shared redaction module in `rig_relay.evidence.redaction` is the canonical implementation for content-light remote/shareable artifacts.</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- Local cockpit retains raw receipts, prompts, outputs, and source context. - Remote/shareable outputs are redacted or hashed before publication. - Remote data cannot authorize mutations, even if it is structurally valid. - Bundle builders, audit writers, and export helpers must route through the shared redaction boundary rather than copy their own sensitive-field rules.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Core Boundaries</h2>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">No private keys in the remote store</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">The remote telemetry store never holds private decryption keys. The local cockpit owns all decryption authority.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Local-only decryption</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Sensitive data (raw receipts, prompts, model outputs, source context) is only decrypted within the local cockpit. The remote store sees only: - Content-light projections (counts, statuses, hashes) - Ciphertext of sensitive payloads (if encryption is enabled) - Redacted metadata (timestamps, event names, operation IDs)</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Outbound-only sync</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">The local cockpit initiates all connections to the remote store. The remote store never connects inbound to a local machine.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">No raw content in remote storage</h3>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Data</th><th>Local</th><th>Remote</th></tr></thead>
+<tbody>
+<tr><td>Raw receipts</td><td>✅ Full</td><td>❌ Never</td></tr>
+<tr><td>Raw prompts/outputs</td><td>✅ Full</td><td>❌ Never</td></tr>
+<tr><td>Raw stdout/stderr</td><td>✅ Full</td><td>❌ Never</td></tr>
+<tr><td>Source code/diffs</td><td>✅ Full</td><td>❌ Never</td></tr>
+<tr><td>Secrets/keys</td><td>✅ Full</td><td>❌ Never</td></tr>
+<tr><td>Action IDs, timestamps</td><td>✅ Full</td><td>✅ Redacted</td></tr>
+<tr><td>Event counts, statuses</td><td>✅ Full</td><td>✅ Aggregated</td></tr>
+<tr><td>Hashes (SHA256)</td><td>✅ Full</td><td>✅ For deduplication</td></tr>
+<tr><td>Ciphertext</td><td>✅ Full</td><td>✅ If encryption enabled</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">No authoritative receipts in remote audit</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">The remote store never holds receipts in a form that could be confused with local authority. Remote event rows are content-light and non-authoritative.</p>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">Signed local action envelopes</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Any mutation sent from local cockpit to remote store must be wrapped in a signed local action envelope (see [Local Action Envelope Schema](../schemas/rig.relay.local_action_envelope.v1.schema.json)) containing: - Canonicalized action payload - Replay prevention fields (action_id, nonce, issued_at) - Cryptographic signature (Ed25519)</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">The remote store verifies the signature against a registered public key before executing any mutation.</p>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Contract Rules</h2>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">1. Backend (local cockpit) is authority. Remote is render-only and append-only. 2. Remote store must not infer governance, checkpointability, or promotion readiness. 3. Missing remote connectivity degrades gracefully to local-only operation. 4. Alpha telemetry is opt-in only. Default is local-first. 5. All remote communication is outbound-initiated. 6. Signed local action envelopes are the only mutation path to remote stores. 7. No raw session tokens, prompts, model outputs, or source code in remote storage.</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Mapping to Existing Rig Relay</h2>
+
+<table id="table-27" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Rig Relay concept</th><th>Local</th><th>Remote</th></tr></thead>
+<tbody>
+<tr><td>`~/.rig/relay/sessions/`</td><td>Full evidence</td><td>—</td></tr>
+<tr><td>Observability JSONL</td><td>Full events</td><td>Hashes + counts</td></tr>
+<tr><td>Coordination store</td><td>Full leases/claims</td><td>—</td></tr>
+<tr><td>Desktop projection</td><td>Full widget state</td><td>Non-authoritative excerpt</td></tr>
+<tr><td>Authorization receipts</td><td>Full receipt</td><td>—</td></tr>
+<tr><td>Telemetry bundles</td><td>Full bundle</td><td>Content-light manifest</td></tr>
+<tr><td>Action intents</td><td>Full intent</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Mapping from Intake</h2>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Intake concept</th><th>Rig Relay equivalent</th><th>Adaptation</th></tr></thead>
+<tbody>
+<tr><td>Hosted Intake (public)</td><td>Remote Telemetry Store</td><td>No business domain; telemetry-only</td></tr>
+<tr><td>Local Intake Console</td><td>Local Rig Relay Cockpit</td><td>Same split-brain pattern</td></tr>
+<tr><td>EncryptedPayload</td><td>Content-light + optional ciphertext</td><td>Relaxed to &quot;no raw content&quot; baseline</td></tr>
+<tr><td>SignedLocalDeviceAction</td><td>Signed Local Action Envelope</td><td>Same pattern, Relay-specific fields</td></tr>
+<tr><td>Sync Protocol (outbound)</td><td>Outbound telemetry push</td><td>Same direction constraint</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Telemetry Redaction Boundary](telemetry-redaction-boundary.md) - [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Model Observation Dataset](model-observation-dataset.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/relay-local-remote-boundary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

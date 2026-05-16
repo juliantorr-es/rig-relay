@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deleted Module Collection Errors — Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Generated 2026-05-15 during test-suite stabilization lane 2.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Deleted Module Collection Errors — Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Deleted Module Collection Errors — Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Generated 2026-05-15 during test-suite stabilization lane 2.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Current collect-only status: `PYTHONDONTWRITEBYTECODE=1 uv run pytest --collect-only` completes without deleted-module collection errors. The inventory below is the historical set that was captured before the blocker was cleared.</p>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Category</th><th>Count</th><th>Disposition</th></tr></thead>
+<tbody>
+<tr><td>deleted-feature test</td><td>34</td><td>**Delete** — module no longer exists, feature removed</td></tr>
+<tr><td>stale namespace migration</td><td>3</td><td>**Repair import** — module renamed/moved</td></tr>
+<tr><td>should be rewritten</td><td>0</td><td>All 3 repairable are trivial import fixes</td></tr>
+<tr><td>quarantine</td><td>0</td><td>No ambiguous cases</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Error inventory</h2>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">1. Deleted legacy CLI modules (26 files)</h3>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">These test files import modules that were intentionally removed during the vibe→rig_relay migration. The features (old TUI, old VibeApp, scratchpad, trusted folders, etc.) have no current replacement in the desktop-cockpit/webview architecture.</p>
+
+<details id="table-9" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-9" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>#</th><th>Test file</th><th>Deleted module</th><th>Replacement</th><th>Disposition</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>tests/autocompletion/test_path_completion_controller.py</td><td>rig_relay.cli.autocompletion</td><td>None (old TUI autocomplete)</td><td>delete</td></tr>
+<tr><td>2</td><td>tests/autocompletion/test_slash_command_controller.py</td><td>rig_relay.cli.autocompletion</td><td>None (old TUI autocomplete)</td><td>delete</td></tr>
+<tr><td>3</td><td>tests/cli/test_cache.py</td><td>rig_relay.cli.cache</td><td>None (old TUI cache)</td><td>delete</td></tr>
+<tr><td>4</td><td>tests/cli/test_clipboard.py</td><td>rig_relay.cli.clipboard</td><td>None (old TUI clipboard)</td><td>delete</td></tr>
+<tr><td>5</td><td>tests/cli/test_commands.py</td><td>rig_relay.cli.commands</td><td>None (old TUI command registry)</td><td>delete</td></tr>
+<tr><td>6</td><td>tests/cli/test_stderr_guard.py</td><td>rig_relay.cli.stderr_guard</td><td>None (old TUI)</td><td>delete</td></tr>
+<tr><td>7</td><td>tests/cli/plan_offer/test_decide_plan_offer.py</td><td>rig_relay.cli.plan_offer</td><td>None (old TUI plan offer)</td><td>delete</td></tr>
+<tr><td>8</td><td>tests/cli/plan_offer/test_http_whoami_gateway.py</td><td>rig_relay.cli.plan_offer</td><td>None (old TUI plan offer)</td><td>delete</td></tr>
+<tr><td>9</td><td>tests/narrator_manager/test_narrator_manager.py</td><td>rig_relay.cli.narrator_manager</td><td>None (old TUI narrator)</td><td>delete</td></tr>
+<tr><td>10</td><td>tests/narrator_manager/test_telemetry.py</td><td>rig_relay.cli.narrator_manager</td><td>None (old TUI narrator)</td><td>delete</td></tr>
+<tr><td>11</td><td>tests/update_notifier/test_do_update.py</td><td>rig_relay.cli.update_notifier</td><td>None (old CLI update)</td><td>delete</td></tr>
+<tr><td>12</td><td>tests/update_notifier/test_filesystem_update_cache_repository.py</td><td>rig_relay.cli.update_notifier</td><td>None (old CLI update)</td><td>delete</td></tr>
+<tr><td>13</td><td>tests/update_notifier/test_github_update_gateway.py</td><td>rig_relay.cli.update_notifier</td><td>None (old CLI update)</td><td>delete</td></tr>
+<tr><td>14</td><td>tests/update_notifier/test_pypi_update_gateway.py</td><td>rig_relay.cli.update_notifier</td><td>None (old CLI update)</td><td>delete</td></tr>
+<tr><td>15</td><td>tests/update_notifier/test_update_use_case.py</td><td>rig_relay.cli.update_notifier</td><td>None (old CLI update)</td><td>delete</td></tr>
+<tr><td>16</td><td>tests/update_notifier/test_whats_new.py</td><td>rig_relay.cli.update_notifier</td><td>None (old CLI update)</td><td>delete</td></tr>
+<tr><td>17</td><td>tests/voice_manager/test_telemetry.py</td><td>rig_relay.cli.voice_manager</td><td>None (old TUI voice)</td><td>delete</td></tr>
+<tr><td>18</td><td>tests/voice_manager/test_voice_manager.py</td><td>rig_relay.cli.voice_manager</td><td>None (old TUI voice)</td><td>delete</td></tr>
+<tr><td>19</td><td>tests/webview_console/test_app.py</td><td>rig_relay.cli.webview_console</td><td>None (old webview console)</td><td>delete</td></tr>
+<tr><td>20</td><td>tests/test_history_manager.py</td><td>rig_relay.cli.history_manager</td><td>None (old TUI history)</td><td>delete</td></tr>
+<tr><td>21</td><td>tests/test_turn_summary.py</td><td>rig_relay.cli.turn_summary</td><td>None (old TUI turn summary)</td><td>delete</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">2. Deleted modules in current packages (2 files)</h3>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Test file</th><th>Deleted module</th><th>Replacement</th><th>Disposition</th></tr></thead>
+<tbody>
+<tr><td>22</td><td>tests/cli/test_doctor.py</td><td>rig_relay.cli.cli</td><td>Current: rig_relay.cli.desktop_cockpit</td><td>delete (test targets removed cli.py)</td></tr>
+<tr><td>23</td><td>tests/cli/test_programmatic_setup.py</td><td>rig_relay.cli.cli</td><td>Current: rig_relay.cli.desktop_cockpit</td><td>delete (test targets removed cli.py)</td></tr>
+<tr><td>24</td><td>tests/cli/test_initial_agent_name.py</td><td>rig_relay.cli.cli</td><td>Current: rig_relay.cli.desktop_cockpit</td><td>delete (test targets removed cli.py)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">3. Deleted script module (1 file)</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Test file</th><th>Deleted module</th><th>Replacement</th><th>Disposition</th></tr></thead>
+<tbody>
+<tr><td>25</td><td>tests/scripts/test_storage_lifecycle.py</td><td>scripts.rig_relay_gc_artifacts (DEFAULT_BUDGET) + scripts.rig_relay_compact_artifacts</td><td>Current: rig_relay.evidence.storage_lifecycle</td><td>delete (scripts replaced by package module)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">4. Deleted test infrastructure (12 files)</h3>
+
+<details id="table-15" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-15" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>#</th><th>Test file</th><th>Deleted module</th><th>Replacement</th><th>Disposition</th></tr></thead>
+<tbody>
+<tr><td>26</td><td>tests/snapshots/test_ui_snapshot_basic_conversation.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>27</td><td>tests/snapshots/test_ui_snapshot_config_app.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>28</td><td>tests/snapshots/test_ui_snapshot_data_retention.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>29</td><td>tests/snapshots/test_ui_snapshot_debug_console.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>30</td><td>tests/snapshots/test_ui_snapshot_empty_assistant_before_reasoning.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>31</td><td>tests/snapshots/test_ui_snapshot_mcp_command.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>32</td><td>tests/snapshots/test_ui_snapshot_proxy_setup.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>33</td><td>tests/snapshots/test_ui_snapshot_release_update_notification.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>34</td><td>tests/snapshots/test_ui_snapshot_rewind.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>35</td><td>tests/snapshots/test_ui_snapshot_session_resume.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>36</td><td>tests/snapshots/test_ui_snapshot_session_resume_injected.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>37</td><td>tests/snapshots/test_ui_snapshot_streaming_code_fence.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+<tr><td>38</td><td>tests/snapshots/test_ui_snapshot_whats_new.py</td><td>tests.snapshots.base_snapshot_test_app</td><td>None (old TUI snapshot testing)</td><td>delete</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">5. Import repair: module renamed (3 files)</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Test file</th><th>Failed import</th><th>Fix</th><th>Disposition</th></tr></thead>
+<tbody>
+<tr><td>39</td><td>tests/core/nuage/test_remote_events_source.py</td><td>AgentLoopStateError from rig_relay.core.agent_loop</td><td>Change to `from rig_relay.core._errors import AgentLoopStateError`</td><td>repair</td></tr>
+<tr><td>40</td><td>tests/desktop/test_chat_persistence.py</td><td>(check — import error or other?)</td><td>needs inspection</td><td>check</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite/deleted_module_collection_errors.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

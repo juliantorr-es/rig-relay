@@ -1,0 +1,134 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "future-passkey-plan",
+  "document_type": "governance",
+  "title": "Future Passkey Plan",
+  "summary": "**Deferred.** WebAuthn/passkey authentication for Rig Relay is documented",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/future-passkey-plan.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Future Passkey Plan",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Deferred.** WebAuthn/passkey authentication for Rig Relay is documented here for future reference. No implementation work is planned for this slice.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Context",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Intake's passkey implementation uses WebAuthn with the following caveats applicable to Rig Relay:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- Local development WebAuthn RP IDs must be `localhost`, not `127.0.0.1`, because the Web Authentication spec forbids IP addresses as RP IDs. - Passkey registration requires a secure context (HTTPS or localhost). - pywebview does not natively support WebAuthn; a custom JS bridge or native handler would be needed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "When to Implement",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- When Rig Relay needs passwordless authentication for remote telemetry or multi-user session management. - When pywebview or an alternative shell provides WebAuthn support. - After the local/remote authority boundary is exercised by real users.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/future-passkey-plan.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,199 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary",
+  "document_type": "report",
+  "title": "Conversation Summary: Test Suite Quality Audit",
+  "summary": "**Date:** 2025-06-13",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/conversations/2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Conversation Summary: Test Suite Quality Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date:** 2025-06-13 **Branch:** main (HEAD `384e4860b14959769a14fbcb5b4ca27618dad861`) **Session ID:** test-suite-quality-audit",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Mission",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Audit the current test suite for redundancy, low-value assertions, brittle tests, oversized files, slow/poorly scoped tests, and gaps in meaningful behavioral coverage. Produce a cleanup and consolidation roadmap without changing tests.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Performed a comprehensive audit focused on validate tests, receipt emission/policy/index, mutation tool tests (bash, search_replace, write_file), schema validation, governance tests, and subprocess/git test patterns.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-7",
+      "type": "heading",
+      "level": 3,
+      "content": "Key findings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "1. **11 duplicate/near-duplicate groups** identified across 16 focus files 2. **1 exact duplicate** (test_collect_git_state_non_repo) and **~15 near-duplicates** between test_validate.py and test_validate_git_state.py 3. **test_validate.py** is the largest test file at 1,797 lines / 127 tests; removing 19 git-state duplicates would reduce it to ~1,480 lines / 108 tests with zero coverage loss 4. **11 coverage gaps** across receipt pipeline E2E, model-dump vs schema validation, dirty policy E2E, and write_file receipt testing 5. **5 untracked validate_*.py module files** appeared mid-session (from prior session's work — not touched) 6. **Brittle patterns:** private helper assertion tests, exact string matching on refusal messages, one remaining `# type: ignore` 7. **Subprocess/git tests** span 7 files; only 1 file (test_validation_suite.py) uses pytest-from-inside-pytest",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-9",
+      "type": "heading",
+      "level": 3,
+      "content": "Created artifacts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "File",
+        "Type"
+      ],
+      "rows": [
+        [
+          "`docs/audits/tests/test-suite-quality-audit.md`",
+          "Main audit report"
+        ],
+        [
+          "`docs/audits/tests/test-quality-taxonomy.md`",
+          "Category definitions"
+        ],
+        [
+          "`docs/audits/tests/test-cleanup-roadmap.md`",
+          "7-stage cleanup plan"
+        ],
+        [
+          "`docs/audits/tests/data/test_file_inventory.jsonl`",
+          "16 file records"
+        ],
+        [
+          "`docs/audits/tests/data/test_duplicate_candidates.jsonl`",
+          "11 duplicate groups"
+        ],
+        [
+          "`docs/audits/tests/data/test_coverage_gap_inventory.jsonl`",
+          "11 coverage gaps"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "Out-of-scope finding recorded",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- `finding_20250613_validate_test_duplication` — test_validate.py / test_validate_git_state.py overlap (appended to `docs/findings/out-of-scope-findings.jsonl`)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Recommended next slice",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "Stage 2 (Validate dedup — safest, highest ROI) + Stage 3 (Schema contract tests — fills most critical coverage gap).",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/conversations/2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

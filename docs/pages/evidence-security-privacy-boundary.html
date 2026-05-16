@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Evidence Security and Privacy Boundary — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Evidence Security and Privacy Boundary</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Evidence Security and Privacy Boundary</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: e389b446706173ebc5950931994ba4cdb6a7d9f4 Scope: Read-only security audit Owner area: security</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">This audit identifies sensitive data risks in Rig Relay&#x27;s evidence storage. The primary risk is the leakage of absolute filesystem paths and environment secrets into project-local evidence files, which could be accidentally committed to version control.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Evidence Privacy Inventory</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- **Observability JSONL**: Contains full message history (potentially sensitive code/secrets). - **Context Reports**: Contains tool schemas and system prompts. - **Artifacts**: Contains raw tool outputs (e.g., `cat` of a config file). - **Shadow Requests**: Contains the full payload sent to the LLM.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Sensitive Field Map</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Location</th><th>Risk</th></tr></thead>
+<tbody>
+<tr><td>`artifact_path`</td><td>`observability.jsonl`</td><td>Leakage of absolute user home paths.</td></tr>
+<tr><td>`content`</td><td>`artifacts/*.json`</td><td>Leakage of file contents/secrets read by tools.</td></tr>
+<tr><td>`api_base`</td><td>`config.toml`</td><td>Leakage of private proxy/endpoint URLs.</td></tr>
+<tr><td>`payload`</td><td>`shadow_request_*.json`</td><td>Leakage of full conversation state.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Redaction Gap List</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- No current automatic redaction of `$HOME` in paths. - No current &quot;Secret Scrubber&quot; for tool outputs before they hit the filesystem.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Recommended Gitignore/Default Behavior</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- **Action**: Rig Relay should automatically add `.rig/relay/` to the repo&#x27;s `.gitignore` if it initializes repo-local evidence. - **Action**: Add a &quot;Privacy Mode&quot; that hashes all paths and redacts message content, leaving only usage/token metrics.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Test Recommendations</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- `test_no_absolute_paths_in_evidence` - `test_secrets_in_env_not_leaked_to_logs`</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Future Implementation Backlog</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- [ ] Implement path normalization (relative to project root). - [ ] Add a `--private` flag to suppress content logging. - [ ] Create a `doctor` check for accidental credential leakage in evidence files.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/evidence-security-privacy-boundary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

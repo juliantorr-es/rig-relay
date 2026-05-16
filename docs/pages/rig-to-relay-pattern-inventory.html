@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig-to-Relay Pattern Inventory — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Canonical inventory of Rig architecture patterns worth porting into Rig Relay,">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig-to-Relay Pattern Inventory</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig-to-Relay Pattern Inventory</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Canonical inventory of Rig architecture patterns worth porting into Rig Relay, with porting status, adaptation notes, and recommended slices.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Porting Statuses</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`candidate`</td><td>Pattern identified but not yet ported</td></tr>
+<tr><td>`porting`</td><td>Active port in progress</td></tr>
+<tr><td>`ported`</td><td>Successfully ported to Relay-native interface</td></tr>
+<tr><td>`deferred`</td><td>Postponed to a later slice</td></tr>
+<tr><td>`rejected`</td><td>Not suitable for porting (document why)</td></tr>
+<tr><td>`superseded-by-relay-native`</td><td>Rig pattern was ported then replaced by a Relay-native solution</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Inventory</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">1. pywebview Desktop Shell</h3>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`src/rig_tools/window_launcher.py`, `src/rig/commands_window.py`, `src/rig/commands_ui.py`</td></tr>
+<tr><td>**Purpose in Rig**</td><td>Launch native OS window with pywebview; manage session lifecycle (dry-run, browser fallback, session token)</td></tr>
+<tr><td>**Relay target interface**</td><td>`scripts/rig_relay_desktop_cockpit.py` (JS bridge API), `frontend/desktop/` (HTML/CSS/JS)</td></tr>
+<tr><td>**Port status**</td><td>`ported`</td></tr>
+<tr><td>**Risks**</td><td>pywebview optional dep; window creation requires macOS main thread; no UIServer/WebSocket yet</td></tr>
+<tr><td>**Recommended slice**</td><td>Done. Future: migrate from script to `rig_relay.desktop.pywebview_shell`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">2. Backend-Owned Projection</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`src/rig/domain/projections.py` (UIProjection, WidgetProjection, IntentProjection), `src/rig/domain/projection_builder.py`</td></tr>
+<tr><td>**Purpose in Rig**</td><td>Backend reads snapshots, builds typed projection dict with integrity checks, authored widgets, and action intents</td></tr>
+<tr><td>**Relay target interface**</td><td>`scripts/rig_relay_desktop_projection.py` (content-light projection builder)</td></tr>
+<tr><td>**Port status**</td><td>`ported`</td></tr>
+<tr><td>**Risks**</td><td>Projection is content-light only (counts/hashes/statuses, never raw content). Missing sources return `&quot;available&quot;: false`</td></tr>
+<tr><td>**Recommended slice**</td><td>Done. Future: migrate to `rig_relay.desktop.projection`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">3. WebSocket Progress Stream</h3>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`src/rig/domain/runtime_websocket.py`, `src/rig/domain/runtime_streaming/`, `src/rig_tools/ui_server.py`</td></tr>
+<tr><td>**Purpose in Rig**</td><td>Ordered, deterministic, backpressure-aware stream events between backend and frontend; stream recovery and duplicate detection</td></tr>
+<tr><td>**Relay target interface**</td><td>Not yet implemented. Target: `rig_relay.desktop.websocket_stream` with token-gated localhost-only WebSocket</td></tr>
+<tr><td>**Port status**</td><td>`deferred`</td></tr>
+<tr><td>**Risks**</td><td>WebSocket brings security surface (token-gating, localhost-only binding). Need pywebview + aiohttp or equivalent</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2 after read-only cockpit is stable. Must keep token-gated, localhost-only, backend-authoritative</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">4. Intent Dispatcher</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`src/rig/domain/intent_defs.py` (Intent dataclass, IntentHandler), `src/rig_tools/intent_decoder.py`, `src/rig_tools/static/js/app/intent-dispatch.js`</td></tr>
+<tr><td>**Purpose in Rig**</td><td>Typed intents flow frontend → backend; backend validates and dispatches; idempotency via intent_id; projection revision concurrency guard</td></tr>
+<tr><td>**Relay target interface**</td><td>Not yet implemented. Target: `rig_relay.desktop.intent_api` with typed Intent model, registered handlers, and idempotency</td></tr>
+<tr><td>**Port status**</td><td>`deferred`</td></tr>
+<tr><td>**Risks**</td><td>Intent dispatch requires careful validation to prevent mutation bypass. Must gate behind authorization receipts for protected actions</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 3 after WebSocket stream. Start with read-only intents (refresh_projection, run_dry_plan) before mutation intents</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">5. Worktree Execution Isolation</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`scripts/rig_agent_worktree.py`, `scripts/worktree_normalize.py`, `scripts/work_merge_friendly.py`, `src/rig_tools/worktree_manager.py`</td></tr>
+<tr><td>**Purpose in Rig**</td><td>Git worktree-based isolation for multi-writer child sessions; each child gets a separate working tree with no file conflicts</td></tr>
+<tr><td>**Relay target interface**</td><td>Not yet implemented. Target: `rig_relay.coordination.worktree` with git worktree create/remove lifecycle tied to coordination leases</td></tr>
+<tr><td>**Port status**</td><td>`deferred`</td></tr>
+<tr><td>**Risks**</td><td>Worktree creation can conflict with dirty repo state. Must coordinate with coordination leases and dirty-file guard. Git worktree add/remove is stateful</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 4 after spawn planner and fleet executor are stable. Worktrees are the execution sandbox for parallel child sessions</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">6. Receipt / Checkpoint Store</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`src/rig/domain/receipts.py`, `src/rig/domain/receipt_envelope.py`, `src/rig/domain/progress_receipt_derivation.py`, `src/rig_tools/receipt_writer.py`, `scripts/rig_validate_receipt.py`</td></tr>
+<tr><td>**Purpose in Rig**</td><td>Append-only receipt store for progress, completion, and failure events; receipt derivation for evidence aggregation</td></tr>
+<tr><td>**Relay target interface**</td><td>`vibe/core/coordination/_models.py` (checkpoint_committed/refused payloads), `vibe/core/telemetry/local.py` (checkpoint artifact), `scripts/rig_relay_authorization_policy.py` (authorization receipts)</td></tr>
+<tr><td>**Port status**</td><td>`ported` (adapted as authorization receipts + checkpoint artifacts, not full receipt store)</td></tr>
+<tr><td>**Risks**</td><td>Rig&#x27;s receipt store is a SQLite/git-backed append log. Rig Relay uses structured events + artifacts instead. Do not duplicate</td></tr>
+<tr><td>**Recommended slice**</td><td>Done for authorization receipts. Future: evaluate if Rig&#x27;s progress-receipt derivation pattern adds value to Relay&#x27;s telemetry pipeline</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">7. Update / Restart Policy</h3>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>N/A — Rig does not have a formal update policy</td></tr>
+<tr><td>**Purpose in Rig**</td><td>N/A</td></tr>
+<tr><td>**Relay target interface**</td><td>`scripts/rig_relay_update_status.py`, `docs/governance/update-policy.md`, `docs/schemas/rig.relay.update_status.v1.schema.json`</td></tr>
+<tr><td>**Port status**</td><td>`superseded-by-relay-native`</td></tr>
+<tr><td>**Risks**</td><td>N/A — Rig Relay developed its own update policy independently</td></tr>
+<tr><td>**Recommended slice**</td><td>Done. No Rig pattern to port</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">8. Frontend DOM Patch / Render Pattern</h3>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`src/rig_tools/static/js/app/projection-store.js`, `src/rig_tools/static/js/app/websocket.js`, various HTML/CSS in `src/rig_tools/static/`</td></tr>
+<tr><td>**Purpose in Rig**</td><td>Vanilla JS DOM patching from projection updates; WebSocket-driven live re-render; no framework</td></tr>
+<tr><td>**Relay target interface**</td><td>`frontend/desktop/app.js` (vanilla JS bridge pull-based refresh), `frontend/desktop/styles.css` (dark theme cards)</td></tr>
+<tr><td>**Port status**</td><td>`ported` (pull-based refresh only; no WebSocket live re-render yet)</td></tr>
+<tr><td>**Risks**</td><td>First slice is pull-based (JS bridge `get_projection()`/`refresh_projection()`). WebSocket push is Phase 2</td></tr>
+<tr><td>**Recommended slice**</td><td>Done. Future: add WebSocket push for live updates</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">9. Local Token / Security Bridge</h3>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`src/rig/domain/auth_models.py` (ClientIdentity, SessionToken), `src/rig/domain/runtime_websocket.py` (token validation), `src/rig_tools/window_launcher.py` (session_token generation)</td></tr>
+<tr><td>**Purpose in Rig**</td><td>Session-unique token protects local HTTP/WebSocket API from unauthorized access; token is generated by backend, embedded in URL, validated on every request</td></tr>
+<tr><td>**Relay target interface**</td><td>Documented in `docs/governance/desktop-cockpit-ui.md` (Security Boundary section) but not yet implemented</td></tr>
+<tr><td>**Port status**</td><td>`deferred`</td></tr>
+<tr><td>**Risks**</td><td>Token-based protection is critical for WebSocket phase. Must generate per-session, validate every request, support reconnection with rotation</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2 alongside WebSocket stream. Keep tokens opaque and session-scoped</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">10. Doctor / Diagnostic Aggregation</h3>
+
+<table id="table-25" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>`src/rig_tools/doctor.py`, `src/rig/commands_doctor.py`</td></tr>
+<tr><td>**Purpose in Rig**</td><td>System health check: dependency availability, config validity, repo integrity, auth status</td></tr>
+<tr><td>**Relay target interface**</td><td>Not yet implemented. Target: `rig_relay.cli.doctor` with checks for: pywebview, Google Drive deps, coordination store, update status, dirty files</td></tr>
+<tr><td>**Port status**</td><td>`candidate`</td></tr>
+<tr><td>**Risks**</td><td>Must be content-light; no raw file system traversal exposed. Checks must be fast (&lt; 1s)</td></tr>
+<tr><td>**Recommended slice**</td><td>Phase 2 after desktop shell is stable. Useful for install validation and diagnostics</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">11. Worktree Execution Executor</h3>
+
+<table id="table-27" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Rig source files**</td><td>N/A — Rig does not have a multi-worktree executor</td></tr>
+<tr><td>**Purpose in Rig**</td><td>N/A</td></tr>
+<tr><td>**Relay target interface**</td><td>`docs/governance/delegate-fleet-orchestration.md` (fleet spawn planner)</td></tr>
+<tr><td>**Port status**</td><td>`superseded-by-relay-native`</td></tr>
+<tr><td>**Risks**</td><td>Rig Relay has its own spawn/fleet planner doctrine. Worktree isolation (pattern #5) is a future enabler for safe parallel execution</td></tr>
+<tr><td>**Recommended slice**</td><td>N/A — Rig Relay&#x27;s spawn planner is independent</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Patterns Rejected from Porting</h2>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Pattern</th><th>Rig source</th><th>Reason rejected</th></tr></thead>
+<tbody>
+<tr><td>ChatUI / Composer</td><td>`src/rig/domain/projection_builder.py` (ChatProjection, ChatMessage)</td><td>Rig Relay is a CLI harness, not a chat product</td></tr>
+<tr><td>WorkspaceHeader / ProposalLifecycle</td><td>`src/rig/domain/projections.py`</td><td>Rig-specific product domain; Rig Relay has no workspace model</td></tr>
+<tr><td>AuditTrail / IntegrityStatusCard</td><td>`src/rig/domain/projection_builder.py`</td><td>Rig-specific governance model; Rig Relay has its own guard/coordination/telemetry gates</td></tr>
+<tr><td>Job store</td><td>`src/rig/domain/` (various)</td><td>Rig Relay uses CoordinationStore + coordination leases instead</td></tr>
+<tr><td>Intake auth/onboarding</td><td>`src/rig/domain/auth_models.py` (partial)</td><td>Rig Relay has its own telemetry consent and update policy</td></tr>
+<tr><td>UIServer</td><td>`src/rig_tools/ui_server.py`</td><td>Too tightly coupled to Rig&#x27;s auth/receipt model. Will reimplement in WebSocket phase</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md) - [Desktop Cockpit UI Doctrine](desktop-cockpit-ui.md) - [Delegate/Fleet Orchestration](delegate-fleet-orchestration.md) - [Step-Up Authorization](step-up-authorization.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/rig-to-relay-pattern-inventory.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

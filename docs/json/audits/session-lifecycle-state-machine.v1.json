@@ -1,0 +1,214 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "session-lifecycle-state-machine",
+  "document_type": "audit",
+  "title": "Audit: Session Lifecycle State Machine",
+  "summary": "Status: Draft",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/session-lifecycle-state-machine.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Audit: Session Lifecycle State Machine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Status: Draft Date: 2026-05-13 Branch: main HEAD: e389b446706173ebc5950931994ba4cdb6a7d9f4 Scope: Read-only lifecycle audit Owner area: core",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Executive Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "This document maps the Rig Relay session lifecycle. It identifies the sequence of events and file emissions required to reconstruct a session from its evidence trail.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "State Machine Diagram",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-6",
+      "type": "code",
+      "language": "mermaid",
+      "content": "stateDiagram-v2\n    [*] --> CREATED: session_id generated\n    CREATED --> READY: AgentLoop initialized\n    READY --> TURN_START: user prompt / resume\n    \n    state TURN_PROCESS {\n        TURN_START --> CONTEXT_ASSEMBLY: build blocks\n        CONTEXT_ASSEMBLY --> REQUEST_SENT: backend call\n        REQUEST_SENT --> RESPONSE_RECEIVED: stream/chunk\n        RESPONSE_RECEIVED --> TOOL_EXECUTION: tool call\n        TOOL_EXECUTION --> TURN_END: tool result\n        RESPONSE_RECEIVED --> TURN_END: final message\n    }\n    \n    TURN_END --> TURN_START: next turn\n    TURN_END --> CLOSED: session exit\n    CLOSED --> [*]",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Event/State Table",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "State",
+        "Event Emitted",
+        "Files Produced"
+      ],
+      "rows": [
+        [
+          "**CREATED**",
+          "`SESSION_STARTED`",
+          "`observability.jsonl` (init)"
+        ],
+        [
+          "**CONTEXT_ASSEMBLY**",
+          "`CONTEXT_ASSEMBLY_REPORTED`",
+          "`context/assembly_*.json`"
+        ],
+        [
+          "**CONTEXT_ASSEMBLY**",
+          "`CONTEXT_LAYOUT_PLANNED`",
+          "`context/layout_*.json`"
+        ],
+        [
+          "**REQUEST_SENT**",
+          "`REQUEST_ACCOUNTED` (init)",
+          "N/A"
+        ],
+        [
+          "**TOOL_EXECUTION**",
+          "`ARTIFACT_WRITTEN`",
+          "`artifacts/tool-results/*.json`"
+        ],
+        [
+          "**TURN_END**",
+          "`TURN_SUMMARY`",
+          "N/A"
+        ],
+        [
+          "**CLOSED**",
+          "`SESSION_CLOSED`",
+          "Finalized JSONL"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Missing Transition List",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- **RECOVERY**: No current state for \"Resuming a session with broken evidence\". - **ABORT**: User cancellation is handled as a message, but not as a formal state transition that ensures evidence finalization.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Failure-Mode Inventory",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- **Provider Timeout**: Session stays in `REQUEST_SENT`. - **Tool Crash**: `TOOL_EXECUTION` emits an error event but must still reach `TURN_END`. - **Disk Full**: Evidence writing fails; session should probably enter a read-only `ERROR` state.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "- `test_lifecycle_recovers_from_early_exit` - `test_mandatory_events_present_on_completion`",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/session-lifecycle-state-machine.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

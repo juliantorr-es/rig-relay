@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Tool Invocation Result Contract Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Audit date:** 2026-05-17">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Tool Invocation Result Contract Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Result Contract Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Audit date:** 2026-05-17 **Auditor:** Rig Relay agent (Mission 15 — Schema Audit) **Files audited:** adapter, execution runner, dry-run runner, all tool result/receipt schemas, receipt envelope, audit trail **Status:** Findings documented, decisions recorded, future schema proposed</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">1. Data Flow Summary</h2>
+
+<pre id="code-5"><code class="language-text">RuntimeToolIntent
+  │
+  ▼
+RuntimeToolInvocationEnvelope     ← schema: runtime_tool_invocation.v1
+  │                                     (contains tool input payload — NOT content-light)
+  ▼
+Tool.run() → Tool Result          ← schema: validate_result.v1 / search_replace_result.v1
+  │                                     (full operational output — NOT content-light)
+  ▼
+Tool.build_receipt() → Receipt    ← schema: validate_receipt.v1 / search_replace_receipt.v1
+  │                                     (content-light: hashes, counts, statuses)
+  ▼
+RuntimeToolExecutionResult        ← schema: runtime_tool_execution_result.v1
+  │                                     (thin adapter-level wrapper + receipt hash)
+  ▼
+ReceiptEnvelope                   ← schema: receipt_envelope.v1
+  │                                     (canonical wrapper: actor, subject, decision, evidence)
+  ▼
+AuditEvent                        ← schema: audit_event.v1
+                                          (append-only trail, references envelope by ID)</code></pre>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">2. Layer Definitions</h2>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">Invocation payload (in `RuntimeToolInvocationEnvelope.payload`)</h3>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Tool input — file content for write_file, SEARCH/REPLACE blocks for search_replace, argv for runtime_exec, profile/paths for validate - **Content-light?** NO — operational input needed by the tool - **Who creates:** `RuntimeToolInvocationAdapter.prepare()` - **Schema:** `runtime_tool_invocation.v1`</p>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">Tool result (e.g. `ValidateResult`, `SearchReplaceResult`)</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Full operational output — stdout/stderr, check details, file content after edit, per-check results - **Content-light?** NO — contains operational output for rendering/feedback - **Who creates:** Tool&#x27;s `run()` method - **Schemas:** `validate_result.v1`, `search_replace_result.v1`, `bash_result.v1`</p>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">Tool receipt (e.g. `ValidateReceipt`, `SearchReplaceReceipt`)</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Content-light view — SHA256 hashes, byte counts, statuses, blocker summaries, changed paths - **Content-light?** YES — no raw stdout, stderr, file content, diffs - **Who creates:** Tool&#x27;s `build_receipt()` method - **Schemas:** `validate_receipt.v1`, `search_replace_receipt.v1`, `write_file_receipt.v1`, `bash_receipt.v1`</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolExecutionResult (adapter-level wrapper)</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Adapter status + tool receipt SHA256 + timing + error info - **Content-light?** YES — only IDs, statuses, hashes, timing - **Who creates:** `RuntimeToolExecutionRunner.execute_validate()` - **Schema:** `runtime_tool_execution_result.v1`</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Receipt (proposed — adapter-level content-light receipt)</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Links adapter status → tool receipt → receipt envelope - **Content-light?** YES — all linkage, no tool-specific payload - **Who creates:** Adapter execution layer (future) - **Schema:** `runtime_tool_invocation_receipt.v1` (proposed, not yet implemented)</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">ReceiptEnvelope (canonical wrapper)</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** Actor/subject/decision/evidence wrapping any receipt - **Content-light?** YES — only IDs, hashes, schema versions - **Who creates:** `build_receipt_envelope()` helper - **Schema:** `receipt_envelope.v1`</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">AuditEvent (append-only trail entry)</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- **Contains:** References a ReceiptEnvelope by ID or embeds one - **Content-light?** YES — only IDs, action/decision kinds, references - **Who creates:** `AuditTrailStore.append_audit_event()` - **Schema:** `audit_event.v1`</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">3. Contract Gaps in RuntimeToolExecutionResult</h2>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Gap 1: No `tool_receipt_kind`</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">When multiple tool types are wired, the consumer cannot tell which receipt schema applies without inspecting the raw hash.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Add `tool_receipt_kind: str | None` — values like `&quot;validate_receipt.v1&quot;`, `&quot;search_replace_receipt.v1&quot;`, `&quot;write_file_receipt.v1&quot;`.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Gap 2: No `tool_receipt_schema_version`</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">If the underlying receipt schema evolves (e.g. validate_receipt.v2), the execution result doesn&#x27;t record which version produced the hash.</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Add `tool_receipt_schema_version: str | None` — e.g. `&quot;rig.relay.validate_receipt.v1&quot;`.</p>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Gap 3: No `envelope_id` linkage to ReceiptEnvelope</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">The execution result has `invocation_id` (= intent_id = envelope.invocation_id), but no field linking to the `ReceiptEnvelope.envelope_id`.</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Add `receipt_envelope_id: str | None`.</p>
+
+<h3 id="h3-31" class="disclosure-standard" data-disclosure-level="standard">Gap 4: No `audit_event_id` linkage</h3>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">If an audit event is created for the execution, there&#x27;s no back-link from the execution result.</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Add `audit_event_id: str | None` (populated by audit integration layer, not runner).</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">Gap 5: `receipt_sha256` semantics ambiguous</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Currently hashes the tool receipt&#x27;s canonical JSON (`model_dump(mode=&quot;json&quot;), sort_keys=True`). This is correct but undocumented.</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Document that `receipt_sha256` = SHA256 of tool receipt canonical JSON. The ReceiptEnvelope computes its own hash of the receipt payload independently.</p>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">Gap 6: No `changed_paths` for mutation tools</h3>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">When mutation tools execute, the adapter wrapper has no way to surface which files were changed without resorting to the full tool receipt.</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Add `changed_paths: list[str] = Field(default_factory=list)` — already content-light (just path names).</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">Gap 7: `duration_ms` only from execution start</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Currently measures from `execute_validate()` start to end. Does not capture tool-level duration separately.</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Keep as-is. Tool duration is in the tool receipt. This is adapter-level wall clock.</p>
+
+<h2 id="h2-43" class="disclosure-standard" data-disclosure-level="standard">4. Proposed: `runtime_tool_invocation_receipt.v1`</h2>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">A new schema that defines the adapter-level content-light receipt bridging `RuntimeToolExecutionResult` → tool receipt → `ReceiptEnvelope`.</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">**Rationale:** Without this schema, every tool execution path must independently decide what to put in the ReceiptEnvelope evidence. A standard adapter-level receipt schema provides: - Deterministic structure for all tool types - Clear content-light contract - Known linkage fields for audit and governance</p>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">**Proposed fields:**</p>
+
+<details id="table-47" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-47" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`schema_version`</td><td>string</td><td>yes</td><td>`&quot;rig.relay.runtime_tool_invocation_receipt.v1&quot;`</td></tr>
+<tr><td>`invocation_id`</td><td>string</td><td>yes</td><td>From envelope</td></tr>
+<tr><td>`intent_id`</td><td>string</td><td>yes</td><td>From original intent</td></tr>
+<tr><td>`tool_name`</td><td>string</td><td>yes</td><td>From envelope</td></tr>
+<tr><td>`adapter_status`</td><td>string</td><td>yes</td><td>`&quot;completed&quot;` `&quot;blocked&quot;` `&quot;refused&quot;` `&quot;failed&quot;`</td></tr>
+<tr><td>`tool_status`</td><td>string</td><td>no</td><td>Tool-level outcome string</td></tr>
+<tr><td>`tool_error_kind`</td><td>string</td><td>no</td><td>Structured error kind</td></tr>
+<tr><td>`tool_receipt_kind`</td><td>string</td><td>no</td><td>e.g. `&quot;validate_receipt.v1&quot;`</td></tr>
+<tr><td>`tool_receipt_schema_version`</td><td>string</td><td>no</td><td>e.g. `&quot;rig.relay.validate_receipt.v1&quot;`</td></tr>
+<tr><td>`receipt_sha256`</td><td>string</td><td>no</td><td>SHA256 of tool receipt canonical JSON</td></tr>
+<tr><td>`envelope_id`</td><td>string</td><td>no</td><td>ReceiptEnvelope ID when one is built</td></tr>
+<tr><td>`audit_event_id`</td><td>string</td><td>no</td><td>AuditEvent ID when one is created</td></tr>
+<tr><td>`changed_paths`</td><td>string[]</td><td>no</td><td>Files affected by mutation tools</td></tr>
+<tr><td>`duration_ms`</td><td>number</td><td>no</td><td>Adapter-level wall clock</td></tr>
+<tr><td>`created_at`</td><td>string</td><td>no</td><td>ISO 8601 timestamp</td></tr>
+<tr><td>`warnings`</td><td>string[]</td><td>no</td><td>Non-fatal warnings</td></tr>
+</tbody>
+</table></details>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">**Not included:** - Tool-specific payload fields (content, path, argv, SEARCH/REPLACE blocks) - Raw output (stdout, stderr, diffs) - Full tool receipt data (that&#x27;s what `receipt_sha256` references)</p>
+
+<h2 id="h2-49" class="disclosure-standard" data-disclosure-level="standard">5. Content-Light Policy</h2>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">Allowed fields across all layers</h3>
+
+<details id="table-51" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-51" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Category</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><td>Identifiers</td><td>`schema_version`, `invocation_id`, `intent_id`, `envelope_id`, `event_id`, `check_id`, `workspace_id`, `session_id`, `task_id`, `lane_id`</td></tr>
+<tr><td>Status strings</td><td>`status`, `tool_status`, `adapter_status`</td></tr>
+<tr><td>Error info</td><td>`error_kind`, `tool_error_kind`, `refusal_reason`, `failure_kind`</td></tr>
+<tr><td>Timing</td><td>`duration_ms`</td></tr>
+<tr><td>Byte counts</td><td>`stdout_bytes`, `stderr_bytes`, `before_bytes`, `after_bytes`, `bytes_written`</td></tr>
+<tr><td>Hashes</td><td>`stdout_sha256`, `stderr_sha256`, `receipt_sha256`, `before_sha256`, `after_sha256`, `evidence_sha256`, `status_porcelain_sha256`</td></tr>
+<tr><td>Schema versions</td><td>`tool_receipt_schema_version`, `schema_version` fields</td></tr>
+<tr><td>Linkage IDs</td><td>`envelope_id`, `audit_event_id`, `receipt_envelope_id`, `governance_decision_id`</td></tr>
+<tr><td>Path names</td><td>`changed_files`, `affected_paths`, `dirty_paths`, `changed_paths`, `requested_paths`</td></tr>
+<tr><td>Counters</td><td>`command_count`, `passed_count`, `failed_count`, `skipped_count`, `blocks_applied`, `lines_changed`, `replacements`, `dirty_count`</td></tr>
+<tr><td>Flags</td><td>`stdout_truncated`, `stderr_truncated`, `file_existed`, `created_file`, `overwrote_existing_file`, `envelope_schema_valid`</td></tr>
+<tr><td>Meta</td><td>`profile`, `scope`, `command_kind`, `command_fingerprint`, `blocker_summary`, `warnings`</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-52" class="disclosure-standard" data-disclosure-level="standard">Forbidden fields (must never appear in execution results, receipts, receipt envelopes, or audit events)</h3>
+
+<table id="table-53" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Category</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><td>Raw stdout/stderr</td><td>`stdout`, `stderr` content strings</td></tr>
+<tr><td>File content</td><td>`content` in search_replace_result, write_file content</td></tr>
+<tr><td>Diffs/patches</td><td>`diff`, `patch`, `chunk_text`, `old_text`, `new_text`</td></tr>
+<tr><td>Prompts</td><td>Any prompt text sent to LLMs</td></tr>
+<tr><td>Secrets</td><td>API keys, tokens, credentials, auth headers</td></tr>
+<tr><td>Unbounded output</td><td>Any field that could contain arbitrary-length command output</td></tr>
+<tr><td>Parsed summaries</td><td>`parsed_summary` in tool results (OK in full tool result, forbidden in receipt/envelope)</td></tr>
+<tr><td>Git porcelain</td><td>Raw `git status` output (forbidden in receipts; `status_porcelain_sha256` is allowed)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-54" class="disclosure-standard" data-disclosure-level="standard">6. Schema Validation Coverage</h2>
+
+<table id="table-55" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Schema</th><th>Validates model_dump?</th><th>Test file</th></tr></thead>
+<tbody>
+<tr><td>`runtime_tool_invocation.v1`</td><td>Yes (adapter test)</td><td>`test_runtime_tool_invocation_adapter.py`</td></tr>
+<tr><td>`runtime_tool_invocation_dry_run.v1`</td><td>Yes (dry-run test)</td><td>`test_runtime_tool_invocation_dry_run.py`</td></tr>
+<tr><td>`runtime_tool_execution_result.v1`</td><td>Yes (execution test)</td><td>`test_runtime_tool_invocation_execution.py`</td></tr>
+<tr><td>`receipt_envelope.v1`</td><td>Yes (evidence test)</td><td>`test_receipt_envelope.py`</td></tr>
+<tr><td>`audit_event.v1`</td><td>Yes (evidence test)</td><td>`test_audit_trail.py`</td></tr>
+<tr><td>`validate_receipt.v1`</td><td>Partial (schema registry only)</td><td>`test_tool_schema_contracts.py`</td></tr>
+<tr><td>`search_replace_receipt.v1`</td><td>Partial (schema registry only)</td><td>`test_tool_schema_contracts.py`</td></tr>
+<tr><td>`write_file_receipt.v1`</td><td>Partial (schema registry only)</td><td>`test_tool_schema_contracts.py`</td></tr>
+<tr><td>`bash_receipt.v1`</td><td>Partial (schema registry only)</td><td>`test_tool_schema_contracts.py`</td></tr>
+</tbody>
+</table>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">**Gap:** Tool receipt schemas are registered in `test_tool_schema_contracts.py` but are not validated against actual model dumps. Only the adapter-level schemas validate live model serialization.</p>
+
+<h2 id="h2-57" class="disclosure-standard" data-disclosure-level="standard">7. Recommended Implementation Slice</h2>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">**Slice: &quot;Runtime Tool Invocation Receipt&quot;** - Add `tool_receipt_kind`, `tool_receipt_schema_version`, `receipt_envelope_id`, `audit_event_id`, `changed_paths` to `RuntimeToolExecutionResult` - Create `docs/schemas/rig.relay.runtime_tool_invocation_receipt.v1.schema.json` - Update `runtime_tool_execution_result.v1.schema.json` with new optional fields - Update `test_tool_schema_contracts.py` to validate tool receipt model dumps against schemas - Wire `RuntimeToolExecutionRunner` to populate new fields per tool type - Wire audit integration to populate `audit_event_id`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/runtime-tool-invocation-result-contract-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

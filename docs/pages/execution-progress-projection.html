@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExecutionProgressProjection — Design — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Phase P4a implemented.** Defines the content-light read model for">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>ExecutionProgressProjection — Design</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ExecutionProgressProjection — Design</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Phase P4a implemented.** Defines the content-light read model for RuntimeSupervisor execution summaries consumed by desktop/Textual/pywebview projection surfaces. See `## Implementation Status` below.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Motivation</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">`RuntimeSupervisor` now emits rich structured stream events. If UI layers consume these ad hoc, the system risks:</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- Reintroducing Vibe-style state sprawl (multiple ad hoc projections) - Raw stream leakage into evidence rails and receipt timelines - Non-deterministic aggregation logic scattered across UI widgets</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">A single **ExecutionProgressProjection** read model solves this: a pure aggregation function transforms a list of `RuntimeStreamEvent` into a compact, content-light summary.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Fields</h2>
+
+<details id="table-9" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-9" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Field</th><th>Type</th><th>Source</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`schema_version`</td><td>string</td><td>constant</td><td>`&quot;rig.relay.execution_progress.v1&quot;`</td></tr>
+<tr><td>`invocation_id`</td><td>string</td><td>`event_id` from any event</td><td>Stable identifier for this execution</td></tr>
+<tr><td>`lease_id`</td><td>string</td><td>`lease_id` from any event</td><td>Executing lease</td></tr>
+<tr><td>`request_id`</td><td>string</td><td>`request_id` from any event</td><td>Original request</td></tr>
+<tr><td>`workspace_id`</td><td>string\</td><td>null</td><td>derived from lease request</td><td>Workspace context</td></tr>
+<tr><td>`worktree_path`</td><td>string\</td><td>null</td><td>derived from lease request</td><td>Worktree path</td></tr>
+<tr><td>`status`</td><td>string</td><td>aggregated from events</td><td>One of: `pending`, `starting`, `running`, `succeeded`, `failed`, `timed_out`, `cancelled`, `blocked`, `degraded`</td></tr>
+<tr><td>`started_at`</td><td>string\</td><td>null</td><td>first `STATUS(starting)`</td><td>ISO 8601</td></tr>
+<tr><td>`last_event_at`</td><td>string\</td><td>null</td><td>latest `captured_at`</td><td>ISO 8601</td></tr>
+<tr><td>`elapsed_ms`</td><td>float\</td><td>null</td><td>terminal event or latest heartbeat</td><td>Duration so far</td></tr>
+<tr><td>`heartbeat_count`</td><td>int</td><td>count of HEARTBEAT events</td><td>≥0</td></tr>
+<tr><td>`warning_count`</td><td>int</td><td>count of WARNING events</td><td>≥0</td></tr>
+<tr><td>`latest_warning_kind`</td><td>string\</td><td>null</td><td>last WARNING event</td><td>Sanitized, no raw content</td></tr>
+<tr><td>`latest_warning_message`</td><td>string\</td><td>null</td><td>last WARNING event</td><td>Sanitized, no raw content</td></tr>
+<tr><td>`stdout_bytes`</td><td>int\</td><td>null</td><td>terminal event</td><td>Total bytes drained</td></tr>
+<tr><td>`stderr_bytes`</td><td>int\</td><td>null</td><td>terminal event</td><td>Total bytes drained</td></tr>
+<tr><td>`stdout_truncated`</td><td>bool</td><td>terminal event</td><td>Whether cap was exceeded</td></tr>
+<tr><td>`stderr_truncated`</td><td>bool</td><td>terminal event</td><td>Whether cap was exceeded</td></tr>
+<tr><td>`exit_code`</td><td>int\</td><td>null</td><td>terminal event</td><td>Process exit code</td></tr>
+<tr><td>`error_kind`</td><td>string\</td><td>null</td><td>FAILURE event</td><td>`&quot;timeout&quot;`, `&quot;cancelled&quot;`, `&quot;governance_blocked&quot;`, etc.</td></tr>
+<tr><td>`refusal_reason`</td><td>string\</td><td>null</td><td>FAILURE event</td><td>Human-readable (no raw output)</td></tr>
+<tr><td>`terminal_event_id`</td><td>string\</td><td>null</td><td>last COMPLETION/FAILURE</td><td>Links to full event if needed</td></tr>
+<tr><td>`evidence_sha256`</td><td>string\</td><td>null</td><td>SHA256 of the terminal event JSON</td><td>For integrity chain</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Forbidden fields</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">The following are NEVER present in ExecutionProgressProjection:</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- `chunk_text` — raw output - `stdout` / `stderr` — raw output (only hashes and byte counts) - `content` — generic raw content - `diff` / `snippet` — diff content - `shell` / `argv` — full command (request_id fingerprint is sufficient) - `file_path` — file contents</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Aggregation Behavior</h2>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Signature (future implementation)</h3>
+
+<pre id="code-15"><code class="language-python">def execution_progress_from_runtime_events(
+    events: list[RuntimeStreamEvent],
+    now: datetime | None = None,
+) -&gt; ExecutionProgressProjection:
+    ...</code></pre>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Rules</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">1. **Status precedence (terminal over non-terminal):** - If any COMPLETION or FAILURE event exists, use its `status` field. - If only STATUS events exist, use the latest non-terminal status. - If no STATUS events, use `&quot;pending&quot;` before first event, `&quot;running&quot;` after HEARTBEAT/WARNING.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">2. **Heartbeat count:** Incremented on each HEARTBEAT `event_kind`.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">3. **Warning count:** Incremented on each WARNING `event_kind`. - `latest_warning_kind` and `latest_warning_message` set from the last WARNING event. - Messages are sanitized: truncated to 200 chars, no raw output patterns.</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">4. **Byte/hash/truncation fields:** Taken from the **last** COMPLETION or FAILURE event. - If multiple terminal events (shouldn&#x27;t happen), last one wins.</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">5. **Duration:** `elapsed_ms` from terminal event if available; otherwise from latest HEARTBEAT.</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">6. **Missing terminal event:** If no COMPLETION/FAILURE after `stall_warning_after_ms` threshold: - Status set to `&quot;degraded&quot;`. - Can also use `&quot;running&quot;` if heartbeats are still arriving.</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">7. **Malformed events:** Events that fail Pydantic validation are skipped. - Degraded status if &gt;50% of events are malformed.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">8. **Out-of-order events:** Events are processed in list order (assumed chronological). - `started_at` from first STATUS(starting) event. - `last_event_at` from last event&#x27;s `captured_at`.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Edge cases</h3>
+
+<table id="table-26" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Scenario</th><th>Status</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>Empty event list</td><td>`pending`</td><td>All counts 0, no timestamps</td></tr>
+<tr><td>Only heartbeats</td><td>`running`</td><td>`elapsed_ms` from latest heartbeat</td></tr>
+<tr><td>First event is COMPLETION</td><td>`succeeded`/`failed`</td><td>`started_at` from completion&#x27;s `captured_at`</td></tr>
+<tr><td>WARNING after COMPLETION</td><td>`succeeded`/`failed`</td><td>WARNING ignored (terminal wins)</td></tr>
+<tr><td>Multiple FAILURE events</td><td>last FAILURE&#x27;s status</td><td>Last terminal wins</td></tr>
+<tr><td>Terminal without stdout fields</td><td>degraded</td><td>Missing byte counts flagged</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Projection-Integrity Relationship</h2>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">`ProjectionIntegrity` does not need modification. The ExecutionProgressProjection would be assessed via the existing integrity framework:</p>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Condition</th><th>Integrity Status</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td>Terminal event exists + has receipt/envelope/audit backing</td><td>`VERIFIED`</td><td>Evidence chain complete</td></tr>
+<tr><td>Running with recent heartbeat (&lt; 2 × heartbeat_interval_ms)</td><td>`DEGRADED`</td><td>In-flight but no terminal evidence yet</td></tr>
+<tr><td>Running with stale heartbeat (≥ 2 × heartbeat_interval_ms)</td><td>`STALE`</td><td>Process may have died silently</td></tr>
+<tr><td>Status = succeeded/failed but no receipt/envelope/audit</td><td>`DEGRADED`</td><td>Authority missing</td></tr>
+<tr><td>Status = succeeded/failed but no terminal event in stream</td><td>`VIOLATED`</td><td>Projection claims completion without evidence (AUTHORITY_UNBACKED)</td></tr>
+<tr><td>Warnings present in projection</td><td>`DEGRADED`</td><td>Non-fatal, but attention needed</td></tr>
+</tbody>
+</table>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">The integrity assessment feeds into the existing `integrity` field on `DesktopProjection`. No new violation codes are needed — existing codes (`MISSING_RECEIPT`, `STALE_RECEIPT`, `AUTHORITY_UNBACKED`) cover all cases.</p>
+
+<h2 id="h2-31" class="disclosure-standard" data-disclosure-level="standard">UI Behavior Rules</h2>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Textual (Legacy TUI)</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- **ProgressTimeline widget** renders ExecutionProgressProjection as a compact progress row/card in the activity zone. - Show: status badge, elapsed time, byte counts, warning badge, exit code. - Never show raw output by default. Raw chunks may remain in the stream/chat pane only, not in the evidence rail or projection card. - Stalled process shows a warning badge (visual indicator, non-blocking). - Completed process links to receipt/audit event ID, not full output dump. - Clicking the card could expand to show `stdout_bytes`/`stderr_bytes` metadata.</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">Desktop (pywebview)</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">- Consistent read model: same `ExecutionProgressProjection` fields. - Projection builder (`projection.py`) populates `progress_events` array in the desktop projection JSON. - Widget name: `ProgressTimeline` (already registered in `projection_widgets.py`). - Contract: follows Relay Desktop Projection Contract rules — frontend renders, does not author state or infer decisions.</p>
+
+<h3 id="h3-36" class="disclosure-standard" data-disclosure-level="standard">Content-light enforcement</h3>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">The projection layer is the **last sanitization boundary** before UI rendering. All fields in ExecutionProgressProjection are safe to render. The aggregation function must:</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">- Strip `chunk_text` from chunk events. - Strip raw output from WARNING messages (truncate to safe length, remove patterns matching stdout/stderr content). - Never include argv (request_id is the stable reference). - Never include file contents, diffs, or snippets.</p>
+
+<h2 id="h2-39" class="disclosure-standard" data-disclosure-level="standard">Relationship to Existing Widget Taxonomy</h2>
+
+<table id="table-40" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Widget</th><th>Current Status</th><th>Relationship</th></tr></thead>
+<tbody>
+<tr><td>`ProgressTimeline`</td><td>Defined in widget taxonomy, **no data source**</td><td>This design fills the gap</td></tr>
+<tr><td>`LatestIntentResult`</td><td>Has data source (intent results)</td><td>Separate concern — intent-level results are coarser than execution-level events</td></tr>
+<tr><td>`ReceiptTimeline`</td><td>Has data source (receipt index)</td><td>Terminal execution events may link to receipt IDs</td></tr>
+<tr><td>`SessionPaneProjection`</td><td>Has data source (coordination leases)</td><td>Execution status may be part of session pane in the future</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-41" class="disclosure-standard" data-disclosure-level="standard">Implementation Status</h2>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">**Phases P4a + P4b.1 + P4c implemented.** See source: - Model + aggregation: `rig_relay/desktop/execution_progress.py` - Projection integration: `rig_relay/desktop/projection.py` (`build_projection()`) - Schema: `docs/schemas/rig.relay.execution_progress_projection.v1.schema.json` - Desktop schema: `docs/schemas/rig.relay.desktop_projection.v1.schema.json` (optional `execution_progress` field) - Tests: `tests/desktop/test_execution_progress_projection.py` - Integration tests: `tests/desktop/test_desktop_projection.py`</p>
+
+<h3 id="h3-43" class="disclosure-standard" data-disclosure-level="standard">Implemented</h3>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- `ExecutionProgressProjection` Pydantic model — 23 fields, `extra=&quot;forbid&quot;`, content-light (no `chunk_text`, `stdout`, `stderr`, `content`, `diff`, `snippet`, `argv`). - `execution_progress_from_runtime_events()` pure aggregation function — accepts `Sequence[Any]` (model instances or dicts), processes events in order, skips malformed events without crashing. - Message sanitization: warning/refusal messages truncated to 200 chars. - All terminal events: last one wins (COMPLETION or FAILURE). - `build_projection()` integration: optional `runtime_events` parameter; when provided, aggregates and attaches `execution_progress` to the desktop projection output. When omitted, field is absent. - Desktop projection schema includes optional nullable `execution_progress` object with `additionalProperties: false`. - 14 integration tests covering: no events, empty events, completion, failure, content-light, malformed events, multi-event aggregation. - `ProgressTimelineWidget` Textual widget — renders projection as a compact card in DashboardScreen, no raw event access, empty state handling, 40 unit tests. - `DashboardProjection.execution_progress` optional field — wires the projection into the dashboard model without conditional DOM. - Widget integrated into `DashboardScreen.compose()` and `_render_all()`. - 8 forbidden fields verified absent in widget tests. - 93/93 schemas valid (execution_progress schema + desktop schema with new field).</p>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">Deferred (next phases)</h3>
+
+<table id="table-46" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Phase</th><th>Scope</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>**P4b.1**</td><td>Wire into `projection.py` `build_projection()`</td><td>Implemented</td></tr>
+<tr><td>**P4b.2**</td><td>Cockpit caller passes runtime events to `build_projection()`</td><td>Deferred</td></tr>
+<tr><td>**P4c**</td><td>Textual ProgressTimeline widget</td><td>Implemented</td></tr>
+<tr><td>**P4d**</td><td>pywebview ProgressTimeline widget</td><td>Deferred</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-47" class="disclosure-standard" data-disclosure-level="standard">Content-light proof (P4a + P4b.1)</h3>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">All forbidden fields verified absent in model tests, integration tests, schema validation, and model review:</p>
+
+<table id="table-49" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Forbidden field</th><th>Present in projection?</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td>`chunk_text`</td><td>No</td><td>Integration test `test_chunk_text_not_copied`</td></tr>
+<tr><td>`stdout` / `stderr`</td><td>No</td><td>Only `stdout_bytes`/`stderr_bytes`</td></tr>
+<tr><td>`content`</td><td>No</td><td>Model `extra=&quot;forbid&quot;` + schema `additionalProperties: false`</td></tr>
+<tr><td>`diff` / `snippet`</td><td>No</td><td>Model `extra=&quot;forbid&quot;` + schema `additionalProperties: false`</td></tr>
+<tr><td>`argv`</td><td>No</td><td>Model `extra=&quot;forbid&quot;`</td></tr>
+<tr><td>`output` / `patch`</td><td>No</td><td>Model `extra=&quot;forbid&quot;`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-50" class="disclosure-standard" data-disclosure-level="standard">Implementation Phases</h2>
+
+<table id="table-51" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Phase</th><th>Scope</th><th>Dependencies</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>**P4a**</td><td>`execution_progress_from_runtime_events()` pure function + model</td><td>RuntimeStreamEvent models (done)</td><td>Implemented</td></tr>
+<tr><td>**P4b.1**</td><td>Wire into projection.py `build_projection()`: optional `runtime_events` param, aggregate, attach `execution_progress` field</td><td>P4a</td><td>Implemented</td></tr>
+<tr><td>**P4b.2**</td><td>Cockpit caller passes runtime events to `build_projection()`</td><td>P4b.1</td><td>Deferred</td></tr>
+<tr><td>**P4c**</td><td>Textual ProgressTimeline widget renders the projection</td><td>P4a</td><td>Implemented</td></tr>
+<tr><td>**P4d**</td><td>pywebview desktop projection consumes `progress_events`</td><td>P4b.1</td><td>Deferred</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-52" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">- [Stream Event Schema](../schemas/rig.relay.runtime_stream_event.v1.schema.json) - [Desktop Projection Schema](../schemas/rig.relay.desktop_projection.v1.schema.json) - [Projection Integrity Schema](../schemas/rig.relay.projection_integrity.v1.schema.json) - [RuntimeSupervisor Architecture](runtime-supervisor.md) - [Relay Desktop Projection Contract](relay-desktop-projection-contract.md)</p>
+
+<h2 id="h2-54" class="disclosure-standard" data-disclosure-level="standard">Recommended Implementation Slice</h2>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">**P4b.1 — Wire aggregation into `build_projection()`.** Delivers the integration seam (`runtime_events` parameter) and schema update (optional `execution_progress` field). No UI changes. Next slice should be P4b.2 (cockpit caller passes runtime events) or P4d (pywebview widget).</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/execution-progress-projection.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,346 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "coordination-ownership-policy",
+  "document_type": "governance",
+  "title": "Coordination Ownership Policy",
+  "summary": "**Status: Adopted (Phase K, 2026-05).**",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/coordination-ownership-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Coordination Ownership Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Status: Adopted (Phase K, 2026-05).**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Defines how path reservations and task claims are owned, renewed, and conflict-detected in Rig Relay's coordination store.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Ownership Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Every task claim and path reservation carries two identity fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- `session_id` — identifies the agent session (e.g. a rig-relay console session or a CI pipeline invocation). - `task_id` — identifies the work item within that session (e.g. a single tool invocation or agent subtask).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "The tuple `(session_id, task_id)` is the **ownership key**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Policy: Same-Owner Renewal",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "A task claim or path reservation whose `(session_id, task_id)` matches the existing record **is allowed to renew**. Renewal refreshes the expiry/TTL without creating duplicate lease files.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Case",
+        "Existing Owner",
+        "Requesting Owner",
+        "Result"
+      ],
+      "rows": [
+        [
+          "A",
+          "—",
+          "—",
+          "Reserve succeeds"
+        ],
+        [
+          "B",
+          "same session + same task",
+          "same session + same task",
+          "Reserve succeeds (renewal)"
+        ],
+        [
+          "C",
+          "same session + different task",
+          "same session + different task",
+          "Blocked with `path_write_overlap`"
+        ],
+        [
+          "D",
+          "different session",
+          "any",
+          "Blocked with `path_write_overlap`"
+        ],
+        [
+          "E",
+          "stale/expired",
+          "any",
+          "Treated as no reservation"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "Case A — No existing reservation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "`reserve_paths` and `claim_task` succeed normally.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Case B — Same-owner renewal",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "`claim_task`: When the existing task claim has the same `session_id` and `task_id`, the claim is refreshed (expiry extended, TTL updated). No conflict is recorded. The existing behavior (blocking all re-claims) was the root cause of coordination refusal during same-session multi-step workflows.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "`reserve_paths`: The path lease file key incorporates `session_id`, `task_id`, and the normalized path list. When the same owner calls `reserve_paths` again, the same key is generated and the file is overwritten. No duplicate lease files are created.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Case C — Same session, different task",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Blocked with a structured conflict. Within a single session, two different tasks may race for the same path. The first to claim wins; the second is refused. This prevents intra-session path contention.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Case D — Cross-session",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Blocked with a structured conflict. This is the original coordination guard behavior and is preserved unchanged. Cross-session path overlap requires explicit conflict resolution (serialize, split scope, or wait for stale).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "Case E — Stale / expired",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Existing stale-lease handling applies. Expired claims and reservations are treated as inactive during `read_state_projection` and during conflict checks. A new claim or reservation is allowed to proceed as if no prior record exists.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Implementation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "The carve-out lives in `CoordinationStore.claim_task()` in `rig_relay/coordination/store.py`. The change is narrow:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-24",
+      "type": "code",
+      "language": "python",
+      "content": "if expires_dt > now:\n    same_owner = (\n        existing.session_id == session_id\n        and existing.task_id == task_id\n    )\n    if not same_owner:\n        # Create conflict, return allowed=False\n        ...\n    # same_owner falls through to claim creation below",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "`reserve_paths()` already handles same-owner correctly via the `_iter_reservations()` prefix check (skips same `session_id` + `task_id`). No changes were needed in `reserve_paths` for this slice.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "Relationship with Dirty Guard",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "The coordination ownership policy is **independent** of the dirty file guard:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- The dirty guard (`vibe/core/governance/guard.py`) checks file state (modified/staged/untracked) and enforces `expected_before_sha256`. - The coordination ownership policy checks session/task identity and lease conflicts. - Both must pass before a mutation tool can write. A same-owner coordination renewal does not bypass the dirty guard. - A dirty guard refusal is independent of coordination state — the guard checks file content, not leases.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-29",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Risks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "1. **Same-session different-task is blocked for path reservations** but `claim_task` is per-task-id, so different tasks inherently target different claim keys. The path reservation check (Case C) is the relevant blocker. 2. **No background lease reaping**. Stale leases are only detected during `read_state_projection()` and conflict checks. A dedicated reaper is deferred. 3. ~~Lease file key mismatch~~ **Resolved**. The dead per-path hash lookup (`check 2`) in `reserve_paths` was removed. All conflict detection now uses the canonical iteration-based check (`_iter_reservations()`) which reads all lease files regardless of filename format.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/coordination-ownership-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

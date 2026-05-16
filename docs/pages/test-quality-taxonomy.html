@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Quality Taxonomy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Categories used to classify tests in the Rig Relay test suite.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Quality Taxonomy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Quality Taxonomy</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Categories used to classify tests in the Rig Relay test suite.</p>
+
+<details id="table-3" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-3" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Category</th><th>Code</th><th>Definition</th></tr></thead>
+<tbody>
+<tr><td>**Contract High Value**</td><td>`contract_high_value`</td><td>Tests that lock down a public API contract, schema shape, or required behavior across tools. Highest preservation priority.</td></tr>
+<tr><td>**Behavior High Value**</td><td>`behavior_high_value`</td><td>Tests that cover core end-to-end behavior not covered by narrower contract tests.</td></tr>
+<tr><td>**Regression Specific**</td><td>`regression_specific`</td><td>Tests added in response to a concrete bug or failure. Must preserve the fix.</td></tr>
+<tr><td>**Schema Validation**</td><td>`schema_validation`</td><td>Tests that validate a schema file (JSON Schema) or model dump against a schema. Low brittleness, high contract value.</td></tr>
+<tr><td>**Receipt Policy**</td><td>`receipt_policy`</td><td>Tests that enforce content-light policy on tool receipts. Critical for privacy.</td></tr>
+<tr><td>**Integration High Value**</td><td>`integration_high_value`</td><td>Tests that exercise a real subprocess (git, uv, shell) in a controlled temp directory. Valuable but slower.</td></tr>
+<tr><td>**Smoke**</td><td>`smoke`</td><td>Quick pass/fail check that a component loads or produces expected output given trivial input.</td></tr>
+<tr><td>**Duplicate**</td><td>`duplicate`</td><td>Exact copy of another test — same function body, same assertions. Should be removed.</td></tr>
+<tr><td>**Near Duplicate**</td><td>`near_duplicate`</td><td>Same intent as another test with minor variations (slightly different input, different file). Should be parametrized.</td></tr>
+<tr><td>**Implementation Detail**</td><td>`implementation_detail`</td><td>Asserts against private helper functions, internal data structures, or tightly coupled mock setups. High maintenance, low protection value.</td></tr>
+<tr><td>**Brittle**</td><td>`brittle`</td><td>Asserts exact string matches against long messages, line numbers, or formatting that changes frequently.</td></tr>
+<tr><td>**Overbroad**</td><td>`overbroad`</td><td>Tests too many things at once, making failure diagnosis unclear. Should be split.</td></tr>
+<tr><td>**Slow Without Tier**</td><td>`slow_without_tier`</td><td>Takes &gt;200ms due to real subprocess or git setup. Should be marked `slow` or assigned to a slower CI tier.</td></tr>
+<tr><td>**Unclear Purpose**</td><td>`unclear_purpose`</td><td>Test name or assertions are ambiguous about what contract is being protected.</td></tr>
+<tr><td>**Stale**</td><td>`stale`</td><td>Tests a feature or behavior that no longer exists. Should be removed.</td></tr>
+<tr><td>**Missing Coverage**</td><td>`missing_coverage`</td><td>Gap: important contract, scenario, or pipeline without any test coverage.</td></tr>
+</tbody>
+</table></details>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tests/test-quality-taxonomy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

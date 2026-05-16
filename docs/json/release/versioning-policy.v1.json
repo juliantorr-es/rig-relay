@@ -1,0 +1,277 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "versioning-policy",
+  "document_type": "reference",
+  "title": "Rig Relay Versioning Policy",
+  "summary": "Rig Relay has an **independent version line** derived from Mistral Vibe CLI",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/release/versioning-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig Relay Versioning Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Independent Version Line",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Rig Relay has an **independent version line** derived from Mistral Vibe CLI lineage but versioned independently. Upstream Vibe CLI version numbers are **provenance only** — they do not determine Rig Relay's version.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Context",
+        "Version"
+      ],
+      "rows": [
+        [
+          "Human/product version",
+          "**v0.1.0-alpha.1**"
+        ],
+        [
+          "Python package version (PEP 440)",
+          "**0.1.0a1**"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Version Format",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- **Human**: SemVer-style wording: `vMAJOR.MINOR.PATCH-<pre-release>` Example: `v0.1.0-alpha.1` - **Python**: PEP 440-compatible: `<major>.<minor>.<patch><pre>` Example: `0.1.0a1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Pre-release Convention",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Suffix",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "`a1`, `a2`, `a3`",
+          "Alpha releases — unstable API, schema, CLI changes allowed"
+        ],
+        [
+          "`b1`, `b2`",
+          "Beta releases — API/schema freeze preparation"
+        ],
+        [
+          "(none)",
+          "Stable release — public API/CLI/schema contracts stable"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "What Version Bumps Mean",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Bump",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "Patch (0.1.0 → 0.1.1)",
+          "Bug fixes, tests, docs, safety fixes"
+        ],
+        [
+          "Minor (0.1.0 → 0.2.0)",
+          "New orchestration capability, feature additions"
+        ],
+        [
+          "Major (0.y.z → 1.0.0)",
+          "Stable CLI/data contracts for external users"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Current Release",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "**Rig Relay v0.1.0-alpha.1** (Python package `0.1.0a1`)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "This is the first alpha release. It includes: - Local guarded runtime with dirty-file preservation - Coordination store and tool - Checkpoint commits - Normalized event streams - Dataset exporter, report, and inspector - Reviewer cockpit, spawn planner, current_state pulse - Queue planner - Telemetry/data-sharing doctrine - Semantic change snippet anonymizer",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Alpha Stability Guarantee",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "During the 0.y.z phase: - CLI flags may change. - JSON Schema fields may be added, removed, or renamed. - Runtime behavior may change. - Data formats may change. - No backward compatibility guarantees.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Provenance",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Rig Relay began as a Vibe-derived fork but now uses an independent version line. Upstream compatibility is not guaranteed. The `vibe` module namespace is retained for internal organizational purposes during alpha. The legacy migration to `rig_relay.*` follows a Strangler Fig pattern. See `docs/governance/vibe-legacy-deprecation.md` for the migration doctrine. Existing `vibe.*` imports remain supported during alpha. New product code targets `rig_relay.*`. future release.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "Version Source of Truth",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "The canonical version is defined in two places that MUST match:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "1. `pyproject.toml`: `version = \"0.1.0a1\"` — Python packaging source 2. `vibe/__init__.py`: `__version__ = \"0.1.0a1\"` — runtime access",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Both must be updated together on every release.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/release/versioning-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

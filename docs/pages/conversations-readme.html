@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversation Summaries — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Historical/reference stream for Rig Relay conversation summaries. These documents capture session-level architecture decisions, progress tracking, and operational context — distinct from audits (analy">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Conversation Summaries</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Conversation Summaries</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Historical/reference stream for Rig Relay conversation summaries. These documents capture session-level architecture decisions, progress tracking, and operational context — distinct from audits (analysis), dogfood (self-usage proof), or how-to guides.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Canonical Filename Pattern</h2>
+
+<pre id="code-4"><code class="language-text">YYYY-MM-DD--project--phase-range--topic--kind.md</code></pre>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- [2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md](2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md) — Reconciliation of the validation suite and implementation of Phase 1 receipt-gated intents.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Fields (separated by double hyphens `--`):</p>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Rules</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><td>`YYYY-MM-DD`</td><td>ISO date of the conversation/session</td><td>`2026-05-13`</td></tr>
+<tr><td>`project`</td><td>Lowercase kebab-case project key</td><td>`rig-relay`, `rig`, `anigma`, `intake`</td></tr>
+<tr><td>`phase-range`</td><td>Lowercase kebab-case phase/sprint range</td><td>`phase-a-j`, `phase-k`, `sprint-001`, `adr-0010`, `no-phase`</td></tr>
+<tr><td>`topic`</td><td>3–8 lowercase kebab-case words</td><td>`orchestration-dataset-control-plane`</td></tr>
+<tr><td>`kind`</td><td>One of: `summary`, `handoff`, `decision-log`, `incident`, `research`, `prompt-pack`</td><td>`summary`</td></tr>
+</tbody>
+</table>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Rules: - Use lowercase kebab-case throughout. - Use double hyphens (`--`) between fields. - Use single hyphens (`-`) inside each field. - Keep `topic` to 3–8 words. - Do not use spaces. - Do not use vague names like `summary.md`, `notes.md`, or `conversation.md`.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Index</h2>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Date</th><th>Project</th><th>Phase/Sprint</th><th>Topic</th><th>Kind</th><th>File</th></tr></thead>
+<tbody>
+<tr><td>2026-05-13</td><td>rig-relay</td><td>phase-a-j</td><td>orchestration dataset control plane</td><td>summary</td><td>[2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md](2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md)</td></tr>
+<tr><td>2026-05-14</td><td>rig-relay</td><td>phase-n</td><td>drive-dep-isolation-stale-lease-cleanup</td><td>handoff</td><td>[2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md](2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md)</td></tr>
+<tr><td>2026-05-13</td><td>rig-relay</td><td>phase-3</td><td>desktop-projection-shell-pattern-port</td><td>summary</td><td>[2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md](2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md)</td></tr>
+<tr><td>2026-05-13</td><td>rig-relay</td><td>phase-o-q</td><td>commercial license observations demo</td><td>summary</td><td>[2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.md](2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.md)</td></tr>
+<tr><td>2026-05-13</td><td>rig-relay</td><td>phase-3</td><td>facade extraction tool hardening search replace</td><td>summary</td><td>[2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.md](2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.md)</td></tr>
+<tr><td>2025-06-13</td><td>rig-relay</td><td>no-phase</td><td>test suite quality audit</td><td>summary</td><td>[2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md](2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md)</td></tr>
+<tr><td>2026-05-13</td><td>rig-relay</td><td>phase-p3</td><td>audit trail adapter coordination</td><td>summary</td><td>[2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md](2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md)</td></tr>
+<tr><td>2026-05-14</td><td>rig-relay</td><td>phase-3-to-5</td><td>fleet coordination completion</td><td>summary</td><td>[2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md](2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md)</td></tr>
+<tr><td>2026-05-14</td><td>rig-relay</td><td>phase-k</td><td>context compiler phase 3 repo index</td><td>summary</td><td>[2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md](2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md)</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/conversations/README.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

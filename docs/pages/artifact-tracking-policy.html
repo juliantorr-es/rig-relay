@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artifact Tracking Policy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Defines what generated artifacts may be tracked in Rig Relay.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Artifact Tracking Policy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Artifact Tracking Policy</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Defines what generated artifacts may be tracked in Rig Relay.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Core Rule</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Tracked source should stay small, durable, and reviewable. Generated runtime artifacts belong in `.build/` or another explicit runtime root unless a file is deliberately curated as a fixture or proof.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Do Not Track</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- Session logs - Coordination state - Telemetry bundles - Chat transcripts - Desktop projections - Validation outputs - Derived evaluation dumps - Upload payloads - Temporary demo outputs - Raw evidence snapshots</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Track Only When Curated</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- Minimal fixtures needed for tests - Hand-authored docs and policies - Schemas - Explicit demo assets - Proof artifacts that are documented as part of the release workflow</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Alpha Policy</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Keep `.build/` out of source control unless a specific file is intentionally curated - Do not expand tracked generated artifacts during alpha stabilization - Prefer regeneration over versioning for runtime outputs - Keep release commits focused on source, docs, schemas, and tests</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Validation</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- Review `git status` before commit - Confirm generated artifacts are not being staged unintentionally - Keep public-facing docs content-light and free of raw evidence</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/artifact-tracking-policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

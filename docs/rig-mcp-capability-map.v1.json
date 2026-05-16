@@ -1,0 +1,330 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "rig-mcp-capability-map",
+  "document_type": "reference",
+  "title": "Rig MCP Server — Capability Map",
+  "summary": "The first 16 MCP tools exposed by Rig Relay. Designed for consumption by",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/rig-mcp-capability-map.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig MCP Server — Capability Map"
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "The first 16 MCP tools exposed by Rig Relay. Designed for consumption by Antigravity, VS Code, Zed, Cursor, and other MCP hosts."
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Tools are organized into 5 tiers. Tiers 0-2 are always available. Tiers 3+ require authorization receipts."
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Tier 0 — Read-Only Context"
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Tools that inspect state without any mutation. Safe by default."
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.current_mission`"
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "Get the active mission envelope: scope, sprint, task assignments."
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.search_evidence`"
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Search the evidence ledger for receipts, findings, and coordination events."
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.read_receipt`"
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Read a specific receipt by ID. Returns summary + content hashes."
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.list_worktrees`"
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "List all tracked git worktrees: workspace ID, path, status, HEAD SHA."
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.inspect_schema`"
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Inspect a Rig schema (mission-envelope, receipt, patch-proposal, consultation)."
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.summarize_dirty_state`"
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Summarize dirty files with path hashes only. No file contents exposed."
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.run_readonly_doctor`"
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Read-only diagnostics: git repo check, worktree health, lease status."
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Tier 1 — Analysis / Packet Generation"
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Non-mutating tools that produce artifacts."
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.build_context_packet`"
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "Build a content-light mission context packet with configurable redaction."
+    },
+    {
+      "block_id": "h3-24",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.create_consult_packet`"
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Create a structured consultation packet for adversarial provider review."
+    },
+    {
+      "block_id": "h3-26",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.compare_provider_opinions`"
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Compare council findings across providers. Returns consensus and disagreements."
+    },
+    {
+      "block_id": "h2-28",
+      "type": "heading",
+      "level": 2,
+      "content": "Tier 2 — Validation / Bounded Execution"
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Run known validators and audits. Read-only outputs."
+    },
+    {
+      "block_id": "h3-30",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.run_validator`"
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Run an approved validator (pytest, ruff, pyright, work_doctor). Returns receipt."
+    },
+    {
+      "block_id": "h3-32",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.check_merge_friendly`"
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "Check if the working tree is clean and safe to merge."
+    },
+    {
+      "block_id": "h3-34",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.audit_dirty_state`"
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "Audit dirty file state and produce a recommendation."
+    },
+    {
+      "block_id": "h2-36",
+      "type": "heading",
+      "level": 2,
+      "content": "Tier 3 — Patch Proposal"
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "Creates artifacts for review. Does NOT apply to the workspace."
+    },
+    {
+      "block_id": "h3-38",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.propose_patch`"
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "Create a patch proposal with rationale, target files, and proposed changes. Returns `blocked_pending_approval` + receipt ID. User must approve in Rig before the patch is applied."
+    },
+    {
+      "block_id": "h2-40",
+      "type": "heading",
+      "level": 2,
+      "content": "Tier 4 — Mutation"
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "Requires explicit authorization receipt."
+    },
+    {
+      "block_id": "h3-42",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.request_user_approval`"
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "Request user approval for a gated action. Returns an authorization receipt that can be passed to Tier 3+ tools."
+    },
+    {
+      "block_id": "h2-44",
+      "type": "heading",
+      "level": 2,
+      "content": "Tier 5 — Git / Release"
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "Denied by default. Requires promotion flow."
+    },
+    {
+      "block_id": "h3-46",
+      "type": "heading",
+      "level": 3,
+      "content": "`rig.promote_to_preproduction`"
+    },
+    {
+      "block_id": "p-47",
+      "type": "paragraph",
+      "content": "Promote approved patches to the preproduction branch. Requires authorization receipt AND explicit user confirmation."
+    },
+    {
+      "block_id": "h2-48",
+      "type": "heading",
+      "level": 2,
+      "content": "Usage with Antigravity"
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "Configure Antigravity's MCP settings to connect to Rig:"
+    },
+    {
+      "block_id": "code-50",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"mcpServers\": {\n    \"rig-relay\": {\n      \"command\": \"uv\",\n      \"args\": [\"run\", \"rig-relay\", \"mcp\", \"serve\", \"--stdio\"]\n    }\n  }\n}"
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "Antigravity agents can then call Rig tools through standard MCP tool calls. Every mutation-tier tool returns `approval_required: true` — Antigravity should display this to the user as a confirmation gate."
+    },
+    {
+      "block_id": "h2-52",
+      "type": "heading",
+      "level": 2,
+      "content": "Usage with VS Code / Zed"
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "Same stdio transport. The Rig MCP server speaks standard JSON-RPC 2.0 MCP protocol. Any MCP-compatible host can connect."
+    },
+    {
+      "block_id": "code-54",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"mcpServers\": {\n    \"rig-relay\": {\n      \"command\": \"uv\",\n      \"args\": [\"run\", \"rig-relay\", \"mcp\", \"serve\", \"--stdio\"]\n    }\n  }\n}"
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/rig-mcp-capability-map.md"
+    ]
+  }
+}

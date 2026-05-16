@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Textual Rig Console Maturity Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date:** 2026-05-14">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Textual Rig Console Maturity Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Textual Rig Console Maturity Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2026-05-14 **Status:** Completed</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">1. Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The Rig Console TUI is a modern, projection-driven alternative to the legacy Vibe CLI. It has a strong architectural foundation based on content-light projections and non-blocking providers. While the core widgets and screen composition are mature, there is a significant gap in E2E testing (Pilot) and the wiring of mutation intents. The transition from the legacy `VibeApp` is well-underway but requires a few more stages to fully replace the command authority.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">2. Maturity Matrix Summary</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Dimension</th><th>Score</th><th>Top Strength</th><th>Top Gap</th></tr></thead>
+<tbody>
+<tr><td>A. Projection purity</td><td>5/5</td><td>Widgets consume only typed projections</td><td>None</td></tr>
+<tr><td>B. State ownership</td><td>5/5</td><td>TUI does not own tool/workflow state</td><td>None</td></tr>
+<tr><td>C. Action boundary</td><td>4/5</td><td>Structured action methods in screen</td><td>No dispatcher/adapter yet</td></tr>
+<tr><td>D. Worker safety</td><td>5/5</td><td>Exclusive run_worker for refreshes</td><td>None</td></tr>
+<tr><td>E. Streaming smoothness</td><td>5/5</td><td>Coalescer batches deltas efficiently</td><td>Metrics not exposed</td></tr>
+<tr><td>F. Content-light</td><td>5/5</td><td>Projections explicitly exclude raw content</td><td>None</td></tr>
+<tr><td>G. Test maturity</td><td>4/5</td><td>Good model/provider coverage + headless Pilot tests</td><td>No snapshot tests, limited coverage of multi-key scenarios</td></tr>
+<tr><td>H. Legacy separation</td><td>4/5</td><td>Rig Console is separate from VibeApp</td><td>Transcript still in VibeApp</td></tr>
+<tr><td>I. Runtime readiness</td><td>4/5</td><td>Architecture ready for runtime events</td><td>Progress projection missing</td></tr>
+<tr><td>J. Operator UX</td><td>4/5</td><td>Clear dashboard view</td><td>No progress timeline widget</td></tr>
+</tbody>
+</table>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">**Average Maturity Score: 4.5 / 5.0**</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">3. Ownership Map</h2>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Entity</th><th>Owns</th></tr></thead>
+<tbody>
+<tr><td>**Textual (Rig Console)**</td><td>Rendering, focus, keybindings, local screen state, temporary UI status text.</td></tr>
+<tr><td>**Runtime/Control Plane**</td><td>Context resolution, session/task/lane/worktree IDs, coordination leases, dirty policy, validation, tool execution, audit/evidence, projection building.</td></tr>
+<tr><td>**Legacy Vibe**</td><td>Old chat CLI compatibility, transcript rendering (temporarily), legacy command affordances.</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Textual Should Never Own</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Mutation tools - Raw command router - Runtime supervisor - Coordination repair - Audit persistence - Receipt generation</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">4. Gap Inventory &amp; Risks</h2>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gap</th><th>Severity</th><th>Risk if Ignored</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>No Headless Pilot Tests</td><td>High</td><td>UI regressions not caught by unit tests.</td><td>**Partially addressed** — 14 Pilot tests added for mount, help, refresh, provider error, quit</td></tr>
+<tr><td>No Dispatcher/Adapter</td><td>High</td><td>Tight coupling between TUI and backend actions.</td><td>Open</td></tr>
+<tr><td>Mutation Buttons Missing</td><td>High</td><td>TUI remains read-only, limiting operator utility.</td><td>Open</td></tr>
+<tr><td>ExecutionProgressProjection Missing</td><td>High</td><td>Delayed visibility into runtime progress.</td><td>Open</td></tr>
+<tr><td>Legacy Transcript Integration</td><td>Medium</td><td>Perpetuating VibeApp&#x27;s god-module pattern.</td><td>Open</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">5. Roadmap</h2>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Stage 1 — Stabilize current Rig Console</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- [x] Add headless Pilot smoke tests for `DashboardScreen` — 14 tests covering mount, help key, refresh key, provider error handling, quit. - Fix any minor docs/code drift. - Add provider latency/error fixture tests. - Expose coalescer metrics in a debug-only projection.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">Stage 2 — Runtime projection integration</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- Implement `ExecutionProgressProjection` model. - Add `ProgressTimelineWidget`. - Feed runtime events through provider as projection data. - Ensure no raw output appears in the evidence rail.</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Stage 3 — Legacy Vibe authority extraction</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- Move command router behavior behind a runtime adapter. - Demote the transcript to a single pane within Rig Console. - Separate chat transport from runtime control. - Define a replacement entry point for `rig_console`.</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">6. &quot;Do Not Build Yet&quot; List</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- **No full IDE clone**: Stay focused on the operator harness. - **No mutation buttons** until the adapter execution path is stable. - **No raw log firehose** as the primary UX. - **No broad snapshot suite** before the layout stabilizes. - **No pywebview parity work** until the projection contract stabilizes.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">7. Validation Results</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- JSONL parseability: **Passed** - Artifact consistency: **Passed** - Directory structure: **Passed**</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/ui/textual-rig-console-maturity-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

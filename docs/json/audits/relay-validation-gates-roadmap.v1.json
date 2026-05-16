@@ -1,0 +1,239 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "relay-validation-gates-roadmap",
+  "document_type": "audit",
+  "title": "Audit: Relay Validation Gates and Doctor Roadmap",
+  "summary": "Status: Draft",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/relay-validation-gates-roadmap.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Audit: Relay Validation Gates and Doctor Roadmap",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Status: Draft Date: 2026-05-13 Branch: main HEAD: e389b446706173ebc5950931994ba4cdb6a7d9f4 Scope: Read-only roadmap audit Owner area: tests",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Executive Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "This roadmap defines the automated validation gates required to mature Rig Relay's evidence model. It distinguishes between CI-level regressions and user-facing \"doctor\" checks for local environment health.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Current state: - `rig-relay doctor evidence` exists and validates one selected session read-only - the provider-independent repo-local evidence smoke already exercises artifact, shadow, context, and manifest evidence - root defaults have not changed; validation is scoped to the caller-selected evidence root",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Gate Inventory",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Gate Name",
+        "Maturity",
+        "Target",
+        "Description"
+      ],
+      "rows": [
+        [
+          "**Root Isolation Check**",
+          "Level 3",
+          "CI/Doctor",
+          "Verify that repo-local runs do not touch the global home."
+        ],
+        [
+          "**Schema Parity**",
+          "Level 4",
+          "CI",
+          "Ensure all JSONL lines validate against the V1 schema."
+        ],
+        [
+          "**Sorted Traversal**",
+          "Level 3",
+          "CI",
+          "Regress non-deterministic file discovery in tool/agent managers."
+        ],
+        [
+          "**Artifact Parity**",
+          "Level 2",
+          "Doctor",
+          "Verify that `ARTIFACT_WRITTEN` events have matching files."
+        ],
+        [
+          "**Path Sanitization**",
+          "Level 2",
+          "CI",
+          "Detect absolute paths in evidence metadata."
+        ],
+        [
+          "**Stale Session Cleaner**",
+          "Level 1",
+          "Doctor",
+          "Identify and suggest cleanup for unfinished/broken sessions."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Gate Maturity Levels",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- **Level 1**: Advisory only (warnings). - **Level 2**: Recommended for local dev. - **Level 3**: Mandatory for CI PRs. - **Level 4**: Block-on-fail for production releases.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Which Gates Belong in CI",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- Schema Parity - Sorted Traversal - Path Sanitization - Root Isolation (using mocked home)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Which Gates Belong in Local Doctor",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- Artifact Parity - Stale Session Detection - Legacy Config Detection",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Suggested Command Names",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- `rig-relay doctor`: General health check. - `rig-relay verify-session <id>`: Deep integrity check for a specific run. - `rig-relay doctor evidence --evidence-root <path> --session <id>`: Selected-session evidence validation gate with manifest-aware parity checks.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Implementation Order",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "1.  **Sorted Traversal Guard**: Add a unit test that mock-shuffles directories and asserts stable discovery. 2.  **Schema Validator**: Integrate `jsonschema` into the telemetry test suite. 3.  **Doctor Basic**: Implement `rig-relay doctor --paths`. 4.  **Evidence Doctor**: Validate a selected session with canonical JSON, explicit file references, and optional manifest coverage.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/relay-validation-gates-roadmap.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

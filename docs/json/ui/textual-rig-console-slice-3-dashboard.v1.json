@@ -1,0 +1,516 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-rig-console-slice-3-dashboard",
+  "document_type": "audit",
+  "title": "Textual Rig Console — Slice 3: DashboardScreen",
+  "summary": "**Draft.** Composes existing widgets into a projection-driven dashboard",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/ui/textual-rig-console-slice-3-dashboard.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Textual Rig Console — Slice 3: DashboardScreen",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Draft.** Composes existing widgets into a projection-driven dashboard screen with header, activity (session pane + evidence rail side-by-side), and footer zones.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Why DashboardScreen",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "The `SessionPaneWidget` and `EvidenceRailWidget` are individual cards. The `DashboardScreen` composes them into a single operator surface:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- **OperatorHeaderWidget** — title, subtitle, safety-state badge - **Activity zone** — `SessionPaneWidget` (left) + `EvidenceRailWidget` (right) - **FooterStatusWidget** — footer hint + backlog items (capped at 5)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "This is the first multi-widget screen in the Rig Console. It demonstrates how projections flow through a screen hierarchy: `DashboardProjection` → `DashboardScreen` → child widgets via `update_projection()`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "DashboardProjection Fields",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`title`",
+          "str",
+          "Dashboard title"
+        ],
+        [
+          "`subtitle`",
+          "str \\",
+          "None",
+          "Optional subtitle"
+        ],
+        [
+          "`session`",
+          "`SessionPaneProjection`",
+          "Session state for the pane"
+        ],
+        [
+          "`evidence`",
+          "`EvidenceRailProjection`",
+          "Evidence state for the rail"
+        ],
+        [
+          "`safety_state`",
+          "str \\",
+          "None",
+          "Safety badge label (e.g. \"active\")"
+        ],
+        [
+          "`footer_hint`",
+          "str \\",
+          "None",
+          "Footer hint text (e.g. \"q: quit r: refresh\")"
+        ],
+        [
+          "`backlog_items`",
+          "list[str]",
+          "Pending items (capped at 5 in display)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Properties",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "Property",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`backlog_capped`",
+          "list[str]",
+          "Backlog items capped at `_DASHBOARD_BACKLOG_CAP` (5)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "What the model explicitly does NOT contain",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- No `stdout`, `stderr`, or output fields - No file contents or snippets - No diffs or old/new text - No command transcripts - No secrets or tokens - No raw tool results",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "OperatorHeaderWidget",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Renders the dashboard header from a `DashboardProjection`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "1. **Title** — bold text 2. **Subtitle** — muted, shown if present 3. **Safety badge** — \"⚡ {safety_state}\", shown if present",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Subclasses `Horizontal`. Has `update_projection(DashboardProjection)`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "FooterStatusWidget",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Renders the dashboard footer from a `DashboardProjection`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "1. **Hint** — muted footer hint text, shown if present 2. **Backlog** — \"backlog:\" header + capped items, or \"no backlog\" empty state",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Subclasses `Vertical`. Has `update_projection(DashboardProjection)`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "DashboardScreen",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "A `Screen` subclass composing:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-24",
+      "type": "code",
+      "language": "text",
+      "content": "┌─ OperatorHeaderWidget ───────────────────────┐\n├─ Horizontal ─────────────────────────────────┤\n│  SessionPaneWidget  |  EvidenceRailWidget    │\n├─ FooterStatusWidget ─────────────────────────┘",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "- `DEFAULT_CSS` sets background `#06110B`, side-by-side widgets at 50% width - `BINDINGS`: `q` → quit, `r` → refresh placeholder - `update_projection(DashboardProjection)` propagates to all child widgets - `action_refresh()` calls `_render_all()` (placeholder for future live updates)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-26",
+      "type": "heading",
+      "level": 3,
+      "content": "Projection flow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-27",
+      "type": "code",
+      "language": "text",
+      "content": "DashboardProjection\n├── title / subtitle / safety_state → OperatorHeaderWidget\n├── session → SessionPaneWidget\n├── evidence → EvidenceRailWidget\n└── footer_hint / backlog_items → FooterStatusWidget",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-28",
+      "type": "heading",
+      "level": 2,
+      "content": "EvidenceRailWidget Updates in Slice 3",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "- Added `Updated` Message class (matching `SessionPaneWidget` pattern) - Added `update_projection(EvidenceRailProjection)` method - Added `_render_all()` pattern using `_update_static()` for header, counts, items - Refactored `compose()` to yield a single `.evidence-rail-items` Static for content",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-30",
+      "type": "heading",
+      "level": 2,
+      "content": "Project Structure",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-31",
+      "type": "code",
+      "language": "text",
+      "content": "vibe/cli/textual_ui/rig_console/\n├── __init__.py              # Public API re-exports (new: DashboardProjection, DashboardScreen, etc.)\n├── projections.py           # +DashboardProjection, +_DASHBOARD_BACKLOG_CAP\n├── console_app.py           # +DashboardScreen preview mode\n├── screens/\n│   ├── __init__.py\n│   └── dashboard.py         # DashboardScreen (NEW)\n└── widgets/\n    ├── __init__.py\n    ├── session_pane.py\n    ├── evidence_rail.py     # +update_projection(), +Updated Message\n    ├── operator_header.py   # OperatorHeaderWidget (NEW)\n    └── footer_status.py     # FooterStatusWidget (NEW)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-32",
+      "type": "heading",
+      "level": 2,
+      "content": "Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-33",
+      "type": "code",
+      "language": "text",
+      "content": "tests/cli/textual_ui/rig_console/\n├── __init__.py\n├── test_session_pane_projection.py\n├── test_session_pane_widget.py\n├── test_evidence_rail.py\n├── test_dashboard_projection.py   # DashboardProjection model tests (NEW)\n├── test_dashboard_screen.py        # DashboardScreen structural tests (NEW)\n├── test_operator_header.py         # OperatorHeaderWidget tests (NEW)\n└── test_footer_status.py           # FooterStatusWidget tests (NEW)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-34",
+      "type": "heading",
+      "level": 2,
+      "content": "Next Slices",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-35",
+      "type": "table",
+      "columns": [
+        "Slice",
+        "Component",
+        "Description"
+      ],
+      "rows": [
+        [
+          "4",
+          "Action boundary",
+          "Provider protocol, typed read-only actions, keybinding seam ✅ Completed"
+        ],
+        [
+          "5",
+          "Runtime adapter",
+          "Replace fixture provider with real backend adapter"
+        ],
+        [
+          "6",
+          "Multi-session grid",
+          "Grid of SessionPaneWidget instances for fleet/delegate views"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-36",
+      "type": "heading",
+      "level": 2,
+      "content": "What DashboardScreen intentionally does NOT do",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "- Does not modify VibeApp or any TCSS files - Does not read raw tool output, logs, files, or diffs - Does not handle real-time updates (projection feed is a future slice) - Does not wire into the default CLI (standalone preview only) - Does not implement session lifecycle controls - Does not implement full screen navigation (no screen stack yet)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-38",
+      "type": "heading",
+      "level": 2,
+      "content": "Standalone Preview",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-39",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run python -m vibe.cli.textual_ui.rig_console.console_app",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "Default mode is `\"dashboard\"` which shows the `DashboardScreen` with sample data. Pass `mode=\"single\"` to see individual widgets:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-41",
+      "type": "code",
+      "language": "python",
+      "content": "app = RigConsolePreview(mode=\"single\")",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-42",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "- [Slice 1: SessionPaneWidget](textual-rig-console-slice-1.md) - [Slice 2: EvidenceRailWidget](textual-rig-console-slice-2-evidence-rail.md) - [Desktop Projection Contract](../governance/relay-desktop-projection-contract.md) - [Textual Retirement Policy](../governance/textual-retirement-policy.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/ui/textual-rig-console-slice-3-dashboard.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

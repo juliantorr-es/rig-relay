@@ -1,0 +1,260 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "worktree-manager",
+  "document_type": "governance",
+  "title": "Worktree Manager — Governance & Safety",
+  "summary": "The `WorktreeManager` (`rig_relay.coordination.worktree_manager.py`) provides",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/worktree-manager.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Worktree Manager — Governance & Safety",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The `WorktreeManager` (`rig_relay.coordination.worktree_manager.py`) provides relay-native git worktree lifecycle for agent/lane execution isolation. Worktrees are checked out under a configurable `worktree_root` (default: `<repo>/.rig/relay/worktrees/`) and are isolated from the main working tree.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "API",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "python",
+      "content": "mgr = WorktreeManager(\n    repo_root=Path(\"/path/to/repo\"),\n    worktree_root=Path(\"/path/to/repo/.rig/relay/worktrees\"),\n)\n\n# Create a linked worktree with a new branch\nresult = mgr.create(workspace_id=\"lane-42\", branch_name=\"feat/lane-42\")\n\n# Remove a clean worktree (refuses dirty without force=True)\nresult = mgr.remove(\"lane-42\")\n\n# Force-remove a dirty worktree (use with caution)\nresult = mgr.remove(\"lane-42\", force=True)\n\n# Get HEAD SHA\nsha = mgr.get_head_hash(\"lane-42\")\n\n# List all managed worktrees\nrecords = mgr.list_worktrees()\n\n# Inspect a single worktree (includes dirty detection)\nrecord = mgr.inspect(\"lane-42\")",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Safety & Path Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- All worktree paths must be children of `worktree_root`. Path traversal (`../`, `~`, absolute paths) via `workspace_id` is rejected. - `workspace_id` is sanitized: no `/`, `\\`, empty, too long, or path-traversal segments. - `branch_name` is sanitized: no spaces, unsafe git ref characters, empty, too long, `.lock` suffix, `..`, or `@{` syntax. - No `shell=True`. All git commands use argv subprocess calls via `_run_git()` with `cwd=repo_root`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Git Commands Used",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Operation",
+        "Command",
+        "Safety"
+      ],
+      "rows": [
+        [
+          "create",
+          "`git worktree add -b <branch> <path> [<ref>]`",
+          "argv only"
+        ],
+        [
+          "remove",
+          "`git worktree remove <path>` (refuses dirty)",
+          "argv only"
+        ],
+        [
+          "remove (force)",
+          "`git worktree remove --force <path>`",
+          "argv only"
+        ],
+        [
+          "list",
+          "`git worktree list --porcelain`",
+          "argv only, parsed"
+        ],
+        [
+          "get_head",
+          "`git -C <path> rev-parse HEAD`",
+          "argv only"
+        ],
+        [
+          "inspect",
+          "`git -C <path> status --porcelain`",
+          "argv only, no side effects"
+        ],
+        [
+          "git check",
+          "`git rev-parse --git-dir`",
+          "argv only"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Dirty Worktree Removal Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- `remove(workspace_id)` without `force=True` checks for uncommitted changes via `git status --porcelain`. If output is non-empty, removal is refused with `error_kind=\"dirty_worktree\"`. - `remove(workspace_id, force=True)` passes `--force` to `git worktree remove`, allowing removal of dirty worktrees. Use with caution — uncommitted changes are discarded. - Force removal is available but not the default. The calling layer (`ExecutionLease`, `RuntimeSupervisor`) should decide when force is appropriate (e.g., lease expiry).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Coordination Integration Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- **Current:** Minimal (A). WorktreeManager only manages git worktrees. No CoordinationStore integration for path reservation or lease lifecycle. - **Planned (P2 follow-up):** Reserve worktree path via CoordinationStore before create; release on remove/failure.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "DirtyFileGuard Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- `DirtyFileGuard` protects paths in the **main working tree** from accidental overwrite. It is NOT bypassed by WorktreeManager — WorktreeManager operates under `worktree_root`, not the main tree. - WorktreeManager must not write arbitrary files in the main repo. Its filesystem footprint is limited to git worktree metadata (managed by `git worktree`) and the checked-out worktree files under `worktree_root`. - Future `ExecutionLease` will bind tool execution to a worktree path, ensuring mutation tools operate in the isolated worktree rather than the main tree.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Content-Light Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- `WorktreeRecord` contains no raw git output, no diffs, and no file contents. - `WorktreeOperationResult` uses structured `error_kind` and `refusal_reason` fields — no raw stdout/stderr. - `_GitCommandResult` (internal) hashes raw output but does not persist it. - Schema (`docs/schemas/rig.relay.worktree.v1.schema.json`) enforces `additionalProperties: false` on all object types.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "Known Limitations",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- No coordination lease integration (P2 follow-up). - No execution integration — worktrees are created but not bound to `ExecutionLease` or `RuntimeSupervisor` yet. - No automatic stale worktree cleanup — `list_worktrees()` reports missing worktrees but does not remove them. - No `git worktree prune` or `git worktree repair` operations. - WorktreeManager does not validate that `worktree_root` is outside the main working tree — this is the caller's responsibility.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/worktree-manager.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

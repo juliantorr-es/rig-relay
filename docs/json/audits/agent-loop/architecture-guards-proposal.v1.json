@@ -1,0 +1,159 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "architecture-guards-proposal",
+  "document_type": "audit",
+  "title": "Architecture guard tests — proposed (not implemented)",
+  "summary": "Proposed date: 2026-05-15",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/agent-loop/architecture-guards-proposal.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Architecture guard tests — proposed (not implemented)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Proposed date: 2026-05-15",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "When to implement",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "After SubagentRuntime exists and AgentLoop is renamed to OrchestratorLoop.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Guard tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "#",
+        "Test",
+        "Assertion",
+        "Risk"
+      ],
+      "rows": [
+        [
+          "1",
+          "`test_ralph_cannot_instantiate_agent_loop`",
+          "Ralph modules import none of `AgentLoop`, `OrchestratorLoop`, `VibeAcpAgentLoop`",
+          "Low — Ralph is already observe-only"
+        ],
+        [
+          "2",
+          "`test_subagent_profile_uses_subagent_runtime`",
+          "Assignable `SubagentProfile` constructs via `SubagentRuntime`, not full `AgentLoop`",
+          "High — currently `task.py` spawns full AgentLoop"
+        ],
+        [
+          "3",
+          "`test_only_orchestrator_calls_conversation_loop`",
+          "`_conversation_loop` is called only from `OrchestratorLoop` (formerly AgentLoop)",
+          "Medium — desktop and ACP both call it"
+        ],
+        [
+          "4",
+          "`test_tool_runtime_is_only_tool_execution_path`",
+          "All tool execution goes through `ToolRuntime.execute_one()` — no bypass",
+          "Low — already true"
+        ],
+        [
+          "5",
+          "`test_runtime_supervisor_is_only_subprocess_authority`",
+          "All subprocess creation goes through `RuntimeSupervisor` — no raw `subprocess.run()`",
+          "Medium — bash tool and validate runner both use it"
+        ],
+        [
+          "6",
+          "`test_ralph_never_constructs_toolruntime_or_agent`",
+          "Ralph modules import no tool execution or agent infrastructure",
+          "Low — already observe-only"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Implementation notes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- Tests 1, 2, 3, and 6 can use AST-based import scanning (like existing `test_architecture_boundaries.py`) - Tests 4 and 5 need runtime/monkeypatch verification - All tests are `pytest.mark.xfail` until SubagentRuntime exists",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/agent-loop/architecture-guards-proposal.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

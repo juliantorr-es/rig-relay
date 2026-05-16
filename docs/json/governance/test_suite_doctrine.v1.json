@@ -8,60 +8,281 @@
   "created_at": "2026-05-18",
   "updated_at": "2026-05-18",
   "source_commit": "aaef6b5b",
-  "owners": ["maintainer"],
-  "tags": ["testing", "doctrine", "quality", "layout", "parametrization"],
-  "audience": ["contributor", "agent", "maintainer"],
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "testing",
+    "doctrine",
+    "quality",
+    "layout",
+    "parametrization"
+  ],
+  "audience": [
+    "contributor",
+    "agent",
+    "maintainer"
+  ],
   "canonical_path": "docs/json/governance/test_suite_doctrine.v1.json",
-  "render": {"toc": true, "search_index": true},
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
   "sections": [
-    {"block_id": "title", "type": "heading", "level": 1, "content": "Test Suite Doctrine"},
-    {"block_id": "purpose", "type": "heading", "level": 2, "content": "Purpose"},
-    {"block_id": "purpose-text", "type": "paragraph", "content": "Rig Relay ships a test suite of 6,500+ collected tests. Without a doctrine, the suite accumulates debt: root-level orphan tests, mis-scoped test files buried in tests/scripts/, duplicate assertions across files, pycache-dependent collection, and tests that pass on one machine but fail on a clean clone."},
-    {"block_id": "layout", "type": "heading", "level": 2, "content": "Layout Rule"},
-    {"block_id": "layout-rule", "type": "callout", "severity": "info", "content": "Every test file must live under a path that mirrors its target source package. tests/core/test_agent_loop.py is correct. tests/test_agent_loop.py is a layout violation."},
-    {"block_id": "layout-list", "type": "list", "items": [
-      "Root-level tests/test_*.py files are violations unless explicitly allowed",
-      "tests/scripts/test_*.py files whose target source is not scripts/ are violations",
-      "Canonical tests map 1:1 with rig_relay/ package structure"
-    ]},
-    {"block_id": "parametrization", "type": "heading", "level": 2, "content": "Parametrization Rule"},
-    {"block_id": "param-rule", "type": "paragraph", "content": "Tests with identical setup/act/assert skeletons must be consolidated into parametrized tests with explicit case IDs. Use pytest.mark.parametrize and pytest.param(id='explicit_case_id'). Case IDs must be stable, behavior-based, and free of vague names like case1/case2/happy/sad."},
-    {"block_id": "duplication", "type": "heading", "level": 2, "content": "Duplication Rule"},
-    {"block_id": "dup-rule", "type": "paragraph", "content": "Each test behavior must exist in exactly one place. When a concern grows large enough for its own file, the original tests must be removed. Duplicate test bodies create maintenance burden and naming collisions."},
-    {"block_id": "quality", "type": "heading", "level": 2, "content": "Test Quality Taxonomy"},
-    {"block_id": "quality-table", "type": "table", "columns": ["Category", "Definition", "Example"], "rows": [
-      ["Behavior-named", "Name describes the behavior under test", "test_create_user_returns_403_when_unauthorized"],
-      ["Parametrized", "One function covers N cases via parametrize", "test_forbidden_field_rejected[id=raw_stderr]"],
-      ["Duplicate", "Same behavior exists in two files", "test_collect_git_state in both validate files"],
-      ["Layout violation", "Test file location doesn't match source", "tests/test_agents.py instead of tests/core/"],
-      ["Brittle", "Test depends on mutable global state or timing", "test_that_depends_on_pycache_persistence"]
-    ]},
-    {"block_id": "lifecycle", "type": "heading", "level": 2, "content": "Test Lifecycle"},
-    {"block_id": "lifecycle-list", "type": "list", "ordered": true, "items": [
-      "Write behavior-named test in correct layout directory",
-      "If test body matches existing test, parametrize instead of copying",
-      "If test concern grows >10 related tests, extract to own file, remove originals",
-      "Run PYTHONDONTWRITEBYTECODE=1 uv run pytest before claiming green",
-      "Run uv run ruff check --fix and uv run ruff format after changes",
-      "Delete stale tests targeting removed modules; never xfail/skip to hide deletion debt"
-    ]},
-    {"block_id": "layout-audit", "type": "heading", "level": 2, "content": "Layout Audit"},
-    {"block_id": "audit-content", "type": "paragraph", "content": "tests/architecture/test_test_layout.py provides a report-only layout guard detecting root-level orphans, mis-scoped scripts/ tests, and known duplicate pairs. Tests marked known_blocked are quarantined with findings in docs/findings/out-of-scope-findings.jsonl."},
-    {"block_id": "collection", "type": "heading", "level": 2, "content": "Collection Integrity"},
-    {"block_id": "collection-rule", "type": "callout", "severity": "warning", "content": "PYTHONDONTWRITEBYTECODE=1 uv run pytest --collect-only must complete with zero errors. The test suite must be deterministic in clean clones. Stale pycache files, deleted conftest helpers, and orphan tests importing deleted modules are collection poison and must be removed."},
-    {"block_id": "purging", "type": "heading", "level": 2, "content": "Purge / Delete Policy"},
-    {"block_id": "purge-list", "type": "list", "items": [
-      "Tests for intentionally removed features must be deleted, not skipped or marked xfail",
-      "Each deletion must be documented in an audit note with the deleted module and replacement coverage",
-      "Stale stub/double files only referenced by deleted tests should be cleaned up",
-      "Test directory removal is only safe after verifying no non-failing sibling tests exist"
-    ]}
+    {
+      "block_id": "title",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Suite Doctrine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "purpose",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "purpose-text",
+      "type": "paragraph",
+      "content": "Rig Relay ships a test suite of 6,500+ collected tests. Without a doctrine, the suite accumulates debt: root-level orphan tests, mis-scoped test files buried in tests/scripts/, duplicate assertions across files, pycache-dependent collection, and tests that pass on one machine but fail on a clean clone.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "layout",
+      "type": "heading",
+      "level": 2,
+      "content": "Layout Rule",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "layout-rule",
+      "type": "callout",
+      "severity": "info",
+      "content": "Every test file must live under a path that mirrors its target source package. tests/core/test_agent_loop.py is correct. tests/test_agent_loop.py is a layout violation.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "layout-list",
+      "type": "list",
+      "items": [
+        "Root-level tests/test_*.py files are violations unless explicitly allowed",
+        "tests/scripts/test_*.py files whose target source is not scripts/ are violations",
+        "Canonical tests map 1:1 with rig_relay/ package structure"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "parametrization",
+      "type": "heading",
+      "level": 2,
+      "content": "Parametrization Rule",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "param-rule",
+      "type": "paragraph",
+      "content": "Tests with identical setup/act/assert skeletons must be consolidated into parametrized tests with explicit case IDs. Use pytest.mark.parametrize and pytest.param(id='explicit_case_id'). Case IDs must be stable, behavior-based, and free of vague names like case1/case2/happy/sad.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "duplication",
+      "type": "heading",
+      "level": 2,
+      "content": "Duplication Rule",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "dup-rule",
+      "type": "paragraph",
+      "content": "Each test behavior must exist in exactly one place. When a concern grows large enough for its own file, the original tests must be removed. Duplicate test bodies create maintenance burden and naming collisions.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "quality",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Quality Taxonomy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "quality-table",
+      "type": "table",
+      "columns": [
+        "Category",
+        "Definition",
+        "Example"
+      ],
+      "rows": [
+        [
+          "Behavior-named",
+          "Name describes the behavior under test",
+          "test_create_user_returns_403_when_unauthorized"
+        ],
+        [
+          "Parametrized",
+          "One function covers N cases via parametrize",
+          "test_forbidden_field_rejected[id=raw_stderr]"
+        ],
+        [
+          "Duplicate",
+          "Same behavior exists in two files",
+          "test_collect_git_state in both validate files"
+        ],
+        [
+          "Layout violation",
+          "Test file location doesn't match source",
+          "tests/test_agents.py instead of tests/core/"
+        ],
+        [
+          "Brittle",
+          "Test depends on mutable global state or timing",
+          "test_that_depends_on_pycache_persistence"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "lifecycle",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Lifecycle",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "lifecycle-list",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Write behavior-named test in correct layout directory",
+        "If test body matches existing test, parametrize instead of copying",
+        "If test concern grows >10 related tests, extract to own file, remove originals",
+        "Run PYTHONDONTWRITEBYTECODE=1 uv run pytest before claiming green",
+        "Run uv run ruff check --fix and uv run ruff format after changes",
+        "Delete stale tests targeting removed modules; never xfail/skip to hide deletion debt"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "layout-audit",
+      "type": "heading",
+      "level": 2,
+      "content": "Layout Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "audit-content",
+      "type": "paragraph",
+      "content": "tests/architecture/test_test_layout.py provides a report-only layout guard detecting root-level orphans, mis-scoped scripts/ tests, and known duplicate pairs. Tests marked known_blocked are quarantined with findings in docs/findings/out-of-scope-findings.jsonl.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "collection",
+      "type": "heading",
+      "level": 2,
+      "content": "Collection Integrity",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "collection-rule",
+      "type": "callout",
+      "severity": "warning",
+      "content": "PYTHONDONTWRITEBYTECODE=1 uv run pytest --collect-only must complete with zero errors. The test suite must be deterministic in clean clones. Stale pycache files, deleted conftest helpers, and orphan tests importing deleted modules are collection poison and must be removed.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "purging",
+      "type": "heading",
+      "level": 2,
+      "content": "Purge / Delete Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "purge-list",
+      "type": "list",
+      "items": [
+        "Tests for intentionally removed features must be deleted, not skipped or marked xfail",
+        "Each deletion must be documented in an audit note with the deleted module and replacement coverage",
+        "Stale stub/double files only referenced by deleted tests should be cleaned up",
+        "Test directory removal is only safe after verifying no non-failing sibling tests exist"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
   ],
   "references": [
-    {"document_id": "out-of-scope-findings", "title": "Out-of-Scope Findings"}
+    {
+      "document_id": "out-of-scope-findings",
+      "title": "Out-of-Scope Findings"
+    }
   ],
   "related_documents": [],
   "provenance": {
-    "source_files": ["docs/governance/test-suite-doctrine.md"]
+    "source_files": [
+      "docs/governance/test-suite-doctrine.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
   }
 }

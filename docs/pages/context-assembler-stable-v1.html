@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Assembler Stable v1 — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Date: 2026-05-18. HEAD: 7b4e5166.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Context Assembler Stable v1</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Context Assembler Stable v1</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Date: 2026-05-18. HEAD: 7b4e5166.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Status: CONTEXT_ASSEMBLER_STABLE_V1</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The context assembler is stable, tested, and privacy-hardened. All critical-path failures emit structured warnings. No silent `except: pass` remains in the compiler, planner, or renderer execution paths.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Stable API</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Entry point</th><th>Contract</th></tr></thead>
+<tbody>
+<tr><td>`ContextRequest`</td><td>`rig_relay/context/models.py`</td><td>Scope, budget, freshness, output, compression</td></tr>
+<tr><td>`ContextPacket`</td><td>`rig_relay/context/models.py`</td><td>Canonical output with warnings, recommended_context, do_not_touch</td></tr>
+<tr><td>`ContextAssemblyPlan`</td><td>`rig_relay/context/assembly_plan.py`</td><td>Candidates, selections, omissions, budget ledger, warnings, hashes</td></tr>
+<tr><td>`ContextRenderer`</td><td>`rig_relay/context/renderer.py`</td><td>Cache-tiered sections, privacy-safe metadata, compression</td></tr>
+<tr><td>`plan_context()`</td><td>`rig_relay/context/planner.py`</td><td>Deterministic discovery, RepoIndex expansion, scoring, budget enforcement</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Source truth</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>`compiler.py`</td><td>`execute()` calls `plan_context()` with `RepoContextIndex(root)`. `build_envelope()` uses `renderer.section_count`. `build_receipt()` has no bare `except: pass`. `_scan_receipts()` emits warnings on read failure.</td></tr>
+<tr><td>`planner.py`</td><td>`_safe_find()` and `_safe_find_dict()` return `(result, error)` tuples. Per-method RepoIndex warnings emitted. Negative `max_tokens` clamped.</td></tr>
+<tr><td>`renderer.py`</td><td>Imports `CacheTier`/`TrustTier` from `assembly_plan.py`. `section_metadata` returns `list[ContextRenderedSection]` — no raw content.</td></tr>
+<tr><td>`assembly_plan.py`</td><td>Full model spine: `ContextCandidate`, `ContextSelection`, `ContextOmission`, `ContextBudgetLedger`, `ContextAssemblyWarning`, `ContextAssemblyPlan`.</td></tr>
+<tr><td>`models.py`</td><td>`ContextPacket` has `warnings: list[dict[str, Any]]`.</td></tr>
+<tr><td>`warnings.py`</td><td>`ContextWarningCode` with 13 codes. `build_warning()` helper. `exception_class_name()` helper.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Warning policy</h2>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Artifact</th><th>Warnings?</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td>`ContextPacket`</td><td>✅ Yes</td><td>Primary carrier for request-execution warnings. Planner, RepoIndex, receipt-scan, and renderer warnings all flow here.</td></tr>
+<tr><td>`ContextEnvelopeReceipt`</td><td>❌ No (v1)</td><td>Remains prompt-envelope evidence. Warnings available via `ContextPacket`. Future model change if needed.</td></tr>
+<tr><td>`ContextReceipt`</td><td>❌ No (v1)</td><td>Remains summary evidence. Warnings available via `ContextPacket`. Future model change if needed.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Privacy policy</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- Recent messages: `role` + `sha256` + `byte_count` only. No raw content. - Repository root: `root_hash` only. No raw path. - Git head: `head_hash` only. - Collision paths: `path_hash` only. - Receipt paths: repo-relative only. - Warnings: `exception_class_name()` only. No raw exception messages, paths, or secrets.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Cache layout</h2>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tier</th><th>Sections</th></tr></thead>
+<tbody>
+<tr><td>`stable`</td><td>AGENTS/doctrine/schema — invariant rules</td></tr>
+<tr><td>`semi_stable`</td><td>Repo topology, subsystem map</td></tr>
+<tr><td>`dynamic`</td><td>Dirty files, active lanes, collisions</td></tr>
+<tr><td>`volatile`</td><td>User task hash, recent message metadata, receipts</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Security posture</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Context evidence is NOT instructions. All rendered context is labeled with `trust_tier` and `provenance`. Untrusted content (tool output, external docs) is separated from first-party doctrine. The assembler does not amplify prompt injection.</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Remaining future work</h2>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Item</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Language adapters for non-Python repos</td><td>Future slice</td></tr>
+<tr><td>Receipt/envelope warnings fields</td><td>Deferred — non-blocking</td></tr>
+<tr><td>`include_other_agents` gating</td><td>Future planner slice</td></tr>
+<tr><td>`workspace_root` validation</td><td>Future hardening slice</td></tr>
+<tr><td>Symbol codec positive-savings compression</td><td>Exists in renderer, tested</td></tr>
+<tr><td>Compiler.build_receipt findings integration</td><td>Deferred — uses `compute_findings_summary()` with warning</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Validation</h2>
+
+<pre id="code-20"><code class="language-text">uv run pytest tests/context/ -q
+  → 285 passed, 3 skipped
+
+uv run pytest tests/context/test_context_stable_v1.py tests/context/test_context_final_closeout.py -q
+  → all passed
+
+uv run ruff check rig_relay/context tests/context
+  → clean
+
+uv run pyright rig_relay/context tests/context
+  → 0 errors
+
+uv run pytest --collect-only -q
+  → 6533+ tests
+
+uv run rig-relay demo-doctor
+  → 22/22</code></pre>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/context/context-assembler-stable-v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

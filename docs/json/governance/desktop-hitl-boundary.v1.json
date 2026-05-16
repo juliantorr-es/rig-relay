@@ -1,0 +1,508 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "desktop-hitl-boundary",
+  "document_type": "governance",
+  "title": "Desktop HITL Boundary",
+  "summary": "Rig Relay's desktop surface operates under a strict human-in-the-loop",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/desktop-hitl-boundary.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Desktop HITL Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Rig Relay's desktop surface operates under a strict human-in-the-loop (HITL) contract. The desktop UI renders backend projections and sends intents. The backend validates state and owns all policy. Execution remains disabled until a separate Relay execution contract exists.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Layered responsibility",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-4",
+      "type": "code",
+      "language": "text",
+      "content": "Desktop UI       Renders projections, sends intents.\n                 Dumb renderer — no policy, no hashing, no ranking.\n\nDesktop Backend  Validates state, processes intents.\n                 Owns policy, refusal codes, approval gating.\n\nRalph            Owns Ralph state transitions (scan, approve, decline).\n                 Consumes projections, produces rank and mission.\n\nRelay            Executes approved missions (future).\n                 Not yet wired through this boundary.",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Action boundaries",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Layer",
+        "Allowed",
+        "Forbidden"
+      ],
+      "rows": [
+        [
+          "Frontend",
+          "Render backend projections. Send backend-defined action payloads. Display refusal codes + messages.",
+          "Compute hashes. Rank candidates. Infer approval policy. Decide `execution_enabled`. Inspect raw scanner internals."
+        ],
+        [
+          "Backend",
+          "Validate run_id, scan_id, panel_sha256, mission_candidate_sha256. Apply structured refusal codes. Own state transitions.",
+          "Execute approved missions. Write to canonical findings. Mutate source code. Open external network calls."
+        ],
+        [
+          "Ralph (v0.7)",
+          "Scan projections. Rank by deterministic policy. Produce approval-ready panel. Accept/decline with identity binding.",
+          "Execute missions. Schedule daemon runs. Mutate state outside intent handlers."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Intent result envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "All desktop intents that reach this boundary return:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-9",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"schema_version\": \"rig.desktop.intent_result.v1\",\n  \"intent_kind\": \"ralph_approve\",\n  \"ok\": false,\n  \"status\": \"refused\",\n  \"error_code\": \"stale_panel_hash\",\n  \"message\": \"Panel hash does not match current state.\",\n  \"execution_enabled\": false\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "`ok: true` means the intent was accepted. `ok: false` means it was refused. `execution_enabled` is always `false` in this phase.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Identity binding",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Approval/decline decisions are bound to four identities:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- `run_id` — the desktop run session that produced this scan - `scan_id` — the specific scan within that run - `panel_sha256` — content hash of the panel shown to the user - `mission_candidate_sha256` — content hash of the mission candidate",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "All four must match the current backend state. Any mismatch produces a structured refusal code.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Refusal codes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-16",
+      "type": "table",
+      "columns": [
+        "Code",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "`no_scan_state`",
+          "No scan has been run"
+        ],
+        [
+          "`stale_run_id`",
+          "Run ID doesn't match — state replaced"
+        ],
+        [
+          "`stale_scan_id`",
+          "Scan ID doesn't match — rescan occurred"
+        ],
+        [
+          "`stale_panel_hash`",
+          "Panel hash mismatch"
+        ],
+        [
+          "`stale_mission_hash`",
+          "Mission candidate hash mismatch"
+        ],
+        [
+          "`missing_mission_candidate`",
+          "No candidate present"
+        ],
+        [
+          "`unsupported_action`",
+          "Unknown intent"
+        ],
+        [
+          "`invalid_payload`",
+          "Required fields missing"
+        ],
+        [
+          "`execution_disabled`",
+          "Execution not yet implemented"
+        ],
+        [
+          "`internal_error`",
+          "Unexpected failure"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Execution contract (future)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "When execution is implemented, it will be a separate contract:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- Execution requires explicit approval through this HITL boundary - Approved decisions reference exact run_id + scan_id + hashes - The execution path validates hashes before acting - The execution path emits receipts - The execution path returns results through the same intent envelope",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "No execution path will bypass the HITL boundary.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "Desktop event vocabulary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Stable event names for future analytics compiler integration:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "- `rig.desktop.ralph.scan.requested` - `rig.desktop.ralph.scan.completed` - `rig.desktop.ralph.approval.requested` - `rig.desktop.ralph.approval.accepted` - `rig.desktop.ralph.approval.refused` - `rig.desktop.ralph.decline.accepted` - `rig.desktop.ralph.rescan.completed`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-24",
+      "type": "heading",
+      "level": 2,
+      "content": "Durable state (v0.8)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Ralph run state is now persisted through `RalphRunStateStore`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "- In-memory for tests and transient use - Filesystem-backed under `.rig/ralph/runs/` - One JSON file per run_id - Current run pointer tracked via `.rig/ralph/current_run.json` - Atomic writes via temp file + rename",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Run state includes: - `run_id`, `scan_id`, `status`, `phase`, `approval_state` - `panel_sha256`, `mission_candidate_sha256`, `input_snapshot_sha256` - `execution_enabled` (always false) - `created_at`, `updated_at`, `expires_at` - `latest_decision_event_id`, `latest_decision_receipt_sha256`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-28",
+      "type": "heading",
+      "level": 2,
+      "content": "Decision events and receipts (v0.8)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Every approve/decline/refusal produces:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "1. A `DecisionEvent` appended to `.rig/ralph/events/ralph_decisions.jsonl` (append-only JSONL ledger) 2. A `DecisionReceipt` stored under `.rig/ralph/receipts/` (content-addressed JSON file)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Event kinds: `ralph.decision.approved`, `ralph.decision.declined`, `ralph.decision.refused`, `ralph.decision.expired`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "`event_sha256` and `receipt_sha256` are separate, computed from stable fields (timestamps excluded).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-33",
+      "type": "heading",
+      "level": 2,
+      "content": "Desktop event stream (v0.8)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "`DesktopEventSink` interface with `InMemoryDesktopEventSink` and `NoOpDesktopEventSink` implementations. Events carry `event_sha256` computed from stable fields. Future: JSONL sink, analytics compiler integration.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-35",
+      "type": "heading",
+      "level": 2,
+      "content": "Read-only mission contract (v0.8)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "`RalphReadOnlyMissionRequest/Plan/Result` define the future execution contract without implementing execution. All plans return `execution_enabled=False` and `implementation_status=contract_only`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "Forbidden capabilities include: source_code_mutation, git_commit, external_network_calls, background_recursion, etc.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-38",
+      "type": "heading",
+      "level": 2,
+      "content": "Desktop transport boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "The desktop cockpit now serves its frontend over local HTTPS and its projection/event bridge over WSS when TLS is enabled. Runtime config is delivered through the pywebview JS API, not raw HTML injection.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-40",
+      "type": "heading",
+      "level": 3,
+      "content": "Current transport shape",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "- Frontend: `https://127.0.0.1:<static_port>/index.html` - Projection/events: `wss://127.0.0.1:<ws_port>/...` - Runtime config: `window.pywebview.api.get_runtime_config()`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-42",
+      "type": "heading",
+      "level": 3,
+      "content": "TLS strategy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "- Source mode prefers local certificate material under the app support directory or explicit `RIG_RELAY_TLS_CERT` / `RIG_RELAY_TLS_KEY` overrides. - Packaged mode stores local-only certificate material outside the app bundle under `~/Library/Application Support/Rig Relay/certs/`. - `RIG_RELAY_DESKTOP_TLS=0` disables TLS only for development fallback.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-44",
+      "type": "heading",
+      "level": 3,
+      "content": "Security limits",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "- Local self-signed certificates are transport consistency, not remote identity. - `ws://` remains a development fallback only and is not the normal packaged path. - Merge and push remain disabled in runtime config.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/desktop-hitl-boundary.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

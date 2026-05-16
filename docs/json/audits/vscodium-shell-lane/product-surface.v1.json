@@ -1,0 +1,224 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "product-surface",
+  "document_type": "audit",
+  "title": "Product Surface: Rig MVP for VSCodium",
+  "summary": "This document defines the user experience and visual components of the Rig Relay extension.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/vscodium-shell-lane/product-surface.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Product Surface: Rig MVP for VSCodium",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "This document defines the user experience and visual components of the Rig Relay extension.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Primary Surfaces",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-4",
+      "type": "heading",
+      "level": 3,
+      "content": "A. The \"Mission Control\" Sidebar (Webview View)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "*   **Chat Interface**: Minimalist prompt input and response stream. *   **Turn Status**: Visual indicator of the current agent turn (Thinking, Running Tool, Waiting for Approval). *   **Context Indicator**: Compact list of files currently being used as context (with \"remove\" buttons).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "B. The \"Evidence Rail\" (Tree View)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "*   List of recent sessions and their associated receipts. *   Clicking a receipt opens a custom \"Receipt Viewer\" (read-only document) showing the rationale and verifiable evidence.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "C. The \"Governance Bar\" (Status Bar)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "*   Current Rig status (Ready, Active, Blocked). *   Workspace lane indicator (e.g., \"Lane: main\" or \"Lane: rig-patch-001\").",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "D. The \"Patch Review\" Surface (Native Diff View)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "*   When an agent proposes a change, Rig triggers a native VSCodium Diff view. *   Floating \"Approve\" / \"Reject\" buttons inside the diff surface or as a notification toast.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Competitive Positioning",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Feature",
+        "Like Antigravity / Cursor",
+        "Unlike Antigravity (The Rig Wedge)"
+      ],
+      "rows": [
+        [
+          "**Inline Edit**",
+          "Yes, via diff view.",
+          "Always governed; requires approval by default."
+        ],
+        [
+          "**Context**",
+          "Yes, auto-detects files.",
+          "Verifiable: Every byte of context is recorded in a receipt."
+        ],
+        [
+          "**Tools**",
+          "Yes, runs bash/ls.",
+          "Deterministic: Tools are hardened and permissioned."
+        ],
+        [
+          "**Workspace**",
+          "Yes, uses project root.",
+          "Lane-based: Heavy use of worktrees to isolate agent noise."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Minimum Visibility Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "*   **Default Visible**: Mission Control Sidebar, Governance Bar. *   **Hidden behind commands**: Full Receipt Browser, Debug logs, Configuration. *   **Do Not Build Yet**: AI-driven file tree manipulation, generic multi-agent chat, auto-commit.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Design Aesthetics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "*   **Phosphor Monochrome**: Use the green-phosphor palette for the Webview components to maintain the Rig brand identity. *   **Bauhaus Functional**: Avoid \"glass\" or \"glow\" effects in the editor; stick to sharp, functional, high-contrast layouts that match VSCodium's native feel.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/vscodium-shell-lane/product-surface.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

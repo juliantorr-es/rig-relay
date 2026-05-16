@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Future Passkey Plan — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Deferred.** WebAuthn/passkey authentication for Rig Relay is documented">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Future Passkey Plan</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Future Passkey Plan</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Deferred.** WebAuthn/passkey authentication for Rig Relay is documented here for future reference. No implementation work is planned for this slice.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Context</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Intake&#x27;s passkey implementation uses WebAuthn with the following caveats applicable to Rig Relay:</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- Local development WebAuthn RP IDs must be `localhost`, not `127.0.0.1`, because the Web Authentication spec forbids IP addresses as RP IDs. - Passkey registration requires a secure context (HTTPS or localhost). - pywebview does not natively support WebAuthn; a custom JS bridge or native handler would be needed.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">When to Implement</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- When Rig Relay needs passwordless authentication for remote telemetry or multi-user session management. - When pywebview or an alternative shell provides WebAuthn support. - After the local/remote authority boundary is exercised by real users.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/future-passkey-plan.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

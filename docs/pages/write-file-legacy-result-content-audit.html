@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WriteFile Legacy Result Content Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Audit all callers of `WriteFileResult.content` to determine whether the">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>WriteFile Legacy Result Content Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">WriteFile Legacy Result Content Audit</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Audit all callers of `WriteFileResult.content` to determine whether the field can be removed, deprecated, or must be retained.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Current State</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">`WriteFileResult` has a `content: str` field that carries the raw file content on success. On refused/blocked paths, `content=&quot;&quot;`.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">`WriteFileReceipt` (the evidence/observability path) explicitly excludes `content` — it is content-light by construction.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Known Callers</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Production callers</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">1. **ACP bridge** — `vibe/acp/tools/builtins/write_file.py` - Reads `result.content` to construct the `new_text` field in diff update events - **Dependency**: uses raw content for diff rendering - **Migration**: could use `args.content` instead since the write was successful and content matches — but `result.content` is the authoritative written content - **Risk if removed**: ACP diff updates would lose the new file content</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">2. **UI widget** — `vibe/cli/textual_ui/widgets/tool_widgets.py` - `WriteFileResultWidget` reads `self.result.content` for display truncation - **Dependency**: displays written content in the tool result panel - **Migration**: could show path + bytes + hashes instead, or keep content for display-only - **Risk if removed**: UI would show empty result for successful writes</p>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">Test callers</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">3. **ACP tests** — `tests/acp/test_write_file.py` - `assert result.content == &quot;Hello, world!&quot;` and similar - **Dependency**: verifies content round-trip through ACP - **Migration**: could verify via `after_sha256` + `bytes_written` + path</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">4. **Receipt emission tests** — `tests/tools/test_tool_receipt_emission.py` - Construct `WriteFileResult(content=&quot;...&quot;)` to test `build_receipt()` - **Dependency**: only uses content to prove receipt excludes it - **Migration**: already safe — receipt tests assert `content` is absent from receipt</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">5. **Mutation contract tests** — `tests/tools/test_mutation_tool_contracts.py` - Construct `WriteFileResult(content=&quot;...&quot;)` for schema/policy tests - **Dependency**: only uses content as fixture data for receipt construction - **Migration**: could use empty string or minimal fixture</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">6. **Hardened tools tests** — `tests/tools/test_hardened_tools.py` - Construct `WriteFileResult(content=args.content, ...)` for result verification - **Dependency**: some tests check that result.content equals written content - **Migration**: most could verify via `after_sha256` instead</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Doc/Config callers</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">7. **Audit docs** — various `.md` files reference `WriteFileResult.content` as a known legacy field - No code dependency</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Recommended Fate</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">**Keep `WriteFileResult.content` for now, mark as deprecated.**</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Rationale: - ACP bridge has a real production dependency on `result.content` for diff rendering - UI widget displays it - Removing it would require updating the ACP bridge to use `args.content` and updating the UI widget - The evidence path (receipt) is already safe — `WriteFileReceipt` excludes content - A deprecation period allows callers to migrate</p>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">Deprecation plan</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">1. Add a `@property` or docstring noting deprecation (not in this mission — Python Pydantic fields can&#x27;t be easily deprecated with runtime warnings) 2. Document in the release notes that content may be removed in a future breaking change 3. Update ACP bridge to fall back to `args.content` if `result.content` is empty 4. Update UI widget similarly 5. Remove content in a future breaking-change slice after callers are migrated</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Conclusion</h2>
+
+<table id="table-24" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Caller</th><th>Current dependency</th><th>Can migrate?</th><th>Migration path</th></tr></thead>
+<tbody>
+<tr><td>ACP bridge (production)</td><td>`result.content` for diff</td><td>Yes</td><td>Use `args.content` on success</td></tr>
+<tr><td>UI widget (production)</td><td>`result.content` for display</td><td>Yes</td><td>Use path + bytes + hashes</td></tr>
+<tr><td>ACP tests</td><td>`result.content` assertions</td><td>Yes</td><td>Use `after_sha256` + `bytes_written`</td></tr>
+<tr><td>Receipt tests</td><td>Fixture construction only</td><td>Already safe</td><td>N/A</td></tr>
+<tr><td>Contract tests</td><td>Fixture construction only</td><td>Already safe</td><td>N/A</td></tr>
+<tr><td>Hardened tools tests</td><td>Result verification</td><td>Yes</td><td>Use `after_sha256`</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-hardening/write-file-legacy-result-content-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

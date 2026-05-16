@@ -1,0 +1,820 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-streaming-smoothness",
+  "document_type": "audit",
+  "title": "Textual Streaming Smoothness — Provider Delta Coalescing",
+  "summary": "The Textual chat UI streams provider output into assistant message widgets. The",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/ui/textual-streaming-smoothness.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Textual Streaming Smoothness — Provider Delta Coalescing",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Problem",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The Textual chat UI streams provider output into assistant message widgets. The visible stream can feel laggy or jittery because:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "- Provider chunks (LLM token deltas) are very small — often 1–5 characters - Provider network cadence is uneven — bursts followed by gaps - Each `AssistantEvent` delta triggers `MarkdownStream.write()`, which causes a Textual widget update/repaint - High-frequency repaints compete with layout, scroll position, and other widget updates (spinners, tool call status, header ticks)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "The result: UI frames are dropped or jitter because Textual cannot repaint fast enough for every tiny delta.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Solution: StreamCoalescer",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "A lightweight, testable text coalescer that sits between provider deltas and the streaming message widget.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Architecture",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-9",
+      "type": "code",
+      "language": "text",
+      "content": "LLM Chunks → AssistantEvent → StreamCoalescer.append(delta)\n                                     ↓\n                         StreamCoalescer.flush()  ← controlled cadence\n                                     ↓\n                         StreamingMessageBase.append_content(text)\n                                     ↓\n                         MarkdownStream.write(text)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Integration Point",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "`vibe/cli/textual_ui/handlers/event_handler.py`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- One `StreamCoalescer` instance per active streaming assistant message - `_handle_assistant_message()` appends deltas to the coalescer, then checks if a flush is due via `_flush_coalescer()` - `finalize_streaming()` force-flushes any remaining text before stopping the stream (guarantees no text loss at stream completion)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Default Configuration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Parameter",
+        "Default",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`flush_interval_ms`",
+          "50",
+          "Minimum milliseconds between flushes"
+        ],
+        [
+          "`max_buffer_chars`",
+          "512",
+          "Flush when buffer exceeds this many chars"
+        ],
+        [
+          "`flush_on_newline`",
+          "True",
+          "Flush immediately on newline in any delta"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "These defaults balance: - **Latency**: Text appears within ~50ms of arrival (imperceptible) - **Repaint reduction**: At most ~20 flushes/second instead of per-delta - **Responsiveness**: Newlines flush immediately so paragraphs appear promptly",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Coalescer Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- Preserves exact text order (list of strings, joined on flush) - Never drops text (buffer accumulates until flushed) - Empty deltas are ignored - Empty flush returns `\"\"` - `force_flush()` emits all pending text unconditionally",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "What Is Not Coalesced",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- **Reasoning events** (`ReasoningEvent`) — streamed directly, not coalesced. Reasoning is typically short and often displayed collapsed. - **Tool call/result events** — structurally separate in the match dispatch. - **Tool output streams** (`ToolStreamEvent`) — different path via `ToolCallMessage.set_stream_message()`. - **Status events** (`CompactStartEvent/CompactEndEvent`, `HookEvent`) — unrelated to assistant text streaming. - **Receipt emission** — tool receipts and validate receipts are not text streams.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "Instrumentation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "The coalescer tracks internal counters for diagnosis:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "- `total_deltas_received` — number of `append()` calls - `total_flushes_emitted` — number of flushes that emitted text - `max_buffer_size_observed` — largest buffer size reached before flush - `buffer_length` — current pending chars",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "These are currently internal/test-only. A future debug console could surface them as `rig.relay.stream_coalescer.stats`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-24",
+      "type": "heading",
+      "level": 3,
+      "content": "Provider Trace Metrics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "A `StreamCoalescerMetrics` dataclass provides a content-light snapshot of the streaming behavior for a single assistant stream. It contains no raw text, deltas, prompts, or snippets — only numeric counts, ratios, and configuration parameters.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-26",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`total_deltas_received`",
+          "`int`",
+          "Number of `append()` calls"
+        ],
+        [
+          "`total_flushes_emitted`",
+          "`int`",
+          "Number of flushes that emitted text"
+        ],
+        [
+          "`total_chars_received`",
+          "`int`",
+          "Total characters across all deltas"
+        ],
+        [
+          "`max_buffer_size_observed`",
+          "`int`",
+          "Peak buffer length before a flush"
+        ],
+        [
+          "`flush_interval_ms`",
+          "`float`",
+          "Configured flush interval (ms)"
+        ],
+        [
+          "`max_buffer_chars`",
+          "`int`",
+          "Configured max buffer size (chars)"
+        ],
+        [
+          "`stream_duration_ms`",
+          "`float",
+          "None`",
+          "Wall-clock duration from coalescer creation to snapshot"
+        ],
+        [
+          "`last_flush_size`",
+          "`int`",
+          "Characters in the most recent flush"
+        ],
+        [
+          "`coalescing_ratio`",
+          "`float",
+          "None`",
+          "`flushes / deltas` — lower = better batching. `None` when zero deltas."
+        ],
+        [
+          "`average_delta_chars`",
+          "`float",
+          "None`",
+          "`chars / deltas` — mean delta size. `None` when zero deltas."
+        ],
+        [
+          "`average_flush_chars`",
+          "`float",
+          "None`",
+          "`chars / flushes` — mean flush batch size. `None` when zero flushes."
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "All derived fields are computed at snapshot time from raw counters.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-28",
+      "type": "code",
+      "language": "text",
+      "content": "coalescing_ratio    = total_flushes_emitted / total_deltas_received   (if deltas > 0)\naverage_delta_chars = total_chars_received    / total_deltas_received   (if deltas > 0)\naverage_flush_chars = total_chars_received    / total_flushes_emitted  (if flushes > 0)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "A `coalescing_ratio` of `0.2` means 1 flush per 5 deltas — 80% reduction in UI updates compared to per-delta rendering.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "The metrics snapshot is content-light by construction:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "- **No raw assistant content** — no text, no snippets, no characters from the model output are included - **No deltas** — individual `append()` arguments are not stored or exposed - **No prompts** — user or system prompts are never tracked - **No hashes of model text** — SHA256 or other content-derived hashes are not computed or stored - **No path or file information** — only configuration and counter values - **Configuration values** (`flush_interval_ms`, `max_buffer_chars`) are fixed at construction time and reveal no private data",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "The `StreamCoalescerMetrics` dataclass is annotated as such and has no fields that can carry raw text. The `get_metrics_snapshot()` method is the only access point — it returns a frozen snapshot, not a live reference to internal buffers.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "The metrics snapshot is currently **test-only**. In `EventHandler.finalize_streaming()`, after the final `force_flush()`, a commented-out capture is present:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-34",
+      "type": "code",
+      "language": "python",
+      "content": "# metrics = self._coalescer.get_metrics_snapshot()\n# logger.debug(\"stream_coalescer_metrics: %s\", metrics)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "To activate, uncomment these lines and ensure `logger` is imported from `vibe.core.logger`. The `logger.debug()` call is failure-safe (never raises), content-light, and logs to `~/.vibe/logs/vibe.log` at `LOG_LEVEL=DEBUG`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "If richer telemetry is desired (e.g., structured events in observability JSONL), define a new `EventName` in `vibe/core/telemetry/constants.py` following the `rig.relay.<domain>.<verb>` convention, and create a schema file at `docs/schemas/rig.relay.stream_coalescer_metrics.v1.schema.json`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-37",
+      "type": "heading",
+      "level": 2,
+      "content": "Risks and Tuning",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-38",
+      "type": "heading",
+      "level": 3,
+      "content": "Risk: Flush delay on sparse deltas",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "If deltas arrive less frequently than `flush_interval_ms`, the coalescer delays each flush by up to `flush_interval_ms` (~50ms). This is intentional — sparse deltas don't cause jitter, so the flush cadence is imperceptible.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "Worst case: a single delta arrives, wait 50ms, then display it. This is undetectable in practice (50ms < human perception threshold of ~100ms for text rendering).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-41",
+      "type": "heading",
+      "level": 3,
+      "content": "Risk: Flush delay on final delta",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "If the last delta before stream completion is small and no newline is present, it stays in the buffer until `finalize_streaming()` force-flushes it. The force-flush happens when the next event arrives (tool call, user message, etc.), which is typically <100ms after the last delta.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-43",
+      "type": "heading",
+      "level": 3,
+      "content": "Risk: Reasoning stream interleaving",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "When `_handle_assistant_message()` runs, it stops any active reasoning stream first. This includes force-flushing any coalesced text via `finalize_streaming()`. The reasoning stream itself is not coalesced — it uses direct `append_content()`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-45",
+      "type": "heading",
+      "level": 2,
+      "content": "Tuning Knobs",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "Configure by creating `StreamCoalescer` with different parameters:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-47",
+      "type": "code",
+      "language": "python",
+      "content": "# More aggressive: flush every 33ms (~30fps), max 256 chars\ncoalescer = StreamCoalescer(\n    flush_interval_ms=33,\n    max_buffer_chars=256,\n    flush_on_newline=True,\n)\n\n# Less aggressive: flush every 100ms (~10fps), max 1024 chars\ncoalescer = StreamCoalescer(\n    flush_interval_ms=100,\n    max_buffer_chars=1024,\n    flush_on_newline=True,\n)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "The default 50ms/512 chars should work for most providers. Increase `flush_interval_ms` if the UI still feels jittery (fewer repaints). Decrease `max_buffer_chars` for more responsive display of long code blocks.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-49",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-50",
+      "type": "table",
+      "columns": [
+        "File",
+        "Change"
+      ],
+      "rows": [
+        [
+          "`vibe/cli/textual_ui/stream_coalescer.py`",
+          "**New** — StreamCoalescer class + StreamCoalescerMetrics dataclass + get_metrics_snapshot()"
+        ],
+        [
+          "`vibe/cli/textual_ui/handlers/event_handler.py`",
+          "**Modified** — integrated coalescer into `_handle_assistant_message`, `_flush_coalescer`, `finalize_streaming`; metrics snapshot capture (commented out) in `finalize_streaming`"
+        ],
+        [
+          "`tests/cli/textual_ui/test_stream_coalescer.py`",
+          "**New/Modified** — 36 tests (21 unit + 8 integration + 7 metrics)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-51",
+      "type": "heading",
+      "level": 2,
+      "content": "Unit Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-52",
+      "type": "table",
+      "columns": [
+        "Test Group",
+        "Count",
+        "What It Verifies"
+      ],
+      "rows": [
+        [
+          "`TestAppend`",
+          "3",
+          "Empty delta, single delta, multiple deltas"
+        ],
+        [
+          "`TestFlushOrder`",
+          "4",
+          "Order preservation, no text loss across flushes, force flush, empty force flush"
+        ],
+        [
+          "`TestTimeFlush`",
+          "3",
+          "Flush after interval, empty flush, no premature flush"
+        ],
+        [
+          "`TestMaxCharsFlush`",
+          "2",
+          "Flush at threshold, no flush below threshold"
+        ],
+        [
+          "`TestNewlineFlush`",
+          "3",
+          "Newline triggers flush, newline in middle, disabled"
+        ],
+        [
+          "`TestFinalCompletion`",
+          "1",
+          "No text lost across final force flush"
+        ],
+        [
+          "`TestReset`",
+          "1",
+          "Reset clears all state and counters"
+        ],
+        [
+          "`TestInstrumentation`",
+          "4",
+          "Delta counter, flush counter, max buffer, after force flush"
+        ],
+        [
+          "`TestMetrics`",
+          "7",
+          "Metrics snapshot, coalescing_ratio, zero-delta safety, stream_duration, no raw text, last_flush_size, non-destructive"
+        ],
+        [
+          "**Subtotal**",
+          "**28**"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-53",
+      "type": "heading",
+      "level": 2,
+      "content": "Integration Tests (TestEventBoundary)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "These tests simulate the EventHandler -> coalescer -> widget data path using `FakeAppendCounter`, a lightweight double that records `append_content()` call count and accumulated text — no Textual app required.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-55",
+      "type": "table",
+      "columns": [
+        "Test",
+        "What It Verifies"
+      ],
+      "rows": [
+        [
+          "`test_many_tiny_deltas_produce_fewer_append_calls`",
+          "100 one-char deltas produce 1 append call (not 100)"
+        ],
+        [
+          "`test_final_text_equals_original_full_message`",
+          "Force-flushed 50 deltas preserve exact full text"
+        ],
+        [
+          "`test_force_flush_emits_pending_text`",
+          "Pending delta emitted by force_flush, nothing lost"
+        ],
+        [
+          "`test_newline_triggers_prompt_flush`",
+          "Newline in delta triggers immediate flush"
+        ],
+        [
+          "`test_max_buffer_chars_triggers_flush`",
+          "Buffer exceeding max_buffer_chars triggers flush"
+        ],
+        [
+          "`test_no_empty_append_calls_emitted`",
+          "flush() returning '' is never passed to append_content"
+        ],
+        [
+          "`test_coalescer_counters_during_integration`",
+          "total_deltas_received, total_flushes_emitted, max_buffer_size_observed reflect real counts"
+        ],
+        [
+          "`test_empty_delta_does_not_increment_counters`",
+          "append('') is a no-op for all counters"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "**Flush-count reduction evidence:** In `test_many_tiny_deltas_produce_fewer_append_calls`, 100 deltas produce exactly 1 flush. Without coalescing, each delta would trigger a separate `append_content()` call and Textual repaint. The coalescer reduces widget update calls by 99% in this scenario.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "**Final-text preservation:** In `test_final_text_equals_original_full_message`, 50 varying-length deltas (totalling 373 chars) are force-flushed in a single batch. The accumulated text matches the concatenated parts exactly — no dropped or reordered characters.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "**Metrics/counters:** `StreamCoalescer` exposes four debug properties: - `total_deltas_received` — number of `append()` calls - `total_flushes_emitted` — number of flushes that emitted text - `max_buffer_size_observed` — peak buffer length before flush - `buffer_length` — current pending characters",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "These are test-only. A future debug console could surface them as `rig.relay.stream_coalescer.stats`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-60",
+      "type": "paragraph",
+      "content": "**Why tool output is not coalesced:** Tool output streams (`ToolStreamEvent`) and structured events (`ToolCallEvent`, `ToolResultEvent`, `CompactEvent`, `HookEvent`) are dispatched through separate `match` arms in `EventHandler`. Only `AssistantEvent` deltas pass through the coalescer. This is by design: tool output has different latency requirements (user expects immediate visibility of tool progress), and structured events are not text streams.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "**Test boundary:** `FakeAppendCounter` records call count and accumulated text. The integration tests exercise the coalescer/flush/append pipeline without requiring a Textual application mount. This keeps tests fast, deterministic, and free of UI dependencies.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-62",
+      "type": "paragraph",
+      "content": "Existing streaming message buffer tests (22) and hook handler tests (3) all pass — no regressions.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-63",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Risk",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-64",
+      "type": "paragraph",
+      "content": "- **Provider/network cadence still determines upstream latency.** The coalescer can only smooth the display cadence, not the network round-trip. - **Reasoning events are not coalesced.** If reasoning deltas are also tiny, a similar coalescer could be added for `ReasoningEvent`. - **The `FakeAppendCounter` test double does not test Textual widget rendering.** A full-widget integration test (mounting `AssistantMessage` in a test driver) would provide end-to-end coverage but requires the Textual test framework. - **Instrumentation counters and metrics are test-only.** The `get_metrics_snapshot()` call in `finalize_streaming()` is commented out. Activate by uncommenting and importing `logger` from `vibe.core.logger`. - **Metrics are not yet connected to observability JSONL.** A future slice should define a `rig.relay.stream_coalescer.metrics` event and schema if structured telemetry is preferred over debug logging.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-65",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Next Slices",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "1. **Performance benchmarking:** Activate the metrics snapshot in `finalize_streaming()` and collect traces from real provider sessions. Compare `coalescing_ratio` and `average_flush_chars` across providers (OpenAI, Anthropic, DeepSeek) to tune `flush_interval_ms` and `max_buffer_chars` per provider. 2. **Debug console integration:** Surface coalescer instrumentation counters and metrics in the Rig Console evidence rail as a debug/telemetry widget. 3. **Observability JSONL integration:** Define `rig.relay.stream_coalescer.metrics` event in `EventName` and a corresponding JSON Schema for structured telemetry at `docs/schemas/rig.relay.stream_coalescer_metrics.v1.schema.json`. 4. **Reasoning event coalescing** (optional): If reasoning deltas also arrive as tiny chunks, add a second `StreamCoalescer` for the reasoning path.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/ui/textual-streaming-smoothness.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

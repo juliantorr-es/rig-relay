@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI Surface Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="&gt; **Status**: Established">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>CI Surface Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">CI Surface Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">&gt; **Status**: Established &gt; **Date**: 2026-05-17 (updated Stage 1 implementation) &gt; **Branch**: main &gt; **HEAD**: 384e486 &gt; **Scope**: Full inventory of CI, validation, lint, typecheck, schema, receipt, governance, build, and coordination surfaces. &gt; **Stage 1 complete**: 4 missing Tier 1 gates added to ci.yml; 2 stale workflows removed.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig Relay has accumulated substantial governance and determinism infrastructure but **no dedicated CI surface design**. Current CI is inherited from mistral-vibe: a single `ci.yml` that runs pre-commit hooks + full pytest suite, plus several stale legacy workflows. New governance subsystems (schemas, receipts, tool hardening, coordination, evidence) have no dedicated CI gating — they only run as undifferentiated parts of the full test suite.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">**Key findings:**</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">1. **Two stale legacy workflows** (`pylint.yml`, `python-package-conda.yml`) run on every push against ancient Python versions using pip/conda — completely redundant with ruff in pre-commit. 2. **Schema validation is absent from CI** — 74 JSON schema files are only validated ad-hoc. 3. **Content-light receipt policy has no CI gate** — the validator exists but isn&#x27;t automated. 4. **Full pytest suite is slow** (~361 test files) and runs on every PR without path-based scoping. 5. **No `uv lock --check` or `uv sync --locked --dry-run`** in CI — lockfile drift is undetected. 6. **No dirty-workspace check** — the AGENTS.md rules are behavioral, not automated. 7. **Coordination lease health** — no automated stale-lease detection. 8. **validate-tool profiles** exist as design artifacts but have zero CI backing.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Existing CI Workflows</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Workflow</th><th>Trigger</th><th>What it does</th><th>Health</th></tr></thead>
+<tbody>
+<tr><td>`ci.yml`</td><td>PR to main, push to main</td><td>pre-commit (ruff, pyright, typos, action-validator, TOML/YAML, whitespace) + full pytest (--ignore tests/snapshots) + snapshot tests</td><td>Healthy primary gate</td></tr>
+<tr><td>`build-and-upload.yml`</td><td>Release, PR to main, dispatch</td><td>Build platform binaries (PyInstaller + Nix) across 5 platforms, smoke test, attach to release</td><td>Healthy for builds</td></tr>
+<tr><td>`release.yml`</td><td>Release, dispatch</td><td>Publish to PyPI and Zed extension store</td><td>Healthy for releases</td></tr>
+<tr><td>`issue-labeler.yml`</td><td>Issue opened</td><td>Auto-label issues by component</td><td>Working</td></tr>
+<tr><td>`pylint.yml`</td><td>~~Any push~~</td><td>~~pylint on Python 3.8–3.10 with pip~~</td><td>**REMOVED (Stage 1)**</td></tr>
+<tr><td>`python-package-conda.yml`</td><td>~~Any push~~</td><td>~~conda + flake8 on Python 3.10~~</td><td>**REMOVED (Stage 1)**</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Validation Script Inventory</h2>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Script</th><th>Purpose</th><th>CI Coverage</th><th>Priority</th></tr></thead>
+<tbody>
+<tr><td>`scripts/rig_relay_validate_schemas.py`</td><td>Validate all JSON schemas parse and have no Python contamination</td><td>**None**</td><td>Critical</td></tr>
+<tr><td>`scripts/rig_relay_validate_tool_receipts.py`</td><td>Validate content-light receipt policy on JSONL files</td><td>**None**</td><td>High</td></tr>
+<tr><td>`scripts/rig_relay_validate_telemetry_bundle.py`</td><td>Validate telemetry bundle structure</td><td>**None**</td><td>Medium</td></tr>
+<tr><td>`scripts/rig_relay_cleanup_coordination_leases.py --dry-run`</td><td>Detect stale coordination leases</td><td>**None**</td><td>Low</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Check Inventory Summary</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">See `ci-check-inventory.jsonl` for the full 41-record inventory.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">By Category</h3>
+
+<details id="table-14" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-14" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Category</th><th>Count</th><th>Key Checks</th></tr></thead>
+<tbody>
+<tr><td>unit_tests</td><td>2</td><td>Full suite, focused path-based</td></tr>
+<tr><td>linting</td><td>4</td><td>ruff check, ruff format, pre-commit, pylint (stale)</td></tr>
+<tr><td>typechecking</td><td>1</td><td>pyright</td></tr>
+<tr><td>schema_validation</td><td>4</td><td>schema parseability, artifact schemas, telemetry contribution schemas, Python contamination</td></tr>
+<tr><td>receipt_policy</td><td>5</td><td>receipt policy validator, receipt index, emission tests, evidence tests, redaction</td></tr>
+<tr><td>tool_hardening</td><td>3</td><td>bash hardening, search_replace hardening, determinism contracts</td></tr>
+<tr><td>coordination</td><td>2</td><td>coordination tests, lease verify</td></tr>
+<tr><td>governance</td><td>6</td><td>governance tests, docs tests, JSONL parseability, worktree script safety, AGENTS.md consistency, generated docs drift</td></tr>
+<tr><td>integration_tests</td><td>3</td><td>script tests, CLI smoke, desktop cockpit</td></tr>
+<tr><td>package_build</td><td>3</td><td>build-and-upload, pyproject health, uv lock check</td></tr>
+<tr><td>git_hygiene</td><td>2</td><td>dirty workspace check, amend check</td></tr>
+<tr><td>meta</td><td>2</td><td>issue labeler, CI self-check (action-validator)</td></tr>
+<tr><td>REMOVE</td><td>2</td><td>pylint stale, conda stale</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">By Cost Tier</h3>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tier</th><th>Count</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>fast</td><td>23</td><td>Read-only, sub-5-second typical</td></tr>
+<tr><td>medium</td><td>9</td><td>Read-only, 5–30 seconds</td></tr>
+<tr><td>slow</td><td>6</td><td>&gt;30 seconds or parallel-heavy</td></tr>
+<tr><td>REMOVE</td><td>2</td><td>Stale workflows</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">By Current CI Coverage</h3>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Coverage</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>PR required via ci.yml/pre-commit</td><td>12</td></tr>
+<tr><td>PR required via separate CI job</td><td>2 (full tests, snapshot tests)</td></tr>
+<tr><td>On release/delivery</td><td>3 (build, release, labeler)</td></tr>
+<tr><td>**None**</td><td>**24**</td></tr>
+</tbody>
+</table>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">**Stage 1 added 4 new CI gates. 18 of 41 checks now have CI coverage. 20 checks remain unautomated.**</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Key Gaps</h2>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">Critical — resolved in Stage 1</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">1. ✅ Schema validation (validate schemas script + Python contamination regression test) — added to ci.yml pre-commit job 2. ✅ Tool receipt emission tests (core agent loop wiring) — added to ci.yml tests job 3. ✅ `uv lock --check` (lockfile consistency) — added to ci.yml pre-commit job 4. ❌ Still open: Focused unit tests on changed paths (instead of full suite) — deferred to Tier 2</p>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">High — missing from domain-specific gates</h3>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">5. Receipt policy validator in CI 6. Bash hardening tests on bash changes 7. SearchReplace hardening tests on search_replace changes 8. Evidence tests on evidence changes 9. Coordination tests on coordination changes</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Stale / Redundant</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">10. ✅ `pylint.yml` — REMOVED (Stage 1) 11. ✅ `python-package-conda.yml` — REMOVED (Stage 1)</p>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">Remaining missing infrastructure</h3>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">12. ❌ No JSONL parseability check for audit data files 13. ❌ No dirty workspace check in CI 14. ❌ No coordination lease health check 15. ❌ No generated docs drift detection</p>
+
+<h2 id="h2-29" class="disclosure-standard" data-disclosure-level="standard">Risk Assessment</h2>
+
+<table id="table-30" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Risk</th><th>Checks Affected</th><th>Impact</th></tr></thead>
+<tbody>
+<tr><td>Schema corruption not caught in CI</td><td>schema-validation, schema-python-contamination</td><td>Schema files could be silently broken</td></tr>
+<tr><td>Content-light policy regression</td><td>receipt-policy-validation, tool-receipt-emission-tests</td><td>Raw output could leak into telemetry</td></tr>
+<tr><td>Tool hardening regression</td><td>bash-hardening-tests, searchreplace-hardening-tests</td><td>Deterministic envelope could break</td></tr>
+<tr><td>Lockfile drift</td><td>uv-lock-check, pyproject-uv-health</td><td>Dependency conflicts at build time</td></tr>
+<tr><td>Coordination state corruption</td><td>coordination-tests, coordination-lease-verify</td><td>Cross-session coordination failures</td></tr>
+<tr><td>Full suite cost</td><td>unit-tests-full</td><td>Slows PR feedback loop unnecessarily</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-31" class="disclosure-standard" data-disclosure-level="standard">Out-of-Scope Findings</h2>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">See `docs/findings/out-of-scope-findings.jsonl` for findings recorded during this audit.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/ci/ci-surface-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

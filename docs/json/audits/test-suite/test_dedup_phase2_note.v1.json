@@ -1,0 +1,324 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "test-dedup-phase2-note",
+  "document_type": "audit",
+  "title": "Test Deduplication Phase 2 — normalize high-value AST duplicate clusters",
+  "summary": "**Date**: 2026-05-16",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/test-suite/test_dedup_phase2_note.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Deduplication Phase 2 — normalize high-value AST duplicate clusters",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date**: 2026-05-16",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Preflight",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "- `scripts/rig_relay_test_duplicate_audit.py`: ruff clean, pyright clean - Audit runs: 5970 tests scanned, max-exact-duplicate-groups=1 passes",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Audit Inspection Findings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "The 35 normalized AST groups are mostly **false positives** from over-aggressive normalization. The normalizer strips model/variable names, so per-model validation tests (`test_rejects_unknown_fields` on `DecisionReason` vs `BlockedIntent` vs `AllowedIntent`) appear identical. These are legitimate separate tests — each model needs its own validation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "The 618 assert-shape groups are statistical clusters (largest: 479 members across 142 files). Not actionable without per-class analysis.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Groups Parametrized",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-9",
+      "type": "heading",
+      "level": 3,
+      "content": "test_governance_engine.py — TestGovernanceEngine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "**Before**: 20 individual test methods, each calling `GovernanceEngine.evaluate_action_legality()` with hardcoded parameters and asserting a specific decision or reason code.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "**After**: 2 parametrized contract matrices + 4 remaining distinct tests = 20 cases:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Matrix",
+        "Cases",
+        "Parametrized IDs"
+      ],
+      "rows": [
+        [
+          "Decision outcome",
+          "11",
+          "`allowed_read_only_intent`, `blocked_provider_trust_tier`, `blocked_provider_unavailable`, `blocked_provider_error`, `not_blocked_unavailable_read_only`, `requires_review_mutation`, `allows_mutation_when_allow_mutation`, `requires_review_network`, `allows_network_when_allow_network`, `blocked_dirty_policy`, `not_applicable_no_capabilities`"
+        ],
+        [
+          "Reason codes",
+          "5",
+          "`reason_provider_trust_tier_blocked`, `reason_mutation_requires_review`, `reason_network_requires_review`, `reason_dirty_policy_violated`, `reason_no_requested_capabilities`"
+        ],
+        [
+          "Remaining",
+          "4",
+          "`test_allowed_read_only_includes_allowed_intent`, `test_blocked_intent_includes_reason_code`, `test_blocked_when_multiple_checks_fail`, `test_pure_no_side_effects`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "**Failure diagnostics preserved**: Each parametrized case has a human-readable ID. When a test fails, the node ID (e.g., `test_evaluate_action_legality_decision[blocked_provider_trust_tier]`) immediately identifies the scenario.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Audit Metrics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-15",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      "rows": [
+        [
+          "Scanned",
+          "5966",
+          "5970"
+        ],
+        [
+          "Exact body groups",
+          "1",
+          "1"
+        ],
+        [
+          "Normalized AST groups",
+          "35",
+          "35"
+        ],
+        [
+          "Assert shape groups",
+          "618",
+          "616"
+        ],
+        [
+          "Collected",
+          "6236",
+          "6266"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Note: Parametrized cases expand the collected count. Audit metrics show minimal change because the normalizer strips variable names — parametrized matrices with different kwargs look structurally similar to the audit.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-18",
+      "type": "table",
+      "columns": [
+        "File",
+        "Change"
+      ],
+      "rows": [
+        [
+          "`scripts/rig_relay_test_duplicate_audit.py`",
+          "Fixed 5 ruff findings, added `_TRUNCATE_LIMIT`, fixed return type annotation"
+        ],
+        [
+          "`tests/governance/test_governance_engine.py`",
+          "20 individual tests → 2 parametrized matrices + 4 distinct tests"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Guardrail",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- `--max-exact-duplicate-groups=1` continues to pass (1 group remaining by design — shared helper pattern) - Normalized AST threshold not added — groups are false positives, not actionable for ratcheting",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "Deferred",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-22",
+      "type": "table",
+      "columns": [
+        "Group",
+        "Reason"
+      ],
+      "rows": [
+        [
+          "test_config_resolution.py (P2)",
+          "Per-model resolution tests — not duplicates"
+        ],
+        [
+          "test_bash.py (P3)",
+          "Dirty file, parallel lane active"
+        ],
+        [
+          "test_fuzzy.py (P4)",
+          "Different edge cases — parametrization would require branching logic"
+        ],
+        [
+          "test_backend_adapters",
+          "anthropic ↔ vertex_anthropic overlap needs adapter contract audit, not test dedup"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/test-suite/test_dedup_phase2_note.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

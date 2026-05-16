@@ -1,0 +1,46 @@
+{
+  "schema_version": "rig.documentation_deletion_readiness.v1",
+  "generated_at": "2026-05-18",
+  "migrated_count": 212,
+  "markdown_source_count": 212,
+  "active_markdown_reference_count": 0,
+  "historical_markdown_reference_count": 0,
+  "rendered_page_count": 213,
+  "unsafe_render_findings": 0,
+  "ready_for_deletion": false,
+  "blockers": [
+    "Active Markdown references in source code not yet fully audited — grep for docs/*.md in .py files recommended before deletion",
+    "Deletion should be done in controlled batches per directory (governance first, then audits, then conversations)",
+    "Each batch deletion should be a separate commit with before/after render verification"
+  ],
+  "recommended_deletion_batches": [
+    {
+      "batch": 1,
+      "directory": "docs/governance",
+      "file_count": 60,
+      "risk": "low",
+      "notes": "All governance docs have JSON counterparts. Most referenced docs are in active architecture use — verify before deleting."
+    },
+    {
+      "batch": 2,
+      "directory": "docs/audits",
+      "file_count": 100,
+      "risk": "medium",
+      "notes": "Large volume. Audits are historical records. JSON fidelity should be spot-checked per subdirectory."
+    },
+    {
+      "batch": 3,
+      "directory": "docs/conversations",
+      "file_count": 11,
+      "risk": "low",
+      "notes": "Small volume. Conversations are historical records."
+    },
+    {
+      "batch": 4,
+      "directory": "docs/remaining",
+      "file_count": 41,
+      "risk": "low",
+      "notes": "UI, release, protocols, demo, findings, legal — diverse but small."
+    }
+  ]
+}

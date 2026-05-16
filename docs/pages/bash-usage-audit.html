@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bash Usage Audit for Validate Design — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Bash Usage Audit for Validate Design</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Bash Usage Audit for Validate Design</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Scope</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Evidence Sources</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- `docs/audits/tool-usage-analysis/tool-usage-summary.md` - `docs/audits/tool-usage-analysis/tool-usage-aggregates.json` - `docs/audits/tool-hardening/bash-deterministic-envelope.md` - `docs/audits/tool-hardening/search-replace-patch-contract.md` - `scripts/rig_relay_validate_schemas.py` - `scripts/rig_relay_validate_tool_receipts.py` - `tests/tools/test_bash.py` - `tests/tools/test_bash_hardening.py` - `tests/tools/test_validation_suite.py` - `tests/tools/test_tool_receipt_emission.py`</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">What the Current Data Says</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The local tool-usage audit shows bash is the dominant high-authority command surface.</p>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Calls</td><td>5,023</td></tr>
+<tr><td>Failures</td><td>337</td></tr>
+<tr><td>Failure rate</td><td>6.71%</td></tr>
+<tr><td>p95 latency</td><td>10,469 ms</td></tr>
+<tr><td>p95 output</td><td>8,012 bytes</td></tr>
+</tbody>
+</table>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">The strongest empirical signal is not raw command text. It is command family pressure:</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- validation commands are frequent and already script-shaped - inspection commands are frequent and mostly read-only - Git introspection is common and high-authority - schema and receipt validation already exist as standalone scripts - mutation commands are already separated by tool boundaries, so bash should not become a general mutation gateway</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Command Categories</h2>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Validation / Test Execution</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Observed command family:</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- `uv run pytest` - `uv run pytest tests/...` - `uv run pytest -n0 ...` - `uv run pyright ...` - `uv run ruff check ...` - `uv run ruff format ...` - `uv run ruff format --check ...` - `uv run python scripts/rig_relay_validate_schemas.py` - `uv run python scripts/rig_relay_validate_tool_receipts.py ...`</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Empirical role:</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- high frequency in this repo - deterministic enough to model as first-class validate profiles - mostly read-only, with clear pass/fail semantics</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Recommendation:</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- absorb into `validate` - keep bash fallback for ad hoc or one-off command composition</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Git Introspection</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Observed command family:</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `git status` - `git diff` - `git log` - `git show` - `git ls-files` - `git branch`</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Empirical role:</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- read-only but high leverage - used for promotion/readiness and dirty-state checks - should be deterministic and content-light</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Recommendation:</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">- absorb into `validate` for readiness checks - later migrate to a dedicated deterministic Git-read surface if needed</p>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">File / Content Inspection</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Observed command family:</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- `rg ...` - `find ...` - `ls ...` - `sed ...` - `jq ...` - `du ...` - `stat ...`</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Empirical role:</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">- common inspection layer - low mutation risk - useful for audits and repository discovery</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Recommendation:</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">- keep bash for ad hoc inspection - absorb only repeatable read-only checks into `validate`</p>
+
+<h3 id="h3-33" class="disclosure-standard" data-disclosure-level="standard">Report / Dataset Generation</h3>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Observed command family:</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">- `uv run python scripts/rig_relay_*.py` - validation and export scripts</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Empirical role:</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- deterministic pipeline steps - often depends on a known repo root or evidence root</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Recommendation:</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">- absorb fixed report-generation checks into `validate` - keep free-form report generation in bash when it is exploratory</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">Mutation / Destructive / Refused Commands</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Observed command family:</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">- repo mutation commands - file edits - Git write operations - cleanup / pruning / archive operations</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">Empirical role:</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- should not be the default validate target - usually need a separate governed tool or explicit mutation surface</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">Recommendation:</p>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">- exclude from `validate` by default - gate via explicit mutation profiles if they ever become eligible</p>
+
+<h2 id="h2-47" class="disclosure-standard" data-disclosure-level="standard">Validate Absorption Rules</h2>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">`validate` should absorb commands when all are true:</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">- command is deterministic or close to deterministic - exit code is enough to decide pass/fail - output can be summarized content-light - command is read-only or check-only - the command is a repeated workflow primitive, not a one-off exploration</p>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">`validate` should stay out of bash when any are true:</p>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">- command is exploratory or ad hoc - command is interactive - command depends on arbitrary shell expansion - command mutates state - command needs raw stdout as the main product</p>
+
+<h2 id="h2-52" class="disclosure-standard" data-disclosure-level="standard">Gaps in Current Data</h2>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">- raw bash command text is not preserved in the content-light observability stream - exact command-family counts are therefore partially inferred from validator scripts and hardening docs - failure classification for bash commands is still mostly external to the command text - no canonical `command_kind` field exists yet</p>
+
+<h2 id="h2-54" class="disclosure-standard" data-disclosure-level="standard">Conclusion</h2>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">The strongest `validate` candidates are:</p>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">1. `pytest` 2. `pyright` 3. `ruff check` 4. schema validation scripts 5. receipt-policy validation scripts 6. git cleanliness / readiness checks</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">These are the commands most likely to benefit from deterministic profiles, structured receipts, and blocker taxonomy.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/validate-tool/bash-usage-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

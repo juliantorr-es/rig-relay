@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1 — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Analysis date: 2026-05-16">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Analysis date: 2026-05-16 Inspected HEAD: c5a31bbe Status: Phase 3 COMPLETE — split-phase tool execution landed</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Phase 3 Residual Inventory — What Still Lives in AgentLoop</h2>
+
+<details id="table-4" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-4" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Responsibility</th><th>Classification</th><th>~Lines</th><th>Phase 4 Move?</th></tr></thead>
+<tbody>
+<tr><td>`_perform_llm_turn()` — LLM call + streaming</td><td>adapter/capability</td><td>786-870</td><td>Keep in adapter</td></tr>
+<tr><td>`_execute_tool_call()` — tool execution via ToolRuntime</td><td>adapter via ToolRuntime</td><td>956-1130</td><td>Keep in adapter</td></tr>
+<tr><td>`_handle_tool_calls()` — tool batch orchestration</td><td>adapter via ToolRuntime</td><td>1132-1200</td><td>Keep in adapter</td></tr>
+<tr><td>`_run_tools_concurrently()` — concurrent execution queue</td><td>adapter</td><td>1164-1207</td><td>Keep in adapter</td></tr>
+<tr><td>`_build_loop_adapter()` — adapter factory</td><td>adapter boundary</td><td>746-748</td><td>Formalize</td></tr>
+<tr><td>`_ConversationLoopAdapter` — all methods including `execute_tool_batch()`</td><td>adapter</td><td>1495-1593</td><td>Frozen — split-phase landed</td></tr>
+<tr><td>`_should_execute_tool()` / `_ask_approval()` — governance</td><td>adapter</td><td>1245-1279</td><td>Keep; future: move to GovernanceRuntime</td></tr>
+<tr><td>`fork()` — session fork and handoff</td><td>adapter</td><td>1281-1316</td><td>Keep; future: HandoffReceipt</td></tr>
+<tr><td>`_get_conversation_runtime()` — CR factory</td><td>adapter</td><td>644-647</td><td>Keep</td></tr>
+<tr><td>`_get_tool_runtime()` — ToolRuntime factory with closures</td><td>adapter/bridge</td><td>362-578</td><td>Extract closure factory; keep in adapter</td></tr>
+<tr><td>`tool_manager` / `config` / `messages` / `stats` — state</td><td>adapter state</td><td>class attrs</td><td>Keep in adapter</td></tr>
+<tr><td>`act()` — entry point + telemetry + cleanup</td><td>adapter</td><td>649-674</td><td>Keep; rename to `orchestrate()`?</td></tr>
+<tr><td>`compact()` / `clear_history()` / `switch_agent()` — session ops</td><td>adapter</td><td>1344-1421</td><td>Keep</td></tr>
+<tr><td>`_save_messages()` — persistence</td><td>adapter</td><td>630-638</td><td>Keep</td></tr>
+<tr><td>`_build_context_envelope()` — context assembly</td><td>adapter → future move</td><td>elsewhere</td><td>Move to ContextAssemblyPlan v1 (Phase 5)</td></tr>
+<tr><td>`_create_connector_registry()` — external connectors</td><td>adapter</td><td>597-612</td><td>Keep; future: ProviderArbitration</td></tr>
+<tr><td>`teleport_service` / `teleport_to_vibe_code()` — external</td><td>adapter</td><td>676-740</td><td>Keep</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">Key insight</h3>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">After Phase 3, AgentLoop is already a clean adapter shell — ~19 class-level methods, 1 inner adapter class. The `execute_tool_batch()` stub is the only Phase 3 gap. Beyond that, AgentLoop is an **orchestrator**: it bridges user-facing I/O, provider/model backend, ToolRuntime effects, session persistence, and ConversationRuntime loop policy.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The rename to `OrchestratorLoop` is a one-liner alias. The hardening work is strengthening boundaries and evidence, not moving code.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Phase 4 Objective — Chosen</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">**Phase 4 — Orchestrator Shell Hardening and Turn Evidence Envelope v1**</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">Three tightly-coupled goals:</p>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Goal</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>**4A — OrchestratorLoop shell contract**</td><td>AgentLoop → OrchestratorLoop alias/rename; adapter protocol formalized; no-loop-regrowth guards</td></tr>
+<tr><td>**4B — ConversationRuntime Turn Envelope v1**</td><td>Canonical turn result model with hashes, trace_ids, safe summaries — the turn becomes a first-class evidence artifact</td></tr>
+<tr><td>**4C — HandoffReceipt v1**</td><td>`fork()` / subagent spawn produce transfer receipts: owner_before/after, scope, budget, return_condition, trace_id</td></tr>
+</tbody>
+</table>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">These three goals form one convergent phase because they&#x27;re all about making the orchestrator boundary formal, provable, and evidence-backed. They don&#x27;t require moving any major code — they require hardening what&#x27;s already there.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Alternatives Considered</h2>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Candidate</th><th>Rejected/Deferred Because</th></tr></thead>
+<tbody>
+<tr><td>Orchestrator rename only</td><td>Thin — 4A alone would be a renamed AgentLoop with no new evidence. Combine with 4B+4C for a meaningful convergence.</td></tr>
+<tr><td>ContextAssemblyPlan v1</td><td>Major new subsystem (context compiler, task-aware sections, symbol indexing). Needs its own phase (Phase 5) after shell hardening.</td></tr>
+<tr><td>ProviderArbitration v1</td><td>Model/provider routing is stable enough. Evidence/ownership hardening should come first.</td></tr>
+<tr><td>Projection/Evidence UI v1</td><td>Desktop frontend work — orthogonal. Defer to Phase 4D after shell hardening.</td></tr>
+<tr><td>Multi-agent lane governance</td><td>Ralph + subagent orchestration rules. Needs handoff receipts first. Defer to Phase 6.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Entry Gates — Required Before Phase 4</h2>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gate</th><th>Current</th></tr></thead>
+<tbody>
+<tr><td>Phase 3 PHASE_3_COMPLETE</td><td>✅ COMPLETE — `execute_tool_batch()` split-phase implementation</td></tr>
+<tr><td>collect-only green</td><td>✅ 6391 tests, 0 errors</td></tr>
+<tr><td>demo-doctor green</td><td>✅ 22/22</td></tr>
+<tr><td>no silent legacy direct</td><td>✅ guarded</td></tr>
+<tr><td>desktop correlation</td><td>✅ integrated</td></tr>
+<tr><td>ToolRuntime envelope</td><td>✅ fields exist</td></tr>
+<tr><td>ConversationRuntime loop ownership</td><td>✅ guarded</td></tr>
+<tr><td>29/29 parity tests</td><td>✅ all pass</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Exit Gates — Definition of Done</h2>
+
+<details id="table-18" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-18" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Gate</th><th>Feature</th></tr></thead>
+<tbody>
+<tr><td>**Shell boundary**</td><td>`AgentLoop` aliased to `OrchestratorLoop`; outer-facing name uses `Orchestrator` consistently. Internal class may remain `AgentLoop` with alias.</td></tr>
+<tr><td>**No loop regrowth**</td><td>AST guards + architecture test: `_while True_` or `while not should_break_loop` does not appear in AgentLoop/Orchestrator; loop lives only in ConversationRuntime.</td></tr>
+<tr><td>**Adapter protocol**</td><td>`ConversationRuntimeCallbacks` protocol is the only adapter interface; no undocumented private access from CR back into AgentLoop.</td></tr>
+<tr><td>**Turn envelope schema**</td><td>`TurnEvidenceEnvelope` model with: `turn_id`, `trace_id`, `outcome`, `phase_count`, `tool_call_count`, `tool_success_count`, `tool_failure_count`, `tool_refusal_count`, `budget_decision`, `duration_ms`, `summary_hash`</td></tr>
+<tr><td>**Turn envelope emitted**</td><td>`build_result()` produces envelope; envelope linked to trace span</td></tr>
+<tr><td>**Turn envelope has no raw content**</td><td>No stdout/stderr, raw args, task text, secrets, or full LLM output</td></tr>
+<tr><td>**HandoffReceipt model**</td><td>`HandoffReceipt` with: `owner_before`, `owner_after`, `scope`, `budget.max_turns`, `budget.max_tool_calls`, `return_condition`, `trace_id`, `timestamp`, `reason`</td></tr>
+<tr><td>**HandoffReceipt emitted**</td><td>`fork()` and `task.py` SubagentRuntime construction produce handoff receipts</td></tr>
+<tr><td>**collect-only**</td><td>green</td></tr>
+<tr><td>**demo-doctor**</td><td>green</td></tr>
+<tr><td>**Phase 4 guard tests**</td><td>pass</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Implementation Slices</h2>
+
+<table id="table-20" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Slice</th><th>Scope</th><th>Dependencies</th></tr></thead>
+<tbody>
+<tr><td>**Phase 4A — OrchestratorLoop Shell Contract**</td><td>AgentLoop alias to OrchestratorLoop; adapter protocol formalization; anti-loop-regrowth AST guards</td><td>Phase 3 COMPLETE</td></tr>
+<tr><td>**Phase 4B — ConversationRuntime Turn Envelope v1**</td><td>`TurnEvidenceEnvelope` model; `build_result()` enriched; trace span linking; privacy-safe attributes</td><td>4A (for adapter protocol stability)</td></tr>
+<tr><td>**Phase 4C — HandoffReceipt v1**</td><td>`HandoffReceipt` model; emission in `fork()` and `task.py`; trace_id propagation through SubagentRuntime</td><td>4B (for envelope pattern)</td></tr>
+<tr><td>**Phase 4D — AgentLoop → OrchestratorLoop rename**</td><td>Internal rename; alias preserved for backward compat; docs updated; import paths stable</td><td>4A+4B+4C (don&#x27;t rename prematurely)</td></tr>
+</tbody>
+</table>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Sequence: 4A → 4B → 4C → 4D. Each slice builds on the previous without major refactors.</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Risk Map</h2>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>**Rename breaks imports**</td><td>Medium</td><td>Alias `AgentLoop` as `OrchestratorLoop` first; remove old name in Phase 4D only after all callers use new name</td></tr>
+<tr><td>**Turn envelope grows too large**</td><td>Low</td><td>Content-light fields only: hashes, counts, trace_ids. No raw content.</td></tr>
+<tr><td>**Handoff receipt adds friction**</td><td>Low</td><td>Receipts are evidence-only, not blocking. Emission is non-disruptive to existing fork/delegate flows.</td></tr>
+<tr><td>**Phase 3 complete — 4A unblocked**</td><td>Resolved</td><td>Phase 4 entry gate PHASE_3_COMPLETE met. Split-phase tool batch execution: stream_llm_turn stores, execute_tool_batch executes via _execute_pending_tool_batch.</td></tr>
+<tr><td>**ContextAssemblyPlan scope creep**</td><td>Medium</td><td>Explicitly deferred to Phase 5. Context envelope build stays in adapter.</td></tr>
+<tr><td>**Parallel lane conflicts**</td><td>Low</td><td>Phase 4 has one clear converged objective. Lane split: A=shell+rename, B=envelope+receipts, C=docs+guards. Known pattern from Phase 3.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Tests/Docs Needed</h2>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Tests</h3>
+
+<table id="table-26" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test file</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`tests/core/test_phase4_shell_guards.py`</td><td>AgentLoop has no while-loop; ConversationRuntime has while-loop; adapter protocol is the only interface</td></tr>
+<tr><td>`tests/core/test_phase4_turn_envelope.py`</td><td>TurnEvidenceEnvelope schema; privacy; trace linkage; build_result() compliance</td></tr>
+<tr><td>`tests/core/test_phase4_handoff_receipt.py`</td><td>HandoffReceipt model; fork() emits receipt; task.py emits receipt</td></tr>
+<tr><td>`tests/core/test_phase4_docs_truth.py`</td><td>Docs say PHASE_3_COMPLETE before Phase 4; docs reflect OrchestratorLoop name after rename</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">Docs</h3>
+
+<table id="table-28" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Doc</th><th>Update</th></tr></thead>
+<tbody>
+<tr><td>`docs/audits/agent-loop/phase4-architecture-map.md`</td><td>This document</td></tr>
+<tr><td>`docs/audits/agent-loop/phase4-slice-plan.jsonl`</td><td>Machine-readable slice plan</td></tr>
+<tr><td>`docs/governance/orchestrator-loop-boundary.md`</td><td>Add TurnEvidenceEnvelope and HandoffReceipt doctrine</td></tr>
+<tr><td>`docs/audits/runtime/runtime-evidence-spine-v1.md`</td><td>Add turn envelope to evidence chain</td></tr>
+<tr><td>`docs/audits/agent-loop/conversation-runtime-extraction-plan.md`</td><td>Mark Phase 4 in progress</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-29" class="disclosure-standard" data-disclosure-level="standard">Recommendation</h2>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">**First Phase 4 prompt: Phase 4A — OrchestratorLoop Shell Contract**</p>
+
+<pre id="code-31"><code class="language-text">Mission: Phase 4A — OrchestratorLoop Shell Contract.
+
+After Phase 3, AgentLoop is a clean adapter shell delegating the while-loop to ConversationRuntime. Formalize this boundary.
+
+1. Create `AgentLoop` → `OrchestratorLoop` module-level alias in `rig_relay/core/agent_loop.py`.
+2. Formalize the `ConversationRuntimeCallbacks` protocol as THE only adapter interface.
+3. Add anti-regrowth AST guards: AgentLoop/Orchestrator must not contain `while True` or `while not should_break` loop patterns.
+4. Preserve all imports and backward compat.
+5. Add docs: `docs/audits/agent-loop/phase4a-shell-contract.md`.
+6. Tests: shell boundary guards, no-loop-regrowth, adapter protocol enforcement.</code></pre>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">This is a 1-slice gate, not a mega-phase. Build the shell first, then the evidence inside it.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/agent-loop/phase4-architecture-map.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

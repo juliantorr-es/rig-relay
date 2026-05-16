@@ -21,6 +21,44 @@
         {"document_id": "tool-runtime-boundary", "path": "docs/json/governance/tool_runtime_boundary.v1.json"},
         {"document_id": "orchestrator-loop-boundary", "path": "docs/json/governance/orchestrator_loop_boundary.v1.json"}
       ]
+    },
+    {
+      "collection_id": "code-schemas",
+      "title": "Code Schemas",
+      "description": "Governed implementation contracts for recurring Rig patterns.",
+      "order": 2,
+      "documents": [
+        {
+          "document_id": "frontend-trace-endpoint",
+          "path": "docs/json/code_schemas/frontend_trace_endpoint.v1.json",
+          "title_override": "Frontend Trace Endpoint"
+        },
+        {
+          "document_id": "desktop-golden-path-trace",
+          "path": "docs/json/code_schemas/desktop_golden_path_trace.v1.json",
+          "title_override": "Desktop Golden Path Trace"
+        },
+        {
+          "document_id": "json-documentation-migration",
+          "path": "docs/json/code_schemas/json_documentation_migration.v1.json",
+          "title_override": "JSON Documentation Migration"
+        },
+        {
+          "document_id": "tool-batch-execution",
+          "path": "docs/json/code_schemas/tool_batch_execution.v1.json",
+          "title_override": "Tool Batch Execution"
+        },
+        {
+          "document_id": "frontend-transport-state-reducer",
+          "path": "docs/json/code_schemas/frontend_transport_state_reducer.v1.json",
+          "title_override": "Frontend Transport State Reducer"
+        },
+        {
+          "document_id": "context-assembler-integration-plan",
+          "path": "docs/json/code_schemas/context_assembler_integration_plan.v1.json",
+          "title_override": "Context Assembler Integration Plan"
+        }
+      ]
     }
   ]
 }

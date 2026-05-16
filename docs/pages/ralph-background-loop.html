@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ralph — Governed Background Maintenance Loop — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Ralph is a governed background maintenance loop for Rig Relay.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Ralph — Governed Background Maintenance Loop</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Ralph — Governed Background Maintenance Loop</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Ralph is a governed background maintenance loop for Rig Relay. Ralph reads evidence-backed state and proposes bounded maintenance missions. Ralph never silently mutates risky state.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Ralph observes report projections, receipts, validation summaries, and storage state. It ranks overlooked gaps and proposes one bounded maintenance mission per scan. Ralph is projection-driven, not chat-driven.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Non-goals</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Ralph is **not**: - A daemon or scheduled background worker - A task manager, feed, or workplace chat system - A code-review bot or lint-fixing automaton - A replacement for human judgment on architecture decisions - A bypass around Relay permissions, reports, receipts, worktree isolation, or approval gates</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Relationship to Rig Relay</h2>
+
+<pre id="code-8"><code class="language-text">.rig/reports/reports.jsonl       raw report/event ledger
+DuckDB query layer (future)      analytical queries over reports
+report projectors                deterministic read models
+Ralph                            reads projections, proposes missions
+Relay                            executes approved Ralph missions
+                                 through normal tool governance
+rig.report / receipts            record what Ralph observed, proposed,
+                                 changed, or declined</code></pre>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Ralph uses the same Relay substrate as every other agent path. It has no special privileges or bypass powers.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Autonomy tiers</h2>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tier</th><th>Name</th><th>Allowed</th><th>Forbidden</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>Observe</td><td>Read projections, receipts, validation summaries, storage state. Emit scan summaries.</td><td>Code writes.</td></tr>
+<tr><td>1</td><td>Evidence write</td><td>Tier 0 + write reports, Ralph scan events, projection diagnostics, receipts.</td><td>Code writes.</td></tr>
+<tr><td>2</td><td>Safe local maintenance</td><td>Tier 1 + rebuild derived indexes, run validators, refresh projections, compact safe local artifacts.</td><td>Source-code changes.</td></tr>
+<tr><td>3</td><td>Patch proposal</td><td>Tier 2 + create isolated worktree and prepare bounded patch proposal.</td><td>Merge. Main-workspace mutation.</td></tr>
+<tr><td>4</td><td>Main workspace mutation</td><td>Tier 3 + apply approved patches to main workspace.</td><td>Requires explicit user approval.</td></tr>
+<tr><td>5</td><td>External side effects</td><td>Tier 4 + network calls, external service writes.</td><td>Requires explicit user approval and scoped credentials.</td></tr>
+</tbody>
+</table>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Ralph v0 operates at **Tier 0 — Observe only**.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Forbidden actions (all tiers)</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Ralph must never: - Mutate source code without explicit user approval - Promote reports to canonical findings - Delete canonical findings - Bypass worktree isolation - Make external network calls - Trigger recursive self-scans - Write to `docs/findings/out-of-scope-findings.jsonl`</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Stop conditions</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Every Ralph scan must stop if: - No projections found - Maximum one recommended mission per scan - Maximum 200 reports inspected - Maximum 30 seconds elapsed - Dirty-state ambiguity detected - Missing projection metadata - Malformed policy file - No recursive self-triggering</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Input projections</h2>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Ralph may read: - `docs/findings/out-of-scope-findings.jsonl` (finding registry) - `.rig/reports/reports.jsonl` (raw report ledger, when present) - `.rig/reports/indexes/report_summary.json` (projection index, when present) - `.rig/reports/indexes/candidate_findings.json` (candidate findings, when present) - `.rig/reports/indexes/open_raw_reports.json` (open reports, when present)</p>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Output events</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Ralph may emit: - `ralph.scan.started` - `ralph.scan.completed` - `ralph.mission_candidate.proposed` - `ralph.scan.refused`</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">All output events are content-light: SHA256 hashes, counts, and structured candidate summaries. No raw file contents or secrets.</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Candidate ranking (v1 policy)</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">1. projection corruption / malformed ledger diagnostics 2. high severity security_concern or data_race 3. stale canonical findings 4. candidate findings with evidence 5. duplicate clusters above threshold 6. validation gaps 7. architecture seams touching hot files 8. low-risk docs/projection maintenance</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Score formula:</p>
+
+<pre id="code-25"><code class="language-text">score = severity_weight + kind_weight + evidence_bonus</code></pre>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">v0 behavior</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Ralph v0: - Reads `docs/findings/out-of-scope-findings.jsonl` - Ranks open findings by score - Produces one recommended mission - Writes nothing to disk (output returned in-memory only) - Operates at Tier 0 — observe only</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/ralph-background-loop.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

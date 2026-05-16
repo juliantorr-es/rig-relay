@@ -1,0 +1,396 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "validation",
+  "document_type": "reference",
+  "title": "Evidence Validation",
+  "summary": "Rig Relay stores evidence under a selected evidence root. A session is one",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/evidence/validation.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Evidence Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Evidence Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Rig Relay stores evidence under a selected evidence root. A session is one directory under that root, and the session directory contains:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "- `observability.jsonl`: append-only JSON Lines telemetry for the session - `context/`: context assembly, layout, and shadow-request reports when present - `artifacts/tool-results/`: tool-output artifact JSON files when present - `manifest.json`: a minimal session index when the session has been finalized",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "The validator checks the current session only. It does not repair, rewrite, or generate missing evidence.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Evidence Root Modes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- `user_global` (**Default and preferred policy**) - `repo_local` (**Test/debug/isolation mode**) - `explicit_home` - `legacy_vibe_home` - `test_temp`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Current precedence remains unchanged:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "1. `RIG_RELAY_HOME` 2. default user-global Relay home 3. legacy fallback only when canonical home is absent and legacy config is allowed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- Normal dogfood and project work should use the **User Global** Relay home. - Repo-local evidence is observable and supported for validation, but it is reserved for **isolated experiments, deterministic tests, and explicit exports**. - It is not the default doctrine for project history.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Doctor CLI",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Validate one selected session:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-13",
+      "type": "code",
+      "language": "bash",
+      "content": "rig-relay doctor evidence --evidence-root <path> --session <session-id>\nrig-relay doctor evidence --evidence-root <path> --session <session-id> --json",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "Exit behavior:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- `0` for `pass` and `warn` - `1` for `fail`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Human output includes:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- status - evidence root - session id - root mode/source when available - event count - referenced file count - unreferenced evidence file count - malformed event count - warnings - failures",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "JSON output uses the same structured result fields.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "`doctor evidence` is read-only:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- it reads existing evidence - it does not mutate sessions - it does not create manifests - it does not repair missing files - it does not change root resolution - it does not scan global sessions unless the caller explicitly points it there",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "Smoke Workflow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "The canonical evidence smoke is provider-independent:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "1. run the repo-local evidence smoke 2. identify the session root 3. validate that selected session with `doctor evidence` 4. expect manifest, observability, context, and artifact evidence when the smoke exercises those paths",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Do not treat the CLI inspection smoke as evidence coverage. CLI inspection proves command viability; the repo-local smoke proves the evidence-producing internals.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Manifest Semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "`manifest.json` lives at:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-27",
+      "type": "code",
+      "language": "text",
+      "content": "<evidence_root>/sessions/<session_id>/manifest.json",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "It is a minimal canonical JSON index. Current entries include:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "- `observability.jsonl` - tool-output artifacts - context assembly reports - context layout reports - shadow-request reports",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "Each entry records:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "- `evidence_kind` - relative path only - file-byte SHA-256 - size in bytes - event name when known",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "The validator prefers the manifest when present and falls back to scan-based validation for legacy sessions without a manifest.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-33",
+      "type": "heading",
+      "level": 2,
+      "content": "Artifact Hash Semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Tool-output artifacts have two relevant hashes:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "- `payload_sha256`: SHA-256 of the canonical payload object - `artifact_record_sha256`: SHA-256 of the canonical artifact envelope without the self-referential hash field",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "`evidence_sha256` in observability events references the evidence contract used by the current writer. For tool-output artifacts, the validator checks the artifact record hash contract rather than blindly assuming the raw file bytes are the event hash target.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-37",
+      "type": "heading",
+      "level": 2,
+      "content": "Partial Evidence Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "Expected behavior for incomplete sessions:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "- missing evidence root: fail - missing session directory: fail - missing `observability.jsonl`: fail - malformed JSONL: fail - missing `rig.relay.session.started`: fail - missing root metadata on an old session: warn - missing manifest: warn, then scan fallback - missing `rig.relay.session.closed`: warn - missing referenced evidence file: fail - hash mismatch: fail - unsafe path or absolute path: fail - unreferenced governed evidence file: fail - optional context reports absent with no matching event: warn or ignore",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-40",
+      "type": "heading",
+      "level": 2,
+      "content": "Next Layer",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "The current validator and manifest give us a local integrity gate: selected session, file presence, relative-path safety, hash checks, and event/file parity. The next layer is a receipt-chain or Merkle-backed design that adds chained integrity across events and finalization receipts. That layer should build on the validator and manifest instead of replacing them.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/evidence/validation.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

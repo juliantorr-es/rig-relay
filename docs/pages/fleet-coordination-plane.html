@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Fleet Coordination Plane — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05). Phase 0 — Mission Router (Complete, 2026-05).**">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig Fleet Coordination Plane</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Fleet Coordination Plane</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status: Phase 3 — Runtime Lease Hardening (Complete). Phase 0 — Patch Proposal Models (Complete, 2026-05). Phase 0 — Mission Router (Complete, 2026-05).**</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">1. Vision</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The Rig Fleet Coordination Plane is an orchestrator-owned mechanism that enables multiple agents to coordinate without file collisions or the overhead of one Git worktree per agent. It moves the authority for shared-file mutation from individual agents to the orchestrator, enforcing a &quot;patch-based&quot; workflow for shared resources.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Core principle: **Agents propose; Orchestrator disposes.**</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">2. Coordination Model</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The model is built on typed, append-only, receipt-backed events, and maps directly to the existing Cross-Session Coordination primitives.</p>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Concept Mapping</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Fleet Concept</th><th>existing Concept</th><th>Implementation</th></tr></thead>
+<tbody>
+<tr><td>**agent_id**</td><td>`session_id`</td><td>Identifies the specific agent instance.</td></tr>
+<tr><td>**mission_id**</td><td>N/A</td><td>Grouping identifier for related fleet sessions.</td></tr>
+<tr><td>**WorkClaim**</td><td>`CoordinationTaskClaim`</td><td>Runtime record of a task assignment.</td></tr>
+<tr><td>**PathLease**</td><td>`CoordinationPathReservation`</td><td>Exclusive or shared lease on file paths.</td></tr>
+<tr><td>**AgentMessage**</td><td>N/A</td><td>New primitive for inter-agent communication.</td></tr>
+<tr><td>**PatchProposal**</td><td>N/A</td><td>New primitive for proposed file mutations.</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Core Entities</h3>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Entity</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>**AgentSession**</td><td>A durable identity for an active agent within a fleet mission. Maps to `CoordinationSession`.</td></tr>
+<tr><td>**WorkClaim**</td><td>A claim on a specific mission, task, or subtask. Maps to `CoordinationTaskClaim`.</td></tr>
+<tr><td>**PathLease**</td><td>An exclusive or shared lease on a set of file paths. Maps to `CoordinationPathReservation`.</td></tr>
+<tr><td>**AgentMessage**</td><td>A typed message sent between agents or from agent to orchestrator.</td></tr>
+<tr><td>**CoordinationEvent**</td><td>A canonical entry in the fleet event log (`rig.fleet.*`).</td></tr>
+<tr><td>**ConflictNotice**</td><td>Evidence of a coordination collision. Maps to `CoordinationConflict`.</td></tr>
+<tr><td>**PatchProposal**</td><td>A structured proposal to mutate files, containing metadata and artifact references (Phase 0). No embedded diffs.</td></tr>
+<tr><td>**PatchDecision**</td><td>The orchestrator&#x27;s decision (accept/reject/needs_revision/supersede) on a PatchProposal (Phase 0).</td></tr>
+<tr><td>**FleetMergeDecision**</td><td>Legacy merge decision model. Superseded by PatchDecision in Phase 0.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">3. Lease Semantics</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Path-level coordination prevents concurrent mutation of the same files.</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- **Exclusive Write Lease**: Only one agent may hold a write lease on a path at a time. - **Shared Read Lease**: Multiple agents may hold read leases on the same path. - **Path Hashing Policy**: - **Internal**: The coordination store uses `stable_path_key` (repo-relative, un-salted) for collision detection. - **External**: The observability stream uses `salted_path_hash` (salted SHA256) for privacy-preserving event logs. - **Lease Expiry**: Leases have a TTL and must be renewed by the holder. Expired leases become &quot;stale&quot;. - **Blocked Claims**: If a `claim_paths` request overlaps an existing exclusive lease, it is refused with a `blocked_by_lease` ConflictNotice. - **Explicit Handoff**: An agent may voluntarily release a lease or request a handoff to another agent.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">4. Orchestrator Authority</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">The orchestrator is the only entity with the authority to mutate the canonical worktree for shared files.</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">1. **Isolation**: Agents work in private scratch spaces or restricted subdirectories where they have exclusive authority. 2. **Proposal**: When an agent needs to change a shared file, it submits a `PatchProposal`. 3. **Validation**: The orchestrator (or a specialized validation agent) verifies the patch (lints, tests, collision checks). 4. **Application**: The orchestrator applies the accepted patch to the canonical worktree. 5. **Direct Mutation**: Guarded direct mutation is allowed only when an agent holds a verified exclusive write lease and the orchestrator has delegated mutation authority for that specific mission.</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">5. Operations</h2>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Operation</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`claim_paths`</td><td>Request an exclusive or shared lease on one or more paths.</td></tr>
+<tr><td>`release_paths`</td><td>Voluntarily release held leases.</td></tr>
+<tr><td>`renew_lease`</td><td>Extend the TTL of an active lease.</td></tr>
+<tr><td>`query_claims`</td><td>Inspect current active leases and work claims.</td></tr>
+<tr><td>`send_message`</td><td>Send a typed message (e.g., `blocker`, `handoff`, `status_update`).</td></tr>
+<tr><td>`report_blocker`</td><td>Signal that a task is blocked and identify the dependency.</td></tr>
+<tr><td>`submit_patch`</td><td>Submit a `PatchProposal` for orchestrator review.</td></tr>
+<tr><td>`request_review`</td><td>Signal that a piece of work is ready for human or model review.</td></tr>
+<tr><td>`mark_done`</td><td>Signal completion of a work claim with an outcome summary.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">6. Event Semantics</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">The fleet event log (`events.jsonl`) is the source of truth.</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- **Append-only**: Events are never deleted or modified. - **Structure**: Every event is a JSON object with: - `schema_version`: (e.g., `rig.fleet.coordination_event.v1`) - `event_id`: Unique identifier (UUID). - `mission_id`: Link to the parent mission. - `agent_id`: Identity of the agent emitting the event. - `created_at`: ISO8601 timestamp. - `parent_event_id`: (Optional) Link to the event that triggered this one. - **Content-Light**: No raw prompts, secrets, or large blobs (stdout/stderr) are allowed in the event log. Diffs appear only in dedicated `patch_proposal` artifacts, not in the event log itself.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">7.5 Fleet Queue (Phase 0)</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">The fleet queue is an append-only event-sourced primitive that allows the orchestrator to accept typed queue items, order them deterministically, and dispatch eligible items one at a time.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Queue Item Kinds</h3>
+
+<table id="table-26" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Kind</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`message`</td><td>Inter-agent or system message</td></tr>
+<tr><td>`runtime_exec`</td><td>A runtime tool execution (validate, search_replace, write_file, bash)</td></tr>
+<tr><td>`validate`</td><td>A validation-only run (read-only tool execution)</td></tr>
+<tr><td>`handoff_note`</td><td>Orchestrator-directed handoff between agents</td></tr>
+<tr><td>`pause`</td><td>Request to pause processing</td></tr>
+<tr><td>`resume`</td><td>Request to resume processing</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">Item State Machine</h3>
+
+<pre id="code-28"><code class="language-text">    ┌─────────┐
+    │ QUEUED  │─── cancel ──→ CANCELLED
+    └────┬────┘
+         │ mark_running
+         v
+    ┌─────────┐
+    │ RUNNING │─── mark_completed ──→ COMPLETED
+    └────┬────┘
+         ├── mark_failed ──→ FAILED
+         └── mark_blocked ──→ BLOCKED</code></pre>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Additional transition: `superseded` (set when a newer item replaces this one).</p>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">Ordering Rules</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">1. Only items with status `queued` are eligible. 2. `depends_on` blocks an item until all dependencies reach a terminal state (completed, failed, cancelled, or superseded). 3. Items are sorted by: highest `priority` first, then `created_at` ascending (FIFO), then `queue_item_id` (deterministic tiebreaker). 4. Cancelled items are never runnable.</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Storage</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- Canonical source: append-only JSONL (`FleetQueueEvent` rows). - Current queue state (`FleetQueueSnapshot`) is derived by replaying events on read. - No DuckDB indexing. No writes to `/Users/user/.rig/relay`.</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">Content-Light</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Queue events must not contain raw prompts, stdout, stderr, content, diffs, patches, secrets, argv, snippets, or file contents. Item payloads carry only summary/ref/hash.</p>
+
+<h3 id="h3-36" class="disclosure-standard" data-disclosure-level="standard">Phase 0 Queue Runner (2026-05)</h3>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">`FleetQueueRunner` (in `rig_relay/coordination/fleet_queue_runner.py`) connects queue items to governed runtime execution.</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Key behaviours: - **One item per call**: `run_once()` selects the next runnable item, processes it, and returns a `FleetQueueRunnerResult`. - **Event-sourced transitions**: running event before dispatch; completed/failed/blocked event after. - **Supported item kinds**: - `validate` / `runtime_exec`: dispatched through `RuntimeToolExecutionRunner` (governed path with leases, auditing). - `message` / `handoff_note`: completed immediately, no runtime mutation. - `pause` / `resume`: completed immediately (no-op in Phase 0). - **Unsupported kinds**: marked blocked with `error_kind: unsupported_queue_item_kind`. - **Content-light result**: `FleetQueueRunnerResult` carries only `queue_item_id`, `decision`, `runtime_result_sha256`, `receipt_sha256`, `tool_name`, `error_kind`, `sanitised reason`, and `changed_paths`. No stdout, stderr, content, diffs, patches, prompts, secrets, argv, or snippets.</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Phase 0 Limitations</h3>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- No full scheduler: `next_runnable_item()` and `run_once()` run one item at a time. - No parallel execution. - No patch application or proposal integration. - No TUI queue panel. - Not thread-safe or multi-process safe (no file locking). - No supervisor projection integration. - No DuckDB index.</p>
+
+<h2 id="h2-41" class="disclosure-standard" data-disclosure-level="standard">7.6 Fleet Projection / Read Model (Phase 0)</h2>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">`FleetProjection` (in `rig_relay/coordination/fleet_projection.py`) is a content-light read model that summarizes fleet queue state, leases, patch proposals, blockers, and agent/session liveness for the Textual Rig Console TUI.</p>
+
+<h3 id="h3-43" class="disclosure-standard" data-disclosure-level="standard">Data Sources</h3>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">The projection reads from existing fleet/coordination artifacts: - **Fleet Queue**: `FleetQueue.list_items()` for `FleetQueueSnapshot` → status counts, next runnable item, replay diagnostics. - **PathLeaseManager**: `query_active_leases()` for active lease counts and modes. - **Patch proposals**: `.fleet/patch-proposals/*.json` for pending/applied/rejected/revised counts. - **Coordination events**: Recent event count (future: agent sessions from coordination store).</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">Missing artifacts produce empty-safe defaults — the projection never crashes.</p>
+
+<h3 id="h3-46" class="disclosure-standard" data-disclosure-level="standard">Sub-models</h3>
+
+<table id="table-47" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Model</th><th>Fields</th><th>Content-Light?</th></tr></thead>
+<tbody>
+<tr><td>`FleetAgentSummary`</td><td>total_agents, active_sessions, recent_heartbeats, stale_sessions</td><td>Yes</td></tr>
+<tr><td>`FleetQueueSummary`</td><td>queued, running, blocked, completed, failed, cancelled, total, highest_priority, next_item, replay</td><td>Yes</td></tr>
+<tr><td>`FleetQueueNextItem`</td><td>queue_item_id, kind, priority, created_at</td><td>Yes</td></tr>
+<tr><td>`FleetReplayDiagnostics`</td><td>total_lines, valid_events, malformed_lines, invalid_events, skipped_unknown_kind, total_skipped</td><td>Yes</td></tr>
+<tr><td>`FleetLeaseSummary`</td><td>total_active, exclusive_write, shared_read, stale, expired, path_count</td><td>Yes</td></tr>
+<tr><td>`FleetBlockerSummary`</td><td>total_blockers, blocker_kinds, oldest_blocked_at</td><td>Yes</td></tr>
+<tr><td>`FleetPatchProposalSummary`</td><td>pending, applied, rejected, revised, total, oldest_pending_at, latest_proposal_id</td><td>Yes</td></tr>
+<tr><td>`FleetProjection` (root)</td><td>schema_version, projection_id, created_at, fleet_name, agents, queue, leases, blockers, patches, recent_event_count</td><td>Yes</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-48" class="disclosure-standard" data-disclosure-level="standard">Worker Functions</h3>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">- `build_queue_summary(queue: FleetQueue | None) → FleetQueueSummary`: Reads queue snapshot, builds counts + next item + replay diagnostics. - `build_queue_summary_from_snapshot(snapshot: FleetQueueSnapshot) → FleetQueueSummary`: From an existing snapshot (no I/O). - `build_lease_summary(coordination_root: Path | None) → FleetLeaseSummary`: Reads active leases from `PathLeaseManager`. - `build_patch_proposal_summary(patch_root: Path | None) → FleetPatchProposalSummary`: Scans patch proposal JSON files.</p>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">Content-Light Enforcement</h3>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">All sub-models have `ConfigDict(extra=&quot;forbid&quot;)`. The `FleetProjection` JSON Schema has `additionalProperties:false` at every level (root, agents, queue, next_item, replay, leases, blockers, patches). Forbidden field names: `prompt`, `stdout`, `stderr`, `content`, `diff`, `patch`, `secret`, `argv`, `snippet`, `file_content`, `raw_prompt`, `raw_output`.</p>
+
+<h3 id="h3-52" class="disclosure-standard" data-disclosure-level="standard">TUI Integration</h3>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">- `providers.py`: `_build_fleet_projection()` reads queue events from `coordination_root/queue/events.jsonl` and builds a `FleetQueueSummary` via `build_queue_summary(FleetQueue(...))`. - `widgets/fleet_panel.py`: `FleetPanelWidget` renders queue, leases, blockers, patches, agents, next item, and replay diagnostics rows. Read-only — no mutation keybindings.</p>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">Tests</h3>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">43 tests in `tests/coordination/test_fleet_projection.py`, 22 tests in `tests/cli/textual_ui/rig_console/test_fleet_panel.py` (6 for next_item/replay formatting).</p>
+
+<h3 id="h3-56" class="disclosure-standard" data-disclosure-level="standard">Schema</h3>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">`docs/schemas/rig.fleet.projection.v1.schema.json` — validates serialized `FleetProjection` JSON with `additionalProperties:false` on all nested objects.</p>
+
+<h2 id="h2-58" class="disclosure-standard" data-disclosure-level="standard">7.7 Mission Router (Phase 0)</h2>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">The Mission Router (in `rig_relay/coordination/mission_router.py`) plans and routes mission batches into governed fleet primitives.</p>
+
+<h3 id="h3-60" class="disclosure-standard" data-disclosure-level="standard">Key Responsibilities</h3>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">1.  **Normalization**: Parses raw mission text into `MissionNode` metadata. 2.  **Classification**: Routes nodes to `local_runtime`, `delegated_agent`, `fleet`, `patch_proposal`, or `human_review` using deterministic heuristics. 3.  **Dependency Planning**: Detects path and domain conflicts to organize nodes into sequential or parallel `runnable_groups`. 4.  **Queue Compilation**: Transforms the plan into `FleetQueueItem` templates for the fleet queue.</p>
+
+<h3 id="h3-62" class="disclosure-standard" data-disclosure-level="standard">Content-Light Boundary</h3>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">Mission plans never embed raw mission prompts. They provide `sanitized_text_summary` (first 200 chars) for UI visibility. Raw texts are retained only behind `payload_ref`.</p>
+
+<h3 id="h3-64" class="disclosure-standard" data-disclosure-level="standard">Phase 0 Limitations</h3>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">- Deterministic heuristics only (no LLM-based decomposition). - Static planning at intake (no mid-mission re-routing). - No agent spawning or patch application.</p>
+
+<h2 id="h2-66" class="disclosure-standard" data-disclosure-level="standard">8. Storage Design</h2>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">- **Canonical Store**: Local files under `.rig/fleet/`. - `events.jsonl`: The primary event stream. - `leases/`: Active lease state (JSON). - `proposals/`: Patch artifacts. - **Index Cache**: Optional DuckDB index for efficient querying. - Agents may READ from DuckDB. - Agents may NEVER directly write to DuckDB. - The orchestrator or a background process maintains the index from `events.jsonl`. - **Concurrency**: File-system atomic replacement and optional flock are used as local-first guards.</p>
+
+<h2 id="h2-68" class="disclosure-standard" data-disclosure-level="standard">9. Failure Behavior</h2>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">- **Heartbeat Expiry**: Agents must heartbeat. A missed heartbeat triggers lease expiry. - **Stale Lease Recovery**: The orchestrator may reclaim stale leases after a grace period. - **Idempotency**: All operations (especially `claim_paths` and `submit_patch`) must be idempotent based on `event_id` or `proposal_id`. - **Conflict Resolution**: The orchestrator is the final arbiter for conflicting claims.</p>
+
+<h2 id="h2-70" class="disclosure-standard" data-disclosure-level="standard">10. UI/Projections</h2>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">The Fleet Coordination Plane provides compact projections for: - **Fleet Pulse**: Active agents and their current tasks. - **Lease Map**: Visual or tabular view of path contention. - **Message Board**: Recent inter-agent communications. - **Review Queue**: Pending patch proposals and review requests.</p>
+
+<h2 id="h2-72" class="disclosure-standard" data-disclosure-level="standard">11. Phase 0 — Patch Proposal Workflow</h2>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">**Design principle**: Agents propose; orchestrator disposes.</p>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">Phase 0 implements the minimal artifact workflow: agents create `PatchProposal` models, and orchestrators issue `PatchDecision` models. Patch application is deferred to a future phase.</p>
+
+<h3 id="h3-75" class="disclosure-standard" data-disclosure-level="standard">Models</h3>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">Defined in `rig_relay/coordination/patch_proposal.py`. Re-exported through `fleet_models.py` → `models.py`.</p>
+
+<table id="table-77" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Model</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`PatchProposal`</td><td>Describes intended mutations: proposal_id, mission_id, agent_id, title, summary, touched_paths (with hashes), expected_before_sha256, and artifact_refs.</td></tr>
+<tr><td>`PatchProposalArtifactRef`</td><td>Content-light reference to an external diff/patch artifact (path, sha256, size_bytes, media_type).</td></tr>
+<tr><td>`PatchDecision`</td><td>Orchestrator decision on a proposal: accepted, rejected, needs_revision, or superseded.</td></tr>
+<tr><td>`CreateProposalResult`</td><td>Dataclass holding the created proposal and its stable fingerprint.</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-78" class="disclosure-standard" data-disclosure-level="standard">Proposal Status Lifecycle</h3>
+
+<pre id="code-79"><code class="language-text">    ┌─────────┐
+    │ pending  │
+    └────┬─────┘
+         │
+    ┌────┴──────┐
+    │ orchestrator │
+    │  decides  │
+    └────┬──────┘
+         ├──→ accepted
+         ├──→ rejected
+         ├──→ needs_revision
+         └──→ superseded</code></pre>
+
+<h3 id="h3-80" class="disclosure-standard" data-disclosure-level="standard">Content-Light Boundary</h3>
+
+<p id="p-81" class="disclosure-standard" data-disclosure-level="standard">- **Never embedded**: raw diffs, patches, file contents, stdout, stderr, secrets. - **Metadata only**: `PatchProposal` carries touched_paths, hashes, and artifact refs. - **Artifact refs**: point to external diff files by path+sha256. The raw diff lives outside the coordination event stream. - **Fingerprint**: `compute_proposal_fingerprint` computes a stable SHA256 over all fields except `proposal_id` and `schema_version`. Used for deduplication and change detection.</p>
+
+<h3 id="h3-82" class="disclosure-standard" data-disclosure-level="standard">Relationship to Path Leases</h3>
+
+<p id="p-83" class="disclosure-standard" data-disclosure-level="standard">- **Independent**: A PatchProposal does not require a held path lease. Agents may submit proposals for any paths. - **Application gate**: In a future phase, the orchestrator will acquire path leases before applying accepted proposals. - **Pre-flight check**: The `expected_before_sha256` field records expected file states at proposal time. The orchestrator can verify these against actual file hashes before applying.</p>
+
+<h3 id="h3-84" class="disclosure-standard" data-disclosure-level="standard">Orchestrator Authority</h3>
+
+<p id="p-85" class="disclosure-standard" data-disclosure-level="standard">- **Only the orchestrator creates PatchDecisions.** - **Only the orchestrator applies patches** (future phase). - Agents propose; the orchestrator disposes.</p>
+
+<h3 id="h3-86" class="disclosure-standard" data-disclosure-level="standard">Deferred Features (Post-Phase 0)</h3>
+
+<p id="p-87" class="disclosure-standard" data-disclosure-level="standard">- **Patch application**: No code applies proposals to the worktree. Only models exist. - **Lease integration**: No automatic lease acquisition on proposal acceptance. - **Orchestrator loop**: No runtime loop that polls for pending proposals and auto-decides. - **Revisions**: No `needs_revision` → resubmit → re-decide cycle enforcement. - **Supersede propagation**: No automatic cascading of superseded status to dependent proposals. - **TUI panel**: No queue or proposal review panel in the cockpit.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/fleet-coordination-plane.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

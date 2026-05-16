@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relay Surface Matrix — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Defines which user-facing surfaces are primary, transitional, or">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Relay Surface Matrix</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Relay Surface Matrix</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Defines which user-facing surfaces are primary, transitional, or legacy-compatible during the alpha period.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Surface Matrix</h2>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Surface</th><th>Intended Audience</th><th>Current Status</th><th>Allowed Changes</th><th>Forbidden Changes</th><th>Retirement Criteria</th></tr></thead>
+<tbody>
+<tr><td>Textual TUI</td><td>Developers, SSH sessions, compatibility workflows</td><td>`active-dev-compatibility` + `deprecated-product-ui`</td><td>Compatibility fixes, diagnostics, deprecation messaging</td><td>New product-only features, product repositioning, deletion before parity</td><td>Delete only after Relay CLI + pywebview parity and explicit user confirmation</td></tr>
+<tr><td>Relay CLI</td><td>Scriptable users, automation, reviewers, operators</td><td>Canonical scriptable surface</td><td>Status, validation, refinement, provider, consent, telemetry, storage workflows</td><td>Protected execution buttons, raw-content export, silent regressions to Vibe branding</td><td>Remains canonical while product matures; retire only if superseded by a new canonical automation surface</td></tr>
+<tr><td>pywebview cockpit</td><td>Interactive operators, demo flows, product UX</td><td>Primary visual alpha/product surface</td><td>Safe intents, progress timeline, provider/identity/consent views, read-only projections</td><td>Protected execution buttons, noisy motion, raw evidence exposure</td><td>Remains primary until a later product surface replaces it deliberately</td></tr>
+<tr><td>scripts</td><td>Maintainers, debug, release engineering</td><td>Low-level/dev escape hatches</td><td>Validation, bundle creation, projection generation, storage audits, release helpers</td><td>User-facing rebranding as primary UI, protected execution controls</td><td>Keep as developer tools; retire only if fully absorbed by higher-level Relay surfaces</td></tr>
+<tr><td>vibe/core</td><td>Legacy substrate and adapters</td><td>Compatibility substrate</td><td>Adapter maintenance, quarantine, focused migration, test support</td><td>New product identity, new user-facing flows, opportunistic rewrites</td><td>Retire only after all dependent surfaces are moved and compatibility is no longer needed</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Policy Notes</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- Textual is retained because it still supports current development workflows. - Relay CLI is the canonical scriptable surface, not Textual. - pywebview is the future product UI, but it must remain safe and operational before any Textual deletion is considered. - `vibe/core` may remain as a compatibility substrate while Relay-native seams finish maturing.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- [Textual TUI Retirement Policy](textual-retirement-policy.md) - [Vibe Legacy Deprecation Doctrine](vibe-legacy-deprecation.md) - [Vibe Legacy Boundary Inventory](../audits/vibe-legacy-boundary-inventory.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/relay-surface-matrix.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

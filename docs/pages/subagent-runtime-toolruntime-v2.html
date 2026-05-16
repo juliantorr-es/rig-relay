@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SubagentRuntime Governed Tool Path — Verification — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-17">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>SubagentRuntime Governed Tool Path — Verification</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">SubagentRuntime Governed Tool Path — Verification</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-17 **Status**: ✅ Already implemented. Verified, confirmed, readiness tests added.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Repo Truth</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The current repo **already has** SubagentRuntime routed through ToolRuntime. No implementation was needed. This slice adds readiness proof tests and confirms the existing implementation is complete.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Implementation Status</h2>
+
+<details id="table-6" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-6" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Requirement</th><th>Status</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td>SubagentRuntime accepts `tool_runtime=`</td><td>✅</td><td>Constructor has `tool_runtime: Any \</td><td>None = None`</td></tr>
+<tr><td>Governed path routes through ToolRuntime</td><td>✅</td><td>`_execute_tool_call_governed()` calls `execute_and_format(self._tool_runtime, ...)`</td></tr>
+<tr><td>Legacy path is explicit fallback</td><td>✅</td><td>Comment: &quot;fallback only when no ToolRuntime&quot;</td></tr>
+<tr><td>`tool_execution_mode` set correctly</td><td>✅</td><td>`&quot;tool_runtime&quot;` when provided, `&quot;legacy_direct&quot;` otherwise</td></tr>
+<tr><td>task.py passes `tool_runtime=`</td><td>✅</td><td>`tool_runtime=getattr(ctx, &quot;tool_runtime&quot;, None)`</td></tr>
+<tr><td>Envelope evidence preserved</td><td>✅</td><td>`SubagentToolResult` carries `supervisor_envelope_id`, `supervisor_envelope_sha256`, `supervisor_classification`</td></tr>
+<tr><td>SubagentToolResult extracts from ToolRuntimeResult</td><td>✅</td><td>`result.supervisor_result_envelope_id` → `SubagentToolResult.supervisor_envelope_id`</td></tr>
+<tr><td>No AgentLoop in subagent</td><td>✅</td><td>Guard test `test_subagent_runtime_never_constructs_agent_loop`</td></tr>
+<tr><td>No direct tool run in subagent</td><td>✅</td><td>Guard test `test_subagent_runtime_has_no_direct_tool_run`</td></tr>
+<tr><td>ToolRuntime span finalization</td><td>✅</td><td>All 8 terminal paths covered (prior slice)</td></tr>
+<tr><td>Envelope SHA is real content hash</td><td>✅</td><td>`sha256:&lt;64 hex&gt;` (prior slice)</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Readiness Tests Added</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">`tests/core/test_subagent_runtime_tool_runtime_readiness.py` (7 tests):</p>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test</th><th>Proves</th></tr></thead>
+<tbody>
+<tr><td>`test_task_py_passes_tool_runtime_to_subagent_runtime`</td><td>Production wiring exists</td></tr>
+<tr><td>`test_subagent_runtime_constructor_accepts_tool_runtime`</td><td>Constructor has the parameter</td></tr>
+<tr><td>`test_governed_path_uses_execute_one`</td><td>Governed path exists</td></tr>
+<tr><td>`test_tool_execution_mode_set_to_tool_runtime_when_provided`</td><td>Mode tracking in metadata</td></tr>
+<tr><td>`test_no_legacy_direct_as_default`</td><td>Legacy is fallback, not default</td></tr>
+<tr><td>`test_subagent_tool_result_carries_envelope_fields`</td><td>Result model carries envelope</td></tr>
+<tr><td>`test_execute_and_format_extracts_envelope_from_tool_runtime_result`</td><td>Passthrough from ToolRuntimeResult</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Evidence Propagation Chain</h2>
+
+<pre id="code-11"><code class="language-text">SubagentRuntime._execute_tool_call_governed()
+  → tool_adapter.execute_and_format(tool_runtime, call)
+    → ToolRuntime.execute_one(request)
+      → ToolRuntime._execute_governed()
+        → subprocess runner
+        → extracts supervisor_result_envelope{_id,_sha256,_classification}
+        → returns ToolRuntimeResult with envelope fields populated
+    → SubagentToolResult(
+        supervisor_envelope_id=result.supervisor_result_envelope_id,
+        supervisor_envelope_sha256=result.supervisor_result_envelope_sha256,
+        supervisor_classification=result.supervisor_result_classification,
+      )
+  → LLMMessage(role=tool, content=result.output_text) appended to messages</code></pre>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Guard Tests (existing, 28 tests)</h2>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`test_task_py_never_constructs_agent_loop`</td><td>AST proof: no AgentLoop in task.py</td></tr>
+<tr><td>`test_subagent_runtime_never_constructs_agent_loop`</td><td>AST proof: no AgentLoop in subagent</td></tr>
+<tr><td>`test_ralph_never_constructs_agent_loop`</td><td>AST proof: Ralph is read-only</td></tr>
+<tr><td>`test_subagent_runtime_has_no_direct_tool_run`</td><td>AST proof: no `.run()` bypass</td></tr>
+<tr><td>`test_legacy_path_is_marked_not_default`</td><td>Legacy is explicitly fallback</td></tr>
+<tr><td>`test_governed_path_is_primary`</td><td>Governed path is primary</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Validation</h2>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Command</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>`pytest tests/core/test_subagent_runtime_*.py -q`</td><td>35 passed</td></tr>
+<tr><td>`ruff check` touched files</td><td>All checks passed</td></tr>
+<tr><td>`pyright` touched files</td><td>0 errors</td></tr>
+<tr><td>`collect-only`</td><td>6306 tests, 0 errors</td></tr>
+<tr><td>`demo-doctor`</td><td>22/22</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Phase 3 Readiness</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">ToolRuntime direct path and SubagentRuntime governed path are **both complete**. The runtime evidence spine now:</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">1. ToolRuntime extracts envelope evidence from subprocess results ✓ 2. ToolRuntime populates ToolRuntimeResult with envelope id/sha/classification ✓ 3. All ToolRuntime terminal paths close trace spans ✓ 4. SubagentRuntime routes tool calls through ToolRuntime ✓ 5. SubagentRuntime extracts envelope evidence from ToolRuntimeResult ✓ 6. Envelope evidence reaches SubagentResult metadata ✓</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">**Phase 3 (ConversationRuntime.execute_turn)** is unblocked. The tool execution spine is governed end-to-end.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/agent-loop/subagent-runtime-toolruntime-v2.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

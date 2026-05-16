@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet Coordination Plane — Design Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date:** 2026-05-14">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Fleet Coordination Plane — Design Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Fleet Coordination Plane — Design Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date:** 2026-05-14 **Status:** Design Reviewed</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">1. Context</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig Relay is evolving from a single-agent session model to a multi-agent fleet model. The current &quot;Cross-Session Coordination&quot; (local, file-backed) provides basic path and task isolation but does not scale to a fleet where many agents might need to mutate shared files.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">2. Problem Statement</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Parallel agents currently collide when editing shared files. While Git worktrees provide isolation, managing 20+ worktrees for a single mission is ergonomically and computationally expensive.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">3. Design Principles</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">1. **Orchestrator Ownership**: The orchestrator is the only entity that mutates the canonical worktree. 2. **Patch-Based Workflow**: Agents submit `PatchProposals` for shared resources. 3. **Receipt-Backed Coordination**: Every coordination action (lease, message, patch) emits an event in a canonical JSONL stream. 4. **Content-Light Events**: Events contain hashes and metadata, never raw prompts, secrets, or large blobs.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">4. Assessment of Proposed Entities</h2>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">AgentSession</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- **Strengths**: Provides stable identity for audit and lease ownership. - **Risks**: Stale sessions must be cleaned up to avoid holding leases indefinitely.</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">WorkClaim &amp; PathLease</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- **Strengths**: Reuses successful concepts from existing cross-session coordination. - **Risks**: Lease granularity (per-file vs. per-directory) needs to be balanced for performance vs. isolation. Salted hashes of paths are used for privacy.</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">AgentMessage &amp; PatchProposal</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- **Strengths**: Enables the &quot;agents propose; orchestrator disposes&quot; model. Decouples thinking from mutation. - **Risks**: Orchestrator review latency could become a bottleneck. Automated patch validation is required.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">5. Storage and Indexing</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- **Canonical JSONL**: Append-only log is robust and auditable. - **DuckDB Boundary**: Using DuckDB as a read-only index is the correct posture. It avoids multi-process write contention and keeps the source of truth simple (files). - **Local-First**: Staying under `.rig/fleet/` (within the project root) maintains the &quot;no daemon&quot; philosophy.</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">6. Failure Modes and Mitigation</h2>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Failure</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Agent Crash</td><td>Heartbeat monitor in orchestrator marks leases as `stale`.</td></tr>
+<tr><td>Network/FS Partition</td><td>Atomic file replacement and `flock` as local guards.</td></tr>
+<tr><td>Duplicate Event IDs</td><td>Idempotency checks at the store layer.</td></tr>
+<tr><td>Stale Lease Conflict</td><td>Takeover protocol requiring fresh dirty snapshots.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">7. Migration Path</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">1. **Phase 1 (Current)**: Implement schemas and governance docs. 2. **Phase 2**: Implement `FleetCoordinationStore` with JSONL backing. 3. **Phase 3**: Implement `PatchProposal` artifact generation in agents. 4. **Phase 4**: Implement `MergeDecision` applier in orchestrator.</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">8. Conclusion</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">The proposed Fleet Coordination Plane design correctly centralizes mutation authority while decentralizing thought. It avoids the scaling limits of Git worktrees by moving to a structured patch-proposal mechanism. The use of salted hashes and content-light events preserves the project&#x27;s privacy and observability standards.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/fleet-coordination-design.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

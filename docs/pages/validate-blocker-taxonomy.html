@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validate Blocker Taxonomy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="`validate` should return structured blockers, not just exit codes.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Validate Blocker Taxonomy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validate Blocker Taxonomy</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Goal</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">`validate` should return structured blockers, not just exit codes.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Blocker Kinds</h2>
+
+<h3 id="h3-5" class="disclosure-standard" data-disclosure-level="standard">`test_failure`</h3>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- one or more tests failed</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- `pytest`</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">`lint_failure`</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- style or static analysis failure</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- `ruff check`</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">`typecheck_failure`</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- pyright or type analysis failure</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- `pyright`</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">`schema_failure`</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">- JSON, JSONL, or schema validation failed</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- schema validation scripts - receipt validators</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">`governance_failure`</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">- policy or doctrine mismatch</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- governance checks - retention policy checks</p>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">`dirty_workspace`</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">- workspace state does not satisfy the profile&#x27;s dirty policy</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">- git readiness checks</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">`forbidden_mutation`</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- a command attempted mutation under a read-only profile</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">- any check bundle that tries to write</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">`timeout`</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">- profile exceeded allowed time</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- long-running pytest or repo scans</p>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">`tool_refusal`</h3>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">- governed tool refused the command or scope</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">- path policy - permission policy</p>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">`missing_dependency`</h3>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">- required binary or package is unavailable</p>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">- `pyright`, `ruff`, `pytest`, schema validators</p>
+
+<h3 id="h3-55" class="disclosure-standard" data-disclosure-level="standard">`environment_failure`</h3>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">- environment is misconfigured but command logic is not necessarily wrong</p>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">- missing venv, wrong PATH, broken interpreter, invalid locale</p>
+
+<h3 id="h3-60" class="disclosure-standard" data-disclosure-level="standard">`command_internal_error`</h3>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-62" class="disclosure-standard" data-disclosure-level="standard">- tool crashed or raised unexpected internal error</p>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-64" class="disclosure-standard" data-disclosure-level="standard">- script exception</p>
+
+<h3 id="h3-65" class="disclosure-standard" data-disclosure-level="standard">`unknown_failure`</h3>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">Meaning:</p>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">- blocker could not be classified safely</p>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">Typical source:</p>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">- malformed output - mixed failures</p>
+
+<h2 id="h2-70" class="disclosure-standard" data-disclosure-level="standard">Mapping Rules</h2>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">- test runner failure -&gt; `test_failure` - linter failure -&gt; `lint_failure` - type checker failure -&gt; `typecheck_failure` - schema validator failure -&gt; `schema_failure` - dirty repo gate -&gt; `dirty_workspace` - permission refusal -&gt; `tool_refusal` - timeout exit or signal -&gt; `timeout` - missing binary -&gt; `missing_dependency` - script exception -&gt; `command_internal_error`</p>
+
+<h2 id="h2-72" class="disclosure-standard" data-disclosure-level="standard">What the Blocker Taxonomy Should Not Do</h2>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">- should not store raw stdout - should not store raw stderr - should not echo entire command transcripts - should not hide environment failures inside generic failure</p>
+
+<h2 id="h2-74" class="disclosure-standard" data-disclosure-level="standard">Blocker Summary Contract</h2>
+
+<p id="p-75" class="disclosure-standard" data-disclosure-level="standard">`ValidateResult.blocker_summary` should report counts per blocker kind.</p>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">This lets validate answer:</p>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">- is this a real code blocker? - is this a tooling blocker? - is this a workspace-state blocker? - is this an environment blocker?</p>
+
+<p id="p-78" class="disclosure-standard" data-disclosure-level="standard">That distinction is the whole point of making validation first-class.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/validate-tool/validate-blocker-taxonomy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

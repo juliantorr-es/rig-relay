@@ -1,0 +1,98 @@
+{
+  "schema_version": "rig.code_schema.v1",
+  "document_id": "json-documentation-migration",
+  "schema_id": "json_documentation_migration.v1",
+  "title": "JSON Documentation Migration",
+  "summary": "Migration contract for Markdown-to-JSON documentation conversion and static site rendering.",
+  "change_kind": "docs_migration",
+  "status": "active",
+  "authority": {
+    "authority_kind": "repo_governance",
+    "trusted": true,
+    "source_path": "docs/json/documentation_policy.v1.json",
+    "source_hash": "sha256:19770375074ae19957d6da087a170e2ce83de46593483799d313ba9b64e76a12",
+    "review_status": "active",
+    "last_reviewed_at": "2026-05-18"
+  },
+  "intent_patterns": [
+    "markdown to json migration",
+    "static docs render",
+    "site manifest",
+    "documentation policy",
+    "generated docs"
+  ],
+  "applies_when": {
+    "symptoms": [
+      "new docs should be JSON only",
+      "rendered site missing migrated page",
+      "documentation manifest drift"
+    ],
+    "traceback_patterns": [
+      "render_static_docs.py",
+      "documentation_migration_manifest.v1.json"
+    ],
+    "file_patterns": [
+      "docs/json/**",
+      "scripts/render_static_docs.py",
+      "tests/repository/test_documentation_system.py"
+    ],
+    "test_patterns": [
+      "tests/repository/test_documentation_system.py",
+      "tests/repository/test_documentation_hardening.py"
+    ],
+    "user_prompt_patterns": [
+      "markdown migration",
+      "static docs",
+      "site manifest"
+    ]
+  },
+  "required_invariants": [
+    "No new Markdown docs are created for migrated content.",
+    "Migration manifest maps old_path to new_path.",
+    "Rendered docs must come from site_manifest entries.",
+    "render_static_docs.py must run after docs/json or docs/schemas changes.",
+    "Progressive disclosure metadata is required for new docs."
+  ],
+  "forbidden_patterns": [
+    "new Markdown docs",
+    "generated docs as source context",
+    "HTML source docs"
+  ],
+  "required_files": [
+    "docs/json/documentation_policy.v1.json",
+    "docs/json/documentation_migration_manifest.v1.json",
+    "scripts/render_static_docs.py"
+  ],
+  "required_tests": [
+    "tests/repository/test_documentation_system.py",
+    "tests/repository/test_documentation_hardening.py"
+  ],
+  "validation_commands": [
+    "uv run python scripts/render_static_docs.py",
+    "uv run pytest tests/repository/ -q"
+  ],
+  "required_trace_events": [],
+  "required_receipts": [],
+  "context_pack": {
+    "include_files": [
+      "docs/json/documentation_policy.v1.json",
+      "docs/json/site_manifest.v1.json",
+      "scripts/render_static_docs.py"
+    ],
+    "include_docs": [
+      "docs/json/documentation_migration_manifest.v1.json",
+      "docs/json/site_manifest.v1.json"
+    ],
+    "include_schemas": [
+      "docs/schemas/rig.documentation.page.v1.schema.json",
+      "docs/schemas/rig.code_schema.v1.schema.json",
+      "docs/schemas/rig.documentation.collection.v1.schema.json"
+    ],
+    "exclude_patterns": [
+      "docs/pages/**",
+      "**/*.html"
+    ],
+    "max_context_notes": 10
+  },
+  "model_facing_summary": "Treat documentation migrations as JSON-first changes. Keep the migration manifest, site manifest, and renderer in sync and do not author new Markdown for migrated content."
+}

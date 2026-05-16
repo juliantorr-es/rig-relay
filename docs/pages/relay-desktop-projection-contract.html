@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relay Desktop Projection Contract — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Draft.** Derived from Rig&#x27;s">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Relay Desktop Projection Contract</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Relay Desktop Projection Contract</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Draft.** Derived from Rig&#x27;s [Workspace UI Projection Contract](https://github.com/juliantorr-es/Rig/blob/main/docs/architecture/workspace-ui-projection-contract.md) and adapted for Rig Relay&#x27;s desktop cockpit.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">This contract defines the projection widgets that the backend may render into the Rig Relay desktop cockpit. The frontend is a **renderer, not a governor**.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Core Rule</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">**Backend authors the state. Frontend renders the state. Frontend emits intentions only.**</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- Frontend must not infer checkpointability, lane readiness, or promotion decisions. - Frontend must not fabricate state. - Missing data degrades to explicit placeholder text, not fabricated state.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Widget Types</h2>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">OperatorHeader</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Identifies the Relay session and operator.</p>
+
+<table id="table-12" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`session_id`</td><td>string</td><td>Current Relay session ID</td></tr>
+<tr><td>`mode`</td><td>string</td><td>`headless`, `legacy_tui`, or `desktop`</td></tr>
+<tr><td>`app_version`</td><td>string</td><td>Current Rig Relay version</td></tr>
+<tr><td>`uptime_seconds`</td><td>integer</td><td>Session uptime</td></tr>
+</tbody>
+</table>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `refresh_projection`</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Session lifecycle decisions, task claims</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">SafetyState</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Shows current safety posture.</p>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`dirty_files`</td><td>integer</td><td>Number of dirty (modified/staged/untracked) files</td></tr>
+<tr><td>`active_leases`</td><td>integer</td><td>Number of active coordination leases</td></tr>
+<tr><td>`stale_leases`</td><td>integer</td><td>Number of expired leases</td></tr>
+<tr><td>`authorization_required`</td><td>boolean</td><td>Whether next action needs authorization</td></tr>
+<tr><td>`policy_guard_active`</td><td>boolean</td><td>Whether dirty-file guard is enforcing</td></tr>
+</tbody>
+</table>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `refresh_projection`, `run_validation`</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Whether mutation is safe, whether guard should be bypassed</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">NextAction</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Shows the backend-recommended next safe action.</p>
+
+<table id="table-22" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`action`</td><td>string</td><td>Recommended action name</td></tr>
+<tr><td>`rationale`</td><td>string</td><td>Why this action is recommended</td></tr>
+<tr><td>`ready`</td><td>boolean</td><td>Whether the action can be taken now</td></tr>
+<tr><td>`blockers`</td><td>string[]</td><td>Reasons the action is not ready</td></tr>
+<tr><td>`validations_to_run`</td><td>string[]</td><td>Validations that should pass first</td></tr>
+</tbody>
+</table>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `refresh_projection`</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Changing the recommendation, executing without backend validation</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">ActiveChildSessions</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Shows active child sessions (delegate/fleet).</p>
+
+<table id="table-27" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`active`</td><td>integer</td><td>Number of active child sessions</td></tr>
+<tr><td>`max`</td><td>integer</td><td>Maximum allowed child sessions</td></tr>
+<tr><td>`available_slots`</td><td>integer</td><td>Slots remaining</td></tr>
+<tr><td>`active_writers`</td><td>integer</td><td>Child sessions holding write leases</td></tr>
+<tr><td>`active_readers`</td><td>integer</td><td>Child sessions in read-only mode</td></tr>
+</tbody>
+</table>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `refresh_projection`</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Creating child sessions, terminating child sessions, promoting child sessions</p>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">ValidationSummary</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Summarizes the last validation run.</p>
+
+<table id="table-32" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`status`</td><td>string</td><td>`passed`, `failed`, `not_run`, `running`</td></tr>
+<tr><td>`passed_count`</td><td>integer</td><td>Number of passed checks</td></tr>
+<tr><td>`failed_count`</td><td>integer</td><td>Number of failed checks</td></tr>
+<tr><td>`warnings`</td><td>string[]</td><td>Non-blocking warnings</td></tr>
+<tr><td>`last_run_at`</td><td>string</td><td>ISO 8601 timestamp</td></tr>
+<tr><td>`duration_ms`</td><td>integer</td><td>Duration of last validation run</td></tr>
+</tbody>
+</table>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `run_validation`, `refresh_projection`</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Whether validation results authorize mutation</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">StorageBudget</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Shows storage budget for build artifacts.</p>
+
+<table id="table-37" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`status`</td><td>string</td><td>`ok`, `warn`, `over_budget`, `fleet_blocked`</td></tr>
+<tr><td>`total_size_mb`</td><td>number</td><td>Total build artifact size</td></tr>
+<tr><td>`prune_candidates`</td><td>integer</td><td>Files eligible for pruning</td></tr>
+<tr><td>`rollup_candidates`</td><td>integer</td><td>JSONL files without Parquet rollup</td></tr>
+<tr><td>`recommendations`</td><td>string[]</td><td>Recommended actions</td></tr>
+</tbody>
+</table>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `gc_artifacts`, `refresh_projection`</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Automatic garbage collection, storage policy</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">ReceiptTimeline</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Shows bounded history of durable evidence.</p>
+
+<table id="table-42" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`receipts`</td><td>array</td><td>Bounded list of recent receipt summaries</td></tr>
+<tr><td>`receipts[n].kind`</td><td>string</td><td>Receipt kind (checkpoint, authorization, validation, etc.)</td></tr>
+<tr><td>`receipts[n].summary`</td><td>string</td><td>Human-readable summary</td></tr>
+<tr><td>`receipts[n].timestamp`</td><td>string</td><td>ISO 8601 timestamp</td></tr>
+<tr><td>`receipts[n].sha256`</td><td>string</td><td>Receipt content hash</td></tr>
+</tbody>
+</table>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `refresh_projection`</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Receipt creation, receipt verification policy</p>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">LatestIntentResult</h3>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">Shows the result of the last intent execution.</p>
+
+<table id="table-47" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`intent_name`</td><td>string</td><td>Name of the executed intent</td></tr>
+<tr><td>`status`</td><td>string</td><td>`completed`, `refused`, `failed`, `running`</td></tr>
+<tr><td>`result_kind`</td><td>string</td><td>Type of result data</td></tr>
+<tr><td>`output_ref_count`</td><td>integer</td><td>Number of output references</td></tr>
+<tr><td>`result_sha256`</td><td>string</td><td>SHA256 of result JSON</td></tr>
+<tr><td>`projection_seq`</td><td>integer</td><td>Projection sequence number</td></tr>
+<tr><td>`completed_at`</td><td>string</td><td>ISO 8601 timestamp</td></tr>
+</tbody>
+</table>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `refresh_projection`</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Re-executing failed intents without authorization</p>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">RefinementBacklog</h3>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Shows pending refinement items (optional, for built-in tool refinement).</p>
+
+<table id="table-52" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`pending`</td><td>integer</td><td>Number of pending refinement items</td></tr>
+<tr><td>`refined`</td><td>integer</td><td>Number of completed refinement items</td></tr>
+<tr><td>`last_refined_at`</td><td>string</td><td>ISO 8601 timestamp</td></tr>
+</tbody>
+</table>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">**Allowed intentions:** `refresh_projection`</p>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Refinement policy decisions</p>
+
+<h2 id="h2-55" class="disclosure-standard" data-disclosure-level="standard">Widget Grouping</h2>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">Widgets are rendered in three groups within the cockpit:</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">1. **Header zone** (always visible): OperatorHeader, SafetyState, NextAction 2. **Activity zone** (scrollable): ActiveChildSessions, ValidationSummary, StorageBudget, ReceiptTimeline, LatestIntentResult 3. **Footer zone** (collapsible): RefinementBacklog</p>
+
+<h2 id="h2-58" class="disclosure-standard" data-disclosure-level="standard">Contract Rules</h2>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">1. Backend authors the widget state. 2. Frontend renders the widget state. 3. Frontend emits intentions only. 4. Frontend must not infer checkpointability, session readiness, promotion decisions, or storage policy. 5. Missing data degrades to explicit placeholder (e.g., `&quot;available&quot;: false`, `&quot;status&quot;: &quot;unknown&quot;`), not fabricated state. 6. Widget fields are drawn from actual artifact schemas — never invented or inferred. 7. Read-only actions are listed in `read_only_actions` on the projection. The frontend renders these as available buttons, not as authoritative approvals.</p>
+
+<h2 id="h2-60" class="disclosure-standard" data-disclosure-level="standard">Mapping from Rig Widgets</h2>
+
+<details id="table-61" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-61" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Rig widget</th><th>Rig Relay widget</th><th>Adaptation</th></tr></thead>
+<tbody>
+<tr><td>WorkspaceHeader</td><td>OperatorHeader</td><td>Session ID replaces workspace ID</td></tr>
+<tr><td>WorkspaceGitState</td><td>SafetyState</td><td>Focus on dirty files + leases, not git state</td></tr>
+<tr><td>WorkspaceLaneSummary</td><td>ActiveChildSessions</td><td>Child sessions replace lanes</td></tr>
+<tr><td>AgentLaneCard</td><td>—</td><td>Deferred to port_next; ActiveChildSessionCard</td></tr>
+<tr><td>LaneReviewCard</td><td>—</td><td>Deferred to port_next; ParentConvergenceCard</td></tr>
+<tr><td>PromotionPlanCard</td><td>—</td><td>Deferred to port_next; ReadyWorkPlanCard</td></tr>
+<tr><td>LaneRecommendationCard</td><td>NextAction</td><td>Direct mapping with Relay-specific fields</td></tr>
+<tr><td>CommandProgressCard</td><td>—</td><td>Absorbed by progress event stream</td></tr>
+<tr><td>ReceiptTimeline</td><td>ReceiptTimeline</td><td>Same widget, Relay receipt kinds</td></tr>
+<tr><td>—</td><td>ValidationSummary</td><td>Rig Relay-specific</td></tr>
+<tr><td>—</td><td>StorageBudget</td><td>Rig Relay-specific</td></tr>
+<tr><td>—</td><td>LatestIntentResult</td><td>Rig Relay-specific</td></tr>
+<tr><td>—</td><td>RefinementBacklog</td><td>Rig Relay-specific</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-62" class="disclosure-standard" data-disclosure-level="standard">Integrity Contract</h2>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">The projection integrity assessment is a content-light check attached to every desktop projection. It is **not a separate widget** — it decorates the projection with trust metadata.</p>
+
+<table id="table-64" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`integrity_status`</td><td>string</td><td>`verified`, `degraded`, `stale`, `orphaned`, `unknown`</td></tr>
+<tr><td>`contract_status`</td><td>string</td><td>`satisfied`, `partial`, `violated`, `not_applicable`</td></tr>
+<tr><td>`violation_count`</td><td>integer</td><td>Total integrity violations</td></tr>
+<tr><td>`violations`</td><td>array</td><td>List of violation objects (code, message, severity, optional widget_name/receipt_id/path)</td></tr>
+<tr><td>`checked_at`</td><td>string</td><td>ISO 8601 timestamp</td></tr>
+<tr><td>`receipt_count`</td><td>integer</td><td>Number of receipt records evaluated</td></tr>
+<tr><td>`stale_receipt_count`</td><td>integer</td><td>Receipts exceeding staleness threshold</td></tr>
+<tr><td>`orphaned_receipt_count`</td><td>integer</td><td>Receipts missing session_id or tool_name</td></tr>
+<tr><td>`authority_backed`</td><td>boolean</td><td>Whether all claimed authorities have receipt backing</td></tr>
+</tbody>
+</table>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">**Integrity status priority:** VERIFIED &gt; STALE &gt; ORPHANED &gt; DEGRADED &gt; UNKNOWN</p>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">**Contract status rules:** - NOT_APPLICABLE when no authorities or widgets claimed - SATISFIED when zero violations - VIOLATED when any error-severity violation exists - PARTIAL otherwise</p>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">**Forbidden frontend inference:** Modifying integrity policy, bypassing violations, interpreting violations as authorization to mutate</p>
+
+<h2 id="h2-68" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Desktop Projection Schema](../schemas/rig.relay.desktop_projection.v1.schema.json) - [Projection Integrity Schema](../schemas/rig.relay.projection_integrity.v1.schema.json) - [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/relay-desktop-projection-contract.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

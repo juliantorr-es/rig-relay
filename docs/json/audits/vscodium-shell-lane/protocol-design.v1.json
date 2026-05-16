@@ -1,0 +1,237 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "protocol-design",
+  "document_type": "audit",
+  "title": "Protocol Design: Extension ↔ Rig Daemon",
+  "summary": "This document defines the local-only WebSocket protocol for the VSCodium shell lane.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/vscodium-shell-lane/protocol-design.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Protocol Design: Extension ↔ Rig Daemon",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "This document defines the local-only WebSocket protocol for the VSCodium shell lane.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Transport",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "*   **Endpoint:** `ws://127.0.0.1:PORT/rig/v1/extension` *   **Authentication:** Token-gated. The daemon writes a one-time token to a secure local file (or `SecretStorage` after initial handshake) which the extension must provide in the `Authorization` header or initial `auth` message. *   **Security:** Localhost-only. No unauthenticated commands. No raw shell execution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Message Envelopes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Base Message",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-7",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"version\": \"1.0\",\n  \"type\": \"string\",\n  \"request_id\": \"uuid\",\n  \"session_id\": \"string\",\n  \"workspace_id\": \"string\",\n  \"payload\": {},\n  \"timestamp\": \"iso8601\"\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Key Messages",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Type",
+        "Request/Response",
+        "Description",
+        "Content-Light Rules"
+      ],
+      "rows": [
+        [
+          "`auth`",
+          "Request",
+          "Initial handshake with token.",
+          "N/A"
+        ],
+        [
+          "`get_snapshot`",
+          "Request",
+          "Retrieve current session projection.",
+          "No raw file contents."
+        ],
+        [
+          "`start_turn`",
+          "Request",
+          "Submit a prompt to the agent.",
+          "Only user text and workspace metadata."
+        ],
+        [
+          "`cancel_turn`",
+          "Request",
+          "Stop current agent turn.",
+          "N/A"
+        ],
+        [
+          "`subscribe_events`",
+          "Request",
+          "Subscribe to real-time agent events.",
+          "Projections only (summaries)."
+        ],
+        [
+          "`list_receipts`",
+          "Request",
+          "Query evidence receipts.",
+          "Metadata + rationale only."
+        ],
+        [
+          "`propose_patch`",
+          "Response",
+          "Daemon proposes a file change.",
+          "**Exception**: Must include diff/patch."
+        ],
+        [
+          "`apply_patch`",
+          "Request",
+          "User approves the patch.",
+          "Patch ID + workspace ID."
+        ],
+        [
+          "`run_validate`",
+          "Request",
+          "Trigger a validation run.",
+          "Argv summary only."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Refusal Shape",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "All requests may result in a refusal if governance rules are violated.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-12",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"error\",\n  \"request_id\": \"uuid\",\n  \"error_kind\": \"permission_denied | state_conflict | validation_failure\",\n  \"message\": \"Human-readable reason\",\n  \"refusal_code\": \"RIG_ERR_001\"\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Content-Light Projections",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "The protocol strictly enforces **Content-Light Projections** for all non-editor-specific messages. *   `AssistantEvent`: Contains the text response but **no tool output** (stdout/stderr). *   `ToolCallEvent`: Contains tool name and arguments summary, but **no raw arguments** if they contain sensitive data (hashes only). *   `ToolResultEvent`: Contains duration and status, but **no raw output data**. *   **Diff Surface Exception**: Only messages specifically destined for the VSCodium Diff View may contain raw patch data.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/vscodium-shell-lane/protocol-design.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

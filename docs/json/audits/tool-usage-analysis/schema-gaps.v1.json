@@ -1,0 +1,78 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "schema-gaps",
+  "document_type": "audit",
+  "title": "Schema Gaps",
+  "summary": "- Missing core fields detected: `0`",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/tool-usage-analysis/schema-gaps.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Schema Gaps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "- Missing core fields detected: `0` - Raw content keys seen: `content`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Recommended additions: - explicit `tool_name`, `status`, `duration_ms`, `output_bytes`, `error_kind`, `receipt_id`, `schema_version` - normalized outcome field for success/failure/skipped/refused - stable tool invocation id and session id linkage - redaction-safe hashes for any content-bearing fields",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Forbidden fields in shared reports: - raw prompts - raw args - raw stdout/stderr - raw completions or transcripts - raw private file contents",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/tool-usage-analysis/schema-gaps.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

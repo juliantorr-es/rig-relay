@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Provider Boundary and Adapter Contract Map — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Provider Boundary and Adapter Contract Map</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Provider Boundary and Adapter Contract Map</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: provider</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s provider layer is currently a mix of generic OpenAI-style adapters and specialized backends (Mistral, Anthropic). While structural boundaries exist in `vibe/core/llm/backend/`, provider-specific leakage persists in the core `AgentLoop` and telemetry layers, particularly regarding &quot;Mistral-vibe&quot; legacy naming and specialized usage headers.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Provider Boundary Inventory</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Assumptions</th></tr></thead>
+<tbody>
+<tr><td>**Backend Factory**</td><td>Partially Isolated</td><td>Uses `Backend` enum to switch; hardcoded to internal adapters.</td></tr>
+<tr><td>**Mistral Backend**</td><td>Highly Specific</td><td>Uses `mistralai` SDK directly; expects specific header/error shapes.</td></tr>
+<tr><td>**Generic OpenAI**</td><td>Reusable</td><td>Standard OpenAI payload shape; supports custom `api_base`.</td></tr>
+<tr><td>**Vertex AI**</td><td>Specific</td><td>Handles Google-specific auth and Anthropic payload translation.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Provider-Specific Leakage List</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">1.  **Vibe Legacy Naming**: Environment variables and config keys often reference &quot;Mistral&quot; or &quot;Vibe&quot; (e.g., `is_active_model_mistral`). 2.  **Telemetry Headers**: Telemetry events often assume Mistral-specific correlation IDs or headers. 3.  **Compaction Defaults**: Default compaction models are hardcoded to Mistral models in some skills/configs. 4.  **Auth Logic**: `TelemetryClient` contains Mistral-specific API key resolution logic.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Generic Relay vs Provider Adapter Responsibilities</h2>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Responsibility</th><th>Generic Relay (Core)</th><th>Provider Adapter</th></tr></thead>
+<tbody>
+<tr><td>**Context Assembly**</td><td>Canonical block building.</td><td>N/A</td></tr>
+<tr><td>**Payload Formatting**</td><td>N/A</td><td>Convert blocks to provider-native JSON.</td></tr>
+<tr><td>**Streaming**</td><td>Event loop orchestration.</td><td>Parse chunked byte streams into `Event` objects.</td></tr>
+<tr><td>**Usage Tracking**</td><td>Aggregate tokens/chars.</td><td>Extract usage metrics from raw response.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Adapter Contract Proposal</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Implement a strict `ProviderAdapterPort`: - `async def chat(request: PreparedRequest) -&gt; LLMResult` - `async def stream_chat(request: PreparedRequest) -&gt; AsyncGenerator[LLMEvent, None]` - `def format_messages(messages: list[LLMMessage]) -&gt; Any`</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Recommended Refactor Backlog</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1.  **Mission: Decouple Telemetry Auth**: Move Mistral-specific telemetry key resolution to a provider-agnostic auth manager. 2.  **Mission: Naming Normalization**: Replace `is_active_model_mistral` with `get_active_provider_capabilities()`. 3.  **Mission: Plugin-based Backends**: Allow dynamic registration of new provider backends to remove hardcoded switches in `BackendFactory`.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/provider-boundary-adapter-contract-map.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,3099 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "usage-data-doctrine",
+  "document_type": "governance",
+  "title": "Rig Relay Usage Data Doctrine",
+  "summary": "Rig Relay produces a behavioral corpus of agent workflow observability data.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/usage-data-doctrine.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig Relay Usage Data Doctrine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Rig Relay produces a behavioral corpus of agent workflow observability data. This doctrine defines what is collected, how it is retained, and under what conditions it may be exported, shared, or used for evaluation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "**Ratification:** This doctrine is normative for all Rig Relay sessions. Automated tooling and human operators SHALL follow it.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Architecture",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Usage data flows through four layers:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-7",
+      "type": "code",
+      "language": "text",
+      "content": ".raw/         Raw evidence — full tool payloads, transcripts, stdout/stderr,\n              receipts, and artifacts.  High fidelity, high volume.\n.events/      Canonical event stream — append-only JSONL, one event per\n              tool call, state change, refusal, or artifact emission.\n.datasets/    Flattened evaluation rows — one row per mission, task,\n              tool call, or mutation.  Derived from events.\n.manifests/   Hashes, schema versions, provenance, retention metadata.",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "**Principle:** - Raw logs are evidence. - Events are observability. - Datasets are learning material. - Evals are product feedback.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "The canonical redaction boundary for shareable and remote-facing artifacts is `rig_relay.evidence.redaction`. Bundle writers, export helpers, and audit artifact builders must route through that shared module so content-light behavior remains consistent.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Retention Classes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "Evidence-Retained (always kept locally)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "These fields are permanently retained in the local session directory (`~/.rig/relay/sessions/<session_id>/`). They contain no source code, no prompt text, and no file contents.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Source"
+      ],
+      "rows": [
+        [
+          "session_id",
+          "`observability.jsonl` envelope"
+        ],
+        [
+          "parent_session_id",
+          "`observability.jsonl` envelope"
+        ],
+        [
+          "event_id, event_name, event_hash",
+          "`observability.jsonl` envelope"
+        ],
+        [
+          "sequence, created_at",
+          "`observability.jsonl` envelope"
+        ],
+        [
+          "tool_call_id",
+          "`TOOL_CALL_COMPLETED`, `TOOL_REASONING_TRACE`"
+        ],
+        [
+          "tool_name",
+          "`TOOL_CALL_COMPLETED`, `TOOL_REASONING_TRACE`"
+        ],
+        [
+          "tool_input_sha256",
+          "`TOOL_CALL_COMPLETED`"
+        ],
+        [
+          "tool_output_sha256",
+          "`TOOL_CALL_COMPLETED`, `TOOL_REASONING_TRACE`"
+        ],
+        [
+          "tool_output_kind",
+          "`TOOL_REASONING_TRACE`"
+        ],
+        [
+          "determinism_class",
+          "`TOOL_REASONING_TRACE`"
+        ],
+        [
+          "mutation_class",
+          "`TOOL_REASONING_TRACE`"
+        ],
+        [
+          "status",
+          "`TOOL_CALL_COMPLETED`"
+        ],
+        [
+          "decision, approval_type",
+          "`TOOL_CALL_COMPLETED`"
+        ],
+        [
+          "agent_profile_name",
+          "`TOOL_CALL_COMPLETED`"
+        ],
+        [
+          "model",
+          "`REQUEST_ACCOUNTED`, `TOOL_CALL_COMPLETED`"
+        ],
+        [
+          "nb_files_created, nb_files_modified",
+          "`TOOL_CALL_COMPLETED`"
+        ],
+        [
+          "latency_ms, input_bytes, output_bytes",
+          "`TOOL_REASONING_TRACE`"
+        ],
+        [
+          "warnings",
+          "`TOOL_REASONING_TRACE`, `GitStateArtifact`"
+        ],
+        [
+          "repo_state_sha256",
+          "`GitStateArtifact`"
+        ],
+        [
+          "artifact_record_sha256",
+          "`ArtifactEnvelope`"
+        ],
+        [
+          "receipt_sha256",
+          "`receipts.jsonl`"
+        ],
+        [
+          "schema_version",
+          "all artifacts"
+        ],
+        [
+          "thinking_enabled, thinking_type, reasoning_effort",
+          "`TaskSessionLinkArtifact`"
+        ],
+        [
+          "provider",
+          "`TaskSessionLinkArtifact`"
+        ],
+        [
+          "authorization_receipt_sha256",
+          "`desktop.intent.completed`, `desktop.intent.refused`"
+        ],
+        [
+          "authorization_action",
+          "`desktop.intent.completed`, `desktop.intent.refused`"
+        ],
+        [
+          "authorization_status",
+          "`desktop.intent.completed`, `desktop.intent.refused`"
+        ],
+        [
+          "observation_id",
+          "`MODEL_OBSERVATION_CAPTURED`"
+        ],
+        [
+          "task_kind, task_fingerprint",
+          "`MODEL_OBSERVATION_CAPTURED`"
+        ],
+        [
+          "provider_kind, provider_name, model_id, backend",
+          "`MODEL_OBSERVATION_CAPTURED`"
+        ],
+        [
+          "tool_call_count, tool_success_count, failure_count",
+          "`MODEL_OBSERVATION_CAPTURED`"
+        ],
+        [
+          "latency_ms (observation)",
+          "`MODEL_OBSERVATION_CAPTURED`"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Locally Retained (kept on disk, never exported)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "These fields are stored in the local session directory but MUST NOT be included in any export, upload, or shared dataset without explicit user opt-in and redaction.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-16",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Source"
+      ],
+      "rows": [
+        [
+          "Raw prompt text",
+          "context assembly artifacts"
+        ],
+        [
+          "Model output text",
+          "`messages.jsonl`, inline tool results"
+        ],
+        [
+          "stdout/stderr from bash",
+          "tool output artifacts"
+        ],
+        [
+          "File contents (even hashed source)",
+          "tool payloads"
+        ],
+        [
+          "Repository paths beyond repo root",
+          "`SearchQueryArtifact.root`"
+        ],
+        [
+          "User messages",
+          "`messages.jsonl`"
+        ],
+        [
+          "Full search query strings",
+          "`SearchQueryArtifact.query`"
+        ],
+        [
+          "File snippets in search results",
+          "`SearchResultArtifact` items"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-17",
+      "type": "heading",
+      "level": 3,
+      "content": "Exportable After Redaction",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "Derived evaluation datasets may be exported or shared IF:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "1. The user has explicitly opted in (via config flag or command). 2. All locally-retained fields have been stripped. 3. Only evidence-retained fields plus derived metrics remain. 4. Export passes the redaction validator (`rig-relay doctor redact --check`).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "Exportable derived datasets:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-21",
+      "type": "table",
+      "columns": [
+        "Dataset",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`tool_failure_patterns.jsonl`",
+          "tool_name, status, warnings, determinism_class, model"
+        ],
+        [
+          "`mission_outcome_dataset.jsonl`",
+          "session_id, agent_profile, completion_status, tool counts, refusal count"
+        ],
+        [
+          "`dirty_file_conflicts.jsonl`",
+          "repo_state_sha256, refused_writes count, skipped_files count, dirty_file_count"
+        ],
+        [
+          "`provider_task_performance.jsonl`",
+          "provider, model, thinking_enabled, agent_profile, task_id, status, latency_ms"
+        ],
+        [
+          "`search_quality_dataset.jsonl`",
+          "normalized_query_sha256, result_sha256, files_clicked_after, files_edited_after, mission outcome"
+        ],
+        [
+          "`fleet_decomposition_dataset.jsonl`",
+          "parent_session_id, child_count, child_profiles, parallelism, conflicts, outcome"
+        ],
+        [
+          "`mutation_safety_dataset.jsonl`",
+          "file path hash, before_sha256, after_sha256, protected, hash_matched, allowed"
+        ],
+        [
+          "`checkpoint_commit_dataset.jsonl`",
+          "session_id, task_id, commit_sha, files_committed, pre_commit_head, post_commit_head, branch"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "Checkpoint Events",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "Checkpoint commits emit these observability events:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-24",
+      "type": "table",
+      "columns": [
+        "Event Name",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`rig.relay.checkpoint.committed`",
+          "A governed checkpoint commit succeeded."
+        ],
+        [
+          "`rig.relay.checkpoint.refused`",
+          "A checkpoint commit was refused by the guard."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "Cross-Session Coordination Datasets",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Coordination events from [Cross-Session Coordination](cross-session-coordination.md) feed these derived datasets. They measure session/task orchestration behavior across multiple active Rig Relay sessions.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Purpose: Measure session/task coordination behavior across multiple active Rig Relay sessions.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Row fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-29",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`session_id`",
+          "uuid",
+          "The session emitting the coordination event."
+        ],
+        [
+          "`parent_session_id`",
+          "uuid\\",
+          "null",
+          "Parent session if delegated."
+        ],
+        [
+          "`fleet_id`",
+          "string\\",
+          "null",
+          "Fleet identifier for grouped sessions."
+        ],
+        [
+          "`task_id`",
+          "string\\",
+          "null",
+          "Delegation task identifier."
+        ],
+        [
+          "`agent_profile_name`",
+          "string",
+          "Agent profile (reviewer, implementer, tester, documenter, aggregator)."
+        ],
+        [
+          "`event_name`",
+          "string",
+          "Coordination event name (e.g., `coord.path.reserved`)."
+        ],
+        [
+          "`coord_event_hash`",
+          "sha256",
+          "SHA256 of the canonical coordination event."
+        ],
+        [
+          "`provider`",
+          "string",
+          "LLM provider."
+        ],
+        [
+          "`model`",
+          "string",
+          "Model identifier."
+        ],
+        [
+          "`thinking_enabled`",
+          "boolean",
+          "Whether extended thinking was active."
+        ],
+        [
+          "`reservation_mode`",
+          "string\\",
+          "null",
+          "`read` or `write`, if a path reservation event."
+        ],
+        [
+          "`reservation_status`",
+          "string\\",
+          "null",
+          "`granted`, `refused`, `stale`, or `released`."
+        ],
+        [
+          "`reserved_path_count`",
+          "integer",
+          "Number of paths reserved in this event."
+        ],
+        [
+          "`reserved_path_hashes`",
+          "array of sha256",
+          "Salted SHA256 hashes of reserved paths."
+        ],
+        [
+          "`conflict_count`",
+          "integer",
+          "Number of conflicts in this event."
+        ],
+        [
+          "`artifact_count`",
+          "integer",
+          "Number of artifacts published in this event."
+        ],
+        [
+          "`handoff_count`",
+          "integer",
+          "Number of handoffs in this event."
+        ],
+        [
+          "`latency_ms`",
+          "number",
+          "Wall-clock latency for the coordination operation."
+        ],
+        [
+          "`outcome`",
+          "string",
+          "`completed`, `blocked`, `refused`, or `failed`."
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "Purpose: Measure conflicts, refusals, stale leases, and successful conflict resolution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Row fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-32",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`conflict_id`",
+          "string",
+          "Unique conflict identifier."
+        ],
+        [
+          "`conflict_kind`",
+          "string",
+          "`path_write_overlap`, `stale_lease`, `dirty_file_protected`, or `dependency_unsatisfied`."
+        ],
+        [
+          "`session_id`",
+          "uuid",
+          "Session that reported the conflict."
+        ],
+        [
+          "`other_session_id`",
+          "uuid\\",
+          "null",
+          "Other session involved in the conflict."
+        ],
+        [
+          "`task_id`",
+          "string\\",
+          "null",
+          "Task identifier if task-scoped."
+        ],
+        [
+          "`path_hashes`",
+          "array of sha256",
+          "Salted SHA256 hashes of paths involved in the conflict."
+        ],
+        [
+          "`resolution`",
+          "string",
+          "`serialized`, `scope_split`, `abandoned`, `takeover`, or `manual_review`."
+        ],
+        [
+          "`prevented_write`",
+          "boolean",
+          "Whether the conflict prevented a file mutation."
+        ],
+        [
+          "`outcome`",
+          "string",
+          "`resolved`, `unresolved`, or `false_positive`."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "Purpose: Measure whether sessions reuse existing artifacts instead of duplicating search/audit/test work.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Row fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-35",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`session_id`",
+          "uuid",
+          "Session consuming the artifact."
+        ],
+        [
+          "`task_id`",
+          "string\\",
+          "null",
+          "Task identifier if task-scoped."
+        ],
+        [
+          "`artifact_kind`",
+          "string",
+          "`search_results`, `git_state`, `task_session_link`, or `tool_reasoning_trace`."
+        ],
+        [
+          "`artifact_sha256`",
+          "sha256",
+          "SHA256 of the artifact."
+        ],
+        [
+          "`producer_session_id`",
+          "uuid",
+          "Session that produced the artifact."
+        ],
+        [
+          "`consumer_session_id`",
+          "uuid",
+          "Session that consumed the artifact."
+        ],
+        [
+          "`reuse_kind`",
+          "string",
+          "`read`, `referenced`, `validated`, or `superseded`."
+        ],
+        [
+          "`avoided_tool_call`",
+          "boolean",
+          "Whether reusing the artifact avoided a duplicate tool call."
+        ],
+        [
+          "`outcome`",
+          "string",
+          "`useful`, `stale`, or `irrelevant`."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-36",
+      "type": "heading",
+      "level": 3,
+      "content": "Coordination Data Retention",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "Coordination data follows the same three-class retention model.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "**Evidence-retained** (always kept locally):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-39",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Classification"
+      ],
+      "rows": [
+        [
+          "`session_id`, `parent_session_id`, `fleet_id`, `task_id`",
+          "Evidence-retained"
+        ],
+        [
+          "`event_name`, `coord_event_hash`",
+          "Evidence-retained"
+        ],
+        [
+          "reservation mode, reservation status",
+          "Evidence-retained"
+        ],
+        [
+          "salted path hashes",
+          "Evidence-retained"
+        ],
+        [
+          "artifact hashes",
+          "Evidence-retained"
+        ],
+        [
+          "conflict kind, resolution kind",
+          "Evidence-retained"
+        ],
+        [
+          "timing/latency",
+          "Evidence-retained"
+        ],
+        [
+          "provider, model, thinking metadata",
+          "Evidence-retained"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "**Locally retained** (kept on disk, never exported):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-41",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Classification"
+      ],
+      "rows": [
+        [
+          "Raw task prompts",
+          "Locally retained"
+        ],
+        [
+          "Raw handoff messages",
+          "Locally retained"
+        ],
+        [
+          "Raw artifact bodies",
+          "Locally retained"
+        ],
+        [
+          "Raw paths (unsalted)",
+          "Locally retained"
+        ],
+        [
+          "Raw search queries",
+          "Locally retained"
+        ],
+        [
+          "stdout/stderr from child sessions",
+          "Locally retained"
+        ],
+        [
+          "Raw child model outputs",
+          "Locally retained"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "**Exportable after redaction:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-43",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Classification"
+      ],
+      "rows": [
+        [
+          "Salted path hashes",
+          "Exportable"
+        ],
+        [
+          "Event categories",
+          "Exportable"
+        ],
+        [
+          "Counts",
+          "Exportable"
+        ],
+        [
+          "Durations",
+          "Exportable"
+        ],
+        [
+          "Provider/model/task profile metadata",
+          "Exportable"
+        ],
+        [
+          "Outcome labels",
+          "Exportable"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-44",
+      "type": "heading",
+      "level": 3,
+      "content": "Derived Coordination Dataset Exporter",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "The script `scripts/rig_relay_export_coordination_datasets.py` transforms normalized coordination/checkpoint event envelopes into schema-validated derived dataset JSONL rows.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "Usage:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-47",
+      "type": "code",
+      "language": "text",
+      "content": "uv run python scripts/rig_relay_export_coordination_datasets.py \\\n    --events .build/rig-relay/coordination/events.jsonl \\\n    --output-dir .build/rig-relay/derived \\\n    --schemas-dir docs/schemas",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "Output (all in `--output-dir`): - `cross_session_coordination_dataset.jsonl` - `coordination_conflict_dataset.jsonl` - `artifact_reuse_dataset.jsonl` - `checkpoint_eval_dataset.jsonl`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-49",
+      "type": "heading",
+      "level": 3,
+      "content": "Built-in Tool Refinement Reports",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "Built-in tool refinement reports convert observed usage data into a ranked implementation backlog. They consume derived datasets only, not raw observability logs, and they stay content-light by using counts, labels, hashes, and schema-safe aggregates.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "The refinement loop is:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "1. Export or compact derived datasets. 2. Generate a refinement report from the derived corpus. 3. Review the ranked backlog for built-ins that should be improved, split, hardened, promoted, or replaced. 4. Implement the smallest safe slice and re-run the report to verify pressure changed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "Refinement reports are product feedback artifacts, not raw evidence exports.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-54",
+      "type": "heading",
+      "level": 3,
+      "content": "Built-in Refinement Packets",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "Built-in refinement packets convert ranked usage-data findings into bounded implementation missions. They bridge the refinement backlog into the reviewer/orchestrator loop without requiring a human to rewrite the same scope text each time.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "Packet generation rules:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "1. Start from `builtin_tool_refinement_backlog.jsonl`. 2. Select the top ranked items by priority and deterministic score. 3. Emit one mission packet per selected item. 4. Keep packet content-light and bounded to the targeted tool/refinement slice.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "The packet is a planning artifact. It does not carry raw evidence or raw operational data.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "The first high-value shell replacement built-in is `validation_suite` (✅ implemented): it is allowlist-based, returns structured evidence with content-light hashes+previews, replaces repeated validation command bundles without arbitrary shell execution, and is wired into the Desktop Intent API as `run_validation_suite`. - `export_manifest.json`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-60",
+      "type": "paragraph",
+      "content": "Mapping: - Every `coord.*` event → `cross_session_coordination` row - `coord.conflict.reported` / `coord.path.reservation_refused` → `coordination_conflict` row - `coord.artifact.published` → `artifact_reuse` row - `rig.relay.checkpoint.committed` / `rig.relay.checkpoint.refused` (from observability) → `checkpoint_eval` row",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "Features: - Content-light enforcement: rejects payloads containing raw prompts, model outputs, file contents, stdout/stderr, diff bodies - Schema validation via `jsonschema` (optional dependency, graceful fallback) - `--strict` mode: fail on first validation error or missing input - Tolerates missing input files with clear warnings - Writes `export_manifest.json` with row counts, schema versions, warnings",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-62",
+      "type": "heading",
+      "level": 3,
+      "content": "Normalized Coordination Event Payload Contracts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "Every `coord.*` and checkpoint event now uses a normalized payload contract designed for reliable transformation into derived evaluation rows. Payloads are hash-heavy and content-light: no raw file contents, no raw prompts, no model outputs. Raw paths are replaced with salted SHA256 path hashes for exportability.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-64",
+      "type": "paragraph",
+      "content": "**Canonical payload fields (where applicable):**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-65",
+      "type": "paragraph",
+      "content": "- `session_id`, `parent_session_id`, `task_id`, `fleet_id` - `agent_profile_name`, `event_kind`, `status`, `outcome` - `provider`, `model`, `thinking_enabled` - `reservation_mode`, `reservation_status` - `path_hashes` (salted), `path_count` - `artifact_kind`, `artifact_sha256` - `conflict_kind`, `conflict_id`, `resolution_kind` - `handoff_from_session_id`, `handoff_to_session_id` - `latency_ms` / `duration_ms` - `warnings`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "**Checkpoint committed payload fields:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-67",
+      "type": "paragraph",
+      "content": "- `session_id`, `task_id`, `branch` - `pre_commit_head`, `post_commit_head` - `commit_sha` - `files_committed_count` - `validation_summary_hash` - `checkpoint_artifact_sha256` - `status`: `\"committed\"`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-68",
+      "type": "paragraph",
+      "content": "**Checkpoint refused payload fields:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-69",
+      "type": "paragraph",
+      "content": "- `session_id`, `task_id` - `refusal_code` - `status`: `\"refused\"` - `warnings`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-70",
+      "type": "paragraph",
+      "content": "**Artifact reuse hooks (`coord.artifact.published`):**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-71",
+      "type": "paragraph",
+      "content": "- `producer_session_id` (defaults to `session_id` of the publishing session) - `consumer_session_id` — null/future; available when cross-session artifact discovery is implemented - `artifact_kind`, `artifact_sha256` - `task_id` - `reuse_kind` — null/future; populated when the coordination layer tracks consumption - `avoided_tool_call` — null/future",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-72",
+      "type": "paragraph",
+      "content": "For detailed payload field contracts, see the coordination event schemas in `docs/schemas/`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-73",
+      "type": "heading",
+      "level": 3,
+      "content": "Fleet/Delegate Derived Metrics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-74",
+      "type": "paragraph",
+      "content": "From cross-session coordination events, these fleet-level metrics can be derived for evaluation:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-75",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`parallelism_width`",
+          "Maximum number of concurrent child sessions."
+        ],
+        [
+          "`child_session_count`",
+          "Total number of child sessions delegated."
+        ],
+        [
+          "`read_only_child_count`",
+          "Child sessions with only read reservations."
+        ],
+        [
+          "`writer_child_count`",
+          "Child sessions with at least one write reservation."
+        ],
+        [
+          "`path_reservation_refusal_count`",
+          "Times a path reservation was refused."
+        ],
+        [
+          "`conflict_count`",
+          "Total coordination conflicts reported."
+        ],
+        [
+          "`handoff_count`",
+          "Total handoffs requested."
+        ],
+        [
+          "`artifact_reuse_count`",
+          "Times an artifact was reused by a different session."
+        ],
+        [
+          "`duplicate_search_count`",
+          "Times the same search query was executed by different sessions."
+        ],
+        [
+          "`blocked_duration_ms`",
+          "Total time sessions spent blocked waiting for reservations."
+        ],
+        [
+          "`active_duration_ms`",
+          "Total wall-clock time from first session start to last session close."
+        ],
+        [
+          "`time_to_first_artifact_ms`",
+          "Time from fleet start to first published artifact."
+        ],
+        [
+          "`time_to_first_conflict_ms`",
+          "Time from fleet start to first reported conflict."
+        ],
+        [
+          "`time_to_resolution_ms`",
+          "Time from conflict report to resolution."
+        ],
+        [
+          "`tests_run_count`",
+          "Total test commands executed across all child sessions."
+        ],
+        [
+          "`refusal_count`",
+          "Total write refusals across all sessions."
+        ],
+        [
+          "`successful_mutation_count`",
+          "Total successful file mutations across all sessions."
+        ],
+        [
+          "`protected_file_refusal_count`",
+          "Times a dirty file guard blocked a write."
+        ],
+        [
+          "`final_outcome`",
+          "Fleet-level outcome: `completed`, `partial`, `failed`, `cancelled`."
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-76",
+      "type": "heading",
+      "level": 2,
+      "content": "Privacy and Security Boundaries",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-77",
+      "type": "paragraph",
+      "content": "1. **Local-first by default.** No usage data leaves the machine unless the user explicitly enables remote telemetry or export.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-78",
+      "type": "paragraph",
+      "content": "2. **Hash-heavy, content-light.** Derived datasets use SHA256 hashes instead of raw text for queries, outputs, file contents, and repository paths.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-79",
+      "type": "paragraph",
+      "content": "3. **Explicit opt-in for sharing.** Export and remote telemetry are controlled by separate configuration flags. Neither defaults to on.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-80",
+      "type": "paragraph",
+      "content": "4. **Redaction before export.** A redaction validator runs on every export path and rejects any row containing a locally-retained field.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-81",
+      "type": "paragraph",
+      "content": "5. **No secrets.** `observability.jsonl` and derived datasets MUST NOT contain API keys, tokens, environment variable values, or file contents.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-82",
+      "type": "paragraph",
+      "content": "6. **No raw private code in public evals.** Even hashed, file paths may reveal proprietary structure. The redaction validator SHALL replace repository-relative paths with a salted path hash before export.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-83",
+      "type": "heading",
+      "level": 2,
+      "content": "Data Layout on Disk",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-84",
+      "type": "code",
+      "language": "text",
+      "content": "~/.rig/relay/sessions/<session_id>/\n├── observability.jsonl      # Canonical event stream (evidence-retained fields)\n├── receipts.jsonl           # Merkle-linked evidence receipts\n├── manifest.json            # Session index (schema versions, file listing, hashes)\n├── artifacts/\n│   ├── tool-results/        # Tool output payloads (locally retained)\n│   ├── context/             # Context assembly artifacts (locally retained)\n│   └── task-links/          # Task session link artifacts (evidence-retained)\n└── derived/                 # Optional: flattened eval datasets (exportable)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-85",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema Governance",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-86",
+      "type": "paragraph",
+      "content": "All usage data schemas live under `docs/schemas/` with the naming convention:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-87",
+      "type": "code",
+      "language": "text",
+      "content": "rig.relay.<domain>.<version>.schema.json",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-88",
+      "type": "paragraph",
+      "content": "Current evaluation schemas:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-89",
+      "type": "table",
+      "columns": [
+        "Schema",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`rig.relay.workflow_event.v1.schema.json`",
+          "Canonical event stream row"
+        ],
+        [
+          "`rig.relay.mission_outcome.v1.schema.json`",
+          "Flattened mission eval row"
+        ],
+        [
+          "`rig.relay.tool_call_eval.v1.schema.json`",
+          "Tool-call-level eval row"
+        ],
+        [
+          "`rig.relay.cross_session_coordination.v1.schema.json`",
+          "Normalized coordination event row for delegate/fleet analysis"
+        ],
+        [
+          "`rig.relay.coordination_conflict.v1.schema.json`",
+          "Normalized conflict/refusal event row"
+        ],
+        [
+          "`rig.relay.artifact_reuse.v1.schema.json`",
+          "Normalized artifact publication/reuse event row"
+        ],
+        [
+          "`rig.relay.checkpoint_eval.v1.schema.json`",
+          "Normalized checkpoint commit/refusal event row"
+        ],
+        [
+          "`rig.relay.telemetry_consent.v1.schema.json`",
+          "Explicit opt-in consent record with share_level"
+        ],
+        [
+          "`rig.relay.telemetry_bundle_manifest.v1.schema.json`",
+          "Content-light bundle manifest with content hash"
+        ],
+        [
+          "`rig.relay.google_drive_upload_receipt.v1.schema.json`",
+          "Upload receipt for beta artifact lake"
+        ],
+        [
+          "`rig.relay.contribution_receipt.v1.schema.json`",
+          "Content-light contribution receipt with hashed Drive IDs"
+        ],
+        [
+          "`rig.relay.contribution_result.v1.schema.json`",
+          "Orchestration result for contribution flow"
+        ],
+        [
+          "`rig.relay.telemetry_settings.v1.schema.json`",
+          "Telemetry mode and feature gate settings"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "p-90",
+      "type": "paragraph",
+      "content": "Existing observability schemas (not modified by this doctrine):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-91",
+      "type": "table",
+      "columns": [
+        "Schema",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`rig.relay.observability.v1`",
+          "Event envelope (defined in `local.py`)"
+        ],
+        [
+          "`rig.relay.artifact.envelope.v1`",
+          "Artifact envelope"
+        ],
+        [
+          "`rig.relay.artifact.tool_reasoning_trace.v1`",
+          "Tool reasoning trace"
+        ],
+        [
+          "`rig.relay.evidence.receipt.v1`",
+          "Merkle receipt"
+        ],
+        [
+          "`rig.relay.result.v1`",
+          "Session result"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-92",
+      "type": "heading",
+      "level": 2,
+      "content": "Dataset Reports",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-93",
+      "type": "paragraph",
+      "content": "Rig Relay has a local report generator (`scripts/rig_relay_dataset_report.py`) that reads event streams and findings registries and emits a human-readable Markdown summary to `.build/rig-relay/reports/dataset-summary.md`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-94",
+      "type": "paragraph",
+      "content": "Dataset reports are **local, content-light Markdown summaries** generated from event streams and findings. They are for human inspection and do not export raw private data.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-95",
+      "type": "paragraph",
+      "content": "**Report sections:** - Executive Summary (session counts, event counts, mutations, checkpoints, findings) - Event Volume (table by event_name) - Tool Behavior (table by tool_name, status) - Guard and Safety (dirty-file snapshots, write refusals) - Coordination (claims, reservations, refusals, conflicts, heartbeats) - Checkpoints (committed/refused counts, refusal reasons) - Provider / Model Use (model distribution from request accounting events) - Findings (out-of-scope findings grouped by severity) - Warnings / Missing Inputs (when data sources are unavailable) - Recommended Next Slices (derived from findings and checkpoint refusals) - Data Sources Used (paths and status of each input source)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-96",
+      "type": "paragraph",
+      "content": "**Privacy safeguards:** - Never includes raw prompt text, model output, file contents, stdout/stderr bodies - Never includes raw private code paths beyond what the local doctrine permits - Uses event names, counts, statuses, hashes, finding IDs/titles/severity only - SHA256 hashes for all content-derived references",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-97",
+      "type": "paragraph",
+      "content": "**Usage:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-98",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run python scripts/rig_relay_dataset_report.py\nuv run python scripts/rig_relay_dataset_report.py --output path/to/report.md\nuv run python scripts/rig_relay_dataset_report.py --export-csv path/to/counts.csv",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-99",
+      "type": "heading",
+      "level": 3,
+      "content": "Dataset Exports",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-100",
+      "type": "paragraph",
+      "content": "Rig Relay also has a local dataset exporter (`scripts/rig_relay_dataset_export.py`) that transforms event streams and findings into clean derived JSONL/CSV files for machine consumption.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-101",
+      "type": "paragraph",
+      "content": "Dataset export is **local, content-light, schema-validated** where schemas exist, and intended as the machine-readable input to reports, interactive inspectors, and evaluation pipelines.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-102",
+      "type": "paragraph",
+      "content": "**Output datasets** (written to `.build/rig-relay/derived/`):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-103",
+      "type": "table",
+      "columns": [
+        "Dataset",
+        "Source Events",
+        "Schema"
+      ],
+      "rows": [
+        [
+          "`cross_session_coordination_dataset.jsonl`",
+          "All `coord.*` events",
+          "`rig.relay.cross_session_coordination.v1`"
+        ],
+        [
+          "`coordination_conflict_dataset.jsonl`",
+          "`coord.conflict.reported`, `coord.path.reservation_refused`",
+          "`rig.relay.coordination_conflict.v1`"
+        ],
+        [
+          "`artifact_reuse_dataset.jsonl`",
+          "`coord.artifact.published`",
+          "`rig.relay.artifact_reuse.v1`"
+        ],
+        [
+          "`checkpoint_eval_dataset.jsonl`",
+          "`rig.relay.checkpoint.committed`, `rig.relay.checkpoint.refused`",
+          "`rig.relay.checkpoint_eval.v1`"
+        ],
+        [
+          "`tool_failure_patterns_dataset.jsonl`",
+          "`rig.relay.tool.call_completed` with non-success status",
+          "—"
+        ],
+        [
+          "`provider_task_performance_dataset.jsonl`",
+          "`rig.relay.context.request_accounted`",
+          "—"
+        ],
+        [
+          "`findings_dataset.jsonl`",
+          "`docs/findings/out-of-scope-findings.jsonl`",
+          "—"
+        ],
+        [
+          "`export_manifest.json`",
+          "Generated manifest with row counts, validation results, warnings",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-104",
+      "type": "paragraph",
+      "content": "**Private safeguards:** - Never includes raw prompt text, model output, file contents, stdout/stderr bodies - Uses event names, counts, statuses, hashes, finding IDs/titles/severity only - SHA256 hashes for all content-derived references - Transformers strip raw payload fields not mapped to the schema - `content_light_guarantee: true` recorded in every manifest",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-105",
+      "type": "paragraph",
+      "content": "**Schema validation:** - The four coordination/checkpoint datasets are validated against their schemas when `jsonschema` is available (stdlib dependency) - Validation results are recorded in the manifest (valid/total/errors per dataset) - Non-blocking by default; `--strict` mode fails on missing inputs",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-106",
+      "type": "paragraph",
+      "content": "**Usage:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-107",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run python scripts/rig_relay_dataset_export.py\nuv run python scripts/rig_relay_dataset_export.py --output-dir .build/rig-relay/derived\nuv run python scripts/rig_relay_dataset_export.py --format csv\nuv run python scripts/rig_relay_dataset_export.py --strict",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-108",
+      "type": "paragraph",
+      "content": "**Requirements:** - `jsonschema` is optional (used for schema validation when available). - DuckDB is optional (used when available via the `obs` extra). Falls back to stdlib JSONL parsing. - No large dashboard or web dependencies.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-109",
+      "type": "heading",
+      "level": 3,
+      "content": "Interactive Inspector",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-110",
+      "type": "paragraph",
+      "content": "Rig Relay provides an interactive marimo notebook inspector (`notebooks/rig_relay_dataset_inspector.py`) that loads derived datasets and renders filterable tables, charts, and completeness overviews.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-111",
+      "type": "paragraph",
+      "content": "The inspector is **reactive** — changing a filter dropdown re-renders the relevant tables without recomputing the full load.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-112",
+      "type": "paragraph",
+      "content": "**Architecture:** - `scripts/rig_relay_dataset_inspector_lib.py` — reusable data-loading/summary logic (loads derived JSONL files, computes aggregates, filter/aggregation helpers). Testable and importable without marimo. - `notebooks/rig_relay_dataset_inspector.py` — marimo notebook UI wrapping the lib. One cell per view section.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-113",
+      "type": "paragraph",
+      "content": "**Views (13 cells):**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-114",
+      "type": "table",
+      "columns": [
+        "View",
+        "What it shows"
+      ],
+      "rows": [
+        [
+          "`init_state()`",
+          "Loads all datasets, computes summary"
+        ],
+        [
+          "`overview()`",
+          "8 stat cards: sessions, coordination, conflicts, artifacts, checkpoints, tool failures, provider perf, findings"
+        ],
+        [
+          "`export_info()`",
+          "Export timestamp, manifest warnings, missing files, empty datasets, schema validation"
+        ],
+        [
+          "`filters()`",
+          "Dropdowns: session_id, event_name, tool_name, model, severity, kind, checkpoint status, artifact kind"
+        ],
+        [
+          "`coordination_view()`",
+          "Event name counts, session breakdown, status distribution"
+        ],
+        [
+          "`conflicts_view()`",
+          "Conflict table or neutral message when empty"
+        ],
+        [
+          "`artifact_view()`",
+          "Artifact kind counts, completeness gap analysis"
+        ],
+        [
+          "`tool_failure_view()`",
+          "Tool × status counts, warnings table"
+        ],
+        [
+          "`provider_view()`",
+          "Model counts, token stats (min/max/avg)"
+        ],
+        [
+          "`checkpoint_view()`",
+          "Committed/refused counts, refusal codes, files committed stats"
+        ],
+        [
+          "`findings_view()`",
+          "By severity, kind, repo area, suggested slices"
+        ],
+        [
+          "`completeness_view()`",
+          "File present/missing status, schema validation results"
+        ],
+        [
+          "`about()`",
+          "Metadata footer"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "p-115",
+      "type": "paragraph",
+      "content": "**Chart helpers** (6, content-light list-of-dicts for Altair/marimo tables): - `event_counts_for_chart` — coordination event rows → `{event_name, count}` - `tool_status_counts_for_chart` — tool failures → `{tool_name, status, count}` - `model_counts_for_chart` — provider perf → `{model, requests}` - `findings_severity_counts_for_chart` — findings → `{severity, count}` - `artifact_kind_counts_for_chart` — artifact reuse → `{artifact_kind, count}` - `checkpoint_status_counts_for_chart` — checkpoints → `{status, count}`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-116",
+      "type": "paragraph",
+      "content": "**Altair charts** (6 cells, one per chart helper, graceful degradation on empty data): - Coordination events bar chart (`mo.ui.altair_chart`) - Tool failures bar chart (color-coded by status) - Model request counts bar chart - Findings severity bar chart - Artifact kind bar chart - Checkpoint outcomes bar chart",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-117",
+      "type": "paragraph",
+      "content": "**DuckDB helper** (optional, degrades gracefully): - `HAS_DUCKDB` module-level flag - `_find_derived_jsonl_files()` — maps view names to existing JSONL paths - `create_derived_connection()` — in-memory DuckDB connection with `read_json_auto` views - `CANNED_QUERIES` dict with 6 canned SQL queries - `run_canned_query()` — executes a named query and returns list-of-dicts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-118",
+      "type": "paragraph",
+      "content": "**SQL Workbench** (marimo cell, shown only when DuckDB is available): - Lists available views - Dropdown selector for 6 canned queries - Results displayed as tables - \"Run exporter first\" warning when no derived datasets found",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-119",
+      "type": "paragraph",
+      "content": "**Filter helpers** (5, reusable outside notebook): - `filter_by_session_id`, `filter_by_task_id`, `filter_by_event_name`, `filter_by_tool_name`, `filter_by_model`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-120",
+      "type": "paragraph",
+      "content": "**Aggregation helpers** (3): - `count_by_field` — grouped counts, sorted descending - `count_by_field_pair` — two-field cross counts - `unique_values` — sorted unique field values",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-121",
+      "type": "paragraph",
+      "content": "**Privacy safeguards:** - Content-light: loads only derived datasets (never reads raw events or observability files) - All forbidden raw-content fields filtered by the export pipeline before the inspector sees data - Inspector tests verify no raw fields surface in loaded datasets",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-122",
+      "type": "paragraph",
+      "content": "**Dependencies** (optional `inspector` extra): - `marimo>=0.10.0` — reactive notebook runtime - `duckdb>=1.5.0` — embedded query engine (shared with `obs` extra) - `altair>=5.5.0` — declarative charts (Vega-Lite) - `pandas>=2.0.0` — data manipulation for altair and summary tables",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-123",
+      "type": "paragraph",
+      "content": "**Usage:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-124",
+      "type": "code",
+      "language": "bash",
+      "content": "uv sync --extra inspector\nuv run marimo run notebooks/rig_relay_dataset_inspector.py",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-125",
+      "type": "paragraph",
+      "content": "**Run tests:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-126",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run pytest tests/scripts/test_rig_relay_dataset_inspector_lib.py -v",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-127",
+      "type": "heading",
+      "level": 3,
+      "content": "Coordination Dataset Exporter (Current)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-128",
+      "type": "paragraph",
+      "content": "The current coordination dataset exporter (`scripts/rig_relay_export_coordination_datasets.py`) is a standalone script that reads coordination `events.jsonl` (and optional `observability.jsonl`) and writes the four coordination/checkpoint datasets:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-129",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run python scripts/rig_relay_export_coordination_datasets.py \\\n    --events .build/rig-relay/coordination/events.jsonl \\\n    --output-dir .build/rig-relay/derived\n\nuv run python scripts/rig_relay_export_coordination_datasets.py \\\n    --events .build/rig-relay/coordination/events.jsonl \\\n    --observability .build/rig-relay/sessions/s-1/observability.jsonl \\\n    --output-dir .build/rig-relay/derived \\\n    --schemas-dir docs/schemas \\\n    --strict",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-130",
+      "type": "paragraph",
+      "content": "**Flags:** - `--events`: Path to coordination `events.jsonl` (required) - `--observability`: Path to session `observability.jsonl` (optional, needed for checkpoint events) - `--output-dir`: Output directory (default: `.build/rig-relay/derived`) - `--schemas-dir`: Schema directory (default: `docs/schemas`) - `--strict`: Fail on missing input files (default: warn and continue)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-131",
+      "type": "paragraph",
+      "content": "**Event-to-dataset mapping:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-132",
+      "type": "table",
+      "columns": [
+        "Dataset",
+        "Source Events"
+      ],
+      "rows": [
+        [
+          "`cross_session_coordination_dataset.jsonl`",
+          "All `coord.*` events"
+        ],
+        [
+          "`coordination_conflict_dataset.jsonl`",
+          "`coord.conflict.reported`, `coord.path.reservation_refused`"
+        ],
+        [
+          "`artifact_reuse_dataset.jsonl`",
+          "`coord.artifact.published`"
+        ],
+        [
+          "`checkpoint_eval_dataset.jsonl`",
+          "`rig.relay.checkpoint.committed`, `rig.relay.checkpoint.refused` (from observability)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-133",
+      "type": "paragraph",
+      "content": "The exporter uses the normalized payload builders from `vibe/core/coordination/_models.py` to construct safe-field-only rows and applies three-layer content-light enforcement: event payload scan, safe-field-only row construction, and row-level forbidden-field check.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-134",
+      "type": "heading",
+      "level": 2,
+      "content": "Review Packet Protocol",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-135",
+      "type": "paragraph",
+      "content": "Rig Relay provides a local review packet protocol for human/model review of completed missions. The protocol is ChatGPT-Mac-app-independent — reviewer responses are not executed directly, they inform the next mission prompt.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-136",
+      "type": "heading",
+      "level": 3,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-137",
+      "type": "paragraph",
+      "content": "Review packets bridge the gap between: - A completed mission (with its final report, artifacts, datasets, and coordination state) - The next mission prompt (refined by a human or model reviewer)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-138",
+      "type": "paragraph",
+      "content": "This enables: - **Iterative development**: Each mission produces a review packet; the reviewer's response becomes the seed for the next mission prompt. - **Human oversight**: A human can review changes, datasets, risks, or architecture decisions before authorizing continuation. - **Model review loops**: A second model (e.g., a stronger model or a risk-review specialist) can review a mission's output and recommend improvements. - **Dataset quality review**: Exported datasets can be reviewed for schema compliance and content-light guarantees before they enter an eval pipeline.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-139",
+      "type": "heading",
+      "level": 3,
+      "content": "Packet Layout",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-140",
+      "type": "paragraph",
+      "content": "The `create_review_packet` function (`scripts/rig_relay_create_review_packet.py`) produces five files in the output directory:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-141",
+      "type": "table",
+      "columns": [
+        "File",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`review_packet.json`",
+          "Schema-validated packet metadata (20 fields, 7 required)"
+        ],
+        [
+          "`final_report.md`",
+          "Copy of the mission's final report"
+        ],
+        [
+          "`README.md`",
+          "Manual review instructions with review-kind-specific guidance"
+        ],
+        [
+          "`reviewer_response.md`",
+          "Empty placeholder — reviewer writes their response here"
+        ],
+        [
+          "`resume_prompt.md`",
+          "Empty placeholder — reviewer moves/soft-links their response here"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-142",
+      "type": "heading",
+      "level": 3,
+      "content": "Review Kinds",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-143",
+      "type": "table",
+      "columns": [
+        "Kind",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`next_slice`",
+          "Review the completed mission and recommend the next implementation slice"
+        ],
+        [
+          "`risk_review`",
+          "Review the mission for safety, privacy, or architectural risks"
+        ],
+        [
+          "`prompt_generation`",
+          "Review the mission and generate a refined prompt for continuation"
+        ],
+        [
+          "`commit_review`",
+          "Review changes before a governed checkpoint commit"
+        ],
+        [
+          "`dataset_review`",
+          "Review exported dataset quality and schema compliance"
+        ],
+        [
+          "`architecture_review`",
+          "Review architectural decisions and design trade-offs"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-144",
+      "type": "heading",
+      "level": 3,
+      "content": "Packet Schema",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-145",
+      "type": "paragraph",
+      "content": "The packet validates against `docs/schemas/rig.relay.review_packet.v1.schema.json` (draft-07). Key fields:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-146",
+      "type": "paragraph",
+      "content": "- **schema_version**: `const: rig.relay.review_packet.v1` - **review_id**: Auto-generated (`review_<YYYYMMDD_HHMMSS>`) - **session_id**: The mission session being reviewed - **parent_session_id**: Optional parent session for review chains - **task_id**: Optional task within the session - **status**: `needs_review` / `in_review` / `reviewed` / `cancelled` - **requested_review_kind**: One of the six kinds above - **final_report_path**: Resolved path to the copied final report - **artifact_manifest_path**, **coordination_summary_path**, **dataset_report_path**, **checkpoint_summary_path**: Optional resolved paths to copied manifests - **content_policy**: `\"content_light\"` (default) - **forbidden_fields**: Default list of field names that must not appear in payloads",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-147",
+      "type": "paragraph",
+      "content": "**Required fields**: schema_version, review_id, session_id, status, requested_review_kind, final_report_path, created_at",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-148",
+      "type": "heading",
+      "level": 3,
+      "content": "Content-Light Safeguards",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-149",
+      "type": "paragraph",
+      "content": "- **Review packet JSON does not embed raw file contents.** Referenced files are COPIED to the output directory but their content never appears inside `review_packet.json`. - **Default forbidden fields**: `raw_file_contents`, `secrets`, `raw_private_code`, `raw_prompt_text`, `model_output_text`, `stdout_bodies`, `stderr_bodies` - **Schema validation**: Uses `jsonschema` if available, falls back to required-field checks. Validation errors are recorded as warnings in the packet.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-150",
+      "type": "heading",
+      "level": 3,
+      "content": "Usage",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-151",
+      "type": "code",
+      "language": "bash",
+      "content": "# Basic: create a review packet for next-slice review\nuv run python scripts/rig_relay_create_review_packet.py \\\n    --session-id session_20250101_000000 \\\n    --task-id call_00_example \\\n    --final-report .build/rig-relay/reviews/latest/final_report.md \\\n    --review-kind next_slice \\\n    --output-dir .build/rig-relay/reviews/review_20250101\n\n# With optional manifests\nuv run python scripts/rig_relay_create_review_packet.py \\\n    --session-id s-1 --task-id t-1 \\\n    --final-report docs/output.md \\\n    --artifact-manifest .build/rig-relay/artifacts/manifest.json \\\n    --dataset-report .build/rig-relay/derived/export_manifest.json \\\n    --review-kind risk_review\n\n# With git state\nuv run python scripts/rig_relay_create_review_packet.py \\\n    --session-id s-1 --final-report docs/output.md \\\n    --review-kind commit_review \\\n    --branch main --head 40a2d04",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-152",
+      "type": "heading",
+      "level": 3,
+      "content": "Reviewer Response Flow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-153",
+      "type": "paragraph",
+      "content": "1. **Create**: Run the script to produce the 5-file packet in the output directory. 2. **Review**: The human or model reads `final_report.md` and any optional manifests. 3. **Respond**: The reviewer writes their structured response in `reviewer_response.md` (summary, findings, next-slice recommendation, optional rejection). 4. **Resume**: The response is moved or soft-linked to `resume_prompt.md`. 5. **Validate**: Rig Relay validates the response before any agent executes a new mission based on it — responses are never executed directly.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-154",
+      "type": "heading",
+      "level": 3,
+      "content": "Reviewer Response Format",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-155",
+      "type": "code",
+      "language": "markdown",
+      "content": "## Summary\n\nOne-paragraph assessment of the mission.\n\n## Findings\n\n- What worked well\n- What to improve\n- Risks identified\n\n## Next slice recommendation\n\nA compact prompt for the next mission. Be specific about files, goals, and\nnon-goals. Do not include raw private code or unredacted transcripts.\n\n## Rejected? (optional)\n\nIf the work should not continue, state why and close the review.",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-156",
+      "type": "heading",
+      "level": 3,
+      "content": "Safety Constraints",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-157",
+      "type": "paragraph",
+      "content": "- **Reviewer responses are not executed directly.** They inform the next mission prompt. Rig Relay validates the response before any agent executes a new mission. - **No ChatGPT Mac app automation.** The protocol works with any text editor or model that can write a Markdown file. - **No raw content in packet JSON.** All referenced content stays in separate files. - **Non-execution guarantee.** Even if `resume_prompt.md` contains code, it is not executed by the review packet tool — it's consumed by the next mission's agent prompt assembly.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-158",
+      "type": "heading",
+      "level": 2,
+      "content": "Autoimprovement",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-159",
+      "type": "paragraph",
+      "content": "This doctrine SHALL be reviewed when: - A new event name is added to `EventName`. - A new artifact kind is defined in `artifacts.py`. - A tool begins tracking a new metric (files_read, tests_run, etc.). - A user requests export or sharing of usage data. - A PR adds or changes a telemetry field.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-160",
+      "type": "heading",
+      "level": 2,
+      "content": "Semantic Change Snippets",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-161",
+      "type": "paragraph",
+      "content": "Semantic change snippets are content-light, anonymized representations of code changes that preserve change intent and structure without exporting raw source code, identifiers, literals, comments, secrets, file paths, or diffs.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-162",
+      "type": "heading",
+      "level": 3,
+      "content": "Design",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-163",
+      "type": "code",
+      "language": "text",
+      "content": "actual diff → syntax-aware anonymized snippet → content-light dataset row → evals/reports",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-164",
+      "type": "heading",
+      "level": 3,
+      "content": "Anonymization Pipeline",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-165",
+      "type": "paragraph",
+      "content": "1. **Secret scan**: Reject snippet if it contains token-like material (API keys, private keys, raw diffs, prompt markers, file content markers, stdout/stderr blocks). 2. **Identifier anonymization**: Replace function names (FN_001), class names (CLASS_001), variable names (VAR_001), and attribute names (ATTR_001) with stable local placeholders. 3. **Literal stripping**: Replace string literals with `<STR>`, numeric literals with `<NUM>`, booleans with `<BOOL>`, None with `<NONE>`. 4. **Comment removal**: Strip Python comments and docstrings. 5. **Path hashing**: Use content-light SHA256 path hashes, not raw paths. 6. **Length cap**: Maximum 20 snippet lines. 7. **Content-light assertion**: Final row scan for forbidden raw fields.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-166",
+      "type": "heading",
+      "level": 3,
+      "content": "Fields",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-167",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Description"
+      ],
+      "rows": [
+        [
+          "snippet_id",
+          "Unique snippet identifier"
+        ],
+        [
+          "language",
+          "Programming language (python, json, markdown, etc.)"
+        ],
+        [
+          "change_kind",
+          "High-level classification (guard_added, test_added, schema_added, etc.)"
+        ],
+        [
+          "operation",
+          "Structural operation (insert, replace, delete, split, etc.)"
+        ],
+        [
+          "symbol_kind",
+          "What was changed (function, class, test, schema, etc.)"
+        ],
+        [
+          "snippet_lines",
+          "Anonymized snippet lines with placeholders"
+        ],
+        [
+          "semantic_labels",
+          "Tags for downstream evals"
+        ],
+        [
+          "privacy_class",
+          "Always content_light"
+        ],
+        [
+          "redaction_level",
+          "identifier_anonymized, literal_stripped, or structure_only"
+        ],
+        [
+          "forbidden_content_detected",
+          "True if source was excluded"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-168",
+      "type": "heading",
+      "level": 3,
+      "content": "Privacy Guarantee",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-169",
+      "type": "paragraph",
+      "content": "Semantic change snippets are **not source-code exports**. They are syntax-aware summaries of code changes that preserve operation shape and safety/evaluation labels while removing identifiers, literals, comments, raw paths, secrets, and file contents. Raw code stays private; the dataset still learns what agents are doing.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-170",
+      "type": "heading",
+      "level": 3,
+      "content": "Current Implementation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-171",
+      "type": "paragraph",
+      "content": "- **Python**: stdlib `ast` for structure analysis + line-level replacement. - **Other languages**: basic anonymization (JSON, Markdown, shell fallback). - **Tree-sitter**: Deferred for multi-language support in a future version.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-172",
+      "type": "heading",
+      "level": 3,
+      "content": "Script",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-173",
+      "type": "paragraph",
+      "content": "`scripts/rig_relay_export_semantic_change_snippets.py` reads write_file, search_replace, and checkpoint artifacts plus coordination events, then writes anonymized snippets to `.build/rig-relay/derived/semantic_change_snippets.jsonl`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-174",
+      "type": "heading",
+      "level": 3,
+      "content": "Schema",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-175",
+      "type": "paragraph",
+      "content": "`docs/schemas/rig.relay.semantic_change_snippet.v1.schema.json`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-176",
+      "type": "heading",
+      "level": 2,
+      "content": "External Tester Telemetry Sharing",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-177",
+      "type": "paragraph",
+      "content": "Rig Relay supports an optional remote beta sharing system for external testers. This is strictly separate from the local operational usage data described above.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-178",
+      "type": "heading",
+      "level": 3,
+      "content": "Three Telemetry Layers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-179",
+      "type": "table",
+      "columns": [
+        "Layer",
+        "Required?",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "Local operational (observability.jsonl)",
+          "Required for governed mode",
+          "Tool calls, events, session lifecycle — never leaves the machine"
+        ],
+        [
+          "Local derived datasets",
+          "Required for orchestration",
+          "Flattened eval rows from coord.* events — never leaves the machine"
+        ],
+        [
+          "Remote beta sharing",
+          "Optional, opt-in",
+          "Content-light bundles uploaded to Google Drive artifact lake"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-180",
+      "type": "heading",
+      "level": 3,
+      "content": "What Is Never Uploaded",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-181",
+      "type": "paragraph",
+      "content": "- Raw source code, file contents, or private keys - Raw prompts or model outputs - stdout/stderr bodies or diffs - Secrets, tokens, API keys - Participant identity beyond an anonymous ID",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-182",
+      "type": "heading",
+      "level": 3,
+      "content": "What Remote Sharing Includes (content-light only)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-183",
+      "type": "paragraph",
+      "content": "- Schema-validated derived datasets (cross-session coordination, conflicts, tool failures, etc.) - Row counts, statuses, durations - SHA256 hashes (no reversible raw content) - An anonymous participant ID (self-assigned) - A consent record with share level",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-184",
+      "type": "heading",
+      "level": 3,
+      "content": "Feature Gating",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-185",
+      "type": "paragraph",
+      "content": "When remote beta sharing is disabled: - `remote_upload`, `maintainer_debugging`, `shared_benchmarks`, `cross_user_reports` are all disabled - Advanced orchestration features remain available (governed mode, delegate/fleet)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-186",
+      "type": "paragraph",
+      "content": "When local operational telemetry is disabled: - Governed mode is disabled entirely - All advanced features (delegate/fleet, checkpoint, coordination, etc.) are disabled",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-187",
+      "type": "heading",
+      "level": 3,
+      "content": "Telemetry Budget",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-188",
+      "type": "paragraph",
+      "content": "Telemetry collection is capped to prevent unbounded storage growth and protect privacy.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-189",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`schema_version`",
+          "string",
+          "`\"rig.relay.telemetry_budget.v1\"`"
+        ],
+        [
+          "`max_bundle_mb`",
+          "integer (1–1000)",
+          "Maximum export bundle size in MB. Default: 100."
+        ],
+        [
+          "`max_rows_per_dataset`",
+          "integer (1–10,000,000)",
+          "Maximum rows per derived dataset. Default: 100,000."
+        ],
+        [
+          "`max_semantic_snippets_per_session`",
+          "integer (0–10,000)",
+          "Maximum semantic change snippets per session. Default: 200. 0 disables snippet collection."
+        ],
+        [
+          "`raw_retention_days`",
+          "integer (1–365)",
+          "Days to retain raw event files locally. Default: 14."
+        ],
+        [
+          "`derived_retention_days`",
+          "integer (1–730)",
+          "Days to retain derived dataset files locally. Default: 180."
+        ],
+        [
+          "`upload_mode`",
+          "string",
+          "`\"local_only\"`, `\"rollup_only\"`, `\"rollup_plus_samples\"`, or `\"full\"`. Default: `\"rollup_only\"`."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-190",
+      "type": "paragraph",
+      "content": "Upload modes:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-191",
+      "type": "table",
+      "columns": [
+        "Mode",
+        "Behavior"
+      ],
+      "rows": [
+        [
+          "`local_only`",
+          "No remote upload. All data stays local."
+        ],
+        [
+          "`rollup_only`",
+          "Upload aggregate counts only. No content payloads."
+        ],
+        [
+          "`rollup_plus_samples`",
+          "Upload rollup + representative samples (max 10 per dataset)."
+        ],
+        [
+          "`full`",
+          "Upload all bounded datasets (within budget caps)."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-192",
+      "type": "paragraph",
+      "content": "Content-light guarantee applies to all modes: raw file contents, prompts, model outputs, and diffs are never exported. Only anonymized semantic snippets (see [Semantic Change Snippets](#semantic-change-snippets)) may be included.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-193",
+      "type": "code",
+      "language": "json",
+      "content": "{\n    \"schema_version\": \"rig.relay.telemetry_budget.v1\",\n    \"max_bundle_mb\": 100,\n    \"max_rows_per_dataset\": 100000,\n    \"max_semantic_snippets_per_session\": 200,\n    \"raw_retention_days\": 14,\n    \"derived_retention_days\": 180,\n    \"upload_mode\": \"rollup_only\"\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-194",
+      "type": "paragraph",
+      "content": "- Bundle creation rejects payloads exceeding `max_bundle_mb`. - Dataset export truncates at `max_rows_per_dataset` (oldest rows dropped first). - Snippet generation stops per-session at `max_semantic_snippets_per_session`. - Retention pruning runs on session close and at daily intervals. - The `upload_mode` is enforced at bundle-creation time; no raw event files are ever included in bundles.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-195",
+      "type": "paragraph",
+      "content": "High-authority actions (real upload, telemetry share level change, checkpoint commit, lease cleanup, credential changes) require step-up authorization. See [`docs/governance/step-up-authorization.md`](step-up-authorization.md).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-196",
+      "type": "paragraph",
+      "content": "Uploads require a valid authorization receipt before execution. See the authorization policy at `scripts/rig_relay_authorization_policy.py` and `docs/schemas/rig.relay.step_up_authorization_receipt.v1.schema.json`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-197",
+      "type": "paragraph",
+      "content": "Google Drive upload libraries (`google-api-python-client`, `google-auth-oauthlib`, `google-auth-httplib2`) are **core beta dependencies** of Rig Relay.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-198",
+      "type": "paragraph",
+      "content": "This does not mean uploads are automatic: - Upload is always gated by remote sharing settings (consent mode). - Bundle validation must pass before upload. - Credentials must be configured (`~/.rig/relay/drive_credentials.json`). - A folder ID must be provided. - `--confirm` is required for real upload. - Dry-run mode is the default and performs no network calls.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-199",
+      "type": "paragraph",
+      "content": "The Google Drive upload path uses OAuth 2.0 (desktop app flow) with resumable upload. Credentials are never stored in the repository. Tokens are cached in `~/.rig/relay/drive_token.json`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-200",
+      "type": "paragraph",
+      "content": "Google's OAuth 2.0 desktop authentication obtains credentials from the Google Cloud Console, requests access tokens, then sends those tokens to the Drive API. This design keeps credentials out of the repo and provides user-visible consent on first authentication.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-201",
+      "type": "paragraph",
+      "content": "See: - `scripts/rig_relay_upload_google_drive.py` — upload client with dry-run and resumable modes. - `docs/schemas/rig.relay.google_drive_upload_receipt.v1.schema.json` — structured receipt.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-202",
+      "type": "paragraph",
+      "content": "Coordination leases (path reservations and task claims) accumulate under `.build/rig-relay/coordination/leases/paths/` and `tasks/`. Stale leases can cause conservative/noisy decisions in the reviewer orchestrator.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-203",
+      "type": "paragraph",
+      "content": "Cleanup is governed through a dedicated script:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-204",
+      "type": "code",
+      "language": "text",
+      "content": "uv run python scripts/rig_relay_cleanup_coordination_leases.py --dry-run\nuv run python scripts/rig_relay_cleanup_coordination_leases.py --archive --confirm",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-205",
+      "type": "paragraph",
+      "content": "- Dry-run is the default. - Active leases are never touched. - Archive mode moves stale/expired files to `.build/rig-relay/coordination/archived/`. - Deletion requires explicit `--confirm` and `--remove`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-206",
+      "type": "heading",
+      "level": 3,
+      "content": "Storage Lifecycle",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-207",
+      "type": "paragraph",
+      "content": "The `.build/rig-relay/` artifact tree has three storage tiers with explicit retention defaults. Storage lifecycle must exist **before** delegate/fleet execution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-208",
+      "type": "paragraph",
+      "content": "See [Storage Retention Policy](storage-retention-policy.md) for the full doctrine.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-209",
+      "type": "table",
+      "columns": [
+        "Tier",
+        "Contents",
+        "Retention"
+      ],
+      "rows": [
+        [
+          "**Hot**",
+          "Raw observability, coordination artifacts, leases, desktop snapshots, telemetry bundles",
+          "Hours-to-days"
+        ],
+        [
+          "**Warm**",
+          "Derived JSONL datasets, reports, ChatGPT bundles, cockpit snapshots",
+          "Weeks-to-months"
+        ],
+        [
+          "**Cold**",
+          "Parquet rollups, manifests",
+          "Months-to-permanent"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-210",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Default",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`warn_local_mb`",
+          "1024",
+          "Warning threshold"
+        ],
+        [
+          "`max_local_mb`",
+          "2048",
+          "Hard cap — blocks compaction"
+        ],
+        [
+          "`refuse_fleet_over_mb`",
+          "4096",
+          "Blocks fleet/delegate execution"
+        ],
+        [
+          "`raw_observability_days`",
+          "3",
+          "Retention for raw observability JSONL"
+        ],
+        [
+          "`raw_tool_artifacts_days`",
+          "3",
+          "Retention for coordination artifacts"
+        ],
+        [
+          "`coordination_events_days`",
+          "14",
+          "Retention for events.jsonl"
+        ],
+        [
+          "`stale_leases_hours`",
+          "24",
+          "Age threshold for stale leases"
+        ],
+        [
+          "`derived_jsonl_days`",
+          "30",
+          "Retention for derived JSONL (after Parquet exists)"
+        ],
+        [
+          "`parquet_rollups_days`",
+          "365",
+          "Retention for Parquet files"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-211",
+      "type": "paragraph",
+      "content": "- Rollup manifests, export manifests - Upload receipts, checkpoint receipts - Parent convergence reports - Active coordination leases",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-212",
+      "type": "table",
+      "columns": [
+        "Script",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`scripts/rig_relay_storage_audit.py`",
+          "Read-only storage inspection + budget status"
+        ],
+        [
+          "`scripts/rig_relay_compact_artifacts.py`",
+          "DuckDB JSONL→Parquet compaction (dry-run default)"
+        ],
+        [
+          "`scripts/rig_relay_gc_artifacts.py`",
+          "Retention-based GC (dry-run default, protected classes preserved)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-213",
+      "type": "code",
+      "language": "text",
+      "content": "derived/*.dataset.jsonl ──→ DuckDB SELECT/filter/count ──→ derived/*.parquet\n                               └─→ derived/rollup_manifest.json",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-214",
+      "type": "paragraph",
+      "content": "- Never destructive. Raw logs stay until GC. - Dry-run is the default. `--confirm` required for writes. - Never compacts raw logs (prefixes: `raw_`, `observability`, `events`, `tool_artifacts`).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-215",
+      "type": "paragraph",
+      "content": "- Fleet/delegate must check `storage_audit.total_size_mb < refuse_fleet_over_mb` - Audit returns budget status: `ok`, `warn`, `over_budget`, `fleet_blocked` - Allowed GC candidates: stale leases, old projection snapshots, old telemetry zips (keep manifest), old raw observability, old derived JSONL (after Parquet exists), temp files",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-216",
+      "type": "heading",
+      "level": 3,
+      "content": "Consent and Privacy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-217",
+      "type": "paragraph",
+      "content": "- Explicit opt-in with written consent record (`rig.relay.telemetry_consent.v1`) - **Commercial dataset licensing is separate from privacy consent.** The `commercial_dataset_license` and `aggregate_public_reporting` scopes are never default — must be explicitly granted. - Bundle manifest with content-light guarantee (`rig.relay.telemetry_bundle_manifest.v1`) - Redaction validator scans all bundle content before creation - Google Drive upload is resumable, with local receipt (`rig.relay.google_drive_upload_receipt.v1`) - Settings schema (`rig.relay.telemetry_settings.v1`) controls feature gating",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-218",
+      "type": "heading",
+      "level": 3,
+      "content": "Scripts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-219",
+      "type": "table",
+      "columns": [
+        "Script",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`scripts/rig_relay_create_telemetry_bundle.py`",
+          "Creates content-light zip bundles from derived datasets + reports"
+        ],
+        [
+          "`scripts/rig_relay_validate_telemetry_bundle.py`",
+          "Validates bundle content-light guarantee and schema conformance"
+        ],
+        [
+          "`scripts/rig_relay_upload_google_drive.py`",
+          "Dry-run or resumable upload to Google Drive artifact lake"
+        ],
+        [
+          "`vibe/core/config/telemetry_modes.py`",
+          "Feature gate helpers: `can_use_*()` and `disabled_features_for_settings()`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-220",
+      "type": "heading",
+      "level": 3,
+      "content": "Onboarding",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-221",
+      "type": "paragraph",
+      "content": "See [Beta Telemetry Onboarding](beta-telemetry-onboarding.md) for the plain-language guide given to external testers.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-222",
+      "type": "heading",
+      "level": 2,
+      "content": "References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-223",
+      "type": "paragraph",
+      "content": "- [Delegate/Fleet Orchestration Doctrine](delegate-fleet-orchestration.md) : Pending work queue, ready work planner, parent convergence report",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-224",
+      "type": "paragraph",
+      "content": "- OpenTelemetry: traces, metrics, and logs for understanding system behavior. - LangSmith: tracing agent decisions, tool calls, retrieved context, costs, latency, failures. - OpenAI evals: define tasks, run against inputs, analyze results, iterate. - GitHub Copilot usage metrics: engagement, activity, generated code, PR lifecycle trends.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/usage-data-doctrine.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

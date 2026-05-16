@@ -1,0 +1,299 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "write-file-legacy-result-content-audit",
+  "document_type": "audit",
+  "title": "WriteFile Legacy Result Content Audit",
+  "summary": "Audit all callers of `WriteFileResult.content` to determine whether the",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/tool-hardening/write-file-legacy-result-content-audit.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "WriteFile Legacy Result Content Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Audit all callers of `WriteFileResult.content` to determine whether the field can be removed, deprecated, or must be retained.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Current State",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "`WriteFileResult` has a `content: str` field that carries the raw file content on success. On refused/blocked paths, `content=\"\"`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "`WriteFileReceipt` (the evidence/observability path) explicitly excludes `content` — it is content-light by construction.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Known Callers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Production callers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "1. **ACP bridge** — `vibe/acp/tools/builtins/write_file.py` - Reads `result.content` to construct the `new_text` field in diff update events - **Dependency**: uses raw content for diff rendering - **Migration**: could use `args.content` instead since the write was successful and content matches — but `result.content` is the authoritative written content - **Risk if removed**: ACP diff updates would lose the new file content",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "2. **UI widget** — `vibe/cli/textual_ui/widgets/tool_widgets.py` - `WriteFileResultWidget` reads `self.result.content` for display truncation - **Dependency**: displays written content in the tool result panel - **Migration**: could show path + bytes + hashes instead, or keep content for display-only - **Risk if removed**: UI would show empty result for successful writes",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "Test callers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "3. **ACP tests** — `tests/acp/test_write_file.py` - `assert result.content == \"Hello, world!\"` and similar - **Dependency**: verifies content round-trip through ACP - **Migration**: could verify via `after_sha256` + `bytes_written` + path",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "4. **Receipt emission tests** — `tests/tools/test_tool_receipt_emission.py` - Construct `WriteFileResult(content=\"...\")` to test `build_receipt()` - **Dependency**: only uses content to prove receipt excludes it - **Migration**: already safe — receipt tests assert `content` is absent from receipt",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "5. **Mutation contract tests** — `tests/tools/test_mutation_tool_contracts.py` - Construct `WriteFileResult(content=\"...\")` for schema/policy tests - **Dependency**: only uses content as fixture data for receipt construction - **Migration**: could use empty string or minimal fixture",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "6. **Hardened tools tests** — `tests/tools/test_hardened_tools.py` - Construct `WriteFileResult(content=args.content, ...)` for result verification - **Dependency**: some tests check that result.content equals written content - **Migration**: most could verify via `after_sha256` instead",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Doc/Config callers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "7. **Audit docs** — various `.md` files reference `WriteFileResult.content` as a known legacy field - No code dependency",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Fate",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "**Keep `WriteFileResult.content` for now, mark as deprecated.**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "Rationale: - ACP bridge has a real production dependency on `result.content` for diff rendering - UI widget displays it - Removing it would require updating the ACP bridge to use `args.content` and updating the UI widget - The evidence path (receipt) is already safe — `WriteFileReceipt` excludes content - A deprecation period allows callers to migrate",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-21",
+      "type": "heading",
+      "level": 3,
+      "content": "Deprecation plan",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "1. Add a `@property` or docstring noting deprecation (not in this mission — Python Pydantic fields can't be easily deprecated with runtime warnings) 2. Document in the release notes that content may be removed in a future breaking change 3. Update ACP bridge to fall back to `args.content` if `result.content` is empty 4. Update UI widget similarly 5. Remove content in a future breaking-change slice after callers are migrated",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Conclusion",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-24",
+      "type": "table",
+      "columns": [
+        "Caller",
+        "Current dependency",
+        "Can migrate?",
+        "Migration path"
+      ],
+      "rows": [
+        [
+          "ACP bridge (production)",
+          "`result.content` for diff",
+          "Yes",
+          "Use `args.content` on success"
+        ],
+        [
+          "UI widget (production)",
+          "`result.content` for display",
+          "Yes",
+          "Use path + bytes + hashes"
+        ],
+        [
+          "ACP tests",
+          "`result.content` assertions",
+          "Yes",
+          "Use `after_sha256` + `bytes_written`"
+        ],
+        [
+          "Receipt tests",
+          "Fixture construction only",
+          "Already safe",
+          "N/A"
+        ],
+        [
+          "Contract tests",
+          "Fixture construction only",
+          "Already safe",
+          "N/A"
+        ],
+        [
+          "Hardened tools tests",
+          "Result verification",
+          "Yes",
+          "Use `after_sha256`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/tool-hardening/write-file-legacy-result-content-audit.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

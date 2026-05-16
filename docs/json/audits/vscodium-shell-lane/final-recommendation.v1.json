@@ -1,0 +1,162 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "final-recommendation",
+  "document_type": "audit",
+  "title": "Final Recommendation: VSCodium Shell Lane",
+  "summary": "The VSCodium Shell Lane is the most logical evolution for Rig Relay as it transforms into a \"workbench\". It leverages a world-class editor shell while keeping the governance logic isolated in the Rig ",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/vscodium-shell-lane/final-recommendation.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Final Recommendation: VSCodium Shell Lane",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Recommendation: BUILD NOW",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The VSCodium Shell Lane is the most logical evolution for Rig Relay as it transforms into a \"workbench\". It leverages a world-class editor shell while keeping the governance logic isolated in the Rig daemon.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Strategy: Extension-First",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "*   **Architecture**: Option A (Extension-only control plane). *   **Platform**: Target VSCodium on macOS/Linux/Windows. *   **Marketplace**: Publish to Open VSX; provide direct VSIX downloads.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "3. First 3 Agent Missions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "1.  **Mission: Skeleton Bridge**: Implement the WebSocket handshake and sidebar activation. 2.  **Mission: Prompt Sync**: Connect the sidebar chat to the `AgentLoop` turns. 3.  **Mission: Patch Review**: Implement the transition from a tool-generated `PatchProposal` to a native VSCodium Diff View.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Exit Criteria for abandoning pywebview/Textual",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Do not kill the Textual or pywebview consoles until the VSCodium extension can: 1.  Successfully execute a \"Bash\" turn with human approval. 2.  Correctly project a multi-item evidence receipt in a side panel. 3.  Maintain a stable daemon connection for 4+ hours of active coding.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "5. What must be proven before a Branded Bundle",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Only graduate to a branded VSCodium bundle (Option B) if: 1.  Users report extreme friction with manual VSIX installation in VSCodium. 2.  The product requires deep integration that the Extension API cannot provide (e.g., custom UI in the editor gutter or tab bar). 3.  We have the engineering capacity to maintain a fork of a major IDE.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "6. Closing Thought",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Rig's strength is **verifiable governance**. VSCodium provides the **surface area** to make that governance comfortable. By building the extension first, we deliver the most value with the least risk.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/vscodium-shell-lane/final-recommendation.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -14,16 +14,16 @@
   <p class="meta">Status: active | Updated: 2026-05-18</p>
 </header>
 <main>
-<h1 id="title">Storage Retention Policy</h1>
+<h1 id="title" class="disclosure-standard" data-disclosure-level="standard">Storage Retention Policy</h1>
 
-<div class="callout callout-info" id="status-callout">
+<div class="callout callout-info disclosure-standard" id="status-callout" data-disclosure-level="standard">
   
   <p>This policy is active for local Rig Relay storage. Review required before enabling remote telemetry or cloud sync.</p>
 </div>
 
-<h2 id="scope">Scope</h2>
+<h2 id="scope" class="disclosure-standard" data-disclosure-level="standard">Scope</h2>
 
-<ul id="scope-list">
+<ul id="scope-list" class="disclosure-standard" data-disclosure-level="standard">
   <li>Session interaction logs (.rig/relay/sessions/)</li>
   <li>Artifact storage (.build/rig-relay/)</li>
   <li>Telemetry events (observability.jsonl)</li>
@@ -32,9 +32,9 @@
   <li>Desktop cockpit state (chat_state.json, chat_events.jsonl)</li>
 </ul>
 
-<h2 id="defaults">Default Retention Periods</h2>
+<h2 id="defaults" class="disclosure-standard" data-disclosure-level="standard">Default Retention Periods</h2>
 
-<table id="defaults-table">
+<table id="defaults-table" class="disclosure-standard" data-disclosure-level="standard">
 <thead><tr><th>Artifact Type</th><th>Default Retention</th><th>GC Trigger</th></tr></thead>
 <tbody>
 <tr><td>Session logs</td><td>30 days</td><td>Storage budget exceeded</td></tr>
@@ -46,13 +46,13 @@
 </tbody>
 </table>
 
-<h2 id="gc">Garbage Collection</h2>
+<h2 id="gc" class="disclosure-standard" data-disclosure-level="standard">Garbage Collection</h2>
 
-<p id="gc-content">Passive GC runs after tool execution when the storage budget is exceeded. Active GC can be triggered via scripts/rig_relay_gc_artifacts.py. The GC policy prunes stale leases, expired artifacts, and old session data. Evidence and receipts are preserved unless they exceed the retention window.</p>
+<p id="gc-content" class="disclosure-standard" data-disclosure-level="standard">Passive GC runs after tool execution when the storage budget is exceeded. Active GC can be triggered via scripts/rig_relay_gc_artifacts.py. The GC policy prunes stale leases, expired artifacts, and old session data. Evidence and receipts are preserved unless they exceed the retention window.</p>
 
-<h2 id="env">Configuration</h2>
+<h2 id="env" class="disclosure-standard" data-disclosure-level="standard">Configuration</h2>
 
-<table id="env-table">
+<table id="env-table" class="disclosure-standard" data-disclosure-level="standard">
 <thead><tr><th>Variable</th><th>Effect</th></tr></thead>
 <tbody>
 <tr><td>RIG_RELAY_LOCAL_MODE=1</td><td>Disable remote telemetry and cloud sync</td></tr>
@@ -62,13 +62,13 @@
 </tbody>
 </table>
 
-<h2 id="privacy">Privacy</h2>
+<h2 id="privacy" class="disclosure-standard" data-disclosure-level="standard">Privacy</h2>
 
-<p id="privacy-content">All storage is local-first by default. No data leaves the machine without explicit opt-in. Telemetry and trace exports are opt-in only. Artifact GC never transmits data externally. The packaged app stores data under ~/Library/Application Support/Rig Relay/.</p>
+<p id="privacy-content" class="disclosure-standard" data-disclosure-level="standard">All storage is local-first by default. No data leaves the machine without explicit opt-in. Telemetry and trace exports are opt-in only. Artifact GC never transmits data externally. The packaged app stores data under ~/Library/Application Support/Rig Relay/.</p>
 
-<h2 id="budget">Storage Budget</h2>
+<h2 id="budget" class="disclosure-standard" data-disclosure-level="standard">Storage Budget</h2>
 
-<p id="budget-content">compute_storage_summary() checks total artifact size against a configurable budget. Status values: ok (under budget), warn (approaching limit), over_budget (GC triggered), fleet_blocked (no new sessions until GC completes).</p>
+<p id="budget-content" class="disclosure-standard" data-disclosure-level="standard">compute_storage_summary() checks total artifact size against a configurable budget. Status values: ok (under budget), warn (approaching limit), over_budget (GC triggered), fleet_blocked (no new sessions until GC completes).</p>
 
 </main>
 <footer>

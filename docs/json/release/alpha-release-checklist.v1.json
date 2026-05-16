@@ -1,0 +1,162 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "alpha-release-checklist",
+  "document_type": "reference",
+  "title": "Alpha Release Checklist",
+  "summary": "**Draft.** Release-like alpha readiness checklist for Rig Relay.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/release/alpha-release-checklist.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Alpha Release Checklist",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Draft.** Release-like alpha readiness checklist for Rig Relay.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Foundation Checks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- `uv sync --all-extras` completes on a clean checkout - `uv run python scripts/rig_relay_validate_schemas.py` passes - `uv run python scripts/rig_relay_desktop_cockpit.py --dry-run` passes - `uv run pytest -n0 tests/frontend/test_no_inner_html_for_untrusted_fields.mjs` passes when present - `uv run pytest -n0 tests/test_model_observations.py tests/evidence/test_redaction.py` passes if observation flow changed - `uv run pytest -n0 tests/providers/test_providers.py tests/scripts/test_desktop_projection.py` passes if provider flow changed - `uv run pytest -n0 tests/test_telemetry_consent.py tests/scripts/test_identity_providers.py` passes if identity or consent changed - `uv run pytest -n0 tests/scripts/test_desktop_intents.py tests/scripts/test_progress_events.py tests/scripts/test_websocket_server.py` passes if desktop intent or progress flow changed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Launch Checks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- Cockpit opens in `Operate`, `Review`, and `System` modes - No protected execution buttons are present - Provider onboarding is local-only and content-light - Consent toggles remain separate from identity - Progress timeline and review mode render without raw prompts, raw outputs, diffs, secrets, or stdout/stderr bodies - Demo fixtures validate - Dry-run mode works without network or key material",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Security Checks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- No `innerHTML` path renders untrusted content - No raw secrets appear in telemetry, audit, or frontend storage - No upload path is enabled by default - No protected actions are exposed to the frontend - Remote-facing data remains content-light and redacted",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Artifact Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- Keep `.build/` out of tracked source unless a file is an explicit doc fixture - Keep generated bundles, session state, coordination state, and projections out of release commits - Track only durable source, docs, schemas, and test fixtures",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Demo Readiness",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- Exact demo commands are documented - Fallback path exists if the cockpit UI cannot open - The demo narrative stays alpha-safe and does not claim production readiness - MCP Night fixtures are current and content-light",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/release/alpha-release-checklist.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

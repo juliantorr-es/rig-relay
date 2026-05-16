@@ -1,0 +1,636 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "identity-provider-policy",
+  "document_type": "governance",
+  "title": "Identity Provider Policy",
+  "summary": "**Draft.** Identity provider scaffold for Rig Relay alpha testing.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/identity-provider-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Identity Provider Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Draft.** Identity provider scaffold for Rig Relay alpha testing.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Doctrine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Identity is separate from authority. Knowing who the user is does not grant what they may do. This policy defines the boundaries for identity provider integration (GitHub, Google) in Rig Relay.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Identity Is Not Authority",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "Signing in with GitHub or Google does **not** grant:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Not Granted",
+        "Reason"
+      ],
+      "rows": [
+        [
+          "Mutation authority (write_file, bash, etc.)",
+          "Requires local authorization receipt"
+        ],
+        [
+          "Telemetry consent",
+          "Separate toggle in cockpit"
+        ],
+        [
+          "Drive access scope",
+          "Deferred, incremental authorization"
+        ],
+        [
+          "GitHub repo scope",
+          "Deferred, identity-only for now"
+        ],
+        [
+          "Protected intent execution",
+          "Receipt-gated, local-only"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Identity answers:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- Who is this tester/user? - Which alpha cohort / install is this? - Where do telemetry bundles belong? - Which remote account may receive shared content-light data?",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Minimal Scopes by Provider",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "GitHub (identity-only)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- `read:user` — read user profile - `user:email` — read user email address",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "No repo scope. No workflow scope. No admin scope.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "GitHub App user auth is preferred over classic OAuth App. If not practical for alpha, OAuth App fallback is acceptable.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Google (identity-only, OIDC)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- `openid` — OIDC authentication - `email` — email address - `profile` — display name, avatar",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "No Drive scope. Drive access is deferred and will use incremental authorization when implemented.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Desktop OAuth Flow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "Must follow RFC 8252:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "1. User clicks Sign in in System mode 2. Backend opens system browser (not pywebview embedded webview) 3. OAuth redirects to `http://127.0.0.1:<port>/callback` 4. Backend captures code via loopback HTTP server 5. Backend exchanges code for tokens 6. Token stored locally (Keychain later; dev file store now) 7. Cockpit projection refreshes identity status",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Token Storage",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-23",
+      "type": "table",
+      "columns": [
+        "Store",
+        "Status",
+        "Encryption"
+      ],
+      "rows": [
+        [
+          "DevFileTokenStore",
+          "Current (dev scaffold)",
+          "None — plaintext warning"
+        ],
+        [
+          "MacKeychainTokenStore",
+          "Future placeholder",
+          "macOS Keychain"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Tokens never enter:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "- Audit logs - Telemetry bundles - Result artifacts - Frontend storage (localStorage, sessionStorage, IndexedDB)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "Audit Content-Light Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Intent audit may record:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- provider name - status (signed_out, pending, signed_in, error) - state_hash - scopes - account_id_hash (if signed in)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "Intent audit must **not** record:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "- access_token - refresh_token - id_token - authorization code - raw email (if avoidable) - client_secret",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-31",
+      "type": "heading",
+      "level": 2,
+      "content": "Sign-In Does Not Imply Telemetry Consent",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "These are separate toggles:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "- `identity_status` — who is the user - `telemetry_sharing_status` — whether telemetry is shared - `drive_upload_status` — whether Drive is authorized - `github_repo_access_status` — whether GitHub repo access is granted",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-34",
+      "type": "heading",
+      "level": 2,
+      "content": "Telemetry Consent",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "Sign-in does **not** imply telemetry consent. These are separate toggles:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-36",
+      "type": "table",
+      "columns": [
+        "Toggle",
+        "Scope",
+        "UI Location"
+      ],
+      "rows": [
+        [
+          "`identity_status`",
+          "Who is the user",
+          "System → Identity"
+        ],
+        [
+          "`telemetry_consent_status`",
+          "Whether telemetry is shared",
+          "System → Telemetry Consent"
+        ],
+        [
+          "`telemetry_consent_grant`",
+          "Grant consent for content-light telemetry",
+          "System → Telemetry Consent"
+        ],
+        [
+          "`telemetry_consent_revoke`",
+          "Revoke existing consent",
+          "System → Telemetry Consent"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-37",
+      "type": "heading",
+      "level": 3,
+      "content": "Consent Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "- Consent records are stored locally in `~/.rig/relay/consent/telemetry_consent.json` - OAuth tokens are stored separately in `~/.rig/relay/identity/` — never in consent records - Consent records are content-light: no raw email, raw tokens, raw prompts, raw code, raw output - Revocation updates the record to `revoked` status — does not delete history - Telemetry bundles include consent status (status + subject_hash + scopes + policy_version) when consent exists",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-39",
+      "type": "heading",
+      "level": 3,
+      "content": "Consent Scopes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "Consent is granular per scope. Basic scopes (usage metrics, content-light bundles, crash reports, coordination metrics, tool refinement metrics) are opt-in defaults. Commercial scopes (provider model benchmarking, local model benchmarking, commercial dataset license, aggregate public reporting) are **never default** — must be explicitly checked by the user.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "- **Commercial scopes** permit inclusion in aggregated, anonymized derived datasets for benchmarking reports and potential commercial licensing. - **Basic and commercial scopes are independent.** A user may grant basic telemetry consent without granting commercial dataset license. - The `has_commercial_dataset_license()` helper checks for the `COMMERCIAL_DATASET_LICENSE` scope specifically. - Current policy version: `alpha-usage-data-license-v1`. - See [Usage Data Commercial License](../legal/usage-data-license-alpha.md) and [Privacy Notice](../legal/privacy-notice-alpha.md) for legal terms.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-42",
+      "type": "heading",
+      "level": 3,
+      "content": "Content-Light Guarantee",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "Telemetry bundles and consent records follow the content-light guarantee: - No raw prompts or model outputs - No source code or file contents - No stdout/stderr bodies - No diffs or secrets - No raw receipt bodies - No OAuth tokens",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-44",
+      "type": "heading",
+      "level": 2,
+      "content": "State Root",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "All identity and consent state is rooted under an explicit state root directory.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-46",
+      "type": "heading",
+      "level": 3,
+      "content": "Production Default",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-47",
+      "type": "code",
+      "language": "text",
+      "content": "~/.rig/relay/\n├── identity/       # OAuth token bundles (DevFileTokenStore)\n├── consent/        # Telemetry consent records (ConsentStore)\n│   └── telemetry_consent.json\n└── providers/       # Provider onboarding keys (future)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-48",
+      "type": "heading",
+      "level": 3,
+      "content": "Test Isolation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "Tests must pass `tmp_path` as an explicit root. Banks must never read from `~/.rig/relay/` during unit tests.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-50",
+      "type": "code",
+      "language": "python",
+      "content": "# Test: explicit store_root prevents home access\nstore = ConsentStore(store_root=tmp_path / \"consent\")\nstore.save(record)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-51",
+      "type": "heading",
+      "level": 3,
+      "content": "Bundle Isolation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "- `--consent-file PATH` reads consent from the exact file path. - `--state-root PATH` auto-detects consent from `<state_root>/consent/`. - Without either flag, the bundle creator does **not** auto-read `~/.rig/relay/`. - Identity summary is only included if `--state-root` is provided and identity data exists at `<state_root>/identity/`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-53",
+      "type": "heading",
+      "level": 3,
+      "content": "State Root Helpers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "The `rig_relay.identity.state_paths` module provides root helpers:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-55",
+      "type": "table",
+      "columns": [
+        "Helper",
+        "Returns"
+      ],
+      "rows": [
+        [
+          "`default_relay_state_root()`",
+          "`~/.rig/relay/`"
+        ],
+        [
+          "`identity_state_root(root)`",
+          "`<root>/identity`"
+        ],
+        [
+          "`consent_state_root(root)`",
+          "`<root>/consent`"
+        ],
+        [
+          "`provider_state_root(root)`",
+          "`<root>/providers`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-56",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "- [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Frontend Rendering Safety Doctrine](frontend-rendering-safety.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Identity Provider Schema](../schemas/rig.relay.identity_provider.v1.schema.json) - [Identity Session Schema](../schemas/rig.relay.identity_session.v1.schema.json) - [OAuth Callback Receipt Schema](../schemas/rig.relay.oauth_callback_receipt.v1.schema.json) - [Telemetry Consent Schema](../schemas/rig.relay.telemetry_consent.v1.schema.json) - [Telemetry Bundle Manifest Schema](../schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/identity-provider-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

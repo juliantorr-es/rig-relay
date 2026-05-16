@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe / Rig Compatibility Bridge — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document records the temporary Route 3 bridge between the base vibe session">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Vibe / Rig Compatibility Bridge</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Vibe / Rig Compatibility Bridge</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">This document records the temporary Route 3 bridge between the base vibe session path and the Rig Relay harness.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Policy</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- Ordinary prompt text enters through `CodingSessionBridge`. - `RuntimeSessionAdapter` uses the base vibe `AgentLoop.act(...)` turn path for normal coding prompts when no hardened Rig equivalent exists. - `FixtureSessionAdapter` provides deterministic transcript events for tests. - Hardened Rig primitives stay authoritative for validate, queue, fleet, mission routing, audit, receipts, and governance. - Widgets and Textual surfaces must call the bridge or provider boundary, not raw agent-loop, tool, or SDK internals.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Content-Light Rules</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- Transcript projections may show user-visible and assistant-visible chat text. - Tool summaries must be reduced to metadata, hashes, and sanitized status. - Raw stdout, stderr, diffs, file contents, argv, secrets, and raw payloads are forbidden in generic dashboard projections.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Streaming Turn Model (Phase K)</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">`RuntimeSessionAdapter.submit_user_message()` no longer blocks until the turn completes. It starts an `asyncio.Task` that iterates `AgentLoop.act(...)` in the background, storing `CodingTranscriptItemProjection` records as each event arrives. The method returns immediately with `accepted=True, status=&quot;running&quot;`.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">The dashboard worker polls `events_since(cursor)` in a 50ms loop to receive new events incrementally. Turn lifecycle is signalled via `kind=&quot;turn_status&quot;` records (`completed`/`failed`/`cancelled`).</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Cancellation calls `cancel_turn()` on the adapter, which cancels the background task and sets `turn_status=&quot;cancelled&quot;`. The `AgentLoop` yields control at its next await point, propagating `CancelledError` through the background task.</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Three new protocol members were added: - `cancel_turn()` — cancel the active background turn - `is_turn_active` — property, True while a turn is processing - `wait_for_turn()` — await the background task (test support) - `turn_status` — property, one of `idle`, `running`, `completed`, `failed`, `cancelled`</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Fallback Order</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1. Use hardened Rig functionality when available. 2. Fall back to the base vibe session path through the bridge when needed. 3. Refuse safely when neither exists.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/vibe-rig-compatibility-bridge.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

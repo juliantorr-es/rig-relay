@@ -1,0 +1,474 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "test-layout-canonicalization-report",
+  "document_type": "audit",
+  "title": "Test Layout Canonicalization Report",
+  "summary": "**Generated**: 2026-05-16",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/test-suite/test_layout_canonicalization_report.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Layout Canonicalization Report",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Generated**: 2026-05-16 **Branch**: main **HEAD**: 8d0b13c **Doctrine**: docs/governance/test-suite-doctrine.md",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Baseline Metrics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      "rows": [
+        [
+          "Collected tests",
+          "6085",
+          "6085"
+        ],
+        [
+          "Collection errors",
+          "0",
+          "0"
+        ],
+        [
+          "Total test files",
+          "325",
+          "325"
+        ],
+        [
+          "Root-level warnings",
+          "23",
+          "15"
+        ],
+        [
+          "tests/scripts mis-scope warnings",
+          "11",
+          "3"
+        ],
+        [
+          "Known duplicate pairs",
+          "2",
+          "2"
+        ],
+        [
+          "Relocation manifest: pending",
+          "51",
+          "33"
+        ],
+        [
+          "Relocation manifest: moved",
+          "0",
+          "18"
+        ],
+        [
+          "Relocation manifest: resolved",
+          "2",
+          "2"
+        ],
+        [
+          "Relocation manifest: allowlisted",
+          "1",
+          "1"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Markers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "All 13 markers registered in pyproject.toml: `smoke`, `contract`, `integration`, `e2e`, `packaging`, `slow`, `legacy`, `flaky`, `network`, `provider`, `destructive`, `migration`, `quarantine`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Moves Performed (18 files)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Identity → tests/identity/ (2)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "From",
+        "To"
+      ],
+      "rows": [
+        [
+          "`tests/test_telemetry_consent.py`",
+          "`tests/identity/test_telemetry_consent.py`"
+        ],
+        [
+          "`tests/scripts/test_identity_providers.py`",
+          "`tests/identity/test_identity_providers.py`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Evidence → tests/evidence/ (3)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "From",
+        "To"
+      ],
+      "rows": [
+        [
+          "`tests/test_model_observations.py`",
+          "`tests/evidence/test_model_observations.py`"
+        ],
+        [
+          "`tests/test_observation_consent_integration.py`",
+          "`tests/evidence/test_observation_consent_integration.py`"
+        ],
+        [
+          "`tests/scripts/test_google_drive_upload.py`",
+          "`tests/evidence/test_google_drive_upload.py`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "CLI / Core → tests/cli/ and tests/core/ (6)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "From",
+        "To"
+      ],
+      "rows": [
+        [
+          "`tests/test_cli_programmatic_preload.py`",
+          "`tests/cli/test_programmatic_preload.py`"
+        ],
+        [
+          "`tests/test_rig_relay.py`",
+          "`tests/cli/test_rig_relay.py`"
+        ],
+        [
+          "`tests/test_agents.py`",
+          "`tests/core/agents/test_agents.py`"
+        ],
+        [
+          "`tests/test_message_id.py`",
+          "`tests/core/test_message_id.py`"
+        ],
+        [
+          "`tests/test_message_merging.py`",
+          "`tests/core/test_message_merging.py`"
+        ],
+        [
+          "`tests/test_tagged_text.py`",
+          "`tests/core/utils/test_tagged_text.py`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Desktop → tests/desktop/ (7)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-15",
+      "type": "table",
+      "columns": [
+        "From",
+        "To"
+      ],
+      "rows": [
+        [
+          "`tests/scripts/test_desktop_projection.py`",
+          "`tests/desktop/test_projection.py`"
+        ],
+        [
+          "`tests/scripts/test_desktop_projection_contract.py`",
+          "`tests/desktop/test_projection_contract.py`"
+        ],
+        [
+          "`tests/scripts/test_websocket_server.py`",
+          "`tests/desktop/test_websocket_server.py`"
+        ],
+        [
+          "`tests/scripts/test_progress_events.py`",
+          "`tests/desktop/test_progress_events.py`"
+        ],
+        [
+          "`tests/scripts/test_desktop_authorization_receipts.py`",
+          "`tests/desktop/test_authorization_receipts.py`"
+        ],
+        [
+          "`tests/scripts/test_protected_intents_phase1.py`",
+          "`tests/desktop/test_protected_intents.py`"
+        ],
+        [
+          "`tests/scripts/test_desktop_intents.py`",
+          "`tests/desktop/test_intents.py`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Trivial Path Fixes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- `tests/identity/test_telemetry_consent.py`: fixed `SCHEMA_PATH` from `.parent.parent` to `.parent.parent.parent` (depth change from root-level to identity/) - `tests/evidence/test_model_observations.py`: fixed `SCHEMA_DIR` same issue",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-18",
+      "type": "heading",
+      "level": 2,
+      "content": "Pre-existing Failures (not caused by moves)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- `tests/evidence/test_observation_consent_integration.py` (10 errors): `HarnessFilesManager already initialized` — global state, pre-existing - `tests/cli/test_programmatic_preload.py` (3 failures): monkeypatches `vibe.core.programmatic` (stale vibe-era reference) - `tests/core/agents/test_agents.py` (5 failures): Agent list changed (ORCHESTRATOR added), test expects old set - `tests/desktop/test_intents.py` (1 failure): Frontend button mismatch — pre-existing - `tests/desktop/test_projection.py` (1 failure): References deleted `scripts/rig_relay_desktop_cockpit.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Debt",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-21",
+      "type": "heading",
+      "level": 3,
+      "content": "Root-level warnings (15)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "`test_agent_auto_compact`, `test_agent_backend`, `test_agent_observer_streaming`, `test_agent_override_resolve_permission`, `test_agent_stats`, `test_agent_tool_call`, `test_approve_always_permanent`, `test_config_paths`, `test_conftest_hygiene`, `test_deferred_init`, `test_install_script`, `test_middleware`, `test_reasoning_content`, `test_system_prompt`, `test_tracing`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-23",
+      "type": "heading",
+      "level": 3,
+      "content": "Mis-scoped scripts (3)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "`tests/scripts/test_rig_relay_authorization_policy.py`, `tests/scripts/test_rig_relay_drive_and_cleanup.py`, `tests/scripts/test_rig_relay_telemetry_bundle.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "Duplicates Consolidated",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-26",
+      "type": "heading",
+      "level": 3,
+      "content": "Observability",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "- **Deferred**: `test_observability.py` and `test_observability_e2e.py` test different tiers (contract vs. integration/e2e). Consolidation blocked by pre-existing `vibe` module references in `real_telemetry_client` fixture. Both files have 12/20 broken tests due to stale `import vibe.core.*` calls that need `rig_relay` migration. - **Surviving canonical coverage**: Both files retained. Mark with `@pytest.mark.integration` after `vibe` → `rig_relay` fix.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-28",
+      "type": "heading",
+      "level": 3,
+      "content": "Bash",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "- **Deferred**: `test_bash.py` is dirty (modified by parallel lane). Do not touch until RuntimeSupervisor Bash work stabilizes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-30",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Next Batch",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "1. Move remaining root-level agent tests → `tests/core/` (8 files) 2. Move remaining root-level core tests → `tests/core/` (5 files: config_paths, middleware, reasoning_content, system_prompt, tracing) 3. Move remaining 3 mis-scoped scripts to governance/evidence/telemetry 4. Consolidate observability duplicate pair 5. Consolidate Bash duplicate pair (after RuntimeSupervisor stabilizes)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/test-suite/test_layout_canonicalization_report.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

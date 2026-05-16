@@ -1,0 +1,345 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-retirement-policy",
+  "document_type": "governance",
+  "title": "Textual TUI Retirement Policy",
+  "summary": "**Established.** The Textual TUI is a legacy/deprecated product UI, but it",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/textual-retirement-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Textual TUI Retirement Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Established.** The Textual TUI is a legacy/deprecated product UI, but it remains an active development compatibility surface until Relay CLI and the pywebview cockpit reach operational parity.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "For Rig Relay's supported terminal-native coding cockpit, see [Textual Rig Console](textual-rig-console.md).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-5",
+      "type": "heading",
+      "level": 3,
+      "content": "Lifecycle States",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "State",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "`active-dev-compatibility`",
+          "Used by developers today; compatible fixes allowed; not the future product UI"
+        ],
+        [
+          "`deprecated-product-ui`",
+          "Explicitly not the future product UI; new product-only features do not target it"
+        ],
+        [
+          "`delete-candidate`",
+          "Potential removal target once parity is proven and no users need it for development"
+        ],
+        [
+          "`removed`",
+          "No longer present"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "Current state:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- Textual TUI: `active-dev-compatibility` - Textual TUI: `deprecated-product-ui`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Core Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Textual TUI Is Legacy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "The `vibe/cli/` Textual TUI (legacy_tui mode) is retained only as a compatibility surface for SSH, headless diagnostics, and development environments where the Relay cockpit or Relay CLI are not sufficient yet. It is **not** the primary product UI and is on the retirement path.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- **No new product features should target the Textual TUI.** - Compatibility fixes are allowed when they preserve current development workflow. - No new widget, intent, or visual component should be developed for Textual. - Bug fixes and critical security patches for existing Textual code are acceptable during the alpha period to maintain compatibility.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Primary Desktop Surface",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "The **pywebview desktop cockpit** (`frontend/desktop/`) is the primary local human UX. All new cockpit features, widgets, and visual refinements target the HTML/CSS/JS frontend rendered by pywebview.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Relay CLI Is Canonical For Scriptable Workflows",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Relay CLI is the canonical scriptable surface for status, validation, refinement, provider, consent, telemetry bundle, and storage workflows. Textual is not the long-term product surface, but it stays available while the Relay CLI and cockpit finish reaching operational parity.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-17",
+      "type": "heading",
+      "level": 3,
+      "content": "CLI Remains for Automation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "The CLI interface (`bash`, scripting, CI, automation workers) remains supported for headless/automation use cases. The CLI is not a replacement for the desktop cockpit; it is a separate interface for non-interactive workflows.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "Textual Deletion Criteria",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "The Textual TUI may be removed when all of the following are true:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "1. Relay CLI can run status, validation, refinement report, refinement packets, storage audit, provider status, consent status, telemetry bundle create/validate. 2. The pywebview cockpit can run safe intents reliably. 3. Progress timeline works in the cockpit. 4. Provider, consent, and identity setup are visible in the product surface. 5. Tests cover the replacement surfaces. 6. The user confirms the Textual workflow is no longer needed for development. 7. Removing Textual would not break packaging or compatibility entry points.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Until these criteria are met, the Textual TUI remains only as a compat shim.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Migration Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-24",
+      "type": "table",
+      "columns": [
+        "Area",
+        "Status"
+      ],
+      "rows": [
+        [
+          "pywebview cockpit IA",
+          "✅ Three-mode (Operate/Review/System)"
+        ],
+        [
+          "Safe intents (read-only)",
+          "✅ Implemented"
+        ],
+        [
+          "Protected intents",
+          "✅ Receipt-gated"
+        ],
+        [
+          "Provider onboarding",
+          "✅ Desktop-only (pywebview)"
+        ],
+        [
+          "Progress timeline",
+          "✅ Desktop-only (WebSocket)"
+        ],
+        [
+          "Consent management",
+          "✅ Desktop-only"
+        ],
+        [
+          "Model observation dataset",
+          "✅ Desktop-only (schemas/models)"
+        ],
+        [
+          "Textual-equivalent validation view",
+          "✅ Review mode"
+        ],
+        [
+          "Textual-equivalent system view",
+          "✅ System mode"
+        ],
+        [
+          "Textual shell commands",
+          "⏳ CLI/scripting workaround"
+        ],
+        [
+          "Textual development compatibility",
+          "✅ Active until parity"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Vibe Legacy Deprecation](vibe-legacy-deprecation.md) - [Relay Surface Matrix](relay-surface-matrix.md) - [Desktop Projection Contract](relay-desktop-projection-contract.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/textual-retirement-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

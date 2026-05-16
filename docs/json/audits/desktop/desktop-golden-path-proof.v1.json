@@ -1,0 +1,652 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "desktop-golden-path-proof",
+  "document_type": "audit",
+  "title": "Desktop Golden Path — Audit Proof",
+  "summary": "**Date**: 2026-05-16",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/desktop/desktop-golden-path-proof.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Desktop Golden Path — Audit Proof",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date**: 2026-05-16 **Branch**: feature/lane-b-transport-fix **HEAD**: aaef6b5b",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Manual Verification (2026-05-16)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-4",
+      "type": "heading",
+      "level": 3,
+      "content": "Command",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "text",
+      "content": "uv run rig-relay",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Observed Stages",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-7",
+      "type": "code",
+      "language": "text",
+      "content": "✅ [bridge:01] resolve frontend_dir: frontend/desktop\n✅ [bridge:02] resolve index.html: 3.7 KB\n✅ [bridge:03] verify asset files: js/main.js=8.0KB, css dir ok\n✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True\n✅ [bridge:05] create WS server: ProjectionWebSocketServer ready\n✅ [bridge:06] bind host/port: http://127.0.0.1:9876\n✅ [bridge:07] probe /healthz: HTTP 200, ok=True\n✅ [bridge:08] probe /index.html: HTTP 200, text/html\n✅ [bridge:09] probe /js/main.js (compat): HTTP 200, text/javascript\n✅ [bridge:09a] probe active entrypoint /js/boot/orchestrator.js: HTTP 200, text/javascript\n✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css\n✅ [bridge:14] websocket upgrade accepted\n✅ [bridge:15] websocket auth message received\n✅ [bridge:16] websocket auth accepted\n✅ [bridge:17] first projection sent\n✅ [bridge:18] projection rendered\n\nFrontend: connected → idle (expected with no active job)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Key Metrics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Value"
+      ],
+      "rows": [
+        [
+          "frontend_url",
+          "http://127.0.0.1:9876/index.html"
+        ],
+        [
+          "websocket_url",
+          "ws://127.0.0.1:9876/ws"
+        ],
+        [
+          "active_entrypoint",
+          "/js/boot/orchestrator.js"
+        ],
+        [
+          "compat_module",
+          "/js/main.js"
+        ],
+        [
+          "handshake_id",
+          "corr_c6c5d9bf45a2"
+        ],
+        [
+          "transport_label",
+          "Loopback Token Bridge"
+        ],
+        [
+          "token_present",
+          "True"
+        ],
+        [
+          "tls_enabled",
+          "False"
+        ],
+        [
+          "result",
+          "**passed_with_followup**"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Follow-Up: Duplicate WebSocket Connection Cycle",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Two auth cycles observed 19 seconds apart (T+46s and T+65s):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-12",
+      "type": "code",
+      "language": "text",
+      "content": "T+46s: websocket_connecting → auth_ok → frontend_auth_ok\nT+65s: websocket_connecting → websocket_connected → auth_ok → frontend_auth_ok",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "**Classification**: Expected reconnect/reload lifecycle. pywebview may reload the page or the browser may reconnect the WebSocket after the initial handshake.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "**Impact**: None observed. No duplicate state mutation or resource leak detected. Both cycles complete cleanly with auth_ok and projection.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "**Action**: Monitor in future manual verification passes. If duplicate cycles accumulate (>3 in one launch), investigate pywebview page reload behavior or WebSocket reconnect logic.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Trace Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-17",
+      "type": "code",
+      "language": "text",
+      "content": "Trace events: 1574 total\nLatest handshake: corr_c6c5d9bf45a2 (3 bootstrap_loaded events)\nFrontend handshake: hs_xj8y7p7j4xug",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "No token values observed in any trace event, URL, or log. No \"opening handshake failed\" tracebacks observed (logger filter active).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Previous Verification (2026-05-16)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "Source-Mode Evidence",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "Backend Probe Ladder (bridge:01–10)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "All 10 backend startup probes pass with live echo:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-24",
+      "type": "code",
+      "language": "text",
+      "content": "✅ [bridge:01] resolve frontend_dir: frontend/desktop\n✅ [bridge:02] resolve index.html: 3.7 KB\n✅ [bridge:03] verify asset files: js/main.js=11.3KB, css dir ok\n✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True\n✅ [bridge:05] create WS server: ProjectionWebSocketServer ready\n✅ [bridge:06] bind host/port: http://127.0.0.1:64060\n✅ [bridge:07] probe /healthz: HTTP 200, ok=True\n✅ [bridge:08] probe /index.html: HTTP 200, text/html\n✅ [bridge:09] probe /js/main.js: HTTP 200, text/javascript\n✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "Config / Token Path",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-26",
+      "type": "code",
+      "language": "text",
+      "content": "runtime_config.to_dict():\n  token: <31 chars> ✓\n  auth_token: <31 chars> ✓\n  ws_url: ws://127.0.0.1:{port}/ws ✓\n\nCockpitAPI.get_runtime_config():\n  token present: YES (30 chars) ✓\n  ws_url: ws://127.0.0.1:9876/ws ✓\n  transport_label: Loopback Token Bridge ✓",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-27",
+      "type": "heading",
+      "level": 3,
+      "content": "WebSocket E2E",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-28",
+      "type": "code",
+      "language": "text",
+      "content": "WS URL: ws://127.0.0.1:9878/ws\nAuth: auth_ok ✓\nProjection: type=projection, schema=rig.relay.desktop_projection.v1 ✓\nE2E WebSocket auth + projection: PASS",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-29",
+      "type": "heading",
+      "level": 3,
+      "content": "Healthz",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-30",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"ok\": true,\n  \"frontend_dir_exists\": true,\n  \"index_exists\": true,\n  \"main_js_exists\": true,\n  \"css_dir_exists\": true,\n  \"active_ws_clients\": 0,\n  \"last_ws_error\": null,\n  \"frontend_url\": \"http://127.0.0.1:64060/index.html\",\n  \"ws_url\": \"ws://127.0.0.1:64060/ws\"\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "No token in healthz output ✓",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-32",
+      "type": "heading",
+      "level": 3,
+      "content": "Regression Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-33",
+      "type": "code",
+      "language": "text",
+      "content": "tests/desktop/test_golden_path.py ...... (6/6 passed)\ntests/desktop/test_bridge_diagnostics.py ....................... (23/23 passed)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-34",
+      "type": "heading",
+      "level": 3,
+      "content": "Demo Doctor",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-35",
+      "type": "code",
+      "language": "text",
+      "content": "All 22 checks passed. Demo ready.",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-36",
+      "type": "heading",
+      "level": 2,
+      "content": "Packaged-Mode Evidence",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-37",
+      "type": "heading",
+      "level": 3,
+      "content": "App Build",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-38",
+      "type": "code",
+      "language": "text",
+      "content": "dist/Rig Relay.app — 98 MB\ndist/Rig Relay.app.zip — 45 MB",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-39",
+      "type": "heading",
+      "level": 3,
+      "content": "Helper Commands",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-40",
+      "type": "code",
+      "language": "text",
+      "content": "--demo-doctor: 22/22 passed\n--demo-seed: All artifacts created\n--demo-render-docs: ok=docs",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-41",
+      "type": "heading",
+      "level": 3,
+      "content": "Application Support",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-42",
+      "type": "code",
+      "language": "text",
+      "content": "~/Library/Application Support/Rig Relay/\n  artifacts/\n  certs/\n  demo/          — adoption_proposals, bash_analytics, mission_board, ralph_lifecycle, ...\n  docs-site/     — index.html\n  logs/          — startup.log, bridge_probe.json, bridge.log\n  runtime/",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-43",
+      "type": "heading",
+      "level": 2,
+      "content": "Known Limitations",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "- Full GUI smoke (pywebview window, button clicks, visual widget confirmation) requires manual tester in macOS GUI session - Notarization not performed - Frontend console logs (`[bridge:frontend]`) require `webview.start(debug=True)` to view in Safari Web Inspector",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-45",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Changed (this mission)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-46",
+      "type": "table",
+      "columns": [
+        "File",
+        "Change"
+      ],
+      "rows": [
+        [
+          "`rig_relay/desktop/bridge_diagnostics.py`",
+          "Added `enable_echo()` + `_echo` flag for live step printing"
+        ],
+        [
+          "`rig_relay/cli/desktop_cockpit.py`",
+          "Wire `bridge_probe.enable_echo()`"
+        ],
+        [
+          "`rig_relay/desktop/bridge_state_machine.py`",
+          "Explicit bridge lifecycle state machine for startup and probe transitions"
+        ],
+        [
+          "`rig_relay/desktop/bridge_server.py`",
+          "Loopback HTTP default, explicit TLS opt-in, honest transport labels, startup diagnostics"
+        ],
+        [
+          "`frontend/desktop/js/main.js`",
+          "pywebviewready wait, config diagnostics, duplicate call fix"
+        ],
+        [
+          "`frontend/desktop/js/transport.js`",
+          "`token_missing` state, `authenticating` state"
+        ],
+        [
+          "`frontend/desktop/js/status.js`",
+          "Connection chip labels for all states"
+        ],
+        [
+          "`frontend/desktop/js/transportState.js`",
+          "Explicit frontend transport lifecycle state machine"
+        ],
+        [
+          "`tests/desktop/test_golden_path.py`",
+          "6 regression tests"
+        ],
+        [
+          "`docs/demo/desktop-golden-path.md`",
+          "Golden path documentation"
+        ],
+        [
+          "`docs/audits/desktop/desktop-golden-path-proof.md`",
+          "This audit proof"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-47",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-48",
+      "type": "table",
+      "columns": [
+        "Check",
+        "Result"
+      ],
+      "rows": [
+        [
+          "Backend probes bridge:01–10",
+          "All OK (live echo)"
+        ],
+        [
+          "Bridge lifecycle state machine",
+          "Explicit lifecycle projection exposed in `/healthz`"
+        ],
+        [
+          "Frontend transport state machine",
+          "Explicit frontend transport projection and status copy"
+        ],
+        [
+          "Config token chain",
+          "token present in runtime_config → CockpitAPI → frontend"
+        ],
+        [
+          "WebSocket auth + projection",
+          "E2E protocol test passes"
+        ],
+        [
+          "Healthz asset fields",
+          "All present, no token"
+        ],
+        [
+          "Bridge diagnostics tests",
+          "23/23 passed"
+        ],
+        [
+          "Golden path tests",
+          "6/6 passed"
+        ],
+        [
+          "demo-doctor",
+          "22/22 passed"
+        ],
+        [
+          "ruff",
+          "All checks passed"
+        ],
+        [
+          "pyright",
+          "0 errors, 0 warnings"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/desktop/desktop-golden-path-proof.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

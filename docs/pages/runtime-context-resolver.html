@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Context Resolver — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="`RuntimeContextResolver` is the relay-native control-plane helper for deriving canonical runtime coordination context from an intent.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Context Resolver</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Context Resolver</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">`RuntimeContextResolver` is the relay-native control-plane helper for deriving canonical runtime coordination context from an intent.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Agents should emit intents. They should not have to manually manage fragile coordination identifiers such as `session_id`, `task_id`, `lane_id`, or `lease_id`.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">The resolver derives a read-mostly `RuntimeContext` that can be passed into tool and runtime control logic.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">What It Resolves</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- `session_id` - `task_id` - `lane_id` - `workspace_id` - `worktree_path` - `repo_root` - `coordination_scope` - `receipt_index_path` - `dirty_policy`</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">What It Does Automatically</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- Infers `session_id` from current session metadata when available. - Derives a deterministic `task_id` from the session plus intent shape when explicit `task_id` is missing and task creation is allowed. - Infers `lane_id` from workspace/worktree context when available. - Refuses unsafe paths outside the resolved repo/worktree scope.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">What It Does Not Do</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- It does not acquire path reservations. - It does not run subprocesses. - It does not weaken the dirty guard. - It does not force-remove worktrees. - It does not perform mutation by itself.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Error Behavior</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- `session_required` when no session can be inferred. - `task_required` when task creation is disallowed and no task_id is provided. - `worktree_required` when a worktree is required but unavailable. - `unsafe_path` when a requested path escapes the resolved scope.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Future Integration</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Later runtime and mutation surfaces can consume the resolved context instead of making every agent thread carry bookkeeping IDs directly. That keeps lease and session handling in the control plane, where it belongs.</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">The next bridge layer is the mission envelope documented in [mission-envelope.md](mission-envelope.md), which can compile a concrete runtime packet from the resolved context without requiring a full ADR/Sprint/Mission execution tree.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/runtime-context-resolver.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

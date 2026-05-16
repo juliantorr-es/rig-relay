@@ -1,0 +1,116 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-tool-convergence-followup",
+  "document_type": "audit",
+  "title": "Runtime Tool Convergence Follow-up",
+  "summary": "Date: 2026-05-15",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/rig-runtime-port/runtime-tool-convergence-followup.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Runtime Tool Convergence Follow-up",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Date: 2026-05-15",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "RuntimeToolExecutionRunner now routes the normal runtime-intent path through `ToolRuntime.execute_one()`. RuntimeToolExecutionRunner remains the intent, lease, and audit adapter.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Confirmed seams",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- RuntimeSupervisor integration remains separate for subprocess-oriented paths. - Concrete tool adapter helpers still exist behind RuntimeToolExecutionRunner. - AgentLoop still owns its current closure/result adaptation boundary.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation evidence",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- Runtime adapter coverage: `tests/runtime/test_runtime_tool_adapter_coverage.py` - ToolRuntime core coverage: `tests/core/test_tool_runtime.py` - Audit persistence coverage: `tests/runtime/test_runtime_audit_persistence.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/rig-runtime-port/runtime-tool-convergence-followup.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,418 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "rig-to-relay-porting-doctrine",
+  "document_type": "governance",
+  "title": "Rig-to-Relay Porting Doctrine",
+  "summary": "**Established.** This doctrine governs how proven architecture patterns from the",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/rig-to-relay-porting-doctrine.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig-to-Relay Porting Doctrine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Established.** This doctrine governs how proven architecture patterns from the [Rig](https://github.com/user/rig) project may be ported into Rig Relay.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Canonical Roles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-5",
+      "type": "table",
+      "columns": [
+        "Role",
+        "Identity",
+        "Function"
+      ],
+      "rows": [
+        [
+          "**Rig**",
+          "Architecture lab / upstream",
+          "Proves orchestration, governance, and product-shell patterns"
+        ],
+        [
+          "**Rig Relay**",
+          "Agent-runtime product",
+          "Ports/adapts proven Rig patterns into the Vibe-derived agent runtime"
+        ],
+        [
+          "**Relay**",
+          "Future unified product surface",
+          "Becomes the canonical home if the repos diverge too far for the split to pay rent"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Core Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-7",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 1: Port Patterns, Not Product Domain",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "Rig patterns may be ported into Rig Relay **only through Relay-native interfaces, tests, and docs**. The goal is to absorb proven architectural shapes, not Rig's product-domain code.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "**Allowed to port:** - Projection model (backend-owned, typed, content-light) - pywebview shell architecture (backend authority + dumb renderer) - WebSocket stream protocol shape (ordered, deterministic, backpressure-aware) - Intent dispatcher pattern (typed intents, backend authority, idempotency) - Worktree-backed execution isolation - Receipt/checkpoint store patterns - Update/restart policy - UI polish patterns (CSS layout, dark theme, status cards)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "**Not allowed to port blindly:** - Rig-specific product domain (WorkspaceHeader, ProposalLifecycle, AuditTrail, ChatUI) - Stale assumptions that no longer hold (e.g. Rig's job store semantics) - UI-side authority of any kind - Duplicated job-store semantics that conflict with CoordinationStore - Anything that bypasses Rig Relay guards, checkpoints, telemetry, or authorization gates",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 2: No Direct Rig Runtime Dependency",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Rig Relay MUST NOT import `rig.*` or `rig_tools.*` at runtime. All ported patterns must be re-implemented or adapted behind Relay-native interfaces.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Exceptions: - Reading Rig source files during development to understand a pattern - Copying small code fragments (< 20 lines) with provenance notes - Referencing Rig docs in design discussions",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 3: No UI-Side Authority",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "The frontend (pywebview shell) is a **dumb renderer** of backend-authored projections. It does not enforce policy, does not mutate state without backend validation, and does not bypass: - Dirty-file guard - Coordination leases - Checkpoint policy - Telemetry gates - Authorization receipts",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 4: Backend Remains Authoritative",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "All tool execution, guard enforcement, coordination, checkpointing, telemetry, queue, and spawn operations remain on the backend. The backend owns: - State transitions - Action legality - Governance enforcement - Evidence generation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 5: Every Port Requires Provenance",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Each ported pattern must document: 1. **Rig source files inspected** — which files were read and what patterns were extracted 2. **Adaptation notes** — what changed from the Rig pattern to the Relay-native interface 3. **Tests** — parity tests demonstrating the Relay behavior matches the useful Rig behavior 4. **Docs** — documentation of the Relay-native interface 5. **Deprecation decision** — whether Rig keeps owning the pattern or Relay becomes canonical",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 6: Governed by Strangler Fig, Not Fork",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Rig Relay follows a controlled **Strangler Fig migration** away from upstream Vibe. Vibe-derived modules are legacy substrate being gradually replaced by Relay-native seams. See [Vibe Legacy Deprecation Doctrine](vibe-legacy-deprecation.md).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Migration Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-23",
+      "type": "heading",
+      "level": 3,
+      "content": "1. Pattern Inventory",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "List Rig systems worth porting in `docs/governance/rig-to-relay-pattern-inventory.md`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "2. Adapter Slice",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Port one pattern into Rig Relay behind a new Relay-native interface.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-27",
+      "type": "heading",
+      "level": 3,
+      "content": "3. Provenance Note",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Document source files inspected and what changed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-29",
+      "type": "heading",
+      "level": 3,
+      "content": "4. Parity Test",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "Assert the Relay behavior matches the useful Rig behavior.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-31",
+      "type": "heading",
+      "level": 3,
+      "content": "5. Deprecation Decision",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "Decide whether Rig keeps owning that pattern or Relay becomes the canonical version.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-33",
+      "type": "heading",
+      "level": 2,
+      "content": "Porting Statuses",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-34",
+      "type": "table",
+      "columns": [
+        "Status",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "`candidate`",
+          "Pattern identified but not yet ported"
+        ],
+        [
+          "`porting`",
+          "Active port in progress"
+        ],
+        [
+          "`ported`",
+          "Successfully ported to Relay-native interface"
+        ],
+        [
+          "`deferred`",
+          "Postponed to a later slice"
+        ],
+        [
+          "`rejected`",
+          "Not suitable for porting (document why)"
+        ],
+        [
+          "`superseded-by-relay-native`",
+          "Rig pattern was ported then replaced by a Relay-native solution"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-35",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "- [Rig-to-Relay Pattern Inventory](rig-to-relay-pattern-inventory.md) - [Desktop Cockpit UI Doctrine](desktop-cockpit-ui.md) - [Reviewer Orchestrator Doctrine](reviewer-orchestrator.md) - [Delegate/Fleet Orchestration](delegate-fleet-orchestration.md) - [Step-Up Authorization](step-up-authorization.md) - [Vibe Legacy Deprecation Doctrine](vibe-legacy-deprecation.md) - [Self-Dogfood Workflow](../dogfood/rig-relay-self-dogfood.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/rig-to-relay-porting-doctrine.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

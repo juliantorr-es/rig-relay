@@ -1,0 +1,364 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-b-planner-gaps",
+  "document_type": "audit",
+  "title": "Lane B — Planner Failure Warnings, RepoIndex Reality, Budget Semantics",
+  "summary": "Date: 2026-05-15. HEAD: 63cdc9e2.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/context/gap-reports/lane-b-planner-gaps.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Lane B — Planner Failure Warnings, RepoIndex Reality, Budget Semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Date: 2026-05-15. HEAD: 63cdc9e2.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Other lane reports read",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Report",
+        "Status"
+      ],
+      "rows": [
+        [
+          "`docs/audits/context/context-assembly-plan-v1.md`",
+          "Not found"
+        ],
+        [
+          "`docs/audits/context/context-planner-v1.md`",
+          "Not found"
+        ],
+        [
+          "`docs/audits/context/context-renderer-contract-unification-v1.md`",
+          "Not found"
+        ],
+        [
+          "`docs/audits/context/context-failure-security-hardening-v1.md`",
+          "Not found"
+        ],
+        [
+          "`docs/audits/context/context-assembler-final-reconciliation.md`",
+          "Not found"
+        ],
+        [
+          "`docs/audits/context/gap-reports/lane-a-compiler-renderer-gaps.md`",
+          "Not found"
+        ],
+        [
+          "`docs/audits/context/gap-reports/lane-c-security-final-gaps.md`",
+          "Not found"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "No other lane reports exist yet. Lane B is the first reconciliation lane.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Files changed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "File",
+        "Δ",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`rig_relay/context/planner.py`",
+          "+20/-25",
+          "Refactored `_safe_find()` and `_safe_find_dict()` to return `(result, error)` tuples. Removed outer `try/except Exception` wrapper from RepoIndex expansion. Added per-method warning emission for `find_tests`, `find_docs`, `find_schemas`, `find_related`. Clamped negative `max_tokens` to 0."
+        ],
+        [
+          "`tests/context/test_context_planner_failure_hardening.py`",
+          "**new** (7 tests)",
+          "Per-method failure warnings, repo_index_none warnings, content-light error messages"
+        ],
+        [
+          "`tests/context/test_context_planner_budget_semantics.py`",
+          "**new** (12 tests)",
+          "Budget invariants (never exceeded, tiny budget priority, negative clamped, omissions preserve IDs), privacy (no absolute paths, collision omission), candidate defaults (trust/cache tiers)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Planner warnings — query-level failure model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "**Before:** `_safe_find` and `_safe_find_dict` returned empty results on failure. Individual method failures were invisible — only a broad `repo_index_unavailable` warning fired if ALL methods failed (wrapped in outer `try/except`).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "**After:** Each RepoIndex method call (`find_tests`, `find_docs`, `find_schemas`, `find_related`) independently records a `repo_index_query_failed` warning with the method name and truncated error. Planning continues with whatever results succeeded.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Budget semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Behavior",
+        "Status"
+      ],
+      "rows": [
+        [
+          "`max_tokens` positive → never exceeded",
+          "✅ Tested"
+        ],
+        [
+          "Tiny budget keeps highest priority",
+          "✅ Tested"
+        ],
+        [
+          "Negative `max_tokens` → clamped to 0",
+          "✅ Tested"
+        ],
+        [
+          "Budget omissions preserve `candidate_id` + `estimated_tokens`",
+          "✅ Tested"
+        ],
+        [
+          "Large budget selects all non-risk",
+          "✅ Tested"
+        ],
+        [
+          "`include_receipts` only as omission gate",
+          "Documented: discovery is compiler-owned"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Gaps closed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Gap",
+        "Resolution"
+      ],
+      "rows": [
+        [
+          "`_safe_find` silent failures",
+          "Now returns `(result, error)` tuples with truncated error strings"
+        ],
+        [
+          "Individual RepoIndex method failures invisible",
+          "Per-method `repo_index_query_failed` warnings emitted"
+        ],
+        [
+          "`workspace_root` unused",
+          "Kept as reserved for future repo-relative validation"
+        ],
+        [
+          "`max_tokens` negative allowed",
+          "Clamped to 0 with `max(0, ...)`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Gaps left open",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-16",
+      "type": "table",
+      "columns": [
+        "Gap",
+        "Owner",
+        "Reason"
+      ],
+      "rows": [
+        [
+          "Receipt discovery not implemented",
+          "Compiler/Lane A",
+          "Planner marks `include_receipts` as omission-only gate; actual receipt candidates come from compiler"
+        ],
+        [
+          "`workspace_root` not used for validation",
+          "Full planner slice",
+          "Reserved for repo-relative path validation in a future hardening slice"
+        ],
+        [
+          "`include_other_agents` not gated",
+          "Planner slice",
+          "Flag exists in model but active work candidates not yet filtered by this flag"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-lane follow-up",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-18",
+      "type": "table",
+      "columns": [
+        "What",
+        "Who"
+      ],
+      "rows": [
+        [
+          "Wire planner into `compiler.execute()`",
+          "Lane A"
+        ],
+        [
+          "Add receipt discovery candidates",
+          "Lane A"
+        ],
+        [
+          "Add `include_other_agents` gating",
+          "Planner hardening slice"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Final status recommendation: **INTEGRATED_WITH_GAPS**",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "The planner is now truthful about RepoIndex failures, budget semantics are explicit, and trust/cache tier defaults are verified. The remaining gaps (receipt discovery, workspace validation, agent filtering) are well-scoped and owned by specific lanes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/context/gap-reports/lane-b-planner-gaps.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

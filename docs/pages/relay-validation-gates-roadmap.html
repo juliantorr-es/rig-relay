@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Relay Validation Gates and Doctor Roadmap — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Relay Validation Gates and Doctor Roadmap</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Relay Validation Gates and Doctor Roadmap</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: e389b446706173ebc5950931994ba4cdb6a7d9f4 Scope: Read-only roadmap audit Owner area: tests</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">This roadmap defines the automated validation gates required to mature Rig Relay&#x27;s evidence model. It distinguishes between CI-level regressions and user-facing &quot;doctor&quot; checks for local environment health.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Current state: - `rig-relay doctor evidence` exists and validates one selected session read-only - the provider-independent repo-local evidence smoke already exercises artifact, shadow, context, and manifest evidence - root defaults have not changed; validation is scoped to the caller-selected evidence root</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Gate Inventory</h2>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gate Name</th><th>Maturity</th><th>Target</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>**Root Isolation Check**</td><td>Level 3</td><td>CI/Doctor</td><td>Verify that repo-local runs do not touch the global home.</td></tr>
+<tr><td>**Schema Parity**</td><td>Level 4</td><td>CI</td><td>Ensure all JSONL lines validate against the V1 schema.</td></tr>
+<tr><td>**Sorted Traversal**</td><td>Level 3</td><td>CI</td><td>Regress non-deterministic file discovery in tool/agent managers.</td></tr>
+<tr><td>**Artifact Parity**</td><td>Level 2</td><td>Doctor</td><td>Verify that `ARTIFACT_WRITTEN` events have matching files.</td></tr>
+<tr><td>**Path Sanitization**</td><td>Level 2</td><td>CI</td><td>Detect absolute paths in evidence metadata.</td></tr>
+<tr><td>**Stale Session Cleaner**</td><td>Level 1</td><td>Doctor</td><td>Identify and suggest cleanup for unfinished/broken sessions.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Gate Maturity Levels</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- **Level 1**: Advisory only (warnings). - **Level 2**: Recommended for local dev. - **Level 3**: Mandatory for CI PRs. - **Level 4**: Block-on-fail for production releases.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Which Gates Belong in CI</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Schema Parity - Sorted Traversal - Path Sanitization - Root Isolation (using mocked home)</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Which Gates Belong in Local Doctor</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- Artifact Parity - Stale Session Detection - Legacy Config Detection</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Suggested Command Names</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- `rig-relay doctor`: General health check. - `rig-relay verify-session &lt;id&gt;`: Deep integrity check for a specific run. - `rig-relay doctor evidence --evidence-root &lt;path&gt; --session &lt;id&gt;`: Selected-session evidence validation gate with manifest-aware parity checks.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Recommended Implementation Order</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">1.  **Sorted Traversal Guard**: Add a unit test that mock-shuffles directories and asserts stable discovery. 2.  **Schema Validator**: Integrate `jsonschema` into the telemetry test suite. 3.  **Doctor Basic**: Implement `rig-relay doctor --paths`. 4.  **Evidence Doctor**: Validate a selected session with canonical JSON, explicit file references, and optional manifest coverage.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/relay-validation-gates-roadmap.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

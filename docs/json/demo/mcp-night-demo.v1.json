@@ -1,0 +1,607 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "mcp-night-demo",
+  "document_type": "guide",
+  "title": "MCP Night Demo — Fresh-Clone Walkthrough",
+  "summary": "The desktop app shows a Role Model card explaining who does what:",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/demo/mcp-night-demo.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "MCP Night Demo — Fresh-Clone Walkthrough",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Role Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The desktop app shows a Role Model card explaining who does what:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Role",
+        "Kind",
+        "Description"
+      ],
+      "rows": [
+        [
+          "🎯 Orchestrator",
+          "Manager",
+          "Assigns missions to subagents, reviews Ralph reports"
+        ],
+        [
+          "🔧 Subagents",
+          "Specialist workers",
+          "5 configured profiles (runtime, frontend, docs, tests, analytics)"
+        ],
+        [
+          "🤖 Ralph",
+          "Autonomous background worker",
+          "Observes lane projections, fixes convergence issues in isolated worktrees, reports completed work"
+        ],
+        [
+          "⚡ Model Bindings",
+          "Capability config",
+          "Model/provider selection attached to profiles; local demo works without API keys"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Ralph is NOT a normal assignable subagent. Ralph works autonomously in Ralph-owned worktrees and reports completed work to the orchestrator through RalphReports. Model/provider selection is runtime capability configuration, not role identity.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Quick start",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-7",
+      "type": "code",
+      "language": "bash",
+      "content": "git clone https://github.com/juliantorr-es/rig-relay\ncd rig-relay\nuv sync\nuv run rig-relay demo-seed\nuv run rig-relay demo-doctor\nuv run rig-relay",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Pre-flight checks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-9",
+      "type": "code",
+      "language": "bash",
+      "content": "# Verify all components are ready\nuv run rig-relay demo-doctor",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "Expected output: all 17 checks green:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-11",
+      "type": "code",
+      "language": "text",
+      "content": "  ✅ pywebview import\n  ✅ duckdb import\n  ✅ frontend files exist\n  ✅ desktop projection builds\n  ✅ mission board projection builds\n  ✅ ToolRuntime summary builds\n  ✅ Ralph lifecycle projection builds\n  ✅ review bundles exist\n  ✅ adoption proposals exist\n  ✅ report summary builds\n  ✅ bash analytics data exists\n  ✅ review_with_orchestrator explain-only\n  ✅ docs render path\n  ✅ local mode (no OAuth)\n  ✅ merge/push disabled by default\n  ✅ live_runtime_mutation always False\n  ✅ frontend does not infer policy\n  ✅ demo data has no secrets",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "What demo-seed creates",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Artifact",
+        "Contents"
+      ],
+      "rows": [
+        [
+          "`orchestrator_missions.json`",
+          "3 synthetic missions (in progress, completed, pending)"
+        ],
+        [
+          "`mission_board.json`",
+          "Full mission board projection (2 active, 8-step lifecycle, review entrypoint)"
+        ],
+        [
+          "`ralph_lifecycle.json`",
+          "2 completed lanes, 5 lifecycle gates, background policy state"
+        ],
+        [
+          "`review_bundles.json`",
+          "2 sealed review bundles with validation results and risk notes"
+        ],
+        [
+          "`adoption_proposals.json`",
+          "1 adoption proposal (pending review)"
+        ],
+        [
+          "`report_summary.json`",
+          "12 reports across 5 finding kinds"
+        ],
+        [
+          "`bash_analytics.json`",
+          "42 bash calls, 15 rerouted, 3 blocked"
+        ],
+        [
+          "`projection.json`",
+          "Desktop cockpit projection snapshot"
+        ],
+        [
+          "ToolRuntime ledger",
+          "8 in-memory entries (completed, cached, refused, degraded)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "All data is clearly marked `\"source\": \"demo-synthetic\"`. No network, no secrets, no mutation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "3-minute walkthrough",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 1: Launch the desktop cockpit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-17",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run rig-relay",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "A pywebview window opens at 1200×800 with the Rig Relay desktop console.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 2: See the Mission Board (Operator mode)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "The Mission Board widget shows: - **2 active missions**: \"Extract ToolRuntime boundary from AgentLoop\" and \"Wire Ralph lifecycle into pywebview\" - **Lifecycle timeline**: 8 steps, the first 5 completed (Background enabled → Lane created → Execution completed → Commit recorded → Review bundle sealed), the last 3 locked (Adoption proposal → Merge → Push) - **Review entrypoint**: \"Review 2 completed lane(s) with orchestrator\" button",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-21",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 3: See the Ralph Lifecycle widget",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-22",
+      "type": "code",
+      "language": "text",
+      "content": "Background Lanes: ON\nLane execution: allowed\nRuntime mutation: blocked\nMerge: requires adoption approval\nPush: requires preproduction approval\n\nActive: 0 · Completed: 2 · Pending review: 2\nLatest: ralph/bash-analytics-demo [completed] Commit: abc123def",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "The 5 lifecycle gates are shown as badges: - Worktree creation: allowed - Lane execution: allowed - Ralph branch commits: allowed - Adoption merge: requires adoption approval - Push to preproduction: requires preproduction approval",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-24",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 4: Click \"Review with Orchestrator\"",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "The review session shows: - **What Ralph did**: Summary of lane work (tool extraction, bash analytics hardening) - **When**: Timestamps of lane creation and completion - **Why**: Triggered by findings/reports - **Source refs**: Evidence references (finding IDs, report IDs) - **Branch/commit refs**: Head SHA, commit SHAs - **Validation results**: ruff, pyright, pytest results - **Risk notes**: Backward compatibility, API stabilization - **Adoption recommendation**: Target kind, confidence level, reason",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "**No merge or push action is available.** The session is explain-only.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-27",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 5: Switch layout modes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- **Operator**: Mission board, Ralph lifecycle, ToolRuntime summary, Provider health - **Review**: Progress timeline, receipt timeline, refinement backlogs, dataset summary - **System**: Identity, model providers, telemetry consent, update status - **Technical**: Projection sources, storage diagnostics, connection status",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-29",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 6: Render the docs site",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-30",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run rig-relay demo-render-docs",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Produces `.build/rig-relay/docs-site/` with: - `index.html` — styled index page with artifacts list and safety boundaries - `docs/` — all project markdown docs - `artifacts/` — all demo seed JSON artifacts - Serve locally: `cd .build/rig-relay/docs-site && python3 -m http.server 8080`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-32",
+      "type": "heading",
+      "level": 2,
+      "content": "Key architecture visible in one screen",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-33",
+      "type": "table",
+      "columns": [
+        "Widget",
+        "What it proves"
+      ],
+      "rows": [
+        [
+          "Mission Board",
+          "Orchestrator issues missions, lanes track work, lifecycle timeline"
+        ],
+        [
+          "ToolRuntime Summary",
+          "Every tool call produces a typed, classified outcome (completed/cached/refused/degraded)"
+        ],
+        [
+          "Ralph Lifecycle",
+          "Background lanes converge, seal review bundles, gates control adoption/merge/push"
+        ],
+        [
+          "Ralph Scout",
+          "Scanning, ranking, approval decisions with content-addressed hashes"
+        ],
+        [
+          "Reports",
+          "Findings are structured, countable, debuggable"
+        ],
+        [
+          "Projection Sources",
+          "All data sources are content-light and auditable"
+        ],
+        [
+          "Review with Orchestrator",
+          "Completed work is reviewable with evidence, validation, risk notes"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-34",
+      "type": "heading",
+      "level": 2,
+      "content": "Safety boundaries (all enforced by default)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "- ✅ **Merge gated** — `RIG_RELAY_ENABLE_MERGE` must be explicitly set; demo policy has `allow_adoption_merge=False` - ✅ **Push gated** — `RIG_RELAY_ENABLE_PUSH` must be explicitly set; demo policy has `allow_push_to_preproduction=False` - ✅ **Live runtime mutation always blocked** — no policy enables this - ✅ **No network required** — local mode works without OAuth - ✅ **No secrets** — demo data is synthetic, no API keys, no private paths - ✅ **No mutation** — canonical findings are never touched - ✅ **Frontend does not infer policy** — backend owns all policy transitions - ✅ **ToolRuntime governs all tool execution** — every tool call goes through permission/approval/patch-gate/invoke/receipt/cache/observation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-36",
+      "type": "heading",
+      "level": 2,
+      "content": "Dry-run / server-only modes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-37",
+      "type": "code",
+      "language": "bash",
+      "content": "# Build and print projection, no window\nuv run rig-relay --dry-run\n\n# WebSocket + URL, no window (headless server)\nuv run rig-relay --server-only",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-38",
+      "type": "heading",
+      "level": 2,
+      "content": "Troubleshooting",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "**`uv run rig-relay` opens a blank window:** Run `uv run rig-relay demo-seed` first if you want demo data. The cockpit works without demo data but shows empty widgets.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "**Provider setup:** On first launch without an API key, Rig Relay starts in onboarding mode. The projection system, WebSocket, and UI panels work without any LLM provider.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "**Frontend not loading:** Check `uv run rig-relay demo-doctor` — frontend files should be in `frontend/desktop/`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "**pywebview not launching (Linux):** Install GTK or Qt WebKit: `sudo apt install python3-pyqt5.qtwebengine` or `python3-gi gir1.2-webkit2-4.0`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "**Module import errors:** Run `uv sync` to install all dependencies. The `uv run` command ensures the correct venv is used.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "**WebSocket connection refused:** The WebSocket runs on `ws://127.0.0.1:9876`. Check port availability or use `--ws-port` to change it.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "**pywebview not installed:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-46",
+      "type": "code",
+      "language": "bash",
+      "content": "uv add pywebview",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-47",
+      "type": "heading",
+      "level": 2,
+      "content": "Local docs render",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-48",
+      "type": "code",
+      "language": "bash",
+      "content": "# Render all artifacts to static site\nuv run rig-relay demo-render-docs\n\n# Serve locally\ncd .build/rig-relay/docs-site && python3 -m http.server 8080\n\n# GitHub Pages: push docs-site/ to gh-pages branch\n# Or: configure GitHub Actions to deploy from docs-site/",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-49",
+      "type": "heading",
+      "level": 2,
+      "content": "GitHub Pages publish path",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "1. Run `uv run rig-relay demo-render-docs` 2. The output lives in `.build/rig-relay/docs-site/` 3. Push to `gh-pages` branch or configure GitHub Pages source to the `docs-site/` directory 4. Local render does not require OAuth or any provider keys",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/demo/mcp-night-demo.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

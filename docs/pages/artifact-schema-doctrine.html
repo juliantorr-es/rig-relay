@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artifact Schema Doctrine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Rig Relay uses typed, versioned artifacts to ensure that evidence collected during dogfood sessions is analyzable, validatable, and useful for future optimization. Generic JSON blobs are avoided in fa">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Artifact Schema Doctrine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Artifact Schema Doctrine</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay uses typed, versioned artifacts to ensure that evidence collected during dogfood sessions is analyzable, validatable, and useful for future optimization. Generic JSON blobs are avoided in favor of strict schemas that define the structure and meaning of evidence data.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Why Typed Artifacts Matter</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">1.  **Deterministic Hardening**: Schemas allow automated analysis of tool behavior across thousands of sessions. 2.  **Token Optimization**: By understanding the structure of artifacts, we can implement smart summarization and deduplication to reduce token usage without losing critical context. 3.  **Fuzzy-Search Analysis**: Typed search results enable evaluation of ranking strategies and query effectiveness. 4.  **Dataset Export**: Stable schemas facilitate exporting evidence to external evaluation and training pipelines. 5.  **Provenance**: Following the mental model of W3C PROV, every artifact establishes the provenance of a piece of evidence (who produced it, what tool was used, and what was the repo state).</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Schema Versioning</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Schemas are versioned using a trailing `.vN` suffix (e.g., `rig.relay.artifact.envelope.v1`). - **Breaking changes**: Increment the version number (v1 -&gt; v2). - **Non-breaking changes**: May be added to the same version, but explicit versioning is preferred for critical evidence structures.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Naming Conventions</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- **Schemas**: `rig.relay.artifact.&lt;kind&gt;.v&lt;N&gt;.schema.json` - **Schema ID**: `https://rig-relay.vibe.dev/schemas/rig.relay.artifact.&lt;kind&gt;.v&lt;N&gt;.schema.json` - **Schema Version Field**: Matches the schema name (e.g., `rig.relay.artifact.envelope.v1`).</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Core Architecture</h2>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Artifact Envelope vs. Payload</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Rig Relay artifacts consist of an **Envelope** and a **Payload**. - **Envelope**: Contains metadata about the artifact (id, session, timestamp, hashes, schema version). - **Payload**: Contains the tool-specific or activity-specific data.</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Canonical JSON</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">All artifacts must be serialized as **Canonical JSON** (lexicographical key order, no unnecessary whitespace) to ensure stable SHA256 hashes.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Common Fields</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Every artifact envelope MUST include: - `schema_version`: The versioned identifier for the artifact schema. - `artifact_kind`: A short name for the type of artifact (e.g., `search_result`). - `session_id`: Unique identifier for the Rig session. - `tool_call_id`: Unique identifier for the tool call that produced the artifact (if applicable). - `created_at`: ISO 8601 UTC timestamp. - `payload_sha256`: SHA256 hash of the payload section. - `artifact_record_sha256`: SHA256 hash of the entire envelope (calculated after other fields are populated).</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Registered Schemas</h2>
+
+<details id="table-17" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-17" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Schema File</th><th>Kind</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>`rig.relay.artifact.envelope.v1.schema.json`</td><td>envelope</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.tool_call.v1.schema.json`</td><td>tool_call</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.tool_result.v1.schema.json`</td><td>tool_result</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.tool_reasoning_trace.v1.schema.json`</td><td>tool_reasoning_trace</td><td>**New**</td></tr>
+<tr><td>`rig.relay.artifact.search_query.v1.schema.json`</td><td>search_query</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.search_result.v1.schema.json`</td><td>search_result</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.search_results.v1.schema.json`</td><td>search_result</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.file_read.v1.schema.json`</td><td>file_read</td><td>Draft</td></tr>
+<tr><td>`rig.relay.artifact.file_write.v1.schema.json`</td><td>file_write</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.git_state.v1.schema.json`</td><td>git_state</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.task_session_link.v1.schema.json`</td><td>task_session_link</td><td>Active</td></tr>
+<tr><td>`rig.relay.artifact.semantic_placement.v1.schema.json`</td><td>semantic_placement</td><td>Draft</td></tr>
+<tr><td>`rig.relay.artifact.tool_determinism_summary.v1.schema.json`</td><td>tool_determinism_summary</td><td>Active</td></tr>
+<tr><td>`rig.relay.evidence.manifest.v1.schema.json`</td><td>evidence_manifest</td><td>Active</td></tr>
+<tr><td>`rig.relay.evidence.receipt.v1.schema.json`</td><td>evidence_receipt</td><td>Active</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Tool Reasoning Traces</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">The `tool_reasoning_trace` artifact records observable metadata around tool use (latency, byte sizes, determinism class) without capturing hidden chain-of-thought. Rationale fields are left empty when the provider does not expose them. This is a non-envelope artifact — it is emitted as an observability event, not a standalone file in the artifacts directory.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Implementation Backlog</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">1.  **Consistent Envelope Versioning**: Update the `ToolOutputArtifactWriter` to emit `rig.relay.artifact.envelope.v1` consistently. 2.  **Tool-Result Validation**: Implement runtime validation of tool-result artifacts against their respective schemas. 3.  **Search Telemetry**: Update search tools (`grep`, `bash` when used for search) to emit typed `search_query` and `search_result` artifacts with backend/count/order evidence. 4.  **File I/O Telemetry**: Implement `file_read` and `file_write` artifact emission for all built-in file tools. 5.  **Git State Telemetry**: `git_status` emits typed repo-state evidence with branch, HEAD, dirty counts, and upstream metadata where observable. 6.  **Semantic Placement Reports**: Add artifacts for `search_replace` and other edit tools documenting why a specific placement was selected. 7.  **Task Delegation Linkage**: Add rollup tooling for `task_session_link` artifacts so parent sessions can summarize child manifest provenance without storing hidden reasoning. 8.  **Token Usage Analysis**: Build tools to analyze token waste based on artifact types and content density. The reasoning trace event (`TOOL_REASONING_TRACE`) now provides per-call inline vs artifacted byte counts and latency for this analysis. 9.  **Dataset Export Tooling**: Create a `rig-relay doctor export` command that merges typed artifacts into structured evaluation datasets.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/artifact-schema-doctrine.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

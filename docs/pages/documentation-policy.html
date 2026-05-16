@@ -14,16 +14,16 @@
   <p class="meta">Status: active | Updated: 2026-05-18</p>
 </header>
 <main>
-<h1 id="heading-1">Documentation Policy</h1>
+<h1 id="heading-1" class="disclosure-standard" data-disclosure-level="standard">Documentation Policy</h1>
 
-<div class="callout callout-info" id="policy-statement">
+<div class="callout callout-info disclosure-standard" id="policy-statement" data-disclosure-level="standard">
   
   <p>New project documentation must be written as canonical JSON artifacts using the rig.documentation.page.v1 schema. Markdown is only permitted for explicitly allowed exceptions. Old Markdown docs must be migrated to JSON before deletion.</p>
 </div>
 
-<h2 id="heading-allowed">Allowed Markdown Exceptions</h2>
+<h2 id="heading-allowed" class="disclosure-standard" data-disclosure-level="standard">Allowed Markdown Exceptions</h2>
 
-<ul id="allowed-list">
+<ul id="allowed-list" class="disclosure-standard" data-disclosure-level="standard">
   <li>AGENTS.md — agent instructions</li>
   <li>README.md — GitHub landing page</li>
   <li>CONTRIBUTING.md — contribution UI</li>
@@ -33,9 +33,9 @@
   <li>CHANGELOG.md — if release tooling requires it</li>
 </ul>
 
-<h2 id="heading-rules">Migration Rules</h2>
+<h2 id="heading-rules" class="disclosure-standard" data-disclosure-level="standard">Migration Rules</h2>
 
-<ol id="migration-rules">
+<ol id="migration-rules" class="disclosure-standard" data-disclosure-level="standard">
   <li>JSON replacement must exist and validate against a schema</li>
   <li>Static renderer must render it</li>
   <li>Migration manifest must map old_path to new_path</li>
@@ -44,22 +44,31 @@
   <li>Deletion must be listed in the final report</li>
 </ol>
 
-<h2 id="heading-schemas">Required Schema Validation</h2>
+<h2 id="heading-schemas" class="disclosure-standard" data-disclosure-level="standard">Required Schema Validation</h2>
 
-<ul id="schemas-list">
+<ul id="schemas-list" class="disclosure-standard" data-disclosure-level="standard">
   <li>rig.documentation.page.v1 — individual documentation pages</li>
   <li>rig.documentation.collection.v1 — named document collections</li>
   <li>rig.documentation.migration_manifest.v1 — migration tracking</li>
   <li>rig.documentation.site_manifest.v1 — site navigation structure</li>
+  <li>rig.code_schema.v1 — governed implementation contracts</li>
+  <li>rig.code_schema.plan.v1 — integration plans for the context assembler</li>
 </ul>
 
-<h2 id="heading-render">Static Site Rendering</h2>
+<h2 id="heading-code-schemas" class="disclosure-standard" data-disclosure-level="standard">Code Schemas</h2>
 
-<p id="render-info">Documentation is rendered to static HTML by scripts/render_static_docs.py. The generated site is committed under docs/ and published via GitHub Pages from the main branch /docs folder. No custom GitHub Actions workflow is required.</p>
+<div class="callout callout-info disclosure-standard" id="code-schema-policy" data-disclosure-level="standard">
+  
+  <p>Recurring implementation patterns should be written as JSON code schemas under docs/json/code_schemas/ and validated against docs/schemas/rig.code_schema.v1.schema.json. Code schemas are governed contracts for retrieval and context packing, not code templates.</p>
+</div>
 
-<h2 id="heading-actions">Actions Policy</h2>
+<h2 id="heading-render" class="disclosure-standard" data-disclosure-level="standard">Static Site Rendering</h2>
 
-<table id="actions-policy">
+<p id="render-info" class="disclosure-standard" data-disclosure-level="standard">Documentation is rendered to static HTML by scripts/render_static_docs.py. The generated site is committed under docs/ and published via GitHub Pages from the main branch /docs folder. No custom GitHub Actions workflow is required.</p>
+
+<h2 id="heading-actions" class="disclosure-standard" data-disclosure-level="standard">Actions Policy</h2>
+
+<table id="actions-policy" class="disclosure-standard" data-disclosure-level="standard">
 <thead><tr><th>Setting</th><th>Value</th></tr></thead>
 <tbody>
 <tr><td>Custom GitHub Actions required</td><td>false</td></tr>

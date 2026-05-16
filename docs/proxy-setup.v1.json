@@ -1,0 +1,132 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "proxy-setup",
+  "document_type": "reference",
+  "title": "Proxy Setup",
+  "summary": "Rig Relay supports proxy configuration for environments that require network traffic to go through a proxy server. Proxy settings are shared between the CLI and ACP — configuring them in one will appl",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/proxy-setup.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Proxy Setup"
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Rig Relay supports proxy configuration for environments that require network traffic to go through a proxy server. Proxy settings are shared between the CLI and ACP — configuring them in one will apply to both."
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Using Rig Relay CLI"
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Configure proxy settings through the interactive form:"
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "1. Type `/proxy-setup` and press Enter 2. Fill in the variables you need, then press **Enter** to save or **Escape** to cancel 3. **Restart the CLI** for changes to take effect"
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Through an ACP Client"
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "In ACP, variables must be set one at a time using the `/proxy-setup` command:"
+    },
+    {
+      "block_id": "code-8",
+      "type": "code",
+      "language": "bash",
+      "content": "/proxy-setup HTTP_PROXY http://proxy.example.com:8080"
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Once all variables are configured, **restart the conversation** for changes to take effect."
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Supported Environment Variables"
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Rig Relay uses [httpx](https://www.python-httpx.org/environment_variables/) for HTTP requests and supports the same environment variables:"
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Variable",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`HTTP_PROXY`",
+          "Proxy URL for HTTP requests"
+        ],
+        [
+          "`HTTPS_PROXY`",
+          "Proxy URL for HTTPS requests"
+        ],
+        [
+          "`ALL_PROXY`",
+          "Proxy URL for all requests (fallback when HTTP_PROXY/HTTPS_PROXY are not set)"
+        ],
+        [
+          "`NO_PROXY`",
+          "Comma-separated list of hosts that should bypass the proxy"
+        ],
+        [
+          "`SSL_CERT_FILE`",
+          "Path to a custom SSL certificate file"
+        ],
+        [
+          "`SSL_CERT_DIR`",
+          "Path to a directory containing SSL certificates"
+        ]
+      ]
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "These variables can also be set directly in your shell environment before launching the CLI (but will be overridden if set through the interactive form)."
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/proxy-setup.md"
+    ]
+  }
+}

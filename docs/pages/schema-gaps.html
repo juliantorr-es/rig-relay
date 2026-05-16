@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schema Gaps — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="- Missing core fields detected: `0`">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Schema Gaps</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Schema Gaps</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">- Missing core fields detected: `0` - Raw content keys seen: `content`</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Recommended additions: - explicit `tool_name`, `status`, `duration_ms`, `output_bytes`, `error_kind`, `receipt_id`, `schema_version` - normalized outcome field for success/failure/skipped/refused - stable tool invocation id and session id linkage - redaction-safe hashes for any content-bearing fields</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Forbidden fields in shared reports: - raw prompts - raw args - raw stdout/stderr - raw completions or transcripts - raw private file contents</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-usage-analysis/schema-gaps.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

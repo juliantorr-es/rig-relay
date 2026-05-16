@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Provider Adapter Contract Design — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Provider Adapter Contract Design</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Provider Adapter Contract Design</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: e389b446706173ebc5950931994ba4cdb6a7d9f4 Scope: Read-only design audit Owner area: provider</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig Relay must maintain provider neutrality to ensure evidence reliability. Currently, Mistral-specific assumptions leak into the core. This design proposes a strict `ProviderAdapterPort` that handles the mapping between generic Relay intents and provider-specific stochastic behaviors.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Current Boundary Map</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- **Relay Core**: Handles turn logic, tool orchestration, context assembly, and evidence writing. - **Backend Implementations**: (Mistral, OpenAI, Anthropic, Vertex) - Currently handle both HTTP transport and payload mapping.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Leakage Inventory</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- **Usage Metrics**: Mistral-specific headers are sometimes parsed outside the adapter. - **Error Types**: Core loop sometimes checks for `MistralError`. - **Cached Tokens**: The concept of &quot;cached tokens&quot; is currently modeled closely to Mistral&#x27;s implementation.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Proposed Adapter Interface</h2>
+
+<pre id="code-10"><code class="language-python">class ProviderAdapter(Protocol):
+    def to_provider_request(self, messages: list[LLMMessage], tools: list[Tool]) -&gt; dict:
+        &quot;&quot;&quot;Map generic messages to provider JSON.&quot;&quot;&quot;
+
+    def from_provider_response(self, raw_json: dict) -&gt; LLMChunk:
+        &quot;&quot;&quot;Map provider JSON to generic chunk with normalized usage.&quot;&quot;&quot;
+
+    def extract_receipt_metadata(self, response_headers: dict) -&gt; dict:
+        &quot;&quot;&quot;Extract evidence-grade metadata (correlation IDs, server timing).&quot;&quot;&quot;</code></pre>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Normalized Event Model</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- All backends must return a `LLMUsage` object with: - `prompt_tokens` - `completion_tokens` - `total_tokens` - `cache_creation_input_tokens` (optional) - `cache_read_input_tokens` (optional)</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Testing Strategy</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- **FakeProvider**: A test double that implements the adapter and returns deterministic, reproducible responses for evidence smoke tests. - **Adapter Unit Tests**: Each adapter must have a suite that transforms a canonical `LLMMessage` list into its provider&#x27;s expected JSON and back.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Future Implementation Slices</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">1.  **Slice 1**: Abstract `Usage` extraction into the adapter. 2.  **Slice 2**: Move HTTP headers extraction (for receipt links) into the adapter. 3.  **Slice 3**: Formalize the `ProviderAdapter` Protocol and migrate Mistral as the first &quot;clean&quot; adapter.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/provider-adapter-contract-design.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

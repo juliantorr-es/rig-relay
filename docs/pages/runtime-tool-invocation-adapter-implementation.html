@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Tool Invocation Adapter — Implementation — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Implemented (Phase 1, 2026-05).** Source: `rig_relay/runtime/tool_invocation_adapter.py`.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Tool Invocation Adapter — Implementation</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Adapter — Implementation</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Implemented (Phase 1, 2026-05).** Source: `rig_relay/runtime/tool_invocation_adapter.py`.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Scope</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">This document covers the first implementation of the `RuntimeToolInvocationAdapter`. It converts a `RuntimeToolIntent` + `RuntimeContextResolution` into a safe `RuntimeToolInvocationEnvelope` or a structured refusal. The adapter does NOT execute tools, mutate files, acquire leases, or persist envelopes.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Supported Tools</h2>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tool Name</th><th>Status</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>`write_file`</td><td>Implemented</td><td>Prepares write_file envelopes with path/content validation, expected hash enforcement for protected overwrites, and worktree-aware cwd</td></tr>
+<tr><td>`search_replace`</td><td>Implemented</td><td>Prepares search_replace envelopes with file_path/content validation, canonical metadata injection</td></tr>
+<tr><td>`validate`</td><td>Implemented</td><td>Prepares validate envelopes with profile/paths/dirty_policy injection from context</td></tr>
+<tr><td>`runtime_exec`</td><td>Implemented</td><td>Builds ExecutionRequest-shaped payload, validates via model construction, never acquires lease or executes</td></tr>
+<tr><td>`bash_legacy`</td><td>Implemented</td><td>Refused by default unless `legacy_fallback_allowed=True`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Refusal Taxonomy</h2>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Error Kind</th><th>Trigger</th></tr></thead>
+<tbody>
+<tr><td>`context_unresolved`</td><td>Resolution status is `blocked` or `refused`, or context is None</td></tr>
+<tr><td>`worktree_required`</td><td>`require_worktree=True` but no `worktree_path` in context</td></tr>
+<tr><td>`unsafe_path`</td><td>Requested path is outside repo_root or worktree scope</td></tr>
+<tr><td>`unsupported_mutation_location`</td><td>Mutation tool without worktree and `allow_main_repo_mutation=False`</td></tr>
+<tr><td>`expected_hash_missing`</td><td>`allow_overwrite_protected=True` without `expected_before_sha256`</td></tr>
+<tr><td>`invalid_payload`</td><td>Missing required payload fields (path, content, argv, file_path)</td></tr>
+<tr><td>`unsupported_tool`</td><td>Unrecognized tool name (or bash_legacy without explicit opt-in)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Enums</h2>
+
+<h3 id="h3-11" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolName</h3>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">`write_file`, `search_replace`, `validate`, `runtime_exec`, `bash_legacy`</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolInvocationStatus</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">`prepared`, `blocked`, `refused`</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolInvocationErrorKind</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">`context_unresolved`, `session_required`, `task_required`, `worktree_required`, `unsafe_path`, `dirty_policy_failed`, `lease_conflict`, `path_reserved`, `expected_hash_missing`, `unsupported_tool`, `unsupported_mutation_location`, `invalid_payload`</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Models</h2>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolIntent</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- `intent_id`: str (required) - `tool_name`: RuntimeToolName (required) - `payload`: dict[str, Any] (default {}) - `requested_paths`: list[str] (default []) - `require_worktree`: bool (default False) - `allow_main_repo_mutation`: bool (default False)</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolInvocationEnvelope</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `schema_version`: str (const `rig.relay.runtime_tool_invocation.v1`) - `invocation_id`: str (required) - `intent_id`: str (required) - `tool_name`: RuntimeToolName (required) - `status`: RuntimeToolInvocationStatus (required) - `session_id`, `task_id`, `lane_id`, `workspace_id`: optional str - `worktree_path`, `repo_root`, `cwd`: optional str - `payload`: dict[str, Any] - `requested_paths`: list[str] - `error_kind`, `refusal_reason`: optional</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">All models use `extra=&quot;forbid&quot;` and stable StrEnum serialization.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Adapter: `prepare()` Method</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Signature:</p>
+
+<pre id="code-25"><code class="language-python">def prepare(
+    self,
+    intent: RuntimeToolIntent,
+    resolution: RuntimeContextResolution,
+) -&gt; RuntimeToolInvocationEnvelope</code></pre>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Behavior: 1. If resolution is blocked/refused → BLOCKED with CONTEXT_UNRESOLVED 2. If context is None → BLOCKED with CONTEXT_UNRESOLVED 3. If require_worktree and no worktree_path → BLOCKED with WORKTREE_REQUIRED 4. Resolve cwd: worktree_path → repo_root → None 5. If mutation tool and no worktree without allow_main_repo_mutation → REFUSED with UNSUPPORTED_MUTATION_LOCATION 6. Validate paths against repo/worktree scope → REFUSED with UNSAFE_PATH 7. Delegate to tool-specific handler</p>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Tool-Specific Behavior</h2>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">write_file</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">- Requires `path` and `content` in payload - If `allow_overwrite_protected=True` without `expected_before_sha256` → REFUSED with EXPECTED_HASH_MISSING - Uses worktree cwd when available</p>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">search_replace</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- Requires `file_path` (or `file`) in payload - Preserves canonical session/task metadata - Refuses mutation into main repo without `allow_main_repo_mutation=True`</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">validate</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- Defaults profile to `&quot;quick&quot;` if not specified - Injects `workspace_root` from cwd if not set - Injects `paths` from intent&#x27;s requested_paths if not set - Injects `expected_dirty_policy` from context if not set</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">runtime_exec</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">- Requires `argv` as non-empty list of strings - Validates payload shape by constructing an `ExecutionRequest` model (no persistence) - Puts ExecutionRequest fields flat in the payload (not nested under `_execution_request`) - Does NOT acquire lease or execute</p>
+
+<h3 id="h3-36" class="disclosure-standard" data-disclosure-level="standard">bash_legacy</h3>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- Refused by default unless `legacy_fallback_allowed=True` in payload - When allowed, requires `command` in payload</p>
+
+<h2 id="h2-38" class="disclosure-standard" data-disclosure-level="standard">Raw Payload vs Receipt Boundary</h2>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">Invocation envelopes carry operational input payloads that the tool needs to execute (file content, SEARCH/REPLACE blocks, argv). These are NOT content-light. Receipts, audit events, and projection integrity assessments derived from these envelopes MUST be content-light — they must not carry raw payloads.</p>
+
+<h2 id="h2-40" class="disclosure-standard" data-disclosure-level="standard">Schema</h2>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Schema file: `docs/schemas/rig.relay.runtime_tool_invocation.v1.schema.json`</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">- Draft 7 - `additionalProperties: false` at all levels - Nullable fields for optional metadata - Enum validation for tool names, statuses, error kinds - Schema version constant: `rig.relay.runtime_tool_invocation.v1`</p>
+
+<h2 id="h2-43" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- **Dry-run runner**: `rig_relay/runtime/tool_invocation_dry_run.py` — validates adapter envelopes without executing tools. See [runtime-tool-invocation-dry-run.md](runtime-tool-invocation-dry-run.md).</p>
+
+<h2 id="h2-45" class="disclosure-standard" data-disclosure-level="standard">Deferred Features</h2>
+
+<table id="table-46" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Feature</th><th>Phase</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>Result/receipt schemas</td><td>Phase 2</td><td>Content-light receipt delivery after tool execution</td></tr>
+<tr><td>Lease acquisition</td><td>Phase 2</td><td>Requires ExecutionLease integration</td></tr>
+<tr><td>Supervisor dispatch</td><td>Phase 2</td><td>Requires RuntimeSupervisor integration</td></tr>
+<tr><td>Audit trail persistence</td><td>Phase 3</td><td>Requires AuditTrailStore integration</td></tr>
+<tr><td>Result validation</td><td>Phase 2</td><td>Schema-driven result contract after execution</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/runtime-tool-invocation-adapter-implementation.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

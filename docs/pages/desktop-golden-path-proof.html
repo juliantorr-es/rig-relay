@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desktop Golden Path — Audit Proof — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-16">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Desktop Golden Path — Audit Proof</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Desktop Golden Path — Audit Proof</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-16 **Branch**: feature/lane-b-transport-fix **HEAD**: aaef6b5b</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Manual Verification (2026-05-16)</h2>
+
+<h3 id="h3-4" class="disclosure-standard" data-disclosure-level="standard">Command</h3>
+
+<pre id="code-5"><code class="language-text">uv run rig-relay</code></pre>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Observed Stages</h3>
+
+<pre id="code-7"><code class="language-text">✅ [bridge:01] resolve frontend_dir: frontend/desktop
+✅ [bridge:02] resolve index.html: 3.7 KB
+✅ [bridge:03] verify asset files: js/main.js=8.0KB, css dir ok
+✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True
+✅ [bridge:05] create WS server: ProjectionWebSocketServer ready
+✅ [bridge:06] bind host/port: http://127.0.0.1:9876
+✅ [bridge:07] probe /healthz: HTTP 200, ok=True
+✅ [bridge:08] probe /index.html: HTTP 200, text/html
+✅ [bridge:09] probe /js/main.js (compat): HTTP 200, text/javascript
+✅ [bridge:09a] probe active entrypoint /js/boot/orchestrator.js: HTTP 200, text/javascript
+✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css
+✅ [bridge:14] websocket upgrade accepted
+✅ [bridge:15] websocket auth message received
+✅ [bridge:16] websocket auth accepted
+✅ [bridge:17] first projection sent
+✅ [bridge:18] projection rendered
+
+Frontend: connected → idle (expected with no active job)</code></pre>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Key Metrics</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>frontend_url</td><td>http://127.0.0.1:9876/index.html</td></tr>
+<tr><td>websocket_url</td><td>ws://127.0.0.1:9876/ws</td></tr>
+<tr><td>active_entrypoint</td><td>/js/boot/orchestrator.js</td></tr>
+<tr><td>compat_module</td><td>/js/main.js</td></tr>
+<tr><td>handshake_id</td><td>corr_c6c5d9bf45a2</td></tr>
+<tr><td>transport_label</td><td>Loopback Token Bridge</td></tr>
+<tr><td>token_present</td><td>True</td></tr>
+<tr><td>tls_enabled</td><td>False</td></tr>
+<tr><td>result</td><td>**passed_with_followup**</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Follow-Up: Duplicate WebSocket Connection Cycle</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Two auth cycles observed 19 seconds apart (T+46s and T+65s):</p>
+
+<pre id="code-12"><code class="language-text">T+46s: websocket_connecting → auth_ok → frontend_auth_ok
+T+65s: websocket_connecting → websocket_connected → auth_ok → frontend_auth_ok</code></pre>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">**Classification**: Expected reconnect/reload lifecycle. pywebview may reload the page or the browser may reconnect the WebSocket after the initial handshake.</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">**Impact**: None observed. No duplicate state mutation or resource leak detected. Both cycles complete cleanly with auth_ok and projection.</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">**Action**: Monitor in future manual verification passes. If duplicate cycles accumulate (&gt;3 in one launch), investigate pywebview page reload behavior or WebSocket reconnect logic.</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Trace Summary</h3>
+
+<pre id="code-17"><code class="language-text">Trace events: 1574 total
+Latest handshake: corr_c6c5d9bf45a2 (3 bootstrap_loaded events)
+Frontend handshake: hs_xj8y7p7j4xug</code></pre>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">No token values observed in any trace event, URL, or log. No &quot;opening handshake failed&quot; tracebacks observed (logger filter active).</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Previous Verification (2026-05-16)</h2>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Source-Mode Evidence</h2>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Backend Probe Ladder (bridge:01–10)</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">All 10 backend startup probes pass with live echo:</p>
+
+<pre id="code-24"><code class="language-text">✅ [bridge:01] resolve frontend_dir: frontend/desktop
+✅ [bridge:02] resolve index.html: 3.7 KB
+✅ [bridge:03] verify asset files: js/main.js=11.3KB, css dir ok
+✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True
+✅ [bridge:05] create WS server: ProjectionWebSocketServer ready
+✅ [bridge:06] bind host/port: http://127.0.0.1:64060
+✅ [bridge:07] probe /healthz: HTTP 200, ok=True
+✅ [bridge:08] probe /index.html: HTTP 200, text/html
+✅ [bridge:09] probe /js/main.js: HTTP 200, text/javascript
+✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css</code></pre>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Config / Token Path</h3>
+
+<pre id="code-26"><code class="language-text">runtime_config.to_dict():
+  token: &lt;31 chars&gt; ✓
+  auth_token: &lt;31 chars&gt; ✓
+  ws_url: ws://127.0.0.1:{port}/ws ✓
+
+CockpitAPI.get_runtime_config():
+  token present: YES (30 chars) ✓
+  ws_url: ws://127.0.0.1:9876/ws ✓
+  transport_label: Loopback Token Bridge ✓</code></pre>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">WebSocket E2E</h3>
+
+<pre id="code-28"><code class="language-text">WS URL: ws://127.0.0.1:9878/ws
+Auth: auth_ok ✓
+Projection: type=projection, schema=rig.relay.desktop_projection.v1 ✓
+E2E WebSocket auth + projection: PASS</code></pre>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">Healthz</h3>
+
+<pre id="code-30"><code class="language-json">{
+  &quot;ok&quot;: true,
+  &quot;frontend_dir_exists&quot;: true,
+  &quot;index_exists&quot;: true,
+  &quot;main_js_exists&quot;: true,
+  &quot;css_dir_exists&quot;: true,
+  &quot;active_ws_clients&quot;: 0,
+  &quot;last_ws_error&quot;: null,
+  &quot;frontend_url&quot;: &quot;http://127.0.0.1:64060/index.html&quot;,
+  &quot;ws_url&quot;: &quot;ws://127.0.0.1:64060/ws&quot;
+}</code></pre>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">No token in healthz output ✓</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Regression Tests</h3>
+
+<pre id="code-33"><code class="language-text">tests/desktop/test_golden_path.py ...... (6/6 passed)
+tests/desktop/test_bridge_diagnostics.py ....................... (23/23 passed)</code></pre>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">Demo Doctor</h3>
+
+<pre id="code-35"><code class="language-text">All 22 checks passed. Demo ready.</code></pre>
+
+<h2 id="h2-36" class="disclosure-standard" data-disclosure-level="standard">Packaged-Mode Evidence</h2>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">App Build</h3>
+
+<pre id="code-38"><code class="language-text">dist/Rig Relay.app — 98 MB
+dist/Rig Relay.app.zip — 45 MB</code></pre>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Helper Commands</h3>
+
+<pre id="code-40"><code class="language-text">--demo-doctor: 22/22 passed
+--demo-seed: All artifacts created
+--demo-render-docs: ok=docs</code></pre>
+
+<h3 id="h3-41" class="disclosure-standard" data-disclosure-level="standard">Application Support</h3>
+
+<pre id="code-42"><code class="language-text">~/Library/Application Support/Rig Relay/
+  artifacts/
+  certs/
+  demo/          — adoption_proposals, bash_analytics, mission_board, ralph_lifecycle, ...
+  docs-site/     — index.html
+  logs/          — startup.log, bridge_probe.json, bridge.log
+  runtime/</code></pre>
+
+<h2 id="h2-43" class="disclosure-standard" data-disclosure-level="standard">Known Limitations</h2>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- Full GUI smoke (pywebview window, button clicks, visual widget confirmation) requires manual tester in macOS GUI session - Notarization not performed - Frontend console logs (`[bridge:frontend]`) require `webview.start(debug=True)` to view in Safari Web Inspector</p>
+
+<h2 id="h2-45" class="disclosure-standard" data-disclosure-level="standard">Files Changed (this mission)</h2>
+
+<details id="table-46" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-46" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>File</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/desktop/bridge_diagnostics.py`</td><td>Added `enable_echo()` + `_echo` flag for live step printing</td></tr>
+<tr><td>`rig_relay/cli/desktop_cockpit.py`</td><td>Wire `bridge_probe.enable_echo()`</td></tr>
+<tr><td>`rig_relay/desktop/bridge_state_machine.py`</td><td>Explicit bridge lifecycle state machine for startup and probe transitions</td></tr>
+<tr><td>`rig_relay/desktop/bridge_server.py`</td><td>Loopback HTTP default, explicit TLS opt-in, honest transport labels, startup diagnostics</td></tr>
+<tr><td>`frontend/desktop/js/main.js`</td><td>pywebviewready wait, config diagnostics, duplicate call fix</td></tr>
+<tr><td>`frontend/desktop/js/transport.js`</td><td>`token_missing` state, `authenticating` state</td></tr>
+<tr><td>`frontend/desktop/js/status.js`</td><td>Connection chip labels for all states</td></tr>
+<tr><td>`frontend/desktop/js/transportState.js`</td><td>Explicit frontend transport lifecycle state machine</td></tr>
+<tr><td>`tests/desktop/test_golden_path.py`</td><td>6 regression tests</td></tr>
+<tr><td>`docs/demo/desktop-golden-path.md`</td><td>Golden path documentation</td></tr>
+<tr><td>`docs/audits/desktop/desktop-golden-path-proof.md`</td><td>This audit proof</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-47" class="disclosure-standard" data-disclosure-level="standard">Validation Summary</h2>
+
+<details id="table-48" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-48" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Check</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Backend probes bridge:01–10</td><td>All OK (live echo)</td></tr>
+<tr><td>Bridge lifecycle state machine</td><td>Explicit lifecycle projection exposed in `/healthz`</td></tr>
+<tr><td>Frontend transport state machine</td><td>Explicit frontend transport projection and status copy</td></tr>
+<tr><td>Config token chain</td><td>token present in runtime_config → CockpitAPI → frontend</td></tr>
+<tr><td>WebSocket auth + projection</td><td>E2E protocol test passes</td></tr>
+<tr><td>Healthz asset fields</td><td>All present, no token</td></tr>
+<tr><td>Bridge diagnostics tests</td><td>23/23 passed</td></tr>
+<tr><td>Golden path tests</td><td>6/6 passed</td></tr>
+<tr><td>demo-doctor</td><td>22/22 passed</td></tr>
+<tr><td>ruff</td><td>All checks passed</td></tr>
+<tr><td>pyright</td><td>0 errors, 0 warnings</td></tr>
+</tbody>
+</table></details>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/desktop/desktop-golden-path-proof.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

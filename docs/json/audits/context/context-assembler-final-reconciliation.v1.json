@@ -1,0 +1,303 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "context-assembler-final-reconciliation",
+  "document_type": "audit",
+  "title": "Context Assembler Final Reconciliation",
+  "summary": "Date: 2026-05-18 (updated by closer lane)",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/context/context-assembler-final-reconciliation.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Context Assembler Final Reconciliation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Date: 2026-05-18 (updated by closer lane) Inspected HEAD: 26f2288a Lanes: A (compiler/renderer), B (planner/budget/warnings), C (security/failure/warnings — this lane)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Status: CONTEXT_ASSEMBLER_STABLE_V1",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "All three lanes have converged. Final closer audit confirms source truth.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Canonical Truth Table",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Seam",
+        "Required",
+        "Actual",
+        "Status"
+      ],
+      "rows": [
+        [
+          "AssemblyPlan model spine",
+          "exists",
+          "`assembly_plan.py` — ContextCandidate, ContextSelection, ContextOmission, ContextBudgetLedger, ContextAssemblyWarning, ContextAssemblyPlan",
+          "✅ PASSED"
+        ],
+        [
+          "Planner discovery/scoring",
+          "exists",
+          "`planner.py` — `plan_context()` discovers from scope + subsystems + RepoIndex + work_map; scores by priority; enforces budget",
+          "✅ PASSED"
+        ],
+        [
+          "RepoIndex expansion",
+          "wired",
+          "`compiler.execute()` constructs `RepoContextIndex(root)` and passes to `plan_context()`; planner calls `find_tests/docs/schemas/related` with per-method failure warnings",
+          "✅ PASSED"
+        ],
+        [
+          "Budget enforcement",
+          "wired",
+          "`plan_context()` selects in priority order until `max_tokens`; records `budget_exceeded` omissions; negative clamped to 0",
+          "✅ PASSED"
+        ],
+        [
+          "Renderer cache tiers",
+          "unified",
+          "`renderer.py` imports `CacheTier`/`TrustTier` from `assembly_plan.py`; no local duplicates",
+          "✅ PASSED"
+        ],
+        [
+          "Renderer public API",
+          "consumed",
+          "`compiler.build_envelope()` uses `renderer.section_count`, `renderer.section_metadata`, `renderer.rendered_content`, `renderer.add_warning()`",
+          "✅ PASSED"
+        ],
+        [
+          "Compiler execute integration",
+          "planner-driven",
+          "`execute()` calls `plan_context()`, consumes `plan.selections`→`recommended_context`, `plan.omissions`→`do_not_touch`, `plan.warnings`→`_context_warnings`",
+          "✅ PASSED"
+        ],
+        [
+          "Warnings surfaced",
+          "packet-visible",
+          "`ContextPacket` has `warnings` field; compiler propagates planner + renderer warnings; `ContextAssemblyWarning` model used throughout",
+          "✅ PASSED"
+        ],
+        [
+          "Failure hardening",
+          "no silent pass in critical paths",
+          "`_safe_find` returns error tuples; per-method RepoIndex warnings; `build_receipt` has no bare `except: pass`; `execute()` uses `build_warning()`",
+          "✅ PASSED"
+        ],
+        [
+          "Privacy/security boundary",
+          "trust/provenance/evidence",
+          "Renderer uses `TrustTier` (first_party/repo_content/tool_output/untrusted); recent messages are volume-only (sha256 + byte count); root/head/collision paths are hashed; public section metadata has no raw content",
+          "✅ PASSED"
+        ],
+        [
+          "Context test suite",
+          "green",
+          "272 passed, 3 skipped (pre-existing known_blocked tests in repo_index + symbol_codec)",
+          "✅ PASSED"
+        ],
+        [
+          "Collect/demo-doctor",
+          "green",
+          "6520+ tests, 22/22",
+          "✅ PASSED"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Warning Propagation Chain (verified in source)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-8",
+      "type": "code",
+      "language": "text",
+      "content": "planner._safe_find() → returns (result, error) tuple\n  → compiler.execute() collects planner warnings\n     → _context_warnings.extend(planner_warnings)\n        → ContextPacket(warnings=_context_warnings)\n\ncompiler.build_envelope()\n  → renderer.warnings (via add_warning())\n     → ContextEnvelopeReceipt (warnings not yet on envelope model — deferred)\n\ncompiler.build_receipt()\n  → findings failure → build_warning() → recorded (ContextReceipt has no warnings field — deferred)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Gaps (non-blocking, deferred)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Gap",
+        "Owner",
+        "Reason"
+      ],
+      "rows": [
+        [
+          "`_scan_receipts()` still has broad `except Exception: sha = \"\"`",
+          "Future",
+          "Returns empty sha on failure; non-critical read path"
+        ],
+        [
+          "`ContextEnvelopeReceipt` lacks warnings field",
+          "Future",
+          "Envelope model change deferred; warnings available in packet"
+        ],
+        [
+          "`ContextReceipt` lacks warnings field",
+          "Future",
+          "Receipt model change deferred"
+        ],
+        [
+          "Some non-critical `except:pass` remain in `repo_index`, `symbol_codec`",
+          "Future",
+          "Legitimate error handlers in optional scan paths"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Lane Report Resolution",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Lane",
+        "Reported Status",
+        "Resolution"
+      ],
+      "rows": [
+        [
+          "Lane A",
+          "INTEGRATED_WITH_GAPS",
+          "**Updated.** Gap list reduced — `_safe_find` fixed by Lane B, test regressions fixed. Remaining gaps are deferred non-blocking."
+        ],
+        [
+          "Lane B",
+          "INTEGRATED_WITH_GAPS",
+          "**Updated.** `_safe_find` returns error tuples, per-method warnings wired, budget semantics explicit."
+        ],
+        [
+          "Lane C",
+          "CONTEXT_ASSEMBLER_V1_COMPLETE",
+          "**Confirmed.** Security boundaries, failure hardening, and warning propagation landed and verified."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-14",
+      "type": "code",
+      "language": "text",
+      "content": "uv run pytest tests/context/ -q\n  → 272 passed, 3 skipped\n\nuv run pytest tests/context/test_context_final_closeout.py -q\n  → all passed\n\nuv run ruff check rig_relay/context tests/context\n  → clean\n\nuv run pyright rig_relay/context tests/context\n  → 0 errors\n\nuv run pytest --collect-only -q\n  → 6520+ tests\n\nuv run rig-relay demo-doctor\n  → 22/22",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/context/context-assembler-final-reconciliation.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

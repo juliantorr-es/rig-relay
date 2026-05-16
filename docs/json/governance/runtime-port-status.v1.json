@@ -1,0 +1,545 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "runtime-port-status",
+  "document_type": "governance",
+  "title": "Runtime Port Status Normalization",
+  "summary": "Generated: 2026-05-15",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/runtime-port-status.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Runtime Port Status Normalization",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Generated: 2026-05-15 Vocabulary: not_started | documented | contract_only | implemented | wired | validated | known_blocked | deprecated",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Core runtime",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "AgentLoop conductor",
+          "validated",
+          "MRO mixins, ToolRuntime delegate, turn tracking"
+        ],
+        [
+          "AgentRuntimeState",
+          "implemented",
+          "Snapshot model, `build_runtime_state()`, debug dict"
+        ],
+        [
+          "ConversationTurnRuntime",
+          "implemented",
+          "Phase tracking in `_conversation_loop`, 10 phases"
+        ],
+        [
+          "ToolRuntime",
+          "implemented",
+          "`execute_one()` owns cache→permission→approval→patch→invoke"
+        ],
+        [
+          "RuntimeToolExecutionRunner",
+          "wired",
+          "Intent/lease/audit adapter over `ToolRuntime.execute_one()`"
+        ],
+        [
+          "ToolRuntimeResult",
+          "implemented",
+          "Typed statuses, refusal codes, degradation"
+        ],
+        [
+          "ToolRuntimeLedger",
+          "implemented",
+          "`InMemoryToolRuntimeResultLedger`, `ToolRuntimeResultSink` protocol"
+        ],
+        [
+          "ToolRuntime projection",
+          "wired",
+          "`rig.ui.tool_runtime_summary.v1` via desktop projection + frontend widget"
+        ],
+        [
+          "SessionLifecycleMixin",
+          "validated",
+          "`_reset_session`, `fork`, `compact`, `clear_history`"
+        ],
+        [
+          "GovernanceMixin",
+          "validated",
+          "`approve_always`, `set_tool_permission`, session rules"
+        ],
+        [
+          "TelemetryMixin",
+          "validated",
+          "Session telemetry + context observation"
+        ],
+        [
+          "ContextEnvelopeMixin",
+          "validated",
+          "Context assembly + layout planning"
+        ],
+        [
+          "MiddlewareMetadataMixin",
+          "validated",
+          "Pipeline setup, compact/stop/inject handling"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Receipt pipeline",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Receipt model",
+          "implemented",
+          "`ToolRuntimeReceipt`, `ContextEnvelopeReceipt`"
+        ],
+        [
+          "`build_receipt()` tool hook",
+          "implemented",
+          "Tool class method, captured on success"
+        ],
+        [
+          "`capture_tool_receipt()`",
+          "implemented",
+          "Writes to `.rig/receipts/`"
+        ],
+        [
+          "Receipt index",
+          "implemented",
+          "`build_receipt_index()` reads session receipts"
+        ],
+        [
+          "Receipt projection integrity",
+          "implemented",
+          "`ProjectionIntegrityAssessment`"
+        ],
+        [
+          "Receipt E2E tests",
+          "validated",
+          "`runtime_audit_event` + runtime invocation receipts are linked through result metadata"
+        ],
+        [
+          "Policy validation path",
+          "documented",
+          "`docs/governance/receipt-envelope.md`"
+        ],
+        [
+          "Write-file receipt validation",
+          "documented",
+          "Mutation tool receipts governed by patch gate"
+        ],
+        [
+          "Receipt in desktop projection",
+          "wired",
+          "`integrity` field in projection"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Ralph lifecycle",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Ralph scanner",
+          "implemented",
+          "`scan_projections()`, reads report + bash projections"
+        ],
+        [
+          "Ralph models",
+          "implemented",
+          "`CandidateKind`, `ScanInput`, `RankedCandidate`, `MissionCandidate`"
+        ],
+        [
+          "Ralph panel",
+          "implemented",
+          "`build_ralph_panel()`, action list"
+        ],
+        [
+          "Ralph intents",
+          "implemented",
+          "`ralph_scan`, `ralph_approve`, `ralph_decline`, `ralph_rescan`"
+        ],
+        [
+          "Ralph background lane gates",
+          "documented",
+          "`docs/governance/ralph-background-loop.md`"
+        ],
+        [
+          "Ralph worktree lanes",
+          "documented",
+          "`docs/governance/ralph-worktree-lanes.md`"
+        ],
+        [
+          "Ralph lifecycle projection",
+          "documented",
+          "Demo lifecycle visible, needs real runtime integration"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Mission envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Mission envelope design",
+          "documented",
+          "`docs/governance/mission-envelope.md`"
+        ],
+        [
+          "Executable bridge",
+          "not_started",
+          "No code path from mission metadata → context/runtime"
+        ],
+        [
+          "Mission envelope in receipts",
+          "not_started",
+          "Not yet bound to execution state"
+        ],
+        [
+          "Orchestrator mission board",
+          "documented",
+          "Demo fixtures show synthetic missions"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Provider registry",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Provider registry",
+          "implemented",
+          "`PROVIDER_REGISTRY` in `rig_relay/providers/registry.py`"
+        ],
+        [
+          "Provider health check",
+          "implemented",
+          "`check_provider_status()` with network_allowed flag"
+        ],
+        [
+          "Provider status in projection",
+          "wired",
+          "Desktop projection shows provider status"
+        ],
+        [
+          "Trust tiers",
+          "not_started",
+          "Documented but not coded"
+        ],
+        [
+          "Capability scoping",
+          "not_started",
+          "Context window, streaming, tool_calling not scoped per-provider"
+        ],
+        [
+          "Background Ralph provider policy",
+          "not_started",
+          "No restriction on which providers Ralph can use"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Workspace runtime",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Worktree root isolation",
+          "implemented",
+          "`_workspace_root` on AgentLoop"
+        ],
+        [
+          "Artifact root",
+          "implemented",
+          "`.rig/relay/` and `.build/rig-relay/`"
+        ],
+        [
+          "Receipt root",
+          "implemented",
+          "`.rig/relay/receipts/`"
+        ],
+        [
+          "Projection root",
+          "implemented",
+          "`.build/rig-relay/desktop/projection.json`"
+        ],
+        [
+          "Event ledger root",
+          "implemented",
+          "`~/.rig/relay/sessions/<id>/observability.jsonl`"
+        ],
+        [
+          "Path policy enforcement",
+          "documented",
+          "`docs/governance/dependency-policy.md`"
+        ],
+        [
+          "Audit trail parity",
+          "documented",
+          "Runtime-intent audit events now preserve runtime envelope hashes and source kind"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema contracts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-16",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Desktop projection schema",
+          "validated",
+          "`rig.relay.desktop_projection.v1.schema.json`"
+        ],
+        [
+          "ToolRuntime summary schema",
+          "contract_only",
+          "`rig.ui.tool_runtime_summary.v1` (Pydantic, no JSON schema yet)"
+        ],
+        [
+          "Context observation schema",
+          "validated",
+          "`rig.context_observation.v1.schema.json`"
+        ],
+        [
+          "Context packet schema",
+          "validated",
+          "`rig.context_packet.v1.schema.json`"
+        ],
+        [
+          "Report schema",
+          "validated",
+          "`rig.report.v1.schema.json`"
+        ],
+        [
+          "Ralph scan schema",
+          "contract_only",
+          "`rig.ralph_scan.v1.schema.json` exists"
+        ],
+        [
+          "Bash invocation schema",
+          "contract_only",
+          "`rig.bash_invocation.v1.schema.json` exists"
+        ],
+        [
+          "IDE capability manifest",
+          "validated",
+          "`rig.ide.capability_manifest.v1.schema.json`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Stubs",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-18",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "`rig_relay/identity/token_store.py`",
+          "documented",
+          "OAuth token store design exists; local mode works without it"
+        ],
+        [
+          "`rig_relay/core/tools/builtins/git.py`",
+          "documented",
+          "Git operations gated behind merge/push policy"
+        ],
+        [
+          "`RuntimeToolExecutionRunner` direct-invoke seam",
+          "documented",
+          "Normal runtime-intent path now converges through `ToolRuntime`; helper adapters remain for tool-specific backends"
+        ],
+        [
+          "Demo seed/doctor",
+          "validated",
+          "Fresh-clone path works, 10/10 doctor checks"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/runtime-port-status.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

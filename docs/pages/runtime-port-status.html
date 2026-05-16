@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Port Status Normalization — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Generated: 2026-05-15">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Port Status Normalization</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Port Status Normalization</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Generated: 2026-05-15 Vocabulary: not_started | documented | contract_only | implemented | wired | validated | known_blocked | deprecated</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Core runtime</h2>
+
+<details id="table-4" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-4" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>AgentLoop conductor</td><td>validated</td><td>MRO mixins, ToolRuntime delegate, turn tracking</td></tr>
+<tr><td>AgentRuntimeState</td><td>implemented</td><td>Snapshot model, `build_runtime_state()`, debug dict</td></tr>
+<tr><td>ConversationTurnRuntime</td><td>implemented</td><td>Phase tracking in `_conversation_loop`, 10 phases</td></tr>
+<tr><td>ToolRuntime</td><td>implemented</td><td>`execute_one()` owns cache→permission→approval→patch→invoke</td></tr>
+<tr><td>RuntimeToolExecutionRunner</td><td>wired</td><td>Intent/lease/audit adapter over `ToolRuntime.execute_one()`</td></tr>
+<tr><td>ToolRuntimeResult</td><td>implemented</td><td>Typed statuses, refusal codes, degradation</td></tr>
+<tr><td>ToolRuntimeLedger</td><td>implemented</td><td>`InMemoryToolRuntimeResultLedger`, `ToolRuntimeResultSink` protocol</td></tr>
+<tr><td>ToolRuntime projection</td><td>wired</td><td>`rig.ui.tool_runtime_summary.v1` via desktop projection + frontend widget</td></tr>
+<tr><td>SessionLifecycleMixin</td><td>validated</td><td>`_reset_session`, `fork`, `compact`, `clear_history`</td></tr>
+<tr><td>GovernanceMixin</td><td>validated</td><td>`approve_always`, `set_tool_permission`, session rules</td></tr>
+<tr><td>TelemetryMixin</td><td>validated</td><td>Session telemetry + context observation</td></tr>
+<tr><td>ContextEnvelopeMixin</td><td>validated</td><td>Context assembly + layout planning</td></tr>
+<tr><td>MiddlewareMetadataMixin</td><td>validated</td><td>Pipeline setup, compact/stop/inject handling</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Receipt pipeline</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Receipt model</td><td>implemented</td><td>`ToolRuntimeReceipt`, `ContextEnvelopeReceipt`</td></tr>
+<tr><td>`build_receipt()` tool hook</td><td>implemented</td><td>Tool class method, captured on success</td></tr>
+<tr><td>`capture_tool_receipt()`</td><td>implemented</td><td>Writes to `.rig/receipts/`</td></tr>
+<tr><td>Receipt index</td><td>implemented</td><td>`build_receipt_index()` reads session receipts</td></tr>
+<tr><td>Receipt projection integrity</td><td>implemented</td><td>`ProjectionIntegrityAssessment`</td></tr>
+<tr><td>Receipt E2E tests</td><td>validated</td><td>`runtime_audit_event` + runtime invocation receipts are linked through result metadata</td></tr>
+<tr><td>Policy validation path</td><td>documented</td><td>`docs/governance/receipt-envelope.md`</td></tr>
+<tr><td>Write-file receipt validation</td><td>documented</td><td>Mutation tool receipts governed by patch gate</td></tr>
+<tr><td>Receipt in desktop projection</td><td>wired</td><td>`integrity` field in projection</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Ralph lifecycle</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Ralph scanner</td><td>implemented</td><td>`scan_projections()`, reads report + bash projections</td></tr>
+<tr><td>Ralph models</td><td>implemented</td><td>`CandidateKind`, `ScanInput`, `RankedCandidate`, `MissionCandidate`</td></tr>
+<tr><td>Ralph panel</td><td>implemented</td><td>`build_ralph_panel()`, action list</td></tr>
+<tr><td>Ralph intents</td><td>implemented</td><td>`ralph_scan`, `ralph_approve`, `ralph_decline`, `ralph_rescan`</td></tr>
+<tr><td>Ralph background lane gates</td><td>documented</td><td>`docs/governance/ralph-background-loop.md`</td></tr>
+<tr><td>Ralph worktree lanes</td><td>documented</td><td>`docs/governance/ralph-worktree-lanes.md`</td></tr>
+<tr><td>Ralph lifecycle projection</td><td>documented</td><td>Demo lifecycle visible, needs real runtime integration</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Mission envelope</h2>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Mission envelope design</td><td>documented</td><td>`docs/governance/mission-envelope.md`</td></tr>
+<tr><td>Executable bridge</td><td>not_started</td><td>No code path from mission metadata → context/runtime</td></tr>
+<tr><td>Mission envelope in receipts</td><td>not_started</td><td>Not yet bound to execution state</td></tr>
+<tr><td>Orchestrator mission board</td><td>documented</td><td>Demo fixtures show synthetic missions</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Provider registry</h2>
+
+<table id="table-12" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Provider registry</td><td>implemented</td><td>`PROVIDER_REGISTRY` in `rig_relay/providers/registry.py`</td></tr>
+<tr><td>Provider health check</td><td>implemented</td><td>`check_provider_status()` with network_allowed flag</td></tr>
+<tr><td>Provider status in projection</td><td>wired</td><td>Desktop projection shows provider status</td></tr>
+<tr><td>Trust tiers</td><td>not_started</td><td>Documented but not coded</td></tr>
+<tr><td>Capability scoping</td><td>not_started</td><td>Context window, streaming, tool_calling not scoped per-provider</td></tr>
+<tr><td>Background Ralph provider policy</td><td>not_started</td><td>No restriction on which providers Ralph can use</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Workspace runtime</h2>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Worktree root isolation</td><td>implemented</td><td>`_workspace_root` on AgentLoop</td></tr>
+<tr><td>Artifact root</td><td>implemented</td><td>`.rig/relay/` and `.build/rig-relay/`</td></tr>
+<tr><td>Receipt root</td><td>implemented</td><td>`.rig/relay/receipts/`</td></tr>
+<tr><td>Projection root</td><td>implemented</td><td>`.build/rig-relay/desktop/projection.json`</td></tr>
+<tr><td>Event ledger root</td><td>implemented</td><td>`~/.rig/relay/sessions/&lt;id&gt;/observability.jsonl`</td></tr>
+<tr><td>Path policy enforcement</td><td>documented</td><td>`docs/governance/dependency-policy.md`</td></tr>
+<tr><td>Audit trail parity</td><td>documented</td><td>Runtime-intent audit events now preserve runtime envelope hashes and source kind</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Schema contracts</h2>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Desktop projection schema</td><td>validated</td><td>`rig.relay.desktop_projection.v1.schema.json`</td></tr>
+<tr><td>ToolRuntime summary schema</td><td>contract_only</td><td>`rig.ui.tool_runtime_summary.v1` (Pydantic, no JSON schema yet)</td></tr>
+<tr><td>Context observation schema</td><td>validated</td><td>`rig.context_observation.v1.schema.json`</td></tr>
+<tr><td>Context packet schema</td><td>validated</td><td>`rig.context_packet.v1.schema.json`</td></tr>
+<tr><td>Report schema</td><td>validated</td><td>`rig.report.v1.schema.json`</td></tr>
+<tr><td>Ralph scan schema</td><td>contract_only</td><td>`rig.ralph_scan.v1.schema.json` exists</td></tr>
+<tr><td>Bash invocation schema</td><td>contract_only</td><td>`rig.bash_invocation.v1.schema.json` exists</td></tr>
+<tr><td>IDE capability manifest</td><td>validated</td><td>`rig.ide.capability_manifest.v1.schema.json`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Stubs</h2>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/identity/token_store.py`</td><td>documented</td><td>OAuth token store design exists; local mode works without it</td></tr>
+<tr><td>`rig_relay/core/tools/builtins/git.py`</td><td>documented</td><td>Git operations gated behind merge/push policy</td></tr>
+<tr><td>`RuntimeToolExecutionRunner` direct-invoke seam</td><td>documented</td><td>Normal runtime-intent path now converges through `ToolRuntime`; helper adapters remain for tool-specific backends</td></tr>
+<tr><td>Demo seed/doctor</td><td>validated</td><td>Fresh-clone path works, 10/10 doctor checks</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/runtime-port-status.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

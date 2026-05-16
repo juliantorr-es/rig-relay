@@ -1,0 +1,510 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "telemetry-contribution-policy",
+  "document_type": "governance",
+  "title": "Telemetry Contribution Policy",
+  "summary": "**Established.** Defines the consent-gated contribution flow for content-light",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/telemetry-contribution-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Telemetry Contribution Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Established.** Defines the consent-gated contribution flow for content-light Rig Relay usage bundles to a configured Google Drive destination.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Users may contribute content-light telemetry bundles to help improve Rig Relay. This policy defines the consent gates, content-light guarantee, upload behavior, and receipt expectations for contribution flows.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Core Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-7",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 1: Consent Required",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "No bundle is uploaded without explicit, active consent. The contribution flow checks consent before every upload attempt.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Contribution Type",
+        "Required Consent Scopes"
+      ],
+      "rows": [
+        [
+          "Basic contribution",
+          "`content_light_bundles`, `usage_metrics`"
+        ],
+        [
+          "With model observations",
+          "Also: `provider_model_benchmarking`, `local_model_benchmarking`"
+        ],
+        [
+          "Commercial dataset",
+          "Also: `commercial_dataset_license`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 2: Content-Light Guarantee",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "All contributed bundles must pass the content-light guarantee:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- No raw prompts or model output text - No source code, file contents, or diffs - No stdout/stderr output bodies - No API keys, tokens, secrets, or passwords - No raw authorization receipt bodies - No personal identifiable information - No raw private paths",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "The bundle is validated through the shared redaction module (`rig_relay.evidence.redaction`) before upload.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 3: Dry-Run by Default",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "The contribution flow defaults to dry-run mode. No network upload occurs without explicit `--confirm`. Dry-run creates a local receipt with `status: \"dry_run\"` and all metadata fields populated.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 4: No Auto-Upload",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "Telemetry is never uploaded automatically. All contributions are explicitly triggered by the user via the CLI script.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Rule 5: Content-Light Receipt",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "Every contribution produces a local receipt and a result dict, both governed by JSON schemas.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "**Contribution receipt** (`rig.relay.contribution_receipt.v1.schema.json`):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "- contribution_id - bundle_sha256 (hash, not raw bundle) - bundle_size_bytes - destination_kind (always `google_drive`) - consent_policy_version - consent_scopes (active scopes at time of upload) - contribution_mode (basic, model_observations, or commercial) - Drive folder/file IDs (hashed only -- never raw) - upload_method - Status (dry_run, uploaded, refused_consent, etc.) - content_light_guarantee - Warnings",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "**Contribution result** (`rig.relay.contribution_result.v1.schema.json`):",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "- Orchestration metadata: consent_checked, upload_attempted, upload_confirmed - Status (dry_run, uploaded, refused_consent, refused_content_light, etc.) - receipt_path and receipt_sha256 - content_light_guarantee",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Receipts and results contain no OAuth tokens, no raw Drive file IDs, no raw Drive folder IDs, and no raw consent record contents. Raw identifiers are replaced with SHA256 hashes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema Governance",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Telemetry contribution artifacts are governed by the following JSON schemas:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-27",
+      "type": "table",
+      "columns": [
+        "Schema",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "`rig.relay.contribution_receipt.v1.schema.json`",
+          "Content-light contribution receipt with hashed Drive IDs, bundle identity via `bundle_sha256`, explicit `contribution_mode`, and `content_light_guarantee`. No raw Drive folder/file IDs are retained — identifiers are represented as SHA256 hashes where needed."
+        ],
+        [
+          "`rig.relay.contribution_result.v1.schema.json`",
+          "Orchestration result for the contribution flow. Contains consent check status, upload attempt metadata, step statuses (`steps`), upload receipt (`upload_receipt`), receipt path/SHA256, and `content_light_guarantee`. Separate from raw telemetry/event bundles."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Both schemas enforce `additionalProperties: false` and are self-validated by the global schema validation script (`scripts/rig_relay_validate_schemas.py`). Contribution receipts and results are content-light artifacts distinct from raw telemetry/event bundles.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-29",
+      "type": "heading",
+      "level": 2,
+      "content": "Flow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-30",
+      "type": "code",
+      "language": "text",
+      "content": "User runs contribute script\n    → Bundle loaded or created\n    → Bundle validated (content-light + schema)\n    → Consent checked (required scopes active?)\n    → Upload to Google Drive (or dry-run)\n    → Receipt written to .build/rig-relay/drive-uploads/",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-31",
+      "type": "heading",
+      "level": 3,
+      "content": "Consent Gate Detail",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "The contribution flow requires at minimum:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-33",
+      "type": "code",
+      "language": "python",
+      "content": "REQUIRED_CONTRIBUTION_SCOPES = {\n    TelemetryConsentScope.CONTENT_LIGHT_BUNDLES,\n    TelemetryConsentScope.USAGE_METRICS,\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "If `--include-model-observations`, additional scopes are required:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-35",
+      "type": "code",
+      "language": "python",
+      "content": "MODEL_OBSERVATION_SCOPES = {\n    TelemetryConsentScope.PROVIDER_MODEL_BENCHMARKING,\n    TelemetryConsentScope.LOCAL_MODEL_BENCHMARKING,\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "If `--commercial`, the commercial scope is required:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-37",
+      "type": "code",
+      "language": "python",
+      "content": "COMMERCIAL_CONTRIBUTION_SCOPE = TelemetryConsentScope.COMMERCIAL_DATASET_LICENSE",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-38",
+      "type": "heading",
+      "level": 2,
+      "content": "Google Drive Behavior",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "- Uses Google Drive API `files.create` with resumable upload - Uses `google-api-python-client MediaFileUpload` for file upload - Uses `https://www.googleapis.com/auth/drive.file` scope - Resumable upload with 256KB chunks for reliability - No tokens printed to console or logs - Dry-run by default unless `--confirm` - Supports `--state-root`, `--bundle-path`, `--folder-id`, `--receipt-dir`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-40",
+      "type": "heading",
+      "level": 2,
+      "content": "Script",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "The contribution flow is implemented in a single script:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "**`scripts/rig_relay_contribute_telemetry_bundle.py`**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "Reuses existing modules: - `create_bundle` from `scripts/rig_relay_create_telemetry_bundle.py` - `validate_bundle` from `rig_relay.evidence.telemetry_bundle` - `upload_bundle` from `scripts/rig_relay_upload_google_drive.py` - `ConsentStore` from `rig_relay.identity.consent_store` - `redact_for_remote` from `rig_relay.evidence.redaction`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-44",
+      "type": "heading",
+      "level": 2,
+      "content": "Tool Receipt Evidence Index",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "Receipt events are indexed by `rig_relay.evidence.receipt_index` for query, validation, and replay inspection. The index is:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "- **Content-light**: no raw stdout, stderr, file contents, diffs, or snippets. - **Read-only derived evidence**: built from session observability, never modified. - **Audit surface**: answers which tools ran, mutations, refusals, timeouts. - **Governed by** `docs/schemas/rig.relay.tool_receipt_index.v1.schema.json`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-47",
+      "type": "paragraph",
+      "content": "See [Session Storage Lifecycle](session-storage-lifecycle.md#tool-receipt-evidence-index).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-48",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Telemetry Consent Model](../../rig_relay/identity/telemetry_consent.py) - [Consent Store](../../rig_relay/identity/consent_store.py) - [Frontend Rendering Safety](frontend-rendering-safety.md) - [Relay Local/Remote Boundary](relay-local-remote-boundary.md) - [Session Storage Lifecycle](session-storage-lifecycle.md) - [Identity Provider Policy](identity-provider-policy.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/telemetry-contribution-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

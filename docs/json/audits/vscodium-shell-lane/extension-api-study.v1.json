@@ -1,0 +1,245 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "extension-api-study",
+  "document_type": "audit",
+  "title": "VSCodium Extension API Study",
+  "summary": "This document identifies the specific VS Code / VSCodium APIs required to implement the Rig Relay shell lane.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/vscodium-shell-lane/extension-api-study.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "VSCodium Extension API Study",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "This document identifies the specific VS Code / VSCodium APIs required to implement the Rig Relay shell lane.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Required for MVP",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "API Area",
+        "Purpose",
+        "Rig Use Case",
+        "Host/Daemon",
+        "Security Concern"
+      ],
+      "rows": [
+        [
+          "**Webview View**",
+          "Custom UI panels.",
+          "Side-panel for agent chat, turn status, and receipts.",
+          "Extension Host",
+          "XSS within the webview."
+        ],
+        [
+          "**Status Bar API**",
+          "Global status indicators.",
+          "Displaying \"Agent Running\", \"Blocked\", or \"Validation Pending\".",
+          "Extension Host",
+          "None."
+        ],
+        [
+          "**Workspace API**",
+          "File/Folder discovery.",
+          "Detecting open files for context compilation.",
+          "Extension Host",
+          "Potential leakage of file names."
+        ],
+        [
+          "**Commands API**",
+          "User actions.",
+          "Keybindings for \"Start Turn\", \"Approve Patch\", \"Clear Input\".",
+          "Extension Host",
+          "Command injection if not sanitized."
+        ],
+        [
+          "**SecretStorage API**",
+          "Safe credential storage.",
+          "Storing daemon tokens and API keys.",
+          "Extension Host",
+          "Leakage to other extensions."
+        ],
+        [
+          "**Terminal API**",
+          "Embedded terminal.",
+          "Optional view of the raw Rig Relay daemon logs.",
+          "Extension Host",
+          "Arbitrary shell execution."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Useful after MVP",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "API Area",
+        "Purpose",
+        "Rig Use Case",
+        "Host/Daemon",
+        "Security Concern"
+      ],
+      "rows": [
+        [
+          "**Tree View API**",
+          "Hierarchical lists.",
+          "Detailed evidence receipt browser and fleet status.",
+          "Extension Host",
+          "Low."
+        ],
+        [
+          "**Custom Editor API**",
+          "Custom file views.",
+          "Governed \"Receipt Files\" or \"Mission Journals\".",
+          "Extension Host",
+          "None."
+        ],
+        [
+          "**FileSystemProvider**",
+          "Virtual file system.",
+          "Projecting \"Mission Worktrees\" without actual git checkouts.",
+          "Extension Host",
+          "High complexity; safety."
+        ],
+        [
+          "**Diagnostics API**",
+          "Editor linting/errors.",
+          "Showing \"Validation Errors\" directly on the code lines.",
+          "Extension Host",
+          "False positives from agents."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Dangerous / Defer",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "API Area",
+        "Purpose",
+        "Rig Use Case",
+        "Rationale for Deferral"
+      ],
+      "rows": [
+        [
+          "**Task API**",
+          "Running build/test tasks.",
+          "Executing validations.",
+          "Defer to daemon tools for governance."
+        ],
+        [
+          "**Authentication API**",
+          "Third-party auth.",
+          "GitHub/Mistral login.",
+          "Keep in daemon for token isolation."
+        ],
+        [
+          "**Integrated Terminal Write**",
+          "Injecting text into shell.",
+          "Auto-running commands.",
+          "Too risky; bypasses tool permissions."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Test Strategy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "*   **Extension Host Unit Tests**: Use `vscode-test` to mock workspace and commands. *   **Integration Tests**: Scripted VSCodium instances connecting to a real `rig-relay` daemon. *   **Shadow Projections**: Compare the extension's view of a turn with the daemon's internal `CodingSessionSnapshot` to ensure no data leakage.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/vscodium-shell-lane/extension-api-study.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

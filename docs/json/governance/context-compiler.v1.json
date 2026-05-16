@@ -1,0 +1,260 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "context-compiler",
+  "document_type": "governance",
+  "title": "Context Compiler Doctrine",
+  "summary": "**Status:** Phase 1 — MVP map mode.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/context-compiler.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Context Compiler Doctrine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Status:** Phase 1 — MVP map mode.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "The context compiler is the domain logic behind `rig.get_context`, the governed read-only context front door for Rig Relay agents. It answers:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- What is this repository? - What subsystems exist? - What files matter for this mission? - Who else is touching nearby files? - What should I avoid touching? - What context can fit in my model budget?",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Core Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "1. **`rig.get_context` is read-only.** It must never mutate the repo, worktrees, ledgers, receipts, or build outputs.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "2. **The manifest is the authority.** Subsystem detection is structural (file tree, naming conventions), not semantic (AST). Symbols are discovered by convention, not by full index.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "3. **Collision warnings are advisory.** The context tool reports overlapping claims but does not enforce locks. Enforcement is a separate governance concern.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "4. **Receipts are content-light.** The receipt contains hashes, counts, and timestamps — never raw file contents, diffs, or secrets.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "5. **Substituted packets are derived views.** The canonical packet (pre-substitution) is the source of truth. The `canonical_packet_sha256` and `optimized_packet_sha256` fields prove the correspondence.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Modes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Mode",
+        "Speed",
+        "What it returns"
+      ],
+      "rows": [
+        [
+          "`map`",
+          "Fast",
+          "Repo topology, dirty state, subsystem map, active lanes, collision warnings"
+        ],
+        [
+          "`packet`",
+          "Heavy",
+          "Everything in `map` + receipt scan, selected file excerpts, symbol table"
+        ],
+        [
+          "`handoff`",
+          "Medium",
+          "Agent-specific handoff: do-not-touch list, current blockers, recommended next files"
+        ],
+        [
+          "`collision`",
+          "Fast",
+          "Path conflict check only: which lanes claim which paths"
+        ],
+        [
+          "`symbols`",
+          "Fast",
+          "Symbol substitution table and definitions only"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Compression",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-15",
+      "type": "table",
+      "columns": [
+        "Mode",
+        "Behavior"
+      ],
+      "rows": [
+        [
+          "`none`",
+          "Full names, full paths."
+        ],
+        [
+          "`light`",
+          "Short path aliases."
+        ],
+        [
+          "`symbol_substitution`",
+          "Replace repeated long names with short aliases (e.g., `⟦S1⟧`). Substitution table included in output."
+        ],
+        [
+          "`aggressive`",
+          "Aggressive compression with lossy summarization. Not yet implemented."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Relation to Other Systems",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- **ACP**: The context tool is a built-in Rig tool, not an ACP command. ACP sessions can call `get_context` as a tool within a mission.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "- **MCP**: `rig.get_context` will be exposed as an MCP tool. MCP resources (`rig://context/current`, `rig://repo/map`, `rig://work/active`, `rig://receipts/latest`, `rig://symbols/index`) will be added later.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- **IDE Sidecar**: IDE active buffer, selection, and diagnostics can become inputs to context requests in future versions. For now the tool is file-system-driven.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/context-compiler.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

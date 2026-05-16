@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step-Up Authorization Doctrine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Define a step-up authorization boundary for high-authority Rig Relay actions so">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Step-Up Authorization Doctrine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Step-Up Authorization Doctrine</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Define a step-up authorization boundary for high-authority Rig Relay actions so they cannot execute silently. Passkeys are the target long-term verification method, but the alpha implementation begins with action-scoped authorization receipts and policy enforcement.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Core Rules</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">1. **Low-risk read-only actions must remain smooth** — no step-up required for current_state, dry-run operations, reports, schema validation, or basic search/read.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">2. **High-authority actions require step-up authorization** — real upload, checkpoint commits, fleet/spawn execution, destructive cleanup, credential changes, and telemetry share level changes must not execute without explicit user verification.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">In the desktop cockpit dev/local phase, `mint_authorization_receipt_dev`, `mint_authorization_receipt_local`, and `inspect_authorization_receipt` exist as control-plane aids for `checkpoint.commit` and `lease_cleanup.archive`. They do not expose protected execution buttons.</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">3. **Authorization receipts are short-lived and action-scoped** — a receipt authorizes exactly one action on exactly one resource for a limited time.</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">4. **Receipts contain no secrets** — no private keys, raw biometric data, passwords, or raw credential material.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">Audit and result artifacts record receipt hashes, status, and expiry only. Raw receipt bodies remain out of audit logs.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Protected Actions</h2>
+
+<table id="table-12" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Action</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`remote_upload.confirm`</td><td>Execute real Google Drive upload</td></tr>
+<tr><td>`telemetry.share_level.change`</td><td>Change remote telemetry sharing level</td></tr>
+<tr><td>`checkpoint.commit`</td><td>Create a governed checkpoint commit</td></tr>
+<tr><td>`spawn.execute`</td><td>Spawn a child session for autonomous execution</td></tr>
+<tr><td>`fleet.execute`</td><td>Execute a fleet of child sessions</td></tr>
+<tr><td>`lease_cleanup.archive`</td><td>Archive stale coordination leases</td></tr>
+<tr><td>`lease_cleanup.remove`</td><td>Permanently remove stale coordination leases</td></tr>
+<tr><td>`credentials.configure`</td><td>Configure or rotate credentials</td></tr>
+<tr><td>`update.restart_now`</td><td>Restart Rig Relay after an update</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Authorization Methods</h2>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Method</th><th>Description</th><th>Alpha Status</th></tr></thead>
+<tbody>
+<tr><td>`none_dev_only`</td><td>Dev/test bypass (no real verification)</td><td>Verified</td></tr>
+<tr><td>`local_system_auth`</td><td>Platform-native auth (macOS Touch ID, Face ID, Passcode)</td><td>Implemented / Verified</td></tr>
+<tr><td>`passkey_webauthn`</td><td>WebAuthn passkey (origin-scoped FIDO2 credential)</td><td>Schema/doctrine only</td></tr>
+<tr><td>`remote_passkey`</td><td>Remote relying-party passkey service</td><td>Schema/doctrine only</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Architecture Notes</h2>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">WebAuthn / Passkeys Are Origin-Scoped</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">The W3C WebAuthn spec defines that credentials are scoped to a relying party and can only be accessed by origins belonging to that relying party. A local pywebview app serving from `file://` or `127.0.0.1` needs careful origin handling.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Three implementation paths exist:</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">1. **WebAuthn with localhost origin** — Serve the desktop cockpit from `https://127.0.0.1:&lt;port&gt;` and use WebAuthn APIs in the frontend.</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">2. **Native platform auth wrapper** — Use macOS LocalAuthentication / Touch ID or Windows Hello directly for step-up, mapped through the authorization receipt system.</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">3. **Remote passkey relying-party service** — A small service (e.g. `auth.rigrelay.dev`) owns the RP identity. Users register a passkey there. The local app requests a challenge, performs WebAuthn, and receives an authorization token.</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Local Action Envelope (Schema Only)</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">The [Local Action Envelope Schema](../schemas/rig.relay.local_action_envelope.v1.schema.json) defines a signed cryptographic container for future protected intent requests and local-to-remote authority mutations.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">**Current slice status:** Schema and model only. Not wired to protected execution. Not yet used by intent dispatch or authorization receipt flows.</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">The envelope wraps: - A canonicalized action payload (deterministic JSON key ordering) - Replay prevention fields (action_id, nonce, issued_at, expires_at) - An Ed25519 signature over the envelope body (excluding the signature field)</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">The model is defined in ``rig_relay/governance/local_action_envelope.py`` and includes deterministic canonicalization, payload hashing, signing bytes computation, and structural shape verification.</p>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">Key design decisions</h3>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- **No raw secrets in the envelope.** The canonical payload does not include authorization receipt bodies — only the receipt hash. - **``local_only`` defaults true** in the current slice. Remote mutations (future) will require additional review. - **Replay window defaults to 300 seconds** (5 minutes), max 3600 (1 hour). - **Ed25519** is the only supported signature algorithm. - **Signing is optional** in this slice. The model supports it but does not enforce it for shape validation.</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">See ``tests/governance/test_local_action_envelope.py`` for 49 validated tests covering schema, canonicalization, shape validation, replay policy, and content safety.</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Implementation Order</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">1. Receipt validator enforced by upload/cleanup/checkpoint/spawn gates 2. macOS `local_system_auth` proof of concept 3. pywebview step-up modal 4. WebAuthn/passkey backend or secure-origin local implementation</p>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Receipt Lifecycle</h2>
+
+<pre id="code-33"><code class="language-text">Request created  →  User prompted  →  User verified  →  Receipt issued
+                                                           ↓
+                                                    Action executes
+                                                           ↓
+                                                    Receipt expires</code></pre>
+
+<h2 id="h2-34" class="disclosure-standard" data-disclosure-level="standard">Content-Light Guarantee</h2>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Authorization receipts never contain: - Private keys or raw credential material - Raw biometric data (fingerprint templates, face maps) - Passwords or passphrases - Raw file contents or diffs - Prompt text or model outputs</p>
+
+<h2 id="h2-36" class="disclosure-standard" data-disclosure-level="standard">References</h2>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- `docs/schemas/rig.relay.step_up_authorization_request.v1.schema.json` - `docs/schemas/rig.relay.step_up_authorization_receipt.v1.schema.json` - `docs/schemas/rig.relay.authorization_policy.v1.schema.json` - `scripts/rig_relay_authorization_policy.py` - FIDO Alliance: [Passkeys](https://fidoalliance.org/passkeys/) - W3C WebAuthn: [Web Authentication API](https://www.w3.org/TR/webauthn-3/) - Apple: [Passkey support](https://support.apple.com/en-us/102195)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/step-up-authorization.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

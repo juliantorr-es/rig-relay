@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig + Intake Cannibalization Plan for Rig Relay — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Established.** This plan classifies architecture patterns from">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig + Intake Cannibalization Plan for Rig Relay</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig + Intake Cannibalization Plan for Rig Relay</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Established.** This plan classifies architecture patterns from [Rig](https://github.com/juliantorr-es/Rig) and [Intake](https://github.com/juliantorr-es/Intake) for selective porting into Rig Relay. All P0 items are implemented and test-backed. P1 items have deferred stubs with documented reasons. See also the existing [Rig-to-Relay Porting Doctrine](../governance/rig-to-relay-porting-doctrine.md) and [Pattern Inventory](../governance/rig-to-relay-pattern-inventory.md) for prior porting work.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Verdict</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">**Cannibalize Rig&#x27;s cockpit/projection/progress semantics and Intake&#x27;s security/local-authority semantics. Keep Rig Relay&#x27;s own agent runtime.**</p>
+
+<details id="table-6" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-6" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Source</th><th>What to take</th><th>Priority</th></tr></thead>
+<tbody>
+<tr><td>Rig</td><td>Workspace/Operation/Lane/Receipt/Projection vocabulary</td><td>P0</td></tr>
+<tr><td>Rig</td><td>UI projection widget contracts</td><td>P0</td></tr>
+<tr><td>Rig</td><td>ProgressEvent stream model</td><td>P0</td></tr>
+<tr><td>Rig</td><td>Textual-retired stance for product copy</td><td>P0</td></tr>
+<tr><td>Intake</td><td>Hosted/local authority boundary</td><td>P0</td></tr>
+<tr><td>Intake</td><td>Signed local action envelope pattern</td><td>P0</td></tr>
+<tr><td>Intake</td><td>No-raw-token/no-innerHTML/no-eval frontend doctrine</td><td>P0</td></tr>
+<tr><td>Intake</td><td>Passkey localhost/RP-ID caveats</td><td>P1</td></tr>
+<tr><td>Rig</td><td>Lane/review/promotion/recommendation card shapes</td><td>P1</td></tr>
+<tr><td>Rig</td><td>Debug bundle idea</td><td>P1</td></tr>
+<tr><td>Both</td><td>Provider/runtime registries (deferred)</td><td>P2</td></tr>
+<tr><td>Intake</td><td>Deployment adapters (deferred)</td><td>P2</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Source Verification</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">All sources fetched 2026-05-14 from `main` branches via GitHub raw content.</p>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Document</th><th>Source</th><th>Verified</th></tr></thead>
+<tbody>
+<tr><td>Rig README</td><td>`github.com/juliantorr-es/Rig`</td><td>✅</td></tr>
+<tr><td>Rig Workspace Control Plane</td><td>`docs/architecture/workspace-control-plane.md`</td><td>✅</td></tr>
+<tr><td>Rig UI Projection Contract</td><td>`docs/architecture/workspace-ui-projection-contract.md`</td><td>✅</td></tr>
+<tr><td>Rig Progress Stream</td><td>`docs/architecture/workspace-progress-stream.md`</td><td>✅</td></tr>
+<tr><td>Intake README</td><td>`github.com/juliantorr-es/Intake`</td><td>✅</td></tr>
+<tr><td>Intake Hosted/Local Boundary</td><td>`docs/architecture/hosted-local-boundary.md`</td><td>✅</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Classification</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Status legend: - **✅ done** — implemented and test-backed - **✅ done-with-test-gap** — implemented but missing regression tests - **⏳ intentionally deferred** — deferred with documented reason and stub policy - **🚫 blocked** — blocked by external dependency - **↪️ superseded** — replaced by a better solution</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">port_now — do in next implementation slice</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">All P0 items.</p>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Rig</td></tr>
+<tr><td>**Source documents**</td><td>`docs/architecture/workspace-control-plane.md`</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>`docs/schemas/rig.relay.operation.v1.schema.json`, `docs/schemas/rig.relay.child_session.receipt.v1.schema.json`, update `vibe/core/coordination/_models.py` vocabulary comments</td></tr>
+<tr><td>**Rationale**</td><td>Rig&#x27;s Workspace→Operation→Receipt→Projection chain is the exact model Rig Relay already approximates with RelaySession/ChildSession/current_state. Giving it the canonical Rig vocabulary aligns docs, schemas, and code. Specifically: RelaySession ≈ Operation, ChildSession/FleetLane ≈ AgentLane, current_state/projection ≈ Workspace Projection, intent_events/result artifacts ≈ Receipts</td></tr>
+<tr><td>**Risk**</td><td>Low. Pure vocabulary alignment and schema additions. No code refactor needed.</td></tr>
+<tr><td>**Validation**</td><td>`uv run pyright`, `uv run pytest -n0 tests/docs/`</td></tr>
+</tbody>
+</table>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Rig</td></tr>
+<tr><td>**Source documents**</td><td>`docs/architecture/workspace-ui-projection-contract.md`</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>`docs/governance/relay-desktop-projection-contract.md`, `rig_relay/desktop/projection_widgets.py`, `tests/scripts/test_desktop_projection_contract.py`</td></tr>
+<tr><td>**Rationale**</td><td>Rig&#x27;s UI projection contract explicitly says &quot;frontend is a renderer, not a governor&quot; and defines 8 widget types with fields, allowed intentions, and forbidden inferences. Rig Relay&#x27;s current projection builder (`scripts/rig_relay_desktop_projection.py`) already produces a content-light projection but does not organize it into Rig&#x27;s widget hierarchy. Porting the widget contract gives the desktop cockpit a structured render framework.</td></tr>
+<tr><td>**Risk**</td><td>Medium. The Rig widget set (WorkspaceHeader, AgentLaneCard, LaneReviewCard, PromotionPlanCard, LaneRecommendationCard, CommandProgressCard, ReceiptTimeline, WorkspaceGitState, WorkspaceLaneSummary) must be adapted to Relay concepts, not copied verbatim. Relay-specific widgets: OperatorHeader, SafetyState, NextAction, ActiveChildSessions, ValidationSummary, StorageBudget, ReceiptTimeline, LatestIntentResult, RefinementBacklog.</td></tr>
+<tr><td>**Validation**</td><td>`uv run pytest -n0 tests/docs/test_rig_intake_cannibalization_plan.py` + manual review of `scripts/rig_relay_desktop_projection.py` for widget alignment</td></tr>
+</tbody>
+</table>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Rig</td></tr>
+<tr><td>**Source documents**</td><td>`docs/architecture/workspace-progress-stream.md`</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>`docs/schemas/rig.relay.progress_event.v1.schema.json`, `rig_relay/desktop/progress_events.py`, `rig_relay/desktop/websocket_server.py`, `tests/scripts/test_progress_events.py`</td></tr>
+<tr><td>**Rationale**</td><td>Rig defines a clean ProgressEvent model with phases (operation.started, operation.log, operation.progress, operation.completed, workspace.projection.refreshed, etc.), WebSocket envelope shape, and transport guidance (prefer existing WS, no second transport). Rig Relay already has a desktop WebSocket server (`scripts/rig_relay_desktop_websocket.py`) and an intent event schema (`rig.relay.desktop_intent_event.v1`). Rig&#x27;s progress_event fills the gap between intent dispatch and projection refresh.</td></tr>
+<tr><td>**Risk**</td><td>Medium. Rig&#x27;s ProgressEvent uses Rig-specific fields (workspace_id, workspace_path, receipt_candidate). Must be adapted to Relay equivalents (session_id, operation_id, child_session_id). Transport is already WebSocket — no new transport needed.</td></tr>
+<tr><td>**Validation**</td><td>`uv run python scripts/rig_relay_validate_schemas.py` (schema validation), `uv run pytest -n0 tests/docs/`</td></tr>
+</tbody>
+</table>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Rig</td></tr>
+<tr><td>**Source documents**</td><td>Rig README: &quot;Textual TUI: Retired. Use `rig ui` for a rich interface or CLI commands for terminal workflows.&quot;</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>Update `README.md`, `docs/governance/textual-retirement-policy.md`, update product copy in `vibe/core/skills/builtins/vibe.py`</td></tr>
+<tr><td>**Rationale**</td><td>Rig Relay&#x27;s README still describes it as &quot;a command-line coding assistant harness&quot; and documents `vibe` as a compatibility alias. The README should say: &quot;Rig Relay is a governed local agent cockpit. CLI agents propose work. Relay routes tools, coordinates child sessions, preserves evidence, validates outputs, and keeps mutation authority local.&quot; The Textual TUI should be documented as legacy/diagnostics-only.</td></tr>
+<tr><td>**Risk**</td><td>Low. Copy-only change. Does not modify behavior.</td></tr>
+<tr><td>**Validation**</td><td>`uv run ruff format .` and `uv run ruff check --fix .`</td></tr>
+</tbody>
+</table>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Intake</td></tr>
+<tr><td>**Source documents**</td><td>`docs/architecture/hosted-local-boundary.md`, README</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>`docs/governance/relay-local-remote-boundary.md`, `docs/governance/telemetry-redaction-boundary.md`</td></tr>
+<tr><td>**Rationale**</td><td>Intake&#x27;s split-brain architecture (public backend stores ciphertext/redacted metadata, local console owns decryption/authority) maps directly to Rig Relay&#x27;s planned remote telemetry model. The alpha telemetry rule should be: cloud/shared data gets redacted projections and content-light rows; local cockpit keeps authority and sensitive evidence.</td></tr>
+<tr><td>**Risk**</td><td>Low. Policy document only. No code changes.</td></tr>
+<tr><td>**Validation**</td><td>`uv run ruff format .`, `uv run pyright`</td></tr>
+</tbody>
+</table>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Intake</td></tr>
+<tr><td>**Source documents**</td><td>`docs/architecture/hosted-local-boundary.md` (Signed Local Device Actions section)</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>`docs/schemas/rig.relay.local_action_envelope.v1.schema.json`, `rig_relay/governance/local_action_envelope.py`, `tests/governance/test_local_action_envelope.py`</td></tr>
+<tr><td>**Rationale**</td><td>Intake&#x27;s signed local action envelope uses Ed25519 signatures, canonicalized payloads, action_id/nonce/issued_at replay prevention, and cryptographic signatures. This is the exact model for Rig Relay&#x27;s future protected-intent receipt system. The receipt-gated protected intents system already exists in `rig_relay/evidence/receipt_gate.py` — the signed envelope gives it a cryptographic container for intent requests.</td></tr>
+<tr><td>**Risk**</td><td>Low for schema definition. Implementation is future; this slice defines the schema and model only.</td></tr>
+<tr><td>**Validation**</td><td>`uv run python scripts/rig_relay_validate_schemas.py`</td></tr>
+</tbody>
+</table>
+
+<table id="table-20" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Intake</td></tr>
+<tr><td>**Source documents**</td><td>Intake README (security boundaries section)</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>`docs/governance/frontend-rendering-safety.md`, `tests/frontend/test_no_inner_html_for_untrusted_fields.mjs`</td></tr>
+<tr><td>**Rationale**</td><td>Intake lists explicit security rules: no raw session tokens in storage, no plaintext sensitive data in long-term DB, encryption for readable sensitive data, hashing for lookup/deduplication, no innerHTML for user-controlled frontend content, no eval/dynamic code execution, no public backend subprocess/Git commands. Rig Relay already follows most of these in practice but has no written doctrine.</td></tr>
+<tr><td>**Risk**</td><td>Low. Policy document + test skeleton.</td></tr>
+<tr><td>**Validation**</td><td>`uv run ruff format .`, `uv run pyright`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">port_next — after UI redesign</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">All P1 items.</p>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Rig</td></tr>
+<tr><td>**Source documents**</td><td>`docs/architecture/workspace-ui-projection-contract.md` (AgentLaneCard, LaneReviewCard, PromotionPlanCard, LaneRecommendationCard)</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>Rig Relay desktop widgets: `ActiveChildSessionCard`, `ReadyWorkPlanCard`, `ParentConvergenceCard`, `NextSafeActionCard`</td></tr>
+<tr><td>**Rationale**</td><td>Rig&#x27;s lane/review/promotion/recommendation widgets map exactly to Rig Relay&#x27;s delegate/fleet UI. ActiveChildSession maps to AgentLaneCard, ReadyWorkPlan maps to PromotionPlanCard, ParentConvergence maps to LaneReviewCard, NextSafeAction maps to LaneRecommendationCard.</td></tr>
+<tr><td>**Risk**</td><td>Medium. Requires UI redesign first. Do not implement until the cockpit widget hierarchy is stable.</td></tr>
+<tr><td>**Validation**</td><td>Manual UI review + `uv run pytest -n0 tests/docs/`</td></tr>
+</tbody>
+</table>
+
+<table id="table-24" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Rig</td></tr>
+<tr><td>**Source documents**</td><td>Rig README: `rig debug bundle`</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>`rig_relay/evidence/debug_bundle.py` (consolidate existing ChatGPT dev bundles + telemetry bundles under one command)</td></tr>
+<tr><td>**Rationale**</td><td>Rig Relay already has `scripts/rig_relay_create_chatgpt_dev_bundle.py` and `scripts/rig_relay_create_telemetry_bundle.py`. Consolidating under `rig-relay debug bundle` gives a single command for review/debug output.</td></tr>
+<tr><td>**Risk**</td><td>Low. Mostly script consolidation and documentation.</td></tr>
+<tr><td>**Validation**</td><td>`uv run pytest -n0 tests/`</td></tr>
+</tbody>
+</table>
+
+<table id="table-25" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Intake</td></tr>
+<tr><td>**Source documents**</td><td>Intake README (passkey section, localhost vs 127.0.0.1 note)</td></tr>
+<tr><td>**Target in Rig Relay**</td><td>`docs/governance/future-passkey-plan.md` (deferred reference)</td></tr>
+<tr><td>**Rationale**</td><td>Intake documents that local dev passkeys use localhost not 127.0.0.1 because RP ID cannot be an IP address. Document this for when WebAuthn/passkeys are added to Rig Relay. No implementation now.</td></tr>
+<tr><td>**Risk**</td><td>None. Reference doc only.</td></tr>
+<tr><td>**Validation**</td><td>`uv run ruff format .`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">defer — later</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">All P2 items.</p>
+
+<table id="table-28" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Rig</td></tr>
+<tr><td>**Target**</td><td>Rig Relay provider layer</td></tr>
+<tr><td>**Rationale**</td><td>Useful once Vibe provider layer becomes painful. Not the immediate bottleneck. Rig&#x27;s `rig provider list` / `rig runtime list` / `rig model list` commands could inspire a Relay-native provider registry.</td></tr>
+<tr><td>**Risk**</td><td>Low priority. Keep on backlog.</td></tr>
+</tbody>
+</table>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Source repo**</td><td>Intake</td></tr>
+<tr><td>**Target**</td><td>Future alpha telemetry deployment</td></tr>
+<tr><td>**Rationale**</td><td>Useful for `rig-relay publish alpha telemetry` or Google Drive/bootstrap flows. Not relevant to cockpit redesign.</td></tr>
+<tr><td>**Risk**</td><td>Low priority. Keep on backlog.</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">reject — not suitable</h3>
+
+<table id="table-31" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Candidate</th><th>Source</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>Raw Intake quote domain / service lanes</td><td>Intake</td><td>Business-domain specific to freelance services. Not relevant to Rig Relay.</td></tr>
+<tr><td>Intake public-hosted backend implementation</td><td>Intake</td><td>Specific to Railway/Fly deployment. Rig Relay&#x27;s alpha telemetry is local-first.</td></tr>
+<tr><td>Intake production passkey workflow</td><td>Intake</td><td>Requires WebAuthn RP origin setup. Not yet relevant.</td></tr>
+<tr><td>Rig Python 3.14-only policy</td><td>Rig</td><td>Rig Relay is 3.12+ and has no reason to raise the floor.</td></tr>
+<tr><td>Rig old placeholder UI files</td><td>Rig</td><td>Rig Relay already has newer cockpit code (`frontend/desktop/`).</td></tr>
+<tr><td>Anigma-specific migration residue</td><td>Rig</td><td>Product history, not architecture.</td></tr>
+<tr><td>Second transport beside WebSocket</td><td>Rig/Intake</td><td>Rig&#x27;s progress stream doc explicitly says not to introduce a second transport.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Existing Rig Relay Patterns to Keep (not cannibalize)</h2>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">These are Rig Relay&#x27;s substrate that should be refined, not replaced:</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">- Agent loop (`vibe/core/agent/`) - Provider integration (`vibe/core/providers/`) - Tool registry (`vibe/core/tools/`) - Existing CLI compatibility (`vibe/cli/`) - Config/home migration path (`_config.py`, `_settings.py`) - Desktop/frontend assets (`frontend/desktop/`) - Audited intent pipeline (`rig_relay/evidence/`) - Validation suite (`scripts/rig_relay_validate_*.py`) - Coordination store/tool (`vibe/core/coordination/`) - Receipt-gated protected intents (`rig_relay/evidence/receipt_gate.py`)</p>
+
+<h2 id="h2-35" class="disclosure-standard" data-disclosure-level="standard">Out-of-Scope Findings from Audit</h2>
+
+<h3 id="h3-36" class="disclosure-standard" data-disclosure-level="standard">`.build/rig-relay` is tracked in git</h3>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">The `.build/rig-relay/` directory contains runtime-generated artifacts (coordination leases, chatgpt bundles, sprint cockpits, telemetry bundles, desktop projections) and is **committed to the public git repository** (`git ls-files .build/ | wc -l` shows thousands of tracked files).</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">**Impact:** This causes repository bloat, exposes internal coordination state (session IDs, task claims, path leases) in the public repo, and makes `git clone` significantly larger than necessary. The `.gitignore` does not list `.build/`.</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Add `.build/` to `.gitignore` and remove tracked files with `git rm -r --cached .build/`. If certain sample artifacts should remain tracked (for dogfood demos), move them to a `docs/samples/` directory.</p>
+
+<h2 id="h2-40" class="disclosure-standard" data-disclosure-level="standard">Recommended Implementation Sequence</h2>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">1. **Cockpit IA redesign** — Wire Rig&#x27;s widget hierarchy into the desktop projection builder 2. **Desktop projection contract** — Port Rig&#x27;s UI projection contract as `relay-desktop-projection-contract.md` 3. **ProgressEvent model** — Port Rig&#x27;s progress_event schema into Relay WebSocket stream 4. **Local/remote authority boundary** — Port Intake&#x27;s boundary as `relay-local-remote-boundary.md` 5. **Signed action envelope** — Define `rig.relay.local_action_envelope.v1` schema 6. **Frontend rendering safety** — Port Intake&#x27;s security rules as `frontend-rendering-safety.md`</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">**Rationale for order:** The UI currently feels rough because it does not yet have Rig&#x27;s projection/widget hierarchy. Do not add more authority to a rough UI. Give it the Rig cockpit model first.</p>
+
+<h2 id="h2-43" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- [Rig-to-Relay Porting Doctrine](../governance/rig-to-relay-porting-doctrine.md) - [Rig-to-Relay Pattern Inventory](../governance/rig-to-relay-pattern-inventory.md) - [Desktop Cockpit UI Doctrine](../governance/desktop-cockpit-ui.md) - [Relay Desktop Projection Contract](../governance/relay-desktop-projection-contract.md) - [Relay Local/Remote Boundary](../governance/relay-local-remote-boundary.md) - [Frontend Rendering Safety](../governance/frontend-rendering-safety.md)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-intake-cannibalization-plan.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,371 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "frontend-security-audit-2026-05-14",
+  "document_type": "audit",
+  "title": "Frontend Security Audit — Rig Relay Desktop",
+  "summary": "The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bu",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/frontend-security-audit-2026-05-14.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Frontend Security Audit — Rig Relay Desktop",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Generated: 2026-05-14 | Scope: `frontend/desktop/` HTML/CSS/JS",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Overview",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bundler, no framework.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Audit Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Category",
+        "Finding",
+        "Severity",
+        "Status"
+      ],
+      "rows": [
+        [
+          "XSS",
+          "No `innerHTML` used for user content",
+          "—",
+          "✅"
+        ],
+        [
+          "XSS",
+          "Safe HTML via `<template>` for static widget structure",
+          "—",
+          "✅ Mild"
+        ],
+        [
+          "CSP",
+          "No Content-Security-Policy header",
+          "Medium",
+          "❌"
+        ],
+        [
+          "Transport",
+          "WS token in inline `<script>` via Python backend",
+          "—",
+          "✅"
+        ],
+        [
+          "Transport",
+          "No TLS (localhost only)",
+          "Low",
+          "⚠️ Accept"
+        ],
+        [
+          "DOM",
+          "All widget text uses `textContent` or `createTextNode`",
+          "—",
+          "✅"
+        ],
+        [
+          "DOM",
+          "`escapeHtml()` applied to all projection data before rendering",
+          "—",
+          "✅"
+        ],
+        [
+          "ARIA",
+          "Role/aria-label/aria-live on all interactive regions",
+          "—",
+          "✅"
+        ],
+        [
+          "Focus",
+          "Focus-visible styles on buttons, tabs, action buttons",
+          "—",
+          "✅"
+        ],
+        [
+          "Tab order",
+          "Chat input → mode tabs → widget cards → expanded close",
+          "—",
+          "✅"
+        ],
+        [
+          "Reduced motion",
+          "`@media (prefers-reduced-motion)` zeros all transitions",
+          "—",
+          "✅"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Findings detail",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "1. `innerHTML` eliminated (✅)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "All `innerHTML` assignments replaced with DOM construction: - `widgets.js`: `renderCompactChip`, `renderStandardCard`, `renderExpandedWidget` all use `createElement` + `textContent` - `chat.js`: transcript clearing uses `while (firstChild) removeChild(firstChild)` - `status.js`: header chips use `createElement` + `createTextNode` - `main.js`: panel column clearing uses `removeChild` loop - `utils.js`: `setHTML` retained but unused (safe to remove)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "One exception: `widgets.js` `setSafeHTML()` uses `<template>.innerHTML` to parse pre-sanitized HTML strings into DocumentFragment. This is the standard safe method — template content is inert (no script execution, no image loading).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "2. No Content-Security-Policy (❌ Medium)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "`index.html` has no `<meta http-equiv=\"Content-Security-Policy\" ...>` tag. The application loads from `file://` via pywebview, which means: - CSP is less critical (no external script injection vectors) - But a CSP would still prevent inline script execution if an XSS vector were found - Recommended: Add a restrictive CSP in `<head>`: ```html <meta http-equiv=\"Content-Security-Policy\" content=\" default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ws://127.0.0.1:*; img-src 'self' data:; \"> ```",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "3. WS token delivery (✅)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "Token is injected into the HTML payload by Python `_open_window()` as:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-15",
+      "type": "code",
+      "language": "html",
+      "content": "<script>window.__RIG_RELAY_WS_CONFIG__ = {host:\"127.0.0.1\",port:9876,token:\"...\"};</script>",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Before `</body>`. The token is NOT in URL query parameters. The Python backend generates the token and embeds it directly into the HTML string passed to `webview.create_window(html=...)`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-17",
+      "type": "heading",
+      "level": 3,
+      "content": "4. No TLS (⚠️ Accept)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "WebSocket connects to `ws://127.0.0.1` — plaintext. Acceptable for localhost-only communication. If remote access is ever needed, this must become `wss://` with certificate validation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "5. Bridge removal (✅)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "All pywebview bridge (`window.pywebview.api`) calls removed: - `transport.js`: `bridgeCall()` and `hasBridge()` deleted - `chat.js`: no more `bridgeCall` fallback for send/intents - `main.js`: `loadFromBridge()` deleted, no periodic bridge refresh - Token delivery now via inline script (see #3)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-21",
+      "type": "heading",
+      "level": 3,
+      "content": "6. Widget data flow (✅)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Projection data flows through `escapeHtml()` before reaching any DOM: - `widgets.js` `row()` → `escapeHtml(value)` - `widgets.js` `renderStandardCard()` → `textContent` for title - `widgets.js` body content built by each renderer using `row()` and `escapeHtml()` - No raw projection fields rendered without escaping",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-23",
+      "type": "heading",
+      "level": 3,
+      "content": "7. Command injection (✅ Mild)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Slash commands are executed locally via a fixed command table (`commands.js`). User input after `/` is matched against a whitelist. No `eval()` or dynamic dispatch. `/intent` passes the command name to `dispatchIntent()` which sends a typed message to the WebSocket — no string concatenation into code.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "8. Mode switching (✅)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Mode is set via `data-mode` attribute on `#main-grid`. CSS rules use attribute selectors. Mode buttons are tab roles with `aria-selected`. No injected class names or URL-based routing.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-27",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Reinforcement Opportunities",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "1. **CSP header**: ✅ Implemented — `<meta>` tag in `index.html` with restrictive policy 2. **WebSocket auth rotation**: ⚠️ Documented — token is static per session. Rotation requires protocol-level change (token refresh endpoint). Consider for future. 3. **Message validation**: ✅ Implemented — `_validate_message_shape()` checks required fields and types per message kind. Logs `audit.message.invalid_shape` on violation. 4. **Rate limiting granularity**: ✅ Implemented — `_RATE_LIMIT_BY_TYPE` applies per-message-type multipliers. Auth (2x stricter), chat (3x), subscribe (4x), ping (0.2x looser). 5. **Audit log**: ✅ Implemented — Server-side: structured `logger.warning(\"audit.<domain>.<event>\")` calls with templated args. Client-side: `audit.js` module with `console.warn` format. Covers auth failures, rate limits, oversized messages, connection drops, message shape violations.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/frontend-security-audit-2026-05-14.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

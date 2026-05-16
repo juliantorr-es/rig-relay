@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protocol Design: Extension ↔ Rig Daemon — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document defines the local-only WebSocket protocol for the VSCodium shell lane.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Protocol Design: Extension ↔ Rig Daemon</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Protocol Design: Extension ↔ Rig Daemon</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document defines the local-only WebSocket protocol for the VSCodium shell lane.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">1. Transport</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">*   **Endpoint:** `ws://127.0.0.1:PORT/rig/v1/extension` *   **Authentication:** Token-gated. The daemon writes a one-time token to a secure local file (or `SecretStorage` after initial handshake) which the extension must provide in the `Authorization` header or initial `auth` message. *   **Security:** Localhost-only. No unauthenticated commands. No raw shell execution.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">2. Message Envelopes</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Base Message</h3>
+
+<pre id="code-7"><code class="language-json">{
+  &quot;version&quot;: &quot;1.0&quot;,
+  &quot;type&quot;: &quot;string&quot;,
+  &quot;request_id&quot;: &quot;uuid&quot;,
+  &quot;session_id&quot;: &quot;string&quot;,
+  &quot;workspace_id&quot;: &quot;string&quot;,
+  &quot;payload&quot;: {},
+  &quot;timestamp&quot;: &quot;iso8601&quot;
+}</code></pre>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Key Messages</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Type</th><th>Request/Response</th><th>Description</th><th>Content-Light Rules</th></tr></thead>
+<tbody>
+<tr><td>`auth`</td><td>Request</td><td>Initial handshake with token.</td><td>N/A</td></tr>
+<tr><td>`get_snapshot`</td><td>Request</td><td>Retrieve current session projection.</td><td>No raw file contents.</td></tr>
+<tr><td>`start_turn`</td><td>Request</td><td>Submit a prompt to the agent.</td><td>Only user text and workspace metadata.</td></tr>
+<tr><td>`cancel_turn`</td><td>Request</td><td>Stop current agent turn.</td><td>N/A</td></tr>
+<tr><td>`subscribe_events`</td><td>Request</td><td>Subscribe to real-time agent events.</td><td>Projections only (summaries).</td></tr>
+<tr><td>`list_receipts`</td><td>Request</td><td>Query evidence receipts.</td><td>Metadata + rationale only.</td></tr>
+<tr><td>`propose_patch`</td><td>Response</td><td>Daemon proposes a file change.</td><td>**Exception**: Must include diff/patch.</td></tr>
+<tr><td>`apply_patch`</td><td>Request</td><td>User approves the patch.</td><td>Patch ID + workspace ID.</td></tr>
+<tr><td>`run_validate`</td><td>Request</td><td>Trigger a validation run.</td><td>Argv summary only.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">3. Refusal Shape</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">All requests may result in a refusal if governance rules are violated.</p>
+
+<pre id="code-12"><code class="language-json">{
+  &quot;type&quot;: &quot;error&quot;,
+  &quot;request_id&quot;: &quot;uuid&quot;,
+  &quot;error_kind&quot;: &quot;permission_denied | state_conflict | validation_failure&quot;,
+  &quot;message&quot;: &quot;Human-readable reason&quot;,
+  &quot;refusal_code&quot;: &quot;RIG_ERR_001&quot;
+}</code></pre>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">4. Content-Light Projections</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">The protocol strictly enforces **Content-Light Projections** for all non-editor-specific messages. *   `AssistantEvent`: Contains the text response but **no tool output** (stdout/stderr). *   `ToolCallEvent`: Contains tool name and arguments summary, but **no raw arguments** if they contain sensitive data (hashes only). *   `ToolResultEvent`: Contains duration and status, but **no raw output data**. *   **Diff Surface Exception**: Only messages specifically destined for the VSCodium Diff View may contain raw patch data.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vscodium-shell-lane/protocol-design.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Tool Invocation Dry-Run — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="`RuntimeToolDryRunRunner` provides a dry-run integration layer for the `RuntimeToolInvocationAdapter`. It calls adapter prepare, validates the envelope against the runtime_tool_invocation schema, and ">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Tool Invocation Dry-Run</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Dry-Run</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">`RuntimeToolDryRunRunner` provides a dry-run integration layer for the `RuntimeToolInvocationAdapter`. It calls adapter prepare, validates the envelope against the runtime_tool_invocation schema, and returns a structured assessment — without executing any tool, acquiring any lease, or mutating any file.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Dry-run proves that: - Context resolves into an adapter envelope - Envelope validates against schema - Tool-specific payload shape is structurally valid - No real tool is executed - No files are mutated - No leases are acquired</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Behavior</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">1. **Prepare** — Calls `RuntimeToolInvocationAdapter.prepare(intent, resolution)` to produce an envelope. 2. **Classify** — Flags `would_mutate=True` for write_file and search_replace; `would_execute=False` always; `would_acquire_lease=False` always. 3. **Validate envelope** — Validates the prepared envelope against `rig.relay.runtime_tool_invocation.v1` schema via jsonschema. 4. **Validate payload** — Checks tool-specific payload shape structurally (required fields per tool). 5. **Return result** — Structured `RuntimeToolDryRunResult` with status, validity flags, and refusal/error information.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Status Mapping</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Adapter Status</th><th>Dry-Run Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`prepared`</td><td>`would_prepare`</td><td>Adapter prepared envelope, schema valid, payload valid</td></tr>
+<tr><td>`blocked`</td><td>`blocked`</td><td>Context or policy blocked preparation</td></tr>
+<tr><td>`refused`</td><td>`refused`</td><td>Tool/path/payload refused by adapter</td></tr>
+<tr><td>(schema invalid)</td><td>`invalid`</td><td>Envelope failed schema validation or payload invalid</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Content Boundary</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- Invocation **envelopes** may contain operational tool input (file content, SEARCH/REPLACE blocks). - **Dry-run results** must NOT store raw content — only boolean flags, paths, schema validity indicators, and structured error/refusal information. - Do not feed raw invocation payload into ReceiptEnvelope or AuditTrailStore.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Guarantees</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- **No tools executed** — `would_execute` is always `False`. - **No files mutated** — `would_mutate` is a classification flag, not an action. Tests verify files are unchanged after dry-run. - **No leases acquired** — `would_acquire_lease` is always `False`. - **Content-light** — No raw file contents, stdout, stderr, diffs, snippets, or secrets in results.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Future</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">- **One-tool-at-a-time execution** — Dry-run validates adapter output; the next step is to wire one-tool-at-a-time execution through the adapter for write_file, search_replace, and validate via their hardened runtime paths. - **Audit integration** — Dry-run results could feed into AuditTrailStore for non-repudiation of dry-run decisions.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Related</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/runtime/tool_invocation_dry_run.py` — module - `rig_relay/runtime/tool_invocation_adapter.py` — adapter - `docs/schemas/rig.relay.runtime_tool_invocation_dry_run.v1.schema.json` - `docs/schemas/rig.relay.runtime_tool_invocation.v1.schema.json` - `tests/runtime/test_runtime_tool_invocation_dry_run.py`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/runtime-tool-invocation-dry-run.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

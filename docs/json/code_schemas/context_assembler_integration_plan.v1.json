@@ -1,0 +1,41 @@
+{
+  "schema_version": "rig.code_schema.plan.v1",
+  "document_id": "context-assembler-integration-plan",
+  "title": "Context Assembler Integration Plan",
+  "summary": "How the context assembler should match user requests to code schemas and pack governed implementation context.",
+  "status": "active",
+  "steps": [
+    "Classify the user request using prompt terms, changed files, failing tests, and tracebacks.",
+    "Rank matching code schemas by authority, status, symptom overlap, and file proximity.",
+    "Exclude deprecated, archived, or untrusted schemas unless explicitly requested.",
+    "Pack selected schemas with canonical files, tests, docs, and trace anchors.",
+    "Surface validation commands and invariants to the agent before code changes.",
+    "Keep generation out of the assembler; it should retrieve contracts, not synthesize code."
+  ],
+  "selection_signals": {
+    "prompt_terms": ["frontend", "trace", "tool batch", "migration", "transport"],
+    "failing_tests": ["test_frontend_trace_endpoint.py", "test_golden_path.py"],
+    "tracebacks": ["unsupported HTTP method", "auth failed", "disconnected"],
+    "changed_files": ["bridge_server.py", "transport.js", "render_static_docs.py"]
+  },
+  "authority_rules": {
+    "prefer_trusted": true,
+    "prefer_active": true,
+    "exclude_stale": true,
+    "require_source_path": true
+  },
+  "context_packing_rules": {
+    "include_schema": true,
+    "include_canonical_files": true,
+    "include_required_tests": true,
+    "include_required_trace_events": true,
+    "limit_notes": 12
+  },
+  "validation_surface": {
+    "surface_commands": [
+      "uv run pytest tests/repository/ -q",
+      "uv run ruff check <changed python files>",
+      "uv run pyright <changed python files>"
+    ]
+  }
+}

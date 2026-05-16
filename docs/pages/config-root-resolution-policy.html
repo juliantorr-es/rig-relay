@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Config Root Resolution Policy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Config Root Resolution Policy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Config Root Resolution Policy</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: config</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s root resolution is &quot;Global-First&quot; by design. This audit evaluates the trade-offs of this model and confirms that centralized evidence storage in `~/.rig/relay` is the correct default for durable history, while identifying the need for better isolation semantics for tests and experiments.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Findings Matrix</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Area</th><th>Priority</th><th>Location</th><th>Current Behavior</th><th>Risk</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>**CONF-001**</td><td>Home Resolution</td><td>P0</td><td>`_vibe_home.py`</td><td>Defaults to `~/.rig/relay`.</td><td>Large evidence files can clutter the home directory if not managed.</td><td>Maintain global default; improve `doctor` tools for history cleanup.</td></tr>
+<tr><td>**CONF-002**</td><td>Legacy Fallback</td><td>P1</td><td>`_vibe_home.py`</td><td>Automatically loads `~/.vibe` if it exists.</td><td>Users may be unknowingly running with legacy Vibe config/state.</td><td>Require explicit `VIBE_HOME` or disable legacy by default in `rig-relay`.</td></tr>
+<tr><td>**CONF-003**</td><td>Env Variable Shadowing</td><td>P2</td><td>`_settings.py`</td><td>Both `VIBE_` and `RIG_RELAY_` prefixes work.</td><td>Confusion over which environment variable takes precedence.</td><td>Deprecate `VIBE_` prefix in the `rig-relay` binary.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Detailed Findings</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">CONF-001: Global-First Doctrine</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Location: `vibe/core/paths/_vibe_home.py` Current behavior: `_get_vibe_home` checks `RIG_RELAY_HOME`, then defaults to `~/.rig/relay`. Risk: Centralized evidence simplifies history management but requires users to be aware of where data lives. Confirmed policy: Centralized history in `~/.rig/relay` is the preferred operational model. Repo-local storage is reserved for explicit isolation via `RIG_RELAY_HOME`.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Recommended Backlog</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">1.  **Mission: Better Isolation Tools**: Add flags or commands to easily move sessions between global and local roots. 2.  **Mission: Diagnostic Command**: Add `rig-relay doctor` to show resolved paths and warn about legacy bleed.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/config-root-resolution-policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

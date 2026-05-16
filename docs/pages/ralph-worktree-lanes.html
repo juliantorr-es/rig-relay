@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ralph Worktree Lanes — Background Isolation Model — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Ralph may operate in background lanes under explicit policy.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Ralph Worktree Lanes — Background Isolation Model</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Ralph Worktree Lanes — Background Isolation Model</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Ralph may operate in background lanes under explicit policy. A Ralph lane is a dedicated branch/worktree isolation boundary. One bounded Ralph mission = one Ralph lane.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Two separate approvals</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">**Lane-start approval** — governed by `RalphBackgroundPolicy`: - Authorizes lane proposal and isolated work within policy limits. - Does not authorize merge, push, or mutation of active lanes.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">**Adoption approval** — governed by `RalphAdoptionProposal`: - Required before any Ralph lane work enters an orchestrator lane. - Separate human-in-the-loop decision. - Binds to exact lane state (lane_id, branch_name, review_bundle_sha256).</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Lane lifecycle</h2>
+
+<pre id="code-7"><code class="language-text">proposed → lane_start_approved → active → sealed →
+  adoption_proposed → adopted (by human/orchestrator)
+                   → rejected
+                   → expired</code></pre>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Isolation guarantees</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- Ralph commits only to Ralph-owned branches (prefix: `ralph/`). - Ralph worktrees live under `.rig/worktrees/ralph/` (configurable). - Ralph must not merge into orchestrator lanes or main. - Ralph must not push remote. - Ralph must not mutate files outside its worktree scope. - Ralph must not delete untracked user files.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Background policy</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">See `rig_relay/ralph/background_policy.py`. Key fields:</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- `enabled` — master toggle (default: false) - `max_active_lanes` — concurrent Ralph lane limit (default: 2) - `max_pending_review_lanes` — finished lane limit (default: 10) - `require_lane_start_approval` — require human OK before lane work - `require_adoption_approval` — require human OK before adoption</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Widget projection</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">The Ralph widget shows: - `background_enabled` — toggle state - `active_lane_count` — in-progress lanes - `finished_lane_count` — completed lanes - `pending_review_count` — lanes awaiting review - `top_adoption_proposal_id` — highest-relevance proposal</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Toggle ON authorizes only lane creation/isolated work. Toggle ON does not authorize merge, push, or adoption.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Review session</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">When the user returns and clicks review, Ralph presents a special orchestrator review session explaining: - what was done, when, and why - evidence refs and validation results - changed files and review bundle hash - adoption recommendation</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">This session is contract-only in the current phase. No execution, no merge, no git commands.</p>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Related components</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- `ToolRuntime` — future execution authority (not invoked by lanes) - `WorktreeManager` — git worktree lifecycle (lanes will plug in later) - `Analytics compiler` — consumes lane events and projections - `Desktop HITL boundary` — renders widget, sends toggle/approve intents</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/ralph-worktree-lanes.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

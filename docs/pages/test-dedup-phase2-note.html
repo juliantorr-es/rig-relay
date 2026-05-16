@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Deduplication Phase 2 — normalize high-value AST duplicate clusters — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Date**: 2026-05-16">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Deduplication Phase 2 — normalize high-value AST duplicate clusters</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Deduplication Phase 2 — normalize high-value AST duplicate clusters</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Date**: 2026-05-16</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Preflight</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">- `scripts/rig_relay_test_duplicate_audit.py`: ruff clean, pyright clean - Audit runs: 5970 tests scanned, max-exact-duplicate-groups=1 passes</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Audit Inspection Findings</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">The 35 normalized AST groups are mostly **false positives** from over-aggressive normalization. The normalizer strips model/variable names, so per-model validation tests (`test_rejects_unknown_fields` on `DecisionReason` vs `BlockedIntent` vs `AllowedIntent`) appear identical. These are legitimate separate tests — each model needs its own validation.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The 618 assert-shape groups are statistical clusters (largest: 479 members across 142 files). Not actionable without per-class analysis.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Groups Parametrized</h2>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">test_governance_engine.py — TestGovernanceEngine</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">**Before**: 20 individual test methods, each calling `GovernanceEngine.evaluate_action_legality()` with hardcoded parameters and asserting a specific decision or reason code.</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">**After**: 2 parametrized contract matrices + 4 remaining distinct tests = 20 cases:</p>
+
+<table id="table-12" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Matrix</th><th>Cases</th><th>Parametrized IDs</th></tr></thead>
+<tbody>
+<tr><td>Decision outcome</td><td>11</td><td>`allowed_read_only_intent`, `blocked_provider_trust_tier`, `blocked_provider_unavailable`, `blocked_provider_error`, `not_blocked_unavailable_read_only`, `requires_review_mutation`, `allows_mutation_when_allow_mutation`, `requires_review_network`, `allows_network_when_allow_network`, `blocked_dirty_policy`, `not_applicable_no_capabilities`</td></tr>
+<tr><td>Reason codes</td><td>5</td><td>`reason_provider_trust_tier_blocked`, `reason_mutation_requires_review`, `reason_network_requires_review`, `reason_dirty_policy_violated`, `reason_no_requested_capabilities`</td></tr>
+<tr><td>Remaining</td><td>4</td><td>`test_allowed_read_only_includes_allowed_intent`, `test_blocked_intent_includes_reason_code`, `test_blocked_when_multiple_checks_fail`, `test_pure_no_side_effects`</td></tr>
+</tbody>
+</table>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">**Failure diagnostics preserved**: Each parametrized case has a human-readable ID. When a test fails, the node ID (e.g., `test_evaluate_action_legality_decision[blocked_provider_trust_tier]`) immediately identifies the scenario.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Audit Metrics</h2>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Before</th><th>After</th></tr></thead>
+<tbody>
+<tr><td>Scanned</td><td>5966</td><td>5970</td></tr>
+<tr><td>Exact body groups</td><td>1</td><td>1</td></tr>
+<tr><td>Normalized AST groups</td><td>35</td><td>35</td></tr>
+<tr><td>Assert shape groups</td><td>618</td><td>616</td></tr>
+<tr><td>Collected</td><td>6236</td><td>6266</td></tr>
+</tbody>
+</table>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Note: Parametrized cases expand the collected count. Audit metrics show minimal change because the normalizer strips variable names — parametrized matrices with different kwargs look structurally similar to the audit.</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Files Changed</h2>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>`scripts/rig_relay_test_duplicate_audit.py`</td><td>Fixed 5 ruff findings, added `_TRUNCATE_LIMIT`, fixed return type annotation</td></tr>
+<tr><td>`tests/governance/test_governance_engine.py`</td><td>20 individual tests → 2 parametrized matrices + 4 distinct tests</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Guardrail</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- `--max-exact-duplicate-groups=1` continues to pass (1 group remaining by design — shared helper pattern) - Normalized AST threshold not added — groups are false positives, not actionable for ratcheting</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Deferred</h2>
+
+<table id="table-22" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Group</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>test_config_resolution.py (P2)</td><td>Per-model resolution tests — not duplicates</td></tr>
+<tr><td>test_bash.py (P3)</td><td>Dirty file, parallel lane active</td></tr>
+<tr><td>test_fuzzy.py (P4)</td><td>Different edge cases — parametrization would require branching logic</td></tr>
+<tr><td>test_backend_adapters</td><td>anthropic ↔ vertex_anthropic overlap needs adapter contract audit, not test dedup</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite/test_dedup_phase2_note.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

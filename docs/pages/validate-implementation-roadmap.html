@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validate Implementation Roadmap — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Goal:">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Validate Implementation Roadmap</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Validate Implementation Roadmap</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Stage 0 - Audit and Contract Only</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">- document observed bash families and the desired contract</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- audit docs only</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- JSONL parseability for any classification data</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- overfitting to current repo habits</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- design approved</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Stage 1 - Read-Only Validate Profiles ✅ COMPLETED</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- wrap known read-only validation commands</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Files:</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/validate.py` — tool module - `tests/tools/test_validate.py` — 37 tests</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Implementation:</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- Profile registry (`Profile`/`ProfileCheck`) with 5 read-only profiles - `ValidateArgs`, `ValidateCheckResult`, `ValidateResult` (Pydantic, `extra=&quot;forbid&quot;`) - Subprocess execution via `asyncio.create_subprocess_exec` (argv-based, no shell) - Blocker taxonomy mapping (`classify_failure`) - Dependency checking (`check_missing_dependency`) - Output capping and truncation flags - SHA256 hashing for stdout/stderr - `command_fingerprint` for normalized argv - Read-only enforcement (`allow_mutation=false` by default, network blocked) - Schemas: `rig.relay.validate_invocation.v1`, `rig.relay.validate_result.v1`</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Supported profiles:</p>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Profile</th><th>Checks</th></tr></thead>
+<tbody>
+<tr><td>`quick`</td><td>git status</td></tr>
+<tr><td>`python`</td><td>ruff check, pyright</td></tr>
+<tr><td>`schemas`</td><td>schema validation script</td></tr>
+<tr><td>`receipt-policy`</td><td>receipt policy validation script</td></tr>
+<tr><td>`tool-hardening`</td><td>bash hardening tests, receipt emission tests</td></tr>
+</tbody>
+</table>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Not implemented (Stage 2+):</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- `ValidateReceipt` emission - parsed validator output summaries - worktree/lane promotion logic - aggregate patching - fleet/delegate integration - `governance`, `worktree-readiness`, `promotion-readiness` profiles</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Exit criteria met:</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">- `quick`, `python`, `schemas` work - all profiles are read-only by default - blocker taxonomy maps exit codes to structured kinds - content-light result model (no raw stdout/stderr in long-lived fields)</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Stage 2 - Content-Light ValidateReceipt ✅ COMPLETED</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- emit receipts with hashes, counts, and blocker summaries</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Files:</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/validate.py` — added `ValidateCheckReceipt`, `ValidateReceipt`, `build_receipt()` - `docs/schemas/rig.relay.validate_receipt.v1.schema.json` — new schema - `rig_relay/evidence/receipt_index.py` — updated `_build_record_from_event()` for validate tool - `tests/tools/test_validate.py` — 11 new receipt/builder tests - `tests/evidence/test_receipt_index.py` — 5 new validate receipt index tests</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Implementation:</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">- `ValidateCheckReceipt` model (content-light, `extra=&quot;forbid&quot;`, no raw stdout/stderr) - `ValidateReceipt` model with `check_receipts: list[ValidateCheckReceipt]` - `Validate.build_receipt(result) -&gt; ValidateReceipt` duck-typed method - Receipt index handles validate tool (no file mutation, no top-level stdout/stderr) - Receipt schema `rig.relay.validate_receipt.v1` with per-check `$defs`</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Tests:</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">- 48 validate tool tests total (37 Stage 1 + 11 Stage 2) - 37 receipt index tests total (32 original + 5 validate) - All pass: 78/78 schemas, 0 ruff errors, 0 pyright errors</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Not implemented (Stage 3): - path scoping for validate profiles - parsed validator output summaries</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Exit criteria met:</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- receipts are content-light by default - no raw stdout/stderr in receipt models - receipt schema validated - receipt index supports validate tool</p>
+
+<h2 id="h2-38" class="disclosure-standard" data-disclosure-level="standard">Stage 3 - Path-Scoped Validation Profiles ✅ COMPLETED</h2>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">- add deterministic path scoping to validate profiles so agents can run focused validation against changed files</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Files:</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/validate.py` — added `_normalize_validate_paths()`, `_scope_check_argv()`, `_resolve_paths()`, `_build_checks()`, `_skipped_result()`, `_build_run_result()` - `tests/tools/test_validate.py` — 14 new path scoping tests - `docs/audits/validate-tool/validate-tool-contract.md` — updated</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">Implementation:</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- `_normalize_validate_paths(paths, workspace_root)` — resolves relative paths, refuses paths outside workspace - `_scope_check_argv(check, paths)` — scopes ruff/pytest argv to paths; skips schema/policy checks when paths don&#x27;t match domain - `_resolve_paths(args, cwd)` — runtime path resolution helper - `_build_checks(profile, normalized_paths)` — adds scoped ruff check to `quick` profile when paths provided - `_skipped_result(check)` — compact skipped check result factory - `_build_run_result(results, profile, start)` — extracted result builder (reduces run() complexity) - Refactored `run()` to stay under ruff PLR0915 (50 stmts) and PLR0912 (15 branches) limits - `quick` profile: adds scoped `ruff check` dynamically when paths provided - `python` profile: scopes `ruff check` argv, leaves `pyright` repo-wide - `tool-hardening` profile: scopes `pytest` argv to paths - `schemas` profile: skipped when no schema paths provided - `receipt-policy` profile: skipped when no receipt-related paths provided - All content-light receipts unaffected (no raw paths in receipt payloads)</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">Tests:</p>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">- 62 validate tool tests total (48 Stage 1+2 + 14 Stage 3) - Path normalization: empty, inside workspace, outside workspace (refused), no workspace root (uses cwd) - Check scoping: ruff appends paths, pytest appends paths, schema skips/runs based on path domain, policy skips/runs based on path domain, git/pyright unchanged, no paths returns original - Quick profile gets scoped ruff dynamically at runtime</p>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">- path scoping for `schemas` and `receipt-policy` uses simple substring matching (&quot;schema&quot;, &quot;receipt&quot;) — could produce false negatives for unusual path patterns - `quick` profile dynamic ruff check is added at runtime, not in the profile definition — the checks don&#x27;t persist between invocations</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">Follow-up fix (Stage 3 follow-up, applied immediately after initial Stage 3):</p>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">- `_normalize_validate_paths` was changed to return **workspace-relative POSIX paths** instead of absolute paths - Absolute paths are used only for internal containment checking (`resolved.relative_to(root)`) - Absolute input paths (e.g., `/workspace/sub/file.py`) are converted to relative (`sub/file.py`) - Handles absolute input paths by resolving them directly (not via `root / p`) - All path deduplication, sorting, and nonexistent-check behavior preserved - All downstream consumers (argv, `command_fingerprint`, `affected_paths`, `ValidateReceipt`) automatically receive relative paths - 9 new regression tests added for stable relative path behavior - `command_fingerprint` is now stable across machines, worktrees, and input path forms</p>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Path representation policy: - **Internal containment**: absolute resolved paths (not exposed) - **Exposed paths**: workspace-relative, POSIX forward-slash, sorted - **argv**: relative paths in subprocess commands (valid because cwd = workspace_root) - **fingerprints**: computed from relative-path argv → machine-independent - **receipts**: content-light with relative `affected_paths`</p>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">Exit criteria met:</p>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">- paths are normalized and validated for safety - unsafe paths (outside workspace) are refused with structured result - relevant profile checks are scoped to provided paths - irrelevant checks are skipped - `quick` profile gets scoped ruff when paths provided - **absolute input paths are converted to relative** (stable fingerprints) - **absolute paths never leak into argv, fingerprints, or receipts** - **outside-workspace absolute paths are still refused** - **traversal paths are still refused** - **fingerprints are identical for absolute and equivalent relative input** - **fingerprints are independent of path input order** - **POSIX separators used for all exposed paths** - all existing tests pass - ruff: 0 errors, pyright: 0 errors, schemas: 78/78 valid</p>
+
+<h2 id="h2-54" class="disclosure-standard" data-disclosure-level="standard">Stage 4 - Parsed Summaries ✅ COMPLETED</h2>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">- add conservative, deterministic parsed summaries to `ValidateCheckResult.parsed_summary` for common validator outputs</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">Files:</p>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/validate.py` — added `_parse_ruff_summary()`, `_parse_pyright_summary()`, `_parse_pytest_summary()`, `_parse_schema_summary()`, `_parse_policy_summary()`, `_parse_check_summary()` dispatcher - `tests/tools/test_validate.py` — 28 new parser tests</p>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">Implementation:</p>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">- **Ruff parser** (`_parse_ruff_summary`): parses `path:line:col: CODE message` format. Extracts `violation_count`, `rule_counts` (per-rule-code frequency), and `files` (sorted unique affected files). All content-light: no full messages, no raw diffs. - **Pyright parser** (`_parse_pyright_summary`): parses terminal summary line (`N errors, M warnings, K informations`). Uses last line containing both &quot;error&quot; and &quot;warning&quot;. Returns `error_count`, `warning_count`, `information_count`. - **Pytest parser** (`_parse_pytest_summary`): parses terminal summary for `passed`, `failed`, `skipped`, `xfailed`, `xpassed`, `error` counts. Uses last line containing any of these keywords. - **Schema parser** (`_parse_schema_summary`): handles `N/N schemas valid` and `Passed: N / Failed: M` formats. Returns `valid_count`, `total_count`, `failed_count`. - **Policy parser** (`_parse_policy_summary`): tries JSON extraction (findings/violations arrays) first; falls back to text line counting for &quot;finding&quot;/&quot;violation&quot; mentions. - **Dispatcher** (`_parse_check_summary`): routes by `command_kind`. Unknown kinds return None. - **Integration** (`_run_check`): `parsed_summary` field populated in returned `ValidateCheckResult` before building receipt. - **Parsing does not affect pass/fail**: status determined by exit code, timeout, and blocker mapping only. Parsed summaries are diagnostic metadata. - **Parser failure is safe**: returns None for unparseable output; never raises exceptions. - **Receipts remain content-light**: `parsed_summary` is **not** included in `ValidateCheckReceipt` or `ValidateReceipt` (extra=forbid on receipt models enforces this). - **No raw output in summaries**: parser output dicts never contain stdout/stderr/raw keys.</p>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">Tests (28 new):</p>
+
+<details id="table-62" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-62" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Test</th><th>What it validates</th></tr></thead>
+<tbody>
+<tr><td>`test_parse_ruff_summary_counts`</td><td>violation_count, rule_counts, files from sample stdout</td></tr>
+<tr><td>`test_parse_ruff_summary_empty`</td><td>empty/malformed returns None</td></tr>
+<tr><td>`test_parse_pyright_summary_plural`</td><td>&quot;1 error, 2 warnings, 0 informations&quot;</td></tr>
+<tr><td>`test_parse_pyright_summary_singular`</td><td>&quot;0 errors, 0 warnings, 0 informations&quot;</td></tr>
+<tr><td>`test_parse_pyright_summary_malformed`</td><td>garbage text returns None</td></tr>
+<tr><td>`test_parse_pytest_summary_counts`</td><td>&quot;1 failed, 2 passed&quot; → passed_count=2, failed_count=1</td></tr>
+<tr><td>`test_parse_pytest_summary_skipped`</td><td>&quot;2 skipped, 1 xfailed&quot; → skipped_count=2, xfailed_count=1</td></tr>
+<tr><td>`test_parse_pytest_summary_passed_only`</td><td>&quot;3 passed&quot; → passed_count=3</td></tr>
+<tr><td>`test_parse_pytest_summary_malformed`</td><td>returns None</td></tr>
+<tr><td>`test_parse_schema_summary_slash_format`</td><td>&quot;78/78 schemas valid&quot; → valid_count=78</td></tr>
+<tr><td>`test_parse_schema_summary_passed_failed_format`</td><td>&quot;Passed: 75 / Failed: 3&quot; → valid_count=75, failed_count=3</td></tr>
+<tr><td>`test_parse_schema_summary_empty`</td><td>empty returns None</td></tr>
+<tr><td>`test_parse_policy_summary_json`</td><td>JSON with findings array → finding_count=3</td></tr>
+<tr><td>`test_parse_policy_summary_json_violations`</td><td>JSON with violations array → finding_count=2</td></tr>
+<tr><td>`test_parse_policy_summary_text_fallback`</td><td>text with &quot;finding&quot; lines → parsed with counts</td></tr>
+<tr><td>`test_parse_policy_summary_empty`</td><td>empty returns None</td></tr>
+<tr><td>Dispatch tests (5)</td><td>each command_kind routes to correct parser</td></tr>
+<tr><td>`test_parse_check_summary_unknown_kind`</td><td>unknown/git/empty returns None</td></tr>
+<tr><td>`test_parsed_summary_in_model`</td><td>ValidateCheckResult stores parsed_summary correctly</td></tr>
+<tr><td>`test_parsed_summary_none_default`</td><td>parsed_summary defaults to None</td></tr>
+<tr><td>`test_parsed_summary_no_raw_fields`</td><td>parsed_summary dict has no stdout/stderr/raw keys</td></tr>
+<tr><td>`test_parsed_summary_not_in_check_receipt`</td><td>ValidateCheckReceipt rejects extra `parsed_summary` field</td></tr>
+<tr><td>`test_parsed_summary_not_in_validate_receipt`</td><td>ValidateReceipt has no parsed_summary leakage</td></tr>
+<tr><td>`test_run_check_parsed_summary_field_present`</td><td>_run_check result has parsed_summary attribute</td></tr>
+</tbody>
+</table></details>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">Exit criteria met:</p>
+
+<p id="p-64" class="disclosure-standard" data-disclosure-level="standard">- ruff, pyright, pytest, schema, and policy outputs expose consistent structured summaries - parser failure never propagates (returns None) - receipts remain content-light (no parsed_summary in receipt models) - parsed_summary contains no raw stdout/stderr - all 108 tests pass (80 existing + 28 new) - ruff: 0 errors in new/modified files - pyright: 0 errors in new/modified code - schemas: 78/78 valid</p>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">- make validate understand workspace state and lane scope</p>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">- git-read helpers - lane metadata - dirty policy handling</p>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-70" class="disclosure-standard" data-disclosure-level="standard">- dirty workspace classification - path scope handling</p>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-72" class="disclosure-standard" data-disclosure-level="standard">- confusing lane policy with tool semantics</p>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">- validate can explain lane eligibility</p>
+
+<h2 id="h2-75" class="disclosure-standard" data-disclosure-level="standard">Stage 5 - Worktree/Lane Awareness and Dirty-State Policy ✅ COMPLETED</h2>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">- teach validate to understand explicit workspace roots, dirty-state policy, and lane readiness</p>
+
+<p id="p-78" class="disclosure-standard" data-disclosure-level="standard">Files:</p>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/validate.py` — added `ValidateGitState`, `_collect_git_state()`, `_parse_git_status_porcelain()`, `_check_dirty_policy()`, `worktree-readiness` profile, `_git_summary()` in `build_receipt()` - `tests/tools/test_validate_git_state.py` — 27 new tests - `docs/schemas/rig.relay.validate_receipt.v1.schema.json` — added `GitSummary` schema, `before_git_summary`/`after_git_summary` fields</p>
+
+<p id="p-80" class="disclosure-standard" data-disclosure-level="standard">Implementation:</p>
+
+<p id="p-81" class="disclosure-standard" data-disclosure-level="standard">- `ValidateGitState` model (content-light, `extra=&quot;forbid&quot;`, counts and workspace-relative POSIX paths only) - `_run_git()` — read-only argv subprocess for safe git introspection - `_parse_git_status_branch()` — parses `## branch...upstream [ahead N behind M]` - `_parse_git_status_porcelain_line()` — per-line porcelain status parser - `_parse_git_status_porcelain()` — full `git status --short --branch` parser - `_collect_git_state()` — async git state collection with timeout, missing-dep handling, non-repo tolerance - `_check_dirty_policy()` — enforces `allow_dirty`, `clean`, and `allow_listed_dirty` policies - `build_receipt()` — `_git_summary()` helper extracts compact content-light counts (no paths/hashes) - `ValidateReceipt` — `before_git_summary`/`after_git_summary` fields (counts only, no raw paths/hashes) - `ValidateResult.before_git_state`/`after_git_state` — full `ValidateGitState` for diagnostic use - `run()` method — collects git state at start and end, enforces dirty policy before running checks - `worktree-readiness` profile — no lint/test/schema checks, purely git state + dirty policy enforcement</p>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">Not implemented: - `promotion-readiness` profile - fleet/delegate integration - aggregate patch planning - automatic promotion logic</p>
+
+<p id="p-83" class="disclosure-standard" data-disclosure-level="standard">Exit criteria met:</p>
+
+<p id="p-84" class="disclosure-standard" data-disclosure-level="standard">- git state collection works in real repos (temp git repo tested) - dirty policy blocks/refuses based on expected_dirty_policy - `allow_dirty` passes dirty workspace - `clean` blocks dirty workspace - `allow_listed_dirty` allows listed dirty paths, blocks unlisted - non-git-repo behavior is structured, not crashing - receipts remain content-light (counts only in `before_git_summary`/`after_git_summary`) - receipt schema updated and validated - 253 total tests across all stages</p>
+
+<h2 id="h2-85" class="disclosure-standard" data-disclosure-level="standard">Stage 6 - Dirty-Policy Normalization Fix ✅ COMPLETED</h2>
+
+<p id="p-86" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-87" class="disclosure-standard" data-disclosure-level="standard">- fix dirty-policy enforcement in `Validate.run()` so `allow_listed_dirty` compares git dirty paths against normalized workspace-relative paths, not raw `args.paths`</p>
+
+<p id="p-88" class="disclosure-standard" data-disclosure-level="standard">Bug:</p>
+
+<p id="p-89" class="disclosure-standard" data-disclosure-level="standard">- `_collect_git_state()` was called before path normalization - dirty-policy `allow_listed_dirty` compared `set(args.paths)` (raw user input — absolute, `./`-prefixed, or duplicated) against `before_git_state.dirty_paths` (workspace-relative POSIX paths from porcelain parsing) - absolute paths like `/absolute/path/to/file.py` never matched `&quot;file.py&quot;` - `./`-prefixed paths like `&quot;./file.py&quot;` never matched `&quot;file.py&quot;` - two inlined dirty-policy branches duplicated `_check_dirty_policy()` but used raw args.paths instead of normalized paths</p>
+
+<p id="p-90" class="disclosure-standard" data-disclosure-level="standard">Fix:</p>
+
+<p id="p-91" class="disclosure-standard" data-disclosure-level="standard">- moved path normalization (`_resolve_paths` → `_normalize_validate_paths`) before git state collection - unsafe-path refusal now happens before dirty-policy enforcement - git state collection (`_collect_git_state`) runs after normalization - both inlined dirty-policy branches replaced with a single `_check_dirty_policy(before_git_state, args.expected_dirty_policy, normalized_paths)` call — `_check_dirty_policy` is now the single policy authority</p>
+
+<p id="p-92" class="disclosure-standard" data-disclosure-level="standard">New execution order in `Validate.run()`:</p>
+
+<p id="p-93" class="disclosure-standard" data-disclosure-level="standard">1. resolve profile 2. check mutation/network policy 3. compute output cap 4. resolve cwd/workspace_root 5. normalize paths with `_normalize_validate_paths(args.paths, cwd)` 6. if unsafe paths, return structured refused `ValidateResult` 7. collect `before_git_state` 8. enforce `expected_dirty_policy` via `_check_dirty_policy` with normalized paths 9. build checks 10. run checks 11. collect `after_git_state` 12. return `ValidateResult`</p>
+
+<p id="p-94" class="disclosure-standard" data-disclosure-level="standard">Files changed:</p>
+
+<p id="p-95" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/validate.py` — reordered `run()` method - `tests/tools/test_validate_git_state.py` — 9 new regression tests</p>
+
+<p id="p-96" class="disclosure-standard" data-disclosure-level="standard">Tests added:</p>
+
+<p id="p-97" class="disclosure-standard" data-disclosure-level="standard">- `test_allow_listed_dirty_relative_path_passes` — relative path matches dirty path - `test_allow_listed_dirty_absolute_path_passes` — absolute path normalized to relative - `test_allow_listed_dirty_dot_slash_path_passes` — `./` prefix normalized away - `test_allow_listed_dirty_fails_with_unlisted_path` — unlisted dirty path detected - `test_allow_listed_dirty_empty_paths_fails_when_dirty` — empty paths + dirty workspace - `test_outside_workspace_path_refused_before_dirty_policy` — unsafe refusal precedes dirty check - `test_allow_listed_dirty_duplicate_paths_passes` — dupes deduplicated - `test_clean_policy_fails_on_any_dirty_file` — clean policy still works - `test_allow_dirty_passes_with_dirty_files` — allow_dirty still works</p>
+
+<p id="p-98" class="disclosure-standard" data-disclosure-level="standard">Total validate tests: 145 (136 Stage 1-5 + 9 Stage 6)</p>
+
+<p id="p-99" class="disclosure-standard" data-disclosure-level="standard">Not implemented: - `promotion-readiness` profile - fleet/delegate integration - aggregate patching - parsed summary changes</p>
+
+<p id="p-100" class="disclosure-standard" data-disclosure-level="standard">Exit criteria met:</p>
+
+<p id="p-101" class="disclosure-standard" data-disclosure-level="standard">- `allow_listed_dirty` accepts relative, absolute, `./`-prefixed, and duplicated paths - `allow_listed_dirty` blocks unlisted dirty paths and empty paths with dirty workspace - unsafe paths are refused as `&quot;refused&quot;/&quot;unsafe_paths&quot;` before dirty-policy check - `clean` and `allow_dirty` policies preserved - `before_git_state` and `blocker_summary` present in dirty-policy failure results - `_check_dirty_policy` is the single policy authority - no duplicate inline dirty-policy logic in `validate.py` - receipts remain content-light (no changes to receipt model)</p>
+
+<h2 id="h2-102" class="disclosure-standard" data-disclosure-level="standard">Stage 7 - Aggregate Patch Eligibility</h2>
+
+<p id="p-103" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-104" class="disclosure-standard" data-disclosure-level="standard">- determine whether a patch lane can be aggregated or promoted</p>
+
+<p id="p-105" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-106" class="disclosure-standard" data-disclosure-level="standard">- promotion gate logic - blocker summarization</p>
+
+<p id="p-107" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-108" class="disclosure-standard" data-disclosure-level="standard">- blocker aggregation - readiness classification</p>
+
+<p id="p-109" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-110" class="disclosure-standard" data-disclosure-level="standard">- false promotion positives</p>
+
+<p id="p-111" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-112" class="disclosure-standard" data-disclosure-level="standard">- validate can answer promotion readiness</p>
+
+<h2 id="h2-113" class="disclosure-standard" data-disclosure-level="standard">Stage 8 - Promotion Gate Integration</h2>
+
+<p id="p-114" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-115" class="disclosure-standard" data-disclosure-level="standard">- connect validate to promotion workflows</p>
+
+<p id="p-116" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-117" class="disclosure-standard" data-disclosure-level="standard">- lane promotion code - CI / local gate hooks</p>
+
+<p id="p-118" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-119" class="disclosure-standard" data-disclosure-level="standard">- end-to-end promotion gate</p>
+
+<p id="p-120" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-121" class="disclosure-standard" data-disclosure-level="standard">- gate drift between local and CI</p>
+
+<p id="p-122" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-123" class="disclosure-standard" data-disclosure-level="standard">- promotion uses validate as a source of truth</p>
+
+<h2 id="h2-124" class="disclosure-standard" data-disclosure-level="standard">Stage 9 - Fleet / Delegate Policy Integration</h2>
+
+<p id="p-125" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-126" class="disclosure-standard" data-disclosure-level="standard">- make validate part of fleet and delegated execution policy</p>
+
+<p id="p-127" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-128" class="disclosure-standard" data-disclosure-level="standard">- policy registry - delegation lane controls - fleet orchestration</p>
+
+<p id="p-129" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-130" class="disclosure-standard" data-disclosure-level="standard">- delegated lane readiness - policy enforcement</p>
+
+<p id="p-131" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-132" class="disclosure-standard" data-disclosure-level="standard">- overgeneralizing one repo&#x27;s validation needs</p>
+
+<p id="p-133" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-134" class="disclosure-standard" data-disclosure-level="standard">- validate is policy-aware across lane types</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/validate-tool/validate-implementation-roadmap.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

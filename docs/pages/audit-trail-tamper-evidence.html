@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Trail Tamper-Evidence Design — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Design (2026-05).** Not yet implemented. See">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit Trail Tamper-Evidence Design</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit Trail Tamper-Evidence Design</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Design (2026-05).** Not yet implemented. See `docs/audits/rig-runtime-port/audit-trail-tamper-evidence-design.md` for the implementation audit and decision log.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Add tamper evidence to the existing `AuditTrailStore` (P3b) so that unauthorized modification of the audit trail — whether by a compromised process, a user with filesystem access, or a supply-chain attacker — is detectable at verification time.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">This is **tamper-evident**, not tamper-proof. Without external anchoring (signing, trusted timestamping, remote witness), a local attacker with write access to both the trail and the checkpoint file can rewrite both. The design makes that attack detectable as soon as any independently retained checkpoint root is compared.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Design Overview</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Three layers, implemented incrementally:</p>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Layer</th><th>Mechanism</th><th>Detects</th></tr></thead>
+<tbody>
+<tr><td>1. Event hash chain</td><td>Each event stores `event_hash` and `previous_event_hash`</td><td>Line modification, deletion, insertion, reordering</td></tr>
+<tr><td>2. Checkpoint records</td><td>Periodic batch records store chain head hash + Merkle root</td><td>Missing/truncated sections, broken chain</td></tr>
+<tr><td>3. External anchoring (future)</td><td>Signing, TSA, remote witness</td><td>Local rewrite of both trail and checkpoints</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Layer 1: Event Hash Chain</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">**Canonical event representation:**</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Each `AuditEvent` gains two new optional fields:</p>
+
+<pre id="code-13"><code class="language-text">event_hash: str | None          # sha256:&lt;hex&gt; of canonical event without event_hash/previous_event_hash
+previous_event_hash: str | None # sha256:&lt;hex&gt; of the preceding event&#x27;s event_hash, or null for genesis</code></pre>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">**Computation:**</p>
+
+<pre id="code-15"><code class="language-text">canonical = dump_canonical_json(event.model_dump(mode=&quot;json&quot;, exclude={&quot;event_hash&quot;, &quot;previous_event_hash&quot;}, exclude_none=True))
+event_hash = &quot;sha256:&quot; + sha256(canonical.encode(&quot;utf-8&quot;)).hexdigest()</code></pre>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Where `dump_canonical_json` is the existing `rig_relay.coordination._canonical_json.dump_canonical_json` — deterministic, sorted-keyed JSON without whitespace.</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">**Chain rules:**</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">1. The genesis event (sequence=1) has `previous_event_hash = None`. 2. Every subsequent event has `previous_event_hash` = the preceding event&#x27;s `event_hash`. 3. `event_hash` is computed **before append** and stored in the event. 4. `previous_event_hash` is read from the store&#x27;s `latest_event()` before computing the new event. 5. On read, the store verifies the chain: every event&#x27;s `event_hash` must match recomputation, and `previous_event_hash` must match the prior event&#x27;s `event_hash`.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">**Sequence monotonicity:**</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">`next_sequence()` remains a count of lines. After hash chaining, sequence gaps are still detectable (the chain breaks at a missing sequence). Duplicate sequence numbers become detectable because they produce a fork (two events claim the same parent).</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">**Timestamp handling:**</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Timestamps are informational. The hash chain provides ordering, not timestamps. A future event with a backdated timestamp is still detected as a break in the hash chain if it claims the wrong `previous_event_hash`.</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">**Malformed lines:**</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- Malformed lines (non-JSON, non-validating) are still reported as read errors. - The chain cannot verify past a malformed line. Verification stops at the last valid event before the malformed line. - A future repair workflow could quarantine malformed lines and splice the chain.</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">**Redaction/deletion:**</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">- Deleting a line breaks the chain at that point. - The store cannot &quot;heal&quot; the chain after deletion without re-signing all subsequent events (which invalidates tamper evidence). - **Policy:** never auto-repair. Report the exact sequence where the break occurs.</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">**Compaction (future):**</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- If old events are archived/removed, the chain is broken. - Compaction must produce a new checkpoint that covers the surviving range, signed with the old checkpoint&#x27;s root as `previous_checkpoint_hash`.</p>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">Layer 2: Checkpoint Records</h3>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">**AuditCheckpoint model:**</p>
+
+<pre id="code-31"><code class="language-python">class AuditCheckpoint(BaseModel):
+    model_config = ConfigDict(extra=&quot;forbid&quot;)
+
+    schema_version: str = &quot;rig.relay.audit_checkpoint.v1&quot;
+    checkpoint_id: str
+    trail_id: str                    # identifies which audit trail this checkpoint belongs to
+    created_at: str                  # ISO 8601
+    from_sequence: int               # first event sequence in this checkpoint window
+    to_sequence: int                 # last event sequence in this checkpoint window
+    event_count: int                 # number of events in this window
+    chain_head_hash: str             # event_hash of the last event in this window
+    merkle_root_sha256: str | None   # Merkle root over event hashes in this window (optional in v0.1)
+    previous_checkpoint_hash: str | None  # sha256 of the previous checkpoint, or null for genesis
+    checkpoint_sha256: str           # sha256 of this checkpoint&#x27;s canonical JSON (excluding checkpoint_sha256)
+    signer_id: str | None = None     # reserved for future signing
+    signature: str | None = None     # reserved for future signing</code></pre>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">**Storage decision:**</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Checkpoint records are stored in a **separate file** — `audit.checkpoints.jsonl` alongside `audit.jsonl`. Reasons:</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">- Avoids mixing event types in the same JSONL, which would complicate schema validation and reader logic. - Checkpoints have a different schema version and required fields. - Separate file simplifies replay: events are one file, checkpoints are another.</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">**Checkpoint frequency:**</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">- **Default:** every 1000 events, or on explicit `checkpoint()` call. - **On demand:** `store.create_checkpoint()` produces a checkpoint at the current chain head. - **On read:** verification can use the latest checkpoint, or a specific checkpoint by `checkpoint_id`.</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">**Verification of checkpoints:**</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">1. Load all events up to `to_sequence`. 2. Recompute chain hashes from `from_sequence` to `to_sequence`. 3. Verify `chain_head_hash` matches. 4. If `merkle_root_sha256` is present, recompute the Merkle root and compare. 5. Load the previous checkpoint (if any) and verify `previous_checkpoint_hash` matches the previous checkpoint&#x27;s `checkpoint_sha256`. 6. A checkpoint is **trusted** only if its own `checkpoint_sha256` matches recomputation.</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Layer 3: Merkle Checkpoint Option</h3>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">**Design decision:** Merkle roots are optional in v0.1. The checkpoint stores a `merkle_root_sha256` field that is `None` until Merkle tree computation is implemented.</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">**Leaf hash:** `event_hash` of each event in the checkpoint window.</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">**Tree shape:** Binary Merkle tree over the sequence of leaf hashes. If the number of leaves is not a power of two, duplicate the last leaf (or use a balanced tree — design deferred to implementation).</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">**Inclusion proof (future):**</p>
+
+<pre id="code-44"><code class="language-python">class MerkleInclusionProof(BaseModel):
+    model_config = ConfigDict(extra=&quot;forbid&quot;)
+
+    leaf_hash: str
+    leaf_index: int
+    proof_hashes: list[str]   # sibling hashes from leaf to root
+    root_hash: str</code></pre>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">**Consistency proof (future):** Deferred. Not needed until cross-checkpoint verification between two versions of the same trail is required.</p>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Implement v0.1 with linear hash chain + checkpoint root only. Add Merkle inclusion proofs in v0.2 when external verification/sharing matters.</p>
+
+<h2 id="h2-47" class="disclosure-standard" data-disclosure-level="standard">Verification Workflow</h2>
+
+<h3 id="h3-48" class="disclosure-standard" data-disclosure-level="standard">`rig-relay audit verify &lt;trail&gt;`</h3>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">Reads the trail and checkpoints, then reports:</p>
+
+<table id="table-50" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`verified`</td><td>All events pass hash chain check, latest checkpoint matches</td></tr>
+<tr><td>`broken_chain`</td><td>A hash mismatch was found at sequence N</td></tr>
+<tr><td>`missing_checkpoint`</td><td>No checkpoint file exists for this trail</td></tr>
+<tr><td>`malformed_event`</td><td>An event line is unparseable, chain stops there</td></tr>
+<tr><td>`sequence_gap`</td><td>Sequence numbers are not strictly monotonic</td></tr>
+<tr><td>`checkpoint_mismatch`</td><td>Checkpoint `chain_head_hash` does not match recomputed value</td></tr>
+<tr><td>`unsupported_version`</td><td>Event or checkpoint schema version is unknown</td></tr>
+</tbody>
+</table>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">**Output:** JSON report with `verification_status`, `first_broken_sequence`, `event_count`, `checkpoint_count`, `error_count`, `warnings[]`.</p>
+
+<h3 id="h3-52" class="disclosure-standard" data-disclosure-level="standard">`rig-relay audit checkpoint &lt;trail&gt;`</h3>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">Creates a new checkpoint at the current chain head. Does not modify existing events or checkpoints.</p>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">`rig-relay audit inspect &lt;event_id&gt;`</h3>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">Prints a single event with its chain neighbors (previous and next event_id, sequence, event_hash).</p>
+
+<h2 id="h2-56" class="disclosure-standard" data-disclosure-level="standard">Failure/Recovery Policy</h2>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">1. **Never auto-repair.** The audit trail is append-only. Automatic repair would destroy tamper evidence. 2. **Report exact break location.** The verification report includes `first_broken_sequence` and the expected vs. actual hash values. 3. **Allow quarantining** (future): A manual repair workflow could export events up to the break point, then start a fresh chain from the last valid checkpoint. 4. **Never silently rewrite.** Any operation that modifies the trail or checkpoints must be explicit and user-approved.</p>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">**Chain verification stops** at the first broken link. Subsequent events are reported as &quot;unverifiable&quot; rather than &quot;failed&quot;.</p>
+
+<h2 id="h2-59" class="disclosure-standard" data-disclosure-level="standard">Security Boundary</h2>
+
+<h3 id="h3-60" class="disclosure-standard" data-disclosure-level="standard">What tamper evidence detects</h3>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">- Any modification of an event&#x27;s fields (the `event_hash` will not match recomputation). - Deletion of a line (the chain breaks at the missing `previous_event_hash` reference). - Insertion of a forged event (cannot produce a valid `previous_event_hash` without the private key, and the chain will break). - Reordering of events (the `sequence` field changes, and the `previous_event_hash` will not match). - Truncation of the trail (the chain breaks at the cut point).</p>
+
+<h3 id="h3-62" class="disclosure-standard" data-disclosure-level="standard">What tamper evidence does NOT detect</h3>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">- Simultaneous rewrite of both `audit.jsonl` and `audit.checkpoints.jsonl` by an attacker with filesystem write access. - Modification of events before the first checkpoint (all events prior to the genesis checkpoint have no checkpoint root to verify against).</p>
+
+<h3 id="h3-64" class="disclosure-standard" data-disclosure-level="standard">Trust model</h3>
+
+<table id="table-65" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Attacker capability</th><th>Detectable?</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Read-only access</td><td>N/A</td><td>No damage</td></tr>
+<tr><td>Write to audit.jsonl only</td><td>Yes</td><td>Chain breaks, checkpoint detects</td></tr>
+<tr><td>Write to audit.checkpoints.jsonl only</td><td>Yes</td><td>Event chain breaks, or checkpoint hash mismatch</td></tr>
+<tr><td>Write to both files</td><td>No (v0.1)</td><td>Need external anchoring</td></tr>
+<tr><td>Write to both + signing key</td><td>No</td><td>Need hardware-backed key</td></tr>
+<tr><td>Write to both files + timestamp authority</td><td>No</td><td>Need RFC 3161 TSA</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-66" class="disclosure-standard" data-disclosure-level="standard">Future hardening (not in v0.1)</h3>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">- **Signing:** Each checkpoint is signed with an Ed25519 key. The public key is retained separately. - **Local keychain:** Key stored in OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager). - **Passkey anchoring:** Future passkey-based signing of checkpoints. - **Remote witness:** Periodically upload checkpoint roots to a remote witness service (IPFS, GitHub releases, S3).</p>
+
+<h3 id="h3-68" class="disclosure-standard" data-disclosure-level="standard">Documented contract</h3>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">The `audit-trail.md` governance document (and the docstring of `AuditTrailStore`) must state clearly:</p>
+
+<p id="p-70" class="disclosure-standard" data-disclosure-level="standard">&gt; This store provides append-only JSONL persistence with best-effort fsync &gt; durability. It does **not** provide cryptographic tamper evidence. Hash-chain &gt; tamper evidence is designed separately — see &gt; docs/governance/audit-trail-tamper-evidence.md.</p>
+
+<h2 id="h2-71" class="disclosure-standard" data-disclosure-level="standard">Required Schema Changes</h2>
+
+<h3 id="h3-72" class="disclosure-standard" data-disclosure-level="standard">`AuditEvent` gains two optional fields</h3>
+
+<pre id="code-73"><code class="language-text">event_hash: str | None = None
+previous_event_hash: str | None = None</code></pre>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">Both are `[&quot;string&quot;, &quot;null&quot;]` in the JSON Schema. Existing events without these fields are valid (backward compatibility). On read, events missing `event_hash`/`previous_event_hash` are treated as **unhashed** — verification skips them rather than failing.</p>
+
+<h3 id="h3-75" class="disclosure-standard" data-disclosure-level="standard">New schema: `rig.relay.audit_checkpoint.v1`</h3>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">Schema file: `docs/schemas/rig.relay.audit_checkpoint.v1.schema.json`</p>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">Required fields:</p>
+
+<pre id="code-78"><code class="language-text">checkpoint_id, trail_id, created_at, from_sequence, to_sequence,
+event_count, chain_head_hash, checkpoint_sha256</code></pre>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">Optional fields:</p>
+
+<pre id="code-80"><code class="language-text">merkle_root_sha256, previous_checkpoint_hash, signer_id, signature</code></pre>
+
+<h2 id="h2-81" class="disclosure-standard" data-disclosure-level="standard">Implementation Phases</h2>
+
+<table id="table-82" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Phase</th><th>Scope</th><th>Dependencies</th></tr></thead>
+<tbody>
+<tr><td>0.1</td><td>Event hash chain on append + verify on read</td><td>None (pure store change)</td></tr>
+<tr><td>0.2</td><td>Checkpoint record model + `create_checkpoint()`</td><td>Phase 0.1</td></tr>
+<tr><td>0.3</td><td>`rig-relay audit verify` CLI command</td><td>Phase 0.2</td></tr>
+<tr><td>0.4</td><td>Merkle root computation in checkpoints</td><td>Phase 0.2</td></tr>
+<tr><td>0.5</td><td>External anchoring (signing, TSA)</td><td>Keychain module</td></tr>
+<tr><td>0.6</td><td>`rig-relay audit checkpoint` CLI command</td><td>Phase 0.2</td></tr>
+</tbody>
+</table>
+
+<p id="p-83" class="disclosure-standard" data-disclosure-level="standard">Phase 0.1 and 0.2 are the minimum viable tamper-evidence layer. They can be implemented without CLI changes — the store methods suffice for programmatic verification.</p>
+
+<h2 id="h2-84" class="disclosure-standard" data-disclosure-level="standard">Relationship to Receipt Envelope</h2>
+
+<p id="p-85" class="disclosure-standard" data-disclosure-level="standard">`ReceiptEnvelope` (P3a) is separate from tamper evidence. The audit trail stores `AuditEvent` records which may reference or embed `ReceiptEnvelope` instances. The hash chain operates on the `AuditEvent` itself — not on the embedded envelope. This means:</p>
+
+<p id="p-86" class="disclosure-standard" data-disclosure-level="standard">- If the `AuditEvent` fields are tampered with (e.g., `decision` changed from `allowed` to `blocked`), the chain detects it. - If the embedded `ReceiptEnvelope` is tampered with inside a serialized `AuditEvent`, the chain detects it (because the canonical JSON of the `AuditEvent` changes). - `ReceiptEnvelope` objects stored independently (not embedded in audit events) are not covered by the audit trail&#x27;s hash chain. They need their own integrity mechanism (deferred to future work).</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/audit-trail-tamper-evidence.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

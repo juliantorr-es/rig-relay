@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDE Capability Map — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Canonical capability registry for Rig Relay IDE bridges. Generated from `etc/rig.ide.capability_manifest.v1.json`. Do not edit by hand.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>IDE Capability Map</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">IDE Capability Map</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Canonical capability registry for Rig Relay IDE bridges. Generated from `etc/rig.ide.capability_manifest.v1.json`. Do not edit by hand.</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Total capabilities:** 42</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">IDE Capabilities</h2>
+
+<details id="table-6" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-6" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Capability</th><th>Risk</th><th>Mutates</th><th>Policy</th><th>Workspace Trust</th><th>Implemented</th></tr></thead>
+<tbody>
+<tr><td>`ide.buffer.apply_preview_patch`</td><td>🔴 High</td><td>Yes</td><td>Always ask</td><td>Required</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.buffer.get_unsaved_changes`</td><td>🟡 Medium</td><td>No</td><td>Allow (trusted)</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.buffer.read`</td><td>🟡 Medium</td><td>No</td><td>Allow (trusted)</td><td>Required</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.buffer.read_range`</td><td>🟡 Medium</td><td>No</td><td>Allow (trusted)</td><td>Required</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.call_hierarchy`</td><td>🟡 Medium</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.debug.breakpoints.list`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.debug.evaluate_readonly`</td><td>🔴 High</td><td>Possible</td><td>Always ask</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.debug.sessions`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.debug.stack`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.debug.variables`</td><td>🟡 Medium</td><td>No</td><td>Ask once/session</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.definition.goto`</td><td>🟡 Medium</td><td>No</td><td>Allow (trusted)</td><td>Required</td><td>✅ Sidecar</td></tr>
+<tr><td>`ide.diagnostics.file`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.diagnostics.range`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.diagnostics.workspace`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ Sidecar</td></tr>
+<tr><td>`ide.quickfixes.list`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.references.find`</td><td>🟡 Medium</td><td>No</td><td>Allow (trusted)</td><td>Required</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.rename_preview`</td><td>🟡 Medium</td><td>No</td><td>Ask once/session</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.symbols.document`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.symbols.workspace`</td><td>🟡 Medium</td><td>No</td><td>Allow (trusted)</td><td>—</td><td>✅ Sidecar</td></tr>
+<tr><td>`ide.tasks.list`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.tests.discover`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.tests.run_at_cursor`</td><td>🟡 Medium</td><td>Possible</td><td>Ask once/session</td><td>Required</td><td>✅ Sidecar</td></tr>
+<tr><td>`ide.tests.run_failed`</td><td>🟡 Medium</td><td>Possible</td><td>Ask once/session</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.tests.run_file`</td><td>🟡 Medium</td><td>Possible</td><td>Ask once/session</td><td>Required</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.type_hierarchy`</td><td>🟡 Medium</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.vcs.annotate`</td><td>🟡 Medium</td><td>No</td><td>Allow (trusted)</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.vcs.changed_files`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ Sidecar</td></tr>
+<tr><td>`ide.vcs.diff_file`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.vcs.diff_selection`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.vcs.status`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.workspace.active_file`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.workspace.describe`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.workspace.open_tabs`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.workspace.selection`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.workspace.visible_ranges`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">UI Capabilities</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Capability</th><th>Risk</th><th>Mutates</th><th>Policy</th><th>Workspace Trust</th><th>Implemented</th></tr></thead>
+<tbody>
+<tr><td>`ide.buffer.show_diff`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.ui.notify`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.ui.request_approval`</td><td>🔴 High</td><td>No</td><td>Always ask</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.ui.show_consult_result`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.ui.show_context_packet`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>⬜ Not implemented</td></tr>
+<tr><td>`ide.ui.show_diff`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+<tr><td>`ide.ui.show_receipt`</td><td>🟢 Low</td><td>No</td><td>Allow</td><td>—</td><td>✅ VS Code • ✅ Sidecar</td></tr>
+</tbody>
+</table>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Policy Meanings</h2>
+
+<table id="table-11" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Policy</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>`allow`</td><td>No prompt. Capability executes immediately.</td></tr>
+<tr><td>`allow_if_workspace_trusted`</td><td>No prompt in trusted workspaces. Refused in untrusted.</td></tr>
+<tr><td>`ask_once_per_session`</td><td>Prompts the first time per session. Auto-allows subsequent calls.</td></tr>
+<tr><td>`always_ask`</td><td>Prompts every time. Never auto-allows.</td></tr>
+<tr><td>`deny`</td><td>Always blocked. Agent receives `refused`.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Workspace Trust</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Some capabilities require VS Code Workspace Trust. If the workspace is not trusted, capabilities with `requires_workspace_trust: true` are refused and the receipt records `workspace_trusted: false`.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Receipt Model</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Every capability execution emits a receipt (schema: `rig.ide.capability.receipt.v1`). Receipts record: capability name, input/output SHA256, user approval status, approval method, mutation status, workspace trust, and timestamp.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/protocols/ide-capability-map.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

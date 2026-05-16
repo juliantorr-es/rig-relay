@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontend Transport State Reducer — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Canonical frontend transport state reducer and status rendering contract.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Frontend Transport State Reducer</h1>
+  <p class="meta">Status: active | Updated: </p>
+</header>
+<main>
+  <section>
+    <h2>Metadata</h2>
+    <table>
+      <tr><th>Schema ID</th><td>frontend_transport_state_reducer.v1</td></tr>
+      <tr><th>Change kind</th><td>frontend_state_management</td></tr>
+      <tr><th>Source</th><td class="file-ref"><code>docs/json/code_schemas/frontend_transport_state_reducer.v1.json</code></td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Authority</h2>
+    <table>
+      <tr><th>Authority kind</th><td>repo_governance</td></tr>
+      <tr><th>Trusted</th><td>True</td></tr>
+      <tr><th>Source path</th><td class="file-ref"><code>docs/json/governance/frontend-rendering-safety.v1.json</code></td></tr>
+      <tr><th>Review status</th><td>active</td></tr>
+      <tr><th>Last reviewed</th><td>2026-05-18</td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Model Summary</h2>
+    <p>Use the shared transport reducer as the only source of connection truth. Update status rendering whenever transport state changes.</p>
+  </section>
+  <section>
+    <h2>Required Invariants</h2>
+    <ul><li>wsConnected is derived from the transport reducer, not local shadow state.</li>
+<li>Status bar rerenders on transport transitions.</li>
+<li>Browser breadcrumbs track rendered state.</li>
+<li>Status contradiction detection exists.</li>
+<li>No legacy local state can override reducer truth.</li></ul>
+  </section>
+  <section>
+    <h2>Forbidden Patterns</h2>
+    <ul><li>local wsConnected shadowing shared state</li>
+<li>connected without renderStatusBar</li>
+<li>direct status chip mutation outside reducer path</li></ul>
+  </section>
+  <section>
+    <h2>Required Files</h2>
+    <ul><li>frontend/desktop/js/transport.js</li>
+<li>frontend/desktop/js/status.js</li>
+<li>frontend/desktop/js/state.js</li></ul>
+  </section>
+  <section>
+    <h2>Required Tests</h2>
+    <ul><li>tests/frontend/test_transport_state_machine_source.py</li>
+<li>tests/desktop/test_golden_path_browser_integration.py</li></ul>
+  </section>
+  <section>
+    <h2>Required Trace Events</h2>
+    <ul><li>frontend_transport_state</li>
+<li>frontend_status_rendered</li></ul>
+  </section>
+  <section>
+    <h2>Validation Commands</h2>
+    <ul><li>uv run pytest tests/frontend/test_transport_state_machine_source.py tests/frontend/test_static_import_graph.py -q</li>
+<li>uv run pytest tests/desktop/test_golden_path_browser_integration.py -q</li></ul>
+  </section>
+  <section>
+    <h2>Context Pack</h2>
+    <h3>Include Files</h3>
+    <ul><li>frontend/desktop/js/transport.js</li>
+<li>frontend/desktop/js/status.js</li>
+<li>frontend/desktop/js/state.js</li></ul>
+    <h3>Include Docs</h3>
+    <ul><li>docs/json/governance/frontend-rendering-safety.v1.json</li>
+<li>docs/json/governance/relay-local-remote-boundary.v1.json</li></ul>
+    <h3>Include Schemas</h3>
+    <ul><li>docs/schemas/rig.code_schema.v1.schema.json</li>
+<li>docs/schemas/rig.documentation.page.v1.schema.json</li></ul>
+    <h3>Exclude Patterns</h3>
+    <ul><li>docs/pages/**</li>
+<li>**/*.html</li></ul>
+  </section>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/code_schemas/frontend_transport_state_reducer.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

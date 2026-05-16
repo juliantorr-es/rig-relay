@@ -1,0 +1,666 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "test-cleanup-roadmap",
+  "document_type": "audit",
+  "title": "Test Cleanup Roadmap",
+  "summary": "Staged plan to reduce duplication, consolidate test files, and fill coverage gaps.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/tests/test-cleanup-roadmap.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Test Cleanup Roadmap",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Staged plan to reduce duplication, consolidate test files, and fill coverage gaps.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 0 — Audit (Complete)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "**Goal:** Identify all duplicate, near-duplicate, brittle, and missing tests.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "**Already done:** - `docs/audits/tests/test-suite-quality-audit.md` - `docs/audits/tests/test-quality-taxonomy.md` - `docs/audits/tests/data/test_file_inventory.jsonl` (16 files) - `docs/audits/tests/data/test_duplicate_candidates.jsonl` (11 groups) - `docs/audits/tests/data/test_coverage_gap_inventory.jsonl` (11 gaps)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "**Validation:** All 3 JSONL files validated as parseable JSONL.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 1 — Test Taxonomy and Ownership",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "**Goal:** Document test-tier conventions and assign explicit ownership/labels.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "**Files affected:** - `pyproject.toml` (add pytest markers: `tier0`, `tier1`, `tier2`, `slow`) - `tests/conftest.py` (register markers) - `docs/audits/tests/test-quality-taxonomy.md` (already exists)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "**Actions:** 1. Add pytest markers to `pyproject.toml`: ``` [tool.pytest.ini_options] markers = [ \"tier0: runs on every file change (unit + contract)\", \"tier1: runs on every PR (unit + contract + fast integration)\", \"tier2: runs nightly or on demand (slow integration + git)\", \"slow: exceeds 200ms runtime\", ] ``` 2. Document tier conventions in taxonomy doc. 3. Add test ownership comments (module-level) to each major test file.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "**Tests to preserve:** All **Tests to delete:** None **Risks:** Low — metadata only **Exit criteria:** `uv run pytest --markers` shows the 4 new markers",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 2 — Validate Test Consolidation ✅ (Complete)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "**Goal:** Remove exact and near-duplicate git-state tests from `test_validate.py` and clean up the file split.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "**Status:** ✅ Done — 18 duplicate tests removed, 1 unique test preserved.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "**Files affected:** - `tests/tools/test_validate.py` — 18 git-state tests removed (preserved `test_collect_git_state_porcelain_sha256` which has no equivalent in dedicated file) - `tests/tools/test_validate_git_state.py` — no changes",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "**Tests removed (18):**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-19",
+      "type": "code",
+      "language": "text",
+      "content": "test_parse_git_status_branch_sets_branch\ntest_parse_git_status_branch_with_ahead_behind\ntest_parse_git_status_branch_detached_head\ntest_parse_git_status_porcelain_line_untracked\ntest_parse_git_status_porcelain_line_modified\ntest_parse_git_status_porcelain_parses_full_output\ntest_collect_git_state_non_repo                     [EXACT DUPLICATE]\ntest_collect_git_state_empty_repo\ntest_collect_git_state_detects_dirty\ntest_check_dirty_policy_none_passes\ntest_check_dirty_policy_allow_dirty_passes\ntest_check_dirty_policy_clean_fails_when_dirty\ntest_check_dirty_policy_clean_passes_when_clean\ntest_check_dirty_policy_allow_listed_dirty_passes\ntest_check_dirty_policy_allow_listed_dirty_fails\ntest_worktree_readiness_profile_registered\ntest_validate_receipt_git_summary_content_light\ntest_validate_git_state_extra_forbidden",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "**Coverage preserved:** All 18 removals fully covered by `test_validate_git_state.py` (27 tests) **Net reduction:** 308 lines, 18 tests; `test_validate.py` now 1,489 lines / 109 tests **Validation:** `uv run pytest tests/tools/test_validate_git_state.py -x` → 27 passed; `uv run pytest tests/tools/test_validate.py -x` → 109 passed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 3 — Schema/Model Contract Tests ✅ (Complete)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "**Goal:** Add model-dump-against-schema validation for all untested schemas.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "**Status:** ✅ Done — 13 tests added covering 9 schemas across 3 tool families.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "**Files affected (create):** - `tests/tools/test_tool_schema_contracts.py` — 13 tests for bash, search_replace, validate models",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "**Coverage added (closed gaps gap-003, gap-008, gap-009, gap-010, gap-011):**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-27",
+      "type": "table",
+      "columns": [
+        "Tool",
+        "Result",
+        "Receipt",
+        "Invocation"
+      ],
+      "rows": [
+        [
+          "Bash",
+          "✓ `BashResult` → schema",
+          "✓ `BashReceipt` → schema",
+          "✓ `BashArgs` → schema"
+        ],
+        [
+          "SearchReplace",
+          "✓ `SRResult` → schema",
+          "✓ `SRReceipt` → schema",
+          "✓ `SRArgs` → schema"
+        ],
+        [
+          "Validate",
+          "✓ `ValResult` → schema",
+          "✓ `ValReceipt` → schema",
+          "✓ `ValArgs` → schema"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "**Schema fixes (2 stale bash schemas):** - `bash_result.v1`: renamed `exit_code`→`returncode`, added `stdout`/`stderr`, fixed nullable fields - `bash_invocation.v1`: renamed `timeout_ms`→`timeout`, removed `allow_shell`/`schema_version`, fixed nullable fields - Fixed nullable `error_kind`, `refusal_reason`, `duration_ms` across all search_replace and validate schemas",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "**Not yet covered:** WriteFile and Contribution schemas (need schema files) **Validation:** `uv run pytest tests/tools/test_tool_schema_contracts.py -x` → 13 passed; `uv run python scripts/rig_relay_validate_schemas.py` → 78/78 valid",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-31",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 4 — Mutation Tool Test Matrix",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "**Goal:** Create a shared contract matrix for search_replace and write_file tests to reduce per-tool redundancy in `test_tool_receipt_emission.py`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "**Files affected:** - `tests/tools/test_tool_receipt_emission.py` — refactor to use shared parametrized tests - `tests/tools/test_hardened_tools.py` — no changes",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "**Actions:** 1. Create shared fixture factory that produces receipt-test matrix entries (tool class, success result, failure result, refusal result) 2. Parametrize receipt content-light tests across bash, search_replace, write_file, validate 3. Keep tool-specific tests (hashes, status fields) in dedicated files",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-35",
+      "type": "paragraph",
+      "content": "**Tests to preserve:** All current behavior coverage **Tests to merge:** bash_receipt_content_light, sr_receipt_content_light, validate_receipt_content_light into single parametrized test **Net reduction:** ~100-150 lines by removing near-identical receipt assertion patterns",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "**Risks:** Low — structural refactor only; behavior assertions unchanged **Validation:** `uv run pytest tests/tools/test_tool_receipt_emission.py -x` **Exit criteria:** Receipt content-light tests are parametrized; no 3-copies-of-the-same-pattern exist",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-38",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 5 — Receipt Pipeline Integration Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "**Goal:** Add end-to-end receipt pipeline tests (filling gaps gap-001, gap-002, gap-005).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "**Files affected (create):** - `tests/evidence/test_receipt_pipeline_integration.py`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "**Coverage to add:** - `test_receipt_pipeline_bash`: bash run() → build_receipt → capture → policy validate → index → verify - `test_receipt_pipeline_search_replace`: same for search_replace - `test_receipt_pipeline_validate`: same for validate - `test_receipt_pipeline_write_file`: same for write_file - `test_receipt_pipeline_rejects_raw_output`: policy rejection through full pipeline - `test_validate_pipeline_e2e`: run validate profile → build_receipt → capture → verify index contents match",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "Each test should: 1. Create a temp directory and observability JSONL 2. Run the tool with controlled inputs 3. Call `build_receipt()` on the result 4. Call `capture_tool_receipt()` to write to JSONL 5. Read back the JSONL event 6. Call `validate_receipt_payload()` on the event 7. Call `build_receipt_index()` on the JSONL 8. Index contains expected tool_name, status, count fields",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "**Tests to preserve:** All existing **Tests to delete:** None **Risks:** Low — new tests only; medium complexity due to patching telemetry paths **Validation:** `uv run pytest tests/evidence/test_receipt_pipeline_integration.py -x` **Exit criteria:** All 4 core tools have a full pipeline E2E test",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-45",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 6 — Slow/Integration Tiering",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "**Goal:** Mark slow tests with `@pytest.mark.slow` and configure CI to split Tier 0/1/2.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-47",
+      "type": "paragraph",
+      "content": "**Files affected:** - `tests/tools/test_validate.py` — add `@pytest.mark.slow` where absent (already has some `@pytest.mark.asyncio`) - `tests/tools/test_validate_git_state.py` — add `@pytest.mark.slow` and `@pytest.mark.integration` - `tests/tools/test_checkpoint.py` — add `@pytest.mark.slow` - `tests/tools/test_hardened_tools.py` — add `@pytest.mark.integration` - `tests/tools/test_bash_hardening.py` — add `@pytest.mark.integration` - `tests/tools/test_validation_suite.py` — add `@pytest.mark.integration` - `pyproject.toml` — register markers - CI workflow — split test run: `uv run pytest -m \"not slow and not integration\"` for fast CI, `uv run pytest -m \"slow or integration\"` for nightly",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "**Tests to preserve:** All **Tests to delete:** None **Risks:** Low — metadata only. Risk of incorrectly marking a fast test as slow **Validation:** `uv run pytest --co -q` shows correct test counts per marker **Exit criteria:** CI fast path runs without `@pytest.mark.slow` or `@pytest.mark.integration` tests; ~100-150 tests defer to nightly",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-50",
+      "type": "heading",
+      "level": 2,
+      "content": "Stage 7 — CI Test Tier Alignment",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "**Goal:** Map all tests to Tier 0/1/2/3/4 and validate profiles.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-52",
+      "type": "table",
+      "columns": [
+        "Tier",
+        "Scope",
+        "Command",
+        "Target time"
+      ],
+      "rows": [
+        [
+          "Tier 0",
+          "Immediate (file change)",
+          "`uv run pytest -m tier0 -x`",
+          "<10s"
+        ],
+        [
+          "Tier 1",
+          "PR gate",
+          "`uv run pytest -m \"tier0 or tier1\"`",
+          "<60s"
+        ],
+        [
+          "Tier 2",
+          "Nightly",
+          "`uv run pytest -m \"tier2 or slow or integration\"`",
+          "<300s"
+        ],
+        [
+          "Tier 3",
+          "Validate profile",
+          "`uv run rig-relay validate --profile quick`",
+          "—"
+        ],
+        [
+          "Tier 4",
+          "Full validation",
+          "`uv run rig-relay validate --profile tool-hardening`",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "**Actions:** 1. Assign every test file a tier marker 2. Add CI workflow steps for each tier 3. Update `rig-relay validate` profiles to reference tier coverage 4. Add test to verify tier assignments are explicit for all test files",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "**Tests to preserve:** All **Tests to delete:** None **Risks:** Medium — tier mapping requires manual review of every test file for speed and dependency **Validation:** `uv run pytest -m tier0 -x` completes <10s; `uv run pytest -m \"tier0 or tier1\"` completes <60s **Exit criteria:** CI has separate fast/slow test paths; validate profiles reference tier coverage",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-55",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-56",
+      "type": "heading",
+      "level": 2,
+      "content": "Summary of Effort",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-57",
+      "type": "table",
+      "columns": [
+        "Stage",
+        "Goal",
+        "Files Changed",
+        "Tests Removed",
+        "Lines Delta",
+        "Prio"
+      ],
+      "rows": [
+        [
+          "0",
+          "Audit (done)",
+          "5 new",
+          "0",
+          "+2,500",
+          "—"
+        ],
+        [
+          "1",
+          "Taxonomy/tiers",
+          "3",
+          "0",
+          "+50",
+          "Medium"
+        ],
+        [
+          "2",
+          "Validate dedup ✅",
+          "1",
+          "18",
+          "-308",
+          "**High**"
+        ],
+        [
+          "3",
+          "Schema contracts ✅",
+          "1 new",
+          "0",
+          "+350",
+          "**High**"
+        ],
+        [
+          "4",
+          "Mutation matrix",
+          "1",
+          "0",
+          "-150",
+          "Medium"
+        ],
+        [
+          "5",
+          "Pipeline E2E",
+          "1 new",
+          "0",
+          "+300",
+          "**High**"
+        ],
+        [
+          "6",
+          "Slow tiering",
+          "6",
+          "0",
+          "+30",
+          "Low"
+        ],
+        [
+          "7",
+          "CI alignment",
+          "2",
+          "0",
+          "+50",
+          "Medium"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "**Recommended next slice:** Stage 4 (Mutation tool test matrix) + Stage 5 (Receipt pipeline E2E tests). Stage 2 and 3 are complete.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/tests/test-cleanup-roadmap.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

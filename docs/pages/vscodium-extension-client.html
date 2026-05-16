@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Governance: VSCodium Extension Client — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document defines the governance boundaries and security invariants for the Rig Relay VSCodium extension.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Governance: VSCodium Extension Client</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Governance: VSCodium Extension Client</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document defines the governance boundaries and security invariants for the Rig Relay VSCodium extension.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">1. Daemon Authority Boundary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The VSCodium extension is a **Content-Light Projector**. It does not possess authority to: *   Perform direct file I/O on the project codebase. *   Execute shell commands or scripts. *   Authorize tool permissions or bypass tool gates. *   Compile context or assemble LLM prompts.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">All of the above responsibilities reside strictly within the **Rig Relay Daemon**.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">2. Token Storage &amp; Security</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">*   **SecretStorage**: Authentication tokens for the daemon are stored in VS Code&#x27;s `SecretStorage` API, which leverages the OS keyring (macOS Keychain, Windows Credential Manager). *   **Isolation**: Tokens are never stored in `settings.json`, environment variables, or extension-local storage. *   **Discovery**: The `.rig/daemon/console.json` file is used for configuration discovery but **must never contain raw tokens**. It should only contain the connection metadata (host/port/session_id).</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">3. Protocol Versioning &amp; Invariants</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">*   **Handshake**: Every connection requires a protocol version check. The client and server must agree on `rig.ws.v1`. *   **Sequence Tracking**: The client maintains a `last_seen_seq` to ignore stale or out-of-order messages during reconnects. *   **Idempotency**: All `delta` events carry a unique `event_id`. The client must deduplicate incoming events to ensure deterministic rendering.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">4. Content-Light Invariant</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">To prevent sensitive data leakage into the editor&#x27;s renderer process, the following data types are **strictly prohibited** from being sent to or rendered by the extension: *   Raw `stdout` / `stderr` from tool executions. *   Full file contents (unless explicitly requested for a Patch Review). *   Unformatted `diff` or `patch` blobs. *   Environment variables or secrets.</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">In the event of a protocol violation, the extension must render a `rig.ws.server.warning.v1` and refuse further interaction until corrected.</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">5. Webview Security</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">*   **CSP**: A strict Content Security Policy is applied to the Mission Control webview. *   **Nonce**: All scripts are gated by a one-time nonce. *   **Isolation**: The webview has no access to the local filesystem except through authorized `localResourceRoots` pointing to the extension&#x27;s `media` directory.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">6. Open VSX &amp; Distribution</h2>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">*   **Neutrality**: The extension targets VSCodium and is compatible with the Open VSX registry. *   **Packaging**: The extension is bundled as a standalone `.vsix` that can be sideloaded without Microsoft Marketplace access.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/vscodium-extension-client.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

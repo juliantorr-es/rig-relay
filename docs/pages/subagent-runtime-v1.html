@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SubagentRuntime v1 — Evidence and Tool Execution Mode — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Implementation date: 2026-05-15">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>SubagentRuntime v1 — Evidence and Tool Execution Mode</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">SubagentRuntime v1 — Evidence and Tool Execution Mode</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Implementation date: 2026-05-15</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">What changed from v0</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Area</th><th>v0</th><th>v1</th></tr></thead>
+<tbody>
+<tr><td>Lifecycle evidence</td><td>None</td><td>`TraceRecorder` start/end/cancel/error/budget</td></tr>
+<tr><td>Tool execution mode</td><td>Hidden (direct ToolManager)</td><td>Explicit `tool_execution_mode: &quot;legacy_direct&quot;` in result metadata and trace</td></tr>
+<tr><td>Parent trace propagation</td><td>Stored in mission only</td><td>Emitted in span attributes</td></tr>
+<tr><td>Timestamp handling</td><td>`time.monotonic()` used as wall clock (bug)</td><td>`started_at` = `datetime.now(UTC)`, `duration_ms` = monotonic delta</td></tr>
+<tr><td>Trace recorder</td><td>Not accepted</td><td>Optional `trace_recorder` parameter</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Events emitted</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Event</th><th>When</th><th>TraceRecorder API</th></tr></thead>
+<tbody>
+<tr><td>`subagent.runtime` span</td><td>Mission starts</td><td>`recorder.start_span()`</td></tr>
+<tr><td>span end (ok)</td><td>Normal completion</td><td>`recorder.end_span(status=ok)`</td></tr>
+<tr><td>span end (cancelled)</td><td>Cancelled</td><td>`recorder.end_span(status=cancelled)`</td></tr>
+<tr><td>span end (error)</td><td>Runtime error</td><td>`recorder.end_span(status=error, error=...)`</td></tr>
+<tr><td>`subagent.runtime.budget.exhausted`</td><td>Budget exceeded</td><td>`span.event()`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">What SubagentRuntime owns now</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- Bounded mission execution - **Lifecycle evidence emission** (v1) - **Explicit tool execution mode** (v1) - Budget enforcement - Structured result artifact</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">What still belongs to OrchestratorLoop</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">- User-facing turn orchestration - Approval policy - Final synthesis - Merge/push</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">What remains before ToolRuntime adoption</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Tool execution still goes through direct `ToolManager.get()` / `tool_inst.run()`. This is marked as `tool_execution_mode: &quot;legacy_direct&quot;` in both result metadata and trace span attributes so there are no invisible side tunnels.</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">The full ToolRuntime adapter (with permission, approval, cache, receipt pipeline) requires the AgentLoop adapter closures. A future slice should:</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1. Extract minimal ToolRuntime adapter helpers 2. Wire SubagentRuntime tool calls through `ToolRuntime.execute_one()` 3. Change `tool_execution_mode` to `&quot;governed&quot;`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/agent-loop/subagent-runtime-v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,78 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "evidence-readme",
+  "document_type": "reference",
+  "title": "Rig Relay Evidence",
+  "summary": "Rig Relay evidence is a read-only session record rooted at a selected evidence root.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/evidence/README.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig Relay Evidence",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Rig Relay evidence is a read-only session record rooted at a selected evidence root. Use it to inspect what a session wrote without mutating the session itself.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Operational guide: - [Validation workflow](validation.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Current state: - `observability.jsonl` is the canonical event stream for a session. - `manifest.json` is a minimal per-session index for evidence files when present. - `rig-relay doctor evidence` validates one selected session. - The validator prefers a manifest when present and falls back to scan-based validation for legacy sessions. - Root defaults have not changed; the **User Global** Relay home (`~/.rig/relay`) is the default durable home for all evidence. - Repo-local evidence is supported for isolated tests and experiments but is not the default doctrine.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/evidence/README.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

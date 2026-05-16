@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coordination Guard Availability Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Audit target: why governed edit tools are being blocked by the coordination guard and whether the cause is real active protection, stale leases, overly broad reservations, missing expiry, broken path ">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Coordination Guard Availability Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Coordination Guard Availability Audit</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Scope</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Audit target: why governed edit tools are being blocked by the coordination guard and whether the cause is real active protection, stale leases, overly broad reservations, missing expiry, broken path normalization, or a tool integration bug.</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">This audit is read-only. It does not delete leases, bypass the guard, or mutate `/Users/user/.rig/relay`.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Git State</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- Branch: `main` - HEAD: `384e486` - Dirty status: pre-existing dirty files were already present before this audit; they were not modified by this audit.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Coordination Guard Layout</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Lease and coordination state live under:</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- `.build/rig-relay/coordination/sessions/` - `.build/rig-relay/coordination/tasks/` - `.build/rig-relay/coordination/leases/paths/` - `.build/rig-relay/coordination/events.jsonl`</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">The authoritative store is `rig_relay/coordination/store.py`. Lease cleanup logic exists in `rig_relay/coordination/cleanup_leases.py`.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Guard Mechanics Observed</h2>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Dirty-file protection</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">`rig_relay/governance/dirty_guard.py` captures the repo dirty set at mission start using `git status --porcelain=v1` and blocks writes to paths that were already dirty unless the caller supplies an expected hash for the protected file.</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">This is correct active protection for pre-existing dirty files.</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Coordination reservations</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">`rig_relay/coordination/store.py` stores path reservations in `.build/rig-relay/coordination/leases/paths/*.json` and claims in `.build/rig-relay/coordination/tasks/*.json`.</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">`search_replace` and `write_file` both claim coordination and reserve write paths before mutating. When reservation fails, they raise `ToolError(&quot;... coordination reservation refused&quot;)`.</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Inventory Summary</h2>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">Read-only inventory of the coordination store on this repo snapshot:</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">- Lease/task records scanned: `512` - Active records: `318` - Released records: `193` - Stale records: `1` - Unique active path targets: `94` - Unique active paths that overlap current git-dirty files: `52`</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">The overlap with git-dirty files indicates that a large share of the blocking is real protection of existing user-owned or prior-agent-owned changes.</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Blocked Tool Names</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">The blocked governed mutation surfaces observed in this audit are:</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">- `search_replace` - `write_file` - coordination-aware write/checkpoint flows that consult the same reservation store</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">These tools are blocked when the coordination store refuses a reservation or when the dirty guard marks the target as protected.</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Blocked Paths</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">The most frequent blocked paths are concentrated in the current mutation backlog:</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/search_replace.py` - `vibe/core/tools/builtins/validate.py` - `tests/tools/test_validate.py` - `rig_relay/evidence/model_observations.py` - `scripts/rig_relay_contribute_telemetry_bundle.py` - `rig_relay/evidence/receipt_index.py` - `tests/evidence/test_receipt_index.py` - `docs/governance/telemetry-contribution-policy.md` - `tests/test_observation_consent_integration.py` - `tests/tools/test_tool_receipt_emission.py` - `tests/tools/test_hardened_tools.py` - `tests/tools/test_bash_hardening.py` - `tests/test_model_observations.py` - `vibe/core/telemetry/constants.py` - `vibe/core/tools/builtins/bash.py`</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">There is also a clean-path reservation example:</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">- `docs/audits/rig-intake-cannibalization-plan.md`</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">That means the guard is not only protecting dirty files; it is also carrying forward explicit coordination reservations from active or recent missions.</p>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Active vs Stale Classification</h2>
+
+<h3 id="h3-33" class="disclosure-standard" data-disclosure-level="standard">Active protection</h3>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Most blocked paths are explained by active coordination records plus pre-existing dirty files. This is expected behavior.</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Stale lease</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">At least one stale lease was present:</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- Lease file: `.build/rig-relay/coordination/leases/paths/cbb9f7f7b6feca9630da295cd47372af998cf2d615f355c14e68cc5730e5fd90.json` - Session: `session_20260513_220723_3b1ecec2` - Task: `call_00_0BqXT2mIh4vx09Leo1b69752` - Path: `/Users/user/Developer/GitHub/rig-relay/tests/scripts/test_desktop_projection.py` - Expiry: `2026-05-13T22:13:03.918976+00:00`</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">This is a stale lease candidate, not evidence of a current live owner.</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Broad scope risk</h3>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">The reservation set is broader than the current mutation slice in a few places. The same mission family has reservations spanning many unrelated files, so a tool may be blocked even when the caller is trying to edit a different file in the same repo.</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">This suggests the guard is sometimes enforcing a valid lease at too coarse a scope rather than failing open.</p>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">Path normalization risk</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">`rig_relay/coordination/store.py` normalizes paths for payloads, but some lookup and conflict checks mix raw input paths and normalized paths. Reservation files are keyed by a composite hash, while conflict lookup also hashes raw paths for existence checks.</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">That is a plausible source of false conflicts or stale-release friction, especially for equivalent but differently-formatted paths.</p>
+
+<h2 id="h2-45" class="disclosure-standard" data-disclosure-level="standard">Root Cause Assessment</h2>
+
+<h3 id="h3-46" class="disclosure-standard" data-disclosure-level="standard">Correct active protection</h3>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Yes, for most of the observed blocking.</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">Evidence:</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">- 52 unique active paths overlap current git-dirty files. - The repo has a large pre-existing dirty set. - The coordination store contains many active reservations tied to current mission files.</p>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">Stale lease</h3>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Present, but not the primary blocker.</p>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">Evidence:</p>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">- At least one expired reservation still exists as a stale record.</p>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">Overly broad lease scope</h3>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">Likely contributing factor.</p>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">Evidence:</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">- Active reservations span 94 unique paths while current mutations are concentrated in a smaller set of files. - Some reserved paths are in audit/docs or adjacent tool files rather than the exact target slice.</p>
+
+<h3 id="h3-58" class="disclosure-standard" data-disclosure-level="standard">Missing lease expiry</h3>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">Not the main issue.</p>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">Evidence:</p>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">- Expiry fields are present on the records. - The issue is more about cleanup and scope than absence of expiry metadata.</p>
+
+<h3 id="h3-62" class="disclosure-standard" data-disclosure-level="standard">Broken path normalization</h3>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">Plausible and worth fixing.</p>
+
+<p id="p-64" class="disclosure-standard" data-disclosure-level="standard">Evidence:</p>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">- `store.py` compares raw and normalized paths in different places. - Reservation file identity and lookup are not using a single obvious canonical key path throughout the code.</p>
+
+<h3 id="h3-66" class="disclosure-standard" data-disclosure-level="standard">Tool integration bug</h3>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">Yes.</p>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">Evidence:</p>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">- `search_replace` and `write_file` convert reservation refusal into `ToolError` instead of a structured result envelope. - That makes blocked outcomes harder to reason about and easier for agents to work around with raw bash.</p>
+
+<h2 id="h2-70" class="disclosure-standard" data-disclosure-level="standard">Minimal Fix Recommendation</h2>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">1. Keep the guard enabled. 2. Narrow reservation scope where possible so unrelated edits do not inherit broad blocks. 3. ~~Make reservation refusal return a structured blocked result instead of a generic `ToolError` for governed edit tools~~ **COMPLETED** — see Structured Blocking Implementation below. 4. Normalize path identity through one canonical function for reservation write, conflict lookup, release, and expiry processing. 5. Add a focused regression test for stale lease discovery and for a clean path that is incorrectly blocked.</p>
+
+<h2 id="h2-72" class="disclosure-standard" data-disclosure-level="standard">Structured Blocking Implementation</h2>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">The third recommendation from the audit — returning structured `blocked`/`refused` results instead of generic `ToolError` — has been implemented for both `write_file` and `search_replace`.</p>
+
+<h3 id="h3-74" class="disclosure-standard" data-disclosure-level="standard">Changes to `write_file`</h3>
+
+<p id="p-75" class="disclosure-standard" data-disclosure-level="standard">**File**: `vibe/core/tools/builtins/write_file.py`</p>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">1. **`WriteFileResult`** gained three new fields: - `status: str = &quot;success&quot;` — `&quot;success&quot;`, `&quot;blocked&quot;` (coordination), or `&quot;refused&quot;` (dirty guard) - `error_kind: str | None = None` — `&quot;path_reserved&quot;`, `&quot;dirty_file_protected&quot;`, `&quot;expected_hash_mismatch&quot;`, `&quot;protected_file_missing&quot;` - `refusal_reason: str | None = None` — human-readable detail from the guard</p>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">2. **`_classify_write_guard_refusal(check)`** — classifies `WriteGuardResult.reason` into a structured `error_kind`: - `stale_hash` / `hash_mismatch` → `&quot;expected_hash_mismatch&quot;` - `no_overwrite_flag` / `missing_expected_hash` → `&quot;dirty_file_protected&quot;` - `protected_file_missing` → `&quot;protected_file_missing&quot;` - fallback → `&quot;dirty_file_protected&quot;`</p>
+
+<p id="p-78" class="disclosure-standard" data-disclosure-level="standard">3. **Coordination reservation failure** (`_maybe_claim_coordination()`): now returns `False` instead of `raise ToolError(...)`.</p>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">4. **`run()` coordination failure**: yields `WriteFileResult(status=&quot;blocked&quot;, error_kind=&quot;path_reserved&quot;, ...)` when coordination store is available but reservation is refused.</p>
+
+<p id="p-80" class="disclosure-standard" data-disclosure-level="standard">5. **`run()` guard failure**: yields `WriteFileResult(status=&quot;refused&quot;, error_kind=&lt;classified&gt;, refusal_reason=check.detail, ...)` instead of `raise ToolError(...)`.</p>
+
+<h3 id="h3-81" class="disclosure-standard" data-disclosure-level="standard">Changes to `search_replace`</h3>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">**File**: `vibe/core/tools/builtins/search_replace.py`</p>
+
+<p id="p-83" class="disclosure-standard" data-disclosure-level="standard">1. **Coordination reservation failure** (`_claim_coordination()`): now returns `False` instead of `raise ToolError(...)`.</p>
+
+<p id="p-84" class="disclosure-standard" data-disclosure-level="standard">2. **`run()` coordination failure**: yields `SearchReplaceResult(status=&quot;blocked&quot;, error_kind=&quot;path_reserved&quot;, ...)` when coordination store is available but reservation is refused.</p>
+
+<h3 id="h3-85" class="disclosure-standard" data-disclosure-level="standard">Error Kind Taxonomy</h3>
+
+<table id="table-86" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>`error_kind`</th><th>When emitted</th></tr></thead>
+<tbody>
+<tr><td>`path_reserved`</td><td>Coordination reservation refused — path has an active lease from another session</td></tr>
+<tr><td>`dirty_file_protected`</td><td>Dirty guard blocks write because `allow_overwrite_protected=True` was not set or `expected_before_sha256` was not provided</td></tr>
+<tr><td>`expected_hash_mismatch`</td><td>`expected_before_sha256` does not match current file bytes</td></tr>
+<tr><td>`protected_file_missing`</td><td>File that was dirty at mission start no longer exists</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-87" class="disclosure-standard" data-disclosure-level="standard">Design Decisions</h3>
+
+<p id="p-88" class="disclosure-standard" data-disclosure-level="standard">1. **Conditional blocking**: Coordination failures only yield blocked results when the coordination store is available. If the store is absent (e.g., legacy tests), `_claim_coordination()` returns `False` and `run()` proceeds normally. This preserves backward compatibility.</p>
+
+<p id="p-89" class="disclosure-standard" data-disclosure-level="standard">2. **No path normalization change**: `normalize_path` in coordination models still only calls `as_posix()` without `resolve()`. Equivalent relative/absolute paths will not match. This was deferred to a follow-up.</p>
+
+<p id="p-90" class="disclosure-standard" data-disclosure-level="standard">3. **Content-light refusals**: Both `WriteFileResult` and `SearchReplaceResult` set `content=&quot;&quot;` (and `after_sha256=&quot;&quot;`) on blocked/refused results. No raw file contents, diffs, search text, or replace text leaked into refusal metadata.</p>
+
+<h3 id="h3-91" class="disclosure-standard" data-disclosure-level="standard">Tests Added</h3>
+
+<p id="p-92" class="disclosure-standard" data-disclosure-level="standard">All in `tests/tools/test_hardened_tools.py`:</p>
+
+<table id="table-93" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test</th><th>Verifies</th></tr></thead>
+<tbody>
+<tr><td>`test_write_file_blocked_by_active_lease_returns_structured`</td><td>Coordination lease blocks → `status=&quot;blocked&quot;`, `error_kind=&quot;path_reserved&quot;`</td></tr>
+<tr><td>`test_write_file_blocked_by_dirty_guard_returns_structured`</td><td>Dirty guard blocks → `status=&quot;refused&quot;`, `error_kind=&quot;dirty_file_protected&quot;`</td></tr>
+<tr><td>`test_write_file_hash_mismatch_returns_structured`</td><td>Stale hash → `status=&quot;refused&quot;`, `error_kind=&quot;expected_hash_mismatch&quot;`</td></tr>
+<tr><td>`test_write_file_correct_hash_succeeds`</td><td>Correct hash → `status=&quot;success&quot;`, bytes written</td></tr>
+<tr><td>`test_write_file_refusal_is_content_light`</td><td>No raw file contents in refusal dump</td></tr>
+<tr><td>`test_search_replace_blocked_by_active_lease_returns_structured`</td><td>Coordination lease blocks → `status=&quot;blocked&quot;`, `error_kind=&quot;path_reserved&quot;`</td></tr>
+<tr><td>`test_search_replace_refusal_is_content_light`</td><td>No raw search/replace text in refusal dump</td></tr>
+<tr><td>`test_path_normalization_equivalent_forms`</td><td>`normalize_path` does NOT resolve — documents limitation</td></tr>
+</tbody>
+</table>
+
+<p id="p-94" class="disclosure-standard" data-disclosure-level="standard">Coordination-blocking tests use direct `CoordinationStore` reservations (not WriteFile-based setup) to avoid the WriteFile `finally` block releasing the lease prematurely.</p>
+
+<h3 id="h3-95" class="disclosure-standard" data-disclosure-level="standard">Validation</h3>
+
+<p id="p-96" class="disclosure-standard" data-disclosure-level="standard">- **Tests**: 67/67 pass (29 in `test_hardened_tools.py`, 20 in `test_dirty_file.py`, 18 in `test_store.py`) - **Lint**: `ruff check` clean, `ruff format` clean - **Types**: `pyright` clean (0 errors, 0 warnings on changed files) - **Schemas**: 78/78 schema validations pass</p>
+
+<h3 id="h3-97" class="disclosure-standard" data-disclosure-level="standard">Remaining Issues (deferred)</h3>
+
+<p id="p-98" class="disclosure-standard" data-disclosure-level="standard">1. **Path normalization**: `normalize_path` needs `.resolve()` to match equivalent relative/absolute paths. 2. **Stale lease cleanup**: At least one stale lease remains in the coordination store. 3. **Broad lease scope**: Reservations spanning 94 unique paths create false positives.</p>
+
+<h2 id="h2-99" class="disclosure-standard" data-disclosure-level="standard">Safe Stale-Lease Cleanup Command</h2>
+
+<p id="p-100" class="disclosure-standard" data-disclosure-level="standard">Yes, a safe cleanup command is useful, but it should remain archive-first and dry-run-first.</p>
+
+<p id="p-101" class="disclosure-standard" data-disclosure-level="standard">Recommended safe sequence:</p>
+
+<p id="p-102" class="disclosure-standard" data-disclosure-level="standard">1. Run the coordination lease cleanup script in dry-run mode. 2. If the result is clearly stale/released, archive first rather than delete. 3. Only consider deletion after inspecting the archive and confirming there is no live ownership.</p>
+
+<p id="p-103" class="disclosure-standard" data-disclosure-level="standard">The existing cleanup module already supports archive mode and destructive removal, so the safe operational answer is to prefer archive mode and keep deletion out of this audit mission.</p>
+
+<h2 id="h2-104" class="disclosure-standard" data-disclosure-level="standard">Validation</h2>
+
+<p id="p-105" class="disclosure-standard" data-disclosure-level="standard">Focused read-only validation was performed by inspecting:</p>
+
+<p id="p-106" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/store.py` - `rig_relay/coordination/cleanup_leases.py` - `rig_relay/coordination/current_state.py` - `rig_relay/governance/dirty_guard.py`</p>
+
+<p id="p-107" class="disclosure-standard" data-disclosure-level="standard">No files under `/Users/user/.rig/relay` were modified.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/coordination-guard-availability.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

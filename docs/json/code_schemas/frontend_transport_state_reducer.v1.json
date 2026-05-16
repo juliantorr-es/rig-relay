@@ -1,0 +1,101 @@
+{
+  "schema_version": "rig.code_schema.v1",
+  "document_id": "frontend-transport-state-reducer",
+  "schema_id": "frontend_transport_state_reducer.v1",
+  "title": "Frontend Transport State Reducer",
+  "summary": "Canonical frontend transport state reducer and status rendering contract.",
+  "change_kind": "frontend_state_management",
+  "status": "active",
+  "authority": {
+    "authority_kind": "repo_governance",
+    "trusted": true,
+    "source_path": "docs/json/governance/frontend-rendering-safety.v1.json",
+    "source_hash": "sha256:f788ef5b37e2d8cd5ac3d10dae6ab0a9c95742f4204ac811b89dbf35af3e142b",
+    "review_status": "active",
+    "last_reviewed_at": "2026-05-18"
+  },
+  "intent_patterns": [
+    "transport reducer",
+    "wsConnected derived state",
+    "status bar rendering",
+    "frontend connected state",
+    "browser breadcrumbs"
+  ],
+  "applies_when": {
+    "symptoms": [
+      "frontend still shows disconnected after auth_ok",
+      "connected state is overwritten",
+      "status chip does not rerender"
+    ],
+    "traceback_patterns": [
+      "state.wsConnected = true",
+      "renderStatusBar()",
+      "frontend_status_rendered"
+    ],
+    "file_patterns": [
+      "frontend/desktop/js/transport.js",
+      "frontend/desktop/js/status.js",
+      "frontend/desktop/js/state.js"
+    ],
+    "test_patterns": [
+      "tests/frontend/test_transport_state_machine_source.py",
+      "tests/desktop/test_golden_path_browser_integration.py"
+    ],
+    "user_prompt_patterns": [
+      "connected state",
+      "transport reducer",
+      "status bar stays disconnected"
+    ]
+  },
+  "required_invariants": [
+    "wsConnected is derived from the transport reducer, not local shadow state.",
+    "Status bar rerenders on transport transitions.",
+    "Browser breadcrumbs track rendered state.",
+    "Status contradiction detection exists.",
+    "No legacy local state can override reducer truth."
+  ],
+  "forbidden_patterns": [
+    "local wsConnected shadowing shared state",
+    "connected without renderStatusBar",
+    "direct status chip mutation outside reducer path"
+  ],
+  "required_files": [
+    "frontend/desktop/js/transport.js",
+    "frontend/desktop/js/status.js",
+    "frontend/desktop/js/state.js"
+  ],
+  "required_tests": [
+    "tests/frontend/test_transport_state_machine_source.py",
+    "tests/desktop/test_golden_path_browser_integration.py"
+  ],
+  "validation_commands": [
+    "uv run pytest tests/frontend/test_transport_state_machine_source.py tests/frontend/test_static_import_graph.py -q",
+    "uv run pytest tests/desktop/test_golden_path_browser_integration.py -q"
+  ],
+  "required_trace_events": [
+    "frontend_transport_state",
+    "frontend_status_rendered"
+  ],
+  "required_receipts": [],
+  "context_pack": {
+    "include_files": [
+      "frontend/desktop/js/transport.js",
+      "frontend/desktop/js/status.js",
+      "frontend/desktop/js/state.js"
+    ],
+    "include_docs": [
+      "docs/json/governance/frontend-rendering-safety.v1.json",
+      "docs/json/governance/relay-local-remote-boundary.v1.json"
+    ],
+    "include_schemas": [
+      "docs/schemas/rig.code_schema.v1.schema.json",
+      "docs/schemas/rig.documentation.page.v1.schema.json"
+    ],
+    "exclude_patterns": [
+      "docs/pages/**",
+      "**/*.html"
+    ],
+    "max_context_notes": 10
+  },
+  "model_facing_summary": "Use the shared transport reducer as the only source of connection truth. Update status rendering whenever transport state changes."
+}

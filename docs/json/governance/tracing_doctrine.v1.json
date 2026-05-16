@@ -8,86 +8,446 @@
   "created_at": "2026-05-18",
   "updated_at": "2026-05-18",
   "source_commit": "aaef6b5b",
-  "owners": ["maintainer"],
-  "tags": ["tracing", "doctrine", "evidence", "redaction", "runtime"],
-  "audience": ["contributor", "agent", "maintainer"],
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "tracing",
+    "doctrine",
+    "evidence",
+    "redaction",
+    "runtime"
+  ],
+  "audience": [
+    "contributor",
+    "agent",
+    "maintainer"
+  ],
   "canonical_path": "docs/json/governance/tracing_doctrine.v1.json",
-  "render": {"toc": true, "search_index": true},
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
   "sections": [
-    {"block_id": "title", "type": "heading", "level": 1, "content": "Tracing Doctrine"},
-    {"block_id": "intro", "type": "paragraph", "content": "Rig Relay tracing is structured runtime evidence using spans, events, and redacted attributes. It is not random logging. Tracing answers: what operation happened, where, which parent caused it, how long it took, whether it passed or failed."},
-    {"block_id": "vs", "type": "heading", "level": 2, "content": "Tracing vs Logging vs Receipts"},
-    {"block_id": "vs-table", "type": "table", "columns": ["Mechanism", "What", "When", "Where"], "rows": [
-      ["Tracing", "Span tree: start/end/event/error", "Every operation", "trace_events.jsonl"],
-      ["Logging", "Human-readable messages", "Warnings, errors, info", "vibe.log"],
-      ["Receipts", "Governed mutation proof", "Tool invocations with SHA256", ".rig/reports/reports.jsonl"]
-    ]},
-    {"block_id": "schema", "type": "heading", "level": 2, "content": "Schema"},
-    {"block_id": "schema-name", "type": "paragraph", "content": "Schema: rig.trace_event.v1 — JSONL lines, each a self-contained event."},
-    {"block_id": "schema-table", "type": "table", "columns": ["Field", "Required", "Description"], "rows": [
-      ["schema_version", "Yes", "rig.trace_event.v1"],
-      ["trace_id", "Yes", "UUID hex — groups all spans in one trace"],
-      ["span_id", "Yes", "UUID hex prefix — unique per span"],
-      ["parent_span_id", "No", "Parent span ID for child spans"],
-      ["event_kind", "Yes", "span.start, span.end, span.event, span.error"],
-      ["name", "Yes", "Dotted operation name (e.g. desktop.bridge.start)"],
-      ["status", "No", "ok, error, refused, degraded, cancelled, timed_out, skipped"],
-      ["timestamp", "Yes", "ISO 8601"],
-      ["started_at", "No", "When span started"],
-      ["ended_at", "No", "When span ended"],
-      ["duration_ms", "No", "Wall time in milliseconds"],
-      ["attributes", "No", "Safe key-value pairs"],
-      ["error_type", "No", "Error class or code"],
-      ["error_message", "No", "Redacted error message"],
-      ["receipt_sha256", "No", "Links to a governed receipt"]
-    ]},
-    {"block_id": "event-kinds", "type": "heading", "level": 2, "content": "Event Kinds"},
-    {"block_id": "event-kinds-list", "type": "list", "items": [
-      "span.start — emitted when a span begins",
-      "span.end — emitted when a span ends (includes duration, status)",
-      "span.event — emitted inside a span (child event)",
-      "span.error — emitted on error outside a span"
-    ]},
-    {"block_id": "redaction", "type": "heading", "level": 2, "content": "Redaction Rules"},
-    {"block_id": "redaction-intro", "type": "paragraph", "content": "Before writing to JSONL, every trace event is sanitized. The following are redacted: token, auth_token, api_key, password, secret, authorization, cookie, bearer. Allowed safe fields: token_present (boolean), token_length (integer). Strings over 1000 chars are truncated. Nested dicts/lists are recursively sanitized."},
-    {"block_id": "paths", "type": "heading", "level": 2, "content": "Default Trace Paths"},
-    {"block_id": "paths-table", "type": "table", "columns": ["Mode", "Path"], "rows": [
-      ["Source/Dev", ".build/rig-relay/traces/trace_events.jsonl"],
-      ["Packaged", "~/Library/Application Support/Rig Relay/traces/trace_events.jsonl"],
-      ["Override", "RIG_RELAY_TRACE_PATH env var"]
-    ]},
-    {"block_id": "env", "type": "heading", "level": 2, "content": "Environment Variables"},
-    {"block_id": "env-table", "type": "table", "columns": ["Variable", "Effect"], "rows": [
-      ["RIG_RELAY_TRACE=1", "Enable tracing (default)"],
-      ["RIG_RELAY_TRACE=0", "Disable tracing"],
-      ["RIG_RELAY_TRACE_PATH", "Override JSONL path"],
-      ["RIG_RELAY_TRACE_VERBOSE=1", "Include more safe details (future)"]
-    ]},
-    {"block_id": "hot-paths", "type": "heading", "level": 2, "content": "Hot Paths Instrumented (v0)"},
-    {"block_id": "hot-paths-list", "type": "list", "items": [
-      "desktop.bridge.start_begin — rig_relay/desktop/bridge_server.py",
-      "desktop.websocket.connection_begin — rig_relay/desktop/websocket_server.py",
-      "desktop.websocket.auth_ok — rig_relay/desktop/websocket_server.py",
-      "runtime.subprocess.execute — rig_relay/runtime/supervisor.py"
-    ]},
-    {"block_id": "usage", "type": "heading", "level": 2, "content": "Usage"},
-    {"block_id": "usage-code", "type": "code", "language": "python", "content": "from rig_relay.tracing import TraceRecorder, get_default_trace_store\n\nstore = get_default_trace_store()\nrecorder = TraceRecorder(store)\n\nwith recorder.span(\"desktop.bridge.start\", {\"host\": \"127.0.0.1\"}) as span:\n    span.event(\"port_bound\", {\"port\": 9876})\n    # ... work ...\n# span.end emitted automatically with ok/error status"},
-    {"block_id": "supervisor-span", "type": "heading", "level": 2, "content": "RuntimeSupervisor Span Contract"},
-    {"block_id": "supervisor-span-content", "type": "paragraph", "content": "RuntimeSupervisor emits a dedicated runtime.subprocess.execute span for each supervised subprocess. The span records safe metadata only: executable, argv_hash, argv_count, cwd_hash, timeout seconds, lease ID, lane/workspace identifier, shell usage flag. Child events record subprocess lifecycle milestones: spawn.start, spawn.ok, stdout.chunk, stderr.chunk, timeout, kill, exit, result_classified. Raw stdout/stderr content, raw argv, and environment values are never emitted."},
-    {"block_id": "envelope", "type": "heading", "level": 2, "content": "Runtime Supervisor Result Envelope"},
-    {"block_id": "envelope-content", "type": "paragraph", "content": "Canonical terminal evidence for supervised subprocess execution is carried by RuntimeSupervisorResultEnvelope. The envelope uses the same terminal classification vocabulary as the runtime.subprocess.execute span summary. Downstream consumers should read the envelope rather than reconstructing subprocess state from raw process handles. ToolRuntime and adapter receipts preserve the envelope fields for subprocess-backed tool calls so trace summaries, receipts, and audit events stay aligned."},
-    {"block_id": "otel", "type": "heading", "level": 2, "content": "OpenTelemetry Compatibility"},
-    {"block_id": "otel-content", "type": "paragraph", "content": "Dotted operation names follow OpenTelemetry semantic conventions. Future exporter can translate Rig JSONL traces to OTel format. No remote exporter in v0 — local-first only."}
+    {
+      "block_id": "title",
+      "type": "heading",
+      "level": 1,
+      "content": "Tracing Doctrine",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "intro",
+      "type": "paragraph",
+      "content": "Rig Relay tracing is structured runtime evidence using spans, events, and redacted attributes. It is not random logging. Tracing answers: what operation happened, where, which parent caused it, how long it took, whether it passed or failed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "vs",
+      "type": "heading",
+      "level": 2,
+      "content": "Tracing vs Logging vs Receipts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "vs-table",
+      "type": "table",
+      "columns": [
+        "Mechanism",
+        "What",
+        "When",
+        "Where"
+      ],
+      "rows": [
+        [
+          "Tracing",
+          "Span tree: start/end/event/error",
+          "Every operation",
+          "trace_events.jsonl"
+        ],
+        [
+          "Logging",
+          "Human-readable messages",
+          "Warnings, errors, info",
+          "vibe.log"
+        ],
+        [
+          "Receipts",
+          "Governed mutation proof",
+          "Tool invocations with SHA256",
+          ".rig/reports/reports.jsonl"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "schema",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "schema-name",
+      "type": "paragraph",
+      "content": "Schema: rig.trace_event.v1 — JSONL lines, each a self-contained event.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "schema-table",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Required",
+        "Description"
+      ],
+      "rows": [
+        [
+          "schema_version",
+          "Yes",
+          "rig.trace_event.v1"
+        ],
+        [
+          "trace_id",
+          "Yes",
+          "UUID hex — groups all spans in one trace"
+        ],
+        [
+          "span_id",
+          "Yes",
+          "UUID hex prefix — unique per span"
+        ],
+        [
+          "parent_span_id",
+          "No",
+          "Parent span ID for child spans"
+        ],
+        [
+          "event_kind",
+          "Yes",
+          "span.start, span.end, span.event, span.error"
+        ],
+        [
+          "name",
+          "Yes",
+          "Dotted operation name (e.g. desktop.bridge.start)"
+        ],
+        [
+          "status",
+          "No",
+          "ok, error, refused, degraded, cancelled, timed_out, skipped"
+        ],
+        [
+          "timestamp",
+          "Yes",
+          "ISO 8601"
+        ],
+        [
+          "started_at",
+          "No",
+          "When span started"
+        ],
+        [
+          "ended_at",
+          "No",
+          "When span ended"
+        ],
+        [
+          "duration_ms",
+          "No",
+          "Wall time in milliseconds"
+        ],
+        [
+          "attributes",
+          "No",
+          "Safe key-value pairs"
+        ],
+        [
+          "error_type",
+          "No",
+          "Error class or code"
+        ],
+        [
+          "error_message",
+          "No",
+          "Redacted error message"
+        ],
+        [
+          "receipt_sha256",
+          "No",
+          "Links to a governed receipt"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "event-kinds",
+      "type": "heading",
+      "level": 2,
+      "content": "Event Kinds",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "event-kinds-list",
+      "type": "list",
+      "items": [
+        "span.start — emitted when a span begins",
+        "span.end — emitted when a span ends (includes duration, status)",
+        "span.event — emitted inside a span (child event)",
+        "span.error — emitted on error outside a span"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "redaction",
+      "type": "heading",
+      "level": 2,
+      "content": "Redaction Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "redaction-intro",
+      "type": "paragraph",
+      "content": "Before writing to JSONL, every trace event is sanitized. The following are redacted: token, auth_token, api_key, password, secret, authorization, cookie, bearer. Allowed safe fields: token_present (boolean), token_length (integer). Strings over 1000 chars are truncated. Nested dicts/lists are recursively sanitized.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "paths",
+      "type": "heading",
+      "level": 2,
+      "content": "Default Trace Paths",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "paths-table",
+      "type": "table",
+      "columns": [
+        "Mode",
+        "Path"
+      ],
+      "rows": [
+        [
+          "Source/Dev",
+          ".build/rig-relay/traces/trace_events.jsonl"
+        ],
+        [
+          "Packaged",
+          "~/Library/Application Support/Rig Relay/traces/trace_events.jsonl"
+        ],
+        [
+          "Override",
+          "RIG_RELAY_TRACE_PATH env var"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "env",
+      "type": "heading",
+      "level": 2,
+      "content": "Environment Variables",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "env-table",
+      "type": "table",
+      "columns": [
+        "Variable",
+        "Effect"
+      ],
+      "rows": [
+        [
+          "RIG_RELAY_TRACE=1",
+          "Enable tracing (default)"
+        ],
+        [
+          "RIG_RELAY_TRACE=0",
+          "Disable tracing"
+        ],
+        [
+          "RIG_RELAY_TRACE_PATH",
+          "Override JSONL path"
+        ],
+        [
+          "RIG_RELAY_TRACE_VERBOSE=1",
+          "Include more safe details (future)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "hot-paths",
+      "type": "heading",
+      "level": 2,
+      "content": "Hot Paths Instrumented (v0)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "hot-paths-list",
+      "type": "list",
+      "items": [
+        "desktop.bridge.start_begin — rig_relay/desktop/bridge_server.py",
+        "desktop.websocket.connection_begin — rig_relay/desktop/websocket_server.py",
+        "desktop.websocket.auth_ok — rig_relay/desktop/websocket_server.py",
+        "runtime.subprocess.execute — rig_relay/runtime/supervisor.py"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "usage",
+      "type": "heading",
+      "level": 2,
+      "content": "Usage",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "usage-code",
+      "type": "code",
+      "language": "python",
+      "content": "from rig_relay.tracing import TraceRecorder, get_default_trace_store\n\nstore = get_default_trace_store()\nrecorder = TraceRecorder(store)\n\nwith recorder.span(\"desktop.bridge.start\", {\"host\": \"127.0.0.1\"}) as span:\n    span.event(\"port_bound\", {\"port\": 9876})\n    # ... work ...\n# span.end emitted automatically with ok/error status",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "supervisor-span",
+      "type": "heading",
+      "level": 2,
+      "content": "RuntimeSupervisor Span Contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "supervisor-span-content",
+      "type": "paragraph",
+      "content": "RuntimeSupervisor emits a dedicated runtime.subprocess.execute span for each supervised subprocess. The span records safe metadata only: executable, argv_hash, argv_count, cwd_hash, timeout seconds, lease ID, lane/workspace identifier, shell usage flag. Child events record subprocess lifecycle milestones: spawn.start, spawn.ok, stdout.chunk, stderr.chunk, timeout, kill, exit, result_classified. Raw stdout/stderr content, raw argv, and environment values are never emitted.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "envelope",
+      "type": "heading",
+      "level": 2,
+      "content": "Runtime Supervisor Result Envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "envelope-content",
+      "type": "paragraph",
+      "content": "Canonical terminal evidence for supervised subprocess execution is carried by RuntimeSupervisorResultEnvelope. The envelope uses the same terminal classification vocabulary as the runtime.subprocess.execute span summary. Downstream consumers should read the envelope rather than reconstructing subprocess state from raw process handles. ToolRuntime and adapter receipts preserve the envelope fields for subprocess-backed tool calls so trace summaries, receipts, and audit events stay aligned.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "otel",
+      "type": "heading",
+      "level": 2,
+      "content": "OpenTelemetry Compatibility",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "otel-content",
+      "type": "paragraph",
+      "content": "Dotted operation names follow OpenTelemetry semantic conventions. Future exporter can translate Rig JSONL traces to OTel format. No remote exporter in v0 — local-first only.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
   ],
   "references": [
-    {"document_id": "usage-data-doctrine", "title": "Usage Data Doctrine"},
-    {"document_id": "runtime-evidence-spine-v1", "title": "Runtime Evidence Spine"}
+    {
+      "document_id": "usage-data-doctrine",
+      "title": "Usage Data Doctrine"
+    },
+    {
+      "document_id": "runtime-evidence-spine-v1",
+      "title": "Runtime Evidence Spine"
+    }
   ],
   "related_documents": [
-    {"document_id": "usage-data-doctrine", "title": "Usage Data Doctrine", "relationship": "parent"},
-    {"document_id": "runtime-supervisor-result-envelope-v1", "title": "Runtime Supervisor Result Envelope", "relationship": "related"}
+    {
+      "document_id": "usage-data-doctrine",
+      "title": "Usage Data Doctrine",
+      "relationship": "parent"
+    },
+    {
+      "document_id": "runtime-supervisor-result-envelope-v1",
+      "title": "Runtime Supervisor Result Envelope",
+      "relationship": "related"
+    }
   ],
   "provenance": {
-    "source_files": ["docs/governance/tracing-doctrine.md"]
+    "source_files": [
+      "docs/governance/tracing-doctrine.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
   }
 }

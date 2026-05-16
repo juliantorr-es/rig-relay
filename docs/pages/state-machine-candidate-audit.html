@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document establishes the architectural audit, governance doctrine, and transition roadmap for remediating implicit loop complexity, polling pressure, and boolean flag piles across the Rig Relay r">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Runtime Architecture Audit: State Machines &amp; Event Triggers</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document establishes the architectural audit, governance doctrine, and transition roadmap for remediating implicit loop complexity, polling pressure, and boolean flag piles across the Rig Relay runtime.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">As Rig Relay&#x27;s runtime capabilities have expanded to include desktop cockpit bridges, WebSocket projection streams, local task supervision, and multi-layered tool governance, implicit control flows (`while True` polling loops, deep boolean flag evaluations, and unmanaged callback chains) have introduced race conditions, diagnostic blind spots, and unnecessary resource utilization.</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">This audit inventories **10 core runtime subsystems**, establishes strict selection doctrine for state-machine vs. event-driven patterns, defines the contract for a TDD-enforcing `behavior_patch` tool, and outlines the standardized testing and OpenTelemetry tracing conventions required for future refactoring slices.</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Part A &amp; D: Candidate Inventory &amp; Priority Matrix</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">The following matrix categorizes the 10 identified candidates across priority buckets P0 (immediate structural blockers), P1 (core engine lifecycle), and P2 (peripheral helpers).</p>
+
+<details id="table-9" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-9" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Candidate ID</th><th>Domain &amp; Path</th><th>Current Shape</th><th>Fit (SM / ED)</th><th>Risk</th><th>Recommendation</th><th>Rationale &amp; First Test</th></tr></thead>
+<tbody>
+<tr><td>**`candidate_desktop_bridge_lifecycle`**&lt;br/&gt;*(P0)*</td><td>`desktop_bridge`&lt;br/&gt;`rig_relay/desktop/bridge_server.py`</td><td>Callback chain &amp; boolean pile (`bridge:01`..`18`)</td><td>**High** / **High**</td><td>Medium</td><td>**Implemented**</td><td>Extracted `DesktopBridgeStateMachine` to make the startup lifecycle explicit without changing the bridge protocol. Current tests cover valid transitions, invalid refusal, terminal immutability, idempotent duplicate events, JSON projection, and trace hooks.&lt;br/&gt;*Test:* `tests/desktop/test_desktop_bridge_state_machine.py`</td></tr>
+<tr><td>**`candidate_frontend_transport_state`**&lt;br/&gt;*(P0)*</td><td>`frontend_transport`&lt;br/&gt;`rig_relay/desktop/websocket_server.py`</td><td>Scattered frontend connection/render state</td><td>**High** / **High**</td><td>Low</td><td>**In Progress**</td><td>Frontend connection state is now being extracted into a dedicated transport state machine so token/config/connect/auth/render transitions are explicit without changing protocol behavior.&lt;br/&gt;*Test:* `tests/frontend/test_transport_state_machine_source.py`</td></tr>
+<tr><td>**`candidate_frontend_transport_state`**&lt;br/&gt;*(P0)*</td><td>`frontend_transport`&lt;br/&gt;`rig_relay/desktop/websocket_server.py`</td><td>Polling loop (`while True` in `_poll_and_push`)</td><td>**High** / **High**</td><td>Low</td><td>**Convert Polling to Event Trigger**</td><td>Polling every 30s creates needless CPU/disk pressure. Projections should push instantly on ledger/trace changes.&lt;br/&gt;*Test:* `test_frontend_transport_event_triggered_push`</td></tr>
+<tr><td>**`candidate_runtime_supervisor_lifecycle`**&lt;br/&gt;*(P0)*</td><td>`subprocess_supervisor`&lt;br/&gt;`rig_relay/runtime/supervisor.py`</td><td>Polling &amp; retry loop (`while True` in `execute`)</td><td>**High** / **High**</td><td>Medium</td><td>**Implemented**</td><td>`RuntimeSupervisorStateMachine` now makes subprocess lifecycle explicit. Tests cover valid transitions, invalid refusal, terminal immutability, timeout projection, and trace emission under `runtime.subprocess.execute`.&lt;br/&gt;*Test:* `tests/runtime/test_runtime_supervisor_state_machine.py`</td></tr>
+<tr><td>**`candidate_validate_tool_profiles`**&lt;br/&gt;*(P0)*</td><td>`validate_tool`&lt;br/&gt;`rig_relay/core/tools/builtins/validate.py`</td><td>Status enum &amp; sequential loop</td><td>**High** / Medium</td><td>Low</td><td>**Add Transition Validator**</td><td>Runs sequential checks with early exit gates. Formalizing into a state machine ensures blockers and cache transitions are strictly validated.&lt;br/&gt;*Test:* `test_validate_profile_state_machine_blocker_taxonomy`</td></tr>
+<tr><td>**`candidate_agent_loop_turn_lifecycle`**&lt;br/&gt;*(P1)*</td><td>`agent_loop`&lt;br/&gt;`rig_relay/core/agent_loop.py`</td><td>Complex loop (`while not should_break_loop`)</td><td>**High** / Medium</td><td>High</td><td>**Add TDD Receipt Before Touching**</td><td>AgentLoop is the core kernel. Converting its implicit loop to an explicit state machine unblocks clean middleware/tool decoupling, but requires strict TDD receipt gating.&lt;br/&gt;*Test:* `test_agent_loop_turn_state_machine_transitions`</td></tr>
+<tr><td>**`candidate_tool_runtime_execution`**&lt;br/&gt;*(P1)*</td><td>`tool_runtime`&lt;br/&gt;`rig_relay/core/tool_runtime.py`</td><td>Callback chain &amp; boolean pile</td><td>**High** / **High**</td><td>Medium</td><td>**Extract State Machine**</td><td>Tool execution has a clear pipeline shape with early exit gates. Explicit state machine unifies governance, caching, and receipt capture.&lt;br/&gt;*Test:* `test_tool_runtime_state_machine_approval_refusal`</td></tr>
+<tr><td>**`candidate_ralph_lane_lifecycle`**&lt;br/&gt;*(P1)*</td><td>`ralph_scanner`&lt;br/&gt;`rig_relay/ralph/scanner.py`</td><td>Timer loop &amp; status enum</td><td>Medium / **High**</td><td>Low</td><td>**Convert Polling to Event Trigger**</td><td>Ralph scans projections periodically. Should be event-triggered by projection write events from validate or bash tools to avoid redundant disk reads.&lt;br/&gt;*Test:* `test_ralph_lane_event_triggered_scan`</td></tr>
+<tr><td>**`candidate_provider_model_binding`**&lt;br/&gt;*(P2)*</td><td>`provider_config`&lt;br/&gt;`rig_relay/core/config.py`</td><td>Boolean pile &amp; status enum</td><td>Medium / Low</td><td>Low</td><td>**Add Enum/Typed State Only**</td><td>Model availability probing is mostly linear but has fallback logic. Explicit typed state improves diagnostic visibility without a full state machine.&lt;br/&gt;*Test:* `test_provider_binding_typed_state`</td></tr>
+<tr><td>**`candidate_docs_renderer_pipeline`**&lt;br/&gt;*(P2)*</td><td>`reports_projector`&lt;br/&gt;`rig_relay/reports/projector.py`</td><td>Sequential loop &amp; callback chain</td><td>Low / **High**</td><td>Low</td><td>**Convert Polling to Event Trigger**</td><td>Reports projector should be event-triggered when new rows land in reports.jsonl rather than batch polling.&lt;br/&gt;*Test:* `test_reports_projector_event_trigger`</td></tr>
+<tr><td>**`candidate_packaging_helper_lifecycle`**&lt;br/&gt;*(P2)*</td><td>`cli_entrypoint`&lt;br/&gt;`rig_relay/cli/entrypoint.py`</td><td>Boolean pile</td><td>Low / Low</td><td>Low</td><td>**Keep As-Is**</td><td>CLI entrypoint setup is a one-shot helper with no complex long-running lifecycle. Keep as-is.&lt;br/&gt;*Test:* `test_cli_entrypoint_one_shot`</td></tr>
+</tbody>
+</table></details>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Part B: State-Machine Selection Doctrine</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">To prevent architectural over-engineering while ensuring robust lifecycle management, the following selection doctrine governs when to introduce an explicit state machine versus simpler control structures.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">When to Introduce an Explicit State Machine</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">1. **Three or More Named Phases:** The subsystem transitions through at least 3 distinct operational phases (e.g., `UNINITIALIZED` -&gt; `PROBING` -&gt; `ACTIVE` -&gt; `SHUTTING_DOWN`). 2. **Terminal Statuses:** The lifecycle possesses definitive terminal states (e.g., `COMPLETED`, `FAILED`, `CLOSED`) where further transitions must be strictly blocked. 3. **Gated Transitions:** Movement between states requires authorization, validation, or resource acquisition (e.g., acquiring a coordination lock or receiving user approval). 4. **Retries and Timeouts:** The subsystem implements retry loops, backoff schedules, or stall detection timers that alter the state flow upon expiration. 5. **Invalid Transition Refusal:** Attempting an invalid state transition (e.g., `ACTIVE` -&gt; `PROBING` or `CLOSED` -&gt; `ACTIVE`) represents a severe runtime anomaly that must be actively refused and logged. 6. **UI State Projection:** The internal state is projected to external clients (e.g., pywebview frontend or WebSocket subscribers) to render visual indicators or progress ladders. 7. **Audit and Receipt Logging:** State transitions represent governed milestones that must emit cryptographically verifiable receipts or structured trace spans.</p>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">When NOT to Introduce a State Machine</h3>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">1. **Pure Data Transformation:** Functions that accept input data and return a transformed output without maintaining long-lived in-memory state. 2. **One-Shot Helpers:** Ephemeral CLI bootstrapping scripts or simple configuration parsers. 3. **Simple If/Else Branching:** Conditional logic that evaluates a static flag without representing a lifecycle progression. 4. **Static Serialization:** Pydantic model dumping or JSON encoding routines.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">Architectural Examples</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">* **DesktopBridge Lifecycle (High Fit):** Manages a complex sequence of port binding, token verification, webview window creation, and IPC bridging. Explicit state machine now implemented in `rig_relay/desktop/bridge_state_machine.py`. * **Frontend Transport State (High Fit):** Manages config loading, token presence, websocket connect/auth, and projection readiness. Now being extracted into an explicit JS state machine so UI status can be projected cleanly. * **ToolRuntime Execution (High Fit):** Moves through permission checks, cache lookups, user approval, patch gating, invocation, and receipt capture. Currently managed via procedural callback chains; highly suited for a formalized state machine. * **Path Resolver (Low Fit):** Normalizes file paths and checks workspace boundaries. Operates purely as a functional utility; state machine is inappropriate.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Part C: Event-Trigger Selection Doctrine</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Event-driven transitions replace polling loops to optimize resource utilization and decouple subsystem execution.</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">When to Use Event-Triggered Transitions</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">1. **State-Change Dependency:** Work should happen only after a specific state milestone or ledger event occurs (e.g., scanning projections only after a new report is appended). 2. **Polling Pressure Elimination:** Polling creates needless CPU, disk I/O, or battery pressure (e.g., `ProjectionWebSocketServer` polling disk every 30 seconds). 3. **Probe/Test Throttling:** Repeated active probing slows down the system or exhaust rate limits. 4. **Instantaneous Projection Updates:** External UI projections must update immediately upon underlying ledger mutations rather than waiting for an arbitrary poll interval. 5. **WebSocket Push Reactivity:** Frontends should react to server-pushed WebSocket messages rather than running client-side polling loops.</p>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">Required Event Guardrails</h3>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Every event-driven transition design in Rig Relay must incorporate the following structural guardrails: * `event_id`: A unique UUIDv7 or ULID identifying the specific event occurrence. * `causation_id`: The `event_id` of the preceding event that triggered this action, establishing a causal chain. * `correlation_id` / `trace_id`: The overarching session or mission identifier linking all related asynchronous events. * `idempotency_key`: A deterministic hash of the event payload to prevent duplicate processing. * `max_retries`: A strict cap on retry attempts for failed event handlers. * `dedupe_window`: A time-based or LRU cache window to drop redundant, high-frequency events. * `terminal_failure_state`: A fallback state entered when an event handler repeatedly fails, preventing zombie processes.</p>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">Event-Cycle Risk &amp; Depth Prevention</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">&gt; [!WARNING] &gt; **Infinite Event Cycles:** Event-driven architectures are highly susceptible to infinite loops if Event A triggers Handler B, which emits Event C, which inadvertently re-triggers Handler A.</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Every event-trigger implementation must include **depth/cycle prevention guards**. This is achieved by tracking a `causation_depth` counter within the event envelope. If `causation_depth &gt; 10`, the event bus must immediately reject the event, log a critical `audit.event.cycle_detected` error, and transition the affected subsystem into a terminal failure state.</p>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Part E: BehaviorPatch / TDD Built-in Tool Design</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">To enforce test-first development and prevent regression during complex runtime refactoring, Rig Relay introduces the `behavior_patch` (or `tdd_patch`) tool. This tool enforces a strict **Red -&gt; Green -&gt; Refactor** workflow backed by cryptographically verifiable evidence receipts.</p>
+
+<pre id="code-32"><code class="language-mermaid">flowchart TD
+    A[Receive Behavior Statement &amp; Target Files] --&gt; B[Create / Modify Focused Test]
+    B --&gt; C[Run Test Command]
+    C --&gt; D{Did Test Fail?}
+    D -- No (Passes Already) --&gt; E[REFUSE: Test Already Passes]
+    D -- Yes (Red Phase Verified) --&gt; F[Capture Failure Output &amp; Verify Gap]
+    F --&gt; G[Apply Minimal Code Implementation]
+    G --&gt; H[Re-run Test Command]
+    H --&gt; I{Did Test Pass?}
+    I -- No (Still Red) --&gt; J[Iterate Implementation / Abort on Max Iterations]
+    J --&gt; G
+    I -- Yes (Green Phase Verified) --&gt; K[Run Focused Validation Profile]
+    K --&gt; L[Emit BehaviorPatchReceipt]</code></pre>
+
+<h3 id="h3-33" class="disclosure-standard" data-disclosure-level="standard">Tool Contract &amp; Input Schema</h3>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">* `behavior_statement` *(str)*: Plain-text description of the target behavior change or bug fix. * `target_files` *(list[str])*: Specific workspace files authorized for implementation edits. * `expected_test_file` *(str)*: Path to the test file verifying this behavior. * `test_command` *(list[str])*: Narrow, scoped test command (e.g., `[&quot;uv&quot;, &quot;run&quot;, &quot;pytest&quot;, &quot;tests/tools/test_behavior_patch.py&quot;]`). * `implementation_constraints` *(list[str])*: Architectural rules to maintain (e.g., `&quot;No new third-party dependencies&quot;`). * `validation_profile` *(str)*: Name of the validate profile to run upon success (default: `&quot;quick&quot;`). * `max_iterations` *(int)*: Maximum red/green attempt cycles before aborting (default: `3`). * `allow_new_test_file` *(bool)*: Whether the tool is permitted to create a brand new test file.</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Execution Workflow</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">1. **Test Setup:** Inspect or create `expected_test_file` reflecting `behavior_statement`. 2. **Red Phase Verification:** Execute `test_command`. If the test passes, immediately **REFUSE** execution. The tool does not accept &quot;test passes already&quot; as success. 3. **Failure Alignment:** Capture test failure stdout/stderr and verify the failure reason matches the expected behavior gap. 4. **Code Implementation:** Apply minimal, additive code modifications to `target_files`. 5. **Green Phase Verification:** Re-execute `test_command`. If the test fails, retry up to `max_iterations`. 6. **Focused Validation:** Execute `Validate.run` using `validation_profile` to ensure no lint, type, or git-state regressions occurred. 7. **Receipt Emission:** Generate a cryptographically signed `BehaviorPatchReceipt`.</p>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">Refusal Cases</h3>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">The tool actively refuses execution under the following conditions: * **Test Already Passes:** The test succeeds before any implementation changes are made. * **Command Too Broad:** `test_command` invokes the entire test suite (`uv run pytest`) without path scoping. * **Scope Exceeded:** Implementation modified files outside `target_files`. * **No Focused Validation:** `validation_profile` check failed or was skipped. * **Unsafe Target:** `behavior_statement` requests modifying security guards or blocklists.</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-40" class="disclosure-standard" data-disclosure-level="standard">Part F: State-Machine Test Style Definition</h2>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">All future state machines implemented in Rig Relay must adhere to a standardized, rigorous testing style. Test suites must avoid broad integration runs in favor of blazingly fast, isolated unit tests covering the following 8 dimensions:</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">1. **Valid Transitions:** Assert that calling transition methods successfully updates the internal state enum. 2. **Invalid Transitions Refused:** Assert that attempting an out-of-order transition raises `InvalidStateTransitionError`. 3. **Terminal State Immutability:** Assert that once a terminal state (`COMPLETED`, `FAILED`, `CLOSED`) is reached, all subsequent transition attempts are rejected. 4. **Event Causation:** Assert that submitting an external event correctly triggers the corresponding state transition. 5. **Event Idempotency:** Assert that submitting an identical event payload (matching `idempotency_key`) within the dedupe window results in a no-op without raising an error. 6. **Timeout &amp; Retry Semantics:** Assert that exceeding stall thresholds correctly transitions the machine into `RESTARTING` or `FAILED`. 7. **JSON State Projection:** Assert that `export_projection()` produces a serializable dict matching the expected UI schema. 8. **Telemetry &amp; Trace Emission:** Assert that every state transition emits the required OpenTelemetry trace span and structured log.</p>
+
+<h3 id="h3-43" class="disclosure-standard" data-disclosure-level="standard">Example Test Skeletons</h3>
+
+<pre id="code-44"><code class="language-python"># tests/desktop/test_desktop_bridge_state_machine.py
+
+def test_desktop_bridge_state_machine_valid_transitions():
+    sm = DesktopBridgeStateMachine()
+    assert sm.state == BridgeState.UNINITIALIZED
+    
+    sm.transition_to(BridgeState.PROBING, event=&quot;start_requested&quot;)
+    assert sm.state == BridgeState.PROBING
+
+def test_desktop_bridge_state_machine_invalid_transition_refused():
+    sm = DesktopBridgeStateMachine()
+    with pytest.raises(InvalidStateTransitionError, match=&quot;Cannot transition UNINITIALIZED -&gt; ACTIVE&quot;):
+        sm.transition_to(BridgeState.ACTIVE, event=&quot;invalid_bypass&quot;)
+
+def test_desktop_bridge_state_machine_terminal_immutability():
+    sm = DesktopBridgeStateMachine()
+    sm.transition_to(BridgeState.PROBING, event=&quot;start&quot;)
+    sm.transition_to(BridgeState.FAILED, event=&quot;probe_timeout&quot;)
+    
+    with pytest.raises(TerminalStateError, match=&quot;Machine is in terminal state FAILED&quot;):
+        sm.transition_to(BridgeState.ACTIVE, event=&quot;force_start&quot;)</code></pre>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-46" class="disclosure-standard" data-disclosure-level="standard">Part G: OpenTelemetry Tracing &amp; Instrumentation</h2>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">To provide complete observability across asynchronous state machines and event triggers, every transition must emit a structured OpenTelemetry trace span.</p>
+
+<h3 id="h3-48" class="disclosure-standard" data-disclosure-level="standard">Canonical Trace Spans</h3>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">* `desktop.bridge.lifecycle`: Emitted by `DesktopBridgeStateMachine`. * `frontend.transport.transition`: Emitted by `ProjectionWebSocketServer`. * `tool_runtime.transition`: Emitted by `ToolRuntime`. * `runtime.subprocess.transition`: Legacy label from the pre-state-machine audit. * `runtime.subprocess.execute`: Emitted by `RuntimeSupervisor`. * `RuntimeSupervisorResultEnvelope`: Canonical terminal evidence built from the state machine projection and terminal event classification, preserved through ToolRuntime-adjacent receipts for subprocess-backed tool calls. * `validate.profile.transition`: Emitted by `Validate` tool. * `ralph.lane.transition`: Emitted by `Ralph` scanner. * `conversation.turn.transition`: Emitted by `AgentLoop` / `ConversationTurnRuntime`.</p>
+
+<h3 id="h3-50" class="disclosure-standard" data-disclosure-level="standard">Span Attribute Schema</h3>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Every transition span must include the following mandatory attributes: * `transition.from_state` *(str)*: The state prior to transition. * `transition.to_state` *(str)*: The destination state. * `transition.event` *(str)*: The trigger event name. * `transition.reason` *(str)*: Diagnostic rationale or causation summary. * `transition.trace_id` *(str)*: Overarching session trace ID. * `transition.span_id` *(str)*: Unique span ID. * `transition.receipt_hash` *(str | None)*: SHA256 hash of the associated governance receipt (nullable).</p>
+
+<h3 id="h3-52" class="disclosure-standard" data-disclosure-level="standard">Data Minimization Doctrine</h3>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">&gt; [!IMPORTANT] &gt; **No Sensitive Data:** In strict adherence to Rig Relay&#x27;s telemetry governance, transition spans must **NEVER** log raw user prompts, LLM completions, sensitive environment variables, or raw tool stdout/stderr. All content-derived properties must be logged as SHA256 digests. &gt; `RuntimeSupervisor` trace payloads must stay content-light: no raw stdout, &gt; no raw stderr, no raw argv strings, and no environment values. Only hashes, &gt; counts, and terminal classification are allowed.</p>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-55" class="disclosure-standard" data-disclosure-level="standard">Part H &amp; I: Implementation &amp; Validation Summary</h2>
+
+<h3 id="h3-56" class="disclosure-standard" data-disclosure-level="standard">Files Created &amp; Modified</h3>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">1. `docs/audits/runtime/state_machine_candidate_audit.jsonl` (Created: 10 structured candidate rows). 2. `docs/audits/runtime/state_machine_candidate_audit.md` (Created: This architectural audit document). 3. `rig_relay/core/tools/builtins/behavior_patch.py` (Created: Skeleton contracts, Pydantic models, and tool stub for `behavior_patch`). 4. `tests/tools/test_behavior_patch.py` (Created: Isolated unit tests verifying `BehaviorPatchReceipt` schema and refusal logic). 5. `docs/findings/out-of-scope-findings.jsonl` (Appended: 2 new architectural findings regarding ToolRuntime extraction and DesktopBridge state machine). 6. `docs/schemas/rig.relay.behavior_patch_receipt.v1.schema.json` (Created: JSON Schema Draft 7 definition for the new receipt).</p>
+
+<h3 id="h3-58" class="disclosure-standard" data-disclosure-level="standard">Validation Results &amp; Next Recommended Mission</h3>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">All newly created files have been rigorously validated against project standards: * `uv run ruff check .`: Passed cleanly with zero warnings or errors. * `uv run pyright`: Passed strict type checking across all modified and new modules. * `uv run python scripts/rig_relay_validate_schemas.py`: Verified that `rig.relay.behavior_patch_receipt.v1.schema.json` is 100% valid JSON Schema Draft 7 with zero Python syntax contamination. * `uv run pytest tests/tools/test_behavior_patch.py`: Verified 100% pass rate for the new receipt model tests.</p>
+
+<h3 id="h3-60" class="disclosure-standard" data-disclosure-level="standard">Next Recommended Mission</h3>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">**Mission Title:** `RuntimeSupervisor Teardown Warning` **Objective:** Investigate the `BaseSubprocessTransport.__del__` pytest unraisable warning seen in the focused runtime supervisor slice. Keep the fix narrow and avoid changing subprocess semantics.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/runtime/state_machine_candidate_audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{
+  "schema_version": "rig.code_schema.index.v1",
+  "title": "Rig Code Schema Registry",
+  "summary": "Active code schemas for governed implementation pattern selection.",
+  "generated_at": "2026-05-18",
+  "entries": [
+    {
+      "schema_id": "frontend_trace_endpoint.v1",
+      "title": "Frontend Trace Endpoint",
+      "change_kind": "frontend_observability",
+      "status": "active",
+      "authority_trusted": true,
+      "review_status": "active",
+      "last_reviewed_at": "2026-05-18",
+      "tags": ["frontend", "trace", "browser", "bridge"],
+      "path": "docs/json/code_schemas/frontend_trace_endpoint.v1.json"
+    },
+    {
+      "schema_id": "desktop_golden_path_trace.v1",
+      "title": "Desktop Golden Path Trace",
+      "change_kind": "desktop_bridge_trace",
+      "status": "active",
+      "authority_trusted": true,
+      "review_status": "active",
+      "last_reviewed_at": "2026-05-18",
+      "tags": ["desktop", "bridge", "trace", "golden-path"],
+      "path": "docs/json/code_schemas/desktop_golden_path_trace.v1.json"
+    },
+    {
+      "schema_id": "json_documentation_migration.v1",
+      "title": "JSON Documentation Migration",
+      "change_kind": "docs_migration",
+      "status": "active",
+      "authority_trusted": true,
+      "review_status": "active",
+      "last_reviewed_at": "2026-05-18",
+      "tags": ["docs", "json", "migration"],
+      "path": "docs/json/code_schemas/json_documentation_migration.v1.json"
+    },
+    {
+      "schema_id": "tool_batch_execution.v1",
+      "title": "Tool Batch Execution",
+      "change_kind": "agent_loop_tool_runtime",
+      "status": "active",
+      "authority_trusted": true,
+      "review_status": "active",
+      "last_reviewed_at": "2026-05-18",
+      "tags": ["agent-loop", "tools", "tracing"],
+      "path": "docs/json/code_schemas/tool_batch_execution.v1.json"
+    },
+    {
+      "schema_id": "frontend_transport_state_reducer.v1",
+      "title": "Frontend Transport State Reducer",
+      "change_kind": "frontend_state_management",
+      "status": "active",
+      "authority_trusted": true,
+      "review_status": "active",
+      "last_reviewed_at": "2026-05-18",
+      "tags": ["frontend", "transport", "state", "status-bar"],
+      "path": "docs/json/code_schemas/frontend_transport_state_reducer.v1.json"
+    }
+  ]
+}

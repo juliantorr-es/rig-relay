@@ -1,5 +1,936 @@
 [
   {
+    "document_id": "rig-integration-contract",
+    "title": "Rig Integration Contract",
+    "summary": "This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and m",
+    "tags": [],
+    "path": "pages/rig-integration-contract.html"
+  },
+  {
+    "document_id": "agent-loop-ownership-audit",
+    "title": "AgentLoop Ownership Audit",
+    "summary": "Audit date: 2026-05-15",
+    "tags": [],
+    "path": "pages/agent-loop-ownership-audit.html"
+  },
+  {
+    "document_id": "architecture-guards-proposal",
+    "title": "Architecture guard tests \u2014 proposed (not implemented)",
+    "summary": "Proposed date: 2026-05-15",
+    "tags": [],
+    "path": "pages/architecture-guards-proposal.html"
+  },
+  {
+    "document_id": "conversation-runtime-extraction-plan",
+    "title": "ConversationRuntime extraction plan",
+    "summary": "Audit dates: 2026-05-15 (Phase 0), 2026-05-15 (Phase 1), 2026-05-15 (Phase 2B)",
+    "tags": [],
+    "path": "pages/conversation-runtime-extraction-plan.html"
+  },
+  {
+    "document_id": "conversation-runtime-phase-2a-decision-policy",
+    "title": "ConversationRuntime Phase 2A \u2014 Decision Policy Inventory",
+    "summary": "**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines)",
+    "tags": [],
+    "path": "pages/conversation-runtime-phase-2a-decision-policy.html"
+  },
+  {
+    "document_id": "conversation-runtime-phase-2b-decision-policy",
+    "title": "ConversationRuntime Phase 2B \u2014 Hook/Tool/Budget Decision Policy",
+    "summary": "Audit date: 2026-05-15",
+    "tags": [],
+    "path": "pages/conversation-runtime-phase-2b-decision-policy.html"
+  },
+  {
+    "document_id": "phase3-readiness-reconciliation",
+    "title": "Phase 3 Readiness Reconciliation \u2014 Canonical All-Lanes Truth Table",
+    "summary": "Reconciliation date: 2026-05-16",
+    "tags": [],
+    "path": "pages/phase3-readiness-reconciliation.html"
+  },
+  {
+    "document_id": "phase4-architecture-map",
+    "title": "Phase 4 Architecture Map \u2014 Orchestrator Shell Hardening and Turn Evidence Envelope v1",
+    "summary": "Analysis date: 2026-05-16",
+    "tags": [],
+    "path": "pages/phase4-architecture-map.html"
+  },
+  {
+    "document_id": "subagent-runtime-toolruntime-v2",
+    "title": "SubagentRuntime Governed Tool Path \u2014 Verification",
+    "summary": "**Date**: 2026-05-17",
+    "tags": [],
+    "path": "pages/subagent-runtime-toolruntime-v2.html"
+  },
+  {
+    "document_id": "subagent-runtime-v1",
+    "title": "SubagentRuntime v1 \u2014 Evidence and Tool Execution Mode",
+    "summary": "Implementation date: 2026-05-15",
+    "tags": [],
+    "path": "pages/subagent-runtime-v1.html"
+  },
+  {
+    "document_id": "artifact-schema-doctrine",
+    "title": "Artifact Schema Doctrine",
+    "summary": "Rig Relay uses typed, versioned artifacts to ensure that evidence collected during dogfood sessions is analyzable, validatable, and useful for future optimization. Generic JSON blobs are avoided in fa",
+    "tags": [],
+    "path": "pages/artifact-schema-doctrine.html"
+  },
+  {
+    "document_id": "backend-adapter-overlap-dedup-v1",
+    "title": "Backend Adapter Overlap Dedup v1 \u2014 Audit",
+    "summary": "**Date**: 2026-05-17",
+    "tags": [],
+    "path": "pages/backend-adapter-overlap-dedup-v1.html"
+  },
+  {
+    "document_id": "brand-refresh-bauhaus-phosphor",
+    "title": "Rig Relay Brand Refresh Audit",
+    "summary": "This audit covers the current provider-branded identity surfaces in Rig Relay and recommends a provider-neutral brand direction built around Bauhaus structure, green phosphor terminal nostalgia, and r",
+    "tags": [],
+    "path": "pages/brand-refresh-bauhaus-phosphor.html"
+  },
+  {
+    "document_id": "ci-gate-architecture",
+    "title": "CI Gate Architecture",
+    "summary": "> **Status**: Design Proposal",
+    "tags": [],
+    "path": "pages/ci-gate-architecture.html"
+  },
+  {
+    "document_id": "ci-implementation-roadmap",
+    "title": "CI Implementation Roadmap",
+    "summary": "> **Status**: Established \u2014 Stage 1 Implemented",
+    "tags": [],
+    "path": "pages/ci-implementation-roadmap.html"
+  },
+  {
+    "document_id": "ci-path-trigger-map",
+    "title": "CI Path Trigger Map",
+    "summary": "> **Status**: Design Proposal",
+    "tags": [],
+    "path": "pages/ci-path-trigger-map.html"
+  },
+  {
+    "document_id": "ci-surface-audit",
+    "title": "CI Surface Audit",
+    "summary": "> **Status**: Established",
+    "tags": [],
+    "path": "pages/ci-surface-audit.html"
+  },
+  {
+    "document_id": "ci-validate-alignment",
+    "title": "CI\u2013Validate Alignment",
+    "summary": "> **Status**: Design Proposal",
+    "tags": [],
+    "path": "pages/ci-validate-alignment.html"
+  },
+  {
+    "document_id": "config-root-resolution-policy",
+    "title": "Audit: Config Root Resolution Policy",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/config-root-resolution-policy.html"
+  },
+  {
+    "document_id": "context-assembler-completion-plan",
+    "title": "Context Assembler \u2014 Completion Plan",
+    "summary": "Inspection date: 2026-05-15. HEAD: c5a31bbe.",
+    "tags": [],
+    "path": "pages/context-assembler-completion-plan.html"
+  },
+  {
+    "document_id": "context-assembler-final-reconciliation",
+    "title": "Context Assembler Final Reconciliation",
+    "summary": "Date: 2026-05-18 (updated by closer lane)",
+    "tags": [],
+    "path": "pages/context-assembler-final-reconciliation.html"
+  },
+  {
+    "document_id": "context-assembler-gap-inventory",
+    "title": "Context Assembler \u2014 Gap Inventory",
+    "summary": "Inspection date: 2026-05-15. HEAD: c5a31bbe.",
+    "tags": [],
+    "path": "pages/context-assembler-gap-inventory.html"
+  },
+  {
+    "document_id": "context-assembler-stable-v1",
+    "title": "Context Assembler Stable v1",
+    "summary": "Date: 2026-05-18. HEAD: 7b4e5166.",
+    "tags": [],
+    "path": "pages/context-assembler-stable-v1.html"
+  },
+  {
+    "document_id": "context-assembly-plan-v1",
+    "title": "ContextAssemblyPlan Contract Spine v1",
+    "summary": "**Date**: 2026-05-18",
+    "tags": [],
+    "path": "pages/context-assembly-plan-v1.html"
+  },
+  {
+    "document_id": "lane-a-compiler-renderer-gaps",
+    "title": "Lane A \u2014 Compiler-Renderer Reconciliation Gaps",
+    "summary": "**Date**: 2026-05-18",
+    "tags": [],
+    "path": "pages/lane-a-compiler-renderer-gaps.html"
+  },
+  {
+    "document_id": "lane-b-planner-gaps",
+    "title": "Lane B \u2014 Planner Failure Warnings, RepoIndex Reality, Budget Semantics",
+    "summary": "Date: 2026-05-15. HEAD: 63cdc9e2.",
+    "tags": [],
+    "path": "pages/lane-b-planner-gaps.html"
+  },
+  {
+    "document_id": "coordination-guard-availability",
+    "title": "Coordination Guard Availability Audit",
+    "summary": "Audit target: why governed edit tools are being blocked by the coordination guard and whether the cause is real active protection, stale leases, overly broad reservations, missing expiry, broken path ",
+    "tags": [],
+    "path": "pages/coordination-guard-availability.html"
+  },
+  {
+    "document_id": "coordination-migration-inventory",
+    "title": "Coordination Migration Inventory",
+    "summary": "This inventory maps the coordination seam that started in `vibe.core.coordination`",
+    "tags": [],
+    "path": "pages/coordination-migration-inventory.html"
+  },
+  {
+    "document_id": "current-built-in-tools",
+    "title": "Current Built-In Tool Inventory",
+    "summary": "> Audit date: 2026-05-14",
+    "tags": [],
+    "path": "pages/current-built-in-tools.html"
+  },
+  {
+    "document_id": "deep-research-report1",
+    "title": "Agent Harness Determinism: Industry Trends and Rig Relay\u2019s Strategy",
+    "summary": "Modern AI agent frameworks are increasingly engineered for **deterministic execution and efficient context reuse**. Providers and frameworks (OpenAI, Anthropic, Google, Microsoft) emphasize *prefix st",
+    "tags": [],
+    "path": "pages/deep-research-report1.html"
+  },
+  {
+    "document_id": "deep-research-report2",
+    "title": "Rig Relay audit of the context-caching assessment",
+    "summary": "I audited the code in the \ue200url\ue202rig-relay repository\ue202turn2view0\ue201, focusing on `vibe/core/context/assembler.py`, `vibe/core/telemetry/context_blocks.py`, `artifacts.py`, `manifest.py`, `send.py`, and th",
+    "tags": [],
+    "path": "pages/deep-research-report2.html"
+  },
+  {
+    "document_id": "deep-research-report3",
+    "title": "Context Engineering and Context Caching",
+    "summary": "In current LLM practice, **context** is no longer just \u201cthe prompt.\u201d The strongest recent definitions describe it as the *set of tokens available to the model at inference time* plus the broader runti",
+    "tags": [],
+    "path": "pages/deep-research-report3.html"
+  },
+  {
+    "document_id": "desktop-golden-path-proof",
+    "title": "Desktop Golden Path \u2014 Audit Proof",
+    "summary": "**Date**: 2026-05-16",
+    "tags": [],
+    "path": "pages/desktop-golden-path-proof.html"
+  },
+  {
+    "document_id": "single-bridge-before-state",
+    "title": "Desktop Transport \u2014 Before State (Split Pywebview + WebSocket)",
+    "summary": "pywebview window",
+    "tags": [],
+    "path": "pages/single-bridge-before-state.html"
+  },
+  {
+    "document_id": "determinism-maturity-matrix",
+    "title": "Audit: Determinism Maturity Matrix",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/determinism-maturity-matrix.html"
+  },
+  {
+    "document_id": "evidence-contract-inventory",
+    "title": "Audit: Evidence Contract Inventory",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/evidence-contract-inventory.html"
+  },
+  {
+    "document_id": "evidence-manifest-receipt-chain-design",
+    "title": "Audit: Evidence Manifest and Receipt Chain Design",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/evidence-manifest-receipt-chain-design.html"
+  },
+  {
+    "document_id": "evidence-root-policy-doctrine",
+    "title": "Audit: Evidence Root Product Semantics and Policy Doctrine",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/evidence-root-policy-doctrine.html"
+  },
+  {
+    "document_id": "evidence-security-privacy-boundary",
+    "title": "Audit: Evidence Security and Privacy Boundary",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/evidence-security-privacy-boundary.html"
+  },
+  {
+    "document_id": "frontend-security-audit-2026-05-14",
+    "title": "Frontend Security Audit \u2014 Rig Relay Desktop",
+    "summary": "The Rig Relay Desktop frontend is a vanilla HTML/CSS/JS application loaded via pywebview WebKit. It communicates with a localhost WebSocket server for projection data, chat, and intent dispatch. No bu",
+    "tags": [],
+    "path": "pages/frontend-security-audit-2026-05-14.html"
+  },
+  {
+    "document_id": "declutter-plan",
+    "title": "Declutter Plan",
+    "summary": "- Move only explicit quarantine candidates into a timestamped quarantine directory.",
+    "tags": [],
+    "path": "pages/declutter-plan.html"
+  },
+  {
+    "document_id": "inventory",
+    "title": "Global Rig Declutter Inventory",
+    "summary": "- Rig root: `/Users/user/.rig`",
+    "tags": [],
+    "path": "pages/inventory.html"
+  },
+  {
+    "document_id": "provider-adapter-contract-design",
+    "title": "Audit: Provider Adapter Contract Design",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/provider-adapter-contract-design.html"
+  },
+  {
+    "document_id": "provider-boundary-adapter-contract-map",
+    "title": "Audit: Provider Boundary and Adapter Contract Map",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/provider-boundary-adapter-contract-map.html"
+  },
+  {
+    "document_id": "relay-entry-point-authority",
+    "title": "Relay Entry Point Authority Audit",
+    "summary": "**Established.** Audit of the current CLI/product entry point boundary after the",
+    "tags": [],
+    "path": "pages/relay-entry-point-authority.html"
+  },
+  {
+    "document_id": "relay-smoke-validation-doctrine",
+    "title": "Audit: Relay Smoke and Validation Doctrine",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/relay-smoke-validation-doctrine.html"
+  },
+  {
+    "document_id": "relay-validation-gates-roadmap",
+    "title": "Audit: Relay Validation Gates and Doctor Roadmap",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/relay-validation-gates-roadmap.html"
+  },
+  {
+    "document_id": "rig-intake-cannibalization-plan",
+    "title": "Rig + Intake Cannibalization Plan for Rig Relay",
+    "summary": "**Established.** This plan classifies architecture patterns from",
+    "tags": [],
+    "path": "pages/rig-intake-cannibalization-plan.html"
+  },
+  {
+    "document_id": "audit-trail-tamper-evidence-design",
+    "title": "Audit Trail Tamper-Evidence Design Audit",
+    "summary": "**Design audit (2026-05).** Produced after P3b (AuditTrailStore) implementation.",
+    "tags": [],
+    "path": "pages/audit-trail-tamper-evidence-design.html"
+  },
+  {
+    "document_id": "concept-map",
+    "title": "Rig-to-Relay Runtime Concept Map",
+    "summary": "Maps each Rig runtime/control-plane concept to its Rig Relay equivalent,",
+    "tags": [],
+    "path": "pages/concept-map.html"
+  },
+  {
+    "document_id": "execution-progress-projection-design",
+    "title": "ExecutionProgress Projection Design \u2014 Audit Record",
+    "summary": "RuntimeSupervisor (P2b) now emits structured `RuntimeStreamEvent` objects",
+    "tags": [],
+    "path": "pages/execution-progress-projection-design.html"
+  },
+  {
+    "document_id": "fleet-coordination-design",
+    "title": "Fleet Coordination Plane \u2014 Design Audit",
+    "summary": "**Date:** 2026-05-14",
+    "tags": [],
+    "path": "pages/fleet-coordination-design.html"
+  },
+  {
+    "document_id": "mission-context-duckdb-design",
+    "title": "Mission Context DuckDB Design",
+    "summary": "This design keeps DuckDB in the role of a rebuildable analytical index, not a canonical governance store.",
+    "tags": [],
+    "path": "pages/mission-context-duckdb-design.html"
+  },
+  {
+    "document_id": "mission-envelope-spine-design",
+    "title": "Mission Envelope Spine Design",
+    "summary": "Rig Relay does not need the full ADR/Sprint/Mission hierarchy wired into the executable path before it can have governed runtime context.",
+    "tags": [],
+    "path": "pages/mission-envelope-spine-design.html"
+  },
+  {
+    "document_id": "port-roadmap",
+    "title": "Rig Runtime Port Roadmap",
+    "summary": "**Draft.** Proposed slices for porting Rig runtime/control-plane concepts into",
+    "tags": [],
+    "path": "pages/port-roadmap.html"
+  },
+  {
+    "document_id": "rig-to-relay-runtime-audit",
+    "title": "Rig Runtime Port Audit \u2014 Rig to Rig Relay",
+    "summary": "Systematic comparison of Rig and Rig Relay source trees, docs, schemas, and",
+    "tags": [],
+    "path": "pages/rig-to-relay-runtime-audit.html"
+  },
+  {
+    "document_id": "runtime-tool-convergence-followup",
+    "title": "Runtime Tool Convergence Follow-up",
+    "summary": "Date: 2026-05-15",
+    "tags": [],
+    "path": "pages/runtime-tool-convergence-followup.html"
+  },
+  {
+    "document_id": "runtime-tool-invocation-adapter-design",
+    "title": "Runtime Tool Invocation Adapter Design",
+    "summary": "**Status: Phase 1 implemented** \u2014 adapter models, schema, and 38 tests complete.",
+    "tags": [],
+    "path": "pages/runtime-tool-invocation-adapter-design.html"
+  },
+  {
+    "document_id": "runtime-tool-invocation-result-contract-audit",
+    "title": "Runtime Tool Invocation Result Contract Audit",
+    "summary": "**Audit date:** 2026-05-17",
+    "tags": [],
+    "path": "pages/runtime-tool-invocation-result-contract-audit.html"
+  },
+  {
+    "document_id": "runtime-evidence-spine-v1",
+    "title": "Runtime Evidence Spine v1",
+    "summary": "- `span.start` + `span.end` = one span",
+    "tags": [],
+    "path": "pages/runtime-evidence-spine-v1.html"
+  },
+  {
+    "document_id": "runtime-supervisor-result-envelope-v1",
+    "title": "RuntimeSupervisor Result Envelope v1",
+    "summary": "**Date**: 2026-05-16",
+    "tags": [],
+    "path": "pages/runtime-supervisor-result-envelope-v1.html"
+  },
+  {
+    "document_id": "state-machine-candidate-audit",
+    "title": "Rig Relay Runtime Architecture Audit: State Machines & Event Triggers",
+    "summary": "This document establishes the architectural audit, governance doctrine, and transition roadmap for remediating implicit loop complexity, polling pressure, and boolean flag piles across the Rig Relay r",
+    "tags": [],
+    "path": "pages/state-machine-candidate-audit.html"
+  },
+  {
+    "document_id": "tool-runtime-evidence-adoption-v1",
+    "title": "ToolRuntime Direct Path Envelope Population v1 \u2014 Audit",
+    "summary": "**Date**: 2026-05-17",
+    "tags": [],
+    "path": "pages/tool-runtime-evidence-adoption-v1.html"
+  },
+  {
+    "document_id": "tracing-v0",
+    "title": "Tracing v0 \u2014 Audit",
+    "summary": "**Date**: 2026-05-16",
+    "tags": [],
+    "path": "pages/tracing-v0.html"
+  },
+  {
+    "document_id": "session-lifecycle-state-machine",
+    "title": "Audit: Session Lifecycle State Machine",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/session-lifecycle-state-machine.html"
+  },
+  {
+    "document_id": "default-suite-tiering-report",
+    "title": "Test Suite Tiering Report",
+    "summary": "- Conftest hygiene (1): conftest source guard",
+    "tags": [],
+    "path": "pages/default-suite-tiering-report.html"
+  },
+  {
+    "document_id": "deleted-module-collection-errors",
+    "title": "Deleted Module Collection Errors \u2014 Audit",
+    "summary": "Generated 2026-05-15 during test-suite stabilization lane 2.",
+    "tags": [],
+    "path": "pages/deleted-module-collection-errors.html"
+  },
+  {
+    "document_id": "duplicate-test-audit",
+    "title": "Duplicate Test Audit",
+    "summary": "**Scanned**: 5975 tests",
+    "tags": [],
+    "path": "pages/duplicate-test-audit.html"
+  },
+  {
+    "document_id": "test-dedup-phase1-note",
+    "title": "Test Deduplication Phase 1 \u2014 Doctrine Note",
+    "summary": "**Date**: 2026-05-16",
+    "tags": [],
+    "path": "pages/test-dedup-phase1-note.html"
+  },
+  {
+    "document_id": "test-dedup-phase2-note",
+    "title": "Test Deduplication Phase 2 \u2014 normalize high-value AST duplicate clusters",
+    "summary": "**Date**: 2026-05-16",
+    "tags": [],
+    "path": "pages/test-dedup-phase2-note.html"
+  },
+  {
+    "document_id": "test-layout-canonicalization-report",
+    "title": "Test Layout Canonicalization Report",
+    "summary": "**Generated**: 2026-05-16",
+    "tags": [],
+    "path": "pages/test-layout-canonicalization-report.html"
+  },
+  {
+    "document_id": "test-purge-acceptance-gate",
+    "title": "Test Purge Pass 1 \u2014 Acceptance Gate",
+    "summary": "All 177 working-tree deletions are certified as:",
+    "tags": [],
+    "path": "pages/test-purge-acceptance-gate.html"
+  },
+  {
+    "document_id": "test-purge-pass-1-report",
+    "title": "Test Purge Pass 1 Report",
+    "summary": "All 177 deletions were already staged by a prior agent in the main branch. No additional deletions were performed in this pass.",
+    "tags": [],
+    "path": "pages/test-purge-pass-1-report.html"
+  },
+  {
+    "document_id": "test-quality-summary",
+    "title": "Test Quality Audit Summary",
+    "summary": "**Generated**: 2026-05-16T04:45:48Z",
+    "tags": [],
+    "path": "pages/test-quality-summary.html"
+  },
+  {
+    "document_id": "test-cleanup-roadmap",
+    "title": "Test Cleanup Roadmap",
+    "summary": "Staged plan to reduce duplication, consolidate test files, and fill coverage gaps.",
+    "tags": [],
+    "path": "pages/test-cleanup-roadmap.html"
+  },
+  {
+    "document_id": "test-quality-taxonomy",
+    "title": "Test Quality Taxonomy",
+    "summary": "Categories used to classify tests in the Rig Relay test suite.",
+    "tags": [],
+    "path": "pages/test-quality-taxonomy.html"
+  },
+  {
+    "document_id": "test-suite-quality-audit",
+    "title": "Test Suite Quality Audit",
+    "summary": "**Date:** 2025-06-13",
+    "tags": [],
+    "path": "pages/test-suite-quality-audit.html"
+  },
+  {
+    "document_id": "tool-determinism-inventory",
+    "title": "Tool Determinism Inventory",
+    "summary": "This document tracks the determinism and mutation characteristics of Rig Relay built-in tools. All tool evidence and artifacts must adhere to the [Artifact Schema Doctrine](../audits/artifact-schema-d",
+    "tags": [],
+    "path": "pages/tool-determinism-inventory.html"
+  },
+  {
+    "document_id": "tool-execution-artifact-safety-boundary",
+    "title": "Audit: Tool Execution and Artifact Safety Boundary",
+    "summary": "Status: Draft",
+    "tags": [],
+    "path": "pages/tool-execution-artifact-safety-boundary.html"
+  },
+  {
+    "document_id": "bash-deterministic-envelope",
+    "title": "Bash Deterministic Tool Envelope",
+    "summary": "Local Relay tool usage audit (`/Users/user/.rig/relay`) evidence:",
+    "tags": [],
+    "path": "pages/bash-deterministic-envelope.html"
+  },
+  {
+    "document_id": "mutation-tool-contract-matrix",
+    "title": "Mutation Tool Contract Matrix",
+    "summary": "This matrix documents how the two mutation primitives (`write_file` and `search_replace`) satisfy the same high-level deterministic evidence guarantees. It is not a mandate to force identical implemen",
+    "tags": [],
+    "path": "pages/mutation-tool-contract-matrix.html"
+  },
+  {
+    "document_id": "orchestration-tool-hardening-gaps",
+    "title": "Orchestration Tool Hardening Gaps",
+    "summary": "- `coordination`",
+    "tags": [],
+    "path": "pages/orchestration-tool-hardening-gaps.html"
+  },
+  {
+    "document_id": "read-only-inspection-tool-gaps",
+    "title": "Read-Only Inspection Tool Gaps",
+    "summary": "Primary read-only inspection tools in the builtin registry:",
+    "tags": [],
+    "path": "pages/read-only-inspection-tool-gaps.html"
+  },
+  {
+    "document_id": "search-replace-final-gaps",
+    "title": "SearchReplace Final Gaps",
+    "summary": "SearchReplace is largely complete:",
+    "tags": [],
+    "path": "pages/search-replace-final-gaps.html"
+  },
+  {
+    "document_id": "search-replace-patch-contract",
+    "title": "SearchReplace Patch Contract",
+    "summary": "This document audits the hardening of the `search_replace` tool into a",
+    "tags": [],
+    "path": "pages/search-replace-patch-contract.html"
+  },
+  {
+    "document_id": "tool-hardening-implementation-roadmap",
+    "title": "Tool Hardening Implementation Roadmap",
+    "summary": "Recommended order:",
+    "tags": [],
+    "path": "pages/tool-hardening-implementation-roadmap.html"
+  },
+  {
+    "document_id": "tool-hardening-roadmap-audit",
+    "title": "Tool Hardening Roadmap Audit",
+    "summary": "Audit of the remaining hardening surface for mutation tools, read-only inspection tools, and orchestration tools. This is design-only; no implementations changed.",
+    "tags": [],
+    "path": "pages/tool-hardening-roadmap-audit.html"
+  },
+  {
+    "document_id": "write-file-final-gaps",
+    "title": "WriteFile Hardening State",
+    "summary": "WriteFile has reached near-parity with SearchReplace on evidence maturity.",
+    "tags": [],
+    "path": "pages/write-file-final-gaps.html"
+  },
+  {
+    "document_id": "write-file-legacy-result-content-audit",
+    "title": "WriteFile Legacy Result Content Audit",
+    "summary": "Audit all callers of `WriteFileResult.content` to determine whether the",
+    "tags": [],
+    "path": "pages/write-file-legacy-result-content-audit.html"
+  },
+  {
+    "document_id": "write-file-receipt-gap-closure",
+    "title": "WriteFile Receipt Gap Closure",
+    "summary": "WriteFile has partial hardening: structured args, structured result, coordination blocking, dirty guard, before/after hashes, path safety. But before this closure, it was missing:",
+    "tags": [],
+    "path": "pages/write-file-receipt-gap-closure.html"
+  },
+  {
+    "document_id": "schema-gaps",
+    "title": "Schema Gaps",
+    "summary": "- Missing core fields detected: `0`",
+    "tags": [],
+    "path": "pages/schema-gaps.html"
+  },
+  {
+    "document_id": "tool-hardening-priority",
+    "title": "Tool Hardening Priority",
+    "summary": "- Risk tier: `3`",
+    "tags": [],
+    "path": "pages/tool-hardening-priority.html"
+  },
+  {
+    "document_id": "tool-usage-summary",
+    "title": "Local Relay Tool Usage Summary",
+    "summary": "- Evidence root: `/Users/user/.rig/relay`",
+    "tags": [],
+    "path": "pages/tool-usage-summary.html"
+  },
+  {
+    "document_id": "textual-rig-console-maturity-audit",
+    "title": "Textual Rig Console Maturity Audit",
+    "summary": "**Date:** 2026-05-14",
+    "tags": [],
+    "path": "pages/textual-rig-console-maturity-audit.html"
+  },
+  {
+    "document_id": "bash-usage-audit",
+    "title": "Bash Usage Audit for Validate Design",
+    "summary": "This audit synthesizes existing bash hardening evidence, tool-usage aggregates, validator scripts, and test surfaces to design a deterministic `validate` tool. It does not implement `validate`.",
+    "tags": [],
+    "path": "pages/bash-usage-audit.html"
+  },
+  {
+    "document_id": "validate-blocker-taxonomy",
+    "title": "Validate Blocker Taxonomy",
+    "summary": "`validate` should return structured blockers, not just exit codes.",
+    "tags": [],
+    "path": "pages/validate-blocker-taxonomy.html"
+  },
+  {
+    "document_id": "validate-convergence-audit",
+    "title": "Validate Workstream Convergence Audit",
+    "summary": "**Date:** 2026-05-13",
+    "tags": [],
+    "path": "pages/validate-convergence-audit.html"
+  },
+  {
+    "document_id": "validate-implementation-roadmap",
+    "title": "Validate Implementation Roadmap",
+    "summary": "Goal:",
+    "tags": [],
+    "path": "pages/validate-implementation-roadmap.html"
+  },
+  {
+    "document_id": "validate-profile-taxonomy",
+    "title": "Validate Profile Taxonomy",
+    "summary": "Profiles should be stable, narrow, and named by purpose rather than by implementation detail.",
+    "tags": [],
+    "path": "pages/validate-profile-taxonomy.html"
+  },
+  {
+    "document_id": "validate-tool-contract",
+    "title": "Validate Tool Contract",
+    "summary": "`validate` is a deterministic, read-only validation surface for repeated command families that currently run through bash.",
+    "tags": [],
+    "path": "pages/validate-tool-contract.html"
+  },
+  {
+    "document_id": "vibe-cli-purge-inventory",
+    "title": "Vibe CLI Purge Inventory",
+    "summary": "**Draft.** Inventory of user-facing Vibe CLI and Textual surfaces that should",
+    "tags": [],
+    "path": "pages/vibe-cli-purge-inventory.html"
+  },
+  {
+    "document_id": "vibe-legacy-boundary-inventory",
+    "title": "Vibe Legacy Boundary Inventory",
+    "summary": "Canonical inventory of Vibe-derived modules and their migration status.",
+    "tags": [],
+    "path": "pages/vibe-legacy-boundary-inventory.html"
+  },
+  {
+    "document_id": "architecture-options",
+    "title": "Architecture Options: VSCodium Shell Lane",
+    "summary": "We evaluated three architectural approaches for integrating Rig Relay with VSCodium.",
+    "tags": [],
+    "path": "pages/architecture-options.html"
+  },
+  {
+    "document_id": "compatibility-with-chatgpt-macos",
+    "title": "ChatGPT macOS Compatibility Audit",
+    "summary": "This document assesses the interaction between the Rig Relay VSCodium lane and the ChatGPT macOS \"Work with Apps\" feature.",
+    "tags": [],
+    "path": "pages/compatibility-with-chatgpt-macos.html"
+  },
+  {
+    "document_id": "current-rig-reuse-map",
+    "title": "Current Rig Reuse Map",
+    "summary": "This document maps existing Rig Relay components to their roles in the VSCodium Shell Lane.",
+    "tags": [],
+    "path": "pages/current-rig-reuse-map.html"
+  },
+  {
+    "document_id": "effort-estimate",
+    "title": "Effort Estimate: VSCodium Shell Lane",
+    "summary": "This phase plan outlines the path to a testable, governed agent workbench.",
+    "tags": [],
+    "path": "pages/effort-estimate.html"
+  },
+  {
+    "document_id": "executive-summary",
+    "title": "Executive Summary: VSCodium Shell Lane for Rig Relay",
+    "summary": "The audit recommends proceeding with the **VSCodium Shell Lane** using an **Extension-First** strategy. VSCodium is a viable, governed editor shell that aligns with Rig's \"governance-first\" posture wh",
+    "tags": [],
+    "path": "pages/executive-summary.html"
+  },
+  {
+    "document_id": "extension-api-study",
+    "title": "VSCodium Extension API Study",
+    "summary": "This document identifies the specific VS Code / VSCodium APIs required to implement the Rig Relay shell lane.",
+    "tags": [],
+    "path": "pages/extension-api-study.html"
+  },
+  {
+    "document_id": "extension-spike-results",
+    "title": "Audit: VSCodium Extension Feasibility Spike Results",
+    "summary": "The spike confirms that a standard VSCodium extension can serve as a high-fidelity, governed shell for Rig Relay. Connectivity is robust, the protocol is stable for remote projections, and the develop",
+    "tags": [],
+    "path": "pages/extension-spike-results.html"
+  },
+  {
+    "document_id": "final-recommendation",
+    "title": "Final Recommendation: VSCodium Shell Lane",
+    "summary": "The VSCodium Shell Lane is the most logical evolution for Rig Relay as it transforms into a \"workbench\". It leverages a world-class editor shell while keeping the governance logic isolated in the Rig ",
+    "tags": [],
+    "path": "pages/final-recommendation.html"
+  },
+  {
+    "document_id": "product-surface",
+    "title": "Product Surface: Rig MVP for VSCodium",
+    "summary": "This document defines the user experience and visual components of the Rig Relay extension.",
+    "tags": [],
+    "path": "pages/product-surface.html"
+  },
+  {
+    "document_id": "protocol-design",
+    "title": "Protocol Design: Extension \u2194 Rig Daemon",
+    "summary": "This document defines the local-only WebSocket protocol for the VSCodium shell lane.",
+    "tags": [],
+    "path": "pages/protocol-design.html"
+  },
+  {
+    "document_id": "risk-register",
+    "title": "Risk Register: VSCodium Shell Lane",
+    "summary": "This register tracks the critical risks identified during the VSCodium shell lane audit.",
+    "tags": [],
+    "path": "pages/risk-register.html"
+  },
+  {
+    "document_id": "context-assembler-integration-plan",
+    "title": "Context Assembler Integration Plan",
+    "summary": "How the context assembler should match user requests to code schemas and pack governed implementation context.",
+    "tags": [],
+    "path": "pages/context-assembler-integration-plan.html"
+  },
+  {
+    "document_id": "desktop-golden-path-trace",
+    "title": "Desktop Golden Path Trace",
+    "summary": "Canonical desktop bridge startup and handshake trace for the local golden path.",
+    "tags": [],
+    "path": "pages/desktop-golden-path-trace.html"
+  },
+  {
+    "document_id": "frontend-trace-endpoint",
+    "title": "Frontend Trace Endpoint",
+    "summary": "Browser-safe trace breadcrumbs for local desktop runs without sending frontend events to /ws.",
+    "tags": [],
+    "path": "pages/frontend-trace-endpoint.html"
+  },
+  {
+    "document_id": "frontend-transport-state-reducer",
+    "title": "Frontend Transport State Reducer",
+    "summary": "Canonical frontend transport state reducer and status rendering contract.",
+    "tags": [],
+    "path": "pages/frontend-transport-state-reducer.html"
+  },
+  {
+    "document_id": "json-documentation-migration",
+    "title": "JSON Documentation Migration",
+    "summary": "Migration contract for Markdown-to-JSON documentation conversion and static site rendering.",
+    "tags": [],
+    "path": "pages/json-documentation-migration.html"
+  },
+  {
+    "document_id": "tool-batch-execution",
+    "title": "Tool Batch Execution",
+    "summary": "Contract for agent-loop tool batch execution, lifecycle tracing, and single-use semantics.",
+    "tags": [],
+    "path": "pages/tool-batch-execution.html"
+  },
+  {
+    "document_id": "2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary",
+    "title": "Conversation Summary: Test Suite Quality Audit",
+    "summary": "**Date:** 2025-06-13",
+    "tags": [],
+    "path": "pages/2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.html"
+  },
+  {
+    "document_id": "2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary",
+    "title": "2026-05-13 \u2014 Phase 1: Receipt-Gated Protected Intents",
+    "summary": "Enable a fast \"quick-suite\" default for validation and establish the first phase of receipt-gated protected intents in the Desktop Cockpit.",
+    "tags": [],
+    "path": "pages/2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.html"
+  },
+  {
+    "document_id": "2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port",
+    "title": "Desktop Projection Shell Pattern Port",
+    "summary": "**Phase**: Desktop Projection Shell Pattern Port (Phase 3 of remaining slices)",
+    "tags": [],
+    "path": "pages/2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.html"
+  },
+  {
+    "document_id": "2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary",
+    "title": "Rig Relay \u2014 Phase 3: Facade Extraction & Tool Hardening (search_replace)",
+    "summary": "Leading a multi-phase migration and hardening of **Rig Relay** \u2014 a Python 3.12+ CLI coding-agent harness derived from Mistral Vibe CLI. Primary objectives:",
+    "tags": [],
+    "path": "pages/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.html"
+  },
+  {
+    "document_id": "2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary",
+    "title": "Rig Relay \u2014 Complete Conversation Summary",
+    "summary": "The user is building **Rig Relay**, a Python 3.12+ CLI coding-agent harness managed with `uv`. The overarching goal is to build a **reviewer/orchestrator control plane** that enables safe autonomous m",
+    "tags": [],
+    "path": "pages/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.html"
+  },
+  {
+    "document_id": "2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary",
+    "title": "Comprehensive Conversation Summary",
+    "summary": "The user delivered three distinct missions across this conversation, processed in sequence:",
+    "tags": [],
+    "path": "pages/2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.html"
+  },
+  {
+    "document_id": "2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary",
+    "title": "Untitled",
+    "summary": "The user's overarching objective across this conversation was to implement, audit, and document the Rig Relay runtime control plane \u2014 specifically the **Runtime Tool Invocation Adapter** (Phase 1) and",
+    "tags": [],
+    "path": "pages/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.html"
+  },
+  {
+    "document_id": "2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary",
+    "title": "Fleet Coordination Completion \u2014 Phases 3\u20135",
+    "summary": "**Date:** 2026-05-14",
+    "tags": [],
+    "path": "pages/2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.html"
+  },
+  {
+    "document_id": "2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary",
+    "title": "Phase 3: RepoContextIndex \u2014 DuckDB-backed constrained retrieval",
+    "summary": "**Date:** 2026-05-14",
+    "tags": [],
+    "path": "pages/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.html"
+  },
+  {
+    "document_id": "2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff",
+    "title": "Rig Relay \u2014 Conversation Summary",
+    "summary": "- **Date**: 2026-05-14",
+    "tags": [],
+    "path": "pages/2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.html"
+  },
+  {
+    "document_id": "conversations-readme",
+    "title": "Conversation Summaries",
+    "summary": "Historical/reference stream for Rig Relay conversation summaries. These documents capture session-level architecture decisions, progress tracking, and operational context \u2014 distinct from audits (analy",
+    "tags": [],
+    "path": "pages/conversations-readme.html"
+  },
+  {
+    "document_id": "desktop-golden-path",
+    "title": "Desktop Golden Path",
+    "summary": "The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.",
+    "tags": [],
+    "path": "pages/desktop-golden-path.html"
+  },
+  {
+    "document_id": "mcp-night-demo",
+    "title": "MCP Night Demo \u2014 Fresh-Clone Walkthrough",
+    "summary": "The desktop app shows a Role Model card explaining who does what:",
+    "tags": [],
+    "path": "pages/mcp-night-demo.html"
+  },
+  {
+    "document_id": "mcp-night-development-harness-demo",
+    "title": "MCP Night \u2014 Rig Relay Development Harness Demo",
+    "summary": "> **One-line thesis:** MCP connects agents to tools. Rig Relay makes that",
+    "tags": [],
+    "path": "pages/mcp-night-development-harness-demo.html"
+  },
+  {
     "document_id": "documentation-policy",
     "title": "Documentation Policy",
     "summary": "Canonical JSON documentation policy for Rig Relay. New docs must be JSON. Old Markdown must be migrated before deletion.",
@@ -9,6 +940,41 @@
       "json"
     ],
     "path": "pages/documentation-policy.html"
+  },
+  {
+    "document_id": "rig-relay-self-dogfood",
+    "title": "Rig Relay Self-Dogfood Workflow",
+    "summary": "This document outlines how to use Rig Relay to build and harden Rig Relay, using its own evidence system to identify determinism gaps and tool failures. Rig Relay is the product; providers are interch",
+    "tags": [],
+    "path": "pages/rig-relay-self-dogfood.html"
+  },
+  {
+    "document_id": "evidence-readme",
+    "title": "Rig Relay Evidence",
+    "summary": "Rig Relay evidence is a read-only session record rooted at a selected evidence root.",
+    "tags": [],
+    "path": "pages/evidence-readme.html"
+  },
+  {
+    "document_id": "validation",
+    "title": "Evidence Validation",
+    "summary": "Rig Relay stores evidence under a selected evidence root. A session is one",
+    "tags": [],
+    "path": "pages/validation.html"
+  },
+  {
+    "document_id": "python",
+    "title": "Python Language Practices",
+    "summary": "Best-practice anchors referenced by out-of-scope findings in this repository.",
+    "tags": [],
+    "path": "pages/python.html"
+  },
+  {
+    "document_id": "out-of-scope-findings",
+    "title": "Out-of-Scope Findings Registry",
+    "summary": "> Living index of structured findings discovered during agent missions.",
+    "tags": [],
+    "path": "pages/out-of-scope-findings.html"
   },
   {
     "document_id": "agent-loop-boundary",
@@ -22,6 +988,174 @@
       "mixin"
     ],
     "path": "pages/agent-loop-boundary.html"
+  },
+  {
+    "document_id": "artifact-tracking-policy",
+    "title": "Artifact Tracking Policy",
+    "summary": "**Draft.** Defines what generated artifacts may be tracked in Rig Relay.",
+    "tags": [],
+    "path": "pages/artifact-tracking-policy.html"
+  },
+  {
+    "document_id": "audit-trail-tamper-evidence",
+    "title": "Audit Trail Tamper-Evidence Design",
+    "summary": "**Design (2026-05).** Not yet implemented. See",
+    "tags": [],
+    "path": "pages/audit-trail-tamper-evidence.html"
+  },
+  {
+    "document_id": "audit-trail",
+    "title": "Audit Trail Store",
+    "summary": "The `AuditTrailStore` provides an append-only, file-backed audit log for Rig Relay",
+    "tags": [],
+    "path": "pages/audit-trail.html"
+  },
+  {
+    "document_id": "beta-telemetry-onboarding",
+    "title": "Beta Telemetry Onboarding",
+    "summary": "Rig Relay is a governed coding-agent harness, not a normal chat assistant.",
+    "tags": [],
+    "path": "pages/beta-telemetry-onboarding.html"
+  },
+  {
+    "document_id": "context-compiler",
+    "title": "Context Compiler Doctrine",
+    "summary": "**Status:** Phase 1 \u2014 MVP map mode.",
+    "tags": [],
+    "path": "pages/context-compiler.html"
+  },
+  {
+    "document_id": "context-observability",
+    "title": "Context Observability Doctrine",
+    "summary": "**Status:** Phase 1 \u2014 observation-first, policy-later.",
+    "tags": [],
+    "path": "pages/context-observability.html"
+  },
+  {
+    "document_id": "context-optimization-codecs",
+    "title": "Context Optimization Codecs",
+    "summary": "Policy and architecture for Rig Relay context compression codecs.",
+    "tags": [],
+    "path": "pages/context-optimization-codecs.html"
+  },
+  {
+    "document_id": "coordination-ownership-policy",
+    "title": "Coordination Ownership Policy",
+    "summary": "**Status: Adopted (Phase K, 2026-05).**",
+    "tags": [],
+    "path": "pages/coordination-ownership-policy.html"
+  },
+  {
+    "document_id": "cross-session-coordination",
+    "title": "Cross-Session Coordination",
+    "summary": "Rig Relay sessions coordinate through typed state, not chat transcripts.",
+    "tags": [],
+    "path": "pages/cross-session-coordination.html"
+  },
+  {
+    "document_id": "debug-bundle-policy",
+    "title": "Debug Bundle Policy",
+    "summary": "**Deferred.** A consolidated `rig-relay debug bundle` command is deferred.",
+    "tags": [],
+    "path": "pages/debug-bundle-policy.html"
+  },
+  {
+    "document_id": "delegate-fleet-orchestration",
+    "title": "Delegate/Fleet Orchestration Doctrine",
+    "summary": "Rig Relay's delegate/fleet orchestration model governs how a reviewer/orchestrator agent",
+    "tags": [],
+    "path": "pages/delegate-fleet-orchestration.html"
+  },
+  {
+    "document_id": "dependency-policy",
+    "title": "Rig Relay Dependency Policy",
+    "summary": "Rig Relay is a cohesive product, not a tiny library. Product-critical capabilities",
+    "tags": [],
+    "path": "pages/dependency-policy.html"
+  },
+  {
+    "document_id": "desktop-cockpit-ui",
+    "title": "Rig Relay Desktop Cockpit UI",
+    "summary": "Rig Relay supports three UI modes for different use cases:",
+    "tags": [],
+    "path": "pages/desktop-cockpit-ui.html"
+  },
+  {
+    "document_id": "desktop-hitl-boundary",
+    "title": "Desktop HITL Boundary",
+    "summary": "Rig Relay's desktop surface operates under a strict human-in-the-loop",
+    "tags": [],
+    "path": "pages/desktop-hitl-boundary.html"
+  },
+  {
+    "document_id": "execution-progress-projection",
+    "title": "ExecutionProgressProjection \u2014 Design",
+    "summary": "**Phase P4a implemented.** Defines the content-light read model for",
+    "tags": [],
+    "path": "pages/execution-progress-projection.html"
+  },
+  {
+    "document_id": "fleet-coordination-plane",
+    "title": "Rig Fleet Coordination Plane",
+    "summary": "**Status: Phase 3 \u2014 Runtime Lease Hardening (Complete). Phase 0 \u2014 Patch Proposal Models (Complete, 2026-05). Phase 0 \u2014 Mission Router (Complete, 2026-05).**",
+    "tags": [],
+    "path": "pages/fleet-coordination-plane.html"
+  },
+  {
+    "document_id": "frontend-rendering-safety",
+    "title": "Frontend Rendering Safety Doctrine",
+    "summary": "**Draft.** Derived from Intake's security boundary policies and adapted for",
+    "tags": [],
+    "path": "pages/frontend-rendering-safety.html"
+  },
+  {
+    "document_id": "future-passkey-plan",
+    "title": "Future Passkey Plan",
+    "summary": "**Deferred.** WebAuthn/passkey authentication for Rig Relay is documented",
+    "tags": [],
+    "path": "pages/future-passkey-plan.html"
+  },
+  {
+    "document_id": "identity-provider-policy",
+    "title": "Identity Provider Policy",
+    "summary": "**Draft.** Identity provider scaffold for Rig Relay alpha testing.",
+    "tags": [],
+    "path": "pages/identity-provider-policy.html"
+  },
+  {
+    "document_id": "mission-context-packets",
+    "title": "Mission Context Packets",
+    "summary": "Mission context packets are the deterministic bridge from a mission envelope to the bounded context an agent run should receive.",
+    "tags": [],
+    "path": "pages/mission-context-packets.html"
+  },
+  {
+    "document_id": "mission-envelope",
+    "title": "Mission Envelope",
+    "summary": "The mission envelope is the minimal executable bridge object between governance intent and agent runtime context.",
+    "tags": [],
+    "path": "pages/mission-envelope.html"
+  },
+  {
+    "document_id": "mission-router",
+    "title": "Rig Mission Router \u2014 Phase 0",
+    "summary": "**Status: Phase 0 \u2014 Deterministic Planning & Routing (Complete).**",
+    "tags": [],
+    "path": "pages/mission-router.html"
+  },
+  {
+    "document_id": "model-observation-dataset",
+    "title": "Model Observation Dataset",
+    "summary": "**Draft.** Defines the content-light observation dataset layer for ranking",
+    "tags": [],
+    "path": "pages/model-observation-dataset.html"
+  },
+  {
+    "document_id": "orchestrator-subagent-model",
+    "title": "Orchestrator, Subagent, Model, and Ralph Roles",
+    "summary": "Rig Relay uses an explicit role model to separate management, execution,",
+    "tags": [],
+    "path": "pages/orchestrator-subagent-model.html"
   },
   {
     "document_id": "orchestrator-loop-boundary",
@@ -38,6 +1172,153 @@
     "path": "pages/orchestrator-loop-boundary.html"
   },
   {
+    "document_id": "provider-onboarding-policy",
+    "title": "Provider Onboarding Policy",
+    "summary": "**Draft.** Defines the security and product boundaries for cloud model provider",
+    "tags": [],
+    "path": "pages/provider-onboarding-policy.html"
+  },
+  {
+    "document_id": "ralph-background-loop",
+    "title": "Ralph \u2014 Governed Background Maintenance Loop",
+    "summary": "Ralph is a governed background maintenance loop for Rig Relay.",
+    "tags": [],
+    "path": "pages/ralph-background-loop.html"
+  },
+  {
+    "document_id": "ralph-worktree-lanes",
+    "title": "Ralph Worktree Lanes \u2014 Background Isolation Model",
+    "summary": "Ralph may operate in background lanes under explicit policy.",
+    "tags": [],
+    "path": "pages/ralph-worktree-lanes.html"
+  },
+  {
+    "document_id": "receipt-envelope",
+    "title": "Receipt Envelope",
+    "summary": "**Implemented (P3a, 2026-05).** Source: `rig_relay/evidence/receipt_envelope.py`.",
+    "tags": [],
+    "path": "pages/receipt-envelope.html"
+  },
+  {
+    "document_id": "relay-desktop-projection-contract",
+    "title": "Relay Desktop Projection Contract",
+    "summary": "**Draft.** Derived from Rig's",
+    "tags": [],
+    "path": "pages/relay-desktop-projection-contract.html"
+  },
+  {
+    "document_id": "relay-local-remote-boundary",
+    "title": "Relay Local/Remote Authority Boundary",
+    "summary": "**Draft.** Derived from Intake's",
+    "tags": [],
+    "path": "pages/relay-local-remote-boundary.html"
+  },
+  {
+    "document_id": "relay-surface-matrix",
+    "title": "Relay Surface Matrix",
+    "summary": "**Draft.** Defines which user-facing surfaces are primary, transitional, or",
+    "tags": [],
+    "path": "pages/relay-surface-matrix.html"
+  },
+  {
+    "document_id": "reviewer-orchestrator",
+    "title": "Reviewer Orchestrator Doctrine",
+    "summary": "Rig Relay's reviewer orchestrator protocol defines how a manager agent reads a full",
+    "tags": [],
+    "path": "pages/reviewer-orchestrator.html"
+  },
+  {
+    "document_id": "rig-to-relay-pattern-inventory",
+    "title": "Rig-to-Relay Pattern Inventory",
+    "summary": "Canonical inventory of Rig architecture patterns worth porting into Rig Relay,",
+    "tags": [],
+    "path": "pages/rig-to-relay-pattern-inventory.html"
+  },
+  {
+    "document_id": "rig-to-relay-porting-doctrine",
+    "title": "Rig-to-Relay Porting Doctrine",
+    "summary": "**Established.** This doctrine governs how proven architecture patterns from the",
+    "tags": [],
+    "path": "pages/rig-to-relay-porting-doctrine.html"
+  },
+  {
+    "document_id": "runtime-context-resolver",
+    "title": "Runtime Context Resolver",
+    "summary": "`RuntimeContextResolver` is the relay-native control-plane helper for deriving canonical runtime coordination context from an intent.",
+    "tags": [],
+    "path": "pages/runtime-context-resolver.html"
+  },
+  {
+    "document_id": "runtime-port-status",
+    "title": "Runtime Port Status Normalization",
+    "summary": "Generated: 2026-05-15",
+    "tags": [],
+    "path": "pages/runtime-port-status.html"
+  },
+  {
+    "document_id": "runtime-supervisor",
+    "title": "RuntimeSupervisor Architecture",
+    "summary": "The **RuntimeSupervisor** is the relay-native subprocess execution engine. It supersedes the Rig domain's `runtime_supervisor.py` and `runtime_stream.py` with a lease-gated, streaming-first design.",
+    "tags": [],
+    "path": "pages/runtime-supervisor.html"
+  },
+  {
+    "document_id": "runtime-tool-invocation-adapter-implementation",
+    "title": "Runtime Tool Invocation Adapter \u2014 Implementation",
+    "summary": "**Implemented (Phase 1, 2026-05).** Source: `rig_relay/runtime/tool_invocation_adapter.py`.",
+    "tags": [],
+    "path": "pages/runtime-tool-invocation-adapter-implementation.html"
+  },
+  {
+    "document_id": "runtime-tool-invocation-adapter",
+    "title": "Runtime Tool Invocation Adapter",
+    "summary": "`RuntimeToolInvocationAdapter` is the relay-native boundary that turns a resolved runtime context into a safe tool or runtime invocation envelope.",
+    "tags": [],
+    "path": "pages/runtime-tool-invocation-adapter.html"
+  },
+  {
+    "document_id": "runtime-tool-invocation-dry-run",
+    "title": "Runtime Tool Invocation Dry-Run",
+    "summary": "`RuntimeToolDryRunRunner` provides a dry-run integration layer for the `RuntimeToolInvocationAdapter`. It calls adapter prepare, validates the envelope against the runtime_tool_invocation schema, and ",
+    "tags": [],
+    "path": "pages/runtime-tool-invocation-dry-run.html"
+  },
+  {
+    "document_id": "runtime-tool-invocation-execution",
+    "title": "Runtime Tool Invocation Execution",
+    "summary": "**File:** `docs/governance/runtime-tool-invocation-execution.md`",
+    "tags": [],
+    "path": "pages/runtime-tool-invocation-execution.html"
+  },
+  {
+    "document_id": "runtime-tool-invocation-result-contract",
+    "title": "Runtime Tool Invocation Result Contract",
+    "summary": "**File:** `docs/governance/runtime-tool-invocation-result-contract.md`",
+    "tags": [],
+    "path": "pages/runtime-tool-invocation-result-contract.html"
+  },
+  {
+    "document_id": "session-lifecycle-finalize-tool",
+    "title": "Session Lifecycle Finalize Tool",
+    "summary": "**File:** `docs/governance/session-lifecycle-finalize-tool.md`",
+    "tags": [],
+    "path": "pages/session-lifecycle-finalize-tool.html"
+  },
+  {
+    "document_id": "session-storage-lifecycle",
+    "title": "Session Storage Lifecycle",
+    "summary": "**Draft.** Conservative lifecycle policy for `~/.rig/sessions`.",
+    "tags": [],
+    "path": "pages/session-storage-lifecycle.html"
+  },
+  {
+    "document_id": "step-up-authorization",
+    "title": "Step-Up Authorization Doctrine",
+    "summary": "Define a step-up authorization boundary for high-authority Rig Relay actions so",
+    "tags": [],
+    "path": "pages/step-up-authorization.html"
+  },
+  {
     "document_id": "storage-retention-policy",
     "title": "Storage Retention Policy",
     "summary": "Retention policy for local Rig Relay storage including sessions, artifacts, telemetry, and traces.",
@@ -51,6 +1332,13 @@
     "path": "pages/storage-retention-policy.html"
   },
   {
+    "document_id": "telemetry-contribution-policy",
+    "title": "Telemetry Contribution Policy",
+    "summary": "**Established.** Defines the consent-gated contribution flow for content-light",
+    "tags": [],
+    "path": "pages/telemetry-contribution-policy.html"
+  },
+  {
     "document_id": "test-suite-doctrine",
     "title": "Test Suite Doctrine",
     "summary": "Governance doctrine for Rig Relay's 6,500+ test suite covering layout, parametrization, test quality taxonomy, and lifecycle management.",
@@ -62,6 +1350,20 @@
       "parametrization"
     ],
     "path": "pages/test-suite-doctrine.html"
+  },
+  {
+    "document_id": "textual-retirement-policy",
+    "title": "Textual TUI Retirement Policy",
+    "summary": "**Established.** The Textual TUI is a legacy/deprecated product UI, but it",
+    "tags": [],
+    "path": "pages/textual-retirement-policy.html"
+  },
+  {
+    "document_id": "textual-rig-console",
+    "title": "Textual Rig Console",
+    "summary": "Deprecated. The Textual Rig Console is retained only as a development",
+    "tags": [],
+    "path": "pages/textual-rig-console.html"
   },
   {
     "document_id": "tool-runtime-boundary",
@@ -88,5 +1390,187 @@
       "runtime"
     ],
     "path": "pages/tracing-doctrine.html"
+  },
+  {
+    "document_id": "update-policy",
+    "title": "Rig Relay Update Policy",
+    "summary": "1. **Notification-first**: Update checks are informational. The user or parent",
+    "tags": [],
+    "path": "pages/update-policy.html"
+  },
+  {
+    "document_id": "usage-data-doctrine",
+    "title": "Rig Relay Usage Data Doctrine",
+    "summary": "Rig Relay produces a behavioral corpus of agent workflow observability data.",
+    "tags": [],
+    "path": "pages/usage-data-doctrine.html"
+  },
+  {
+    "document_id": "validation-scheduler",
+    "title": "Validation Scheduler",
+    "summary": "The Validation Scheduler is a Phase 0 control-plane system built into the Validate tool. It owns three responsibilities that parallel agents cannot reliably manage themselves: **caching**, **request c",
+    "tags": [],
+    "path": "pages/validation-scheduler.html"
+  },
+  {
+    "document_id": "vibe-legacy-deprecation",
+    "title": "Vibe Legacy Deprecation Doctrine",
+    "summary": "**Established.** Rig Relay is an independent product line. Vibe-derived modules",
+    "tags": [],
+    "path": "pages/vibe-legacy-deprecation.html"
+  },
+  {
+    "document_id": "vibe-rig-compatibility-bridge",
+    "title": "Vibe / Rig Compatibility Bridge",
+    "summary": "This document records the temporary Route 3 bridge between the base vibe session",
+    "tags": [],
+    "path": "pages/vibe-rig-compatibility-bridge.html"
+  },
+  {
+    "document_id": "vscodium-extension-client",
+    "title": "Governance: VSCodium Extension Client",
+    "summary": "This document defines the governance boundaries and security invariants for the Rig Relay VSCodium extension.",
+    "tags": [],
+    "path": "pages/vscodium-extension-client.html"
+  },
+  {
+    "document_id": "worktree-manager",
+    "title": "Worktree Manager \u2014 Governance & Safety",
+    "summary": "The `WorktreeManager` (`rig_relay.coordination.worktree_manager.py`) provides",
+    "tags": [],
+    "path": "pages/worktree-manager.html"
+  },
+  {
+    "document_id": "privacy-notice-alpha",
+    "title": "Privacy Notice \u2014 Alpha",
+    "summary": "> **\u26a0 Attorney review required before public release.**",
+    "tags": [],
+    "path": "pages/privacy-notice-alpha.html"
+  },
+  {
+    "document_id": "usage-data-license-alpha",
+    "title": "Usage Data Commercial License \u2014 Alpha",
+    "summary": "> **\u26a0 Attorney review required before public release.**",
+    "tags": [],
+    "path": "pages/usage-data-license-alpha.html"
+  },
+  {
+    "document_id": "ide-capability-map",
+    "title": "IDE Capability Map",
+    "summary": "Canonical capability registry for Rig Relay IDE bridges. Generated from `etc/rig.ide.capability_manifest.v1.json`. Do not edit by hand.",
+    "tags": [],
+    "path": "pages/ide-capability-map.html"
+  },
+  {
+    "document_id": "ide-sidecar-ipc",
+    "title": "Rig IDE / Sidecar IPC Protocol (v1)",
+    "summary": "**Status:** Phase 0/1 bootstrap. Contract-hardening phase.",
+    "tags": [],
+    "path": "pages/ide-sidecar-ipc.html"
+  },
+  {
+    "document_id": "mcp-context-tools",
+    "title": "MCP Context Tools",
+    "summary": "**Status:** Planning. MCP resource/tool exposure of `rig.get_context`.",
+    "tags": [],
+    "path": "pages/mcp-context-tools.html"
+  },
+  {
+    "document_id": "github-pages-artifact-site",
+    "title": "GitHub Pages \u2014 Artifact-Rendered Documentation Site",
+    "summary": "Rig Relay's documentation site is generated from structured artifacts, not",
+    "tags": [],
+    "path": "pages/github-pages-artifact-site.html"
+  },
+  {
+    "document_id": "alpha-release-checklist",
+    "title": "Alpha Release Checklist",
+    "summary": "**Draft.** Release-like alpha readiness checklist for Rig Relay.",
+    "tags": [],
+    "path": "pages/alpha-release-checklist.html"
+  },
+  {
+    "document_id": "known-limitations-alpha",
+    "title": "Known Limitations for Alpha",
+    "summary": "**Draft.** Explicit alpha limitations for Rig Relay.",
+    "tags": [],
+    "path": "pages/known-limitations-alpha.html"
+  },
+  {
+    "document_id": "versioning-policy",
+    "title": "Rig Relay Versioning Policy",
+    "summary": "Rig Relay has an **independent version line** derived from Mistral Vibe CLI",
+    "tags": [],
+    "path": "pages/versioning-policy.html"
+  },
+  {
+    "document_id": "runtime-provenance",
+    "title": "Runtime Provenance",
+    "summary": "How to verify what code Rig Relay is actually running and diagnose stale-install problems.",
+    "tags": [],
+    "path": "pages/runtime-provenance.html"
+  },
+  {
+    "document_id": "textual-rig-console-progress-timeline",
+    "title": "ProgressTimelineWidget \u2014 Design",
+    "summary": "**P4c implemented.** A dumb Textual widget that renders an",
+    "tags": [],
+    "path": "pages/textual-rig-console-progress-timeline.html"
+  },
+  {
+    "document_id": "textual-rig-console-slice-1",
+    "title": "Textual Rig Console \u2014 Slice 1: Projection-Only SessionPaneWidget",
+    "summary": "**Draft.** First slice of the Rig-native Textual operator console,",
+    "tags": [],
+    "path": "pages/textual-rig-console-slice-1.html"
+  },
+  {
+    "document_id": "textual-rig-console-slice-2-evidence-rail",
+    "title": "Textual Rig Console \u2014 Slice 2: EvidenceRailWidget",
+    "summary": "**Draft.** Completed alongside Slice 1.1 (structured blocker_summary).",
+    "tags": [],
+    "path": "pages/textual-rig-console-slice-2-evidence-rail.html"
+  },
+  {
+    "document_id": "textual-rig-console-slice-3-dashboard",
+    "title": "Textual Rig Console \u2014 Slice 3: DashboardScreen",
+    "summary": "**Draft.** Composes existing widgets into a projection-driven dashboard",
+    "tags": [],
+    "path": "pages/textual-rig-console-slice-3-dashboard.html"
+  },
+  {
+    "document_id": "textual-rig-console-slice-4-action-boundary",
+    "title": "Textual Rig Console \u2014 Slice 4: Read-Only Action Surface and Projection Provider Boundary",
+    "summary": "**Draft.** Introduces the seam between Textual UI (projection consumer) and",
+    "tags": [],
+    "path": "pages/textual-rig-console-slice-4-action-boundary.html"
+  },
+  {
+    "document_id": "textual-rig-console-slice-5-1-worker-refresh",
+    "title": "Textual Rig Console \u2014 Slice 5.1: Worker-Safe Dashboard Refresh",
+    "summary": "**Complete.** Moves `DashboardScreen.action_refresh()` behind a Textual",
+    "tags": [],
+    "path": "pages/textual-rig-console-slice-5-1-worker-refresh.html"
+  },
+  {
+    "document_id": "textual-rig-console-slice-5-runtime-provider",
+    "title": "Textual Rig Console \u2014 Slice 5: Read-Only Runtime Dashboard Provider",
+    "summary": "**Draft.** Replaces the fixture-only provider seam with a real read-only",
+    "tags": [],
+    "path": "pages/textual-rig-console-slice-5-runtime-provider.html"
+  },
+  {
+    "document_id": "textual-rig-console-slice-6-coordination-session-enrichment",
+    "title": "Textual Rig Console \u2014 Slice 6: Coordination/Session Enrichment",
+    "summary": "**Complete.** Adds coordination store reading for lane_id, last_heartbeat_at,",
+    "tags": [],
+    "path": "pages/textual-rig-console-slice-6-coordination-session-enrichment.html"
+  },
+  {
+    "document_id": "textual-streaming-smoothness",
+    "title": "Textual Streaming Smoothness \u2014 Provider Delta Coalescing",
+    "summary": "The Textual chat UI streams provider output into assistant message widgets. The",
+    "tags": [],
+    "path": "pages/textual-streaming-smoothness.html"
   }
 ]

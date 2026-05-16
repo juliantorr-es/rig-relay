@@ -1,0 +1,431 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "context-optimization-codecs",
+  "document_type": "governance",
+  "title": "Context Optimization Codecs",
+  "summary": "Policy and architecture for Rig Relay context compression codecs.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/context-optimization-codecs.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Context Optimization Codecs",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Policy and architecture for Rig Relay context compression codecs.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Codec Philosophy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Context optimization in Rig uses a layered codec pipeline. Each pass is independently configured, receipted, and evaled. Lossy codecs are gated behind eval requirements and never applied to authoritative context by default.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-5",
+      "type": "heading",
+      "level": 3,
+      "content": "Definitions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- **Authoritative context**: AGENTS.md rules, exact user instructions, code patches, test failures, security policy, schemas, command output needed for correctness. - **Navigational context**: file paths, symbol names, subsystem labels, package/module names, repeated class/function names. - **Semantic context**: summaries, explanations, subsystem descriptions, plan prose.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Codec Registry",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Codec",
+        "Type",
+        "Reversible",
+        "Lossy",
+        "Status"
+      ],
+      "rows": [
+        [
+          "`rig.symbol_table.v1`",
+          "Symbol replacement",
+          "Yes",
+          "No",
+          "**Implemented**"
+        ],
+        [
+          "`rig.semantic_alias.v1`",
+          "Alias/glossary",
+          "Semi",
+          "Yes",
+          "Future"
+        ],
+        [
+          "`rig.semantic_dense.v0`",
+          "Semantic summary",
+          "No",
+          "Yes",
+          "Future"
+        ],
+        [
+          "`rig.semantic_zh_dense.v0`",
+          "Dense Chinese summary",
+          "No",
+          "Yes",
+          "Future"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Codec Pipeline",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-10",
+      "type": "code",
+      "language": "text",
+      "content": "Raw context\n  → context slicer\n  → symbol table pass (rig.symbol_table.v1)\n  → semantic alias pass (future)\n  → dense-language experiment (future, eval-gated)\n  → token estimator\n  → model-specific optimizer\n  → reconstruction receipt\n  → AgentLoop prompt",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Implemented: `rig.symbol_table.v1`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Deterministic reversible symbol replacement. Replaces repeated long terms (file paths, class names, module names) with short `§`-prefixed symbols.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "- Compresses navigational context by default. - Does NOT compress authoritative context (code fences, AGENTS.md, etc.). - Always reversible; emits receipt with input/output/symbol-table SHA256. - Collision detection: if text already contains `§` symbols, they are escaped reversibly with `\\u00A7` encoding. - Minimum candidate length: 16 characters. - Minimum occurrences: 3. - Maximum symbols: 256.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Current integration slice",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "- `ContextCompiler.build_envelope()` compresses only navigational packs by default. - `ContextEnvelopeReceipt` carries the symbol manifest plus the codec receipt so downstream bridges can expand aliases before tool execution. - Tool execution must expand aliases before validation or tool dispatch. - AGENTS.md, user prompts, transcript bodies, test contents, and exact command output stay uncompressed in the prompt envelope.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-17",
+      "type": "heading",
+      "level": 3,
+      "content": "Alias modes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "- `§` aliases are the human-readable debug mode. - PUA aliases are the dense runtime mode and are only valid inside compiled runtime envelopes. - PUA aliases must never be written into canonical docs or passed to tools. - Compression is safe only when the manifest proves exact reconstruction. - If expansion cannot reconstruct the original section byte-for-byte, the section must be left uncompressed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "Non-goals",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- Semantic aliasing remains out of scope. - Dense semantic summaries remain out of scope. - Chinese or other cross-language semantic compression remains out of scope for authoritative context.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-21",
+      "type": "heading",
+      "level": 3,
+      "content": "Receipt fields",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-22",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"codec_name\": \"rig.symbol_table.v1\",\n  \"codec_version\": \"1\",\n  \"input_sha256\": \"sha256:...\",\n  \"output_sha256\": \"sha256:...\",\n  \"symbol_table_sha256\": \"sha256:...\",\n  \"estimated_tokens_before\": 18420,\n  \"estimated_tokens_after\": 13980,\n  \"replacement_count\": 47,\n  \"reversible\": true,\n  \"lossy\": false,\n  \"refused_reason\": null\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-23",
+      "type": "heading",
+      "level": 3,
+      "content": "API",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-24",
+      "type": "code",
+      "language": "text",
+      "content": "compress_symbols(text, config?) -> SymbolCodecResult\ndecompress_symbols(compressed_text, symbol_table) -> str\ndry_run(text, config?) -> SymbolCodecResult\nfind_symbol_candidates(text, config?) -> tuple[SymbolEntry, ...]",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Future: `rig.semantic_alias.v1`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Semi-reversible controlled alias/glossary codec. Uses a project-specific glossary to replace known terms with short aliases. Reversible only if the glossary is preserved alongside the compressed text.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-27",
+      "type": "heading",
+      "level": 3,
+      "content": "Constraints",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- Must be eval-gated. - Must emit `lossy=true`. - Must not be applied to authoritative context by default.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-29",
+      "type": "heading",
+      "level": 2,
+      "content": "Future: `rig.semantic_dense.v0` / `rig.semantic_zh_dense.v0`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "Lossy semantic summary codecs. The `_zh_dense` variant uses Chinese or other dense-language notation for semantic summaries.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-31",
+      "type": "heading",
+      "level": 3,
+      "content": "Hard rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "1. **Forbidden** for: exact instructions, code patches, security policy, schemas, legal text, AGENTS.md, test failure details. 2. **Allowed only** for: navigational summaries, non-authoritative background, subsystem descriptions. 3. Must include model-specific token/success eval before default use. 4. Must preserve an English reconstruction/summary sidecar. 5. Must emit `lossy=true`, `requires_eval=true`. 6. Automatic rollback if eval shows regression.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-33",
+      "type": "heading",
+      "level": 3,
+      "content": "Risk",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Semantic drift is the primary risk. Deterministic replacement is safe because the mapping is one-to-one and auditable. Dense-language summary replaces meaning, not just tokens, and introduces model-dependent bias. Empirical results vary by model — some tokenizer studies show that non-English tokenization can introduce representational issues depending on the model/tokenizer setup.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-35",
+      "type": "heading",
+      "level": 2,
+      "content": "Token Estimation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "- **Default**: Heuristic estimator (~2–4 chars/token depending on code ratio). - **Future**: Model-specific estimators via tiktoken adapter. - All estimates are advisory. The receipt records `estimator_kind` (currently `\"heuristic\"`).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-37",
+      "type": "heading",
+      "level": 2,
+      "content": "Eval Gate",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "No lossy codec may be enabled by default without passing an A/B eval that demonstrates: - No regression in task success rate - Measurable token cost reduction - Model-specific behavior is understood - Rollback mechanism is automated",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/context-optimization-codecs.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,511 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "out-of-scope-findings",
+  "document_type": "findings",
+  "title": "Out-of-Scope Findings Registry",
+  "summary": "> Living index of structured findings discovered during agent missions.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/findings/out-of-scope-findings.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Out-of-Scope Findings Registry",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "> Living index of structured findings discovered during agent missions. > Each finding is recorded in `out-of-scope-findings.jsonl` with full structured metadata. > This Markdown index provides a human-readable summary sorted by finding kind.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Finding Kinds",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": [
+        "Kind",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`architecture_debt`",
+          "Structural design debt that constrains future work"
+        ],
+        [
+          "`lifecycle_semantics`",
+          "Session/runtime lifecycle behavior that violates intended semantics"
+        ],
+        [
+          "`telemetry_schema_gap`",
+          "Missing or incomplete observability metadata"
+        ],
+        [
+          "`lint_refactor`",
+          "Recurring lint pressure indicating function-level design issues"
+        ],
+        [
+          "`safety_guard_gap`",
+          "Gaps in dirty-file, mutation, or safety guard coverage"
+        ],
+        [
+          "`coordination_gap`",
+          "Missing or incomplete cross-session coordination primitives"
+        ],
+        [
+          "`documentation_gap`",
+          "Missing or outdated documentation"
+        ],
+        [
+          "`provider_boundary_gap`",
+          "Provider/model boundary leakage or missing abstraction"
+        ],
+        [
+          "`testing_gap`",
+          "Missing test coverage or test infrastructure"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Severity Levels",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Severity",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`critical`",
+          "Blocks safety or correctness for current features"
+        ],
+        [
+          "`high`",
+          "Blocks a planned feature or creates significant risk"
+        ],
+        [
+          "`medium`",
+          "Material constraint on future work, should be addressed within 2-3 slices"
+        ],
+        [
+          "`low`",
+          "Nuisance or maintenance drag, address opportunistically"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Status Values",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Status",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`open`",
+          "Reported, not yet triaged"
+        ],
+        [
+          "`accepted`",
+          "Triaged and acknowledged as valid debt"
+        ],
+        [
+          "`planned`",
+          "Scheduled for a specific future slice"
+        ],
+        [
+          "`in_progress`",
+          "Actively being addressed"
+        ],
+        [
+          "`resolved`",
+          "Fixed and validated"
+        ],
+        [
+          "`superseded`",
+          "Replaced by a newer finding or made irrelevant by other changes"
+        ],
+        [
+          "`wont_fix`",
+          "Acknowledged but intentionally not addressed"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Active Findings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Architecture Debt",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Title",
+        "Severity",
+        "Blocked By"
+      ],
+      "rows": [
+        [
+          "`finding_20260513_dirty_guard_singleton`",
+          "DirtyFileGuard singleton is shared across forked agents",
+          "medium",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "Lifecycle Semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Title",
+        "Severity",
+        "Blocked By"
+      ],
+      "rows": [
+        [
+          "`finding_20260513_clear_history_recaptures_guard`",
+          "clear_history() recaptures guard state instead of preserving conversation-only snapshot",
+          "medium",
+          "`finding_20260513_dirty_guard_singleton`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Telemetry Schema Gaps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-15",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Title",
+        "Severity",
+        "Blocked By"
+      ],
+      "rows": [
+        [
+          "`finding_20260513_checkpoint_coordination_unknown_metadata`",
+          "checkpoint and coordination tools have UNKNOWN determinism and mutation metadata",
+          "medium",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Lint Refactor",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-17",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Title",
+        "Severity",
+        "Blocked By"
+      ],
+      "rows": [
+        [
+          "`finding_20260513_search_replace_plr0914`",
+          "search_replace.py has recurring PLR0914/PLR0915 pressure",
+          "low",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Safety Guard Gaps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-19",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Title",
+        "Severity",
+        "Blocked By"
+      ],
+      "rows": [
+        [
+          "`finding_20260517_validate_check_missing_dependency_bug`",
+          "validate_runner.check_missing_dependency incorrectly blocks multi-word commands like 'git status'",
+          "medium",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "Stale Infrastructure",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-21",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Title",
+        "Severity",
+        "Blocked By"
+      ],
+      "rows": [
+        [
+          "`finding_20260517_stale_ci_workflows`",
+          "pylint.yml and python-package-conda.yml are stale legacy workflows from mistral-vibe",
+          "medium",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "Testing Gaps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-23",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Title",
+        "Severity",
+        "Blocked By"
+      ],
+      "rows": [
+        [
+          "`finding_20250613_validate_test_duplication`",
+          "test_validate.py and test_validate_git_state.py contain 19 duplicate/near-duplicate git-state tests",
+          "medium",
+          "—"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-24",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Each JSONL row conforms to `rig.relay.out_of_scope_finding.v1`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-26",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"schema_version\": \"rig.relay.out_of_scope_finding.v1\",\n  \"finding_id\": \"finding_<date>_<slug>\",\n  \"created_at\": \"ISO-8601\",\n  \"source_session_id\": \"session identifier\",\n  \"source_task_id\": \"task or mission identifier\",\n  \"repo_area\": \"module or subsystem path\",\n  \"language\": \"python | shell | ...\",\n  \"finding_kind\": \"architecture_debt | lifecycle_semantics | telemetry_schema_gap | lint_refactor | safety_guard_gap | coordination_gap | documentation_gap | provider_boundary_gap | testing_gap\",\n  \"severity\": \"low | medium | high | critical\",\n  \"status\": \"open | accepted | planned | in_progress | resolved | superseded | wont_fix\",\n  \"title\": \"One-line summary\",\n  \"evidence\": \"Concrete observations from the session\",\n  \"why_it_matters\": \"Impact if left unresolved\",\n  \"best_practice_anchor\": \"Reference to external standard or internal convention\",\n  \"recommended_action\": \"Specific fix approach\",\n  \"suggested_slice\": \"Human-readable name for the future mission slice\",\n  \"related_files\": [\"paths\"],\n  \"blocked_by\": [\"finding_ids\"],\n  \"unblocks\": [\"capabilities this finding gates\"]\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-27",
+      "type": "heading",
+      "level": 2,
+      "content": "Language Practice References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Findings reference language-specific best-practice anchors documented in `docs/findings/language-practices/`:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "- [Python](language-practices/python.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-30",
+      "type": "heading",
+      "level": 2,
+      "content": "Governance",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "- **Do not fix opportunistically.** Findings are recorded, classified, and turned into future work — not patched mid-mission. - **Append-only JSONL.** Agents append new rows to `out-of-scope-findings.jsonl`. Never edit or remove existing rows. - **Index is derived.** The Markdown index is regenerated from the JSONL. If the index is stale, regenerate it. - **Link from final reports.** Every mission final report should include a small \"Out-of-scope findings recorded\" section linking back to this registry.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/findings/out-of-scope-findings.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "tool-execution-artifact-safety-boundary",
+  "document_type": "audit",
+  "title": "Audit: Tool Execution and Artifact Safety Boundary",
+  "summary": "Status: Draft",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/tool-execution-artifact-safety-boundary.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Audit: Tool Execution and Artifact Safety Boundary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: tools",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Executive Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "The boundary between tool execution and artifacting is centered on the `16KB` threshold in `AgentLoop._handle_tool_response`. While functional, the logic is highly coupled to the main agent loop and lacks explicit serialization/safety gates for binary or malformed data.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Tool Output Lifecycle Map",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "1.  **Tool Invoke**: `AgentLoop` calls `tool.run()`. 2.  **Output Capture**: Raw string/data returned to `AgentLoop`. 3.  **Threshold Check**: If `len(output) > 16384` bytes, trigger artifacting. 4.  **Artifact Writing**: `ArtifactWriter` writes atomic JSON to `artifacts/tool-results/`. 5.  **Event Emission**: `ARTIFACT_WRITTEN` event sent to telemetry. 6.  **Prompt Inlining**: Truncated \"excerpt\" + \"artifact reference\" is placed in the `LLMMessage`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Artifacting Threshold Inventory",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": [
+        "Setting",
+        "Default",
+        "Location"
+      ],
+      "rows": [
+        [
+          "`threshold_bytes`",
+          "16384",
+          "`vibe/core/telemetry/artifacts.py`"
+        ],
+        [
+          "`auto_compact_threshold`",
+          "200,000 (tokens)",
+          "`vibe/core/config/_settings.py`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Safety and Determinism Risks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "- **Binary Data**: If a tool returns raw binary data, `json.dumps` (without `ensure_ascii=False`) or string encoding may fail non-deterministically based on the byte sequence. - **Path Normalization**: Tool-produced paths in artifacts are not always absolute or normalized, which can cause breaks in evidence-reading tools if they depend on the session's CWD. - **Failures**: Currently, tool failures (stderr/exceptions) are artifacted the same way as successes, but they may lack structured error metadata in the artifact itself.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Missing Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "- **Test: Binary Output**: Verify that binary tool output is handled without corrupting the JSONL. - **Test: Path Resolution**: Verify that `artifact_path` in events is correctly resolvable from the repo root. - **Test: Schema Parity**: Verify that every `ARTIFACT_WRITTEN` event has a corresponding valid file in the filesystem.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Future Missions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "1.  **Mission: Binary Safety Gate**: Implement a validation step in `ArtifactWriter` to safely encode or reject binary blobs. 2.  **Mission: Normalized Artifact Metadata**: Ensure all `artifact_path` references in events are relative to the project root, not the session directory.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/tool-execution-artifact-safety-boundary.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

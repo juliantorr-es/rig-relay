@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receipt Envelope — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Implemented (P3a, 2026-05).** Source: `rig_relay/evidence/receipt_envelope.py`.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Receipt Envelope</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Receipt Envelope</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Implemented (P3a, 2026-05).** Source: `rig_relay/evidence/receipt_envelope.py`.</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Provides a content-light canonical receipt envelope model and builder that wraps existing tool/runtime/governance receipts with actor, subject, decision, and evidence metadata.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">The ReceiptEnvelope is a **unified wrapper** for all receipt types in Rig Relay. It does not replace existing tool receipts (BashReceipt, WriteFileReceipt, etc.) or the receipt index — it wraps them with common metadata so that consumers (tools, audit trails, projections) get a consistent interface.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Core Rules</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">1. **All envelope data is content-light.** - No raw payloads, stdout, stderr, file contents, diffs, snippets, or secrets. - SHA256 hashes replace raw content. - Byte counts replace full content references.</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">2. **The builder is a pure function.** - No side effects, no file reads, no persistence. - Deterministic when `envelope_id` and `created_at` are supplied explicitly. - Accepts both dict and Pydantic BaseModel payloads.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">3. **Payloads are hashed, not stored.** - `build_receipt_envelope()` accepts an optional `receipt_payload` parameter. - The payload&#x27;s canonical SHA256 is recorded as `ReceiptEvidence`. - The raw payload is discarded after hashing.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Models</h2>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Enums</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Enum</th><th>Values</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`ReceiptActorKind`</td><td>human, agent, tool, runtime, system</td><td>Kinds of actors</td></tr>
+<tr><td>`ReceiptSubjectKind`</td><td>tool_invocation, runtime_invocation, governance_decision, worktree, projection, session, artifact</td><td>Kinds of subjects</td></tr>
+<tr><td>`ReceiptEvidenceKind`</td><td>sha256, schema, receipt_index, governance_decision, runtime_event, tool_receipt, projection_integrity</td><td>Kinds of evidence</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Models</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Model</th><th>Key Fields</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`ReceiptActor`</td><td>actor_id, actor_kind, display_name, is_human, is_authoritative</td><td>Who/what performed the action</td></tr>
+<tr><td>`ReceiptSubject`</td><td>subject_id, subject_kind, workspace_id, session_id, path</td><td>What was acted upon</td></tr>
+<tr><td>`ReceiptInput`</td><td>input_id, input_kind, input_sha256, input_bytes</td><td>Input to the operation</td></tr>
+<tr><td>`ReceiptOutput`</td><td>output_id, output_kind, output_sha256, output_bytes, status</td><td>Output from the operation</td></tr>
+<tr><td>`ReceiptEvidence`</td><td>evidence_id, evidence_kind, evidence_sha256, schema_version, uri</td><td>Evidence artifact reference</td></tr>
+<tr><td>`ReceiptDecision`</td><td>decision, rationale, gate, governance_decision_id</td><td>Authority classification</td></tr>
+<tr><td>`ReceiptEnvelope`</td><td>schema_version, envelope_id, receipt_kind, actor, subject, input, output, decision, evidence, created_at</td><td>Canonical wrapper</td></tr>
+</tbody>
+</table>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">All models use `ConfigDict(extra=&quot;forbid&quot;)`.</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Builder</h2>
+
+<pre id="code-18"><code class="language-python">def build_receipt_envelope(
+    *,
+    envelope_id: str | None = None,
+    receipt_kind: str,
+    actor: ReceiptActor,
+    subject: ReceiptSubject,
+    receipt_payload: dict[str, Any] | BaseModel | None = None,
+    decision: ReceiptDecision | None = None,
+    evidence_override: list[ReceiptEvidence] | None = None,
+    created_at: str | None = None,
+) -&gt; ReceiptEnvelope</code></pre>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- Auto-generates `envelope_id` (UUID4) and `created_at` (current UTC) when omitted. - Pass explicit values for deterministic output. - `receipt_payload` is hashed (SHA256) and recorded as `ReceiptEvidence` — never stored raw.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Placeholder Constants</h2>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Constant</th><th>Value</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>`PLACEHOLDER_UNKNOWN`</td><td>`&quot;unknown&quot;`</td><td>Unknown or missing value</td></tr>
+<tr><td>`PLACEHOLDER_UNAVAILABLE`</td><td>`&quot;unavailable&quot;`</td><td>Unavailable data</td></tr>
+<tr><td>`PLACEHOLDER_NO_RECEIPT`</td><td>`&quot;no_receipt&quot;`</td><td>Explicit absence of a receipt</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Relationship to Existing Systems</h2>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">Tool Receipts</h3>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Existing tool receipts (BashReceipt, WriteFileReceipt, SearchReplaceReceipt, ValidateReceipt) contain the full, content-light receipt data for each tool. The ReceiptEnvelope wraps these with actor/subject/decision/evidence metadata without duplicating their fields.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Receipt Index</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">The receipt index (`rig_relay/evidence/receipt_index.py`) stores indexed records from observability JSONL. These `ToolReceiptIndexRecord` instances are natural inputs to `build_receipt_envelope()` — their `model_dump(mode=&quot;json&quot;)` dict can be passed as `receipt_payload`.</p>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">Governance Decisions</h3>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">`GateDecision` models (from `rig_relay/governance/decisions.py`) can be wrapped using `ReceiptEnvelope(receipt_kind=&quot;governance_decision&quot;)` with the decision&#x27;s key fields mapped into `ReceiptDecision`.</p>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">Runtime Models</h3>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">`RuntimeProviderDescriptor` and `RuntimeCapability` (from `rig_relay/runtime/models.py`) can be referenced via `ReceiptEvidence` with `evidence_kind=&quot;schema&quot;` and the model&#x27;s `schema_version`.</p>
+
+<h2 id="h2-31" class="disclosure-standard" data-disclosure-level="standard">Audit Trail Integration (P3b)</h2>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeSupervisor` uses `ReceiptEnvelope` as the content-light envelope for audit events. When a terminal execution event occurs, a `ReceiptEnvelope` is built with:</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">- **Actor**: `audit_actor` or a runtime default - **Subject**: `RUNTIME_INVOCATION` with lease/request context - **Input**: Execution request reference (request SHA256) - **Output**: Terminal status, stdout/stderr hashes and byte counts - **Evidence**: SHA256 hash of the terminal event - **Decision**: Completed/failed/refused mapping</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">The envelope is embedded directly in the `AuditEvent` via the ``envelope`` field. ReceiptEnvelopes are not persisted independently — they are embedded in audit events for append-only storage.</p>
+
+<h2 id="h2-35" class="disclosure-standard" data-disclosure-level="standard">Future Integration</h2>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">- **Receipt Persistence:** ReceiptEnvelopes can be persisted as JSONL (same pattern as observability JSONL). No persistence is implemented yet. - **Receipt Signing:** Future signing would operate on the canonical JSON representation of the ReceiptEnvelope (not on inner payloads).</p>
+
+<h2 id="h2-37" class="disclosure-standard" data-disclosure-level="standard">Schema</h2>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Schema file: `docs/schemas/rig.relay.receipt_envelope.v1.schema.json`</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">- Draft 7 - `additionalProperties: false` at all levels - Nullable fields (`[&quot;string&quot;, &quot;null&quot;]`, `[&quot;integer&quot;, &quot;null&quot;]`) - Enum validation for `ReceiptActorKind`, `ReceiptSubjectKind`, `ReceiptEvidenceKind` - Schema version constant: `rig.relay.receipt_envelope.v1`</p>
+
+<h2 id="h2-40" class="disclosure-standard" data-disclosure-level="standard">Cross-References</h2>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">- [Rig Runtime Port Roadmap](../audits/rig-runtime-port/port-roadmap.md) - [Rig-to-Relay Runtime Audit](../audits/rig-runtime-port/rig-to-relay-runtime-audit.md) - [Rig-to-Relay Concept Map](../audits/rig-runtime-port/concept-map.md) - [Receipt Envelope Schema](../schemas/rig.relay.receipt_envelope.v1.schema.json) - [Receipt Index](../evidence/receipt_index.py) - [Governance Decisions](../governance/decisions.py) - [Runtime Models](../runtime/models.py)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/receipt-envelope.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

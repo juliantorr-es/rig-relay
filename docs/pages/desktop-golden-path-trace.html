@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desktop Golden Path Trace — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Canonical desktop bridge startup and handshake trace for the local golden path.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Desktop Golden Path Trace</h1>
+  <p class="meta">Status: active | Updated: </p>
+</header>
+<main>
+  <section>
+    <h2>Metadata</h2>
+    <table>
+      <tr><th>Schema ID</th><td>desktop_golden_path_trace.v1</td></tr>
+      <tr><th>Change kind</th><td>desktop_bridge_trace</td></tr>
+      <tr><th>Source</th><td class="file-ref"><code>docs/json/code_schemas/desktop_golden_path_trace.v1.json</code></td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Authority</h2>
+    <table>
+      <tr><th>Authority kind</th><td>repo_governance</td></tr>
+      <tr><th>Trusted</th><td>True</td></tr>
+      <tr><th>Source path</th><td class="file-ref"><code>docs/json/governance/desktop-cockpit-ui.v1.json</code></td></tr>
+      <tr><th>Review status</th><td>active</td></tr>
+      <tr><th>Last reviewed</th><td>2026-05-18</td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Model Summary</h2>
+    <p>Use the desktop golden path as the proof artifact. Trace startup, websocket connect, auth, projection, and status rendering with canonical handshake_id.</p>
+  </section>
+  <section>
+    <h2>Required Invariants</h2>
+    <ul><li>Startup logs report host, port, frontend_url, websocket_url, tls_enabled, token_present, and transport_label.</li>
+<li>Auth success must emit canonical handshake_id.</li>
+<li>Projection sent, received, and rendered must be traced.</li>
+<li>Status rendered must follow connection success.</li>
+<li>Playwright browser integration is release evidence.</li>
+<li>Simulated trace tests are analyzer tests, not launch proof.</li>
+<li>No untrusted TLS is labeled secure.</li></ul>
+  </section>
+  <section>
+    <h2>Forbidden Patterns</h2>
+    <ul><li>Secure Local Bridge</li>
+<li>missing handshake_id</li>
+<li>ws_url without /ws</li></ul>
+  </section>
+  <section>
+    <h2>Required Files</h2>
+    <ul><li>rig_relay/desktop/bridge_server.py</li>
+<li>rig_relay/desktop/websocket_server.py</li>
+<li>tests/desktop/test_golden_path.py</li></ul>
+  </section>
+  <section>
+    <h2>Required Tests</h2>
+    <ul><li>tests/desktop/test_golden_path.py</li>
+<li>tests/desktop/test_golden_path_browser_integration.py</li></ul>
+  </section>
+  <section>
+    <h2>Required Trace Events</h2>
+    <ul><li>desktop.bridge.start_begin</li>
+<li>desktop.frontend.bootstrap_loaded</li>
+<li>desktop.transport.websocket_connected</li>
+<li>desktop.transport.auth_received</li>
+<li>desktop.transport.handshake_succeeded</li>
+<li>frontend_status_rendered</li></ul>
+  </section>
+  <section>
+    <h2>Validation Commands</h2>
+    <ul><li>uv run pytest tests/desktop/test_golden_path_browser_integration.py tests/desktop/test_golden_path.py -q</li>
+<li>uv run pytest tests/desktop/test_websocket_correlation.py -q</li></ul>
+  </section>
+  <section>
+    <h2>Context Pack</h2>
+    <h3>Include Files</h3>
+    <ul><li>rig_relay/desktop/bridge_server.py</li>
+<li>rig_relay/desktop/websocket_server.py</li>
+<li>tests/desktop/test_golden_path.py</li></ul>
+    <h3>Include Docs</h3>
+    <ul><li>docs/json/governance/desktop-cockpit-ui.v1.json</li>
+<li>docs/json/governance/relay-desktop-projection-contract.v1.json</li></ul>
+    <h3>Include Schemas</h3>
+    <ul><li>docs/schemas/rig.code_schema.v1.schema.json</li>
+<li>docs/schemas/rig.documentation.page.v1.schema.json</li></ul>
+    <h3>Exclude Patterns</h3>
+    <ul><li>docs/pages/**</li>
+<li>**/*.html</li></ul>
+  </section>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/code_schemas/desktop_golden_path_trace.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

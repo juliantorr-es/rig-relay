@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desktop HITL Boundary — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Rig Relay&#x27;s desktop surface operates under a strict human-in-the-loop">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Desktop HITL Boundary</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Desktop HITL Boundary</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s desktop surface operates under a strict human-in-the-loop (HITL) contract. The desktop UI renders backend projections and sends intents. The backend validates state and owns all policy. Execution remains disabled until a separate Relay execution contract exists.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Layered responsibility</h2>
+
+<pre id="code-4"><code class="language-text">Desktop UI       Renders projections, sends intents.
+                 Dumb renderer — no policy, no hashing, no ranking.
+
+Desktop Backend  Validates state, processes intents.
+                 Owns policy, refusal codes, approval gating.
+
+Ralph            Owns Ralph state transitions (scan, approve, decline).
+                 Consumes projections, produces rank and mission.
+
+Relay            Executes approved missions (future).
+                 Not yet wired through this boundary.</code></pre>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Action boundaries</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Layer</th><th>Allowed</th><th>Forbidden</th></tr></thead>
+<tbody>
+<tr><td>Frontend</td><td>Render backend projections. Send backend-defined action payloads. Display refusal codes + messages.</td><td>Compute hashes. Rank candidates. Infer approval policy. Decide `execution_enabled`. Inspect raw scanner internals.</td></tr>
+<tr><td>Backend</td><td>Validate run_id, scan_id, panel_sha256, mission_candidate_sha256. Apply structured refusal codes. Own state transitions.</td><td>Execute approved missions. Write to canonical findings. Mutate source code. Open external network calls.</td></tr>
+<tr><td>Ralph (v0.7)</td><td>Scan projections. Rank by deterministic policy. Produce approval-ready panel. Accept/decline with identity binding.</td><td>Execute missions. Schedule daemon runs. Mutate state outside intent handlers.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Intent result envelope</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">All desktop intents that reach this boundary return:</p>
+
+<pre id="code-9"><code class="language-json">{
+  &quot;schema_version&quot;: &quot;rig.desktop.intent_result.v1&quot;,
+  &quot;intent_kind&quot;: &quot;ralph_approve&quot;,
+  &quot;ok&quot;: false,
+  &quot;status&quot;: &quot;refused&quot;,
+  &quot;error_code&quot;: &quot;stale_panel_hash&quot;,
+  &quot;message&quot;: &quot;Panel hash does not match current state.&quot;,
+  &quot;execution_enabled&quot;: false
+}</code></pre>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">`ok: true` means the intent was accepted. `ok: false` means it was refused. `execution_enabled` is always `false` in this phase.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Identity binding</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Approval/decline decisions are bound to four identities:</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- `run_id` — the desktop run session that produced this scan - `scan_id` — the specific scan within that run - `panel_sha256` — content hash of the panel shown to the user - `mission_candidate_sha256` — content hash of the mission candidate</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">All four must match the current backend state. Any mismatch produces a structured refusal code.</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Refusal codes</h2>
+
+<table id="table-16" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>`no_scan_state`</td><td>No scan has been run</td></tr>
+<tr><td>`stale_run_id`</td><td>Run ID doesn&#x27;t match — state replaced</td></tr>
+<tr><td>`stale_scan_id`</td><td>Scan ID doesn&#x27;t match — rescan occurred</td></tr>
+<tr><td>`stale_panel_hash`</td><td>Panel hash mismatch</td></tr>
+<tr><td>`stale_mission_hash`</td><td>Mission candidate hash mismatch</td></tr>
+<tr><td>`missing_mission_candidate`</td><td>No candidate present</td></tr>
+<tr><td>`unsupported_action`</td><td>Unknown intent</td></tr>
+<tr><td>`invalid_payload`</td><td>Required fields missing</td></tr>
+<tr><td>`execution_disabled`</td><td>Execution not yet implemented</td></tr>
+<tr><td>`internal_error`</td><td>Unexpected failure</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Execution contract (future)</h2>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">When execution is implemented, it will be a separate contract:</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- Execution requires explicit approval through this HITL boundary - Approved decisions reference exact run_id + scan_id + hashes - The execution path validates hashes before acting - The execution path emits receipts - The execution path returns results through the same intent envelope</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">No execution path will bypass the HITL boundary.</p>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">Desktop event vocabulary</h2>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Stable event names for future analytics compiler integration:</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- `rig.desktop.ralph.scan.requested` - `rig.desktop.ralph.scan.completed` - `rig.desktop.ralph.approval.requested` - `rig.desktop.ralph.approval.accepted` - `rig.desktop.ralph.approval.refused` - `rig.desktop.ralph.decline.accepted` - `rig.desktop.ralph.rescan.completed`</p>
+
+<h2 id="h2-24" class="disclosure-standard" data-disclosure-level="standard">Durable state (v0.8)</h2>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Ralph run state is now persisted through `RalphRunStateStore`:</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">- In-memory for tests and transient use - Filesystem-backed under `.rig/ralph/runs/` - One JSON file per run_id - Current run pointer tracked via `.rig/ralph/current_run.json` - Atomic writes via temp file + rename</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Run state includes: - `run_id`, `scan_id`, `status`, `phase`, `approval_state` - `panel_sha256`, `mission_candidate_sha256`, `input_snapshot_sha256` - `execution_enabled` (always false) - `created_at`, `updated_at`, `expires_at` - `latest_decision_event_id`, `latest_decision_receipt_sha256`</p>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Decision events and receipts (v0.8)</h2>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Every approve/decline/refusal produces:</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">1. A `DecisionEvent` appended to `.rig/ralph/events/ralph_decisions.jsonl` (append-only JSONL ledger) 2. A `DecisionReceipt` stored under `.rig/ralph/receipts/` (content-addressed JSON file)</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Event kinds: `ralph.decision.approved`, `ralph.decision.declined`, `ralph.decision.refused`, `ralph.decision.expired`.</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">`event_sha256` and `receipt_sha256` are separate, computed from stable fields (timestamps excluded).</p>
+
+<h2 id="h2-33" class="disclosure-standard" data-disclosure-level="standard">Desktop event stream (v0.8)</h2>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">`DesktopEventSink` interface with `InMemoryDesktopEventSink` and `NoOpDesktopEventSink` implementations. Events carry `event_sha256` computed from stable fields. Future: JSONL sink, analytics compiler integration.</p>
+
+<h2 id="h2-35" class="disclosure-standard" data-disclosure-level="standard">Read-only mission contract (v0.8)</h2>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">`RalphReadOnlyMissionRequest/Plan/Result` define the future execution contract without implementing execution. All plans return `execution_enabled=False` and `implementation_status=contract_only`.</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">Forbidden capabilities include: source_code_mutation, git_commit, external_network_calls, background_recursion, etc.</p>
+
+<h2 id="h2-38" class="disclosure-standard" data-disclosure-level="standard">Desktop transport boundary</h2>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">The desktop cockpit now serves its frontend over local HTTPS and its projection/event bridge over WSS when TLS is enabled. Runtime config is delivered through the pywebview JS API, not raw HTML injection.</p>
+
+<h3 id="h3-40" class="disclosure-standard" data-disclosure-level="standard">Current transport shape</h3>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">- Frontend: `https://127.0.0.1:&lt;static_port&gt;/index.html` - Projection/events: `wss://127.0.0.1:&lt;ws_port&gt;/...` - Runtime config: `window.pywebview.api.get_runtime_config()`</p>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">TLS strategy</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">- Source mode prefers local certificate material under the app support directory or explicit `RIG_RELAY_TLS_CERT` / `RIG_RELAY_TLS_KEY` overrides. - Packaged mode stores local-only certificate material outside the app bundle under `~/Library/Application Support/Rig Relay/certs/`. - `RIG_RELAY_DESKTOP_TLS=0` disables TLS only for development fallback.</p>
+
+<h3 id="h3-44" class="disclosure-standard" data-disclosure-level="standard">Security limits</h3>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">- Local self-signed certificates are transport consistency, not remote identity. - `ws://` remains a development fallback only and is not the normal packaged path. - Merge and push remain disabled in runtime config.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/desktop-hitl-boundary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

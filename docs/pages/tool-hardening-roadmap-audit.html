@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tool Hardening Roadmap Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Audit of the remaining hardening surface for mutation tools, read-only inspection tools, and orchestration tools. This is design-only; no implementations changed.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Tool Hardening Roadmap Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Tool Hardening Roadmap Audit</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Scope</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Audit of the remaining hardening surface for mutation tools, read-only inspection tools, and orchestration tools. This is design-only; no implementations changed.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">The repo has already crossed the threshold on the highest-risk mutation surfaces:</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- `bash` has a deterministic envelope, receipt model, and receipt policy validation. - `search_replace` has a structured result model, receipt model, schema coverage, and automatic receipt emission. - `validate` has a read-only stage 1 profile runner and a content-light receipt path. - a generic receipt index now exists, which means future tools should target the same emission and indexing contract instead of inventing custom logs.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The remaining risk is not &quot;general shell usage.&quot; The remaining risk is the set of mutation and inspection surfaces that still leak raw content, depend on implicit state, or lack consistent receipts.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Hardening Status Summary</h2>
+
+<h3 id="h3-9" class="disclosure-standard" data-disclosure-level="standard">SearchReplace</h3>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">Current status:</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- structured invocation model: complete - structured result model: complete - structured receipt model: complete - `build_receipt()`: complete - schema coverage: complete - actual result schema validation tests: complete - actual receipt schema validation tests: complete - generic receipt emission compatibility: complete - content-light policy validation coverage: complete - receipt index compatibility: complete - end-to-end agent-loop receipt emission test: partial - path safety: complete - outside-workspace refusal: complete - binary/content policy: partial - before/after file hashes: complete - before/after byte counts: complete - atomic write behavior: not_applicable - structured statuses for success/no_match/ambiguous_match/count_mismatch/refused/internal_error: partial - warning/refusal sanitizer: partial - legacy `ToolError` bypasses: partial - tests for every status: partial - docs/audit coverage: complete</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Key remaining gap:</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- full agent-loop integration test for receipt emission - sanitizer path still needs tighter guarantees for warnings/refusal text - caller errors still bypass receipts by design</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">WriteFile</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Current status:</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- structured invocation model: complete - structured result model: partial - structured receipt model: missing - `build_receipt()`: missing - schema coverage: missing - actual result schema validation tests: missing - actual receipt schema validation tests: missing - generic receipt emission compatibility: missing - content-light policy validation coverage: missing - receipt index compatibility: missing - path safety: complete - outside-workspace refusal: complete - binary/content policy: partial - before/after file hashes: partial - before/after byte counts: partial - created vs overwritten status: complete - atomic write behavior: partial - file permission preservation: unknown - newline/encoding policy: partial - structured statuses for success/refused/internal_error/etc.: partial - tests for creating a new file: likely present, but receipt-level evidence not yet complete - tests for overwriting an existing file: likely present, but receipt-level evidence not yet complete - tests for refusing unsafe paths: likely present - tests for binary or invalid content handling: partial - tests proving receipts omit raw file contents: missing - docs/audit coverage: missing or incomplete</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Key conclusion:</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- `write_file` still needs the same evidence standard as `search_replace`. - it should be the next high-risk mutation closure after `search_replace`.</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Read-Only Inspection Tools</h3>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Inventory:</p>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `read_file` - `grep` - likely `webfetch`/`websearch`-style inspection helpers where used interactively</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Observed behavior:</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">- `read_file` has path safety, byte caps, and truncation flags, but no receipt model. - `grep` has truncation behavior and parsed matches, but no unified receipt model. - both expose raw content in results by design, which makes receipts and structured hashes important if promoted into `validate`-style surfaces.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Call volume / failure rate from tool-usage analysis:</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">- `read_file`: 3,970 calls, 14 failures - `grep`: 1,243 calls, 4 failures</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Read-only hardening priority:</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">1. `read_file` 2. `grep` 3. related search/list helpers</p>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Orchestration Tools</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Inventory:</p>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">- `coordination` - `checkpoint` - `validate` - `session_lifecycle` - `receipt_index` - lane / worktree / promotion / handoff scripts</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Current role:</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">- these tools coordinate state transitions, claims, leases, promotion, and evidence indexing. - they should not become ad hoc mutation channels.</p>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Observed posture:</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">- `coordination` and `checkpoint` are mutation surfaces with some evidence emission. - `validate` is becoming the read-only gate that orchestration should trust before promotion. - `receipt_index` is read-only and should remain evidence-only.</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Recommended ordering:</p>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">1. finish mutation tool hardening first 2. then harden read-only inspection tools 3. then harden orchestration surfaces</p>
+
+<h2 id="h2-37" class="disclosure-standard" data-disclosure-level="standard">Shared Hardening Matrix</h2>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Legend:</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">- `complete` - `partial` - `missing` - `not_applicable` - `unknown`</p>
+
+<table id="table-40" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Surface</th><th>structured args</th><th>structured result</th><th>structured receipt</th><th>schema coverage</th><th>actual schema tests</th><th>receipt emission</th><th>receipt policy validation</th><th>receipt index compatibility</th><th>path safety</th><th>mutation safety</th><th>atomicity</th><th>output caps/truncation</th><th>binary/content policy</th><th>timeout</th><th>refusal taxonomy</th><th>legacy exception bypasses</th><th>focused tests</th><th>CI coverage</th><th>docs/audit coverage</th></tr></thead>
+<tbody>
+<tr><td>`search_replace`</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>partial</td><td>complete</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>complete</td><td>partial</td><td>complete</td></tr>
+<tr><td>`write_file`</td><td>complete</td><td>partial</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>complete</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>missing</td></tr>
+<tr><td>`read_file`</td><td>complete</td><td>partial</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>complete</td><td>not_applicable</td><td>not_applicable</td><td>complete</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>missing</td></tr>
+<tr><td>`grep`</td><td>complete</td><td>partial</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>missing</td><td>complete</td><td>not_applicable</td><td>not_applicable</td><td>complete</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>missing</td></tr>
+<tr><td>`coordination`</td><td>complete</td><td>partial</td><td>missing</td><td>missing</td><td>missing</td><td>partial</td><td>missing</td><td>missing</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>unknown</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>missing</td></tr>
+<tr><td>`checkpoint`</td><td>complete</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td><td>partial</td></tr>
+<tr><td>`validate`</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>not_applicable</td><td>not_applicable</td><td>complete</td><td>partial</td><td>partial</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td><td>complete</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-41" class="disclosure-standard" data-disclosure-level="standard">Roadmap</h2>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">Stage 0 - This Audit Only</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- capture the remaining surface gaps without changing implementations.</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">- docs only</p>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">- JSONL parseability for the gap inventory</p>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">- overfitting to current hardening state</p>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">- roadmap accepted as the next hardening plan</p>
+
+<h3 id="h3-53" class="disclosure-standard" data-disclosure-level="standard">Stage 1 - SearchReplace Final Closure</h3>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">- close the last search_replace gaps.</p>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/search_replace.py` - `tests/tools/test_tool_receipt_emission.py` - `tests/tools/test_hardened_tools.py` - `tests/evidence/test_tool_receipt_policy.py` - `tests/evidence/test_receipt_index.py`</p>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">- end-to-end agent-loop receipt emission test - actual result schema validation tests - actual receipt schema validation tests - sanitizer regression tests - receipt index compatibility test</p>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">Validation commands:</p>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">- `uv run pytest tests/tools/test_tool_receipt_emission.py` - `uv run pytest tests/evidence/test_tool_receipt_policy.py` - `uv run pytest tests/evidence/test_receipt_index.py`</p>
+
+<p id="p-62" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">- sanitizer regressions - receipt bypass in structured failure paths</p>
+
+<p id="p-64" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-65" class="disclosure-standard" data-disclosure-level="standard">- structured failures all emit content-light receipts - no avoidable raw-content leaks remain</p>
+
+<h3 id="h3-66" class="disclosure-standard" data-disclosure-level="standard">Stage 2 - WriteFile Deterministic Envelope</h3>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">- bring write_file to the same evidence standard as search_replace.</p>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-70" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/write_file.py` - `tests/tools/test_write_file*` - `tests/evidence/test_tool_receipt_policy.py` - `tests/evidence/test_receipt_index.py`</p>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-72" class="disclosure-standard" data-disclosure-level="standard">- create new file - overwrite existing file - refuse unsafe paths - binary / invalid content handling - before / after hash verification - byte-count verification - content-light result model validation</p>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">Validation commands:</p>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">- `uv run pytest tests/tools/test_write_file*` - `uv run pytest tests/evidence/test_receipt_index.py`</p>
+
+<p id="p-75" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">- write path mutation without adequate evidence - accidental raw-content leakage</p>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-78" class="disclosure-standard" data-disclosure-level="standard">- structured results with before/after hashes and byte counts - refusal and overwrite semantics are explicit</p>
+
+<h3 id="h3-79" class="disclosure-standard" data-disclosure-level="standard">Stage 3 - WriteFile Receipt Emission and Policy Validation</h3>
+
+<p id="p-80" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-81" class="disclosure-standard" data-disclosure-level="standard">- add receipt emission and policy coverage to write_file.</p>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-83" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/write_file.py` - `docs/schemas/*write_file*` - `tests/tools/test_tool_receipt_emission.py` - `tests/evidence/test_tool_receipt_policy.py` - `tests/evidence/test_receipt_index.py`</p>
+
+<p id="p-84" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-85" class="disclosure-standard" data-disclosure-level="standard">- receipt builder test - content-light receipt test - receipt policy validator test - receipt index support test</p>
+
+<p id="p-86" class="disclosure-standard" data-disclosure-level="standard">Validation commands:</p>
+
+<p id="p-87" class="disclosure-standard" data-disclosure-level="standard">- `uv run pytest tests/tools/test_tool_receipt_emission.py` - `uv run pytest tests/evidence/test_tool_receipt_policy.py` - `uv run pytest tests/evidence/test_receipt_index.py`</p>
+
+<p id="p-88" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-89" class="disclosure-standard" data-disclosure-level="standard">- raw file content in receipt fields</p>
+
+<p id="p-90" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-91" class="disclosure-standard" data-disclosure-level="standard">- write_file receipts are content-light and indexed</p>
+
+<h3 id="h3-92" class="disclosure-standard" data-disclosure-level="standard">Stage 4 - Shared Mutation Tool Test Matrix</h3>
+
+<p id="p-93" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-94" class="disclosure-standard" data-disclosure-level="standard">- reuse common assertions across search_replace and write_file.</p>
+
+<p id="p-95" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-96" class="disclosure-standard" data-disclosure-level="standard">- shared test helpers - mutation tool tests</p>
+
+<p id="p-97" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-98" class="disclosure-standard" data-disclosure-level="standard">- path safety - refusal taxonomy - receipt policy - hash and byte counts - atomicity</p>
+
+<p id="p-99" class="disclosure-standard" data-disclosure-level="standard">Validation commands:</p>
+
+<p id="p-100" class="disclosure-standard" data-disclosure-level="standard">- tool-specific pytest targets</p>
+
+<p id="p-101" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-102" class="disclosure-standard" data-disclosure-level="standard">- over-generalizing tool-specific semantics</p>
+
+<p id="p-103" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-104" class="disclosure-standard" data-disclosure-level="standard">- mutation tools share a consistent evidence bar</p>
+
+<h3 id="h3-105" class="disclosure-standard" data-disclosure-level="standard">Stage 5 - Read-Only Inspection Tool Hardening</h3>
+
+<p id="p-106" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-107" class="disclosure-standard" data-disclosure-level="standard">- give read-only tools structured outputs, truncation flags, and content-light receipts where feasible.</p>
+
+<p id="p-108" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-109" class="disclosure-standard" data-disclosure-level="standard">- `vibe/core/tools/builtins/read_file.py` - `vibe/core/tools/builtins/grep.py` - related inspection tools - schemas and receipt policy tests</p>
+
+<p id="p-110" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-111" class="disclosure-standard" data-disclosure-level="standard">- output cap enforcement - binary handling - hash and byte metadata - path safety - receipt omission of raw content</p>
+
+<p id="p-112" class="disclosure-standard" data-disclosure-level="standard">Validation commands:</p>
+
+<p id="p-113" class="disclosure-standard" data-disclosure-level="standard">- focused read-only tool tests</p>
+
+<p id="p-114" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-115" class="disclosure-standard" data-disclosure-level="standard">- privacy leakage through large outputs - accidental over-truncation</p>
+
+<p id="p-116" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-117" class="disclosure-standard" data-disclosure-level="standard">- inspection tools become bounded and measurable</p>
+
+<h3 id="h3-118" class="disclosure-standard" data-disclosure-level="standard">Stage 6 - Orchestration Hardening Prerequisites</h3>
+
+<p id="p-119" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-120" class="disclosure-standard" data-disclosure-level="standard">- constrain orchestration tools to hardened mutation and validation surfaces.</p>
+
+<p id="p-121" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-122" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/coordination/*` - `vibe/core/tools/builtins/coordination.py` - session lifecycle tools - checkpoint helpers - validate integration</p>
+
+<p id="p-123" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-124" class="disclosure-standard" data-disclosure-level="standard">- dirty workspace respect - lease / handoff integrity - evidence emission</p>
+
+<p id="p-125" class="disclosure-standard" data-disclosure-level="standard">Validation commands:</p>
+
+<p id="p-126" class="disclosure-standard" data-disclosure-level="standard">- coordination / checkpoint / validate-focused tests</p>
+
+<p id="p-127" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-128" class="disclosure-standard" data-disclosure-level="standard">- new ad hoc mutation channels</p>
+
+<p id="p-129" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-130" class="disclosure-standard" data-disclosure-level="standard">- orchestration depends on hardened mutation and validation primitives</p>
+
+<h3 id="h3-131" class="disclosure-standard" data-disclosure-level="standard">Stage 7 - Fleet / Delegate / Aggregate Patching Readiness</h3>
+
+<p id="p-132" class="disclosure-standard" data-disclosure-level="standard">Goal:</p>
+
+<p id="p-133" class="disclosure-standard" data-disclosure-level="standard">- make fleet and delegate tooling rely on validated lanes and receipts.</p>
+
+<p id="p-134" class="disclosure-standard" data-disclosure-level="standard">Files likely affected:</p>
+
+<p id="p-135" class="disclosure-standard" data-disclosure-level="standard">- lane / worktree / fleet / promotion code - validate integration - receipt index and evidence consumers</p>
+
+<p id="p-136" class="disclosure-standard" data-disclosure-level="standard">Tests needed:</p>
+
+<p id="p-137" class="disclosure-standard" data-disclosure-level="standard">- lane readiness - promotion gate - evidence lineage</p>
+
+<p id="p-138" class="disclosure-standard" data-disclosure-level="standard">Validation commands:</p>
+
+<p id="p-139" class="disclosure-standard" data-disclosure-level="standard">- promotion / readiness tests</p>
+
+<p id="p-140" class="disclosure-standard" data-disclosure-level="standard">Risks:</p>
+
+<p id="p-141" class="disclosure-standard" data-disclosure-level="standard">- promotion based on incomplete evidence</p>
+
+<p id="p-142" class="disclosure-standard" data-disclosure-level="standard">Exit criteria:</p>
+
+<p id="p-143" class="disclosure-standard" data-disclosure-level="standard">- promotion uses validate and receipts as gate inputs</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-hardening/tool-hardening-roadmap-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

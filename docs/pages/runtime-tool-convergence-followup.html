@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Tool Convergence Follow-up — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Date: 2026-05-15">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Tool Convergence Follow-up</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Convergence Follow-up</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Date: 2026-05-15</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolExecutionRunner now routes the normal runtime-intent path through `ToolRuntime.execute_one()`. RuntimeToolExecutionRunner remains the intent, lease, and audit adapter.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Confirmed seams</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">- RuntimeSupervisor integration remains separate for subprocess-oriented paths. - Concrete tool adapter helpers still exist behind RuntimeToolExecutionRunner. - AgentLoop still owns its current closure/result adaptation boundary.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Validation evidence</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- Runtime adapter coverage: `tests/runtime/test_runtime_tool_adapter_coverage.py` - ToolRuntime core coverage: `tests/core/test_tool_runtime.py` - Audit persistence coverage: `tests/runtime/test_runtime_audit_persistence.py`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/runtime-tool-convergence-followup.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

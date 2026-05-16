@@ -1,0 +1,381 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "textual-rig-console-maturity-audit",
+  "document_type": "audit",
+  "title": "Textual Rig Console Maturity Audit",
+  "summary": "**Date:** 2026-05-14",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/ui/textual-rig-console-maturity-audit.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Textual Rig Console Maturity Audit",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Date:** 2026-05-14 **Status:** Completed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "1. Executive Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "The Rig Console TUI is a modern, projection-driven alternative to the legacy Vibe CLI. It has a strong architectural foundation based on content-light projections and non-blocking providers. While the core widgets and screen composition are mature, there is a significant gap in E2E testing (Pilot) and the wiring of mutation intents. The transition from the legacy `VibeApp` is well-underway but requires a few more stages to fully replace the command authority.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Maturity Matrix Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Dimension",
+        "Score",
+        "Top Strength",
+        "Top Gap"
+      ],
+      "rows": [
+        [
+          "A. Projection purity",
+          "5/5",
+          "Widgets consume only typed projections",
+          "None"
+        ],
+        [
+          "B. State ownership",
+          "5/5",
+          "TUI does not own tool/workflow state",
+          "None"
+        ],
+        [
+          "C. Action boundary",
+          "4/5",
+          "Structured action methods in screen",
+          "No dispatcher/adapter yet"
+        ],
+        [
+          "D. Worker safety",
+          "5/5",
+          "Exclusive run_worker for refreshes",
+          "None"
+        ],
+        [
+          "E. Streaming smoothness",
+          "5/5",
+          "Coalescer batches deltas efficiently",
+          "Metrics not exposed"
+        ],
+        [
+          "F. Content-light",
+          "5/5",
+          "Projections explicitly exclude raw content",
+          "None"
+        ],
+        [
+          "G. Test maturity",
+          "4/5",
+          "Good model/provider coverage + headless Pilot tests",
+          "No snapshot tests, limited coverage of multi-key scenarios"
+        ],
+        [
+          "H. Legacy separation",
+          "4/5",
+          "Rig Console is separate from VibeApp",
+          "Transcript still in VibeApp"
+        ],
+        [
+          "I. Runtime readiness",
+          "4/5",
+          "Architecture ready for runtime events",
+          "Progress projection missing"
+        ],
+        [
+          "J. Operator UX",
+          "4/5",
+          "Clear dashboard view",
+          "No progress timeline widget"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "**Average Maturity Score: 4.5 / 5.0**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Ownership Map",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Entity",
+        "Owns"
+      ],
+      "rows": [
+        [
+          "**Textual (Rig Console)**",
+          "Rendering, focus, keybindings, local screen state, temporary UI status text."
+        ],
+        [
+          "**Runtime/Control Plane**",
+          "Context resolution, session/task/lane/worktree IDs, coordination leases, dirty policy, validation, tool execution, audit/evidence, projection building."
+        ],
+        [
+          "**Legacy Vibe**",
+          "Old chat CLI compatibility, transcript rendering (temporarily), legacy command affordances."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Textual Should Never Own",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- Mutation tools - Raw command router - Runtime supervisor - Coordination repair - Audit persistence - Receipt generation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Gap Inventory & Risks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-13",
+      "type": "table",
+      "columns": [
+        "Gap",
+        "Severity",
+        "Risk if Ignored",
+        "Status"
+      ],
+      "rows": [
+        [
+          "No Headless Pilot Tests",
+          "High",
+          "UI regressions not caught by unit tests.",
+          "**Partially addressed** — 14 Pilot tests added for mount, help, refresh, provider error, quit"
+        ],
+        [
+          "No Dispatcher/Adapter",
+          "High",
+          "Tight coupling between TUI and backend actions.",
+          "Open"
+        ],
+        [
+          "Mutation Buttons Missing",
+          "High",
+          "TUI remains read-only, limiting operator utility.",
+          "Open"
+        ],
+        [
+          "ExecutionProgressProjection Missing",
+          "High",
+          "Delayed visibility into runtime progress.",
+          "Open"
+        ],
+        [
+          "Legacy Transcript Integration",
+          "Medium",
+          "Perpetuating VibeApp's god-module pattern.",
+          "Open"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "5. Roadmap",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Stage 1 — Stabilize current Rig Console",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "- [x] Add headless Pilot smoke tests for `DashboardScreen` — 14 tests covering mount, help key, refresh key, provider error handling, quit. - Fix any minor docs/code drift. - Add provider latency/error fixture tests. - Expose coalescer metrics in a debug-only projection.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-17",
+      "type": "heading",
+      "level": 3,
+      "content": "Stage 2 — Runtime projection integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "- Implement `ExecutionProgressProjection` model. - Add `ProgressTimelineWidget`. - Feed runtime events through provider as projection data. - Ensure no raw output appears in the evidence rail.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "Stage 3 — Legacy Vibe authority extraction",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "- Move command router behavior behind a runtime adapter. - Demote the transcript to a single pane within Rig Console. - Separate chat transport from runtime control. - Define a replacement entry point for `rig_console`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-21",
+      "type": "heading",
+      "level": 2,
+      "content": "6. \"Do Not Build Yet\" List",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "- **No full IDE clone**: Stay focused on the operator harness. - **No mutation buttons** until the adapter execution path is stable. - **No raw log firehose** as the primary UX. - **No broad snapshot suite** before the layout stabilizes. - **No pywebview parity work** until the projection contract stabilizes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "7. Validation Results",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "- JSONL parseability: **Passed** - Artifact consistency: **Passed** - Directory structure: **Passed**",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/ui/textual-rig-console-maturity-audit.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

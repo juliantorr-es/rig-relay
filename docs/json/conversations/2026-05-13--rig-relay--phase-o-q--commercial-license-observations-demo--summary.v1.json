@@ -1,0 +1,873 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary",
+  "document_type": "report",
+  "title": "Comprehensive Conversation Summary",
+  "summary": "The user delivered three distinct missions across this conversation, processed in sequence:",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/conversations/2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Comprehensive Conversation Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "1. User's Primary Goals and Intent",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The user delivered three distinct missions across this conversation, processed in sequence:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-4",
+      "type": "heading",
+      "level": 3,
+      "content": "Mission 2: Usage Data Commercial License Consent",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- Add explicit usage-data copyright/license and commercial dataset consent layer - Distinguish basic telemetry consent from commercial dataset/report licensing consent - This is a legal/product rule: copyright/data license ≠ privacy consent",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Mission 3: Provider and Local Model Observation Dataset",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "- Create normalized, content-light observation dataset schemas for ranking cloud providers and local models across real Rig Relay workflows - Must respect the new telemetry consent scopes, especially `provider_model_benchmarking`, `local_model_benchmarking`, `commercial_dataset_license`, and `aggregate_public_reporting` - Answer: \"For this task, on this machine, with this budget/privacy preference, which cloud provider or local model should Rig Relay use?\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "MCP Night Demo Readiness",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- Create a reliable, reproducible demo path for MCP Night showing Rig Relay working as a governed local development harness - Demo thesis: \"MCP connects agents to tools. Rig Relay makes that usable for real development: coordination, validation, receipts, progress, provider setup, consent, redaction, and local authority\" - Use existing safe intents, ProgressEvent timeline, validation artifacts, provider status, consent state, and the new model observation dataset - Dataset story must be shown as sanitized evidence artifact, not speculative futureware",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Cross-cutting constraints (enforced throughout):",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "- No raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, or API keys in any output - No protected execution buttons - No uploading telemetry - No touching unrelated dirty files - No project-wide formatters - No `ruff` on `docs/schemas/*.json` - Read AGENTS.md first and summarize Git discipline rules before editing each mission - Attorney review reminder for legal docs - Final report must include branch/HEAD, dirty files, files changed, validation results, known limitations, recommended next slice",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "2. Conversation Timeline and Progress",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "Phase 0: Git Discipline Summary (Start of each mission)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "- Read AGENTS.md and summarized Git discipline before each mission - Key rules: no destructive git ops, checkpoint tool only, dirty-file preservation is absolute, prefer `search_replace` with `expected_before_sha256`, no `ruff` on `docs/schemas/*.json`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Phase 1: Mission 2 — Usage Data Commercial License Consent (Completed)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "**Steps executed:** 1. Added 4 new `TelemetryConsentScope` enum values to `telemetry_consent.py`: - `PROVIDER_MODEL_BENCHMARKING`, `LOCAL_MODEL_BENCHMARKING`, `COMMERCIAL_DATASET_LICENSE`, `AGGREGATE_PUBLIC_REPORTING` 2. Updated `TELEMETRY_CONSENT_POLICY_VERSION` to `\"alpha-usage-data-license-v1\"` 3. Updated `grant_consent()` default scopes remain basic-only (commercial never default) 4. Added `has_commercial_dataset_license()` helper 5. Updated JSON schema with 4 new enum values 6. Created legal docs: `docs/legal/usage-data-license-alpha.md`, `docs/legal/privacy-notice-alpha.md` 7. Updated frontend HTML/CSS/JS with scope checkboxes (grouped as Basic Telemetry and Commercial/Dataset License) 8. Updated intents: `_execute_telemetry_consent_status` includes `has_commercial_license`, `_execute_telemetry_consent_grant` adds warning when commercial scopes granted 9. Updated bundle manifest with `policy_version` and `has_commercial_license` 10. Wrote 23 tests (7 test classes) 11. Updated governance docs (`identity-provider-policy.md`, `usage-data-doctrine.md`)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "**Validation:** 73 tests passed, pyright 0 errors, 61 schemas valid",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-19",
+      "type": "heading",
+      "level": 3,
+      "content": "Phase 2: Mission 3 — Provider and Local Model Observation Dataset (Completed)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "**Steps executed:** 1. Added active consent helpers to `telemetry_consent.py`: - `active_consent_scopes(record)` — returns scopes list only if status is GRANTED, else empty - `has_active_commercial_dataset_license(record)` — checks scope + GRANTED status - `observation_allowed_by_consent(record, observation_kind)` — gates by kind 2. Created 3 schema files: - `docs/schemas/rig.relay.model_observation.v1.schema.json` - `docs/schemas/rig.relay.provider_ranking_snapshot.v1.schema.json` - `docs/schemas/rig.relay.local_model_comfort_score.v1.schema.json` 3. Created `rig_relay/evidence/model_observations.py` with: - `ModelObservation` — 30 fields, all content-light - `ProviderRankingSnapshot` — aggregated scores per provider/model - `LocalModelComfortScore` — 4 sub-scores + comfort_category - `build_model_observation()` — factory with auto-generated IDs - `observation_sha256()` — deterministic hash (excludes observation_id/created_at) - `validate_observation_content_light()` — checks forbidden field keys - `aggregate_provider_rankings()` — groups by provider/model, computes scores - `compute_local_model_comfort_score()` — threshold-based categorization 4. Updated `redaction.py` `_FORBIDDEN_FIELD_KEYS` with observation-specific fields 5. Fixed schema nullable types (None for optional number/string fields) 6. Wrote 61 tests 7. Created governance doc: `docs/governance/model-observation-dataset.md` 8. Updated `relay-local-remote-boundary.md` cross-references",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "**Validation:** 84 tests passed, pyright 0 errors, 64 schemas valid",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "Phase 3: MCP Night Demo Readiness (Completed)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "**Steps executed:** 1. Created demo fixture artifacts: - `docs/demo/fixtures/model-observation-demo.json` — content-light observation with timing/token/tool counts, schema-validated - `docs/demo/fixtures/provider-ranking-demo.json` — low-confidence ranking (sample_count=3) with low-sample warning 2. Created demo guide: `docs/demo/mcp-night-development-harness-demo.md` - One-line thesis - Setup/launch commands with fallback - Five-minute talk track with exact cockpit clicks - What not to show section - Trust/data use line 3. Created demo tests: `tests/demo/test_mcp_night_demo_fixtures.py` (22 tests) - Schema validation for both fixtures - Content-light guarantee verification - No forbidden fields check - Redaction integration - Demo guide consistency checks (trust line, protected controls absent, fixture references) 4. Updated `docs/dogfood/rig-relay-self-dogfood.md` with MCP Night demo readiness entry 5. Verified dry-run cockpit works: `scripts/rig_relay_desktop_cockpit.py --dry-run`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "**Validation:** 200 tests passed (22 demo + 61 observation + rest), pyright 0 errors, 64 schemas valid",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "3. Technical Context and Decisions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-27",
+      "type": "heading",
+      "level": 3,
+      "content": "Project Structure",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- Python 3.12+, managed with `uv` - Main package: `rig_relay/` with subpackages for identity, providers, desktop, evidence, governance - Frontend: HTML/CSS/JS in `frontend/desktop/` - Schemas: JSON Schema in `docs/schemas/` - Tests: `tests/` mirrors source layout; uses pytest, pyright strict - Commands: `uv run`, `uv run pytest`, `uv run pyright`, `uv run ruff`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-29",
+      "type": "heading",
+      "level": 3,
+      "content": "Architectural Patterns",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "**Consent Model (TelemetryConsentRecord):** - Pydantic BaseModel with `ConfigDict(extra=\"forbid\")` - Status: NOT_REQUESTED, GRANTED, DENIED, REVOKED - Scopes: list of TelemetryConsentScope enum values - Active semantics: revoked/denied records return empty active scopes even if scopes remain in record for audit - Helper functions: `active_consent_scopes()`, `has_commercial_dataset_license()`, `has_active_commercial_dataset_license()`, `observation_allowed_by_consent()`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "**Observation Dataset (ModelObservation):** - Pydantic BaseModel with 30 content-light fields - Key types: `provider_kind` (cloud|local), `backend` (api|mlx|llama_cpp), `validation_status`, `user_outcome`, `content_light_guarantee: true` - Optional nullable fields: `machine_profile_id`, token counts, timing, memory, cost - Deterministic SHA256 hash excludes `observation_id` and `created_at` - `validate_observation_content_light()` checks for forbidden field keys + secret patterns",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-32",
+      "type": "paragraph",
+      "content": "**ProviderRankingSnapshot:** - Aggregated from list of ModelObservation records - Groups by provider_name and model_id (key: `provider_name/model_id`) - Computes: `task_success_score`, `cost_efficiency_score`, `latency_score`, `tool_reliability_score`, `privacy_score`, `overall_score` - Confidence levels: LOW (<10 samples), MEDIUM (10-29), HIGH (30+) - Low sample warning: \"Low sample count (N): consider collecting more observations...\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "**LocalModelComfortScore:** - 4 sub-scores: memory_headroom, speed, context, stability - Categories: comfortable (≥0.7), maybe (0.4-0.7), not_recommended (<0.4) - Zero evidence warning: \"No observed evidence — score is estimated, not measured\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "**Redaction Boundary:** - `_FORBIDDEN_FIELD_KEYS` in `redaction.py` includes observation-specific keys: - `raw_prompt`, `prompt`, `raw_model_output`, `model_output`, `source_code`, `diff`, `stdout`, `stderr`, `access_token`, `refresh_token`, `private_path` - `classify_shareable_field()` returns \"forbid\" for these keys - `validate_observation_content_light()` performs independent check",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-35",
+      "type": "heading",
+      "level": 3,
+      "content": "Key Dependencies",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "- `pydantic`, `pydantic-settings` — data models - `jsonschema` — schema validation - `pywebview` — desktop cockpit (optional)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-37",
+      "type": "heading",
+      "level": 3,
+      "content": "JSON Schema Conventions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "- Optional number fields use `\"type\": [\"number\", \"null\"]` - Optional integer fields use `\"type\": [\"integer\", \"null\"]` - Optional string fields use `\"type\": [\"string\", \"null\"]` - `content_light_guarantee` uses `\"const\": true` - All schemas use `\"additionalProperties\": false`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-40",
+      "type": "heading",
+      "level": 2,
+      "content": "4. Files and Code Changes",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-41",
+      "type": "heading",
+      "level": 3,
+      "content": "Files Created",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "- Commercial dataset license terms (attorney review required) - Distinguishes commercial licensing from privacy consent",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "- Privacy notice for alpha (attorney review required) - What is collected (content-light only), what is never collected, consent model",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "- 30 fields: schema_version, observation_id, created_at, task_kind, task_fingerprint, provider_kind (cloud|local), provider_name, model_id, backend (api|mlx|llama_cpp), endpoint_kind, machine_profile_id (nullable), input/output/context_tokens (nullable int), latency_ms/ttft/prompt_eval_tps/decode_tps (nullable number), peak_memory_gb (nullable), estimated_cost_usd (nullable), tool_call_count, tool_success_count, retry_count, refusal_count, failure_count, validation_status (passed|failed|skipped|unknown), user_outcome (accepted|revised|rejected|unknown), content_light_guarantee (const: true), artifact_refs (array of {kind, sha256}), warnings - Required: 17 fields",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "- Fields: schema_version, ranking_id, created_at, task_kind, sample_count, provider_scores[], model_scores[], confidence_level (low|medium|high), warnings - Each score: task_success_score, cost_efficiency_score, latency_score, tool_reliability_score, privacy_score, overall_score (all 0-1) - model_scores additionally: local_comfort_score (nullable)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "- Fields: schema_version, model_id, backend (mlx|llama_cpp), quantization (nullable), machine_profile_id, memory_headroom_score (0-1), speed_score (0-1), context_score (0-1), stability_score (0-1), comfort_category (comfortable|maybe|not_recommended), evidence_count, warnings",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-47",
+      "type": "paragraph",
+      "content": "Core observation module with: - Class constants: `ProviderKind`, `Backend`, `ValidationStatus`, `UserOutcome`, `ComfortCategory`, `ConfidenceLevel` - `ArtifactRef` — content-light artifact reference (kind + sha256) - `ModelObservation` — 30-field Pydantic model, `ConfigDict(extra=\"forbid\")` - `ProviderScore` — per-provider aggregate scores - `ModelScore` — per-model aggregate scores (includes optional `local_comfort_score`) - `ProviderRankingSnapshot` — ranking with confidence level - `LocalModelComfortScore` — comfort scoring model - `build_model_observation()` — auto-generates observation_id and created_at - `observation_sha256()` — deterministic hash excluding non-deterministic fields - `validate_observation_content_light()` — checks forbidden keys and secret patterns - `aggregate_provider_rankings()` — groups observations by provider/model, computes scores - `compute_local_model_comfort_score()` — threshold-based categorization - Internal `_AggregateScore` and `_compute_aggregate_score()` helper - `_privacy_score()` — returns 1.0 for local, 0.5 for cloud - `LOW_SAMPLE_THRESHOLD = 10`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "61 tests across 9 test classes: - `TestModelObservation` — cloud/local observation builds, schema version, auto IDs, zero defaults - `TestObservationHash` — deterministic, prefix, differs by input - `TestContentLightValidation` — valid passes, guarantee flag, all 11 forbidden field keys rejected, dump safe for redaction, roundtrip - `TestActiveConsentScopes` — revoked/denied/not_requested return empty, scopes preserved in record - `TestObservationAllowedByConsent` — all 4 kinds require specific scope, revoked denies even with scope, unknown kind raises - `TestHasActiveCommercialDatasetLicense` — active when granted+scope, not active when revoked, not active when scope absent - `TestAggregateProviderRankings` — empty emits warning, single provider, low/medium/high sample confidence, multiple providers, task_kind filtering, perfect scores - `TestLocalModelComfortScore` — comfortable/maybe/not_recommended categories, zero evidence warning, schema version, quantization - `TestObservationSchemaCompliance` — all 3 schemas validate, all schemas exist in directory, schema dict-based access - `TestProviderRankingSnapshot` — empty defaults, schema version, ranking ID",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "23 tests across 7 test classes for scopes, defaults, explicit scopes, commercial license, schema compliance",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "Governance doc documenting: - Dataset purpose, 3 schemas, all field tables - Consent gates (4 observation kinds → required scope) - Active consent semantics (status GRANTED + scope present) - Content-light guarantee (forbidden fields list) - Confidence labels (sample count thresholds) - Commercial export requirements - No raw content prohibition",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "Content-light demo observation with: - provider_kind: \"cloud\", provider_name: \"openai\", model_id: \"gpt-4o\", backend: \"api\" - task_kind: \"code_gen\", timing/token/tool counts, validation_status: \"passed\", user_outcome: \"accepted\" - content_light_guarantee: true, artifact_refs with 2 refs - No forbidden fields",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-52",
+      "type": "paragraph",
+      "content": "Content-light demo ranking with: - sample_count: 3, confidence_level: \"low\" - 2 providers (openai 0.72, anthropic 0.74) with all 6 scores - 2 models with all scores + null local_comfort_score - Low sample warning",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "Five-minute talk track demo guide: - Setup/launch commands with pywebview and headless fallbacks - 5 timed sections: thesis, cockpit layout, Operate live state, safe intents, Review timeline, System trust infrastructure, dataset close - What not to show section - Trust/data use line - Artifact references",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "22 tests across 7 test classes: - `TestDemoFixturesExist` — both fixtures exist - `TestObservationSchemaValidation` — validates schema, content_light_guarantee, required fields, correct schema_version - `TestRankingSchemaValidation` — validates schema, low confidence warning, required fields, correct schema_version, scores in range - `TestRedactionIntegration` — safe for remote - `TestNoForbiddenContent` — no forbidden fields in either fixture - `TestDemoGuide` — guide exists, trust line present, protected controls absent noted, fixture references - `TestSchemaFiles` — both schema files exist",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-55",
+      "type": "heading",
+      "level": 3,
+      "content": "Files Modified",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "**Modified twice in this session:** 1. Added 4 new enum values + updated policy_version (Mission 2) 2. Added `active_consent_scopes()`, `has_active_commercial_dataset_license()`, `observation_allowed_by_consent()` (Mission 3)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "Added 4 new enum values to scopes items enum list",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "Fixed nullable types for optional fields (integer → `[\"integer\", \"null\"]`, number → `[\"number\", \"null\"]`, string → `[\"string\", \"null\"]`)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "Fixed `local_comfort_score` type to `[\"number\", \"null\"]`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-60",
+      "type": "paragraph",
+      "content": "Fixed `quantization` type to `[\"string\", \"null\"]`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "Added 11 new forbidden field keys: `\"raw_prompt\", \"prompt\", \"raw_model_output\", \"model_output\", \"source_code\", \"diff\", \"stdout\", \"stderr\", \"access_token\", \"refresh_token\", \"private_path\"`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-62",
+      "type": "paragraph",
+      "content": "- `_execute_telemetry_consent_status` now includes `has_commercial_license` in extra_fields - `_execute_telemetry_consent_grant` adds `commercial_dataset_license_granted` warning when commercial scopes granted",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "Scope checkboxes added to Telemetry Consent card: - 5 basic scopes (pre-checked) - 4 commercial scopes (unchecked, never default) - Explanatory copy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-64",
+      "type": "paragraph",
+      "content": "- `renderConsentStatus()` — syncs checkbox states from consent response - `syncConsentCheckboxes()` — updates checkboxes to match stored scopes - `updateConsentButton()` — disables grant when no scopes checked - `grantTelemetryConsent()` — collects checked scopes from `.scope-check input:checked`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-65",
+      "type": "paragraph",
+      "content": "Added CSS for: `.scope-section`, `.scope-group-label`, `.scope-check`, `.scope-check input[type=\"checkbox\"]`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "Added `policy_version` and `has_commercial_license` to consent_status block",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-67",
+      "type": "paragraph",
+      "content": "Added \"Consent Scopes\" section documenting basic vs commercial scope behavior",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-68",
+      "type": "paragraph",
+      "content": "Added note: \"Commercial dataset licensing is separate from privacy consent.\"",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-69",
+      "type": "paragraph",
+      "content": "Added model-observation-dataset.md to Cross-References",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-70",
+      "type": "paragraph",
+      "content": "Added \"MCP Night Demo Readiness\" section documenting demo guide, artifacts, safe intents, content-light guarantee",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-71",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-72",
+      "type": "heading",
+      "level": 2,
+      "content": "5. Active Work and Last Actions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-73",
+      "type": "heading",
+      "level": 3,
+      "content": "Last Completed Action",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-74",
+      "type": "paragraph",
+      "content": "**MCP Night Demo Readiness — fully complete.** All three missions for this session are done.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-75",
+      "type": "heading",
+      "level": 3,
+      "content": "Final Validation Results",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-76",
+      "type": "code",
+      "language": "text",
+      "content": "ruff check: All checks passed\nruff format: 3 files reformatted\npyright: 0 errors, 0 warnings\npytest tests/demo/test_mcp_night_demo_fixtures.py: 22/22 passed\npytest tests/test_model_observations.py: 61/61 passed\npytest tests/test_telemetry_consent.py: 23/23 passed\npytest tests/evidence/test_redaction.py: 6/6 passed\npytest tests/scripts/test_identity_providers.py: 50/50 passed\npytest tests/scripts/test_desktop_intents.py + test_desktop_projection.py + test_progress_events.py: 200/200 total\nSchema validation: 64/64 passed\nCockpit dry-run: scripts/rig_relay_desktop_cockpit.py --dry-run — SUCCESS",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-77",
+      "type": "heading",
+      "level": 3,
+      "content": "Git State",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-78",
+      "type": "paragraph",
+      "content": "- Branch: `main`, HEAD: `ae9774e` (no commits created this session) - All changes are dirty (modified or untracked)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-79",
+      "type": "heading",
+      "level": 3,
+      "content": "Key Pre-existing Dirty Files (not touched this session)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-80",
+      "type": "paragraph",
+      "content": "- `frontend/desktop/app.js`, `index.html`, `styles.css` - `rig_relay/desktop/intent_audit.py`, `intents.py`, `projection.py` - `rig_relay/evidence/redaction.py` (was modified this session for observation fields) - `rig_relay/identity/github.py`, `google.py`, `token_store.py` - `scripts/rig_relay_upload_google_drive.py` - Various `vibe/` and `tests/` files - `docs/schemas/rig.relay.desktop_projection.v1.schema.json` - `docs/governance/desktop-cockpit-ui.md`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-81",
+      "type": "heading",
+      "level": 3,
+      "content": "Key Untracked Files from Prior Missions (not touched this session)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-82",
+      "type": "paragraph",
+      "content": "- `rig_relay/identity/consent_store.py`, `state_paths.py` - `rig_relay/providers/` (complete package) - `tests/providers/` - `docs/governance/provider-onboarding-policy.md` - `docs/schemas/rig.relay.provider_*.json` (3 schemas)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-83",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-84",
+      "type": "heading",
+      "level": 2,
+      "content": "6. Unresolved Issues and Pending Tasks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-85",
+      "type": "heading",
+      "level": 3,
+      "content": "Known Limitations (documented across all 3 missions)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-86",
+      "type": "paragraph",
+      "content": "1. **No observation ingestion pipeline** — `ModelObservation` records are buildable but not yet connected to real tool execution events 2. **No webhook/progress streaming** — observation module is library code, not yet wired to desktop intents 3. **No dashboard visualization** — Ranking snapshots and comfort scores are computed but not rendered in cockpit 4. **Local model bench is estimated** — `compute_local_model_comfort_score()` works with manual scores; no automatic probe exists 5. **Privacy_score is simplistic** — returns 0.5 for cloud, 1.0 for local; no real privacy assessment 6. **No content-light regression test in CI** — Schema validation runs but doesn't automatically verify no new raw content fields 7. **No remote sync UI** — The \"remote sync\" toggle mentioned in privacy notice is aspirational; no upload mechanism exists 8. **Attorney review required** — Legal docs are drafts, not binding 9. **Commercial scope tracking is additive only** — Revoking consent preserves scopes; no per-scope revocation granularity 10. **Frontend uses `onchange` on checkboxes** — May vary in WebSocket mode vs pywebview bridge",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-87",
+      "type": "heading",
+      "level": 3,
+      "content": "Pending Tasks (none explicitly requested; recommended next slices documented)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-88",
+      "type": "paragraph",
+      "content": "**Recommended Next Slices (from each mission's report):**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-89",
+      "type": "paragraph",
+      "content": "From Mission 3 report: 1. Wire `build_model_observation()` into real tool execution — create `observe_tool_call()` integration point 2. Add `observation_stream` intent — let desktop intents query recent observations 3. Cockpit visualization — show provider ranking snapshot and local comfort scores in Operate/Review mode 4. Automatic local model probing — run benchmark probe to populate `compute_local_model_comfort_score()` with real data",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-90",
+      "type": "paragraph",
+      "content": "From MCP Night Demo report: 1. Run the full demo flow against a real cockpit session end-to-end 2. Add demo video/screenshot to demo guide 3. Further cockpit polish (Progress Timeline clarity, observation artifact links in Review mode)",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-91",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-92",
+      "type": "heading",
+      "level": 2,
+      "content": "7. Immediate Next Step",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-93",
+      "type": "paragraph",
+      "content": "The user did not make an explicit next request after the MCP Night Demo Readiness mission completed. The last activity was producing the final report for that mission.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-94",
+      "type": "paragraph",
+      "content": "**Recommended next slice: Mission 4 — Wire observation ingestion into real tool execution:**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-95",
+      "type": "paragraph",
+      "content": "1. Create an `observe_tool_call()` function in `rig_relay/evidence/model_observations.py` that reads from the real tool execution pipeline 2. Add `observation_stream` desktop intent to expose recent observations via WebSocket 3. Add cockpit visualization for model observations in Review or Operate mode 4. Ensure all consent gates fire before observation collection",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-96",
+      "type": "paragraph",
+      "content": "**Alternative (cockpit polish before backend integration):** - Make Progress Timeline clearer with category filtering - Make observation/ranking artifact links appear in Review mode - Ensure the demo guide is accurate against the current build",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/conversations/2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

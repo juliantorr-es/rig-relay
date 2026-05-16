@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Envelope — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="The mission envelope is the minimal executable bridge object between governance intent and agent runtime context.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Mission Envelope</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Mission Envelope</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">The mission envelope is the minimal executable bridge object between governance intent and agent runtime context.</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">It exists so the harness can run a governed mission without requiring a full ADR → Sprint → Mission orchestration tree in the executable path.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- Provide a concrete runtime object for a single mission run. - Carry the minimum stable metadata needed for context packet compilation. - Keep ADR and sprint information optional until the orchestration hierarchy is fully executable.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Core Fields</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- `mission_id` - `title` - optional `adr_id` - optional `sprint_id` - `repo_root` - `branch` - `head` - `dirty_status_fingerprint` or `dirty_file_summary` - `allowed_paths` - `protected_paths` - `instruction_paths` - `acceptance_checks` - `handoff_required` - `created_at` - `schema_version`</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Governance Reference</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">The envelope may carry optional governance metadata:</p>
+
+<pre id="code-10"><code class="language-json">{
+  &quot;governance_ref&quot;: {
+    &quot;adr_id&quot;: null,
+    &quot;sprint_id&quot;: null,
+    &quot;mission_id&quot;: &quot;mission-...&quot;
+  }
+}</code></pre>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">The key rule is that mission-only mode must work now, and ADR/sprint metadata can be attached later without changing `mission_id`.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Design Rules</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- The envelope must be deterministic to serialize. - The envelope must reject unknown fields. - The envelope must not contain raw file bodies, raw prompts, raw stdout/stderr, or secrets. - The envelope should compile from existing state: AGENTS.md, git status, branch/HEAD, dirty inventory, mission prompt, path policy, validation commands, and optional handoff text. - Receipts should come before retrieval. Reproducibility first, intelligence later.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Bridge Relationship</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">This envelope is the bridge between:</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">- current task execution - runtime context resolution - future ADR/Sprint/Mission orchestration</p>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">It is intentionally smaller than the full governance hierarchy.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Executable contract: - `rig_relay.governance.mission_envelope.MissionEnvelope` - `docs/schemas/rig.mission_envelope.v1.schema.json`</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">See also: - `rig_relay.governance.mission_context_packet.MissionContextPacket` - `docs/governance/mission-context-packets.md`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/mission-envelope.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

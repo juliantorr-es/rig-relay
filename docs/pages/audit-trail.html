@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Trail Store — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="The `AuditTrailStore` provides an append-only, file-backed audit log for Rig Relay">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit Trail Store</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit Trail Store</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">The `AuditTrailStore` provides an append-only, file-backed audit log for Rig Relay runtime events. It is the local-first persistence layer for P3b (Workspace Audit Trail).</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Design</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- **Append-only JSONL**: Each event is a single JSON line appended to `audit.jsonl`. Lines are never modified or deleted after write. - **Content-light**: Events contain references (IDs, SHA256 hashes, envelope IDs) but never raw payloads, file contents, diffs, snippets, or secrets. - **Durability**: `os.fsync()` is called after every append to guarantee the write reaches disk before returning. - **Sequence**: `next_sequence()` counts existing lines (not a separate counter file). Sequence numbers are monotonic integers starting at 1. - **Malformed-line tolerance**: On read, invalid JSON lines are returned as errors with positions — they never raise. - **Ordering**: Events are sorted by `(sequence, timestamp)`.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Module: `rig_relay/evidence/audit_trail.py`</h2>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Symbol</th><th>Kind</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`AuditActionKind`</td><td>`StrEnum`</td><td>10 canonical action types (`receipt_created`, `decision_recorded`, `execution_requested`, …)</td></tr>
+<tr><td>`AuditDecisionKind`</td><td>`StrEnum`</td><td>6 decision outcomes (`allowed`, `blocked`, `refused`, `completed`, `failed`, `informational`)</td></tr>
+<tr><td>`AuditEvent`</td><td>`BaseModel`</td><td>Pydantic model with `extra=&quot;forbid&quot;`, 14 fields (6 required)</td></tr>
+<tr><td>`AuditTrailStore`</td><td>class</td><td>Append-only JSONL store with `path` property</td></tr>
+<tr><td>`AuditStoreReadError`</td><td>exception</td><td>Raised only for store-level errors (never per-line parse errors)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">AuditEvent required fields</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">`schema_version`, `event_id`, `sequence`, `timestamp`, `action`, `decision`</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">AuditEvent optional fields</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">`workspace_id`, `session_id`, `actor`, `subject`, `envelope_id`, `envelope`, `evidence_sha256`, `notes`</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">AuditTrailStore API</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Method</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`append(event)`</td><td>Append a single `AuditEvent` with fsync</td></tr>
+<tr><td>`append_audit_event(...)`</td><td>Convenience: creates `AuditEvent` from kwargs, auto-computes sequence, then appends</td></tr>
+<tr><td>`read_events()`</td><td>Returns `(events, errors)` — events sorted by `(sequence, timestamp)`</td></tr>
+<tr><td>`next_sequence()`</td><td>Returns next sequence number (count of existing lines + 1)</td></tr>
+<tr><td>`latest_event()`</td><td>Returns the most recent event, or `None` for an empty store</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Schema</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- File: `docs/schemas/rig.relay.audit_event.v1.schema.json` - Type: Draft 7 - Required fields (top-level): 6 - `$defs` are self-contained (definitions inlined from `receipt_envelope.v1` schema) - `additionalProperties: false` everywhere</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Supervisor Integration (P3b)</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeSupervisor` produces `AuditEvent` records from terminal execution events when configured with an ``audit_trail_store``.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- **Action**: ``EXECUTION_COMPLETED`` — one audit event per terminal event. - **Decision**: ``COMPLETED`` (exit code 0), ``FAILED`` (non-zero or timeout), ``REFUSED`` (blocked by lease/governance). - **Envelope**: Embedded `ReceiptEnvelope` with runtime invocation subject, execution request input, terminal output (hashes/bytes), and terminal event hash as evidence. - **Failure safety**: If audit append fails, a `RuntimeWarningEvent` is emitted and the terminal event is still delivered.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">See `docs/governance/runtime-supervisor.md` for constructor args and behavior.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Related</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/evidence/receipt_envelope.py` — `ReceiptEnvelope`, `ReceiptActor`, `ReceiptSubject` models referenced by `AuditEvent` - `rig_relay/runtime/supervisor.py` — `RuntimeSupervisor` audit integration - `docs/schemas/rig.relay.audit_event.v1.schema.json` - `docs/governance/runtime-supervisor.md` - `tests/evidence/test_audit_trail.py` - `tests/runtime/test_runtime_supervisor.py` (see ``TestAuditIntegration``)</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Tamper Evidence</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">This store provides append-only JSONL persistence with best-effort fsync durability. It does **not** provide cryptographic tamper evidence. Hash-chain tamper evidence is designed separately — see [docs/governance/audit-trail-tamper-evidence.md](audit-trail-tamper-evidence.md).</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/audit-trail.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

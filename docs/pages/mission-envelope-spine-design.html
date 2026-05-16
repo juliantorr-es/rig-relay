@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Envelope Spine Design — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Rig Relay does not need the full ADR/Sprint/Mission hierarchy wired into the executable path before it can have governed runtime context.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Mission Envelope Spine Design</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Mission Envelope Spine Design</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Rig Relay does not need the full ADR/Sprint/Mission hierarchy wired into the executable path before it can have governed runtime context.</p>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The smallest useful bridge is a mission envelope:</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- one mission object - one reproducible context packet - one receipt path - optional ADR/Sprint metadata</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Why Mission-First</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The executable system currently has enough pieces to support a mission-shaped run:</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">- runtime context resolution - dirty-file guardrails - worktree management - execution request and lease gating - tool receipts and receipt indexing</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">What it does not need yet is a fantasy-level orchestration tree that must be perfect before anything can run.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Minimal Envelope Contract</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">The mission envelope should support:</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">- `mission_id` - `title` - optional `adr_id` - optional `sprint_id` - `repo_root` - `branch` - `head` - `dirty_status_fingerprint` or `dirty_file_summary` - `allowed_paths` - `protected_paths` - `instruction_paths` - `acceptance_checks` - `handoff_required` - `created_at` - `schema_version`</p>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Context Packet Compilation</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">The context packet should be compiled from what exists today:</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- `AGENTS.md` - git branch/HEAD/status - dirty file inventory - task prompt - allowed/protected paths - validation commands - explicitly listed docs - prior handoff text, if provided</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Receipt First</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">The bridge should produce a receipt before it attempts any retrieval or higher-level orchestration.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">That receipt should capture:</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- `packet_id` - `mission_id` - `compiled_at` - input paths and hashes - branch - head - dirty fingerprint</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Relationship to Later Hierarchy</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">ADR and sprint metadata can be added later as optional references without changing the mission identity or the compiled packet contract.</p>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">That keeps the bridge stable while the higher-level orchestration matures.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/rig-runtime-port/mission-envelope-spine-design.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

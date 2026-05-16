@@ -16,8 +16,11 @@ const urlParams = new URLSearchParams(window.location.search);
 const isDebug = urlParams.get('boot_debug') === '1';
 
 async function boot() {
-  const handshakeId = generateHandshakeId();
-  setFrontendHandshakeId(handshakeId);
+  // Canonical handshake_id: prefer the backend-supplied corr_* ID from
+  // runtime config. Only generate a frontend hs_* when no backend ID exists.
+  const config = await fetchRuntimeConfig();
+  const canonicalHandshakeId = config.handshake_id || generateHandshakeId();
+  setFrontendHandshakeId(canonicalHandshakeId);
 
   if (isDebug) {
     debugPanel = createDebugPanel();
@@ -25,8 +28,6 @@ async function boot() {
 
   recordFrontendEvent('frontend_boot_started');
 
-  const config = await fetchRuntimeConfig();
-  
   // Create transport authority
   const authority = createTransportStateAuthority({
     onTransition: (state) => {
@@ -47,6 +48,7 @@ async function boot() {
     new ProjectionWebSocketClient({
       wsUrl,
       token,
+      handshakeId: canonicalHandshakeId,
       transportMachine: authority,
       onProjection(data) {
         handleProjection(data);

@@ -1,0 +1,359 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "ide-sidecar-ipc",
+  "document_type": "reference",
+  "title": "Rig IDE / Sidecar IPC Protocol (v1)",
+  "summary": "**Status:** Phase 0/1 bootstrap. Contract-hardening phase.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/protocols/ide-sidecar-ipc.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig IDE / Sidecar IPC Protocol (v1)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Status:** Phase 0/1 bootstrap. Contract-hardening phase.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The IDE extension and the Rig Python sidecar communicate over the extension host's **stdin/stdout** using newline-delimited JSON (JSONL). Each line is a complete JSON object. The sidecar also runs the Rig ACP agent on a separate async task within the same process.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Transport",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "text",
+      "content": "IDE Extension Host (TypeScript)         Rig Python Sidecar\n     │                                        │\n     │──── JSON object + \\n ────────────────→ stdin\n     │←─── JSON object + \\n ───────────────── stdout\n     │                                        │\n     │                                        ├─ ACP Agent (asyncio task)\n     │                                        └─ IPC handler (asyncio task)",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "- **stdin**: Extension → Sidecar (commands, snapshots, approvals) - **stdout**: Sidecar → Extension (responses, receipts, approval requests, status) - **stderr**: Sidecar → Extension (logs, diagnostics — not protocol) - Line-buffered: `sys.stdout.reconfigure(line_buffering=True)`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Message Catalog",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Extension → Sidecar",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Sent whenever the active editor changes or selection changes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-10",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"workspace_snapshot\",\n  \"roots\": [\"/home/user/project\"],\n  \"active_file\": \"/home/user/project/src/main.py\",\n  \"open_tabs\": [\"/home/user/project/src/main.py\", \"/home/user/project/src/utils.py\"],\n  \"selection\": {\n    \"file\": \"/home/user/project/src/main.py\",\n    \"startLine\": 42,\n    \"startCol\": 0,\n    \"endLine\": 42,\n    \"endCol\": 15\n  },\n  \"visible_ranges\": [\n    { \"file\": \"/home/user/project/src/main.py\", \"startLine\": 30, \"endLine\": 60 }\n  ],\n  \"editor_state\": {\n    \"language\": \"python\",\n    \"lineCount\": 200,\n    \"eol\": \"LF\",\n    \"isUntitled\": false,\n    \"isDirty\": false\n  }\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Request execution of an IDE capability through the broker.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-12",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"capability_request\",\n  \"id\": \"req_abc123\",\n  \"capability\": \"ide.diagnostics.file\",\n  \"args\": { \"file\": \"/home/user/project/src/main.py\" }\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "User responded to an approval prompt.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-14",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"approval_response\",\n  \"id\": \"approval_def456\",\n  \"approved\": true\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Sidecar → Extension",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Sent after successful connection and workspace snapshot receipt. Includes the capability manifest for the extension to reference.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-17",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"ack\",\n  \"status\": \"received\",\n  \"capabilities\": {\n    \"ide.workspace.describe\": { \"risk\": \"low\", \"mutates\": false },\n    ...\n  }\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "Result of a capability execution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-19",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"capability_response\",\n  \"id\": \"req_abc123\",\n  \"capability\": \"ide.diagnostics.file\",\n  \"status\": \"ok\",\n  \"result\": { \"diagnostics\": [...] }\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "Sidecar needs user approval before proceeding. The extension must show a modal dialog and respond with `approval_response`.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-21",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"approval_request\",\n  \"id\": \"approval_def456\",\n  \"title\": \"Allow ide.tests.run_file?\",\n  \"description\": \"Run all tests in a file. Test execution can run arbitrary project code.\",\n  \"capability\": \"ide.tests.run_file\",\n  \"risk\": \"medium\",\n  \"mutates\": \"possible\"\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Emitted for every capability execution. Content-light — no raw data.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-23",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"receipt\",\n  \"kind\": \"rig.ide.capability.receipt.v1\",\n  \"capability\": \"ide.diagnostics.file\",\n  \"input_sha256\": \"sha256:a1b2c3...\",\n  \"output_sha256\": \"sha256:d4e5f6...\",\n  \"agent_id\": \"agent.frontend-reviewer\",\n  \"mission_id\": \"M123\",\n  \"user_approved\": true,\n  \"mutated_workspace\": false\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Connection status update.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "code-25",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"type\": \"status\",\n  \"status\": \"ready\",\n  \"message\": \"ACP agent running\"\n}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema Validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "All messages MUST validate against the corresponding JSON Schema:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "- `docs/schemas/rig.ide.sidecar.message.v1.schema.json` - `docs/schemas/rig.ide.capability_receipt.v1.schema.json` - `docs/schemas/rig.ide.capability_manifest.v1.schema.json`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "The sidecar validates incoming messages. The extension SHOULD validate outgoing messages before sending.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-30",
+      "type": "heading",
+      "level": 2,
+      "content": "Capability Manifest",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "The canonical capability registry lives at `etc/rig.ide.capability_manifest.v1.json`. Both the Python sidecar and the TypeScript broker MUST generate their permission tables from this file. Validation tests MUST fail if the implemented permission tables drift from the manifest.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-32",
+      "type": "heading",
+      "level": 2,
+      "content": "Versioning",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "- Sidecar protocol: `rig.ide.v1` (header in sidecar-protocol.ts) - Capability manifest: `rig.ide.capability_manifest.v1` - Capability receipt: `rig.ide.capability.receipt.v1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "Breaking changes require incrementing the major version. Adding new capabilities to the manifest is non-breaking. Adding new fields to the sidecar message schema is non-breaking if `additionalProperties: false` is not violated.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/protocols/ide-sidecar-ipc.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

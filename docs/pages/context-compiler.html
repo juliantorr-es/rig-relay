@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Compiler Doctrine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Status:** Phase 1 — MVP map mode.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Context Compiler Doctrine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Context Compiler Doctrine</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status:** Phase 1 — MVP map mode.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The context compiler is the domain logic behind `rig.get_context`, the governed read-only context front door for Rig Relay agents. It answers:</p>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- What is this repository? - What subsystems exist? - What files matter for this mission? - Who else is touching nearby files? - What should I avoid touching? - What context can fit in my model budget?</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Core Rules</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">1. **`rig.get_context` is read-only.** It must never mutate the repo, worktrees, ledgers, receipts, or build outputs.</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">2. **The manifest is the authority.** Subsystem detection is structural (file tree, naming conventions), not semantic (AST). Symbols are discovered by convention, not by full index.</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">3. **Collision warnings are advisory.** The context tool reports overlapping claims but does not enforce locks. Enforcement is a separate governance concern.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">4. **Receipts are content-light.** The receipt contains hashes, counts, and timestamps — never raw file contents, diffs, or secrets.</p>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">5. **Substituted packets are derived views.** The canonical packet (pre-substitution) is the source of truth. The `canonical_packet_sha256` and `optimized_packet_sha256` fields prove the correspondence.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Modes</h2>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mode</th><th>Speed</th><th>What it returns</th></tr></thead>
+<tbody>
+<tr><td>`map`</td><td>Fast</td><td>Repo topology, dirty state, subsystem map, active lanes, collision warnings</td></tr>
+<tr><td>`packet`</td><td>Heavy</td><td>Everything in `map` + receipt scan, selected file excerpts, symbol table</td></tr>
+<tr><td>`handoff`</td><td>Medium</td><td>Agent-specific handoff: do-not-touch list, current blockers, recommended next files</td></tr>
+<tr><td>`collision`</td><td>Fast</td><td>Path conflict check only: which lanes claim which paths</td></tr>
+<tr><td>`symbols`</td><td>Fast</td><td>Symbol substitution table and definitions only</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Compression</h2>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mode</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>`none`</td><td>Full names, full paths.</td></tr>
+<tr><td>`light`</td><td>Short path aliases.</td></tr>
+<tr><td>`symbol_substitution`</td><td>Replace repeated long names with short aliases (e.g., `⟦S1⟧`). Substitution table included in output.</td></tr>
+<tr><td>`aggressive`</td><td>Aggressive compression with lossy summarization. Not yet implemented.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Relation to Other Systems</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">- **ACP**: The context tool is a built-in Rig tool, not an ACP command. ACP sessions can call `get_context` as a tool within a mission.</p>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">- **MCP**: `rig.get_context` will be exposed as an MCP tool. MCP resources (`rig://context/current`, `rig://repo/map`, `rig://work/active`, `rig://receipts/latest`, `rig://symbols/index`) will be added later.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- **IDE Sidecar**: IDE active buffer, selection, and diagnostics can become inputs to context requests in future versions. For now the tool is file-system-driven.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/context-compiler.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Assembler Final Reconciliation — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Date: 2026-05-18 (updated by closer lane)">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Context Assembler Final Reconciliation</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Context Assembler Final Reconciliation</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Date: 2026-05-18 (updated by closer lane) Inspected HEAD: 26f2288a Lanes: A (compiler/renderer), B (planner/budget/warnings), C (security/failure/warnings — this lane)</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Status: CONTEXT_ASSEMBLER_STABLE_V1</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">All three lanes have converged. Final closer audit confirms source truth.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Canonical Truth Table</h2>
+
+<details id="table-6" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-6" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Seam</th><th>Required</th><th>Actual</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>AssemblyPlan model spine</td><td>exists</td><td>`assembly_plan.py` — ContextCandidate, ContextSelection, ContextOmission, ContextBudgetLedger, ContextAssemblyWarning, ContextAssemblyPlan</td><td>✅ PASSED</td></tr>
+<tr><td>Planner discovery/scoring</td><td>exists</td><td>`planner.py` — `plan_context()` discovers from scope + subsystems + RepoIndex + work_map; scores by priority; enforces budget</td><td>✅ PASSED</td></tr>
+<tr><td>RepoIndex expansion</td><td>wired</td><td>`compiler.execute()` constructs `RepoContextIndex(root)` and passes to `plan_context()`; planner calls `find_tests/docs/schemas/related` with per-method failure warnings</td><td>✅ PASSED</td></tr>
+<tr><td>Budget enforcement</td><td>wired</td><td>`plan_context()` selects in priority order until `max_tokens`; records `budget_exceeded` omissions; negative clamped to 0</td><td>✅ PASSED</td></tr>
+<tr><td>Renderer cache tiers</td><td>unified</td><td>`renderer.py` imports `CacheTier`/`TrustTier` from `assembly_plan.py`; no local duplicates</td><td>✅ PASSED</td></tr>
+<tr><td>Renderer public API</td><td>consumed</td><td>`compiler.build_envelope()` uses `renderer.section_count`, `renderer.section_metadata`, `renderer.rendered_content`, `renderer.add_warning()`</td><td>✅ PASSED</td></tr>
+<tr><td>Compiler execute integration</td><td>planner-driven</td><td>`execute()` calls `plan_context()`, consumes `plan.selections`→`recommended_context`, `plan.omissions`→`do_not_touch`, `plan.warnings`→`_context_warnings`</td><td>✅ PASSED</td></tr>
+<tr><td>Warnings surfaced</td><td>packet-visible</td><td>`ContextPacket` has `warnings` field; compiler propagates planner + renderer warnings; `ContextAssemblyWarning` model used throughout</td><td>✅ PASSED</td></tr>
+<tr><td>Failure hardening</td><td>no silent pass in critical paths</td><td>`_safe_find` returns error tuples; per-method RepoIndex warnings; `build_receipt` has no bare `except: pass`; `execute()` uses `build_warning()`</td><td>✅ PASSED</td></tr>
+<tr><td>Privacy/security boundary</td><td>trust/provenance/evidence</td><td>Renderer uses `TrustTier` (first_party/repo_content/tool_output/untrusted); recent messages are volume-only (sha256 + byte count); root/head/collision paths are hashed; public section metadata has no raw content</td><td>✅ PASSED</td></tr>
+<tr><td>Context test suite</td><td>green</td><td>272 passed, 3 skipped (pre-existing known_blocked tests in repo_index + symbol_codec)</td><td>✅ PASSED</td></tr>
+<tr><td>Collect/demo-doctor</td><td>green</td><td>6520+ tests, 22/22</td><td>✅ PASSED</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Warning Propagation Chain (verified in source)</h2>
+
+<pre id="code-8"><code class="language-text">planner._safe_find() → returns (result, error) tuple
+  → compiler.execute() collects planner warnings
+     → _context_warnings.extend(planner_warnings)
+        → ContextPacket(warnings=_context_warnings)
+
+compiler.build_envelope()
+  → renderer.warnings (via add_warning())
+     → ContextEnvelopeReceipt (warnings not yet on envelope model — deferred)
+
+compiler.build_receipt()
+  → findings failure → build_warning() → recorded (ContextReceipt has no warnings field — deferred)</code></pre>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Remaining Gaps (non-blocking, deferred)</h2>
+
+<table id="table-10" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gap</th><th>Owner</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>`_scan_receipts()` still has broad `except Exception: sha = &quot;&quot;`</td><td>Future</td><td>Returns empty sha on failure; non-critical read path</td></tr>
+<tr><td>`ContextEnvelopeReceipt` lacks warnings field</td><td>Future</td><td>Envelope model change deferred; warnings available in packet</td></tr>
+<tr><td>`ContextReceipt` lacks warnings field</td><td>Future</td><td>Receipt model change deferred</td></tr>
+<tr><td>Some non-critical `except:pass` remain in `repo_index`, `symbol_codec`</td><td>Future</td><td>Legitimate error handlers in optional scan paths</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Lane Report Resolution</h2>
+
+<table id="table-12" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Lane</th><th>Reported Status</th><th>Resolution</th></tr></thead>
+<tbody>
+<tr><td>Lane A</td><td>INTEGRATED_WITH_GAPS</td><td>**Updated.** Gap list reduced — `_safe_find` fixed by Lane B, test regressions fixed. Remaining gaps are deferred non-blocking.</td></tr>
+<tr><td>Lane B</td><td>INTEGRATED_WITH_GAPS</td><td>**Updated.** `_safe_find` returns error tuples, per-method warnings wired, budget semantics explicit.</td></tr>
+<tr><td>Lane C</td><td>CONTEXT_ASSEMBLER_V1_COMPLETE</td><td>**Confirmed.** Security boundaries, failure hardening, and warning propagation landed and verified.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Validation</h2>
+
+<pre id="code-14"><code class="language-text">uv run pytest tests/context/ -q
+  → 272 passed, 3 skipped
+
+uv run pytest tests/context/test_context_final_closeout.py -q
+  → all passed
+
+uv run ruff check rig_relay/context tests/context
+  → clean
+
+uv run pyright rig_relay/context tests/context
+  → 0 errors
+
+uv run pytest --collect-only -q
+  → 6520+ tests
+
+uv run rig-relay demo-doctor
+  → 22/22</code></pre>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/context/context-assembler-final-reconciliation.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

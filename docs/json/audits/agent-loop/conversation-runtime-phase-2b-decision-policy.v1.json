@@ -1,0 +1,236 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "conversation-runtime-phase-2b-decision-policy",
+  "document_type": "audit",
+  "title": "ConversationRuntime Phase 2B — Hook/Tool/Budget Decision Policy",
+  "summary": "Audit date: 2026-05-15",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/audits/agent-loop/conversation-runtime-phase-2b-decision-policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "ConversationRuntime Phase 2B — Hook/Tool/Budget Decision Policy",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Audit date: 2026-05-15",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Context",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Phase 2A moved terminal/near-terminal decisions: - `decide_after_middleware()` — STOP vs continue - `decide_after_model_turn()` — stop_cancelled, stop_completed, run_tools, fail_error - `decide_on_exception()` — fail_error",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Phase 2B moves hook retry, tool batch, and budget decisions out of AgentLoop.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Decisions moved",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": [
+        "Decision method",
+        "Owns",
+        "Previous owner"
+      ],
+      "rows": [
+        [
+          "`decide_after_hook_processing(hook_returned_user_message)`",
+          "Whether hook retry is required or completion should proceed",
+          "AgentLoop inline `hook_retry` check"
+        ],
+        [
+          "`decide_after_tool_batch()`",
+          "Tool batch completed → continue_turn",
+          "(new — previously implicit)"
+        ],
+        [
+          "`decide_after_budget_check(current_turn, max_turns)`",
+          "Max-turn budget exceeded → fail_budget_exceeded",
+          "(new — previously unenforced)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "What stays in AgentLoop",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "- Hook execution loop (`async for hook_event in self._hooks_manager.run(...)`) - Hook message injection (`self.messages.append(LLMMessage(...))`) - Tool execution (delegates to ToolRuntime) - Event yielding - Middleware execution",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Decision kind map",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-11",
+      "type": "table",
+      "columns": [
+        "Decision",
+        "Kind",
+        "should_break",
+        "should_retry_hooks"
+      ],
+      "rows": [
+        [
+          "Hook returns user message",
+          "`retry_hooks`",
+          "False",
+          "True"
+        ],
+        [
+          "Hook passes through",
+          "`stop_completed`",
+          "True",
+          "False"
+        ],
+        [
+          "Tool batch completed",
+          "`continue_turn`",
+          "False",
+          "False"
+        ],
+        [
+          "Budget exceeded",
+          "`fail_budget_exceeded`",
+          "True",
+          "False"
+        ],
+        [
+          "Budget ok",
+          "`continue_turn`",
+          "False",
+          "False"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Trace",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Decision methods emit `PhaseTraceHook` attributes if a hook is registered. No raw message content, tool outputs, or prompts appear in decision attributes.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Future (Phase 3)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Phase 3 will move the while-loop itself into ConversationRuntime, making AgentLoop a pure callback adapter.",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/audits/agent-loop/conversation-runtime-phase-2b-decision-policy.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

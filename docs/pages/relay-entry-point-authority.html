@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relay Entry Point Authority Audit — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**Established.** Audit of the current CLI/product entry point boundary after the">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Relay Entry Point Authority Audit</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Relay Entry Point Authority Audit</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Status</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">**Established.** Audit of the current CLI/product entry point boundary after the Vibe CLI purge. Determines which commands are Relay-owned, which are legacy compatibility aliases, and which runtime paths still depend on `vibe/*`.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Session State</h2>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**Branch**</td><td>`main`</td></tr>
+<tr><td>**HEAD**</td><td>`384e486 checkpoint(vibe-cli-purge-surface-cleanup): Vibe CLI Purge and Relay Product Surface Cleanup`</td></tr>
+<tr><td>**Origin**</td><td>`origin/main` [ahead 2]</td></tr>
+<tr><td>**Dirty files**</td><td>12 modified, 15 untracked (see below)</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Dirty files at start</h3>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">**Modified (12):** - `docs/governance/model-observation-dataset.md` - `docs/governance/storage-retention-policy.md` - `docs/governance/telemetry-contribution-policy.md` - `docs/governance/textual-retirement-policy.md` - `docs/governance/usage-data-doctrine.md` - `docs/governance/vibe-legacy-deprecation.md` - `rig_relay/evidence/model_observations.py` - `scripts/rig_relay_contribute_telemetry_bundle.py` - `tests/scripts/test_google_drive_upload.py` - `tests/test_model_observations.py` - `vibe/cli/textual_ui/app.py` - `vibe/core/agent_loop.py`</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">**Untracked (15):** - `docs/governance/relay-surface-matrix.md` - `docs/governance/session-storage-lifecycle.md` - `docs/schemas/rig.relay.contribution_receipt.v1.schema.json` - `docs/schemas/rig.relay.contribution_result.v1.schema.json` - `rig_relay/evidence/session_lifecycle.py` - `scripts/rig_relay_sessions_audit.py` - `scripts/rig_relay_sessions_compact.py` - `scripts/rig_relay_sessions_gc.py` - `test_out.txt` - `tests/docs/test_textual_retirement_policy.py` - `tests/evidence/test_session_lifecycle.py` - `tests/scripts/test_session_lifecycle_scripts.py` - `tests/scripts/test_telemetry_contribution_schemas.py` - `tests/tools/test_session_lifecycle_finalize.py` - `vibe/core/tools/builtins/session_lifecycle.py`</p>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">**Note:** Dirty files are pre-existing and user-owned. This audit neither reads nor writes them.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Governance Note: Checkpoint to `main`</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">The previous mission (`vibe-cli-purge-surface-cleanup`) created a local checkpoint commit on `main` (HEAD `384e486`). This is **technically permitted** by AGENTS.md:</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">&gt; &quot;Agent checkpoint commits: Agents may create local checkpoint commits for &gt; session-owned files using the `checkpoint` tool.&quot;</p>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">AGENTS.md does not restrict which branch checkpoints land on. However, this creates **release-surface ambiguity**: `main` is now 2 commits ahead of `origin/main` with un-pushed checkpoint content. If a release is cut from `origin/main`, the checkpoint changes are missing. If cut from `main`, the checkpoint content (which may be partial or session-scoped) is included.</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">**Recommendation:** Future checkpoints should land on a dedicated feature branch (e.g., `agent/wip/*`) rather than `main`. Alternatively, AGENTS.md should add an explicit rule: &quot;Checkpoint onto `main` only with user permission; prefer feature branches for session-owned work.&quot;</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">This is a **governance exception** — not a violation, but a practice gap that should be closed before the next release.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Command Inventory</h2>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">`pyproject.toml` Entry Points (`[project.scripts]`)</h3>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Entry Point</th><th>Target Module:Function</th><th>Classification</th><th>Deployment</th></tr></thead>
+<tbody>
+<tr><td>`rig-relay`</td><td>`rig_relay.cli.entrypoint:main`</td><td>**primary**</td><td>`pyproject.toml`</td></tr>
+<tr><td>`rig-relay-acp`</td><td>`rig_relay.cli.acp_entrypoint:main`</td><td>**primary**</td><td>`pyproject.toml`</td></tr>
+<tr><td>`vibe`</td><td>`vibe.cli.entrypoint:main`</td><td>**deprecated alias**</td><td>`pyproject.toml`</td></tr>
+<tr><td>`vibe-acp`</td><td>`vibe.acp.entrypoint:main`</td><td>**deprecated alias**</td><td>`pyproject.toml`</td></tr>
+<tr><td>`vibe-legacy`</td><td>`vibe.cli.entrypoint:main`</td><td>**explicit legacy**</td><td>`pyproject.toml`</td></tr>
+<tr><td>`vibe-acp-legacy`</td><td>`vibe.acp.entrypoint:main`</td><td>**explicit legacy**</td><td>`pyproject.toml`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">Entry Points Referenced But Not Registered</h3>
+
+<table id="table-20" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Entry Point</th><th>Referenced In</th><th>Registration</th><th>Issue</th></tr></thead>
+<tbody>
+<tr><td>`rig-relay-cockpit`</td><td>`AGENTS.md`, `docs/audits/vibe-cli-purge-inventory.md`</td><td>**NOT registered** in `pyproject.toml`</td><td>Advertising without existence; users following AGENTS.md get `Error: No such command`</td></tr>
+</tbody>
+</table>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">The cockpit is runnable via `uv run python scripts/rig_relay_desktop_cockpit.py` but there is no `rig-relay-cockpit` console_scripts entry point. AGENTS.md recommends a command that does not exist.</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Entry Point Target Table</h2>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Command</th><th>Module</th><th>Function</th><th>Called Into</th></tr></thead>
+<tbody>
+<tr><td>`rig-relay`</td><td>`vibe/cli/entrypoint.py`</td><td>`main()` → `run_cli()`</td><td>`vibe/cli/cli.py`</td></tr>
+<tr><td>`rig-relay-acp`</td><td>`vibe/acp/entrypoint.py`</td><td>`main()` → `run_acp_server()`</td><td>`vibe/acp/acp_agent_loop.py`</td></tr>
+<tr><td>`vibe`</td><td>`vibe/cli/entrypoint.py`</td><td>`main()` → `run_cli()`</td><td>`vibe/cli/cli.py`</td></tr>
+<tr><td>`vibe-acp`</td><td>`vibe/acp/entrypoint.py`</td><td>`main()` → `run_acp_server()`</td><td>`vibe/acp/acp_agent_loop.py`</td></tr>
+<tr><td>`vibe-legacy`</td><td>`vibe/cli/entrypoint.py`</td><td>`main()` → `run_cli()`</td><td>`vibe/cli/cli.py`</td></tr>
+<tr><td>`vibe-acp-legacy`</td><td>`vibe/acp/entrypoint.py`</td><td>`main()` → `run_acp_server()`</td><td>`vibe/acp/acp_agent_loop.py`</td></tr>
+</tbody>
+</table>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">**Key finding:** Every single entry point — including `rig-relay` and `rig-relay-acp` — delegates to `vibe.*` modules. There is zero Relay-owned entry point code.</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Current Dependency Map</h2>
+
+<pre id="code-26"><code class="language-text">rig-relay ──→ rig_relay.cli.entrypoint ──→ vibe.cli.entrypoint ──→ vibe.cli.cli ──→ vibe.core.*
+                                                         ├── agent_loop
+                                                         ├── config
+                                                         ├── programmatic
+                                                         ├── session.*
+                                                         ├── telemetry.*
+                                                         ├── tracing
+                                                         ├── hooks
+                                                         ├── agents
+                                                         └── ...
+
+rig-relay-acp ──→ rig_relay.cli.acp_entrypoint ──→ vibe.acp.entrypoint ──→ vibe.acp.acp_agent_loop ──→ vibe.core.*
+                                                                       ├── config
+                                                                       ├── logger
+                                                                       ├── tracing
+                                                                       └── ...
+
+vibe ──→ vibe.cli.entrypoint (warning printed) ──→ same as rig-relay
+vibe-acp ──→ vibe.acp.entrypoint (warning printed) ──→ same as rig-relay-acp
+vibe-legacy ──→ vibe.cli.entrypoint (warning printed) ──→ same as rig-relay
+vibe-acp-legacy ──→ vibe.acp.entrypoint (warning printed) ──→ same as rig-relay-acp
+
+rig_relay.* (product namespace, doesn&#x27;t own any entry point):
+  ├── rig_relay/cli/          (target: empty)
+  ├── rig_relay/runtime/      (target: has update_status.py only)
+  ├── rig_relay/governance/   (seam: dirty_guard, auth_receipts)
+  ├── rig_relay/coordination/ (seam: store, models, tool)
+  ├── rig_relay/evidence/     (seam: model_observations, session_lifecycle)
+  ├── rig_relay/identity/     (seam: OAuth, token store)
+  ├── rig_relay/desktop/      (seam: cockpit projection, WS server)
+  └── rig_relay/providers/    (seam: registry, health_check)</code></pre>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Relay-Owned vs Vibe-Owned Boundary Assessment</h2>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Relay-Owned (Product Namespace: `rig_relay.*`)</h3>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Module</th><th>Owner</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`rig_relay/cli/`</td><td>**empty target package**</td><td>Slated for CLI commands but currently vacant</td></tr>
+<tr><td>`rig_relay/runtime/`</td><td>**1 file only** (`update_status.py`)</td><td>Target for agent loop migration; mostly empty</td></tr>
+<tr><td>`rig_relay/governance/`</td><td>✅ owned</td><td>Dirty guard, auth receipts, local action envelope</td></tr>
+<tr><td>`rig_relay/coordination/`</td><td>✅ owned</td><td>Store, models, tool, current state</td></tr>
+<tr><td>`rig_relay/evidence/`</td><td>✅ owned</td><td>Model observations, session lifecycle, storage lifecycle</td></tr>
+<tr><td>`rig_relay/identity/`</td><td>✅ owned</td><td>OAuth, providers, consent store</td></tr>
+<tr><td>`rig_relay/desktop/`</td><td>✅ owned</td><td>Cockpit, WebSocket, chat state</td></tr>
+<tr><td>`rig_relay/providers/`</td><td>✅ owned</td><td>Registry, key store, health check</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">Vibe-Owned (Legacy: `vibe.*`)</h3>
+
+<details id="table-31" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-31" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Module</th><th>Owner</th><th>Critical To</th></tr></thead>
+<tbody>
+<tr><td>`vibe/cli/entrypoint.py`</td><td>**entry point**</td><td>All CLI commands</td></tr>
+<tr><td>`vibe/acp/entrypoint.py`</td><td>**entry point**</td><td>All ACP commands</td></tr>
+<tr><td>`vibe/cli/cli.py`</td><td>**runtime orchestrator**</td><td>`rig-relay` interactive + programmatic modes</td></tr>
+<tr><td>`vibe/core/agent_loop.py`</td><td>**agent loop**</td><td>Tool execution, LLM streaming</td></tr>
+<tr><td>`vibe/core/config/`</td><td>**configuration**</td><td>Settings, providers, models</td></tr>
+<tr><td>`vibe/core/llm/`</td><td>**LLM backends**</td><td>Provider adapters</td></tr>
+<tr><td>`vibe/core/tools/`</td><td>**tool registry**</td><td>Built-in tools</td></tr>
+<tr><td>`vibe/core/telemetry/`</td><td>**telemetry**</td><td>Events, artifacts, schemas</td></tr>
+<tr><td>`vibe/core/session/`</td><td>**session lifecycle**</td><td>Save/load/resume</td></tr>
+<tr><td>`vibe/core/programmatic.py`</td><td>**headless mode**</td><td>`-p`/`--prompt` flag</td></tr>
+<tr><td>`vibe/core/tracing.py`</td><td>**tracing**</td><td>OpenTelemetry setup</td></tr>
+<tr><td>`vibe/core/hooks/`</td><td>**hooks**</td><td>Pre/post execution hooks</td></tr>
+<tr><td>`vibe/core/agents/`</td><td>**agent profiles**</td><td>Agent models and dispatch</td></tr>
+<tr><td>`vibe/acp/acp_agent_loop.py`</td><td>**ACP server**</td><td>ACP protocol agent</td></tr>
+<tr><td>`vibe/setup/`</td><td>**onboarding**</td><td>First-run wizard</td></tr>
+<tr><td>`vibe/legacy/`</td><td>**quarantine**</td><td>Reserved for legacy quarantine</td></tr>
+</tbody>
+</table></details>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Boundary Classifications</h3>
+
+<details id="table-33" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-33" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Dependency</th><th>Classification</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`rig-relay` → `rig_relay.cli.entrypoint` (→ `vibe.cli.entrypoint`)</td><td>**acceptable temp compat**</td><td>Entry point facade created; delegates to `vibe.cli.entrypoint` when `vibe/cli/cli.py` is migrated</td></tr>
+<tr><td>`rig-relay` → `vibe.cli.cli`</td><td>**needs wrapper extraction**</td><td>This is the CLI orchestrator — highest priority for facade creation</td></tr>
+<tr><td>`rig-relay` → `vibe.core.agent_loop`</td><td>**needs runtime migration**</td><td>Core loop; Phase 4 target</td></tr>
+<tr><td>`rig-relay` → `vibe.core.config`</td><td>**acceptable temp compat**</td><td>Config loading is stable; migrate when entry point moves</td></tr>
+<tr><td>`rig-relay` → `vibe.core.programmatic`</td><td>**needs wrapper extraction**</td><td>Tightly coupled to agent_loop; migrate together</td></tr>
+<tr><td>`rig-relay-acp` → `rig_relay.cli.acp_entrypoint` (→ `vibe.acp.entrypoint`)</td><td>**acceptable temp compat**</td><td>Entry point facade created; delegates to `vibe.acp.entrypoint`</td></tr>
+<tr><td>`rig-relay-acp` → `vibe.acp.acp_agent_loop`</td><td>**needs runtime migration**</td><td>ACP server is standalone; candidate for migration</td></tr>
+<tr><td>`vibe-legacy` → `vibe.cli.entrypoint`</td><td>**safe to leave internal**</td><td>Legacy alias; same path as primary</td></tr>
+<tr><td>`vibe-acp-legacy` → `vibe.acp.entrypoint`</td><td>**safe to leave internal**</td><td>Legacy alias; same path as primary</td></tr>
+<tr><td>Desktop cockpit → `vibe.core.agent_loop`</td><td>**needs runtime migration**</td><td>Cockpit imports AgentLoop directly</td></tr>
+<tr><td>Desktop cockpit → `vibe.core.config`</td><td>**acceptable temp compat**</td><td>Same rationale as CLI</td></tr>
+<tr><td>Desktop cockpit → `vibe.core.hooks`</td><td>**acceptable temp compat**</td><td>Hook loading is stable</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-34" class="disclosure-standard" data-disclosure-level="standard">Migration Risk Notes</h2>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Risk 1: All Primary Entry Points Point to `vibe.*`</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">There is no Relay-owned entry point. `rig-relay` and `rig-relay-acp` are branded names that delegate entirely to legacy `vibe.*` code. **If `vibe/*` were deleted, the CLI would stop working.** The `rig_relay/` namespace exists alongside but does not power any CLI entry point.</p>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">Risk 2: Deprecation Warning Hardcodes Alias Names</h3>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Both entry points use a hardcoded check:</p>
+
+<pre id="code-39"><code class="language-python">if &quot;vibe&quot; in cmd_name.lower():
+    rprint(&quot;[dim]`vibe` is a legacy compatibility alias...[/]&quot;)</code></pre>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">This means: - `vibe-lega cy` triggers the warning but says &quot;`vibe`&quot; instead of &quot;`vibe-legacy`&quot; - The hardcoded backtick name is inaccurate for `vibe-legacy` and `vibe-acp-legacy`</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">This is a minor cosmetic issue with no functional impact.</p>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">Risk 3: `rig-relay-cockpit` Is Not Registered</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">AGENTS.md lists `uv run rig-relay-cockpit` as a primary surface entry point. No such console_scripts entry exists in `pyproject.toml`. Users following AGENTS.md will get an error. The cockpit is only accessible via:</p>
+
+<pre id="code-44"><code class="language-text">uv run python scripts/rig_relay_desktop_cockpit.py</code></pre>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">Risk 4: `vibe-legacy` and `vibe-acp-legacy` Are Functionally Identical</h3>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">The `vibe-legacy` and `vibe-acp-legacy` entry points point to the same modules as `vibe` and `vibe-acp`. They are not &quot;explicit legacy&quot; in any meaningful way — they don&#x27;t enter a legacy code path or quarantine zone. They are simply aliases. If the intent is to have an `-legacy` suffix for users who want the old behavior, those paths will need to be distinct when the Relay facade is extracted.</p>
+
+<h3 id="h3-47" class="disclosure-standard" data-disclosure-level="standard">Risk 5: `rig_relay/cli/` and `rig_relay/runtime/` Are Target Packages With No Content</h3>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">The package structure declares these as target locations for migrating `vibe/cli/` and `vibe/core/agent_loop.py`, but only `rig_relay/runtime/update_status.py` exists. The migration doctrine in `vibe-legacy-deprecation.md` and the `__init__.py` module docstrings advertise these as targets, but no migration from `vibe.*` to `rig_relay.*` has been done for the entry point or runtime.</p>
+
+<h2 id="h2-49" class="disclosure-standard" data-disclosure-level="standard">Validation Commands and Results</h2>
+
+<table id="table-50" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Command</th><th>Exit Code</th><th>Warning?</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`ruff check tests/docs/test_vibe_cli_purge_inventory.py`</td><td>0</td><td>No</td><td>All checks passed</td></tr>
+<tr><td>`pyright tests/docs/test_vibe_cli_purge_inventory.py`</td><td>0</td><td>No</td><td>0 errors, 0 warnings</td></tr>
+<tr><td>`pytest -n0 tests/docs/test_vibe_cli_purge_inventory.py`</td><td>0</td><td>No</td><td>3 passed</td></tr>
+<tr><td>`python scripts/rig_relay_validate_schemas.py`</td><td>0</td><td>No</td><td>68/68 passed</td></tr>
+<tr><td>`rig-relay --help`</td><td>0</td><td>No</td><td>Clean output</td></tr>
+<tr><td>`rig-relay-acp --help`</td><td>0</td><td>No</td><td>Clean output</td></tr>
+<tr><td>`vibe --help`</td><td>0</td><td>**Yes**</td><td>&quot;`vibe` is a legacy compatibility alias...&quot; to stdout</td></tr>
+<tr><td>`vibe-acp --help`</td><td>0</td><td>**Yes**</td><td>&quot;`vibe-acp` is a legacy compatibility alias...&quot; to stderr</td></tr>
+<tr><td>`vibe-legacy --help`</td><td>0</td><td>**Yes**</td><td>Says &quot;`vibe`&quot; (misleading; should say `vibe-legacy`)</td></tr>
+<tr><td>`vibe-acp-legacy --help`</td><td>0</td><td>**Yes**</td><td>Says &quot;`vibe-acp`&quot; (misleading; should say `vibe-acp-legacy`)</td></tr>
+</tbody>
+</table>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">**All commands work correctly.** Legacy alias warnings appear for all `vibe*` commands. The warning text is mildly inaccurate for the `*-legacy` variants (see Risk 2).</p>
+
+<h2 id="h2-52" class="disclosure-standard" data-disclosure-level="standard">Recommended Next Slices in Priority Order</h2>
+
+<h3 id="h3-53" class="disclosure-standard" data-disclosure-level="standard">Slice 1: Extract Relay Runtime Facade (IMMEDIATE)</h3>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">Create a thin `rig_relay.runtime.facade` module that `rig-relay` can own as its entry point boundary. This is NOT a full migration — just a Relay-owned surface that delegates to `vibe/core` internals.</p>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">**Files to create:** - `rig_relay/runtime/facade.py` — `def run_cli(args)`, `def run_acp(args)`</p>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">**File to modify:** - `vibe/cli/entrypoint.py` — simplify to delegate to `rig_relay.runtime.facade` - `vibe/acp/entrypoint.py` — simplify to delegate to `rig_relay.runtime.facade`</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">**Files to create (entry points):** - `rig_relay/cli/entrypoint.py` — `main()` calling facade - `rig_relay/cli/acp_entrypoint.py` — `main()` calling facade</p>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">**Then update `pyproject.toml`:**</p>
+
+<pre id="code-59"><code class="language-text">rig-relay = &quot;rig_relay.cli.entrypoint:main&quot;
+rig-relay-acp = &quot;rig_relay.cli.acp_entrypoint:main&quot;</code></pre>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">Keeps `vibe.*` paths unchanged for the legacy aliases.</p>
+
+<h3 id="h3-61" class="disclosure-standard" data-disclosure-level="standard">Slice 2: Register `rig-relay-cockpit` Console Script (NEXT)</h3>
+
+<p id="p-62" class="disclosure-standard" data-disclosure-level="standard">Add a `[project.scripts]` entry and ensure AGENTS.md accuracy:</p>
+
+<pre id="code-63"><code class="language-text">rig-relay-cockpit = &quot;scripts.rig_relay_desktop_cockpit:main&quot;</code></pre>
+
+<p id="p-64" class="disclosure-standard" data-disclosure-level="standard">Or, better, move the `main()` wrapper into `rig_relay.desktop.cockpit_cli`.</p>
+
+<h3 id="h3-65" class="disclosure-standard" data-disclosure-level="standard">Slice 3: Fix Deprecation Warning Accuracy (MINOR)</h3>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">Update the hardcoded warning in both entry points to use the actual command name rather than a hardcoded string. This fixes the cosmetic issue with `vibe-legacy` and `vibe-acp-legacy`.</p>
+
+<h3 id="h3-67" class="disclosure-standard" data-disclosure-level="standard">Slice 4: Migrate Session Lifecycle Boundary (MEDIUM)</h3>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">Move session lifecycle (save/load/resume) from `vibe.core.session.*` to `rig_relay.runtime.session.*`. This is a natural boundary: session lifecycle is already partly in `rig_relay.evidence.session_lifecycle.py`.</p>
+
+<h3 id="h3-69" class="disclosure-standard" data-disclosure-level="standard">Slice 5: Migrate CLI Orchestrator (MEDIUM)</h3>
+
+<p id="p-70" class="disclosure-standard" data-disclosure-level="standard">Move `vibe/cli/cli.py` (`run_cli`, `_run_standard_cli`, `_run_doctor_command`, `run_programmatic` wrapper) into `rig_relay.cli.orchestrator`. This makes `rig-relay` the true Relay-owned command rather than a Vibe delegation.</p>
+
+<h3 id="h3-71" class="disclosure-standard" data-disclosure-level="standard">Slice 6: Block Checkpoint to Main Governance Gap</h3>
+
+<p id="p-72" class="disclosure-standard" data-disclosure-level="standard">Update AGENTS.md or add a policy document to restrict checkpoint commits on `main`. Preferred approach: feature branches or explicit user permission.</p>
+
+<h2 id="h2-73" class="disclosure-standard" data-disclosure-level="standard">Out-of-scope Findings</h2>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">No out-of-scope findings recorded for this audit-only mission.</p>
+
+<p id="p-75" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-76" class="disclosure-standard" data-disclosure-level="standard">Facade Implemented</h2>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">**Date:** Current session.</p>
+
+<p id="p-78" class="disclosure-standard" data-disclosure-level="standard">This section records the result of the Extract Relay Runtime Facade mission.</p>
+
+<h3 id="h3-79" class="disclosure-standard" data-disclosure-level="standard">What Changed</h3>
+
+<table id="table-80" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Change</th><th>Before</th><th>After</th></tr></thead>
+<tbody>
+<tr><td>`rig-relay` target</td><td>`vibe.cli.entrypoint:main`</td><td>`rig_relay.cli.entrypoint:main`</td></tr>
+<tr><td>`rig-relay-acp` target</td><td>`vibe.acp.entrypoint:main`</td><td>`rig_relay.cli.acp_entrypoint:main`</td></tr>
+<tr><td>Wheel include</td><td>`[&quot;vibe/&quot;]`</td><td>`[&quot;vibe/&quot;, &quot;rig_relay/&quot;]`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-81" class="disclosure-standard" data-disclosure-level="standard">New Facade Modules</h3>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">- `rig_relay/cli/entrypoint.py` — **Relay-owned CLI entry point.** Imports and re-exports `main` from `vibe.cli.entrypoint`. No additional behavior. - `rig_relay/cli/acp_entrypoint.py` — **Relay-owned ACP entry point.** Imports and re-exports `main` from `vibe.acp.entrypoint`. No additional behavior.</p>
+
+<h3 id="h3-83" class="disclosure-standard" data-disclosure-level="standard">What Did Not Change</h3>
+
+<p id="p-84" class="disclosure-standard" data-disclosure-level="standard">- `vibe`, `vibe-acp`, `vibe-legacy`, `vibe-acp-legacy` still point to `vibe.*` entry points. - `vibe/cli/entrypoint.py` and `vibe/acp/entrypoint.py` remain untouched. - No runtime logic was moved out of `vibe/core`. - No compatibility aliases were removed. - No behavior was changed.</p>
+
+<h3 id="h3-85" class="disclosure-standard" data-disclosure-level="standard">Remaining Architecture</h3>
+
+<pre id="code-86"><code class="language-text">rig-relay ──→ rig_relay.cli.entrypoint ──→ vibe.cli.entrypoint ──→ vibe.cli.cli ──→ vibe.core.*
+                                              (delegates via import)
+rig-relay-acp ──→ rig_relay.cli.acp_entrypoint ──→ vibe.acp.entrypoint ──→ vibe.acp.acp_agent_loop ──→ vibe.core.*
+                                                    (delegates via import)
+vibe ──→ vibe.cli.entrypoint (unchanged, warning printed)
+vibe-acp ──→ vibe.acp.entrypoint (unchanged, warning printed)
+vibe-legacy ──→ vibe.cli.entrypoint (unchanged, warning printed)
+vibe-acp-legacy ──→ vibe.acp.entrypoint (unchanged, warning printed)</code></pre>
+
+<h3 id="h3-87" class="disclosure-standard" data-disclosure-level="standard">Status</h3>
+
+<p id="p-88" class="disclosure-standard" data-disclosure-level="standard">The `rig-relay` and `rig-relay-acp` commands now enter through Relay-owned modules. The facade delegates to the existing `vibe.*` implementation. Runtime migration remains deferred (Phase 2+ in the Strangler Fig plan). Compatibility aliases remain intact.</p>
+
+<h3 id="h3-89" class="disclosure-standard" data-disclosure-level="standard">Cockpit Registration</h3>
+
+<p id="p-90" class="disclosure-standard" data-disclosure-level="standard">`rig-relay-cockpit` was **not registered** in this mission. The cockpit script (`scripts/rig_relay_desktop_cockpit.py`) has a `main(argv)` function, but `scripts/` is not a Python package and is not included in the wheel build. Registration requires either: - Making `scripts/` a package and adding it to the wheel include list, or - Moving the `main()` wrapper into `rig_relay.desktop.cockpit_cli`</p>
+
+<p id="p-91" class="disclosure-standard" data-disclosure-level="standard">This is documented as **deferred** (Slice 2 in the recommended slices above).</p>
+
+<h3 id="h3-92" class="disclosure-standard" data-disclosure-level="standard">Verification</h3>
+
+<p id="p-93" class="disclosure-standard" data-disclosure-level="standard">All validation commands pass (see validation section of the mission report).</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/relay-entry-point-authority.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

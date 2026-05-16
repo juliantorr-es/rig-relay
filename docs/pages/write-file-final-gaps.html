@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WriteFile Hardening State — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="WriteFile has reached near-parity with SearchReplace on evidence maturity.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>WriteFile Hardening State</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">WriteFile Hardening State</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Current Status (Post-Closure)</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">WriteFile has reached near-parity with SearchReplace on evidence maturity.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Current State</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">- structured invocation model: present - structured result model: partial (carries `content` field for backwards compatibility) - structured receipt model: **complete** (WriteFileReceipt, 16 fields, extra=&quot;forbid&quot;) - `build_receipt()`: **complete** (content-light, sanitized refusal_reason) - schema coverage: **added** (rig.relay.write_file_receipt.v1) - receipt emission compatibility: **complete** (duck-typed into agent loop) - receipt policy validation: **complete** (tested via test_tool_receipt_emission.py) - receipt index compatibility: **complete** (write_file case in receipt_index.py) - before/after hashes: present (success path only) - before/after byte counts: complete (before_bytes from snapshot, after_bytes from file stat) - created vs overwritten status: present - path safety: present - outside-workspace refusal: present - atomicity: complete (tempfile + os.replace atomic pattern)</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Remaining Gaps</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">1. **content still in WriteFileResult** — Legacy callers may depend on it. See `docs/audits/tool-hardening/write-file-legacy-result-content-audit.md` — recommended to keep, mark as deprecated. 2. **Permission preservation** — Only mode bits preserved after atomic replace (ACLs/xattrs dropped).</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Gap Closure Reference</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">See `docs/audits/tool-hardening/write-file-receipt-gap-closure.md` for the detailed closure report.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/tool-hardening/write-file-final-gaps.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

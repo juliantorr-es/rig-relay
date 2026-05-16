@@ -1,0 +1,390 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "desktop-golden-path",
+  "document_type": "guide",
+  "title": "Desktop Golden Path",
+  "summary": "The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/demo/desktop-golden-path.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Desktop Golden Path",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "The first reproducible source-mode and packaged-mode golden path for Rig Relay desktop.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Source Mode",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-4",
+      "type": "heading",
+      "level": 3,
+      "content": "Command",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "bash",
+      "content": "RIG_RELAY_BRIDGE_DEBUG=1 uv run rig-relay",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "Expected Probe Ladder (18 steps)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-7",
+      "type": "code",
+      "language": "text",
+      "content": "  ✅ [bridge:01] resolve frontend_dir: frontend/desktop\n  ✅ [bridge:02] resolve index.html: 3.7 KB\n  ✅ [bridge:03] verify asset files: js/main.js=11KB, css dir ok\n  ✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True\n  ✅ [bridge:05] create WS server: ProjectionWebSocketServer ready\n  ✅ [bridge:06] bind host/port: http://127.0.0.1:{port}\n  ✅ [bridge:07] probe /healthz: HTTP 200, ok=True\n  ✅ [bridge:08] probe /index.html: HTTP 200, text/html\n  ✅ [bridge:09] probe /js/main.js: HTTP 200, text/javascript\n  ✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css\n  ✅ [bridge:11] create pywebview window: window → http://127.0.0.1:{port}/index.html\n  ✅ [bridge:12] pywebview start called: webview.start(gui=cocoa)\n  ✅ [bridge:13] frontend runtime config loaded: source=pywebview_api token=present,len=32\n  ✅ [bridge:14] websocket upgrade accepted\n  ✅ [bridge:15] auth message received: token_present=true\n  ✅ [bridge:16] websocket auth accepted\n  ✅ [bridge:17] first projection sent\n  ✅ [bridge:18] first projection rendered: digest=...",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "Expected UI",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": [
+        "Widget",
+        "Status"
+      ],
+      "rows": [
+        [
+          "Transport chip",
+          "**Connected** (green) or **Loopback Token Bridge**"
+        ],
+        [
+          "Mission Board",
+          "Visible with active missions"
+        ],
+        [
+          "Ralph Lifecycle",
+          "Visible with completed lanes"
+        ],
+        [
+          "ToolRuntime Summary",
+          "Visible with demo entries"
+        ],
+        [
+          "Reports",
+          "Visible"
+        ],
+        [
+          "No white screen",
+          "Rich frontend loads"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Packaged Mode",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-11",
+      "type": "heading",
+      "level": 3,
+      "content": "Steps",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "1. `open \"dist/Rig Relay.app\"` 2. If macOS blocks: **System Settings → Privacy & Security → Open Anyway** 3. Click **Start Demo** → wait for status update 4. Click **Run Doctor** → see 22/22 checks 5. Click **Launch Cockpit** → rich frontend opens 6. Verify **Loopback Token Bridge** connects 7. Verify projections update",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Requirements",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "- No Terminal - No Python/uv - No API keys - No external network - Merge/push disabled",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Log Files",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Source Mode",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- Terminal: bridge probe ladder printed live (steps 01-18) - `~/Library/Application Support/Rig Relay/logs/bridge_probe.json` - `~/Library/Application Support/Rig Relay/logs/bridge.log`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Packaged Mode",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "- SwiftUI → Reveal Logs opens logs folder - Same log paths as source mode under `~/Library/Application Support/Rig Relay/logs/`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Config Flow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-21",
+      "type": "code",
+      "language": "text",
+      "content": "DesktopBridgeServer.start()\n  → DesktopBridgeRuntimeConfig.to_dict()\n  → includes `token_present` plus token fields for backend-only use\n  → CockpitAPI.set_runtime_config(config)\n  → pywebview.js_api = CockpitAPI instance\n  → frontend calls window.pywebview.api.get_runtime_config()\n    → returns config with token\n  → frontend opens WebSocket with token\n  → ProjectionWebSocketServer._handle_auth() validates token\n  → auth_ok → get_projection → projection rendered",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-22",
+      "type": "heading",
+      "level": 2,
+      "content": "Troubleshooting by Bridge Step",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-23",
+      "type": "table",
+      "columns": [
+        "Step Fails",
+        "Symptom",
+        "Check"
+      ],
+      "rows": [
+        [
+          "bridge:01",
+          "frontend_dir missing",
+          "FRONTEND_DIR constant or packaging path"
+        ],
+        [
+          "bridge:02",
+          "index.html missing",
+          "frontend build step"
+        ],
+        [
+          "bridge:03",
+          "js/main.js missing",
+          "frontend build step"
+        ],
+        [
+          "bridge:04",
+          "runtime_config bad",
+          "token generation, TLS config"
+        ],
+        [
+          "bridge:06",
+          "port bind failure",
+          "port in use, try another port"
+        ],
+        [
+          "bridge:07-10",
+          "static probes fail",
+          "file serving path or MIME type"
+        ],
+        [
+          "bridge:11",
+          "pywebview import fail",
+          "`uv add pywebview`"
+        ],
+        [
+          "bridge:13",
+          "no token in config",
+          "pywebview API not ready, check RIG_RELAY_BRIDGE_DEBUG=1"
+        ],
+        [
+          "bridge:14-16",
+          "WS auth fail",
+          "token mismatch, check ws_url"
+        ],
+        [
+          "bridge:17-18",
+          "no projection",
+          "projection build error, check demo-seed"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-24",
+      "type": "heading",
+      "level": 2,
+      "content": "Protocol Verification",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-25",
+      "type": "code",
+      "language": "python",
+      "content": "# E2E test: WebSocket auth + projection\nws_url = bridge.runtime_config.ws_url\nws = websockets.connect(ws_url)\nws.send({\"type\": \"auth\", \"token\": \"...\"})\n# → {\"type\": \"auth_ok\"}\nws.send({\"type\": \"get_projection\"})\n# → {\"type\": \"projection\", \"data\": {...}}",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "Regression Tests",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-27",
+      "type": "code",
+      "language": "bash",
+      "content": "uv run pytest tests/desktop/test_golden_path.py -v\n# 6 tests: config token, fallback tokenless, WS auth, WS projection, healthz, probe ladder",
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true,
+        "collapsed_by_default": true
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/demo/desktop-golden-path.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

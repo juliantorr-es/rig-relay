@@ -1,0 +1,60 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "readme",
+  "document_type": "reference",
+  "title": "Rig Relay Documentation",
+  "summary": "<!-- Derived from mistralai/mistral-vibe. Modified for Rig Relay. -->",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/README.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "p-1",
+      "type": "paragraph",
+      "content": "<!-- Derived from mistralai/mistral-vibe. Modified for Rig Relay. -->"
+    },
+    {
+      "block_id": "h1-2",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig Relay Documentation"
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Welcome to the Rig Relay documentation! For basic setup, see the [main README](https://github.com/juliantorr-es/rig-relay#readme)."
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Available Documentation"
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "- **[ACP Setup](acp-setup.md)** - Setup instructions for using Rig Relay with various editors and IDEs that support the Agent Client Protocol. - **[Proxy Setup](proxy-setup.md)** - Configure proxy and SSL certificate settings for corporate networks or firewalls."
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/README.md"
+    ]
+  }
+}

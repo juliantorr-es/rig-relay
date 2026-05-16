@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime Tool Invocation Execution — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**File:** `docs/governance/runtime-tool-invocation-execution.md`">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Runtime Tool Invocation Execution</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Runtime Tool Invocation Execution</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**File:** `docs/governance/runtime-tool-invocation-execution.md`</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Purpose</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">The execution layer bridges the runtime adapter and concrete tools (validate, search_replace, write_file, bash), providing structured, content-light execution paths that return `RuntimeToolExecutionResult` objects. Phase 3 adds `execute_runtime_exec()` as a top-level router above all four Phase 2 adapters.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Execution Paths</h2>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">Validate (read-only) — `execute_validate()`</h3>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">- Runs the `Validate` tool through the adapter - Returns content-light `RuntimeToolExecutionResult` - First read-only execution behind the adapter (Phase 1) - No InvokeContext passed (read-only, no coordination needed)</p>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">SearchReplace (mutation) — `execute_search_replace()`</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">- Runs the `SearchReplace` tool through its hardened interface - Returns content-light `RuntimeToolExecutionResult` - First mutation execution behind the adapter (Phase 1) - **InvokeContext injected**: session_id and task_id are passed through the invocation path via `_build_invoke_context()` - **CWD managed**: `_cwd_for_envelope()` temporarily sets CWD to `envelope.cwd` during execution, restoring the original on exit - **Coordination enabled**: the tool&#x27;s internal coordination runs using the injected context (session_id, task_id). Same-owner renewal succeeds. Reservations are released immediately after execution.</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">WriteFile (mutation) — `execute_write_file()`</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">- Runs the `WriteFile` tool through its hardened interface (Phase 2) - Returns content-light `RuntimeToolExecutionResult` - **InvokeContext injected**: session_id and task_id are passed through the invocation path via `_build_invoke_context()` - **CWD managed**: `_cwd_for_envelope()` temporarily sets CWD to `envelope.cwd` during execution, restoring the original on exit - **Coordination enabled**: the tool&#x27;s internal coordination runs using the injected context (session_id, task_id). - **Dirty guard**: the tool internally handles dirty-file protection, protected-file permission, and expected-before-SHA256 validation. - **Receipt**: `WriteFileReceipt` is built via `_build_write_file_receipt()` and converted to a `RuntimeToolInvocationReceipt` through `_attach_receipt()`. - **Linkage**: `tool_receipt_kind=&#x27;write_file&#x27;`, `tool_receipt_schema_version=&#x27;rig.relay.write_file_receipt.v1&#x27;`, `changed_paths=[path]` populated on success.</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Bash (subprocess) — `execute_bash()`</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">- Runs the `Bash` tool through its hardened interface (Phase 2) - Returns content-light `RuntimeToolExecutionResult` - **InvokeContext injected**: session_id and task_id are passed through the invocation path via `_build_invoke_context()` - **CWD managed**: `_cwd_for_envelope()` temporarily sets CWD to `envelope.cwd` during execution, restoring the original on exit - **Timeout handled by bash tool**: the hardened `Bash._run_subprocess()` uses `asyncio.wait_for()` with the configured timeout; timeouts produce `BashResult(status=&quot;timed_out&quot;, error_kind=&quot;timeout&quot;)` which maps to `RuntimeToolExecutionResult(tool_status=&quot;timed_out&quot;, error_kind=&quot;timeout&quot;)` - **Guard integration**: destructive git commands (`git restore`, `git checkout`, `git reset`, `git clean`, `git stash`) are refused by the dirty-file guard before execution, producing `BashResult(status=&quot;refused&quot;)` - **Error handling**: non-zero exit codes raise `ToolError` (preserving existing hardened contract), caught by the adapter as `FAILED` with `error_kind=&quot;execution_error&quot;` - **Receipt**: `BashReceipt` is built via `_build_bash_receipt()` and converted to a `RuntimeToolInvocationReceipt` through `_attach_receipt()`. The receipt is content-light — no raw stdout/stderr, only SHA256 hashes and byte counts. - **Linkage**: `tool_receipt_kind=&#x27;bash&#x27;`, `tool_receipt_schema_version=&#x27;rig.relay.bash_receipt.v1&#x27;`, `changed_paths=[]` (bash does not track file changes)</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Constraints</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- **bash_legacy** — ✅ Supported (Phase 2) - **runtime_exec** — ✅ Supported (Phase 3) - Lease acquisition — ✅ Supported (Phase 3) - RuntimeSupervisor integration — ❌ Deferred - Audit persistence — ✅ Supported (Phase 3)</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Audit Persistence (Phase 3)</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">RuntimeToolExecutionResult outcomes are persisted as RuntimeAuditEvent records to an append-only JSONL store. Each execute_*() method in RuntimeToolExecutionRunner calls _persist_if_configured() before returning, writing a content-light audit event. Early returns (blocked, refused, failed) are also persisted. Persistence is best-effort: failures are silently ignored so audit never breaks tool execution.</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">RuntimeAuditEvent</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">- Content-light: no raw payloads, stdout, stderr, diffs, snippets, secrets - Records: invocation_id, tool_name, status, tool_status, receipt_sha256, runtime_result_sha256 (SHA-256 of the execution result&#x27;s canonical JSON), changed_paths, duration_ms, error fields, created_at - Context propagation (Otel-inspired): mission_id, agent_id, lease_id, parent_event_id carried when available - Schema: `rig.relay.runtime_audit_event.v1`</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">RuntimeAuditPersistenceStore</h3>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">- Append-only JSONL persistence under an injected root path - Creates parent directories automatically - Uses flush + fsync for best-effort durability - Example: `RuntimeAuditPersistenceStore(tmp_path / &quot;audit.jsonl&quot;)`</p>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Supervisor Projection (Phase 3)</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">`RuntimeSupervisorProjection` is a content-light summary derived from `RuntimeAuditEvent` records. It is not derived from raw tool payloads.</p>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">Projection contents</h3>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">- total_invocations: total count - status_counts: counts per status (completed, blocked, refused, failed) - recent_invocations: most recent events (capped, sorted by created_at desc) - changed_path_count: total changed paths across recent events - changed_path_hashes: SHA-256 hashes of recent runtime results</p>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Builder: `build_runtime_supervisor_projection(store_or_events)` Schema: `rig.relay.runtime_supervisor_projection.v1`</p>
+
+<h2 id="h2-27" class="disclosure-standard" data-disclosure-level="standard">Context Injection</h2>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">`_build_invoke_context(envelope)`</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Builds an `InvokeContext` from the invocation envelope:</p>
+
+<table id="table-30" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Envelope field</th><th>InvokeContext field</th></tr></thead>
+<tbody>
+<tr><td>`session_id`</td><td>`session_dir` (as `Path(&quot;/runtime/sessions/{session_id}&quot;)`)</td></tr>
+<tr><td>`task_id`</td><td>`tool_call_id`</td></tr>
+</tbody>
+</table>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Returns `None` when the envelope lacks `session_id` or `task_id`, preserving backward compatibility (coordination skipped).</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">`_cwd_for_envelope(envelope)`</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Context manager that sets `os.chdir()` to `envelope.cwd` during tool execution. This allows the tool&#x27;s `Path.cwd()`-based checks (path validation via `require_path_within_workdir`, coordination store resolution via `Path.cwd() / &quot;.build&quot; / &quot;rig-relay&quot; / &quot;coordination&quot;`) to operate within the correct scope.</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">- If `envelope.cwd` is `None`, the context manager is a no-op - The original CWD is always restored in a `finally` block - Tool execution (path resolution, guard checks, file mutation) happens within the scope of this context manager</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Receipt Model Attachment</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Both `execute_validate()` and `execute_search_replace()` call `build_runtime_tool_invocation_receipt()` after constructing the result, storing the returned `RuntimeToolInvocationReceipt` directly in the `receipt` field of `RuntimeToolExecutionResult`. Receipt building failures are silently caught — `receipt` remains `None`.</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeToolInvocationReceipt` model has `extra=&quot;forbid&quot;` and the execution result schema validates it through a `$ref` to `#/$defs/runtime_tool_invocation_receipt` with `additionalProperties: false`. This provides strict type safety at both the Python and schema level, replacing the previous `dict[str, Any]` bridge.## Coordination Behavior</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">The `SearchReplace` tool internally handles coordination via `_build_coordination_state()` and `_claim_coordination()`. When an InvokeContext with `session_dir` and `tool_call_id` is provided:</p>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">1. **Claim task**: `store.claim_task(session_id, task_id, ...)` — reserves the task for the session 2. **Reserve path**: `store.reserve_paths(session_id, task_id, mode=&quot;write&quot;, paths=[...])` — reserves the target file path 3. **Same-owner renewal**: same `(session_id, task_id)` refreshes the claim without conflict 4. **Release**: reservations are released in a `finally` block after execution completes</p>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">The coordination store is created at `Path.cwd() / &quot;.build&quot; / &quot;rig-relay&quot; / &quot;coordination&quot;`. Since the runner sets CWD to `envelope.cwd`, the store is scoped to the worktree directory.</p>
+
+<h2 id="h2-41" class="disclosure-standard" data-disclosure-level="standard">CWD/Worktree Scope</h2>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">Tests no longer require `monkeypatch.chdir()` for search_replace execution. The runner&#x27;s `_cwd_for_envelope()` context manager handles CWD management.</p>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">If `monkeypatch.chdir()` is still used in a test, it overrides the runner&#x27;s CWD setting. This is acceptable for tests intentionally testing CWD behavior but is not required for normal operation.</p>
+
+<h2 id="h2-44" class="disclosure-standard" data-disclosure-level="standard">Receipt Hashing</h2>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">- Receipts are built from tool results via the tool&#x27;s `build_receipt()` method - The receipt is serialized to canonical JSON (`sort_keys=True`) and SHA-256 hashed - Receipt building failures are silently caught — `receipt_sha256` remains `None`</p>
+
+<h2 id="h2-46" class="disclosure-standard" data-disclosure-level="standard">Status Mapping</h2>
+
+<table id="table-47" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tool (any) status</th><th>Execution result status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`success` / `passed` / `failed`</td><td>`COMPLETED`</td><td>Tool ran to completion</td></tr>
+<tr><td>`skipped` / `timed_out`</td><td>`COMPLETED`</td><td>Timeout captured via `tool_status` and `error_kind`</td></tr>
+<tr><td>`refused` / `blocked`</td><td>`REFUSED`</td><td>Guard or adapter refusal</td></tr>
+<tr><td>bash `failure` (non-zero exit)</td><td>`FAILED`</td><td>`ToolError` raised by hardened bash contract, caught as `execution_error`</td></tr>
+<tr><td>bash `refused` (guard)</td><td>`REFUSED`</td><td>Destructive git commands blocked by dirty-file guard</td></tr>
+</tbody>
+</table>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">Adapter-level `BLOCKED` → `BLOCKED`. Adapter-level `REFUSED` → `REFUSED`.</p>
+
+<h2 id="h2-49" class="disclosure-standard" data-disclosure-level="standard">Linkage Field Population</h2>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeToolExecutionResult` model carries linkage fields that bridge the execution result to tool receipts, receipt envelopes, and audit events:</p>
+
+<table id="table-51" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Validate</th><th>SearchReplace</th><th>Bash</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`tool_receipt_kind`</td><td>`&quot;validate&quot;`</td><td>`&quot;search_replace&quot;`</td><td>`&quot;bash&quot;`</td><td>Identifies which receipt schema applies</td></tr>
+<tr><td>`tool_receipt_schema_version`</td><td>From `ValidateReceipt.schema_version`</td><td>From `SearchReplaceReceipt.schema_version`</td><td>From `BashReceipt.schema_version`</td><td>Records which schema version produced the receipt hash</td></tr>
+<tr><td>`changed_paths`</td><td>`[]` (empty)</td><td>`[file_path]`</td><td>`[]` (bash does not track file changes)</td><td>Files affected by mutation tools</td></tr>
+<tr><td>`receipt`</td><td>`RuntimeToolInvocationReceipt`</td><td>`RuntimeToolInvocationReceipt`</td><td>`RuntimeToolInvocationReceipt`</td><td>Produced by `build_runtime_tool_invocation_receipt()` and stored directly as the Pydantic model</td></tr>
+<tr><td>`invocation_id`</td><td>From envelope</td><td>From envelope</td><td>From envelope</td><td>Links result back to invocation</td></tr>
+<tr><td>`receipt_envelope_id`</td><td>`None` (Phase 2)</td><td>`None` (Phase 2)</td><td>`None` (Phase 2)</td><td>Populated by envelope builder</td></tr>
+<tr><td>`audit_event_id`</td><td>`None` (Phase 2)</td><td>`None` (Phase 2)</td><td>`None` (Phase 2)</td><td>Populated by audit integration</td></tr>
+</tbody>
+</table>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">The `receipt` field stores a `RuntimeToolInvocationReceipt` Pydantic model (not a dict). The model has `extra=&quot;forbid&quot;` and the execution result schema references it via `$ref` to `#/$defs/runtime_tool_invocation_receipt` with `additionalProperties: false`. This guarantees content-light conformance at both the type and schema level — no dicts, no raw content, no arbitrary properties.</p>
+
+<h2 id="h2-53" class="disclosure-standard" data-disclosure-level="standard">Raw Payload Boundary</h2>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">WriteFileResult has a `content: str` field that contains the raw file content. This field is explicitly governed:</p>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">- **Local operational payload only** — used by the agent loop for display and verification during the same session - **Not emitted in receipt** — `WriteFileReceipt` has no `content` field; `build_receipt()` never copies it - **Not emitted in runtime execution result** — `RuntimeToolExecutionResult` has no `content` field; write_file is not wired into the runner - **Not emitted in telemetry/projections** — tool output artifacts and observability events use only SHA256 hashes and metadata</p>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">BashResult has `stdout: str` and `stderr: str` fields that contain raw command output. These fields are explicitly governed:</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">- **Local operational payload only** — used by the agent loop for display and verification during the same session - **Not emitted in receipt** — `BashReceipt` has no `stdout`/`stderr` fields; `build_receipt()` computes SHA256 hashes and byte counts instead - **Not emitted in runtime execution result** — `RuntimeToolExecutionResult` has no `stdout`/`stderr` fields; the content-light contract is enforced by `ConfigDict(extra=&quot;forbid&quot;)` on all models and `additionalProperties: false` on all schemas - **Not emitted in telemetry/projections** — only hashes and metadata</p>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">This boundary is enforced by the receipt schema (`rig.relay.write_file_receipt.v1`, `additionalProperties: false`) and the execution result schema (`rig.relay.runtime_tool_execution_result.v1`, `additionalProperties: false`).</p>
+
+<h2 id="h2-59" class="disclosure-standard" data-disclosure-level="standard">Content-Light Contract</h2>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">The `RuntimeToolExecutionResult` model contains no raw file contents, stdout, stderr, diffs, snippets, or secrets. Only status indicators, hashes, timing, and structured error/refusal information.</p>
+
+<h2 id="h2-61" class="disclosure-standard" data-disclosure-level="standard">Usage</h2>
+
+<pre id="code-62"><code class="language-python">from rig_relay.runtime.context import RuntimeContext, RuntimeContextResolution
+from rig_relay.runtime.tool_invocation_adapter import RuntimeToolIntent, RuntimeToolName
+from rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionRunner
+
+ctx = RuntimeContext(
+    session_id=&quot;sess-001&quot;,
+    task_id=&quot;task-001&quot;,
+    worktree_path=&quot;/tmp/worktree&quot;,
+    repo_root=&quot;/tmp/repo&quot;,
+)
+resolution = RuntimeContextResolution(status=&quot;resolved&quot;, context=ctx)
+
+# Validate execution (no InvokeContext)
+v_intent = RuntimeToolIntent(
+    intent_id=&quot;intent-001&quot;,
+    tool_name=RuntimeToolName.VALIDATE,
+    payload={&quot;profile&quot;: &quot;quick&quot;},
+)
+runner = RuntimeToolExecutionRunner()
+v_result = await runner.execute_validate(v_intent, resolution)
+
+# SearchReplace execution (InvokeContext injected, CWD managed)
+sr_intent = RuntimeToolIntent(
+    intent_id=&quot;intent-002&quot;,
+    tool_name=RuntimeToolName.SEARCH_REPLACE,
+    payload={
+        &quot;file_path&quot;: &quot;src/main.py&quot;,
+        &quot;content&quot;: &quot;&lt;&lt;&lt;&lt;&lt;&lt;&lt; SEARCH\nold\n=======\nnew\n&gt;&gt;&gt;&gt;&gt;&gt;&gt; REPLACE&quot;,
+    },
+)
+sr_result = await runner.execute_search_replace(sr_intent, resolution)
+
+# Bash execution
+b_intent = RuntimeToolIntent(
+    intent_id=&quot;intent-003&quot;,
+    tool_name=RuntimeToolName.BASH_LEGACY,
+    payload={&quot;command&quot;: &quot;echo hello&quot;, &quot;legacy_fallback_allowed&quot;: True},
+)
+b_result = await runner.execute_bash(b_intent, resolution)</code></pre>
+
+<h2 id="h2-63" class="disclosure-standard" data-disclosure-level="standard">Implementation Status</h2>
+
+<details id="table-64" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-64" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Feature</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>`execute_validate()`</td><td>✅ Implemented</td><td>Read-only, runs Validate tool</td></tr>
+<tr><td>`execute_search_replace()`</td><td>✅ Implemented</td><td>Mutation, runs SearchReplace through hardened interface</td></tr>
+<tr><td>Context injection (InvokeContext)</td><td>✅ Implemented</td><td>session_id, task_id passed to tool</td></tr>
+<tr><td>CWD management</td><td>✅ Implemented</td><td>`_cwd_for_envelope()` context manager</td></tr>
+<tr><td>Coordination via injected context</td><td>✅ Implemented</td><td>Same-owner renewal, released after execution</td></tr>
+<tr><td>Adapter prepare → blocked → refused</td><td>✅ Implemented</td><td>Both paths handle BLOCKED and REFUSED envelopes</td></tr>
+<tr><td>Envelope schema validation</td><td>✅ Implemented</td><td>Draft7 validation against runtime_tool_invocation schema</td></tr>
+<tr><td>Receipt hashing</td><td>✅ Implemented</td><td>SHA-256 of canonical JSON receipt</td></tr>
+<tr><td>Linkage fields (validate)</td><td>✅ Implemented</td><td>`tool_receipt_kind`, `tool_receipt_schema_version` populated</td></tr>
+<tr><td>Linkage fields (search_replace)</td><td>✅ Implemented</td><td>`tool_receipt_kind`, `tool_receipt_schema_version`, `changed_paths` populated</td></tr>
+<tr><td>Receipt model attachment</td><td>✅ Implemented</td><td>`build_runtime_tool_invocation_receipt()` stores model directly as `RuntimeToolInvocationReceipt`</td></tr>
+<tr><td>Schema validation (no workarounds)</td><td>✅ Implemented</td><td>Tests validate full model dumps without `exclude_none`</td></tr>
+<tr><td>Content-light results</td><td>✅ Implemented</td><td>No raw content in result model</td></tr>
+<tr><td>Schema validation of result</td><td>✅ Implemented</td><td>Against `rig.relay.runtime_tool_execution_result.v1`</td></tr>
+<tr><td>`execute_write_file()`</td><td>✅ Implemented</td><td>Mutation, runs WriteFile through hardened interface</td></tr>
+<tr><td>`execute_bash()`</td><td>✅ Implemented</td><td>Subprocess, runs Bash through hardened interface</td></tr>
+<tr><td>Lease acquisition</td><td>✅ Implemented</td><td>Acquire before mutation, release in finally, TTL crash recovery</td></tr>
+<tr><td>RuntimeSupervisor integration</td><td>❌ Deferred</td><td>Phase 4</td></tr>
+<tr><td>Coordination policy</td><td>✅ Implemented</td><td>coordination_enabled flag, lease error =&gt; BLOCKED</td></tr>
+<tr><td>Lease TTL</td><td>✅ Implemented</td><td>DEFAULT_LEASE_TTL_SECONDS=120, configurable per envelope</td></tr>
+<tr><td>Audit persistence</td><td>✅ Implemented</td><td>Content-light JSONL audit trail</td></tr>
+<tr><td>Context propagation</td><td>✅ Implemented</td><td>mission_id, agent_id, etc. propagated to audit</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-65" class="disclosure-standard" data-disclosure-level="standard">Dependencies</h2>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">- `RuntimeToolInvocationAdapter` — translates intent + context to envelope - `RuntimeToolInvocationEnvelope` — carries session_id, task_id, cwd, payload - `InvokeContext` (`vibe.core.tools.base`) — passed to SearchReplace tool - `Validate` tool (`vibe/core/tools/builtins/validate.py`) — actual validation logic - `SearchReplace` tool (`vibe/core/tools/builtins/search_replace.py`) — actual search/replace logic - `Bash` tool (`vibe/core/tools/builtins/bash.py`) — actual command execution with timeout/refusal/error handling (`vibe/core/tools/builtins/search_replace.py`) — actual search/replace logic - `jsonschema` — envelope schema validation - Schema: `rig.relay.runtime_tool_execution_result.v1`</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/runtime-tool-invocation-execution.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSCodium Extension API Study — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="This document identifies the specific VS Code / VSCodium APIs required to implement the Rig Relay shell lane.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>VSCodium Extension API Study</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">VSCodium Extension API Study</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">This document identifies the specific VS Code / VSCodium APIs required to implement the Rig Relay shell lane.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">1. Required for MVP</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>API Area</th><th>Purpose</th><th>Rig Use Case</th><th>Host/Daemon</th><th>Security Concern</th></tr></thead>
+<tbody>
+<tr><td>**Webview View**</td><td>Custom UI panels.</td><td>Side-panel for agent chat, turn status, and receipts.</td><td>Extension Host</td><td>XSS within the webview.</td></tr>
+<tr><td>**Status Bar API**</td><td>Global status indicators.</td><td>Displaying &quot;Agent Running&quot;, &quot;Blocked&quot;, or &quot;Validation Pending&quot;.</td><td>Extension Host</td><td>None.</td></tr>
+<tr><td>**Workspace API**</td><td>File/Folder discovery.</td><td>Detecting open files for context compilation.</td><td>Extension Host</td><td>Potential leakage of file names.</td></tr>
+<tr><td>**Commands API**</td><td>User actions.</td><td>Keybindings for &quot;Start Turn&quot;, &quot;Approve Patch&quot;, &quot;Clear Input&quot;.</td><td>Extension Host</td><td>Command injection if not sanitized.</td></tr>
+<tr><td>**SecretStorage API**</td><td>Safe credential storage.</td><td>Storing daemon tokens and API keys.</td><td>Extension Host</td><td>Leakage to other extensions.</td></tr>
+<tr><td>**Terminal API**</td><td>Embedded terminal.</td><td>Optional view of the raw Rig Relay daemon logs.</td><td>Extension Host</td><td>Arbitrary shell execution.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">2. Useful after MVP</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>API Area</th><th>Purpose</th><th>Rig Use Case</th><th>Host/Daemon</th><th>Security Concern</th></tr></thead>
+<tbody>
+<tr><td>**Tree View API**</td><td>Hierarchical lists.</td><td>Detailed evidence receipt browser and fleet status.</td><td>Extension Host</td><td>Low.</td></tr>
+<tr><td>**Custom Editor API**</td><td>Custom file views.</td><td>Governed &quot;Receipt Files&quot; or &quot;Mission Journals&quot;.</td><td>Extension Host</td><td>None.</td></tr>
+<tr><td>**FileSystemProvider**</td><td>Virtual file system.</td><td>Projecting &quot;Mission Worktrees&quot; without actual git checkouts.</td><td>Extension Host</td><td>High complexity; safety.</td></tr>
+<tr><td>**Diagnostics API**</td><td>Editor linting/errors.</td><td>Showing &quot;Validation Errors&quot; directly on the code lines.</td><td>Extension Host</td><td>False positives from agents.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">3. Dangerous / Defer</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>API Area</th><th>Purpose</th><th>Rig Use Case</th><th>Rationale for Deferral</th></tr></thead>
+<tbody>
+<tr><td>**Task API**</td><td>Running build/test tasks.</td><td>Executing validations.</td><td>Defer to daemon tools for governance.</td></tr>
+<tr><td>**Authentication API**</td><td>Third-party auth.</td><td>GitHub/Mistral login.</td><td>Keep in daemon for token isolation.</td></tr>
+<tr><td>**Integrated Terminal Write**</td><td>Injecting text into shell.</td><td>Auto-running commands.</td><td>Too risky; bypasses tool permissions.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">4. Test Strategy</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">*   **Extension Host Unit Tests**: Use `vscode-test` to mock workspace and commands. *   **Integration Tests**: Scripted VSCodium instances connecting to a real `rig-relay` daemon. *   **Shadow Projections**: Compare the extension&#x27;s view of a turn with the daemon&#x27;s internal `CodingSessionSnapshot` to ensure no data leakage.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/vscodium-shell-lane/extension-api-study.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConversationRuntime Phase 2A — Decision Policy Inventory — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines)">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>ConversationRuntime Phase 2A — Decision Policy Inventory</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ConversationRuntime Phase 2A — Decision Policy Inventory</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**AgentLoop**: `rig_relay/core/agent_loop.py` (1563 lines) **Method**: `_conversation_loop` (lines 745–865)</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Current Decision Points in `_conversation_loop`</h2>
+
+<h3 id="h3-4" class="disclosure-standard" data-disclosure-level="standard">1. Middleware STOP (line 789)</h3>
+
+<pre id="code-5"><code class="language-python">if result.action == MiddlewareAction.STOP:
+    cr._finish(TurnOutcome.MIDDLEWARE_STOP)
+    return</code></pre>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Decision: Stop loop immediately. Outcome: MIDDLEWARE_STOP.</p>
+
+<h3 id="h3-7" class="disclosure-standard" data-disclosure-level="standard">2. User cancellation detection (lines 814–817 + 825–830)</h3>
+
+<pre id="code-8"><code class="language-python">if is_user_cancellation_event(event):
+    user_cancelled = True
+
+if user_cancelled:
+    cr._finish(TurnOutcome.USER_CANCELLED, &quot;user cancelled&quot;)
+    turn.mark_outcome(TurnOutcome.USER_CANCELLED, &quot;user cancelled&quot;)
+    return</code></pre>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Decision: Stop loop, outcome USER_CANCELLED.</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">3. Break condition: no tool calls / assistant final (line 823)</h3>
+
+<pre id="code-11"><code class="language-python">should_break_loop = last_message.role != Role.tool</code></pre>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Decision: Assistant sent a final reply (not a tool call). Loop should break.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">4. Hook retry (lines 831–848)</h3>
+
+<pre id="code-14"><code class="language-python">if should_break_loop and self._hooks_manager:
+    hook_retry = ...
+    if hook_retry is not None:
+        should_break_loop = False</code></pre>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Decision: An injected hook message keeps the loop running.</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">5. Tool call batch (lines 876+)</h3>
+
+<pre id="code-17"><code class="language-python">if not resolved.tool_calls and not resolved.failed_calls:
+    # no tool calls to run</code></pre>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Decision: Tool calls present → run tools. No tool calls → continue to next model turn.</p>
+
+<h3 id="h3-19" class="disclosure-standard" data-disclosure-level="standard">6. Exception/failure (lines 870–874, try/finally)</h3>
+
+<pre id="code-20"><code class="language-python">try:
+    ...
+finally:
+    await self._save_messages()</code></pre>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Decision: Exception propagates up to caller. No dedicated failure outcome classification here.</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">7. Max turns budget (line 329)</h3>
+
+<pre id="code-23"><code class="language-python">max_turns=self._max_turns,</code></pre>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Decision: Enforced elsewhere in `act()` method. Not yet in `_conversation_loop`.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">8. Loop termination: SUCCESS (lines 862–863)</h3>
+
+<pre id="code-26"><code class="language-python">cr._finish(TurnOutcome.SUCCESS)
+turn.advance(TurnPhase.FINALIZING)
+turn.mark_outcome(TurnOutcome.SUCCESS)</code></pre>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Decision: Final outcome after loop ends normally.</p>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Summary</h2>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Decision Kind</th><th>Location</th><th>Currently In</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>MIDDLEWARE_STOP</td><td>Line 789</td><td>AgentLoop</td></tr>
+<tr><td>2</td><td>USER_CANCELLED</td><td>Lines 814–830</td><td>AgentLoop</td></tr>
+<tr><td>3</td><td>Assistant final (break)</td><td>Line 823</td><td>AgentLoop</td></tr>
+<tr><td>4</td><td>Hook retry (continue)</td><td>Lines 831–848</td><td>AgentLoop</td></tr>
+<tr><td>5</td><td>Tool calls present</td><td>Line 876</td><td>AgentLoop</td></tr>
+<tr><td>6</td><td>Exception/failure</td><td>try/finally</td><td>AgentLoop</td></tr>
+<tr><td>7</td><td>Max turns budget</td><td>Line 329</td><td>AgentLoop</td></tr>
+<tr><td>8</td><td>SUCCESS outcome</td><td>Lines 862–863</td><td>AgentLoop</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-30" class="disclosure-standard" data-disclosure-level="standard">Phase 2A Target</h2>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Move decisions 1, 2, 3, 6, 8 (the terminal and loop-control decisions) into `ConversationRuntime.decide_*()` methods. Keep execution mechanics (model call, tool batch, hook run) in AgentLoop but have the decision returned by ConversationRuntime.</p>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">Decisions 4 (hook retry) and 5 (tool batch) stay in AgentLoop for now — they involve execution state too deeply coupled to the loop.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

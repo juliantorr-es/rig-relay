@@ -1,0 +1,194 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "usage-data-license-alpha",
+  "document_type": "legal",
+  "title": "Usage Data Commercial License — Alpha",
+  "summary": "> **⚠ Attorney review required before public release.**",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/legal/usage-data-license-alpha.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Usage Data Commercial License — Alpha",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "> **⚠ Attorney review required before public release.** > This document describes the intended license terms for commercial usage of > aggregated, anonymized Rig Relay telemetry datasets. It is not a legally > binding document. A qualified attorney must review and formalize these terms > before any commercial licensing, sale, or public distribution of derived > datasets.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Rig Relay alpha collects content-light telemetry to improve the product and benchmark model providers. This license governs the **commercial use** of aggregated, anonymized derived datasets produced from that telemetry.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "**Commercial dataset licensing is a separate concept from privacy consent.** A user may grant privacy consent for basic telemetry (usage metrics, crash reports, coordination metrics, tool refinement metrics) without granting a commercial dataset license. The commercial dataset license must be explicitly granted, never inferred, and never bundled with basic telemetry consent.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Scope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "This license applies to derived datasets that:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- Contain **no raw prompts, model outputs, source code, diffs, stdout/stderr bodies, secrets, tokens, API keys, or raw authorization receipt bodies**. - Contain only content-light fields: SHA256 hashes, counts, timestamps, latency metrics, tool-call metadata (names, durations, success/failure), and aggregate statistics. - Are aggregated across multiple users to a minimum anonymity set size. - Are produced by the Rig Relay telemetry bundle system.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Grant",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "When a user explicitly grants the `commercial_dataset_license` or `aggregate_public_reporting` scope in their telemetry consent record, Rig Relay may:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "1. Include that user's content-light telemetry in aggregated, anonymized derived datasets. 2. Use those derived datasets for: - Model provider ranking and benchmarking reports. - Local model comfort-score calibration. - Public aggregate reports (no individual attribution). - Commercial licensing to third parties (under separate terms).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Limitations",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "- **No raw data licensing.** Raw telemetry events (individual observation lines) are never licensed for commercial use. Only aggregated, anonymized derived datasets may be licensed. - **No re-identification.** Licensed datasets must be aggregated such that individual users cannot be re-identified. - **No API key or secret exposure.** Licensed datasets are screened by the content-light guarantee before inclusion. - **Opt-out at any time.** Users may revoke commercial dataset license at any time. Revocation applies prospectively; previously distributed aggregated datasets are not recalled.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Policy Version",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "This license corresponds to consent policy version: `alpha-usage-data-license-v1`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-16",
+      "type": "heading",
+      "level": 2,
+      "content": "Related Documents",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "- [Privacy Notice Alpha](./privacy-notice-alpha.md) - [Telemetry Consent Schema](../schemas/rig.relay.telemetry_consent.v1.schema.json) - [Usage Data Governance Doctrine](../governance/usage-data-doctrine.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/legal/usage-data-license-alpha.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

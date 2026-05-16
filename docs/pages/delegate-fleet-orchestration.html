@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delegate/Fleet Orchestration Doctrine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Rig Relay&#x27;s delegate/fleet orchestration model governs how a reviewer/orchestrator agent">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Delegate/Fleet Orchestration Doctrine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Delegate/Fleet Orchestration Doctrine</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s delegate/fleet orchestration model governs how a reviewer/orchestrator agent selects ready work from a durable pending work queue, dispatches bounded child missions, monitors progress through the current-state pulse, aggregates evidence from completed children, and decides the next action.</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">This doctrine builds on the [Reviewer Orchestrator Doctrine](reviewer-orchestrator.md) and adds the **pending work queue** as the durable backlog that completes the autonomous loop:</p>
+
+<pre id="code-4"><code class="language-text">cockpit → queue_plan → spawn_plan → spawn_execute → current_state → child_result → parent_convergence_report → queue update</code></pre>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Without a durable queue, the reviewer &quot;thinks of tasks out of nowhere.&quot; With it, the reviewer pulls ready work from a persistent backlog, dispatches only what is safe under coordination constraints, and leaves sequential work pending until the dependency graph allows it to move.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Desktop Intent API</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The desktop Intent API (`rig_relay/desktop/intents.py`) provides governed, schema-validated access to safe orchestration actions from the desktop cockpit. Protected mutation intents (including `spawn.execute`, `fleet.execute`, and `delegate.execute`) are explicitly refused with `authorization_required=true` until receipt-gated intent execution exists in a future slice.</p>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">See `docs/governance/desktop-cockpit-ui.md` for the full intent catalog.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Canonical Concepts</h2>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Delegate</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">A **delegate** is one bounded child session launched from one ready work item. The child receives a typed mission packet that defines allowed paths, tool policy, coordination policy, checkpoint policy, and completion criteria. The child operates within these bounds and returns a child session result.</p>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">A delegate is the atomic unit of orchestration work.</p>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Fleet</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">A **fleet** is a bounded set of child sessions launched from multiple ready work items in parallel. Fleets respect:</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">- `max_parallel_sessions` (default 4) - Dependency ordering (sequential items dispatch only after upstream items complete) - Path-lease coordination (no overlapping write reservations) - Profile/policy validation per item - Validation-stage ordering (test after implement, review after test)</p>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">Fleets are the scalable unit of orchestration work.</p>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">Reviewer / Orchestrator</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">The **reviewer/orchestrator** is the responsible parent agent. It:</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">1. Reads the sprint cockpit to understand the repo state, coordination state, and dataset completeness. 2. Computes a ready work plan from the durable pending work queue. 3. Dispatches each ready work item through spawn planning and (eventually) spawn execution. 4. Monitors child sessions through the current-state pulse. 5. Aggregates child session results into a parent convergence report. 6. Updates the work queue (mark completed, advance dependencies, add new items). 7. Decides next action: continue dispatching, request human review, or propose push.</p>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">The reviewer **does not edit files directly**. It **does not run arbitrary shell commands**. It orchestrates through typed artifacts only.</p>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">Agents as Tools</h3>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">The **agents-as-tools** pattern is the default orchestration style. Child agents are invoked as bounded, typed workers — like calling a function — and return structured results to the reviewer. The reviewer remains the responsible caller throughout.</p>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Characteristics: - The reviewer selects the work item, crafts the mission packet, and dispatches. - The child executes within bounds and returns a result. - The reviewer inspects the result and decides the next action. - No implicit transfer of authority.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">This follows the OpenAI orchestration distinction: agents-as-tools keep the main agent responsible; handoffs transfer control. Rig Relay defaults to agents-as-tools.</p>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Handoff</h3>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">A **handoff** is an explicit transfer of responsibility from one session to another. Handoffs are **not the default**. They require:</p>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">1. A typed handoff event (request, accept, or reject). 2. A new mission/ownership boundary. 3. The original session releasing its claim.</p>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Handoffs are used only when explicitly desired — e.g., a researcher discovers a bug that requires a separate implementer mission, and explicitly passes the context.</p>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">Supervisor Graph Semantics</h3>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">The orchestration model follows a **supervisor graph** pattern, matching the industry LangGraph supervisor architecture:</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">- The reviewer/orchestrator is the supervisor node. - Each child session is a worker node. - Edges represent dispatch, dependency, and result flow. - The graph is acyclic during a single orchestration iteration. - Sequential items form a chain; parallel items fan out and fan in.</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Stateful Orchestration</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">The orchestration is **stateful** across sessions:</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">- The pending work queue persists across child session boundaries. - Coordination state (sessions, leases, artifacts, conflicts) persists in the coordination store. - The parent convergence report captures the aggregate state. - If the reviewer crashes or is interrupted, it can reload the queue and coordination state and resume.</p>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Replay/Debug Mindset</h3>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Every orchestration artifact is typed, versioned, and content-light:</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">- Coordination events carry schema versions, event hashes, and salted path hashes. - Spawn plans capture the decision with refusal codes. - Current state pulses capture the live projection. - Parent convergence reports capture the aggregate evidence.</p>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">This enables replay debugging: given the same queue and coordination state, a reviewer should produce the same decisions.</p>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Workspaces</h3>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">A **workspace** is a Git worktree or isolated checkout for concurrent mutation:</p>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">- Single-checkout concurrency defaults to one writer plus multiple readers/testers. - Multi-writer concurrency requires non-overlapping paths in the same checkout, or separate Git worktrees. - Worktree creation is deferred to a future slice.</p>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">Spec-Scoped Tasks</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">Every work item is scoped to a specification:</p>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">- `allowed_paths` and `forbidden_paths` constrain file access. - `tool_policy` constrains write and bash access. - `coordination_policy` constrains coordination access. - `validation_commands` define the pass/fail criteria. - `done_when` defines human-readable completion criteria.</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">A work item cannot exceed its spec scope.</p>
+
+<h3 id="h3-46" class="disclosure-standard" data-disclosure-level="standard">Human Oversight</h3>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Human oversight is the authority boundary:</p>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">- Only the user pushes, merges, rebases, or approves commits for upstream consumption. - Agents create checkpoints for session-owned files; the user decides when/if to push. - If the parent convergence report recommends human review, the reviewer pauses and presents the evidence. - The reviewer never bypasses Git policy or dirty-file guard.</p>
+
+<h3 id="h3-49" class="disclosure-standard" data-disclosure-level="standard">Validation Stages</h3>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">Work items pass through validation stages:</p>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">1. **Schema validation**: The mission packet and spawn plan validate against their schemas. 2. **Coordination validation**: Active child count, path leases, and conflicts are checked. 3. **Queue validation**: Dependencies, item status, and parallelism policy are checked. 4. **Execution validation**: Child runs validation commands on completion. 5. **Convergence validation**: Parent aggregates child results and decides next action.</p>
+
+<h3 id="h3-52" class="disclosure-standard" data-disclosure-level="standard">Pending Work Queue</h3>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">The **pending work queue** is the durable backlog of work items. It is the canonical missing object that completes the orchestration loop.</p>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">A work item has a status that progresses through:</p>
+
+<pre id="code-55"><code class="language-text">pending → ready → claimed → dispatched → running → completed
+                                                         ↓
+                                              failed / refused / cancelled / superseded</code></pre>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">Blocked/waiting states interrupt progression:</p>
+
+<p id="p-57" class="disclosure-standard" data-disclosure-level="standard">- `waiting_dependency`: One or more dependencies are not yet complete. - `waiting_lease`: Required path leases are held by another session. - `waiting_validation_stage`: A validation stage has not been reached. - `blocked_by_conflict`: A coordination conflict blocks the item. - `blocked_by_human_review`: Human attention is required before proceeding. - `blocked_by_failed_parent`: A parent/upstream item failed.</p>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">A work item becomes **ready** when:</p>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">1. Its status is `pending` or `ready`. 2. All dependencies are completed. 3. Active child count is below `max_parallel_sessions`. 4. Requested write paths do not overlap active write reservations. 5. Profile/tool policy is valid. 6. Validation/checkpoint policy is acceptable. 7. Storage budget is not `fleet_blocked` (checked via `compute_storage_summary()`). See [Storage Retention Policy § Fleet Preflight Enforcement](storage-retention-policy.md#fleet-preflight-enforcement).</p>
+
+<h2 id="h2-60" class="disclosure-standard" data-disclosure-level="standard">Canonical Loop</h2>
+
+<pre id="code-61"><code class="language-text">┌─────────────────────────────────────────────────────────────┐
+│                    Pending Work Queue                        │
+│  Items: pending, ready, blocked, waiting, running, completed│
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Ready Work Plan (queue_plan)                    │
+│  Ready items → dispatch candidates                          │
+│  Blocked/waiting items → reasons visible                     │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Spawn Plan (spawn_session --dry-run)            │
+│  Validates mission packet + coordination constraints         │
+│  Returns can_spawn or refusal_code                           │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Spawn Execute (spawn_session --execute)         │
+│  Launches bounded child session                              │
+│  Sets work item status = dispatched/running                  │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Current State Pulse (current_state)             │
+│  Monitors heartbeat, risk, conflicts, stale leases           │
+│  Reviewer decides: wait, inspect, or proceed                 │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Child Session Result (mission result)           │
+│  status: completed / failed / cancelled / timed_out / refused│
+│  validation_summary, files_changed, findings                 │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Parent Convergence Report                       │
+│  Fan-in of all child results                                  │
+│  overall_status, recommendations, new_findings, blockers      │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Queue Update                                    │
+│  Mark completed items done                                   │
+│  Advance dependency graph                                    │
+│  Add new work items if discovered                            │
+│  Loop back to queue_plan                                     │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+
+<h2 id="h2-62" class="disclosure-standard" data-disclosure-level="standard">Work Item Statuses</h2>
+
+<details id="table-63" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-63" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Status</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`pending`</td><td>Created but not yet evaluated for readiness</td></tr>
+<tr><td>`ready`</td><td>All conditions met, ready for dispatch</td></tr>
+<tr><td>`claimed`</td><td>Claimed by dispatcher, not yet handed to child</td></tr>
+<tr><td>`dispatched`</td><td>Child session launched, running</td></tr>
+<tr><td>`running`</td><td>Child confirmed running via heartbeat</td></tr>
+<tr><td>`blocked`</td><td>Generic blocked state</td></tr>
+<tr><td>`waiting_dependency`</td><td>Waiting for dependencies to complete</td></tr>
+<tr><td>`waiting_lease`</td><td>Waiting for path leases to become available</td></tr>
+<tr><td>`waiting_validation_stage`</td><td>Waiting for a validation stage to be reached</td></tr>
+<tr><td>`completed`</td><td>Child completed successfully</td></tr>
+<tr><td>`failed`</td><td>Child failed validation or runtime error</td></tr>
+<tr><td>`refused`</td><td>Spawn planner refused the mission</td></tr>
+<tr><td>`cancelled`</td><td>Explicitly cancelled by reviewer</td></tr>
+<tr><td>`superseded`</td><td>Replaced by a newer work item</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="h2-64" class="disclosure-standard" data-disclosure-level="standard">Execution Modes</h2>
+
+<table id="table-65" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Mode</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`delegate`</td><td>Single bounded child session</td></tr>
+<tr><td>`fleet`</td><td>Multiple parallel child sessions</td></tr>
+<tr><td>`sequential`</td><td>Sequential dispatch within a dependency chain</td></tr>
+<tr><td>`validation`</td><td>Read-only validation pass after mutation</td></tr>
+<tr><td>`documentation`</td><td>Documentation/reporting pass</td></tr>
+<tr><td>`review`</td><td>Code review pass</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-66" class="disclosure-standard" data-disclosure-level="standard">Parallelism Policies</h2>
+
+<table id="table-67" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Policy</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>`sequential`</td><td>Only one item at a time in this group</td></tr>
+<tr><td>`parallel_if_safe`</td><td>Parallel if no write conflicts</td></tr>
+<tr><td>`read_only_parallel`</td><td>Always parallel for read-only profiles</td></tr>
+<tr><td>`single_writer_parallel_readers`</td><td>One writer + multiple readers</td></tr>
+<tr><td>`worktree_required_multi_writer`</td><td>Requires Git worktree for multi-writer</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-68" class="disclosure-standard" data-disclosure-level="standard">Ready Work Plan</h2>
+
+<p id="p-69" class="disclosure-standard" data-disclosure-level="standard">The ready work plan is computed from the pending work queue. It separates items into:</p>
+
+<p id="p-70" class="disclosure-standard" data-disclosure-level="standard">- **ready_items**: Items that can be dispatched now (all conditions met). - **blocked_items**: Items that are blocked with a reason. - **waiting_items**: Items waiting for dependencies or leases.</p>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">Each ready item includes enough information to construct a mission packet and run the spawn planner: agent profile, allowed/forbidden paths, tool/coordination/checkpoint policy, validation commands, and done_when criteria.</p>
+
+<p id="p-72" class="disclosure-standard" data-disclosure-level="standard">The plan also includes: - Active child count and available slots. - Deterministic recommendations (dispatch, wait, inspect, etc.). - Warnings about coordination state.</p>
+
+<h2 id="h2-73" class="disclosure-standard" data-disclosure-level="standard">Parent Convergence Report</h2>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">The parent convergence report is the reviewer&#x27;s fan-in artifact. It summarizes:</p>
+
+<p id="p-75" class="disclosure-standard" data-disclosure-level="standard">- All child sessions completed, failed, or still running. - Completed work items with their validation results. - Blocked work items with reasons. - Artifacts and checkpoints produced by children. - Out-of-scope findings recorded by children. - Recommended next action for the reviewer.</p>
+
+<p id="p-76" class="disclosure-standard" data-disclosure-level="standard">The report is content-light: it references artifacts by hash, not by embedding raw content. It enables the reviewer to decide: dispatch more work, request human review, propose push, or cancel failed items.</p>
+
+<h2 id="h2-77" class="disclosure-standard" data-disclosure-level="standard">Orchestration Loop Summary</h2>
+
+<pre id="code-78"><code class="language-text">preflight (storage check) → queue_plan → spawn_plan → spawn_execute → current_state → parent_convergence_report → queue update</code></pre>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">The reviewer repeats this loop until the queue is empty, the sprint is blocked, or human review is requested.</p>
+
+<h3 id="h3-80" class="disclosure-standard" data-disclosure-level="standard">Storage Preflight</h3>
+
+<p id="p-81" class="disclosure-standard" data-disclosure-level="standard">Before each loop iteration, the orchestrator reads `current_state.storage_status` to verify:</p>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">- `budget_status` is not `fleet_blocked` — if blocked, the loop pauses and recommends GC. - `stale_lease_count` is below warning threshold — high counts indicate coordination drift.</p>
+
+<p id="p-83" class="disclosure-standard" data-disclosure-level="standard">The preflight step uses `compute_storage_summary()` from `rig_relay.evidence.storage_lifecycle`, which is called by both `generate_current_state()` and `build_projection()`.</p>
+
+<p id="p-84" class="disclosure-standard" data-disclosure-level="standard">See [Storage Retention Policy § Fleet Preflight Enforcement](storage-retention-policy.md#fleet-preflight-enforcement) for the full rule set.</p>
+
+<h2 id="h2-85" class="disclosure-standard" data-disclosure-level="standard">References</h2>
+
+<p id="p-86" class="disclosure-standard" data-disclosure-level="standard">- [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md) - [Rig-to-Relay Pattern Inventory](rig-to-relay-pattern-inventory.md)</p>
+
+<p id="p-87" class="disclosure-standard" data-disclosure-level="standard">- [Reviewer Orchestrator Doctrine](reviewer-orchestrator.md) - [Cross-Session Coordination Doctrine](cross-session-coordination.md) - [Usage Data Doctrine](usage-data-doctrine.md) - [Review Packet Protocol](usage-data-doctrine.md#review-packet-protocol) - [Work Item Schema](../schemas/rig.relay.work_item.v1.schema.json) - [Work Queue Schema](../schemas/rig.relay.work_queue.v1.schema.json) - [Ready Work Plan Schema](../schemas/rig.relay.ready_work_plan.v1.schema.json) - [Parent Convergence Report Schema](../schemas/rig.relay.parent_convergence_report.v1.schema.json)</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/delegate-fleet-orchestration.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

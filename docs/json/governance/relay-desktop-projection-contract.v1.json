@@ -1,0 +1,1036 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "relay-desktop-projection-contract",
+  "document_type": "governance",
+  "title": "Relay Desktop Projection Contract",
+  "summary": "**Draft.** Derived from Rig's",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "ce0a3c66965f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/relay-desktop-projection-contract.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Relay Desktop Projection Contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Status",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "**Draft.** Derived from Rig's [Workspace UI Projection Contract](https://github.com/juliantorr-es/Rig/blob/main/docs/architecture/workspace-ui-projection-contract.md) and adapted for Rig Relay's desktop cockpit.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Purpose",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "This contract defines the projection widgets that the backend may render into the Rig Relay desktop cockpit. The frontend is a **renderer, not a governor**.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Core Rule",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "**Backend authors the state. Frontend renders the state. Frontend emits intentions only.**",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "- Frontend must not infer checkpointability, lane readiness, or promotion decisions. - Frontend must not fabricate state. - Missing data degrades to explicit placeholder text, not fabricated state.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Widget Types",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "OperatorHeader",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Identifies the Relay session and operator.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`session_id`",
+          "string",
+          "Current Relay session ID"
+        ],
+        [
+          "`mode`",
+          "string",
+          "`headless`, `legacy_tui`, or `desktop`"
+        ],
+        [
+          "`app_version`",
+          "string",
+          "Current Rig Relay version"
+        ],
+        [
+          "`uptime_seconds`",
+          "integer",
+          "Session uptime"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `refresh_projection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Session lifecycle decisions, task claims",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "SafetyState",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-16",
+      "type": "paragraph",
+      "content": "Shows current safety posture.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-17",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`dirty_files`",
+          "integer",
+          "Number of dirty (modified/staged/untracked) files"
+        ],
+        [
+          "`active_leases`",
+          "integer",
+          "Number of active coordination leases"
+        ],
+        [
+          "`stale_leases`",
+          "integer",
+          "Number of expired leases"
+        ],
+        [
+          "`authorization_required`",
+          "boolean",
+          "Whether next action needs authorization"
+        ],
+        [
+          "`policy_guard_active`",
+          "boolean",
+          "Whether dirty-file guard is enforcing"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `refresh_projection`, `run_validation`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Whether mutation is safe, whether guard should be bypassed",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-20",
+      "type": "heading",
+      "level": 3,
+      "content": "NextAction",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Shows the backend-recommended next safe action.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-22",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`action`",
+          "string",
+          "Recommended action name"
+        ],
+        [
+          "`rationale`",
+          "string",
+          "Why this action is recommended"
+        ],
+        [
+          "`ready`",
+          "boolean",
+          "Whether the action can be taken now"
+        ],
+        [
+          "`blockers`",
+          "string[]",
+          "Reasons the action is not ready"
+        ],
+        [
+          "`validations_to_run`",
+          "string[]",
+          "Validations that should pass first"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `refresh_projection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Changing the recommendation, executing without backend validation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-25",
+      "type": "heading",
+      "level": 3,
+      "content": "ActiveChildSessions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Shows active child sessions (delegate/fleet).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-27",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`active`",
+          "integer",
+          "Number of active child sessions"
+        ],
+        [
+          "`max`",
+          "integer",
+          "Maximum allowed child sessions"
+        ],
+        [
+          "`available_slots`",
+          "integer",
+          "Slots remaining"
+        ],
+        [
+          "`active_writers`",
+          "integer",
+          "Child sessions holding write leases"
+        ],
+        [
+          "`active_readers`",
+          "integer",
+          "Child sessions in read-only mode"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `refresh_projection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Creating child sessions, terminating child sessions, promoting child sessions",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-30",
+      "type": "heading",
+      "level": 3,
+      "content": "ValidationSummary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "Summarizes the last validation run.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-32",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`status`",
+          "string",
+          "`passed`, `failed`, `not_run`, `running`"
+        ],
+        [
+          "`passed_count`",
+          "integer",
+          "Number of passed checks"
+        ],
+        [
+          "`failed_count`",
+          "integer",
+          "Number of failed checks"
+        ],
+        [
+          "`warnings`",
+          "string[]",
+          "Non-blocking warnings"
+        ],
+        [
+          "`last_run_at`",
+          "string",
+          "ISO 8601 timestamp"
+        ],
+        [
+          "`duration_ms`",
+          "integer",
+          "Duration of last validation run"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `run_validation`, `refresh_projection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Whether validation results authorize mutation",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-35",
+      "type": "heading",
+      "level": 3,
+      "content": "StorageBudget",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "Shows storage budget for build artifacts.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-37",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`status`",
+          "string",
+          "`ok`, `warn`, `over_budget`, `fleet_blocked`"
+        ],
+        [
+          "`total_size_mb`",
+          "number",
+          "Total build artifact size"
+        ],
+        [
+          "`prune_candidates`",
+          "integer",
+          "Files eligible for pruning"
+        ],
+        [
+          "`rollup_candidates`",
+          "integer",
+          "JSONL files without Parquet rollup"
+        ],
+        [
+          "`recommendations`",
+          "string[]",
+          "Recommended actions"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `gc_artifacts`, `refresh_projection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Automatic garbage collection, storage policy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-40",
+      "type": "heading",
+      "level": 3,
+      "content": "ReceiptTimeline",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "Shows bounded history of durable evidence.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-42",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`receipts`",
+          "array",
+          "Bounded list of recent receipt summaries"
+        ],
+        [
+          "`receipts[n].kind`",
+          "string",
+          "Receipt kind (checkpoint, authorization, validation, etc.)"
+        ],
+        [
+          "`receipts[n].summary`",
+          "string",
+          "Human-readable summary"
+        ],
+        [
+          "`receipts[n].timestamp`",
+          "string",
+          "ISO 8601 timestamp"
+        ],
+        [
+          "`receipts[n].sha256`",
+          "string",
+          "Receipt content hash"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-43",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `refresh_projection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-44",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Receipt creation, receipt verification policy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-45",
+      "type": "heading",
+      "level": 3,
+      "content": "LatestIntentResult",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-46",
+      "type": "paragraph",
+      "content": "Shows the result of the last intent execution.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-47",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`intent_name`",
+          "string",
+          "Name of the executed intent"
+        ],
+        [
+          "`status`",
+          "string",
+          "`completed`, `refused`, `failed`, `running`"
+        ],
+        [
+          "`result_kind`",
+          "string",
+          "Type of result data"
+        ],
+        [
+          "`output_ref_count`",
+          "integer",
+          "Number of output references"
+        ],
+        [
+          "`result_sha256`",
+          "string",
+          "SHA256 of result JSON"
+        ],
+        [
+          "`projection_seq`",
+          "integer",
+          "Projection sequence number"
+        ],
+        [
+          "`completed_at`",
+          "string",
+          "ISO 8601 timestamp"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `refresh_projection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-49",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Re-executing failed intents without authorization",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h3-50",
+      "type": "heading",
+      "level": 3,
+      "content": "RefinementBacklog",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-51",
+      "type": "paragraph",
+      "content": "Shows pending refinement items (optional, for built-in tool refinement).",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-52",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`pending`",
+          "integer",
+          "Number of pending refinement items"
+        ],
+        [
+          "`refined`",
+          "integer",
+          "Number of completed refinement items"
+        ],
+        [
+          "`last_refined_at`",
+          "string",
+          "ISO 8601 timestamp"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-53",
+      "type": "paragraph",
+      "content": "**Allowed intentions:** `refresh_projection`",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Refinement policy decisions",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-55",
+      "type": "heading",
+      "level": 2,
+      "content": "Widget Grouping",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "Widgets are rendered in three groups within the cockpit:",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-57",
+      "type": "paragraph",
+      "content": "1. **Header zone** (always visible): OperatorHeader, SafetyState, NextAction 2. **Activity zone** (scrollable): ActiveChildSessions, ValidationSummary, StorageBudget, ReceiptTimeline, LatestIntentResult 3. **Footer zone** (collapsible): RefinementBacklog",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-58",
+      "type": "heading",
+      "level": 2,
+      "content": "Contract Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-59",
+      "type": "paragraph",
+      "content": "1. Backend authors the widget state. 2. Frontend renders the widget state. 3. Frontend emits intentions only. 4. Frontend must not infer checkpointability, session readiness, promotion decisions, or storage policy. 5. Missing data degrades to explicit placeholder (e.g., `\"available\": false`, `\"status\": \"unknown\"`), not fabricated state. 6. Widget fields are drawn from actual artifact schemas — never invented or inferred. 7. Read-only actions are listed in `read_only_actions` on the projection. The frontend renders these as available buttons, not as authoritative approvals.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-60",
+      "type": "heading",
+      "level": 2,
+      "content": "Mapping from Rig Widgets",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-61",
+      "type": "table",
+      "columns": [
+        "Rig widget",
+        "Rig Relay widget",
+        "Adaptation"
+      ],
+      "rows": [
+        [
+          "WorkspaceHeader",
+          "OperatorHeader",
+          "Session ID replaces workspace ID"
+        ],
+        [
+          "WorkspaceGitState",
+          "SafetyState",
+          "Focus on dirty files + leases, not git state"
+        ],
+        [
+          "WorkspaceLaneSummary",
+          "ActiveChildSessions",
+          "Child sessions replace lanes"
+        ],
+        [
+          "AgentLaneCard",
+          "—",
+          "Deferred to port_next; ActiveChildSessionCard"
+        ],
+        [
+          "LaneReviewCard",
+          "—",
+          "Deferred to port_next; ParentConvergenceCard"
+        ],
+        [
+          "PromotionPlanCard",
+          "—",
+          "Deferred to port_next; ReadyWorkPlanCard"
+        ],
+        [
+          "LaneRecommendationCard",
+          "NextAction",
+          "Direct mapping with Relay-specific fields"
+        ],
+        [
+          "CommandProgressCard",
+          "—",
+          "Absorbed by progress event stream"
+        ],
+        [
+          "ReceiptTimeline",
+          "ReceiptTimeline",
+          "Same widget, Relay receipt kinds"
+        ],
+        [
+          "—",
+          "ValidationSummary",
+          "Rig Relay-specific"
+        ],
+        [
+          "—",
+          "StorageBudget",
+          "Rig Relay-specific"
+        ],
+        [
+          "—",
+          "LatestIntentResult",
+          "Rig Relay-specific"
+        ],
+        [
+          "—",
+          "RefinementBacklog",
+          "Rig Relay-specific"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
+      }
+    },
+    {
+      "block_id": "h2-62",
+      "type": "heading",
+      "level": 2,
+      "content": "Integrity Contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-63",
+      "type": "paragraph",
+      "content": "The projection integrity assessment is a content-light check attached to every desktop projection. It is **not a separate widget** — it decorates the projection with trust metadata.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "table-64",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Type",
+        "Description"
+      ],
+      "rows": [
+        [
+          "`integrity_status`",
+          "string",
+          "`verified`, `degraded`, `stale`, `orphaned`, `unknown`"
+        ],
+        [
+          "`contract_status`",
+          "string",
+          "`satisfied`, `partial`, `violated`, `not_applicable`"
+        ],
+        [
+          "`violation_count`",
+          "integer",
+          "Total integrity violations"
+        ],
+        [
+          "`violations`",
+          "array",
+          "List of violation objects (code, message, severity, optional widget_name/receipt_id/path)"
+        ],
+        [
+          "`checked_at`",
+          "string",
+          "ISO 8601 timestamp"
+        ],
+        [
+          "`receipt_count`",
+          "integer",
+          "Number of receipt records evaluated"
+        ],
+        [
+          "`stale_receipt_count`",
+          "integer",
+          "Receipts exceeding staleness threshold"
+        ],
+        [
+          "`orphaned_receipt_count`",
+          "integer",
+          "Receipts missing session_id or tool_name"
+        ],
+        [
+          "`authority_backed`",
+          "boolean",
+          "Whether all claimed authorities have receipt backing"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-65",
+      "type": "paragraph",
+      "content": "**Integrity status priority:** VERIFIED > STALE > ORPHANED > DEGRADED > UNKNOWN",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "**Contract status rules:** - NOT_APPLICABLE when no authorities or widgets claimed - SATISFIED when zero violations - VIOLATED when any error-severity violation exists - PARTIAL otherwise",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "p-67",
+      "type": "paragraph",
+      "content": "**Forbidden frontend inference:** Modifying integrity policy, bypassing violations, interpreting violations as authorization to mutate",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-68",
+      "type": "heading",
+      "level": 2,
+      "content": "Cross-References",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-69",
+      "type": "paragraph",
+      "content": "- [Rig + Intake Cannibalization Plan](../audits/rig-intake-cannibalization-plan.md) - [Desktop Cockpit UI](desktop-cockpit-ui.md) - [Desktop Projection Schema](../schemas/rig.relay.desktop_projection.v1.schema.json) - [Projection Integrity Schema](../schemas/rig.relay.projection_integrity.v1.schema.json) - [Rig-to-Relay Porting Doctrine](rig-to-relay-porting-doctrine.md)",
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": [
+      "docs/governance/relay-desktop-projection-contract.md"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

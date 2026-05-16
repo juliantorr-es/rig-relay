@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit: Determinism Maturity Matrix — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Status: Draft">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Audit: Determinism Maturity Matrix</h1>
+  <p class="meta">Status: active | Updated: 2026-05-16</p>
+</header>
+<main>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Audit: Determinism Maturity Matrix</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Status: Draft Date: 2026-05-13 Branch: main HEAD: 24c990e011375078a04cb4a5534d114f98c064ed Scope: Read-only audit Owner area: evidence</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Executive Summary</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig Relay is currently at **Level 1 (Partially Controlled)** for most core components. While it has a deterministic serialization foundation (`dump_canonical_json`), it suffers from &quot;Ambient Environment Dependency&quot; (global home paths, unsorted filesystem traversal, random IDs).</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Findings Matrix</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>ID</th><th>Area</th><th>Level</th><th>Priority</th><th>Owner</th><th>Files</th><th>Risk</th></tr></thead>
+<tbody>
+<tr><td>**DET-001**</td><td>Evidence root resolution</td><td>1</td><td>P0</td><td>config</td><td>`_vibe_home.py`</td><td>Global home defaults mix প্রকল্পের state.</td></tr>
+<tr><td>**DET-002**</td><td>Session/run identity</td><td>1</td><td>P2</td><td>identity</td><td>`agent_loop.py`</td><td>Random UUIDs make sessions non-reproducible.</td></tr>
+<tr><td>**DET-003**</td><td>Observability JSONL emission</td><td>2</td><td>P1</td><td>logging</td><td>`local.py`</td><td>Timestamp-only ordering depends on wall-clock.</td></tr>
+<tr><td>**DET-004**</td><td>Artifact file creation</td><td>2</td><td>P1</td><td>artifact</td><td>`artifacts.py`</td><td>Filenames are non-deterministic (UUID).</td></tr>
+<tr><td>**DET-005**</td><td>Context assembly</td><td>1</td><td>P0</td><td>context</td><td>`assembler.py`</td><td>Assembly bypasses outside the _chat path.</td></tr>
+<tr><td>**DET-006**</td><td>Serialization</td><td>3</td><td>P1</td><td>serial</td><td>`local.py`</td><td>Key ordering is canonical but not enforced for all dicts.</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Detailed Findings</h2>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">DET-001: Global Home Bias</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Location: `vibe/core/paths/_vibe_home.py` Risk: All evidence from all projects ends up in one folder, making per-run validation and cleanup difficult. Recommendation: Implement local-first resolution (Git root discovery).</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Recommended Backlog</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">1.  **Mission: Monotonic Sequence Enforcer**: Add sequence numbers to all JSONL events. 2.  **Mission: Content-Addressed Evidence**: Use hashes for session and artifact IDs. 3.  **Mission: Canonical Traversal**: Enforce `sorted()` on all directory walks/glob results.</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/determinism-maturity-matrix.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>
