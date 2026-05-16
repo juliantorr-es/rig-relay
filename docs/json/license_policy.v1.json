@@ -1,0 +1,43 @@
+{
+  "schema_version": "rig.license_policy.v1",
+  "generated_at": "2026-05-18",
+  "public_license": "AGPL-3.0-or-later",
+  "spdx_identifier": "AGPL-3.0-or-later",
+  "license_intent": "Network copyleft for local and networked agent infrastructure.",
+  "network_interaction_policy": {
+    "agpl_section_13_expected_to_apply_to_modified_network_interactive_versions": true,
+    "source_offer_required_for_modified_versions_interacting_with_remote_users": true,
+    "notes": "Rig Relay is intentionally structured as local/networked agent infrastructure. Public licensing is designed to preserve source availability for modified network-interactive deployments. Modified versions that provide network interaction to users must comply with AGPL-3.0 section 13, including offering Corresponding Source to those users."
+  },
+  "commercial_licensing": {
+    "available_by_separate_agreement": true,
+    "examples": [
+      "enterprise private deployment",
+      "hosted service",
+      "embedded distribution",
+      "app-store distribution",
+      "proprietary integration",
+      "dual-license arrangement"
+    ]
+  },
+  "contributions": {
+    "contributor_keeps_copyright": true,
+    "cla_required": true,
+    "maintainer_relicense_right_required": true,
+    "dual_licensing_right_required": true,
+    "cla_file": "CONTRIBUTOR_LICENSE_AGREEMENT.md"
+  },
+  "attribution": {
+    "preserve_git_history": true,
+    "preserve_notice_files": true,
+    "machine_readable_attribution_manifest": true
+  },
+  "upstream_lineage": {
+    "project": "vibe-cli (mistralai/vibe)",
+    "original_license": "Apache-2.0",
+    "relationship": "derivative-lineage / historical-inspiration",
+    "notes": "No copied files or code sections from vibe-cli remain. Attribution for lineage and inspiration."
+  },
+  "legal_review_required": true,
+  "review_note": "This document is project policy. License and contributor terms should be reviewed by legal counsel."
+}

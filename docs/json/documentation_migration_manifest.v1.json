@@ -1,0 +1,6 @@
+{
+  "schema_version": "rig.documentation_migration_manifest.v1",
+  "generated_at": "2026-05-18",
+  "policy": "New documentation must be created as canonical JSON artifacts. Old Markdown docs must be migrated to JSON before deletion.",
+  "migrations": []
+}

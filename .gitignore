@@ -212,6 +212,7 @@ node_modules/
 # VS Code extension packages — release artifacts only
 *.vsix
 
-# Frontend build artifacts
-frontend/desktop/css/
-frontend/desktop/js/
+# Frontend build artifacts (not source)
+frontend/desktop/dist/
+frontend/desktop/.vite/
+frontend/desktop/.cache/

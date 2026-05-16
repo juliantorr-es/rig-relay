@@ -1,0 +1,18 @@
+{
+  "schema_version": "rig.attribution.v1",
+  "generated_at": "2026-05-18",
+  "project_name": "Rig Relay",
+  "project_license": "AGPL-3.0-or-later",
+  "upstream_lineage": [
+    {
+      "upstream_name": "vibe-cli",
+      "upstream_repository": "mistralai/vibe",
+      "relationship": "derivative-lineage / historical-inspiration",
+      "original_license": "Apache-2.0",
+      "notes": "Rig Relay project structure, tool system, agent loop pattern, and context assembly pattern were originally inspired by vibe-cli architecture. The codebase has been substantially rewritten across multiple convergent lanes. No copied files or code sections remain. Attribution retained for ethical and historical clarity."
+    }
+  ],
+  "review_required": true,
+  "last_reviewed_at": "2026-05-18",
+  "evidence_files": ["git log", "AGENTS.md", "rig_relay/core/agent_loop.py", "rig_relay/core/tools/"]
+}

@@ -1,211 +1,67 @@
 # Contributing to Rig Relay
 
-Thank you for your interest in Rig Relay! We appreciate your enthusiasm and support.
+## Contributor License Agreement
 
-## Current Status
+By submitting a contribution to this project, you agree to the Contributor
+License Agreement in [`CONTRIBUTOR_LICENSE_AGREEMENT.md`](CONTRIBUTOR_LICENSE_AGREEMENT.md).
 
-**Rig Relay is in active development** — our team is iterating quickly and making lots of changes under the hood. Because of this pace, we may be slower than usual when reviewing PRs and issues.
+You keep copyright in your contribution.
 
-**We especially encourage**:
+You agree that your contribution is made available to the public under this
+repository's current open-source license, currently AGPL-3.0-or-later.
 
-- **Bug reports** – Help us uncover and squash issues
-- **Feedback & ideas** – Tell us what works, what doesn't, and what could be even better
-- **Documentation improvements** – Suggest clarity improvements or highlight missing pieces
+You also grant the project maintainer the right to relicense or dual-license
+your contribution in the future. This is required so the project can remain
+commercially sustainable, support paid distributions, support enterprise
+licensing, and avoid locking the maintainer out of future licensing options.
 
-## How to Provide Feedback
+The project will preserve contributor attribution through Git history and
+project attribution records where practical.
 
-### Bug Reports
+## Contribution Signoff
 
-If you encounter a bug, please open an issue with the following information:
+By submitting a pull request, you confirm:
 
-1. **Description**: A clear description of the bug
-2. **Steps to Reproduce**: Detailed steps to reproduce the issue
-3. **Expected Behavior**: What you expected to happen
-4. **Actual Behavior**: What actually happened
-5. **Environment**:
-   - Python version
-   - Operating system
-   - Vibe version
-6. **Error Messages**: Any error messages or stack traces
-7. **Configuration**: Relevant parts of your `config.toml` (redact any sensitive information)
-
-### Feature Requests and Feedback
-
-We'd love to hear your ideas! When submitting feedback or feature request discussions:
-
-1. **Avoid duplicates**: Check opened discussions before creating a new one
-2. **Clear Description**: Explain what you'd like to see or improve
-3. **Use Case**: Describe your use case and why this would be valuable
-4. **Alternatives**: If applicable, mention any alternatives you've considered
+> By submitting this contribution, I confirm that I have the right to submit it,
+> that I agree to the Contributor License Agreement, and that my contribution may
+> be used under the project's current open-source license and may also be
+> relicensed or dual-licensed by the project maintainer.
 
 ## Development Setup
 
-This section is for developers who want to set up the repository for local development, even though we're not currently accepting contributions.
+See README.md for setup instructions.
 
-### Prerequisites
+## Conventions
 
-- Python 3.12 or higher
-- [uv](https://github.com/astral-sh/uv) - Modern Python package manager
+Read [AGENTS.md](AGENTS.md) for the full agent and human contributor conventions.
 
-### Setup
+Key rules:
+- Use `uv` for all commands, never bare `python` or `pip`
+- Tests live in `tests/` mirroring source layout
+- No relative imports
+- Pydantic models with `extra="forbid"`
+- Modern type hints only (built-in generics, `|` unions)
 
-1. Clone the repository:
+## Pull Requests
 
-   ```bash
-   git clone <repository-url>
-   cd rig-relay
-   ```
+1. Create a new branch from `main`
+2. Make focused, convergent changes
+3. Run `uv run ruff check --fix .` and `uv run ruff format .`
+4. Run `uv run pyright`
+5. Run `uv run pytest`
+6. Run `uv run rig-relay demo-doctor`
+7. Do not amend, force-push, or merge
+8. Plain `git push` only
 
-2. Install dependencies:
+## License
 
-   ```bash
-   uv sync --all-extras
-   ```
+Rig Relay is licensed under AGPL-3.0-or-later for the public repository.
+This license is intentional. Rig Relay is designed to operate as local and
+networked agent infrastructure. Modified versions that provide network
+interaction to users must comply with AGPL-3.0 section 13, including
+offering Corresponding Source to those users.
 
-   This will install both runtime and development dependencies.
+Commercial, enterprise, embedded, app-store, hosted, or proprietary
+licensing may be available separately from the project maintainer.
 
-3. (Optional) Install pre-commit hooks:
-
-   ```bash
-   uv run pre-commit install
-   ```
-
-   Pre-commit hooks will automatically run checks before each commit.
-
-### Logging Configuration
-
-Logs are written to `~/.vibe/logs/vibe.log` by default. Control logging via environment variables:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LOG_LEVEL` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) | `WARNING` |
-| `LOG_MAX_BYTES` | Max log file size in bytes before rotation | `10485760` (10 MB) |
-| `DEBUG_MODE` | When `true`, forces `DEBUG` logging (and attaches `debugpy` on `localhost:5678` under `vibe-acp`) | - |
-
-Example:
-
-```bash
-LOG_LEVEL=DEBUG uv run vibe
-```
-
-You can also view logs in real-time within the application by pressing `Ctrl+\` to open the debug console.
-
-### Running Tests
-
-Run all tests:
-
-```bash
-uv run pytest
-```
-
-Run tests with verbose output:
-
-```bash
-uv run pytest -v
-```
-
-Run a specific test file:
-
-```bash
-uv run pytest tests/test_agent_tool_call.py
-```
-
-### Profiling
-
-Vibe ships a lightweight profiler module (`vibe.cli.profiler`) that wraps [pyinstrument](https://github.com/joerick/pyinstrument). It silently no-ops when pyinstrument is not installed or the `VIBE_PROFILE` env var is unset, so instrumentation can stay in the code with zero overhead in normal use.
-
-**1. Add profiling calls** around the code you want to measure:
-
-```python
-from vibe.cli import profiler
-
-profiler.start("startup")
-# ... code to measure ...
-profiler.stop_and_print()
-```
-
-Only one profiler can run at a time. The label passed to `start()` is used to name the output file. Each call to `stop_and_print` writes an HTML report (`<label>-profile.html`) and prints a text summary to stderr.
-
-**2. Run with profiling enabled:**
-
-```bash
-VIBE_PROFILE=1 uv run vibe
-```
-
-Without `VIBE_PROFILE=1`, all `start` / `stop_and_print` calls are no-ops.
-
-### Linting and Type Checking
-
-#### Ruff (Linting and Formatting)
-
-Check for linting issues (without fixing):
-
-```bash
-uv run ruff check .
-```
-
-Auto-fix linting issues:
-
-```bash
-uv run ruff check --fix .
-```
-
-Format code:
-
-```bash
-uv run ruff format .
-```
-
-Check formatting without modifying files (useful for CI):
-
-```bash
-uv run ruff format --check .
-```
-
-#### Pyright (Type Checking)
-
-Run type checking:
-
-```bash
-uv run pyright
-```
-
-#### Pre-commit Hooks
-
-Run all pre-commit hooks manually:
-
-```bash
-uv run pre-commit run --all-files
-```
-
-The pre-commit hooks include:
-
-- Ruff (linting and formatting)
-- Pyright (type checking)
-- Typos (spell checking)
-- YAML/TOML validation
-- Action validator (for GitHub Actions)
-
-### Code Style
-
-- **Line length**: 88 characters (Black-compatible)
-- **Type hints**: Required for all functions and methods
-- **Docstrings**: Follow Google-style docstrings
-- **Formatting**: Use Ruff for both linting and formatting
-- **Type checking**: Use Pyright (configured in `pyproject.toml`)
-
-See `pyproject.toml` for detailed configuration of Ruff and Pyright.
-
-## Code Contributions
-
-While we're not accepting code contributions at the moment, we may open up contributions in the future. When that happens, we'll update this document with:
-
-- Pull request process
-- Contribution guidelines
-- Review process
-
-## Questions?
-
-If you have questions about using Rig Relay, please check the [README](README.md) first. For other inquiries, feel free to open a discussion or issue.
-
-Thank you for helping make Rig Relay better! 🙏
+See [LICENSE](LICENSE) for the full license text.

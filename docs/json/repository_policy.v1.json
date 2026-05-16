@@ -1,0 +1,54 @@
+{
+  "schema_version": "rig.repository_policy.v1",
+  "generated_at": "2026-05-18",
+  "repository": "juliantorr-es/rig-relay",
+  "license": "AGPL-3.0-or-later",
+  "license_intent": "Network copyleft for local and networked agent infrastructure. Modified versions that provide network interaction to users must comply with AGPL-3.0 section 13.",
+  "commercial_licensing": "Available by separate agreement from the project maintainer.",
+  "contributor_terms": {
+    "cla_file": "CONTRIBUTOR_LICENSE_AGREEMENT.md",
+    "contributor_keeps_copyright": true,
+    "maintainer_relicense_right": true,
+    "dual_licensing_allowed": true,
+    "contribution_signoff_required": true
+  },
+  "attribution": {
+    "upstream_lineage": "vibe-cli (mistralai/vibe)",
+    "relationship": "derivative-lineage / historical-inspiration",
+    "notes": "No copied files remain. Attribution for lineage and inspiration."
+  },
+  "governance_files": [
+    "AGENTS.md",
+    "LICENSE",
+    "CONTRIBUTING.md",
+    "CONTRIBUTOR_LICENSE_AGREEMENT.md",
+    "ATTRIBUTION.md",
+    "NOTICE"
+  ],
+  "tracked_source": {
+    "frontend": "tracked",
+    "docs_schemas": "tracked",
+    "tests": "tracked"
+  },
+  "gitignore_policy": {
+    "source_tracked": [
+      "frontend/desktop/*.html",
+      "frontend/desktop/*.js",
+      "frontend/desktop/*.css"
+    ],
+    "build_artifacts_ignored": [
+      "frontend/desktop/dist/",
+      "frontend/desktop/.vite/",
+      "frontend/desktop/.cache/"
+    ],
+    "runtime_ignored": [
+      "__pycache__/",
+      ".pytest_cache/",
+      ".ruff_cache/",
+      ".build/",
+      "dist/"
+    ]
+  },
+  "review_required": true,
+  "review_note": "License and contributor terms should be reviewed by legal counsel before broad external contribution intake. This document is project policy, not legal advice."
+}

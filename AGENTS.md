@@ -279,3 +279,38 @@ Rules:
 - Do not store conversation summaries in `docs/audits/` unless they are converted into an audit.
 - Do not store conversation summaries in `docs/dogfood/` unless they are converted into a dogfood proof.
 - Validate filenames with the test in `tests/docs/test_conversation_summary_names.py`.
+
+## Documentation Policy — Canonical JSON Artifacts
+
+New documentation must be created as **canonical JSON artifacts**, not Markdown, unless the file is in the explicitly allowed Markdown exceptions list below.
+
+Old Markdown docs must be migrated to JSON before deletion. Markdown deletion is only allowed when:
+- the JSON replacement exists,
+- the JSON replacement preserves the content semantically,
+- there is a migration map from old path to new path,
+- references are updated,
+- tests/proofs pass,
+- the deletion is listed in the final report.
+
+### Canonical docs paths
+- `docs/json/` — primary JSON documentation artifacts
+- `docs/governance/*.json` — governance artifacts
+- `docs/proofs/*.json` — proof artifacts
+- `docs/schemas/*.schema.json` — JSON Schema artifacts
+
+### Allowed Markdown exceptions
+These files may remain as Markdown:
+- `AGENTS.md` — agent instructions are conventionally Markdown
+- `README.md` — GitHub landing page
+- `CONTRIBUTING.md` — GitHub contribution UI
+- `CONTRIBUTOR_LICENSE_AGREEMENT.md` — contributor license agreement (also available as JSON)
+- `SECURITY.md` — GitHub security policy
+- `CODE_OF_CONDUCT.md` — if used
+- `LICENSE` — must remain plain license text, not JSON
+- `ATTRIBUTION.md` / `NOTICE` — for human readability (also add JSON artifact)
+
+### Migration manifest
+A migration manifest must exist at:
+`docs/json/documentation_migration_manifest.v1.json`
+
+Fields: `schema_version`, `generated_at`, `policy`, `migrations[]` (each with `old_path`, `new_path`, `status`, `reason`, `content_sha256_old`, `content_sha256_new`, `references_updated`, `review_notes`).

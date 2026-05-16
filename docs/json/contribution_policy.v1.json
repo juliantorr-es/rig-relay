@@ -1,0 +1,11 @@
+{
+  "schema_version": "rig.contribution_policy.v1",
+  "project_license": "AGPL-3.0-or-later",
+  "contributor_keeps_copyright": true,
+  "maintainer_relicense_right": true,
+  "dual_licensing_allowed": true,
+  "attribution_policy": "Contributor attribution is preserved through Git history and project attribution records where practical.",
+  "cla_file": "CONTRIBUTOR_LICENSE_AGREEMENT.md",
+  "contribution_signoff_text": "By submitting this contribution, I confirm that I have the right to submit it, that I agree to the Contributor License Agreement, and that my contribution may be used under the project's current open-source license and may also be relicensed or dual-licensed by the project maintainer.",
+  "legal_review_required_before_large_external_intake": true
+}
