@@ -50,7 +50,7 @@ class FakeAdapter:
     def persist_turn_state(self) -> None:
         pass
 
-    def middleware_before_turn(self, ctx: dict[str, str]) -> tuple[Any, list[Any]]:
+    async def middleware_before_turn(self, ctx: dict[str, str]) -> tuple[Any, list[Any]]:
         self.middleware_calls += 1
         result = MagicMock()
         result.action = self.middleware_action

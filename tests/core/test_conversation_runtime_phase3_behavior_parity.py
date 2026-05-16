@@ -42,7 +42,7 @@ class FullToolExecutionAdapter:
     def persist_turn_state(self):
         pass
 
-    def middleware_before_turn(self, ctx):
+    async def middleware_before_turn(self, ctx):
         self.middleware_calls += 1
         r = MagicMock()
         r.action = "CONTINUE"
@@ -51,7 +51,7 @@ class FullToolExecutionAdapter:
     def reset_hooks(self):
         pass
 
-    def build_context_envelope(self, r):
+    async def build_context_envelope(self, r):
         return MagicMock()
 
     def set_context_envelope(self, e):

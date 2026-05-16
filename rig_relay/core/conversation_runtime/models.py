@@ -180,7 +180,7 @@ class ConversationRuntimeCallbacks(Protocol):
 
     # ── Middleware ───────────────────────────────────────────────
 
-    def middleware_before_turn(
+    async def middleware_before_turn(
         self, ctx: dict[str, str]
     ) -> tuple[Any, list[BaseEvent]]:
         """Run middleware pipeline. Returns (result, events_to_yield)."""
@@ -192,7 +192,7 @@ class ConversationRuntimeCallbacks(Protocol):
 
     # ── Context ──────────────────────────────────────────────────
 
-    def build_context_envelope(self, request: ConversationRuntimeRequest) -> Any | None:
+    async def build_context_envelope(self, request: ConversationRuntimeRequest) -> Any | None:
         """Build context envelope. Returns receipt or None."""
         ...
 

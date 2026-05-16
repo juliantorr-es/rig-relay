@@ -293,7 +293,7 @@ class ConversationRuntime:
                         return
 
                 # ── Middleware ──────────────────────────────
-                result, mw_events = adapter.middleware_before_turn({})
+                result, mw_events = await adapter.middleware_before_turn({})
                 for event in mw_events:
                     yield event
 
@@ -311,7 +311,7 @@ class ConversationRuntime:
                     first_llm_turn = False
                     self._phase(TurnPhase.CONTEXT_BUILDING)
                     adapter.get_turn().advance(TurnPhase.CONTEXT_BUILDING)
-                    envelope = adapter.build_context_envelope(None)
+                    envelope = await adapter.build_context_envelope(None)
                     if envelope is not None:
                         adapter.set_context_envelope(envelope)
                     self._phase(TurnPhase.CONTEXT_READY)

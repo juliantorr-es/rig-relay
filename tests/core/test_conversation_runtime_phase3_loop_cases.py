@@ -70,14 +70,14 @@ class _FakeLoopAdapter:
 
     # ── Middleware ───────────────────────────────────────────────
 
-    def middleware_before_turn(self, ctx: dict[str, str]):
+    async def middleware_before_turn(self, ctx: dict[str, str]):
         return _FakeMiddlewareResult(self.middleware_action), list(
             self.middleware_events
         )
 
     # ── Context ──────────────────────────────────────────────────
 
-    def build_context_envelope(self, request):
+    async def build_context_envelope(self, request):
         return self.context_envelope
 
     def set_context_envelope(self, receipt) -> None:

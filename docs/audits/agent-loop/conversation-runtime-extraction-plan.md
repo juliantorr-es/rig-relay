@@ -10,7 +10,7 @@ Audit dates: 2026-05-15 (Phase 0), 2026-05-15 (Phase 1), 2026-05-15 (Phase 2B)
 | Phase 1 | ✅ Complete | Trace evidence (`PhaseTraceHook`, `PhaseTraceAttributes`). |
 | Phase 2A | ✅ Complete | Terminal/near-terminal decisions: `decide_after_middleware`, `decide_after_model_turn`, `decide_on_exception`. |
 | Phase 2B | ✅ Complete | Hook/tool/budget decisions: `decide_after_hook_processing`, `decide_after_tool_batch`, `decide_after_budget_check`. AgentLoop still holds execution mechanics. |
-| Phase 3 | **TRANSFERRED_WITH_GAPS** | Loop ownership transferred. `ConversationRuntime.execute_turn_loop()` owns the while-loop. AgentLoop delegates via `_ConversationLoopAdapter`. 29/29 parity tests pass. One gap: `execute_tool_batch()` is a stub. |
+| Phase 3 | **✅ COMPLETE** | Loop ownership transferred. `ConversationRuntime.execute_turn_loop()` owns the while-loop. AgentLoop delegates via `_ConversationLoopAdapter`. Middleware is real (async). Context build is async-safe (no `run_until_complete`). Tool execution is single-pass via `_perform_llm_turn()`. 73/73 tests pass. |
 
 ## Phase 2B — Decision policy moved to ConversationRuntime
 

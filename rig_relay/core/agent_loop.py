@@ -1513,22 +1513,24 @@ class _ConversationLoopAdapter:
     def persist_turn_state(self) -> None:
         pass
 
-    def middleware_before_turn(self, ctx: dict[str, str]):
-        raise NotImplementedError("use async version")
+    async def middleware_before_turn(self, ctx: dict[str, str]):
+        """Run AgentLoop middleware pipeline and return (result, events)."""
+        result = await self._loop.middleware_pipeline.run_before_turn(
+            self._loop._get_context()
+        )
+        events = []
+        async for event in self._loop._handle_middleware_result(result):
+            events.append(event)
+        return result, events
 
     def reset_hooks(self) -> None:
         if self._loop._hooks_manager:
             self._loop._hooks_manager.reset_retry_count()
 
-    def build_context_envelope(self, request):
-        import asyncio
-        loop = asyncio.get_event_loop()
-
-        async def _build():
-            await self._loop._build_context_envelope(self._user_msg)
-            return self._loop._current_context_envelope
-
-        return loop.run_until_complete(_build())
+    async def build_context_envelope(self, request):
+        """Build context envelope asynchronously. No run_until_complete."""
+        await self._loop._build_context_envelope(self._user_msg)
+        return self._loop._current_context_envelope
 
     def set_context_envelope(self, receipt) -> None:
         if receipt is not None:
