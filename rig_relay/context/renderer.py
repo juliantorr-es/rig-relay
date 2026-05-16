@@ -1,46 +1,49 @@
 """Context renderer — cache-aware, privacy-hardened, compression-ready.
 
-Produces structured context sections with trust/cache tiers, provenance
-labels, and content-hashed metadata. Replaces raw message snippets and
-absolute paths with safe alternatives.
-
-Cache tier ordering (stable first, volatile last):
-    stable       AGENTS/doctrine/schema, invariant rules
-    semi_stable  repo topology, subsystem map
-    dynamic      dirty files, active lanes, collisions
-    volatile     user task hash, recent message metadata, receipts
+Uses canonical assembly_plan.py enums (CacheTier, TrustTier, ContextRenderedSection).
+No local duplicate type classes.
 """
 
 from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
-_HEAD_TRUNCATE = 12
+from rig_relay.context.assembly_plan import CacheTier, ContextRenderedSection, TrustTier
+from rig_relay.context.warnings import (
+    ContextWarningCode,
+    build_warning,
+    exception_class_name,
+)
+
 _SUBSYSTEM_TRUNCATE = 20
 _RECEIPT_TRUNCATE = 10
 
+# ── Cache tier ordering ──────────────────────────────────────────
 
-class CacheTier:
-    STABLE = "stable"
-    SEMI_STABLE = "semi_stable"
-    DYNAMIC = "dynamic"
-    VOLATILE = "volatile"
-
-    _ORDER: ClassVar[dict[str, int]] = {STABLE: 0, SEMI_STABLE: 1, DYNAMIC: 2, VOLATILE: 3}
-
-    @classmethod
-    def sort_key(cls, tier: str) -> int:
-        return cls._ORDER.get(tier, 99)
+_CACHE_TIER_ORDER: dict[CacheTier, int] = {
+    CacheTier.stable: 0,
+    CacheTier.semi_stable: 1,
+    CacheTier.dynamic: 2,
+    CacheTier.volatile: 3,
+}
 
 
-class TrustTier:
-    FIRST_PARTY = "first_party"
-    REPO_CONTENT = "repo_content"
-    TOOL_OUTPUT = "tool_output"
-    EXTERNAL = "external"
-    UNTRUSTED = "untrusted"
+def cache_tier_sort_key(tier: CacheTier) -> int:
+    """Stable ordering: stable < semi_stable < dynamic < volatile."""
+    return _CACHE_TIER_ORDER.get(tier, 99)
+
+
+def _sha256_prefixed(data: bytes) -> str:
+    return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+
+def _sha256_short(data: bytes, n: int = 16) -> str:
+    return f"sha256:{hashlib.sha256(data).hexdigest()[:n]}"
+
+
+# ── Provenance (renderer-local — no assembly_plan equivalent) ─────
 
 
 class Provenance:
@@ -51,7 +54,12 @@ class Provenance:
     MESSAGE = "message"
 
 
-class _Section:
+# ── Internal section with raw content ─────────────────────────────
+
+
+class _RenderedSection:
+    """Private: carries raw rendered content + assembly_plan metadata."""
+
     __slots__ = (
         "name",
         "cache_tier",
@@ -66,8 +74,8 @@ class _Section:
     def __init__(
         self,
         name: str,
-        cache_tier: str,
-        trust_tier: str,
+        cache_tier: CacheTier,
+        trust_tier: TrustTier,
         source: str,
         content: str,
     ) -> None:
@@ -76,9 +84,28 @@ class _Section:
         self.trust_tier = trust_tier
         self.source = source
         self.content = content
-        self.content_sha256 = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        self.content_sha256 = _sha256_prefixed(content.encode("utf-8"))
         self.token_estimate = max(1, len(content) // 4)
         self.compressed = False
+
+    def to_metadata(self) -> ContextRenderedSection:
+        return ContextRenderedSection(
+            section_name=self.name,
+            token_count=self.token_estimate,
+            compression_applied=self.compressed,
+            section_sha256=self.content_sha256,
+        )
+
+
+# ── Renderer ──────────────────────────────────────────────────────
+
+
+_CACHE_TIER_ORDER = {
+    CacheTier.stable: 0,
+    CacheTier.semi_stable: 1,
+    CacheTier.dynamic: 2,
+    CacheTier.volatile: 3,
+}
 
 
 class ContextRenderer:
@@ -86,54 +113,73 @@ class ContextRenderer:
 
     Usage:
         renderer = ContextRenderer(workspace_root=Path("."))
-        renderer.add_repo_section(repo_info)
-        renderer.add_active_work_section(lanes, collisions)
-        renderer.add_recent_messages_section(messages)
-        sections = renderer.sections  # ordered by cache tier
-        rendered = renderer.render()
+        renderer.add_repo_section(root="...", branch="main", ...)
+        renderer.add_active_work_section(lane_count=3, ...)
+        sections = renderer.section_metadata  # list[ContextRenderedSection]
+        rendered = renderer.rendered_content
     """
 
     def __init__(
-        self,
-        *,
-        workspace_root: Path | None = None,
-        compression_mode: str = "none",
+        self, *, workspace_root: Path | None = None, compression_mode: str = "none"
     ) -> None:
         self._workspace_root = workspace_root
         self._compression_mode = compression_mode
-        self._sections: list[_Section] = []
+        self._sections: list[_RenderedSection] = []
         self._substitution_table: dict[str, Any] | None = None
         self._original_total: int = 0
         self._compressed_total: int = 0
+        self._warnings: list[dict[str, Any]] = []
+
+    # ── Public metadata API ───────────────────────────────────────
+
+    @property
+    def section_count(self) -> int:
+        return len(self._sections)
+
+    @property
+    def estimated_tokens(self) -> int:
+        return sum(s.token_estimate for s in self._sections)
+
+    @property
+    def section_metadata(self) -> list[ContextRenderedSection]:
+        sorted_sections = sorted(
+            self._sections, key=lambda s: cache_tier_sort_key(s.cache_tier)
+        )
+        return [s.to_metadata() for s in sorted_sections]
 
     @property
     def sections(self) -> list[dict[str, Any]]:
-        """Return sections ordered by cache tier (stable first)."""
-        sorted_sections = sorted(self._sections, key=lambda s: CacheTier.sort_key(s.cache_tier))
+        """Backward-compatible dict-based metadata. Deprecated — use section_metadata."""
         return [
             {
                 "section_name": s.name,
-                "cache_tier": s.cache_tier,
-                "trust_tier": s.trust_tier,
+                "cache_tier": s.cache_tier.value,
+                "trust_tier": s.trust_tier.value,
                 "source": s.source,
                 "content_sha256": s.content_sha256,
                 "token_estimate": s.token_estimate,
                 "compressed": s.compressed,
             }
-            for s in sorted_sections
+            for s in self._sections
         ]
 
     @property
     def rendered_content(self) -> str:
-        sorted_sections = sorted(self._sections, key=lambda s: CacheTier.sort_key(s.cache_tier))
+        sorted_sections = sorted(
+            self._sections, key=lambda s: cache_tier_sort_key(s.cache_tier)
+        )
         return "\n\n".join(s.content for s in sorted_sections)
+
+    @property
+    def rendered_content_sha256(self) -> str:
+        return _sha256_prefixed(self.rendered_content.encode("utf-8"))
 
     @property
     def substitution_table_sha256(self) -> str | None:
         if self._substitution_table is None:
             return None
         raw = str(sorted(self._substitution_table.items())).encode("utf-8")
-        return hashlib.sha256(raw).hexdigest()
+        return _sha256_prefixed(raw)
 
     @property
     def compression_applied(self) -> bool:
@@ -143,11 +189,19 @@ class ContextRenderer:
     def compression_savings_bytes(self) -> int:
         return self._original_total - self._compressed_total
 
-    # ── Section builders ────────────────────────────────────────────
+    @property
+    def warnings(self) -> list[dict[str, Any]]:
+        return list(self._warnings)
 
-    def add_stable_section(self, name: str, content: str, source: str) -> None:
+    # ── Section builders ────────────────────────────────────────
+
+    def add_stable_section(
+        self, name: str, content: str, source: str = Provenance.PLANNER
+    ) -> None:
         self._sections.append(
-            _Section(name, CacheTier.STABLE, TrustTier.FIRST_PARTY, source, content)
+            _RenderedSection(
+                name, CacheTier.stable, TrustTier.first_party, source, content
+            )
         )
 
     def add_repo_section(
@@ -160,19 +214,28 @@ class ContextRenderer:
         untracked: int = 0,
         staged: int = 0,
     ) -> None:
-        root_hash = hashlib.sha256((root or "").encode("utf-8")).hexdigest()[:16]
+        root_hash = _sha256_short((root or "").encode("utf-8"), n=16)
+        head_hash = _sha256_short(head.encode("utf-8"), n=12) if head else "none"
         content = (
             f"## Repository\n"
             f"- root_hash: {root_hash}\n"
             f"- branch: {branch}\n"
-            f"- head: {head[:_HEAD_TRUNCATE] if len(head) > _HEAD_TRUNCATE else head}\n"
+            f"- head: {head_hash}\n"
             f"- dirty: {modified} modified, {untracked} untracked, {staged} staged"
         )
         self._sections.append(
-            _Section("repository", CacheTier.SEMI_STABLE, TrustTier.REPO_CONTENT, Provenance.REPO_MAP, content)
+            _RenderedSection(
+                "repository",
+                CacheTier.semi_stable,
+                TrustTier.repo_content,
+                Provenance.REPO_MAP,
+                content,
+            )
         )
 
-    def add_subsystem_section(self, subsystems: list[dict[str, Any]] | None = None) -> None:
+    def add_subsystem_section(
+        self, subsystems: list[dict[str, Any]] | None = None
+    ) -> None:
         if not subsystems:
             return
         sub_count = len(subsystems)
@@ -181,10 +244,20 @@ class ContextRenderer:
             f"## Subsystems\n"
             f"- count: {sub_count}\n"
             f"- names: {', '.join(names)}"
-            + (f"\n- ... and {sub_count - _SUBSYSTEM_TRUNCATE} more" if sub_count > _SUBSYSTEM_TRUNCATE else "")
+            + (
+                f"\n- ... and {sub_count - _SUBSYSTEM_TRUNCATE} more"
+                if sub_count > _SUBSYSTEM_TRUNCATE
+                else ""
+            )
         )
         self._sections.append(
-            _Section("subsystems", CacheTier.SEMI_STABLE, TrustTier.REPO_CONTENT, Provenance.REPO_MAP, content)
+            _RenderedSection(
+                "subsystems",
+                CacheTier.semi_stable,
+                TrustTier.repo_content,
+                Provenance.REPO_MAP,
+                content,
+            )
         )
 
     def add_active_work_section(
@@ -201,19 +274,25 @@ class ContextRenderer:
         )
         if collision_paths:
             path_hashes = [
-                hashlib.sha256(p.encode("utf-8")).hexdigest()[:12]
-                for p in collision_paths[:10]
+                _sha256_short(p.encode("utf-8"), n=12) for p in collision_paths[:10]
             ]
             content += "\n- collision_path_hashes: " + ", ".join(path_hashes)
         self._sections.append(
-            _Section("active_work", CacheTier.DYNAMIC, TrustTier.REPO_CONTENT, Provenance.WORK_MAP, content)
+            _RenderedSection(
+                "active_work",
+                CacheTier.dynamic,
+                TrustTier.repo_content,
+                Provenance.WORK_MAP,
+                content,
+            )
         )
 
     def add_recent_messages_section(self, messages: list[Any] | None = None) -> None:
         if not messages:
             return
         tail = [
-            m for m in messages
+            m
+            for m in messages
             if hasattr(m, "role") and getattr(m, "role", None) not in {"system"}
         ][-6:]
         if not tail:
@@ -222,34 +301,55 @@ class ContextRenderer:
         for m in tail:
             role = str(getattr(m, "role", "?"))
             raw_content = str(getattr(m, "content", ""))
-            content_hash = hashlib.sha256(raw_content.encode("utf-8")).hexdigest()[:16]
+            content_hash = _sha256_short(raw_content.encode("utf-8"), n=16)
             byte_count = len(raw_content.encode("utf-8"))
             lines.append(f"- [{role}]: sha256={content_hash} bytes={byte_count}")
         content = "## Recent Messages\n" + "\n".join(lines)
         self._sections.append(
-            _Section("recent_messages", CacheTier.VOLATILE, TrustTier.TOOL_OUTPUT, Provenance.MESSAGE, content)
+            _RenderedSection(
+                "recent_messages",
+                CacheTier.volatile,
+                TrustTier.tool_output,
+                Provenance.MESSAGE,
+                content,
+            )
         )
 
     def add_snapshot_section(self, snapshot_text: str) -> None:
-        snap_hash = hashlib.sha256(snapshot_text.encode("utf-8")).hexdigest()[:16]
-        content = f"## Snapshot\n- hash: {snap_hash}\n- bytes: {len(snapshot_text.encode('utf-8'))}"
+        snap_hash = _sha256_short(snapshot_text.encode("utf-8"), n=16)
+        content = (
+            f"## Snapshot\n"
+            f"- hash: {snap_hash}\n"
+            f"- bytes: {len(snapshot_text.encode('utf-8'))}"
+        )
         self._sections.append(
-            _Section("snapshot", CacheTier.VOLATILE, TrustTier.TOOL_OUTPUT, Provenance.RECEIPT, content)
+            _RenderedSection(
+                "snapshot",
+                CacheTier.volatile,
+                TrustTier.tool_output,
+                Provenance.RECEIPT,
+                content,
+            )
         )
 
     def add_do_not_touch_section(self, paths: list[str] | None = None) -> None:
         if not paths:
             return
-        path_hashes = [
-            hashlib.sha256(p.encode("utf-8")).hexdigest()[:12]
-            for p in paths[:10]
-        ]
+        path_hashes = [_sha256_short(p.encode("utf-8"), n=12) for p in paths[:10]]
         content = "## Do Not Touch\n- collision_path_hashes: " + ", ".join(path_hashes)
         self._sections.append(
-            _Section("do_not_touch", CacheTier.DYNAMIC, TrustTier.REPO_CONTENT, Provenance.WORK_MAP, content)
+            _RenderedSection(
+                "do_not_touch",
+                CacheTier.dynamic,
+                TrustTier.repo_content,
+                Provenance.WORK_MAP,
+                content,
+            )
         )
 
-    def add_receipts_section(self, receipts: list[dict[str, Any]] | None = None) -> None:
+    def add_receipts_section(
+        self, receipts: list[dict[str, Any]] | None = None
+    ) -> None:
         if not receipts:
             return
         kinds = [r.get("kind", "?") for r in receipts[:10]]
@@ -257,16 +357,25 @@ class ContextRenderer:
             f"## Receipts\n"
             f"- count: {len(receipts)}\n"
             f"- kinds: {', '.join(kinds[:10])}"
-            + (f"\n- ... and {len(receipts) - 10} more" if len(receipts) > _RECEIPT_TRUNCATE else "")
+            + (
+                f"\n- ... and {len(receipts) - 10} more"
+                if len(receipts) > _RECEIPT_TRUNCATE
+                else ""
+            )
         )
         self._sections.append(
-            _Section("receipts", CacheTier.VOLATILE, TrustTier.TOOL_OUTPUT, Provenance.RECEIPT, content)
+            _RenderedSection(
+                "receipts",
+                CacheTier.volatile,
+                TrustTier.tool_output,
+                Provenance.RECEIPT,
+                content,
+            )
         )
 
-    # ── Compression ─────────────────────────────────────────────────
+    # ── Compression ─────────────────────────────────────────────
 
     def apply_compression(self) -> bool:
-        """Apply symbol substitution compression if mode requires it and savings positive."""
         if self._compression_mode not in {"symbol_substitution", "aggressive"}:
             return False
 
@@ -283,35 +392,56 @@ class ContextRenderer:
 
             if self._compressed_total < self._original_total:
                 self._substitution_table = {
-                    "manifest_sha256": getattr(manifest, "manifest_sha256", "")
-                    if manifest else "",
-                    "entry_count": len(getattr(manifest, "entries", []))
-                    if manifest else 0,
+                    "manifest_sha256": (
+                        getattr(manifest, "manifest_sha256", "") if manifest else ""
+                    ),
+                    "entry_count": (
+                        len(getattr(manifest, "entries", [])) if manifest else 0
+                    ),
                 }
                 for s in self._sections:
                     s.compressed = True
                 return True
-        except Exception:
-            pass
+            else:
+                self._warnings.append(
+                    build_warning(
+                        ContextWarningCode.COMPRESSION_FAILED,
+                        detail=f"no savings: {self._compressed_total} >= {self._original_total}",
+                    )
+                )
+        except ImportError:
+            self._warnings.append(
+                build_warning(
+                    ContextWarningCode.COMPRESSION_FAILED,
+                    detail="symbol_codec module not found",
+                )
+            )
+        except Exception as exc:
+            self._warnings.append(
+                build_warning(
+                    ContextWarningCode.COMPRESSION_FAILED,
+                    detail=exception_class_name(exc),
+                )
+            )
 
         return False
 
-    # ── Serialization ───────────────────────────────────────────────
+    # ── Serialization ───────────────────────────────────────────
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
             "sections": self.sections,
-            "rendered_content_sha256": hashlib.sha256(
-                self.rendered_content.encode("utf-8")
-            ).hexdigest(),
-            "section_count": len(self._sections),
-            "estimated_tokens": sum(s.token_estimate for s in self._sections),
+            "rendered_content_sha256": self.rendered_content_sha256,
+            "section_count": self.section_count,
+            "estimated_tokens": self.estimated_tokens,
             "compression_applied": self.compression_applied,
         }
         if self._substitution_table is not None:
             result["substitution_table_sha256"] = self.substitution_table_sha256
         if self.compression_applied:
             result["compression_savings_bytes"] = self.compression_savings_bytes
+        if self._warnings:
+            result["warnings"] = self._warnings
         return result
 
 
@@ -320,4 +450,5 @@ __all__ = [
     "ContextRenderer",
     "Provenance",
     "TrustTier",
+    "cache_tier_sort_key",
 ]

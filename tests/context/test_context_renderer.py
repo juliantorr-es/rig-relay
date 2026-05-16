@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 
-import pytest
-
-from rig_relay.context.renderer import CacheTier, ContextRenderer, TrustTier
+from rig_relay.context.renderer import ContextRenderer, cache_tier_sort_key
 
 
 class TestCacheTierOrdering:
@@ -16,7 +13,7 @@ class TestCacheTierOrdering:
         renderer.add_repo_section(root="/tmp/test", branch="main", head="abc123")
         sections = renderer.sections
         tiers = [s["cache_tier"] for s in sections]
-        assert CacheTier.sort_key(tiers[0]) <= CacheTier.sort_key(tiers[-1])
+        assert cache_tier_sort_key(tiers[0]) <= cache_tier_sort_key(tiers[-1])
 
 
 class TestPrivacyHardening:

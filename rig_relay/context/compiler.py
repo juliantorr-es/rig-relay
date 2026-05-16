@@ -14,6 +14,7 @@ from pathlib import Path
 import time
 from typing import Any
 
+from rig_relay.context.assembly_plan import ContextAssemblyPlan, ContextCandidate
 from rig_relay.context.models import (
     ContextEnvelopeReceipt,
     ContextPacket,
@@ -22,9 +23,15 @@ from rig_relay.context.models import (
     PathRecommendation,
     ReceiptEntry,
 )
+from rig_relay.context.planner import plan_context
 from rig_relay.context.renderer import ContextRenderer
 from rig_relay.context.repo_index import RepoContextIndex
 from rig_relay.context.repo_map import build_repo_info, build_subsystem_map
+from rig_relay.context.warnings import (
+    ContextWarningCode,
+    build_warning,
+    exception_class_name,
+)
 from rig_relay.context.work_map import build_active_work
 
 
@@ -94,8 +101,14 @@ class ContextCompiler:
 
             renderer.add_recent_messages_section(messages)
 
-        except Exception:
-            pass
+        except Exception as e:
+            renderer.warnings.append(
+                build_warning(
+                    ContextWarningCode.REPO_SCAN_FAILED,
+                    detail=f"{exception_class_name(e)}: context build partial",
+                    source="compiler.build_envelope",
+                )
+            )
 
         rendered = renderer.rendered_content
         receipt_sha256 = ""
@@ -114,7 +127,9 @@ class ContextCompiler:
 
 
 
-def execute(request: ContextRequest, workspace_root: Path | None = None) -> ContextPacket:
+def execute(  # noqa: PLR0914
+    request: ContextRequest, workspace_root: Path | None = None
+) -> ContextPacket:
     """Execute a get_context request and return a ContextPacket.
 
     Args:
@@ -126,6 +141,7 @@ def execute(request: ContextRequest, workspace_root: Path | None = None) -> Cont
     """
     start = time.perf_counter()
     root = (workspace_root or Path.cwd()).resolve()
+    _context_warnings: list[dict[str, Any]] = []
 
     # Check findings lifecycle
     try:
@@ -134,8 +150,14 @@ def execute(request: ContextRequest, workspace_root: Path | None = None) -> Cont
         _findings_summary = compute_findings_summary()
         if _findings_summary.get("stale_findings"):
             pass  # Available for correlation; not yet surfaced in packet
-    except Exception:
-        pass
+    except Exception as e:
+        _context_warnings.append(
+            build_warning(
+                ContextWarningCode.FINDINGS_SUMMARY_FAILED,
+                detail=f"{exception_class_name(e)}",
+                source="compiler.execute.findings",
+            )
+        )
 
     # Compute request hash
     req_json = request.model_dump_json(exclude_none=True)
@@ -150,21 +172,30 @@ def execute(request: ContextRequest, workspace_root: Path | None = None) -> Cont
     # Build active work map
     active_work = build_active_work(root, request.scope.paths)
 
-    # Build recommended context
-    recommended = _build_recommended_context(subsystems)
+    # ── Plan context via ContextAssemblyPlan ────────────────────
+    plan = plan_context(
+        request,
+        workspace_root=root,
+        subsystems=subsystems,
+        active_work=active_work,
+        repo_index=None,
+    )
 
-    # Build do-not-touch list from collision warnings
-    do_not_touch = _build_do_not_touch(active_work.get("collision_warnings", []))
+    # Build recommended context from plan selections
+    recommended = _map_selections_to_recommendations(plan)
+
+    # Build do-not-touch list from plan omissions (risk/collision)
+    do_not_touch = _map_omissions_to_do_not_touch(plan)
 
     # Build receipt entries if requested
     receipts: list[ReceiptEntry] = []
     if request.scope.include_receipts:
         receipts = _scan_receipts(root)
 
-    # Build summary text
-    summary = _build_summary(repo, subsystems, active_work)
+    # Build summary text (existing + plan metadata)
+    summary = _build_summary(repo, subsystems, active_work, plan)
 
-    # Compute packet hash
+    # Compute packet hash (canonical: excludes volatile fields)
     packet = ContextPacket(
         mode=request.mode,
         request_sha256=request_sha256,
@@ -180,13 +211,25 @@ def execute(request: ContextRequest, workspace_root: Path | None = None) -> Cont
         substitution_table_sha256=None,
     )
 
-    packet_json = packet.model_dump_json(exclude_none=True)
-    packet_sha256 = hashlib.sha256(packet_json.encode("utf-8")).hexdigest()
+    # Canonical hash: excludes volatile fields
+    import json
+
+    packet_dict = packet.model_dump(mode="json", exclude_none=True)
+    volatile = {
+        "context_id",
+        "generated_at",
+        "duration_ms",
+        "canonical_packet_sha256",
+        "optimized_packet_sha256",
+        "substitution_table_sha256",
+    }
+    stable_dict = {k: v for k, v in packet_dict.items() if k not in volatile}
+    stable_json = json.dumps(stable_dict, sort_keys=True, separators=(",", ":"))
+    packet_sha256 = hashlib.sha256(stable_json.encode("utf-8")).hexdigest()
 
     # Store hashes
     packet.canonical_packet_sha256 = packet_sha256
     packet.optimized_packet_sha256 = packet_sha256
-
     packet.duration_ms = (time.perf_counter() - start) * 1000
 
     return packet
@@ -225,7 +268,10 @@ def build_receipt(packet: ContextPacket) -> ContextReceipt:
 
 
 def _build_recommended_context(subsystems: list) -> list[PathRecommendation]:
-    """Build a list of recommended context files from the subsystem map."""
+    """Build a list of recommended context files from the subsystem map.
+
+    Kept for backward compatibility. Prefer _map_selections_to_recommendations.
+    """
     recommendations: list[PathRecommendation] = []
 
     for sub in subsystems[:5]:
@@ -244,11 +290,62 @@ def _build_recommended_context(subsystems: list) -> list[PathRecommendation]:
 
 
 def _build_do_not_touch(collisions: list[dict]) -> list[PathRecommendation]:
-    """Build a do-not-touch list from collision warnings."""
+    """Build a do-not-touch list from collision warnings.
+
+    Kept for backward compatibility. Prefer _map_omissions_to_do_not_touch.
+    """
     return [
         PathRecommendation(path=c.get("path", ""), reason=c.get("reason", ""))
         for c in collisions
     ]
+
+
+def _map_selections_to_recommendations(
+    plan: ContextAssemblyPlan,
+) -> list[PathRecommendation]:
+    """Convert plan selections into recommended context entries."""
+    result: list[PathRecommendation] = []
+    seen: set[str] = set()
+    for sel in plan.selections:
+        cand = _find_candidate(plan, sel.candidate_id)
+        if cand is None:
+            continue
+        if cand.path in seen:
+            continue
+        seen.add(cand.path)
+        result.append(PathRecommendation(
+            path=cand.path,
+            reason=sel.selection_reason or cand.reason,
+        ))
+    return result
+
+
+def _map_omissions_to_do_not_touch(
+    plan: ContextAssemblyPlan,
+) -> list[PathRecommendation]:
+    """Convert risk/collision omissions into do-not-touch entries."""
+    result: list[PathRecommendation] = []
+    for om in plan.omissions:
+        _RISK_OMISSION_REASONS = frozenset({"risk_policy", "collision"})
+        if om.omission_reason not in _RISK_OMISSION_REASONS:
+            continue
+        cand = _find_candidate(plan, om.candidate_id)
+        if cand is None:
+            continue
+        result.append(PathRecommendation(
+            path=cand.path,
+            reason=om.detail or f"omitted: {om.omission_reason}",
+        ))
+    return result
+
+
+def _find_candidate(
+    plan: ContextAssemblyPlan, candidate_id: str
+) -> ContextCandidate | None:
+    for c in plan.candidates:
+        if c.candidate_id == candidate_id:
+            return c
+    return None
 
 
 def _scan_receipts(root: Path) -> list[ReceiptEntry]:
@@ -274,7 +371,12 @@ def _scan_receipts(root: Path) -> list[ReceiptEntry]:
     return entries
 
 
-def _build_summary(repo: Any, subsystems: list, active_work: dict) -> str:
+def _build_summary(
+    repo: Any,
+    subsystems: list,
+    active_work: dict,
+    plan: ContextAssemblyPlan | None = None,
+) -> str:
     """Build a human-readable summary text from the context data."""
     lines: list[str] = []
     lines.append(f"Repository: {repo.root}")
@@ -307,6 +409,16 @@ def _build_summary(repo: Any, subsystems: list, active_work: dict) -> str:
         lines.append(f"Collision warnings ({len(collisions)}):")
         for c in collisions[:5]:
             lines.append(f"  ! {c.get('path', '?')}: {c.get('reason', '')[:80]}")
+
+    if plan is not None:
+        lines.append("")
+        lines.append(f"Assembly plan: {len(plan.candidates)} candidates, "
+                     f"{len(plan.selections)} selected, "
+                     f"{len(plan.omissions)} omitted, "
+                     f"{len(plan.warnings)} warnings")
+        lines.append(f"  plan_id: {plan.plan_id}")
+        if plan.budget.used_tokens > 0:
+            lines.append(f"  budget: {plan.budget.used_tokens}/{plan.budget.requested_tokens} tokens")
 
     return "\n".join(lines)
 
