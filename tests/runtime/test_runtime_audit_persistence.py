@@ -174,6 +174,8 @@ class TestBuildRuntimeAuditEvent:
             changed_paths=[],
             tool_receipt_kind="validate",
             tool_receipt_schema_version="rig.relay.validate_receipt.v1",
+            runtime_envelope_sha256="sha256:env",
+            source_kind="runtime_intent",
         )
         event = build_runtime_audit_event(result)
         assert event.tool_name == "validate"
@@ -185,6 +187,8 @@ class TestBuildRuntimeAuditEvent:
         assert event.tool_receipt_kind == "validate"
         assert event.runtime_result_sha256 is not None
         assert event.runtime_result_sha256.startswith("sha256:")
+        assert event.runtime_envelope_sha256 == "sha256:env"
+        assert event.source_kind == "runtime_intent"
 
     def test_runtime_result_sha256_changes_when_result_changes(self) -> None:
         result_a = _make_result(
@@ -223,6 +227,20 @@ class TestBuildRuntimeAuditEvent:
         event = build_runtime_audit_event(result)
         assert event.status == "refused"
         assert event.error_kind == "unsupported_tool"
+
+    def test_build_from_failed_result_preserves_runtime_metadata(self) -> None:
+        result = _make_result(
+            status=RuntimeToolExecutionStatus.FAILED,
+            tool_name="bash_legacy",
+            error_kind="execution_error",
+            refusal_reason="command failed",
+            runtime_envelope_sha256="sha256:env",
+            source_kind="runtime_intent",
+        )
+        event = build_runtime_audit_event(result)
+        assert event.status == "failed"
+        assert event.runtime_envelope_sha256 == "sha256:env"
+        assert event.source_kind == "runtime_intent"
 
 
 # ── Persistence store tests ────────────────────────────────────────────

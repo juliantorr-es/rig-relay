@@ -147,8 +147,31 @@ contract without implementing execution. All plans return
 Forbidden capabilities include: source_code_mutation, git_commit,
 external_network_calls, background_recursion, etc.
 
-## ToolRuntime boundary
+## Desktop transport boundary
 
-See `docs/governance/tool-runtime-boundary.md` for the full
-ToolRuntime boundary definition. Ralph is not ToolRuntime.
-ToolRuntime will be the future owner of governed tool execution.
+The desktop cockpit now serves its frontend over local HTTPS and its
+projection/event bridge over WSS when TLS is enabled. Runtime config is
+delivered through the pywebview JS API, not raw HTML injection.
+
+### Current transport shape
+
+- Frontend: `https://127.0.0.1:<static_port>/index.html`
+- Projection/events: `wss://127.0.0.1:<ws_port>/...`
+- Runtime config: `window.pywebview.api.get_runtime_config()`
+
+### TLS strategy
+
+- Source mode prefers local certificate material under the app support
+  directory or explicit `RIG_RELAY_TLS_CERT` / `RIG_RELAY_TLS_KEY`
+  overrides.
+- Packaged mode stores local-only certificate material outside the app
+  bundle under `~/Library/Application Support/Rig Relay/certs/`.
+- `RIG_RELAY_DESKTOP_TLS=0` disables TLS only for development fallback.
+
+### Security limits
+
+- Local self-signed certificates are transport consistency, not remote
+  identity.
+- `ws://` remains a development fallback only and is not the normal
+  packaged path.
+- Merge and push remain disabled in runtime config.

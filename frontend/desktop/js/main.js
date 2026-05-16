@@ -163,6 +163,8 @@ function renderPanelColumn() {
   // Widget assignments per mode
   const assignments = {
     operator: ['operatorHeader', 'safetyState', 'nextAction',
+               'roleModel',
+               'missionBoard',
                'ralphScout', 'ralphLifecycle',
                'validationSummary', 'storageBudget', 'intentResult',
                'providerHealth', 'council', 'providerDock',
@@ -235,16 +237,29 @@ async function init() {
   // Build initial panel
   renderPanelColumn();
 
-  // Read WS config from inline script injected by Python backend.
-  // No bridge call needed — the token arrives in the HTML payload.
-  const config = window.__RIG_RELAY_WS_CONFIG__ || {
-    host: '127.0.0.1',
-    port: 9876,
-    token: '',
-  };
+  let config = null;
+  if (window.pywebview && window.pywebview.api && window.pywebview.api.get_runtime_config) {
+    try {
+      config = await window.pywebview.api.get_runtime_config();
+    } catch (e) {
+      console.warn("Failed to fetch runtime config from bridge:", e);
+    }
+  }
+  if (!config) {
+    config = {
+      ws_url: 'ws://127.0.0.1:9876',
+      ws_protocol: 'ws',
+      static_protocol: 'http',
+      tls_enabled: false,
+      local_mode: true,
+      merge_enabled: false,
+      push_enabled: false,
+    };
+  }
 
-  const wsUrl = 'ws://' + config.host + ':' + config.port;
-  initTransport(wsUrl, config.token, handleMessage);
+  const wsUrl = config.ws_url || 'ws://127.0.0.1:9876';
+  const token = config.token || (window.pywebview && window.pywebview.token) || '';
+  initTransport(wsUrl, token, handleMessage);
 }
 
 document.addEventListener('DOMContentLoaded', init);

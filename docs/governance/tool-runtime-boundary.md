@@ -22,7 +22,7 @@ AgentLoop        Turn conductor — conversation topology, middleware,
                  session lifecycle.
                  Does not own governed tool execution.
 
-ToolRuntime      Governed tool execution authority (future).
+ToolRuntime      Governed tool execution authority.
                  Owns: normalization, permission, cache, gating,
                  execution, receipt emission, refusal normalization.
 
@@ -30,9 +30,9 @@ Analytics Compiler  Reads ledgers, compiles facts/projections.
                     Never executes tools.
 ```
 
-## ToolRuntime responsibilities (future)
+## ToolRuntime responsibilities
 
-When implemented, ToolRuntime will own:
+ToolRuntime owns:
 
 - Tool call normalization and validation
 - Permission checks (ToolPermission: ALWAYS / ASK / NEVER)
@@ -64,18 +64,16 @@ The desktop HITL boundary approves or declines mission candidates.
 Approval is a state transition, not an action trigger.
 Execution requires a separate contract through ToolRuntime.
 
-## Future read-only mission flow
+## Current normal flow
 
 ```
-Desktop UI → approve mission → desktop backend validates →
-Ralph creates mission request → submits to ToolRuntime →
-ToolRuntime validates capabilities, checks permissions →
-ToolRuntime executes read-only tools →
-ToolRuntime emits receipts → Ralph updates run state →
-Desktop updates projection
+RuntimeToolExecutionRunner → validate envelope → lease check if needed →
+ToolRuntime.execute_one() → governed tool invocation →
+ToolRuntimeResult → runtime audit event
 ```
 
-This flow is not yet implemented. The contracts are defined.
+RuntimeToolExecutionRunner is now an intent/lease/audit adapter.
+It does not own the governed normal execution path.
 
 ## Capability boundary
 
@@ -83,12 +81,12 @@ This flow is not yet implemented. The contracts are defined.
 |---|---|---|
 | Ralph scan | Read projections, rank candidates | Execute tools, mutate state |
 | Ralph approve/decline | Validate state, emit events, persist state | Execute tools, mutate workspace |
-| ToolRuntime (future) | Execute governed tools with permission | Execute without explicit approval |
+| ToolRuntime | Execute governed tools with permission | Execute without explicit approval |
 | Analytics compiler | Read ledgers, compile projections | Execute tools, mutate state |
 | Desktop UI | Render projections, send intents | Compute hashes, own policy |
 
-## Execution remains disabled
+## Remaining seams
 
-In the current phase, no `execution_enabled=True` exists anywhere
-in the Ralph/desktop system. All approved missions go to
-`next_phase=execution_pending_implementation` with `execution_enabled=False`.
+- RuntimeSupervisor integration remains separate for subprocess-oriented paths.
+- A few concrete tool adapter helpers still exist behind RuntimeToolExecutionRunner.
+- AgentLoop still owns its current closure and result adaptation boundary.

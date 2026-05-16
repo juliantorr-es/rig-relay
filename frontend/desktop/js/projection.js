@@ -78,6 +78,9 @@ export function handleProjection(data) {
   if (projection.ralph_lifecycle) {
     state.ralph.lifecycle = projection.ralph_lifecycle;
   }
+  if (projection.orchestrator_board) {
+    state.ralph.missionBoard = projection.orchestrator_board;
+  }
 
   scheduleRender(projection);
 }

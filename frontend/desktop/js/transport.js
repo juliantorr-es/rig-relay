@@ -22,6 +22,7 @@ export function initTransport(wsUrl, token, onMessage) {
     return;
   }
 
+  const secureTransport = typeof wsUrl === 'string' && wsUrl.startsWith('wss://');
   _wsClient = new ProjectionWebSocketClient({
     wsUrl,
     token,
@@ -31,7 +32,7 @@ export function initTransport(wsUrl, token, onMessage) {
     onStatusChange(status, detail, attempts) {
       if (status === 'connected') {
         state.wsConnected = true;
-        state.transport = 'ws';
+        state.transport = secureTransport ? 'wss' : 'ws';
         if (onMessage) onMessage({ type: '_transport', status: 'connected' });
         // Request chat state — already get_projection in ProjectionWebSocketClient
         _wsClient.send({ type: 'get_chat_state' });
@@ -73,5 +74,5 @@ export function sendMessage(msg) {
 }
 
 export function isConnected() {
-  return state.transport === 'ws' && state.wsConnected;
+  return (state.transport === 'ws' || state.transport === 'wss') && state.wsConnected;
 }

@@ -31,6 +31,39 @@
       "type": "string",
       "description": "Name of the tool that was executed"
     },
+    "source_kind": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Source kind for the execution, e.g. runtime_intent"
+    },
+    "source_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Source identifier for the execution"
+    },
+    "runtime_envelope_sha256": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "SHA-256 hash of the runtime invocation envelope"
+    },
     "status": {
       "type": "string",
       "enum": [

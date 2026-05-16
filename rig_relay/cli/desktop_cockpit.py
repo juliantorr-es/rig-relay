@@ -10,12 +10,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 import secrets
 import threading
 from typing import Any
 
-from rig_relay import __version__
+from rig_relay import __version__, resources
 from rig_relay.core.agent_loop import AgentLoop
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.config.harness_files import init_harness_files_manager
@@ -26,6 +27,7 @@ from rig_relay.desktop.chat_agent_adapter import ChatAgentAdapter
 from rig_relay.desktop.chat_state import ChatMessage, ChatRole
 from rig_relay.desktop.chat_store import ChatStore
 from rig_relay.desktop.projection import build_projection
+from rig_relay.desktop.tls import load_ssl_context, resolve_tls_config
 from rig_relay.desktop.websocket_server import (
     DEFAULT_PORT as DEFAULT_WS_PORT,
     ProjectionWebSocketServer,
@@ -81,6 +83,7 @@ def _run_ws_server(
     chat_message_handler: Any | None = None,
     loop_holder: list[asyncio.AbstractEventLoop] | None = None,
     server_holder: list[ProjectionWebSocketServer] | None = None,
+    ssl_context: Any | None = None,
 ) -> None:
     """Run the WebSocket projection stream in a background thread."""
 
@@ -96,12 +99,14 @@ def _run_ws_server(
             token=token,
             chat_state_provider=chat_state_provider,
             chat_message_handler=chat_message_handler,
+            ssl_context=ssl_context,
         )
         if server_holder is not None:
             server_holder[0] = server
 
         await server.start()
-        print(f"WebSocket projection stream on ws://{host}:{port}")
+        scheme = "wss" if ssl_context is not None else "ws"
+        print(f"WebSocket projection stream on {scheme}://{host}:{port}")
         print(f"Auth Token: {token}")
         try:
             await asyncio.Future()
@@ -137,6 +142,7 @@ class CockpitAPI:
         self._server_holder = server_holder
         self._mode = mode
         self._provider_windows: dict[str, Any] = {}
+        self._runtime_config: dict[str, Any] | None = None
 
         if mode == "fixture":
             self._agent_loop = None
@@ -195,9 +201,61 @@ class CockpitAPI:
         projection = build_projection(build_root=BUILD_ROOT)
         try:
             from rig_relay.desktop.ralph_intents import build_ralph_projection
+
             projection["ralph"] = build_ralph_projection()
             from rig_relay.ralph.lifecycle_projection import build_lifecycle_projection
-            projection["ralph_lifecycle"] = build_lifecycle_projection().model_dump(mode="json")
+
+            projection["ralph_lifecycle"] = build_lifecycle_projection().model_dump(
+                mode="json"
+            )
+            from rig_relay.ralph.mission_board import build_mission_board
+
+            lc = projection.get("ralph_lifecycle", {})
+
+            # Wire subagent profiles, bindings, and Ralph reports into the board
+            try:
+                from rig_relay.orchestrator.subagent_profiles import (
+                    get_binding_registry,
+                    get_profile_registry,
+                )
+                from rig_relay.ralph.reporting import (
+                    RalphReportStore,
+                    build_demo_ralph_reports,
+                )
+
+                registry = get_profile_registry()
+                binding_registry = get_binding_registry()
+                store = RalphReportStore()
+                for r in build_demo_ralph_reports():
+                    store.save_report(r)
+                profiles = registry.list_all() if registry.list_all() else []
+                bindings = (
+                    binding_registry.list_all() if binding_registry.list_all() else []
+                )
+                reports = store.list_all()
+            except Exception:
+                profiles = []
+                bindings = []
+                reports = []
+
+            projection["orchestrator_board"] = build_mission_board(
+                lifecycle=lc,
+                background_enabled=lc.get("background_enabled", False),
+                subagent_profiles=profiles,
+                subagent_bindings=bindings,
+                ralph_reports=reports,
+            ).model_dump(mode="json")
+
+            from rig_relay.ralph.role_explainer import build_role_model_summary
+
+            pending = sum(
+                1
+                for r in reports
+                if r.status not in ("reviewed", "rejected", "deferred")
+            )
+            projection["role_model"] = build_role_model_summary(
+                profiles=profiles, bindings=bindings, pending_report_count=pending
+            ).model_dump(mode="json")
         except Exception:
             pass
         return projection
@@ -210,17 +268,29 @@ class CockpitAPI:
 
         return list(READ_ONLY_ACTIONS)
 
-    def get_ws_config(self) -> dict:
-        """Return WebSocket config (token, host, port) for frontend.
+    def set_runtime_config(self, runtime_config: dict[str, Any]) -> None:
+        self._runtime_config = runtime_config
 
-        Token is never printed in normal logs. Exposed only through
-        the pywebview bridge to the frontend.
-        """
+    def get_runtime_config(self) -> dict:
+        if self._runtime_config is not None:
+            return self._runtime_config
         return {
+            "schema_version": "rig.desktop.runtime_config.v1",
+            "frontend_origin": "http://127.0.0.1",
+            "ws_url": f"ws://127.0.0.1:{self._ws_port or DEFAULT_WS_PORT}",
+            "ws_protocol": "ws",
+            "static_protocol": "http",
+            "tls_enabled": False,
+            "cert_mode": "disabled",
+            "local_mode": True,
+            "merge_enabled": False,
+            "push_enabled": False,
+            "packaged": False,
             "token": self._ws_token or "",
-            "host": "127.0.0.1",
-            "port": self._ws_port or DEFAULT_WS_PORT,
         }
+
+    def get_ws_config(self) -> dict:
+        return self.get_runtime_config()
 
     def get_chat_state(self) -> dict:
         return self._chat_state.model_dump(mode="json")
@@ -250,6 +320,7 @@ class CockpitAPI:
 
         try:
             import webview  # type: ignore[import-untyped]
+
             webview.create_window(
                 title=provider.title(),
                 url=url,
@@ -261,26 +332,32 @@ class CockpitAPI:
             return {"status": "opened", "provider": provider, "url": url}
         except Exception:
             import webbrowser
+
             webbrowser.open(url)
-            return {"status": "opened", "provider": provider, "url": url, "fallback": "browser"}
+            return {
+                "status": "opened",
+                "provider": provider,
+                "url": url,
+                "fallback": "browser",
+            }
 
     def send_to_provider(self, provider: str, text: str) -> dict:
         """Inject text into an open provider companion window's input."""
         import webview  # type: ignore[import-untyped]
 
         selectors = {
-            "chatgpt": '#prompt-textarea',
+            "chatgpt": "#prompt-textarea",
             "claude": 'div[contenteditable="true"]',
             "gemini": 'div[contenteditable="true"]',
-            "deepseek": '#chat-input, textarea',
+            "deepseek": "#chat-input, textarea",
             "mistral": 'textarea, div[contenteditable="true"]',
-            "perplexity": 'textarea',
+            "perplexity": "textarea",
         }
         selector = selectors.get(provider, 'textarea, div[contenteditable="true"]')
 
         try:
             for w in webview.windows:
-                wtitle = str(getattr(w, 'title', '')).lower()
+                wtitle = str(getattr(w, "title", "")).lower()
                 if provider in wtitle:
                     w.evaluate_js(f"""
                         (function() {{
@@ -297,7 +374,10 @@ class CockpitAPI:
                         }})()
                     """)
                     return {"status": "sent", "provider": provider}
-            return {"status": "error", "message": f"No {provider} window found. Open with /provider {provider} first."}
+            return {
+                "status": "error",
+                "message": f"No {provider} window found. Open with /provider {provider} first.",
+            }
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
@@ -307,17 +387,17 @@ class CockpitAPI:
 
         selectors = {
             "chatgpt": '[data-message-author-role="assistant"]',
-            "claude": '.font-claude-message, .prose',
-            "gemini": '.model-response-text, .prose',
-            "deepseek": '.ds-markdown, .markdown',
-            "mistral": '.prose',
-            "perplexity": '.prose, .markdown',
+            "claude": ".font-claude-message, .prose",
+            "gemini": ".model-response-text, .prose",
+            "deepseek": ".ds-markdown, .markdown",
+            "mistral": ".prose",
+            "perplexity": ".prose, .markdown",
         }
-        selector = selectors.get(provider, '.prose, .markdown')
+        selector = selectors.get(provider, ".prose, .markdown")
 
         try:
             for w in webview.windows:
-                wtitle = str(getattr(w, 'title', '')).lower()
+                wtitle = str(getattr(w, "title", "")).lower()
                 if provider in wtitle:
                     text = w.evaluate_js(f"""
                         (function() {{
@@ -327,7 +407,11 @@ class CockpitAPI:
                             return last ? last.innerText : "";
                         }})()
                     """)
-                    return {"status": "read", "provider": provider, "text": str(text or "")}
+                    return {
+                        "status": "read",
+                        "provider": provider,
+                        "text": str(text or ""),
+                    }
             return {"status": "error", "message": f"No {provider} window found"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -424,8 +508,7 @@ class CockpitAPI:
             from rig_relay.desktop.ralph_intents import execute_ralph_intent
 
             return execute_ralph_intent(
-                intent_name=intent_name,
-                params=intent_request.get("parameters", {}),
+                intent_name=intent_name, params=intent_request.get("parameters", {})
             )
 
         from rig_relay.desktop.intents import execute_desktop_intent
@@ -528,6 +611,7 @@ class CockpitAPI:
             keychain_warning = str(keyring_err)
 
         import os as _os
+
         _os.environ[env_var] = api_key
 
         if saved_to_keychain:
@@ -640,10 +724,7 @@ class CockpitAPI:
 
         state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
         if expected_state_hash and state_hash != expected_state_hash:
-            return {
-                "status": "error",
-                "message": "State mismatch (possible CSRF)",
-            }
+            return {"status": "error", "message": "State mismatch (possible CSRF)"}
 
         return {"status": "completed", "code": code, "state": state}
 
@@ -662,6 +743,40 @@ class _OnboardingAPI:
 
     def onboarding_required(self) -> dict:
         return {"onboarding_required": True}
+
+    def send_chat_message(self, text: str, client_message_id: str | None = None) -> dict:
+        return {"error": "Chat unavailable in onboarding mode"}
+
+    def clear_chat_view(self) -> dict:
+        return {"error": "Chat unavailable in onboarding mode"}
+
+    def cancel_chat_response(self) -> dict:
+        return {"error": "Chat unavailable in onboarding mode"}
+
+    def get_chat_state(self) -> dict:
+        return {"messages": [], "backend_wired": False}
+
+    def set_runtime_config(self, runtime_config: dict[str, Any]) -> None:
+        self._runtime_config = runtime_config
+
+    def get_runtime_config(self) -> dict:
+        runtime_config = getattr(self, "_runtime_config", None)
+        if runtime_config is not None:
+            return runtime_config
+        return {
+            "schema_version": "rig.desktop.runtime_config.v1",
+            "frontend_origin": "http://127.0.0.1",
+            "ws_url": "ws://127.0.0.1:9876",
+            "ws_protocol": "ws",
+            "static_protocol": "http",
+            "tls_enabled": False,
+            "cert_mode": "disabled",
+            "local_mode": True,
+            "merge_enabled": False,
+            "push_enabled": False,
+            "packaged": False,
+            "token": "",
+        }
 
     def save_api_key(self, provider: str, api_key: str) -> dict:
         """Save a provider API key to the OS-native credential store.
@@ -692,12 +807,14 @@ class _OnboardingAPI:
         keychain_warning = ""
         try:
             import keyring
+
             keyring.set_password("rig-relay", env_var, api_key)
             saved_to_keychain = True
         except Exception as keyring_err:
             keychain_warning = str(keyring_err)
 
         import os as _os
+
         _os.environ[env_var] = api_key
 
         if saved_to_keychain:
@@ -705,6 +822,7 @@ class _OnboardingAPI:
 
         # Log warning to stderr so it shows in terminal
         import sys as _sys
+
         _sys.stderr.write(
             "\n"
             "[rig-relay] Warning: could not save API key to OS keychain.\n"
@@ -765,6 +883,18 @@ def _open_window(
         print(f"Frontend not found at {index_path}")
         return
 
+    packaged = resources.is_bundled()
+    tls_config = resolve_tls_config(
+        resources.app_support_dir() if packaged else BUILD_ROOT,
+        packaged=packaged,
+        allow_insecure=os.getenv("RIG_RELAY_DESKTOP_TLS") == "0",
+    )
+    ssl_context = (
+        load_ssl_context(tls_config.material.cert_path, tls_config.material.key_path)
+        if tls_config.enabled and tls_config.material is not None
+        else None
+    )
+
     ws_token: str | None = None
     if ws_port is not None:
         ws_token = _generate_ws_token()
@@ -797,6 +927,8 @@ def _open_window(
     # WebSocket server runs in all modes — including onboarding —
     # so the frontend can call bridge methods (save_api_key, etc.)
     def _chat_dispatcher(action: str, **kwargs: Any) -> dict:
+        if onboarding_mode:
+            return {"error": "Chat unavailable in onboarding mode"}
         if action == "send_chat_message":
             return api.send_chat_message(
                 text=kwargs.get("text", ""),
@@ -816,10 +948,13 @@ def _open_window(
                 "127.0.0.1",
                 ws_port,
                 ws_token,
-                api.get_chat_state if not onboarding_mode else (lambda: {"messages": []}),
+                api.get_chat_state
+                if not onboarding_mode
+                else (lambda: {"messages": []}),
                 _chat_dispatcher,
                 loop_holder,
                 server_holder,
+                ssl_context,
             ),
             daemon=True,
         )
@@ -848,34 +983,37 @@ def _open_window(
     if not hasattr(webview, "__version__"):  # type: ignore[reportAttributeAccessIssue]
         webview.__version__ = "6.2.1"  # type: ignore[reportAttributeAccessIssue]
 
-    # Read and inject WS config + onboarding flag.
-    # We inject a <base> tag so relative CSS/JS paths resolve from
-    # the frontend/desktop directory when loading via html= in pywebview.
-    onboarding_flag = "true" if onboarding_mode else "false"
-    config_script = (
-        '<script>'
-        f'window.__RIG_RELAY_WS_CONFIG__ = {{'
-        f'host: "127.0.0.1", port: {ws_port or DEFAULT_WS_PORT}, '
-        f'token: "{ws_token or ""}", onboarding: {onboarding_flag}'
-        f'}};'
-        '</script>'
-    )
-    base_tag = f'<base href="file://{FRONTEND_DIR}/">'
-    index_html = index_path.read_text(encoding="utf-8")
-    # Inject base tag after <head>, config before </body>
-    index_html = index_html.replace('<head>', f'<head>{base_tag}')
-    index_html = index_html.replace('</body>', f'{config_script}\n</body>')
+    runtime_config = {
+        "schema_version": "rig.desktop.runtime_config.v1",
+        "frontend_origin": "https://127.0.0.1" if ssl_context is not None else "http://127.0.0.1",
+        "ws_url": f"{'wss' if ssl_context is not None else 'ws'}://127.0.0.1:{ws_port or DEFAULT_WS_PORT}",
+        "ws_protocol": "wss" if ssl_context is not None else "ws",
+        "static_protocol": "https" if ssl_context is not None else "http",
+        "tls_enabled": ssl_context is not None,
+        "cert_mode": tls_config.cert_mode,
+        "local_mode": True,
+        "merge_enabled": False,
+        "push_enabled": False,
+        "packaged": packaged,
+        "app_version": __version__,
+        "insecure_local_transport": not tls_config.enabled,
+        "reason": tls_config.reason,
+        "token": ws_token or "",
+    }
+    if hasattr(api, "set_runtime_config"):
+        api.set_runtime_config(runtime_config)
 
     webview.create_window(
         title="Rig Relay",
-        html=index_html,
+        url=str(index_path),
         js_api=api,
         width=1200,
         height=800,
         resizable=True,
         min_size=(800, 600),
     )
-    webview.start(gui="cocoa")
+    # Use http_server=True to avoid file:// CORS issues
+    webview.start(gui="cocoa", http_server=True, ssl=ssl_context is not None)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -907,6 +1045,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_WS_PORT,
         help=f"Port for WebSocket projection stream (default: {DEFAULT_WS_PORT}).",
     )
+
+    # Demo subcommands
+    sub = parser.add_subparsers(dest="demo_command", help="Demo commands")
+    sub.add_parser("demo-seed", help="Seed demo data for fresh-clone demo")
+    sub.add_parser("demo-doctor", help="Check demo readiness")
+    sub.add_parser("demo-render-docs", help="Render local artifacts to static site")
+
     return parser.parse_args(argv)
 
 
@@ -947,6 +1092,21 @@ def _load_keychain_keys() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+
+    # Demo commands — exit early, no window needed
+    if args.demo_command == "demo-seed":
+        from rig_relay.cli.demo_commands import demo_seed
+
+        return demo_seed()
+    if args.demo_command == "demo-doctor":
+        from rig_relay.cli.demo_commands import demo_doctor
+
+        return demo_doctor()
+    if args.demo_command == "demo-render-docs":
+        from rig_relay.cli.demo_commands import demo_render_docs
+
+        return demo_render_docs()
+
     init_harness_files_manager("user", "project")
 
     # Load keys from system keychain before config

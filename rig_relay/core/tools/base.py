@@ -64,6 +64,7 @@ class InvokeContext:
     skill_manager: SkillManager | None = field(default=None)
     scratchpad_dir: Path | None = field(default=None)
     tool_manager: Any | None = field(default=None)
+    subprocess_runner: Any | None = field(default=None)
 
 
 class ToolError(Exception):

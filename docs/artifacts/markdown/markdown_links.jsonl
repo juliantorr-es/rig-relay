@@ -1,0 +1,339 @@
+{"href": "https://github.com/juliantorr-es/rig-relay#readme", "link_kind": "external", "link_text": "main README", "source_path": "docs/README.md"}
+{"href": "acp-setup.md", "link_kind": "internal", "link_text": "ACP Setup", "source_path": "docs/README.md"}
+{"href": "proxy-setup.md", "link_kind": "internal", "link_text": "Proxy Setup", "source_path": "docs/README.md"}
+{"href": "https://agentclientprotocol.com/overview/clients", "link_kind": "external", "link_text": "Agent Client Protocol", "source_path": "docs/acp-setup.md"}
+{"href": "https://zed.dev/extensions/rig-relay", "link_kind": "external", "link_text": "Rig Relay Zed's extension", "source_path": "docs/acp-setup.md"}
+{"href": "https://plugins.jetbrains.com/plugin/22282-jetbrains-ai-assistant", "link_kind": "external", "link_text": "Jetbrains AI Assistant extension", "source_path": "docs/acp-setup.md"}
+{"href": "https://www.jetbrains.com/help/ai-assistant/acp.html", "link_kind": "external", "link_text": "documentation", "source_path": "docs/acp-setup.md"}
+{"href": "bash-replacement-opportunity-map.md", "link_kind": "internal", "link_text": "bash replacement opportunity map", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "../findings/out-of-scope-findings.md", "link_kind": "internal", "link_text": "findings registry", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "./tool-determinism-inventory.md", "link_kind": "internal", "link_text": "`docs/audits/tool-determinism-inventory.md`", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "./data/current_builtin_tools.jsonl", "link_kind": "internal", "link_text": "`docs/audits/data/current_builtin_tools.jsonl`", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "../dogfood/rig-relay-self-dogfood.md", "link_kind": "internal", "link_text": "`docs/dogfood/rig-relay-self-dogfood.md`", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "../../vibe/core/telemetry/tool_contract.py", "link_kind": "internal", "link_text": "`vibe/core/telemetry/tool_contract.py`", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "./artifact-schema-doctrine.md", "link_kind": "internal", "link_text": "`docs/audits/artifact-schema-doctrine.md`", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "../governance/cross-session-coordination.md", "link_kind": "internal", "link_text": "Cross-Session Coordination", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "../governance/usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/audits/current-built-in-tools.md"}
+{"href": "https://github.com/juliantorr-es/Rig", "link_kind": "external", "link_text": "Rig", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "https://github.com/juliantorr-es/Intake", "link_kind": "external", "link_text": "Intake", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../governance/rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../governance/rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Pattern Inventory", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../governance/rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../governance/rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Rig-to-Relay Pattern Inventory", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../governance/desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI Doctrine", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../governance/relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Relay Desktop Projection Contract", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../governance/relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Relay Local/Remote Boundary", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../governance/frontend-rendering-safety.md", "link_kind": "internal", "link_text": "Frontend Rendering Safety", "source_path": "docs/audits/rig-intake-cannibalization-plan.md"}
+{"href": "../../governance/audit-trail-tamper-evidence.md", "link_kind": "internal", "link_text": "Audit Trail Tamper Evidence Design", "source_path": "docs/audits/rig-runtime-port/audit-trail-tamper-evidence-design.md"}
+{"href": "../../governance/audit-trail.md", "link_kind": "internal", "link_text": "Audit Trail Governance", "source_path": "docs/audits/rig-runtime-port/audit-trail-tamper-evidence-design.md"}
+{"href": "../../governance/receipt-envelope.md", "link_kind": "internal", "link_text": "Receipt Envelope Governance", "source_path": "docs/audits/rig-runtime-port/audit-trail-tamper-evidence-design.md"}
+{"href": "./port-roadmap.md", "link_kind": "internal", "link_text": "Rig Runtime Port Roadmap", "source_path": "docs/audits/rig-runtime-port/audit-trail-tamper-evidence-design.md"}
+{"href": "./rig-to-relay-runtime-audit.md", "link_kind": "internal", "link_text": "Rig-to-Relay Runtime Audit", "source_path": "docs/audits/rig-runtime-port/audit-trail-tamper-evidence-design.md"}
+{"href": "../governance/execution-progress-projection.md", "link_kind": "internal", "link_text": "ExecutionProgressProjection Design", "source_path": "docs/audits/rig-runtime-port/execution-progress-projection-design.md"}
+{"href": "../governance/runtime-supervisor.md", "link_kind": "internal", "link_text": "RuntimeSupervisor Architecture", "source_path": "docs/audits/rig-runtime-port/execution-progress-projection-design.md"}
+{"href": "../governance/relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Relay Desktop Projection Contract", "source_path": "docs/audits/rig-runtime-port/execution-progress-projection-design.md"}
+{"href": "rig-to-relay-runtime-audit.md", "link_kind": "internal", "link_text": "Rig-to-Relay Runtime Audit", "source_path": "docs/audits/rig-runtime-port/execution-progress-projection-design.md"}
+{"href": "port-roadmap.md", "link_kind": "internal", "link_text": "Port Roadmap", "source_path": "docs/audits/rig-runtime-port/execution-progress-projection-design.md"}
+{"href": "concept-map.md", "link_kind": "internal", "link_text": "Concept Map", "source_path": "docs/audits/rig-runtime-port/execution-progress-projection-design.md"}
+{"href": "../audits/artifact-schema-doctrine.md", "link_kind": "internal", "link_text": "Artifact Schema Doctrine", "source_path": "docs/audits/tool-determinism-inventory.md"}
+{"href": "bash-replacement-opportunity-map.md", "link_kind": "internal", "link_text": "bash replacement opportunity map", "source_path": "docs/audits/tool-determinism-inventory.md"}
+{"href": "../governance/cross-session-coordination.md", "link_kind": "internal", "link_text": "Cross-Session Coordination", "source_path": "docs/audits/tool-determinism-inventory.md"}
+{"href": "../findings/out-of-scope-findings.md", "link_kind": "internal", "link_text": "findings registry", "source_path": "docs/audits/tool-determinism-inventory.md"}
+{"href": "../governance/textual-retirement-policy.md", "link_kind": "internal", "link_text": "Textual TUI Retirement Policy", "source_path": "docs/audits/vibe-cli-purge-inventory.md"}
+{"href": "../governance/vibe-legacy-deprecation.md", "link_kind": "internal", "link_text": "Vibe Legacy Deprecation Doctrine", "source_path": "docs/audits/vibe-cli-purge-inventory.md"}
+{"href": "vibe-legacy-boundary-inventory.md", "link_kind": "internal", "link_text": "Vibe Legacy Boundary Inventory", "source_path": "docs/audits/vibe-cli-purge-inventory.md"}
+{"href": "../install.md", "link_kind": "internal", "link_text": "Rig Relay Install Channels", "source_path": "docs/audits/vibe-cli-purge-inventory.md"}
+{"href": "coordination-migration-inventory.md", "link_kind": "internal", "link_text": "Coordination Migration Inventory", "source_path": "docs/audits/vibe-legacy-boundary-inventory.md"}
+{"href": "../governance/vibe-legacy-deprecation.md", "link_kind": "internal", "link_text": "Vibe Legacy Deprecation Doctrine", "source_path": "docs/audits/vibe-legacy-boundary-inventory.md"}
+{"href": "../governance/rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/audits/vibe-legacy-boundary-inventory.md"}
+{"href": "../governance/rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Rig-to-Relay Pattern Inventory", "source_path": "docs/audits/vibe-legacy-boundary-inventory.md"}
+{"href": "2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md", "link_kind": "internal", "link_text": "2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md", "source_path": "docs/conversations/README.md"}
+{"href": "2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md", "link_kind": "internal", "link_text": "2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md", "source_path": "docs/conversations/README.md"}
+{"href": "2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md", "link_kind": "internal", "link_text": "2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md", "source_path": "docs/conversations/README.md"}
+{"href": "2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md", "link_kind": "internal", "link_text": "2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md", "source_path": "docs/conversations/README.md"}
+{"href": "2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.md", "link_kind": "internal", "link_text": "2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.md", "source_path": "docs/conversations/README.md"}
+{"href": "2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.md", "link_kind": "internal", "link_text": "2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.md", "source_path": "docs/conversations/README.md"}
+{"href": "2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md", "link_kind": "internal", "link_text": "2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md", "source_path": "docs/conversations/README.md"}
+{"href": "2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md", "link_kind": "internal", "link_text": "2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md", "source_path": "docs/conversations/README.md"}
+{"href": "2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md", "link_kind": "internal", "link_text": "2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md", "source_path": "docs/conversations/README.md"}
+{"href": "2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md", "link_kind": "internal", "link_text": "2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md", "source_path": "docs/conversations/README.md"}
+{"href": "../findings/out-of-scope-findings.md", "link_kind": "internal", "link_text": "findings registry", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/artifact-schema-doctrine.md", "link_kind": "internal", "link_text": "Artifact Schema Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Relay Desktop Projection Contract", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/cross-session-coordination.md", "link_kind": "internal", "link_text": "Cross-Session Coordination", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#dataset-reports", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#dataset-exports", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#interactive-inspector", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/bash-replacement-opportunity-map.md", "link_kind": "internal", "link_text": "bash replacement opportunity map", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#review-packet-protocol", "link_kind": "internal", "link_text": "Review Packet Protocol section in the Usage Data Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/reviewer-orchestrator.md", "link_kind": "internal", "link_text": "Reviewer Orchestrator Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/reviewer-orchestrator.md", "link_kind": "internal", "link_text": "Reviewer Orchestrator Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/reviewer-orchestrator.md", "link_kind": "internal", "link_text": "Reviewer Orchestrator Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/coordination-migration-inventory.md", "link_kind": "internal", "link_text": "Coordination Migration Inventory", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/coordination-migration-inventory.md", "link_kind": "internal", "link_text": "Coordination Migration Inventory", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/current-built-in-tools.md", "link_kind": "internal", "link_text": "Current Built-In Tool Inventory", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/tool-determinism-inventory.md", "link_kind": "internal", "link_text": "Tool Determinism Inventory", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/step-up-authorization.md", "link_kind": "internal", "link_text": "Step-Up Authorization Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/step-up-authorization.md", "link_kind": "internal", "link_text": "Step-Up Authorization Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/delegate-fleet-orchestration.md", "link_kind": "internal", "link_text": "Delegate/Fleet Orchestration Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/delegate-fleet-orchestration.md", "link_kind": "internal", "link_text": "Delegate/Fleet Orchestration Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../AGENTS.md#json-schema-validation", "link_kind": "internal", "link_text": "AGENTS.md JSON Schema Validation section", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#external-tester-telemetry-sharing", "link_kind": "internal", "link_text": "Usage Data Doctrine — External Tester Telemetry Sharing", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#semantic-change-snippets", "link_kind": "internal", "link_text": "Usage Data Doctrine — Semantic Change Snippets", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../AGENTS.md#dirty-file-preservation", "link_kind": "internal", "link_text": "AGENTS.md — Dirty-file preservation", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../AGENTS.md#desktop-projection-shell-pattern-port", "link_kind": "internal", "link_text": "AGENTS.md — Desktop projection shell pattern port", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../schemas/rig.relay.desktop_projection.v1.schema.json", "link_kind": "internal", "link_text": "Schema: desktop_projection.v1", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/desktop-cockpit-ui.md#websocket-projection-stream-current", "link_kind": "internal", "link_text": "WebSocket Projection Stream section in Desktop Cockpit UI Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/desktop-cockpit-ui.md#desktop-chat-shell-current", "link_kind": "internal", "link_text": "Desktop Cockpit UI Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/desktop-cockpit-ui.md#desktop-chat-persistence-and-event-stream-current", "link_kind": "internal", "link_text": "Desktop Chat Persistence section in Desktop Cockpit UI Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/desktop-cockpit-ui.md#lifecycle-states", "link_kind": "internal", "link_text": "Desktop Cockpit UI Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/current-built-in-tools.md", "link_kind": "internal", "link_text": "current built-in tools audit", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/current-built-in-tools.md", "link_kind": "internal", "link_text": "current built-in tools audit", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/artifact-schema-doctrine.md", "link_kind": "internal", "link_text": "Artifact Schema Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../conversations/README.md", "link_kind": "internal", "link_text": "`docs/conversations/README.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#semantic-change-snippets", "link_kind": "internal", "link_text": "`docs/governance/usage-data-doctrine.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../release/versioning-policy.md", "link_kind": "internal", "link_text": "`docs/release/versioning-policy.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../install.md", "link_kind": "internal", "link_text": "`docs/install.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/update-policy.md", "link_kind": "internal", "link_text": "`docs/governance/update-policy.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#telemetry-budget", "link_kind": "internal", "link_text": "`docs/governance/usage-data-doctrine.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "`docs/governance/desktop-cockpit-ui.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/usage-data-doctrine.md#google-drive-core-dependency", "link_kind": "internal", "link_text": "`docs/governance/usage-data-doctrine.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/storage-retention-policy.md", "link_kind": "internal", "link_text": "`docs/governance/storage-retention-policy.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../audits/current-built-in-tools.md", "link_kind": "internal", "link_text": "current built-in tools audit", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/step-up-authorization.md", "link_kind": "internal", "link_text": "`docs/governance/step-up-authorization.md`", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../governance/rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Pattern Inventory", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "../docs/schemas/rig.relay.local_action_envelope.v1.schema.json", "link_kind": "internal", "link_text": "Local Action Envelope Schema", "source_path": "docs/dogfood/rig-relay-self-dogfood.md"}
+{"href": "validation.md", "link_kind": "internal", "link_text": "Validation workflow", "source_path": "docs/evidence/README.md"}
+{"href": "https://peps.python.org/pep-0008/", "link_kind": "external", "link_text": "PEP 8", "source_path": "docs/findings/language-practices/python.md"}
+{"href": "https://docs.astral.sh/ruff/", "link_kind": "external", "link_text": "Ruff", "source_path": "docs/findings/language-practices/python.md"}
+{"href": "https://diataxis.fr/", "link_kind": "external", "link_text": "Diátaxis", "source_path": "docs/findings/language-practices/python.md"}
+{"href": "https://peps.python.org/pep-0008/", "link_kind": "external", "link_text": "PEP 8 – Style Guide for Python Code", "source_path": "docs/findings/language-practices/python.md"}
+{"href": "https://docs.astral.sh/ruff/rules/", "link_kind": "external", "link_text": "Ruff Rules Reference", "source_path": "docs/findings/language-practices/python.md"}
+{"href": "https://diataxis.fr/", "link_kind": "external", "link_text": "Diátaxis Documentation Framework", "source_path": "docs/findings/language-practices/python.md"}
+{"href": "https://www.swift.org/documentation/api-design-guidelines/", "link_kind": "external", "link_text": "Swift API Design Guidelines", "source_path": "docs/findings/language-practices/python.md"}
+{"href": "language-practices/python.md", "link_kind": "internal", "link_text": "Python", "source_path": "docs/findings/out-of-scope-findings.md"}
+{"href": "audit-trail-tamper-evidence.md", "link_kind": "internal", "link_text": "docs/governance/audit-trail-tamper-evidence.md", "source_path": "docs/governance/audit-trail.md"}
+{"href": "fleet-coordination-plane.md", "link_kind": "internal", "link_text": "Fleet Coordination Plane", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "usage-data-doctrine.md#dataset-reports", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "usage-data-doctrine.md#review-packet-protocol", "link_kind": "internal", "link_text": "Review Packet Protocol section in the Usage Data Doctrine", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "reviewer-orchestrator.md", "link_kind": "internal", "link_text": "sprint cockpit", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "reviewer-orchestrator.md", "link_kind": "internal", "link_text": "Reviewer Orchestrator Doctrine", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "delegate-fleet-orchestration.md", "link_kind": "internal", "link_text": "Delegate/Fleet Orchestration Doctrine", "source_path": "docs/governance/cross-session-coordination.md"}
+{"href": "../audits/rig-intake-cannibalization-plan.md", "link_kind": "internal", "link_text": "Rig + Intake Cannibalization Plan", "source_path": "docs/governance/debug-bundle-policy.md"}
+{"href": "../schemas/rig.relay.chatgpt_dev_bundle_manifest.v1.schema.json", "link_kind": "internal", "link_text": "ChatGPT Dev Bundle Schema", "source_path": "docs/governance/debug-bundle-policy.md"}
+{"href": "../schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json", "link_kind": "internal", "link_text": "Telemetry Bundle Manifest Schema", "source_path": "docs/governance/debug-bundle-policy.md"}
+{"href": "reviewer-orchestrator.md", "link_kind": "internal", "link_text": "Reviewer Orchestrator Doctrine", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "storage-retention-policy.md#fleet-preflight-enforcement", "link_kind": "internal", "link_text": "Storage Retention Policy § Fleet Preflight Enforcement", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "storage-retention-policy.md#fleet-preflight-enforcement", "link_kind": "internal", "link_text": "Storage Retention Policy § Fleet Preflight Enforcement", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Rig-to-Relay Pattern Inventory", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "reviewer-orchestrator.md", "link_kind": "internal", "link_text": "Reviewer Orchestrator Doctrine", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "cross-session-coordination.md", "link_kind": "internal", "link_text": "Cross-Session Coordination Doctrine", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "usage-data-doctrine.md#review-packet-protocol", "link_kind": "internal", "link_text": "Review Packet Protocol", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "../schemas/rig.relay.work_item.v1.schema.json", "link_kind": "internal", "link_text": "Work Item Schema", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "../schemas/rig.relay.work_queue.v1.schema.json", "link_kind": "internal", "link_text": "Work Queue Schema", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "../schemas/rig.relay.ready_work_plan.v1.schema.json", "link_kind": "internal", "link_text": "Ready Work Plan Schema", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "../schemas/rig.relay.parent_convergence_report.v1.schema.json", "link_kind": "internal", "link_text": "Parent Convergence Report Schema", "source_path": "docs/governance/delegate-fleet-orchestration.md"}
+{"href": "https://packaging.python.org/en/latest/specifications/dependency-specifiers/#optional-dependencies", "link_kind": "external", "link_text": "Python Packaging Guide — Optional Dependencies", "source_path": "docs/governance/dependency-policy.md"}
+{"href": "https://docs.astral.sh/uv/concepts/projects/dependencies/", "link_kind": "external", "link_text": "uv — Dependency Management", "source_path": "docs/governance/dependency-policy.md"}
+{"href": "../install.md", "link_kind": "internal", "link_text": "Install Channels", "source_path": "docs/governance/dependency-policy.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/dependency-policy.md"}
+{"href": "storage-retention-policy.md", "link_kind": "internal", "link_text": "Storage Retention Policy", "source_path": "docs/governance/dependency-policy.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI Doctrine", "source_path": "docs/governance/dependency-policy.md"}
+{"href": "../install.md", "link_kind": "internal", "link_text": "Install Channels", "source_path": "docs/governance/desktop-cockpit-ui.md"}
+{"href": "reviewer-orchestrator.md", "link_kind": "internal", "link_text": "Reviewer Orchestrator Doctrine", "source_path": "docs/governance/desktop-cockpit-ui.md"}
+{"href": "delegate-fleet-orchestration.md", "link_kind": "internal", "link_text": "Delegate/Fleet Orchestration", "source_path": "docs/governance/desktop-cockpit-ui.md"}
+{"href": "cross-session-coordination.md", "link_kind": "internal", "link_text": "Cross-Session Coordination", "source_path": "docs/governance/desktop-cockpit-ui.md"}
+{"href": "rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/governance/desktop-cockpit-ui.md"}
+{"href": "rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Rig-to-Relay Pattern Inventory", "source_path": "docs/governance/desktop-cockpit-ui.md"}
+{"href": "relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Relay Desktop Projection Contract", "source_path": "docs/governance/desktop-cockpit-ui.md"}
+{"href": "frontend-rendering-safety.md", "link_kind": "internal", "link_text": "Frontend Rendering Safety Doctrine", "source_path": "docs/governance/desktop-cockpit-ui.md"}
+{"href": "../schemas/rig.relay.runtime_stream_event.v1.schema.json", "link_kind": "internal", "link_text": "Stream Event Schema", "source_path": "docs/governance/execution-progress-projection.md"}
+{"href": "../schemas/rig.relay.desktop_projection.v1.schema.json", "link_kind": "internal", "link_text": "Desktop Projection Schema", "source_path": "docs/governance/execution-progress-projection.md"}
+{"href": "../schemas/rig.relay.projection_integrity.v1.schema.json", "link_kind": "internal", "link_text": "Projection Integrity Schema", "source_path": "docs/governance/execution-progress-projection.md"}
+{"href": "runtime-supervisor.md", "link_kind": "internal", "link_text": "RuntimeSupervisor Architecture", "source_path": "docs/governance/execution-progress-projection.md"}
+{"href": "relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Relay Desktop Projection Contract", "source_path": "docs/governance/execution-progress-projection.md"}
+{"href": "../audits/rig-intake-cannibalization-plan.md", "link_kind": "internal", "link_text": "Rig + Intake Cannibalization Plan", "source_path": "docs/governance/frontend-rendering-safety.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI", "source_path": "docs/governance/frontend-rendering-safety.md"}
+{"href": "../schemas/rig.relay.desktop_projection.v1.schema.json", "link_kind": "internal", "link_text": "Desktop Projection Schema", "source_path": "docs/governance/frontend-rendering-safety.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/frontend-rendering-safety.md"}
+{"href": "relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Relay Local/Remote Boundary", "source_path": "docs/governance/frontend-rendering-safety.md"}
+{"href": "../audits/rig-intake-cannibalization-plan.md", "link_kind": "internal", "link_text": "Rig + Intake Cannibalization Plan", "source_path": "docs/governance/future-passkey-plan.md"}
+{"href": "relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Relay Local/Remote Boundary", "source_path": "docs/governance/future-passkey-plan.md"}
+{"href": "../legal/usage-data-license-alpha.md", "link_kind": "internal", "link_text": "Usage Data Commercial License", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "../legal/privacy-notice-alpha.md", "link_kind": "internal", "link_text": "Privacy Notice", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "frontend-rendering-safety.md", "link_kind": "internal", "link_text": "Frontend Rendering Safety Doctrine", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Relay Local/Remote Boundary", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "../schemas/rig.relay.identity_provider.v1.schema.json", "link_kind": "internal", "link_text": "Identity Provider Schema", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "../schemas/rig.relay.identity_session.v1.schema.json", "link_kind": "internal", "link_text": "Identity Session Schema", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "../schemas/rig.relay.oauth_callback_receipt.v1.schema.json", "link_kind": "internal", "link_text": "OAuth Callback Receipt Schema", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "../schemas/rig.relay.telemetry_consent.v1.schema.json", "link_kind": "internal", "link_text": "Telemetry Consent Schema", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "../schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json", "link_kind": "internal", "link_text": "Telemetry Bundle Manifest Schema", "source_path": "docs/governance/identity-provider-policy.md"}
+{"href": "../legal/usage-data-license-alpha.md", "link_kind": "internal", "link_text": "Usage Data Commercial License", "source_path": "docs/governance/model-observation-dataset.md"}
+{"href": "./usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/model-observation-dataset.md"}
+{"href": "./provider-onboarding-policy.md", "link_kind": "internal", "link_text": "Provider Onboarding Policy", "source_path": "docs/governance/model-observation-dataset.md"}
+{"href": "./relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Local/Remote Boundary", "source_path": "docs/governance/model-observation-dataset.md"}
+{"href": "../legal/usage-data-license-alpha.md", "link_kind": "internal", "link_text": "Usage Data Commercial License", "source_path": "docs/governance/model-observation-dataset.md"}
+{"href": "../legal/privacy-notice-alpha.md", "link_kind": "internal", "link_text": "Privacy Notice", "source_path": "docs/governance/model-observation-dataset.md"}
+{"href": "../../rig_relay/evidence/model_observations.py", "link_kind": "internal", "link_text": "`rig_relay.evidence.model_observations`", "source_path": "docs/governance/model-observation-dataset.md"}
+{"href": "../../rig_relay/identity/telemetry_consent.py", "link_kind": "internal", "link_text": "`rig_relay.identity.telemetry_consent`", "source_path": "docs/governance/model-observation-dataset.md"}
+{"href": "frontend-rendering-safety.md", "link_kind": "internal", "link_text": "Frontend Rendering Safety Doctrine", "source_path": "docs/governance/provider-onboarding-policy.md"}
+{"href": "relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Relay Local/Remote Boundary", "source_path": "docs/governance/provider-onboarding-policy.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI", "source_path": "docs/governance/provider-onboarding-policy.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/provider-onboarding-policy.md"}
+{"href": "../schemas/rig.relay.provider_config.v1.schema.json", "link_kind": "internal", "link_text": "Provider Config Schema", "source_path": "docs/governance/provider-onboarding-policy.md"}
+{"href": "../schemas/rig.relay.provider_status.v1.schema.json", "link_kind": "internal", "link_text": "Provider Status Schema", "source_path": "docs/governance/provider-onboarding-policy.md"}
+{"href": "../schemas/rig.relay.provider_onboarding_result.v1.schema.json", "link_kind": "internal", "link_text": "Provider Onboarding Result Schema", "source_path": "docs/governance/provider-onboarding-policy.md"}
+{"href": "../audits/rig-runtime-port/port-roadmap.md", "link_kind": "internal", "link_text": "Rig Runtime Port Roadmap", "source_path": "docs/governance/receipt-envelope.md"}
+{"href": "../audits/rig-runtime-port/rig-to-relay-runtime-audit.md", "link_kind": "internal", "link_text": "Rig-to-Relay Runtime Audit", "source_path": "docs/governance/receipt-envelope.md"}
+{"href": "../audits/rig-runtime-port/concept-map.md", "link_kind": "internal", "link_text": "Rig-to-Relay Concept Map", "source_path": "docs/governance/receipt-envelope.md"}
+{"href": "../schemas/rig.relay.receipt_envelope.v1.schema.json", "link_kind": "internal", "link_text": "Receipt Envelope Schema", "source_path": "docs/governance/receipt-envelope.md"}
+{"href": "../evidence/receipt_index.py", "link_kind": "internal", "link_text": "Receipt Index", "source_path": "docs/governance/receipt-envelope.md"}
+{"href": "../governance/decisions.py", "link_kind": "internal", "link_text": "Governance Decisions", "source_path": "docs/governance/receipt-envelope.md"}
+{"href": "../runtime/models.py", "link_kind": "internal", "link_text": "Runtime Models", "source_path": "docs/governance/receipt-envelope.md"}
+{"href": "https://github.com/juliantorr-es/Rig/blob/main/docs/architecture/workspace-ui-projection-contract.md", "link_kind": "external", "link_text": "Workspace UI Projection Contract", "source_path": "docs/governance/relay-desktop-projection-contract.md"}
+{"href": "../audits/rig-intake-cannibalization-plan.md", "link_kind": "internal", "link_text": "Rig + Intake Cannibalization Plan", "source_path": "docs/governance/relay-desktop-projection-contract.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI", "source_path": "docs/governance/relay-desktop-projection-contract.md"}
+{"href": "../schemas/rig.relay.desktop_projection.v1.schema.json", "link_kind": "internal", "link_text": "Desktop Projection Schema", "source_path": "docs/governance/relay-desktop-projection-contract.md"}
+{"href": "../schemas/rig.relay.projection_integrity.v1.schema.json", "link_kind": "internal", "link_text": "Projection Integrity Schema", "source_path": "docs/governance/relay-desktop-projection-contract.md"}
+{"href": "rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/governance/relay-desktop-projection-contract.md"}
+{"href": "https://github.com/juliantorr-es/Intake/blob/main/docs/architecture/hosted-local-boundary.md", "link_kind": "external", "link_text": "Hosted/Local Boundary", "source_path": "docs/governance/relay-local-remote-boundary.md"}
+{"href": "../schemas/rig.relay.local_action_envelope.v1.schema.json", "link_kind": "internal", "link_text": "Local Action Envelope Schema", "source_path": "docs/governance/relay-local-remote-boundary.md"}
+{"href": "../audits/rig-intake-cannibalization-plan.md", "link_kind": "internal", "link_text": "Rig + Intake Cannibalization Plan", "source_path": "docs/governance/relay-local-remote-boundary.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/relay-local-remote-boundary.md"}
+{"href": "telemetry-redaction-boundary.md", "link_kind": "internal", "link_text": "Telemetry Redaction Boundary", "source_path": "docs/governance/relay-local-remote-boundary.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI", "source_path": "docs/governance/relay-local-remote-boundary.md"}
+{"href": "model-observation-dataset.md", "link_kind": "internal", "link_text": "Model Observation Dataset", "source_path": "docs/governance/relay-local-remote-boundary.md"}
+{"href": "textual-retirement-policy.md", "link_kind": "internal", "link_text": "Textual TUI Retirement Policy", "source_path": "docs/governance/relay-surface-matrix.md"}
+{"href": "vibe-legacy-deprecation.md", "link_kind": "internal", "link_text": "Vibe Legacy Deprecation Doctrine", "source_path": "docs/governance/relay-surface-matrix.md"}
+{"href": "../audits/vibe-legacy-boundary-inventory.md", "link_kind": "internal", "link_text": "Vibe Legacy Boundary Inventory", "source_path": "docs/governance/relay-surface-matrix.md"}
+{"href": "storage-retention-policy.md#fleet-preflight-enforcement", "link_kind": "internal", "link_text": "Storage Retention Policy § Fleet Preflight\n   Enforcement", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Rig-to-Relay Pattern Inventory", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "delegate-fleet-orchestration.md", "link_kind": "internal", "link_text": "Delegate/Fleet Orchestration Doctrine", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "cross-session-coordination.md", "link_kind": "internal", "link_text": "Cross-Session Coordination Doctrine", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "usage-data-doctrine.md#review-packet-protocol", "link_kind": "internal", "link_text": "Review Packet Protocol", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "../schemas/rig.relay.work_item.v1.schema.json", "link_kind": "internal", "link_text": "Work Item Schema", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "../schemas/rig.relay.work_queue.v1.schema.json", "link_kind": "internal", "link_text": "Work Queue Schema", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "../schemas/rig.relay.ready_work_plan.v1.schema.json", "link_kind": "internal", "link_text": "Ready Work Plan Schema", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "../AGENTS.md#git", "link_kind": "internal", "link_text": "Git Discipline Rules", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "../AGENTS.md#dirty-file-preservation", "link_kind": "internal", "link_text": "Dirty-File Preservation", "source_path": "docs/governance/reviewer-orchestrator.md"}
+{"href": "rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/governance/rig-to-relay-pattern-inventory.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI Doctrine", "source_path": "docs/governance/rig-to-relay-pattern-inventory.md"}
+{"href": "delegate-fleet-orchestration.md", "link_kind": "internal", "link_text": "Delegate/Fleet Orchestration", "source_path": "docs/governance/rig-to-relay-pattern-inventory.md"}
+{"href": "step-up-authorization.md", "link_kind": "internal", "link_text": "Step-Up Authorization", "source_path": "docs/governance/rig-to-relay-pattern-inventory.md"}
+{"href": "https://github.com/user/rig", "link_kind": "external", "link_text": "Rig", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "vibe-legacy-deprecation.md", "link_kind": "internal", "link_text": "Vibe Legacy Deprecation Doctrine", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Rig-to-Relay Pattern Inventory", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI Doctrine", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "reviewer-orchestrator.md", "link_kind": "internal", "link_text": "Reviewer Orchestrator Doctrine", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "delegate-fleet-orchestration.md", "link_kind": "internal", "link_text": "Delegate/Fleet Orchestration", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "step-up-authorization.md", "link_kind": "internal", "link_text": "Step-Up Authorization", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "vibe-legacy-deprecation.md", "link_kind": "internal", "link_text": "Vibe Legacy Deprecation Doctrine", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "../dogfood/rig-relay-self-dogfood.md", "link_kind": "internal", "link_text": "Self-Dogfood Workflow", "source_path": "docs/governance/rig-to-relay-porting-doctrine.md"}
+{"href": "mission-envelope.md", "link_kind": "internal", "link_text": "mission-envelope.md", "source_path": "docs/governance/runtime-context-resolver.md"}
+{"href": "execution-progress-projection.md", "link_kind": "internal", "link_text": "ExecutionProgressProjection", "source_path": "docs/governance/runtime-supervisor.md"}
+{"href": "runtime-tool-invocation-dry-run.md", "link_kind": "internal", "link_text": "runtime-tool-invocation-dry-run.md", "source_path": "docs/governance/runtime-tool-invocation-adapter-implementation.md"}
+{"href": "runtime-tool-invocation-adapter-implementation.md", "link_kind": "internal", "link_text": "docs/governance/runtime-tool-invocation-adapter-implementation.md", "source_path": "docs/governance/runtime-tool-invocation-adapter.md"}
+{"href": "session-storage-lifecycle.md", "link_kind": "internal", "link_text": "Session Storage Lifecycle", "source_path": "docs/governance/session-lifecycle-finalize-tool.md"}
+{"href": "storage-retention-policy.md", "link_kind": "internal", "link_text": "Storage Retention Policy", "source_path": "docs/governance/session-lifecycle-finalize-tool.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/session-lifecycle-finalize-tool.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/session-storage-lifecycle.md"}
+{"href": "storage-retention-policy.md", "link_kind": "internal", "link_text": "Storage Retention Policy", "source_path": "docs/governance/session-storage-lifecycle.md"}
+{"href": "relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Relay Local/Remote Boundary", "source_path": "docs/governance/session-storage-lifecycle.md"}
+{"href": "telemetry-contribution-policy.md", "link_kind": "internal", "link_text": "Telemetry Contribution Policy", "source_path": "docs/governance/session-storage-lifecycle.md"}
+{"href": "../schemas/rig.relay.local_action_envelope.v1.schema.json", "link_kind": "internal", "link_text": "Local Action Envelope Schema", "source_path": "docs/governance/step-up-authorization.md"}
+{"href": "https://fidoalliance.org/passkeys/", "link_kind": "external", "link_text": "Passkeys", "source_path": "docs/governance/step-up-authorization.md"}
+{"href": "https://www.w3.org/TR/webauthn-3/", "link_kind": "external", "link_text": "Web Authentication API", "source_path": "docs/governance/step-up-authorization.md"}
+{"href": "https://support.apple.com/en-us/102195", "link_kind": "external", "link_text": "Passkey support", "source_path": "docs/governance/step-up-authorization.md"}
+{"href": "session-storage-lifecycle.md", "link_kind": "internal", "link_text": "Session Storage Lifecycle", "source_path": "docs/governance/storage-retention-policy.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/storage-retention-policy.md"}
+{"href": "relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Relay Local/Remote Boundary", "source_path": "docs/governance/storage-retention-policy.md"}
+{"href": "session-storage-lifecycle.md#tool-receipt-evidence-index", "link_kind": "internal", "link_text": "Session Storage Lifecycle", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "../audits/rig-intake-cannibalization-plan.md", "link_kind": "internal", "link_text": "Rig + Intake Cannibalization Plan", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "../../rig_relay/identity/telemetry_consent.py", "link_kind": "internal", "link_text": "Telemetry Consent Model", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "../../rig_relay/identity/consent_store.py", "link_kind": "internal", "link_text": "Consent Store", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "frontend-rendering-safety.md", "link_kind": "internal", "link_text": "Frontend Rendering Safety", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "relay-local-remote-boundary.md", "link_kind": "internal", "link_text": "Relay Local/Remote Boundary", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "session-storage-lifecycle.md", "link_kind": "internal", "link_text": "Session Storage Lifecycle", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "identity-provider-policy.md", "link_kind": "internal", "link_text": "Identity Provider Policy", "source_path": "docs/governance/telemetry-contribution-policy.md"}
+{"href": "textual-rig-console.md", "link_kind": "internal", "link_text": "Textual Rig Console", "source_path": "docs/governance/textual-retirement-policy.md"}
+{"href": "../audits/rig-intake-cannibalization-plan.md", "link_kind": "internal", "link_text": "Rig + Intake Cannibalization Plan", "source_path": "docs/governance/textual-retirement-policy.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI", "source_path": "docs/governance/textual-retirement-policy.md"}
+{"href": "vibe-legacy-deprecation.md", "link_kind": "internal", "link_text": "Vibe Legacy Deprecation", "source_path": "docs/governance/textual-retirement-policy.md"}
+{"href": "relay-surface-matrix.md", "link_kind": "internal", "link_text": "Relay Surface Matrix", "source_path": "docs/governance/textual-retirement-policy.md"}
+{"href": "relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Desktop Projection Contract", "source_path": "docs/governance/textual-retirement-policy.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI", "source_path": "docs/governance/textual-rig-console.md"}
+{"href": "runtime-tool-invocation-execution.md", "link_kind": "internal", "link_text": "Runtime Tool Invocation Execution", "source_path": "docs/governance/textual-rig-console.md"}
+{"href": "usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Doctrine", "source_path": "docs/governance/textual-rig-console.md"}
+{"href": "release/versioning-policy.md", "link_kind": "internal", "link_text": "Versioning Policy", "source_path": "docs/governance/update-policy.md"}
+{"href": "../install.md", "link_kind": "internal", "link_text": "Install Channels", "source_path": "docs/governance/update-policy.md"}
+{"href": "../../scripts/rig_relay_current_state.py", "link_kind": "internal", "link_text": "Current State Pulse", "source_path": "docs/governance/update-policy.md"}
+{"href": "cross-session-coordination.md", "link_kind": "internal", "link_text": "Cross-Session Coordination", "source_path": "docs/governance/usage-data-doctrine.md"}
+{"href": "#semantic-change-snippets", "link_kind": "anchor", "link_text": "Semantic Change Snippets", "source_path": "docs/governance/usage-data-doctrine.md"}
+{"href": "step-up-authorization.md", "link_kind": "internal", "link_text": "`docs/governance/step-up-authorization.md`", "source_path": "docs/governance/usage-data-doctrine.md"}
+{"href": "storage-retention-policy.md", "link_kind": "internal", "link_text": "Storage Retention Policy", "source_path": "docs/governance/usage-data-doctrine.md"}
+{"href": "beta-telemetry-onboarding.md", "link_kind": "internal", "link_text": "Beta Telemetry Onboarding", "source_path": "docs/governance/usage-data-doctrine.md"}
+{"href": "delegate-fleet-orchestration.md", "link_kind": "internal", "link_text": "Delegate/Fleet Orchestration Doctrine", "source_path": "docs/governance/usage-data-doctrine.md"}
+{"href": "rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "rig-to-relay-porting-doctrine.md", "link_kind": "internal", "link_text": "Rig-to-Relay Porting Doctrine", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "rig-to-relay-pattern-inventory.md", "link_kind": "internal", "link_text": "Rig-to-Relay Pattern Inventory", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "../audits/vibe-legacy-boundary-inventory.md", "link_kind": "internal", "link_text": "Vibe Legacy Boundary Inventory", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "desktop-cockpit-ui.md", "link_kind": "internal", "link_text": "Desktop Cockpit UI Doctrine", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "relay-surface-matrix.md", "link_kind": "internal", "link_text": "Relay Surface Matrix", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "../release/versioning-policy.md", "link_kind": "internal", "link_text": "Versioning Policy", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "../install.md", "link_kind": "internal", "link_text": "Install Channels", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "../dogfood/rig-relay-self-dogfood.md", "link_kind": "internal", "link_text": "Self-Dogfood Workflow", "source_path": "docs/governance/vibe-legacy-deprecation.md"}
+{"href": "release/versioning-policy.md", "link_kind": "internal", "link_text": "versioning policy", "source_path": "docs/install.md"}
+{"href": "governance/vibe-legacy-deprecation.md", "link_kind": "internal", "link_text": "Legacy Deprecation Doctrine", "source_path": "docs/install.md"}
+{"href": "./privacy-notice-alpha.md", "link_kind": "internal", "link_text": "Privacy Notice Alpha", "source_path": "docs/legal/usage-data-license-alpha.md"}
+{"href": "../schemas/rig.relay.telemetry_consent.v1.schema.json", "link_kind": "internal", "link_text": "Telemetry Consent Schema", "source_path": "docs/legal/usage-data-license-alpha.md"}
+{"href": "../governance/usage-data-doctrine.md", "link_kind": "internal", "link_text": "Usage Data Governance Doctrine", "source_path": "docs/legal/usage-data-license-alpha.md"}
+{"href": "https://www.python-httpx.org/environment_variables/", "link_kind": "external", "link_text": "httpx", "source_path": "docs/proxy-setup.md"}
+{"href": "../governance/execution-progress-projection.md", "link_kind": "internal", "link_text": "Execution Progress Projection", "source_path": "docs/ui/textual-rig-console-progress-timeline.md"}
+{"href": "textual-rig-console-evidence-rail.md", "link_kind": "internal", "link_text": "EvidenceRailWidget", "source_path": "docs/ui/textual-rig-console-progress-timeline.md"}
+{"href": "textual-rig-console-dashboard.md", "link_kind": "internal", "link_text": "Dashboard Screen", "source_path": "docs/ui/textual-rig-console-progress-timeline.md"}
+{"href": "../governance/relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Desktop Projection Contract", "source_path": "docs/ui/textual-rig-console-slice-1.md"}
+{"href": "../governance/textual-retirement-policy.md", "link_kind": "internal", "link_text": "Textual Retirement Policy", "source_path": "docs/ui/textual-rig-console-slice-1.md"}
+{"href": "../../rig_relay/evidence/receipt_index.py", "link_kind": "internal", "link_text": "Receipt Index", "source_path": "docs/ui/textual-rig-console-slice-1.md"}
+{"href": "../../rig_relay/coordination/models.py", "link_kind": "internal", "link_text": "Coordination Models", "source_path": "docs/ui/textual-rig-console-slice-1.md"}
+{"href": "textual-rig-console-slice-2-evidence-rail.md", "link_kind": "internal", "link_text": "Slice 2: EvidenceRailWidget", "source_path": "docs/ui/textual-rig-console-slice-1.md"}
+{"href": "textual-rig-console-slice-1.md", "link_kind": "internal", "link_text": "Slice 1: SessionPaneWidget", "source_path": "docs/ui/textual-rig-console-slice-2-evidence-rail.md"}
+{"href": "../governance/relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Desktop Projection Contract", "source_path": "docs/ui/textual-rig-console-slice-2-evidence-rail.md"}
+{"href": "../../rig_relay/evidence/receipt_index.py", "link_kind": "internal", "link_text": "Receipt Index", "source_path": "docs/ui/textual-rig-console-slice-2-evidence-rail.md"}
+{"href": "../governance/textual-retirement-policy.md", "link_kind": "internal", "link_text": "Textual Retirement Policy", "source_path": "docs/ui/textual-rig-console-slice-2-evidence-rail.md"}
+{"href": "textual-rig-console-slice-1.md", "link_kind": "internal", "link_text": "Slice 1: SessionPaneWidget", "source_path": "docs/ui/textual-rig-console-slice-3-dashboard.md"}
+{"href": "textual-rig-console-slice-2-evidence-rail.md", "link_kind": "internal", "link_text": "Slice 2: EvidenceRailWidget", "source_path": "docs/ui/textual-rig-console-slice-3-dashboard.md"}
+{"href": "../governance/relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Desktop Projection Contract", "source_path": "docs/ui/textual-rig-console-slice-3-dashboard.md"}
+{"href": "../governance/textual-retirement-policy.md", "link_kind": "internal", "link_text": "Textual Retirement Policy", "source_path": "docs/ui/textual-rig-console-slice-3-dashboard.md"}
+{"href": "textual-rig-console-slice-1.md", "link_kind": "internal", "link_text": "Slice 1: SessionPaneWidget", "source_path": "docs/ui/textual-rig-console-slice-4-action-boundary.md"}
+{"href": "textual-rig-console-slice-2-evidence-rail.md", "link_kind": "internal", "link_text": "Slice 2: EvidenceRailWidget", "source_path": "docs/ui/textual-rig-console-slice-4-action-boundary.md"}
+{"href": "textual-rig-console-slice-3-dashboard.md", "link_kind": "internal", "link_text": "Slice 3: DashboardScreen", "source_path": "docs/ui/textual-rig-console-slice-4-action-boundary.md"}
+{"href": "../governance/relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Desktop Projection Contract", "source_path": "docs/ui/textual-rig-console-slice-4-action-boundary.md"}
+{"href": "../governance/textual-retirement-policy.md", "link_kind": "internal", "link_text": "Textual Retirement Policy", "source_path": "docs/ui/textual-rig-console-slice-4-action-boundary.md"}
+{"href": "textual-rig-console-slice-5-runtime-provider.md", "link_kind": "internal", "link_text": "Slice 5: Runtime Dashboard Provider", "source_path": "docs/ui/textual-rig-console-slice-5-1-worker-refresh.md"}
+{"href": "../../vibe/cli/textual_ui/rig_console/screens/dashboard.py", "link_kind": "internal", "link_text": "DashboardScreen source", "source_path": "docs/ui/textual-rig-console-slice-5-1-worker-refresh.md"}
+{"href": "../../vibe/cli/textual_ui/rig_console/providers.py", "link_kind": "internal", "link_text": "Providers module", "source_path": "docs/ui/textual-rig-console-slice-5-1-worker-refresh.md"}
+{"href": "textual-rig-console-slice-1.md", "link_kind": "internal", "link_text": "Slice 1: SessionPaneWidget", "source_path": "docs/ui/textual-rig-console-slice-5-runtime-provider.md"}
+{"href": "textual-rig-console-slice-2-evidence-rail.md", "link_kind": "internal", "link_text": "Slice 2: EvidenceRailWidget", "source_path": "docs/ui/textual-rig-console-slice-5-runtime-provider.md"}
+{"href": "textual-rig-console-slice-3-dashboard.md", "link_kind": "internal", "link_text": "Slice 3: DashboardScreen", "source_path": "docs/ui/textual-rig-console-slice-5-runtime-provider.md"}
+{"href": "textual-rig-console-slice-4-action-boundary.md", "link_kind": "internal", "link_text": "Slice 4: Action Boundary", "source_path": "docs/ui/textual-rig-console-slice-5-runtime-provider.md"}
+{"href": "../governance/relay-desktop-projection-contract.md", "link_kind": "internal", "link_text": "Desktop Projection Contract", "source_path": "docs/ui/textual-rig-console-slice-5-runtime-provider.md"}
+{"href": "../../rig_relay/evidence/receipt_index.py", "link_kind": "internal", "link_text": "Receipt Index", "source_path": "docs/ui/textual-rig-console-slice-5-runtime-provider.md"}
+{"href": "textual-rig-console-slice-5-runtime-provider.md", "link_kind": "internal", "link_text": "Slice 5: Runtime Dashboard Provider", "source_path": "docs/ui/textual-rig-console-slice-6-coordination-session-enrichment.md"}
+{"href": "textual-rig-console-slice-5-1-worker-refresh.md", "link_kind": "internal", "link_text": "Slice 5.1: Worker-Safe Dashboard Refresh", "source_path": "docs/ui/textual-rig-console-slice-6-coordination-session-enrichment.md"}
+{"href": "../../rig_relay/coordination/models.py", "link_kind": "internal", "link_text": "Coordination Models", "source_path": "docs/ui/textual-rig-console-slice-6-coordination-session-enrichment.md"}
+{"href": "../../rig_relay/coordination/store.py", "link_kind": "internal", "link_text": "Coordination Store", "source_path": "docs/ui/textual-rig-console-slice-6-coordination-session-enrichment.md"}
+{"href": "../../vibe/cli/textual_ui/rig_console/providers.py", "link_kind": "internal", "link_text": "Providers module", "source_path": "docs/ui/textual-rig-console-slice-6-coordination-session-enrichment.md"}

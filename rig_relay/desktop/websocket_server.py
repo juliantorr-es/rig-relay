@@ -57,12 +57,13 @@ import hashlib
 import json
 from pathlib import Path
 import secrets
+import ssl
 from typing import Any
 
+from rig_relay.core.logger import logger
 from rig_relay.desktop.intents import execute_desktop_intent, validate_intent_request
 from rig_relay.desktop.progress_events import ProgressEventBuffer
 from rig_relay.desktop.projection import READ_ONLY_ACTIONS, build_projection
-from rig_relay.core.logger import logger
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 9876
@@ -209,6 +210,7 @@ class ProjectionWebSocketServer:
         allowed_origins: frozenset[str] | None = DEFAULT_WS_ORIGINS,
         chat_state_provider: Any | None = None,
         chat_message_handler: Any | None = None,
+        ssl_context: ssl.SSLContext | None = None,
     ) -> None:
         self._build_root = build_root
         self._host = host
@@ -224,6 +226,7 @@ class ProjectionWebSocketServer:
         self._allowed_origins = allowed_origins
         self._chat_state_provider = chat_state_provider
         self._chat_message_handler = chat_message_handler
+        self._ssl_context = ssl_context
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
         self._server: Any = None
@@ -293,6 +296,8 @@ class ProjectionWebSocketServer:
     async def start(self) -> None:
         """Start the WebSocket server. Runs until cancelled."""
         import websockets
+        from websockets.datastructures import Headers
+        from websockets.http11 import Response
 
         async def _inspect_origin(conn: Any, request: Any) -> Any | None:
             origin = request.headers.get("Origin", "(none)")
@@ -300,9 +305,10 @@ class ProjectionWebSocketServer:
                 if origin not in self._allowed_origins and not any(
                     loopback in origin for loopback in {"127.0.0.1", "localhost", "::1"}
                 ):
-                    return websockets.HTTPResponse(
-                        status=403,
-                        headers=[("Content-Type", "text/plain")],
+                    return Response(
+                        status_code=403,
+                        reason_phrase="Forbidden",
+                        headers=Headers([("Content-Type", "text/plain")]),
                         body=f"Origin '{origin}' not allowed\n".encode(),
                     )
             return None
@@ -314,7 +320,12 @@ class ProjectionWebSocketServer:
             ping_interval=30,
             ping_timeout=10,
             process_request=_inspect_origin,
+            ssl=self._ssl_context,
         )
+
+    @property
+    def scheme(self) -> str:
+        return "wss" if self._ssl_context is not None else "ws"
 
     async def wait_closed(self) -> None:
         """Wait until the server is closed."""

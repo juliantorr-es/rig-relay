@@ -19,6 +19,7 @@ Constraints:
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
@@ -33,6 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.coordination.lease_manager import DEFAULT_LEASE_TTL_SECONDS
 from rig_relay.core.logger import logger
+from rig_relay.core.tool_runtime import ToolRuntime
 from rig_relay.runtime.context import RuntimeContextResolution
 from rig_relay.runtime.runtime_audit_event import (
     RuntimeAuditPersistenceStore,
@@ -45,6 +47,7 @@ from rig_relay.runtime.tool_invocation_adapter import (
     RuntimeToolInvocationStatus,
     RuntimeToolName,
 )
+from rig_relay.runtime.tool_runtime_adapter import RuntimeToolRuntimeAdapter
 
 # ── Constants ──────────────────────────────────────────────────────────
 
@@ -86,6 +89,9 @@ class RuntimeToolExecutionResult(BaseModel):
     invocation_id: str | None = None
     intent_id: str
     tool_name: str
+    source_kind: str | None = None
+    source_id: str | None = None
+    runtime_envelope_sha256: str | None = None
     status: RuntimeToolExecutionStatus
     envelope_schema_valid: bool = False
     tool_status: str | None = None
@@ -128,7 +134,9 @@ def _build_tool_receipt(tool_name: str, result: Any) -> Any:
             from rig_relay.core.tools.builtins.validate import Validate
             from rig_relay.core.tools.builtins.validate_models import ValidateToolConfig
 
-            tool = Validate(config_getter=lambda: ValidateToolConfig(), state=BaseToolState())
+            tool = Validate(
+                config_getter=lambda: ValidateToolConfig(), state=BaseToolState()
+            )
         case "search_replace":
             from rig_relay.core.tools.builtins.search_replace import (
                 SearchReplace,
@@ -150,9 +158,7 @@ def _build_tool_receipt(tool_name: str, result: Any) -> Any:
         case "bash":
             from rig_relay.core.tools.builtins.bash import Bash, BashToolConfig
 
-            tool = Bash(
-                config_getter=lambda: BashToolConfig(), state=BaseToolState()
-            )
+            tool = Bash(config_getter=lambda: BashToolConfig(), state=BaseToolState())
         case _:
             return None
     return tool.build_receipt(result)
@@ -181,6 +187,24 @@ class RuntimeToolExecutionRunner:
             envelope_schema_path or _DEFAULT_ENVELOPE_SCHEMA_PATH
         )
         self._audit_store = audit_store
+        self._runtime_adapter = RuntimeToolRuntimeAdapter()
+        self._tool_runtime = ToolRuntime(
+            invoke_tool=self._invoke_tool_runtime,
+            receipt_build=self._build_runtime_receipt,
+            receipt_capture=self._capture_runtime_receipt,
+            subprocess_runner=self._build_subprocess_runner(),
+            source_label="runtime_intent",
+        )
+
+    def _build_subprocess_runner(self) -> Any:
+        try:
+            from rig_relay.runtime.supervisor_invoker import (
+                RuntimeSupervisorToolSubprocessRunner,
+            )
+
+            return RuntimeSupervisorToolSubprocessRunner()
+        except Exception:
+            return None
 
     # ── Public API ─────────────────────────────────────────────────
 
@@ -253,67 +277,12 @@ class RuntimeToolExecutionRunner:
             self._persist_if_configured(_result, envelope)
             return _result
 
-        # ── Execute validate tool ──────────────────────────────────
-        try:
-            result = await self._run_validate_tool(envelope)
-        except Exception as e:
-            _result = RuntimeToolExecutionResult(
-                status=RuntimeToolExecutionStatus.FAILED,
-                intent_id=intent.intent_id,
-                tool_name=intent.tool_name.value,
-                envelope_schema_valid=True,
-                error_kind="execution_error",
-                refusal_reason=str(e),
-                duration_ms=(time.perf_counter() - start) * 1000,
-            )
-            self._persist_if_configured(_result, envelope)
-            return _result
-
-        # ── Build receipt hash ─────────────────────────────────────
-        receipt_sha256: str | None = None
-        receipt: Any = None
-        try:
-            receipt = self._build_validate_receipt(result)
-            rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
-            receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
-        except Exception:
-            pass
-
-        # ── Extract receipt metadata ───────────────────────────────
-        receipt_kind = "validate"
-        receipt_schema_version = None
-        if receipt is not None:
-            receipt_schema_version = getattr(receipt, "schema_version", None)
-
-        duration = (time.perf_counter() - start) * 1000
-
-        # ── Map validate status to execution status ────────────────
-        execution_status = RuntimeToolExecutionStatus.COMPLETED
-        tool_status = getattr(result, "status", "unknown")
-        tool_error_kind = getattr(result, "error_kind", None)
-        tool_refusal = getattr(result, "refusal_reason", None)
-
-        if tool_status in {"refused", "blocked"}:
-            execution_status = RuntimeToolExecutionStatus.REFUSED
-        elif tool_status == "failed":
-            execution_status = RuntimeToolExecutionStatus.COMPLETED
-
-        result = RuntimeToolExecutionResult(
-            status=execution_status,
-            invocation_id=envelope.invocation_id,
-            intent_id=intent.intent_id,
-            tool_name=intent.tool_name.value,
-            envelope_schema_valid=True,
-            tool_status=tool_status,
-            tool_error_kind=tool_error_kind,
-            receipt_sha256=receipt_sha256,
-            duration_ms=duration,
-            error_kind=tool_error_kind,
-            refusal_reason=tool_refusal,
-            tool_receipt_kind=receipt_kind,
-            tool_receipt_schema_version=receipt_schema_version,
+        runtime_result = await self._execute_runtime_tool(
+            intent=intent, envelope=envelope
         )
-        result = self._attach_receipt(result)
+        result = self._to_execution_result(
+            runtime_result=runtime_result, intent=intent, envelope=envelope, start=start
+        )
         self._persist_if_configured(result, envelope)
         return result
 
@@ -401,70 +370,19 @@ class RuntimeToolExecutionRunner:
 
         # ── Execute search_replace tool (with lease release in finally) ─
         try:
-            try:
-                result = await self._run_search_replace_tool(envelope)
-            except Exception as e:
-                _result = RuntimeToolExecutionResult(
-                    status=RuntimeToolExecutionStatus.FAILED,
-                    intent_id=intent.intent_id,
-                    tool_name=intent.tool_name.value,
-                    envelope_schema_valid=True,
-                    error_kind="execution_error",
-                    refusal_reason=str(e),
-                    duration_ms=(time.perf_counter() - start) * 1000,
-                )
-                self._persist_if_configured(_result, envelope)
-                return _result
-
-            # ── Build receipt hash ─────────────────────────────────
-            receipt_sha256: str | None = None
-            receipt: Any = None
-            try:
-                receipt = self._build_search_replace_receipt(result)
-                rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
-                receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
-            except Exception:
-                pass
-
-            # ── Extract receipt metadata ───────────────────────────
-            receipt_schema_version = None
-            if receipt is not None:
-                receipt_schema_version = getattr(receipt, "schema_version", None)
-
-            duration = (time.perf_counter() - start) * 1000
-
-            # ── Map search_replace status to execution status ──────
-            execution_status = RuntimeToolExecutionStatus.COMPLETED
-            tool_status = getattr(result, "status", "unknown")
-            tool_error_kind = getattr(result, "error_kind", None)
-            tool_refusal = getattr(result, "refusal_reason", None)
-
-            if tool_status in {"refused", "blocked"}:
-                execution_status = RuntimeToolExecutionStatus.REFUSED
-            elif tool_status in {"no_match", "ambiguous_match", "count_mismatch"}:
-                execution_status = RuntimeToolExecutionStatus.COMPLETED
-
+            runtime_result = await self._execute_runtime_tool(
+                intent=intent, envelope=envelope
+            )
             payload = envelope.payload or {}
             file_path = payload.get("file_path", "")
-            changed_paths: list[str] = [file_path] if file_path else []
-
-            _out = RuntimeToolExecutionResult(
-                status=execution_status,
-                invocation_id=envelope.invocation_id,
-                intent_id=intent.intent_id,
-                tool_name=intent.tool_name.value,
-                envelope_schema_valid=True,
-                tool_status=tool_status,
-                tool_error_kind=tool_error_kind,
-                receipt_sha256=receipt_sha256,
-                duration_ms=duration,
-                error_kind=tool_error_kind,
-                refusal_reason=tool_refusal,
+            _out = self._to_execution_result(
+                runtime_result=runtime_result,
+                intent=intent,
+                envelope=envelope,
+                start=start,
+                changed_paths=[file_path] if file_path else [],
                 tool_receipt_kind="search_replace",
-                tool_receipt_schema_version=receipt_schema_version,
-                changed_paths=changed_paths,
             )
-            _out = self._attach_receipt(_out)
             self._persist_if_configured(_out, envelope)
             return _out
         finally:
@@ -537,66 +455,18 @@ class RuntimeToolExecutionRunner:
 
         # ── Execute write_file tool (with lease release in finally) ─
         try:
-            try:
-                result = await self._run_write_file_tool(envelope)
-            except Exception as e:
-                _result = RuntimeToolExecutionResult(
-                    status=RuntimeToolExecutionStatus.FAILED,
-                    intent_id=intent.intent_id,
-                    tool_name=intent.tool_name.value,
-                    envelope_schema_valid=True,
-                    error_kind="execution_error",
-                    refusal_reason=str(e),
-                    duration_ms=(time.perf_counter() - start) * 1000,
-                )
-                self._persist_if_configured(_result, envelope)
-                return _result
-
-            receipt_sha256: str | None = None
-            receipt: Any = None
-            try:
-                receipt = self._build_write_file_receipt(result)
-                rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
-                receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
-            except Exception:
-                pass
-
-            receipt_schema_version = None
-            if receipt is not None:
-                receipt_schema_version = getattr(receipt, "schema_version", None)
-
-            duration = (time.perf_counter() - start) * 1000
-
-            execution_status = RuntimeToolExecutionStatus.COMPLETED
-            tool_status = getattr(result, "status", "unknown")
-            tool_error_kind = getattr(result, "error_kind", None)
-            tool_refusal = getattr(result, "refusal_reason", None)
-
-            if tool_status in {"refused", "blocked"}:
-                execution_status = RuntimeToolExecutionStatus.REFUSED
-
+            runtime_result = await self._execute_runtime_tool(
+                intent=intent, envelope=envelope
+            )
             payload = envelope.payload or {}
-            changed_paths: list[str] = (
-                [payload.get("path", "")] if payload.get("path") else []
-            )
-
-            _out = RuntimeToolExecutionResult(
-                status=execution_status,
-                invocation_id=envelope.invocation_id,
-                intent_id=intent.intent_id,
-                tool_name=intent.tool_name.value,
-                envelope_schema_valid=True,
-                tool_status=tool_status,
-                tool_error_kind=tool_error_kind,
-                receipt_sha256=receipt_sha256,
-                duration_ms=duration,
-                error_kind=tool_error_kind,
-                refusal_reason=tool_refusal,
+            _out = self._to_execution_result(
+                runtime_result=runtime_result,
+                intent=intent,
+                envelope=envelope,
+                start=start,
+                changed_paths=[payload.get("path", "")] if payload.get("path") else [],
                 tool_receipt_kind="write_file",
-                tool_receipt_schema_version=receipt_schema_version,
-                changed_paths=changed_paths,
             )
-            _out = self._attach_receipt(_out)
             self._persist_if_configured(_out, envelope)
             return _out
         finally:
@@ -658,60 +528,16 @@ class RuntimeToolExecutionRunner:
             self._persist_if_configured(_result, envelope)
             return _result
 
-        try:
-            result = await self._run_bash_tool(envelope)
-        except Exception as e:
-            _result = RuntimeToolExecutionResult(
-                status=RuntimeToolExecutionStatus.FAILED,
-                intent_id=intent.intent_id,
-                tool_name=intent.tool_name.value,
-                envelope_schema_valid=True,
-                error_kind="execution_error",
-                refusal_reason=str(e),
-                duration_ms=(time.perf_counter() - start) * 1000,
-            )
-            self._persist_if_configured(_result, envelope)
-            return _result
-
-        receipt_sha256: str | None = None
-        receipt: Any = None
-        try:
-            receipt = self._build_bash_receipt(result)
-            rj = json.dumps(receipt.model_dump(mode="json"), sort_keys=True)
-            receipt_sha256 = hashlib.sha256(rj.encode()).hexdigest()
-        except Exception:
-            pass
-
-        receipt_schema_version = None
-        if receipt is not None:
-            receipt_schema_version = getattr(receipt, "schema_version", None)
-
-        duration = (time.perf_counter() - start) * 1000
-
-        execution_status = RuntimeToolExecutionStatus.COMPLETED
-        tool_status = getattr(result, "status", "unknown")
-        tool_error_kind = getattr(result, "error_kind", None)
-        tool_refusal = getattr(result, "refusal_reason", None)
-
-        if tool_status in {"refused", "blocked"}:
-            execution_status = RuntimeToolExecutionStatus.REFUSED
-
-        result = RuntimeToolExecutionResult(
-            status=execution_status,
-            invocation_id=envelope.invocation_id,
-            intent_id=intent.intent_id,
-            tool_name=intent.tool_name.value,
-            envelope_schema_valid=True,
-            tool_status=tool_status,
-            tool_error_kind=tool_error_kind,
-            receipt_sha256=receipt_sha256,
-            duration_ms=duration,
-            error_kind=tool_error_kind,
-            refusal_reason=tool_refusal,
-            tool_receipt_kind="bash",
-            tool_receipt_schema_version=receipt_schema_version,
+        runtime_result = await self._execute_runtime_tool(
+            intent=intent, envelope=envelope
         )
-        result = self._attach_receipt(result)
+        result = self._to_execution_result(
+            runtime_result=runtime_result,
+            intent=intent,
+            envelope=envelope,
+            start=start,
+            tool_receipt_kind="bash",
+        )
         self._persist_if_configured(result, envelope)
         return result
 
@@ -809,6 +635,188 @@ class RuntimeToolExecutionRunner:
             )
 
     # ── Internal helpers ───────────────────────────────────────────
+
+    async def _execute_runtime_tool(
+        self, *, intent: RuntimeToolIntent, envelope: RuntimeToolInvocationEnvelope
+    ) -> Any:
+        bundle = self._runtime_adapter.build_request(
+            envelope,
+            actor=envelope.agent_id,
+            trust_tier=getattr(envelope, "trust_tier", None),
+        )
+        request = bundle.request
+        request = request.model_copy(
+            update={
+                "tool_name": self._runtime_adapter._map_tool_name(envelope.tool_name),
+                "tool_call_id": envelope.invocation_id,
+            }
+        )
+        runtime_result = await self._tool_runtime.execute_one(request)
+        return runtime_result
+
+    @staticmethod
+    def _build_runtime_receipt(tool_name: str, result: Any) -> Any | None:
+        return None
+
+    @staticmethod
+    def _capture_runtime_receipt(
+        session_id: str, tool_name: str, receipt: dict[str, Any]
+    ) -> None:
+        return None
+
+    async def _invoke_tool_runtime(
+        self, args_dict: dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        if False:
+            yield None
+        tool_name = args_dict.get("_tool_runtime_name", "")
+        meta = args_dict.get("_tool_runtime_meta", {})
+        payload = {
+            k: v for k, v in args_dict.items() if not k.startswith("_tool_runtime_")
+        }
+        if tool_name == "validate":
+            envelope = RuntimeToolInvocationEnvelope(
+                invocation_id=meta.get("invocation_id", ""),
+                intent_id=meta.get("runtime_intent_id", ""),
+                tool_name=RuntimeToolName.VALIDATE,
+                status=RuntimeToolInvocationStatus.PREPARED,
+                payload=payload,
+                cwd=meta.get("worktree_path") or meta.get("workspace_root"),
+                worktree_path=meta.get("worktree_path"),
+                repo_root=meta.get("workspace_root"),
+                session_id=meta.get("session_id"),
+                task_id=meta.get("turn_id"),
+                lane_id=meta.get("lane_id"),
+                workspace_id=meta.get("workspace_id"),
+                agent_id=meta.get("actor"),
+            )
+            result = await self._run_validate_tool(envelope)
+            yield result
+            return
+        if tool_name == "search_replace":
+            envelope = RuntimeToolInvocationEnvelope(
+                invocation_id=meta.get("invocation_id", ""),
+                intent_id=meta.get("runtime_intent_id", ""),
+                tool_name=RuntimeToolName.SEARCH_REPLACE,
+                status=RuntimeToolInvocationStatus.PREPARED,
+                payload=payload,
+                cwd=meta.get("worktree_path") or meta.get("workspace_root"),
+                worktree_path=meta.get("worktree_path"),
+                repo_root=meta.get("workspace_root"),
+                session_id=meta.get("session_id"),
+                task_id=meta.get("turn_id"),
+                lane_id=meta.get("lane_id"),
+                workspace_id=meta.get("workspace_id"),
+                agent_id=meta.get("actor"),
+            )
+            result = await self._run_search_replace_tool(envelope)
+            yield result
+            return
+        if tool_name == "write_file":
+            envelope = RuntimeToolInvocationEnvelope(
+                invocation_id=meta.get("invocation_id", ""),
+                intent_id=meta.get("runtime_intent_id", ""),
+                tool_name=RuntimeToolName.WRITE_FILE,
+                status=RuntimeToolInvocationStatus.PREPARED,
+                payload=payload,
+                cwd=meta.get("worktree_path") or meta.get("workspace_root"),
+                worktree_path=meta.get("worktree_path"),
+                repo_root=meta.get("workspace_root"),
+                session_id=meta.get("session_id"),
+                task_id=meta.get("turn_id"),
+                lane_id=meta.get("lane_id"),
+                workspace_id=meta.get("workspace_id"),
+                agent_id=meta.get("actor"),
+            )
+            result = await self._run_write_file_tool(envelope)
+            yield result
+            return
+        if tool_name == "bash":
+            envelope = RuntimeToolInvocationEnvelope(
+                invocation_id=meta.get("invocation_id", ""),
+                intent_id=meta.get("runtime_intent_id", ""),
+                tool_name=RuntimeToolName.BASH_LEGACY,
+                status=RuntimeToolInvocationStatus.PREPARED,
+                payload=payload,
+                cwd=meta.get("worktree_path") or meta.get("workspace_root"),
+                worktree_path=meta.get("worktree_path"),
+                repo_root=meta.get("workspace_root"),
+                session_id=meta.get("session_id"),
+                task_id=meta.get("turn_id"),
+                lane_id=meta.get("lane_id"),
+                workspace_id=meta.get("workspace_id"),
+                agent_id=meta.get("actor"),
+            )
+            result = await self._run_bash_tool(envelope)
+            yield result
+            return
+        raise RuntimeError(f"Unsupported runtime tool: {tool_name}")
+
+    @staticmethod
+    def _to_execution_result(
+        *,
+        runtime_result: Any,
+        intent: RuntimeToolIntent,
+        envelope: RuntimeToolInvocationEnvelope,
+        start: float,
+        changed_paths: list[str] | None = None,
+        tool_receipt_kind: str | None = None,
+    ) -> RuntimeToolExecutionResult:
+        duration = (time.perf_counter() - start) * 1000
+        status_value = getattr(runtime_result.status, "value", runtime_result.status)
+        provider = getattr(runtime_result, "provider_tool_response", None)
+        provider_status = getattr(provider, "status", None)
+        tool_status = getattr(provider_status, "value", provider_status) or status_value
+        provider_error_kind = getattr(provider, "error_kind", None)
+        provider_refusal = getattr(provider, "refusal_reason", None)
+        if status_value == "cached":
+            execution_status = RuntimeToolExecutionStatus.COMPLETED
+        elif status_value == "refused":
+            execution_status = RuntimeToolExecutionStatus.REFUSED
+        elif status_value == "failed":
+            execution_status = RuntimeToolExecutionStatus.FAILED
+        elif status_value == "blocked":
+            execution_status = RuntimeToolExecutionStatus.BLOCKED
+        else:
+            execution_status = RuntimeToolExecutionStatus.COMPLETED
+        if (
+            intent.tool_name == RuntimeToolName.BASH_LEGACY
+            and execution_status == RuntimeToolExecutionStatus.FAILED
+        ):
+            tool_status = None
+
+        result = RuntimeToolExecutionResult(
+            status=execution_status,
+            invocation_id=envelope.invocation_id,
+            intent_id=intent.intent_id,
+            tool_name=intent.tool_name.value,
+            envelope_schema_valid=True,
+            tool_status=tool_status,
+            tool_error_kind=provider_error_kind,
+            receipt_sha256=None,
+            duration_ms=duration,
+            error_kind=provider_error_kind,
+            refusal_reason=provider_refusal
+            or getattr(getattr(runtime_result, "refusal", None), "message", None),
+            tool_receipt_kind=tool_receipt_kind or intent.tool_name.value,
+            tool_receipt_schema_version=(
+                f"rig.relay.{(tool_receipt_kind or intent.tool_name.value)}_receipt.v1"
+            ),
+            changed_paths=changed_paths or [],
+        )
+        result = result.model_copy(
+            update={
+                "receipt_sha256": hashlib.sha256(
+                    json.dumps(result.model_dump(mode="json"), sort_keys=True).encode()
+                ).hexdigest()
+            }
+        )
+        if (
+            result.status == RuntimeToolExecutionStatus.FAILED
+            and result.error_kind is None
+        ):
+            result = result.model_copy(update={"error_kind": "execution_error"})
+        return RuntimeToolExecutionRunner._attach_receipt(result)
 
     async def _run_validate_tool(self, envelope: RuntimeToolInvocationEnvelope) -> Any:
         """Run the validate tool and extract the final result.

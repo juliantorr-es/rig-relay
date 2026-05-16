@@ -5,7 +5,7 @@
 
 class ProjectionWebSocketClient {
   constructor(options = {}) {
-    this.wsUrl = options.wsUrl || 'ws://127.0.0.1:9876';
+    this.wsUrl = options.wsUrl || 'wss://127.0.0.1:9876';
     this.token = options.token || null;
     this.reconnectDelay = options.reconnectDelay || 2000;
     this.maxReconnectDelay = options.maxReconnectDelay || 30000;

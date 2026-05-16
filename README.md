@@ -16,7 +16,9 @@ VS Code, and Zed, and speaks ACP for editor-integrated agent sessions.
 git clone https://github.com/juliantorr-es/rig-relay
 cd rig-relay
 uv sync
-uv run rig-relay
+uv run rig-relay demo-seed      # create synthetic demo data
+uv run rig-relay demo-doctor    # verify demo readiness
+uv run rig-relay                # launch desktop cockpit
 ```
 
 On first launch, Rig Relay will walk you through provider setup — pick a
@@ -26,6 +28,18 @@ starts in dry-run mode with full projection and WebSocket available.
 ```bash
 uv tool install git+https://github.com/juliantorr-es/rig-relay.git --force
 ```
+
+### Demo Walkthrough (3 minutes)
+
+1. **Seed demo data**: `uv run rig-relay demo-seed` — creates 3 orchestrator missions, 8 ToolRuntime outcomes, 2 Ralph lifecycle lanes, review bundles, adoption proposals, reports, and bash analytics.
+2. **Verify**: `uv run rig-relay demo-doctor` — 17 checks: imports, projections, review_with_orchestrator, merge/push gated, no secrets.
+3. **Launch**: `uv run rig-relay` opens pywebview desktop cockpit.
+4. **Mission Board**: 2 active missions, lifecycle timeline with 8 steps, review entrypoint.
+5. **Ralph Lifecycle**: Background lanes ON, isolated lane execution allowed, live runtime mutation blocked, merge/push gated.
+6. **Review with Orchestrator**: Explain-only review showing what Ralph did, when, why, validation results, risk notes, adoption recommendation. No merge or push authorized.
+7. **Render docs site**: `uv run rig-relay demo-render-docs` produces `.build/rig-relay/docs-site/`.
+
+See [docs/demo/mcp-night-demo.md](docs/demo/mcp-night-demo.md) for the full walkthrough.
 
 ## Current Path
 
@@ -91,6 +105,26 @@ Rig Relay ships with built-in agent profiles. Select with `--agent`:
 | `builder` | Subagent | write_file, search_replace, task | Patch application in scratch worktrees |
 | `cleaner` | Subagent | validate, validation_suite | Post-build validation and cleanup |
 | `bug-exterminator` | Subagent | cleaner tools + task | Hard merge conflict resolution |
+
+## Safety Story
+
+Rig Relay communicates **bounded autonomy**, not vague automation:
+
+| Scope | Default | Meaning |
+|---|---|---|
+| Isolated lane execution | Allowed (demo) | Ralph creates worktrees, scoped execution. No mutation of live workspace. |
+| Live runtime mutation | Always blocked | No agent can mutate the live runtime workspace. |
+| Merge | Requires adoption approval | Adoption must pass human approval + SHA match. |
+| Push to preproduction | Requires preproduction approval | Human approval + validation suite must pass. |
+
+These gates align with OWASP agent security best practices: least-privilege
+tools, per-tool permission scoping, separate tool sets by trust level, and
+explicit authorization for sensitive operations.
+
+**Frontend is a dumb renderer.** The backend owns all policy transitions.
+The frontend receives projection fields like `isolated_lane_execution_enabled`
+and `merge_enabled` and displays them as human labels ("Allowed" / "Blocked" /
+"Requires adoption approval"). The frontend never infers or overrides policy.
 
 ## Features
 

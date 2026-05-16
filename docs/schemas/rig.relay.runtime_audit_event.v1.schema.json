@@ -38,6 +38,14 @@
       "oneOf": [{ "type": "string" }, { "type": "null" }],
       "description": "SHA-256 hash of the canonical JSON RuntimeToolExecutionResult"
     },
+    "runtime_envelope_sha256": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "SHA-256 hash of the runtime tool invocation envelope"
+    },
+    "source_kind": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Source kind for the execution, e.g. runtime_intent"
+    },
     "changed_paths": {
       "type": "array",
       "items": { "type": "string" },

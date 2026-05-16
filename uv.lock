@@ -14,7 +14,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-08T02:09:07.445829Z"
+exclude-newer = "2026-05-08T22:54:29.992299Z"
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
@@ -2488,6 +2488,7 @@ dependencies = [
     { name = "opentelemetry-semantic-conventions" },
     { name = "packaging" },
     { name = "pexpect" },
+    { name = "platformdirs" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'" },
@@ -2525,6 +2526,7 @@ build = [
 dev = [
     { name = "debugpy" },
     { name = "pre-commit" },
+    { name = "pyinstaller" },
     { name = "pyinstrument" },
     { name = "pyright" },
     { name = "pytest" },
@@ -2571,6 +2573,7 @@ requires-dist = [
     { name = "packaging", specifier = ">=24.1" },
     { name = "pandas", marker = "extra == 'workbench'", specifier = ">=2.0.0" },
     { name = "pexpect", specifier = ">=4.9.0" },
+    { name = "platformdirs", specifier = ">=4.9.6" },
     { name = "pydantic", specifier = ">=2.12.4" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'" },
@@ -2602,6 +2605,7 @@ build = [
 dev = [
     { name = "debugpy", specifier = ">=1.8.19" },
     { name = "pre-commit", specifier = ">=4.2.0" },
+    { name = "pyinstaller", specifier = ">=6.20.0" },
     { name = "pyinstrument", specifier = ">=5.1.2" },
     { name = "pyright", specifier = ">=1.1.403" },
     { name = "pytest", specifier = ">=8.3.5" },

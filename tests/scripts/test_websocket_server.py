@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from rig_relay.desktop.tls import ensure_local_tls_material, load_ssl_context
 from rig_relay.desktop.websocket_server import (
     ALLOWED_MESSAGE_TYPES,
     DEFAULT_HOST,
@@ -183,6 +184,18 @@ class TestAuth:
                 assert len(response["actions"]) > 0
         finally:
             await server.close()
+
+    @pytest.mark.asyncio
+    async def test_ssl_context_sets_wss_scheme(self, tmp_path) -> None:
+        material = ensure_local_tls_material(tmp_path, packaged=True)
+        context = load_ssl_context(material.cert_path, material.key_path)
+        server = ProjectionWebSocketServer(
+            port=0,
+            token="secret",
+            auth_timeout=100,
+            ssl_context=context,
+        )
+        assert server.scheme == "wss"
 
 
 class TestAuthConnectionTracking:

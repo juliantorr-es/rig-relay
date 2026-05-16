@@ -21,9 +21,11 @@ Desktop event vocabulary:
 
 from __future__ import annotations
 
-import uuid
 from typing import Any
+import uuid
 
+from rig_relay.desktop.events import DesktopEventRecord, InMemoryDesktopEventSink
+from rig_relay.ralph.decision_events import DecisionEvent, DecisionEventStore
 from rig_relay.ralph.models import ApprovalState, RunStatus
 from rig_relay.ralph.scanner import (
     build_ralph_panel,
@@ -32,20 +34,7 @@ from rig_relay.ralph.scanner import (
     compute_decision_result,
     scan_projections,
 )
-from rig_relay.ralph.state_store import (
-    FilesystemRalphRunStateStore,
-    InMemoryRalphRunStateStore,
-    RalphRunStateRecord,
-)
-from rig_relay.ralph.decision_events import (
-    DecisionEvent,
-    DecisionEventStore,
-)
-from rig_relay.desktop.events import (
-    DesktopEventRecord,
-    InMemoryDesktopEventSink,
-    NoOpDesktopEventSink,
-)
+from rig_relay.ralph.state_store import InMemoryRalphRunStateStore, RalphRunStateRecord
 
 DESKTOP_EVENTS = {
     "scan_requested": "rig.desktop.ralph.scan.requested",
@@ -110,7 +99,11 @@ def build_ralph_projection() -> dict[str, Any]:
             "ranked_candidates": [],
             "mission_candidate": None,
             "available_actions": [
-                {"action": "ralph_scan", "label": "Scan", "requires_confirmation": False},
+                {
+                    "action": "ralph_scan",
+                    "label": "Scan",
+                    "requires_confirmation": False,
+                }
             ],
             "latest_intent_result": None,
             "execution_enabled": False,
@@ -121,7 +114,9 @@ def build_ralph_projection() -> dict[str, Any]:
         "schema_version": "rig.ui.ralph_panel.v1",
         "status": "ready",
         "decision_required": stored.get("decision_required", False),
-        "approval_state": stored.get("approval_state", ApprovalState.NOT_REQUESTED.value),
+        "approval_state": stored.get(
+            "approval_state", ApprovalState.NOT_REQUESTED.value
+        ),
         "run_id": stored.get("run_id", ""),
         "scan_id": stored.get("scan_id", ""),
         "panel_sha256": stored.get("panel_sha256", ""),
@@ -137,8 +132,7 @@ def build_ralph_projection() -> dict[str, Any]:
 
 
 def execute_ralph_intent(
-    intent_name: str,
-    params: dict[str, Any] | None = None,
+    intent_name: str, params: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     params = params or {}
 
@@ -149,6 +143,7 @@ def execute_ralph_intent(
         "ralph_rescan": lambda: _handle_ralph_rescan(params),
         "ralph_background_toggle_on": lambda: _handle_background_toggle(True),
         "ralph_background_toggle_off": lambda: _handle_background_toggle(False),
+        "review_with_orchestrator": lambda: _handle_review_with_orchestrator(),
     }
 
     handler = handlers.get(intent_name)
@@ -162,10 +157,11 @@ def execute_ralph_intent(
 
 
 def _handle_ralph_scan(params: dict[str, Any]) -> dict[str, Any]:
-    _event_sink.emit(DesktopEventRecord(
-        event_name="rig.desktop.ralph.scan.requested",
-        intent_kind="ralph_scan",
-    ))
+    _event_sink.emit(
+        DesktopEventRecord(
+            event_name="rig.desktop.ralph.scan.requested", intent_kind="ralph_scan"
+        )
+    )
 
     result = scan_projections()
     panel = build_ralph_panel(result)
@@ -203,17 +199,19 @@ def _handle_ralph_scan(params: dict[str, Any]) -> dict[str, Any]:
         "message": f"Scan completed: {panel.summary.candidate_count} candidates, top score={panel.summary.top_score:.1f}",
     }
 
-    _event_sink.emit(DesktopEventRecord(
-        event_name="rig.desktop.ralph.scan.completed",
-        intent_kind="ralph_scan",
-        run_id=run_id,
-        scan_id=scan_id,
-        panel_sha256=panel.panel_sha256,
-        mission_candidate_sha256=panel.mission_candidate_sha256,
-        ok=True,
-        status="completed",
-        execution_enabled=False,
-    ))
+    _event_sink.emit(
+        DesktopEventRecord(
+            event_name="rig.desktop.ralph.scan.completed",
+            intent_kind="ralph_scan",
+            run_id=run_id,
+            scan_id=scan_id,
+            panel_sha256=panel.panel_sha256,
+            mission_candidate_sha256=panel.mission_candidate_sha256,
+            ok=True,
+            status="completed",
+            execution_enabled=False,
+        )
+    )
 
     return _ok(
         "ralph_scan",
@@ -229,48 +227,25 @@ def _handle_ralph_approve(params: dict[str, Any]) -> dict[str, Any]:
     submitted_panel_sha = params.get("panel_sha256", "")
     submitted_mission_sha = params.get("mission_candidate_sha256", "")
 
-    _event_sink.emit(DesktopEventRecord(
-        event_name="rig.desktop.ralph.approval.requested",
-        intent_kind="ralph_approve",
-        run_id=submitted_run_id,
-        scan_id=submitted_scan_id,
-        panel_sha256=submitted_panel_sha,
-        mission_candidate_sha256=submitted_mission_sha,
-    ))
+    _event_sink.emit(
+        DesktopEventRecord(
+            event_name="rig.desktop.ralph.approval.requested",
+            intent_kind="ralph_approve",
+            run_id=submitted_run_id,
+            scan_id=submitted_scan_id,
+            panel_sha256=submitted_panel_sha,
+            mission_candidate_sha256=submitted_mission_sha,
+        )
+    )
 
-    if not submitted_panel_sha or not submitted_mission_sha:
-        return _refuse_with_event("invalid_payload", intent_kind="ralph_approve",
-                                 message="panel_sha256 and mission_candidate_sha256 are required",
-                                 run_id=submitted_run_id)
+    refusal = _validate_approval_state(
+        submitted_panel_sha, submitted_mission_sha, submitted_run_id, submitted_scan_id
+    )
+    if refusal:
+        return refusal
 
     stored = _RALPH_STATE
     approval_before = stored.get("approval_state", ApprovalState.NOT_REQUESTED.value)
-
-    if not stored.get("panel_sha256"):
-        return _refuse_with_event("no_scan_state", intent_kind="ralph_approve",
-                                 run_id=submitted_run_id)
-
-    if submitted_run_id and submitted_run_id != stored.get("run_id"):
-        return _refuse_with_event("stale_run_id", intent_kind="ralph_approve",
-                                 message=f"Run ID mismatch: your approval binds to a stale state. Rescan.",
-                                 run_id=submitted_run_id)
-
-    if submitted_scan_id and submitted_scan_id != stored.get("scan_id"):
-        return _refuse_with_event("stale_scan_id", intent_kind="ralph_approve",
-                                 message=f"Scan ID mismatch: a rescan has occurred since you loaded this panel.",
-                                 run_id=submitted_run_id)
-
-    if submitted_panel_sha != stored["panel_sha256"]:
-        return _refuse_with_event("stale_panel_hash", intent_kind="ralph_approve",
-                                 message=f"Panel hash mismatch.", run_id=submitted_run_id)
-
-    if submitted_mission_sha != stored["mission_candidate_sha256"]:
-        return _refuse_with_event("stale_mission_hash", intent_kind="ralph_approve",
-                                 message=f"Mission candidate hash mismatch.", run_id=submitted_run_id)
-
-    if not stored.get("decision_required"):
-        return _refuse_with_event("missing_mission_candidate", intent_kind="ralph_approve",
-                                 run_id=submitted_run_id)
 
     stored["approval_state"] = ApprovalState.APPROVED.value
     stored["run_status"] = RunStatus.COMPLETED.value
@@ -286,29 +261,34 @@ def _handle_ralph_approve(params: dict[str, Any]) -> dict[str, Any]:
     )
 
     _emit_decision_event(
-        event_kind="ralph.decision.approved",
-        run_id=stored["run_id"],
-        scan_id=stored["scan_id"],
-        panel_sha=stored["panel_sha256"],
-        mission_sha=stored["mission_candidate_sha256"],
-        input_sha=stored.get("input_snapshot_sha256", ""),
-        decision_action="approve_read_only_mission",
-        approval_before=approval_before,
-        approval_after=ApprovalState.APPROVED.value,
-        status="completed",
+        DecisionEvent(
+            event_kind="ralph.decision.approved",
+            run_id=stored["run_id"],
+            scan_id=stored["scan_id"],
+            panel_sha256=stored["panel_sha256"],
+            mission_candidate_sha256=stored["mission_candidate_sha256"],
+            input_snapshot_sha256=stored.get("input_snapshot_sha256", ""),
+            decision_action="approve_read_only_mission",
+            approval_state_before=approval_before,
+            approval_state_after=ApprovalState.APPROVED.value,
+            status="completed",
+            execution_enabled=False,
+        )
     )
 
-    _event_sink.emit(DesktopEventRecord(
-        event_name="rig.desktop.ralph.approval.accepted",
-        intent_kind="ralph_approve",
-        run_id=stored["run_id"],
-        scan_id=stored["scan_id"],
-        panel_sha256=stored["panel_sha256"],
-        mission_candidate_sha256=stored["mission_candidate_sha256"],
-        ok=True,
-        status="completed",
-        execution_enabled=False,
-    ))
+    _event_sink.emit(
+        DesktopEventRecord(
+            event_name="rig.desktop.ralph.approval.accepted",
+            intent_kind="ralph_approve",
+            run_id=stored["run_id"],
+            scan_id=stored["scan_id"],
+            panel_sha256=stored["panel_sha256"],
+            mission_candidate_sha256=stored["mission_candidate_sha256"],
+            ok=True,
+            status="completed",
+            execution_enabled=False,
+        )
+    )
 
     _persist_current_state(stored)
 
@@ -334,6 +314,61 @@ def _handle_ralph_approve(params: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _validate_approval_state(
+    submitted_panel_sha: str,
+    submitted_mission_sha: str,
+    submitted_run_id: str,
+    submitted_scan_id: str,
+) -> dict[str, Any] | None:
+    """Validate approval params. Returns a refusal dict or None if valid."""
+    if not submitted_panel_sha or not submitted_mission_sha:
+        return _refuse_with_event(
+            "invalid_payload",
+            intent_kind="ralph_approve",
+            message="panel_sha256 and mission_candidate_sha256 are required",
+            run_id=submitted_run_id,
+        )
+
+    stored = _RALPH_STATE
+
+    checks: list[tuple[str, str | None]] = [
+        ("no_scan_state", None) if not stored.get("panel_sha256") else ("", ""),
+        (
+            "stale_run_id",
+            "Run ID mismatch: your approval binds to a stale state. Rescan.",
+        )
+        if submitted_run_id and submitted_run_id != stored.get("run_id")
+        else ("", ""),
+        (
+            "stale_scan_id",
+            "Scan ID mismatch: a rescan has occurred since you loaded this panel.",
+        )
+        if submitted_scan_id and submitted_scan_id != stored.get("scan_id")
+        else ("", ""),
+        ("stale_panel_hash", "Panel hash mismatch.")
+        if submitted_panel_sha != stored["panel_sha256"]
+        else ("", ""),
+        ("stale_mission_hash", "Mission candidate hash mismatch.")
+        if submitted_mission_sha != stored["mission_candidate_sha256"]
+        else ("", ""),
+        ("missing_mission_candidate", None)
+        if not stored.get("decision_required")
+        else ("", ""),
+    ]
+
+    for code, msg in checks:
+        if code:
+            kwargs: dict[str, Any] = {
+                "intent_kind": "ralph_approve",
+                "run_id": submitted_run_id,
+            }
+            if msg:
+                kwargs["message"] = msg
+            return _refuse_with_event(code, **kwargs)
+
+    return None
+
+
 def _handle_ralph_decline(params: dict[str, Any]) -> dict[str, Any]:
     submitted_run_id = params.get("run_id", "")
     submitted_scan_id = params.get("scan_id", "")
@@ -341,8 +376,11 @@ def _handle_ralph_decline(params: dict[str, Any]) -> dict[str, Any]:
     submitted_mission_sha = params.get("mission_candidate_sha256", "")
 
     if not submitted_panel_sha or not submitted_mission_sha:
-        return _refuse("invalid_payload", intent_kind="ralph_decline",
-                       message="panel_sha256 and mission_candidate_sha256 are required")
+        return _refuse(
+            "invalid_payload",
+            intent_kind="ralph_decline",
+            message="panel_sha256 and mission_candidate_sha256 are required",
+        )
 
     stored = _RALPH_STATE
 
@@ -401,12 +439,14 @@ def _handle_ralph_rescan(params: dict[str, Any]) -> dict[str, Any]:
 def _handle_background_toggle(enabled: bool) -> dict[str, Any]:
     """Toggle Ralph background lanes on/off. Contract-only — no lane execution."""
     action = "ralph_background_toggle_on" if enabled else "ralph_background_toggle_off"
-    from rig_relay.ralph.background_policy import demo_policy, default_policy
+    from rig_relay.ralph.background_policy import default_policy, demo_policy
 
     policy = demo_policy() if enabled else default_policy()
     stored_policy = {
         "enabled": policy.enabled,
-        "isolated_lane_execution_enabled": policy.allow_isolated_lane_execution if enabled else False,
+        "isolated_lane_execution_enabled": policy.allow_isolated_lane_execution
+        if enabled
+        else False,
         "live_runtime_mutation_enabled": False,
         "merge_enabled": False,
         "push_enabled": False,
@@ -417,6 +457,58 @@ def _handle_background_toggle(enabled: bool) -> dict[str, Any]:
         message=f"Ralph background lanes {'enabled' if enabled else 'disabled'}.",
         ralph_panel=stored_policy,
     )
+
+
+def _handle_review_with_orchestrator() -> dict[str, Any]:
+    """Explain-only review session with orchestrator. No merge, no push.
+
+    Consumes Ralph reports from the report store, not raw bundles.
+    Shows: what Ralph did, when, why, evidence, risk notes, adoption recommendation.
+    """
+    from rig_relay.ralph.reporting import RalphReportStore, build_demo_ralph_reports
+    from rig_relay.ralph.review_bundle import build_review_projection
+
+    store = RalphReportStore()
+    for r in build_demo_ralph_reports():
+        store.save_report(r)
+    pending_reports = store.list_pending_reports()
+
+    bundles_for_review: list[Any] = []
+    report_summaries: list[dict[str, Any]] = []
+    for report in pending_reports:
+        report_summaries.append({
+            "report_id": report.report_id,
+            "report_kind": report.report_kind,
+            "title": report.title,
+            "summary": report.summary,
+            "why": report.why,
+            "branch_name": report.branch_name,
+            "commit_shas": report.commit_shas,
+            "review_bundle_sha256": report.review_bundle_sha256,
+            "adoption_proposal_id": report.adoption_proposal_id,
+            "source_refs": report.source_refs,
+            "target_orchestrator_lane_id": report.target_orchestrator_lane_id,
+            "relevance_score": report.relevance_score,
+            "status": report.status,
+            "created_at": report.created_at,
+        })
+        # Mark as delivered when orchestrator opens review
+        store.mark_delivered(report.report_id)
+
+    proj = build_review_projection(bundles=bundles_for_review, proposals=[])
+    result_data = proj.model_dump(mode="json")
+    result_data["ralph_reports"] = report_summaries
+    result_data["pending_ralph_report_count"] = len(report_summaries)
+    result_data["execution_enabled"] = False
+    result_data["merge_enabled"] = False
+    result_data["push_enabled"] = False
+
+    count = len(pending_reports)
+    msg = (
+        f"Review session ready — {count} Ralph report(s) pending. "
+        "Explain-only. No merge or push authorized."
+    )
+    return _ok("review_with_orchestrator", message=msg, ralph_panel=result_data)
 
 
 def _store_state(panel: Any, run_state: Any, run_id: str, scan_id: str) -> None:
@@ -474,9 +566,7 @@ def _ok(
 
 
 def _refuse(
-    error_code: str,
-    intent_kind: str = "",
-    message: str = "",
+    error_code: str, intent_kind: str = "", message: str = ""
 ) -> dict[str, Any]:
     return {
         "schema_version": INTENT_RESULT_VERSION,
@@ -490,78 +580,68 @@ def _refuse(
 
 
 def _available_actions(stored: dict[str, Any]) -> list[dict[str, str | bool]]:
-    actions = [{"action": "ralph_scan", "label": "Scan", "requires_confirmation": False}]
+    actions = [
+        {"action": "ralph_scan", "label": "Scan", "requires_confirmation": False}
+    ]
     if stored.get("decision_required") and stored.get("panel_sha256"):
         actions.extend([
-            {"action": "ralph_approve", "label": "Approve", "requires_confirmation": True},
-            {"action": "ralph_decline", "label": "Decline", "requires_confirmation": True},
+            {
+                "action": "ralph_approve",
+                "label": "Approve",
+                "requires_confirmation": True,
+            },
+            {
+                "action": "ralph_decline",
+                "label": "Decline",
+                "requires_confirmation": True,
+            },
         ])
-    actions.append({"action": "ralph_rescan", "label": "Rescan", "requires_confirmation": False})
+    actions.append({
+        "action": "ralph_rescan",
+        "label": "Rescan",
+        "requires_confirmation": False,
+    })
     return actions
 
 
 def _refuse_with_event(
-    error_code: str,
-    intent_kind: str = "",
-    message: str = "",
-    run_id: str = "",
+    error_code: str, intent_kind: str = "", message: str = "", run_id: str = ""
 ) -> dict[str, Any]:
     result = _refuse(error_code, intent_kind=intent_kind, message=message)
 
-    _event_sink.emit(DesktopEventRecord(
-        event_name="rig.desktop.ralph.approval.refused",
-        intent_kind=intent_kind,
-        run_id=run_id,
-        ok=False,
-        status="refused",
-        error_code=error_code,
-        execution_enabled=False,
-    ))
+    _event_sink.emit(
+        DesktopEventRecord(
+            event_name="rig.desktop.ralph.approval.refused",
+            intent_kind=intent_kind,
+            run_id=run_id,
+            ok=False,
+            status="refused",
+            error_code=error_code,
+            execution_enabled=False,
+        )
+    )
 
     _emit_decision_event(
-        event_kind="ralph.decision.refused",
-        run_id=run_id,
-        scan_id="",
-        panel_sha="",
-        mission_sha="",
-        input_sha="",
-        decision_action=intent_kind,
-        approval_before="not_requested",
-        approval_after="not_requested",
-        status="refused",
-        error_code=error_code,
+        DecisionEvent(
+            event_kind="ralph.decision.refused",
+            run_id=run_id,
+            scan_id="",
+            panel_sha256="",
+            mission_candidate_sha256="",
+            input_snapshot_sha256="",
+            decision_action=intent_kind,
+            approval_state_before="not_requested",
+            approval_state_after="not_requested",
+            status="refused",
+            error_code=error_code,
+            execution_enabled=False,
+        )
     )
 
     return result
 
 
-def _emit_decision_event(
-    event_kind: str,
-    run_id: str,
-    scan_id: str,
-    panel_sha: str,
-    mission_sha: str,
-    input_sha: str,
-    decision_action: str,
-    approval_before: str,
-    approval_after: str,
-    status: str,
-    error_code: str | None = None,
-) -> None:
-    event = DecisionEvent(
-        event_kind=event_kind,
-        run_id=run_id,
-        scan_id=scan_id,
-        panel_sha256=panel_sha,
-        mission_candidate_sha256=mission_sha,
-        input_snapshot_sha256=input_sha,
-        decision_action=decision_action,
-        approval_state_before=approval_before,
-        approval_state_after=approval_after,
-        status=status,
-        error_code=error_code,
-        execution_enabled=False,
-    )
+def _emit_decision_event(event: DecisionEvent) -> None:
     _decision_store.append_event(event)
     _decision_store.create_receipt(event)
 

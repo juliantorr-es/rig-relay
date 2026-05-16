@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import sys
 import time
-from typing import ClassVar, Literal, final
+from typing import Any, ClassVar, Literal, final
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -17,6 +17,7 @@ from rig_relay.core.telemetry.tool_contract import (
     ToolDeterminismClass,
     ToolMutationClass,
 )
+from rig_relay.core.tool_subprocess import ShellFeatureResult, ToolSubprocessRequest
 from rig_relay.core.tools.arity import build_session_pattern
 from rig_relay.core.tools.base import (
     BaseTool,
@@ -402,8 +403,7 @@ class Bash(
         safety_warnings = detect_dangerous_bash_patterns(full_command)
         if safety_warnings:
             return PermissionContext(
-                permission=ToolPermission.NEVER,
-                reason="; ".join(safety_warnings),
+                permission=ToolPermission.NEVER, reason="; ".join(safety_warnings)
             )
 
         # Check for sensitive file reads (token store, credentials)
@@ -702,6 +702,70 @@ class Bash(
         finally:
             await kill_async_subprocess(proc)
 
+    async def _run_supervised(
+        self,
+        subprocess_runner: Any,
+        command: str,
+        argv: list[str],
+        cwd: str | None,
+        timeout: int,
+        max_stdout: int,
+        max_stderr: int,
+        start: float,
+    ) -> BashResult:
+
+        req = ToolSubprocessRequest(
+            argv=argv,
+            cwd=cwd or ".",
+            timeout_seconds=float(timeout),
+            stdout_limit_bytes=max_stdout,
+            stderr_limit_bytes=max_stderr,
+            tool_name="bash",
+        )
+        result = await subprocess_runner.run(req)
+        elapsed = (time.perf_counter() - start) * 1000
+        status = result.status
+        if status == "completed":
+            status = "success" if result.exit_code == 0 else "failure"
+        elif status == "timed_out":
+            status = "timed_out"
+        elif status == "refused":
+            status = "refused"
+        else:
+            status = "failure"
+        return BashResult(
+            command=command,
+            stdout=result.stdout_text,
+            stderr=result.stderr_text,
+            returncode=result.exit_code if result.exit_code is not None else -1,
+            status=status,
+            duration_ms=elapsed,
+            stdout_bytes=result.stdout_bytes,
+            stderr_bytes=result.stderr_bytes,
+            stdout_truncated=result.stdout_truncated,
+            stderr_truncated=result.stderr_truncated,
+            error_kind=(
+                result.refusal_code if status in {"refused", "failure"} else None
+            ),
+            refusal_reason=result.error_message,
+        )
+
+    @staticmethod
+    def _classify_shell_command(command: str) -> ShellFeatureResult:
+        from rig_relay.core.tool_subprocess import ShellFeatureResult
+        from rig_relay.runtime.supervisor_invoker import SupervisorCommandInvoker
+
+        if SupervisorCommandInvoker.has_shell_metacharacters(command):
+            return ShellFeatureResult(
+                safe_for_argv=False, argv=[], detected_features=["shell_metacharacters"]
+            )
+        parsed = SupervisorCommandInvoker.parse_shell_to_argv(command)
+        if isinstance(parsed, str):
+            return ShellFeatureResult(
+                safe_for_argv=False, argv=[], detected_features=["parse_error"]
+            )
+        return ShellFeatureResult(safe_for_argv=True, argv=parsed, detected_features=[])
+
     async def run(
         self, args: BashArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | BashResult, None]:
@@ -711,9 +775,7 @@ class Bash(
         # Check if the command is better handled by a dedicated tool
         from rig_relay.core.tools.reroute import try_reroute
 
-        rerouted, result_model, events = await try_reroute(
-            args.command, ctx
-        )
+        rerouted, result_model, events = await try_reroute(args.command, ctx)
         if rerouted:
             for event in events:
                 yield event
@@ -750,6 +812,47 @@ class Bash(
             if args.max_stderr_bytes is not None
             else self.config.max_output_bytes
         )
+
+        # ── Try supervised subprocess path ─────────────────
+        subprocess_runner = getattr(ctx, "subprocess_runner", None) if ctx else None
+        if subprocess_runner is not None:
+            shell_check = self._classify_shell_command(args.command)
+            if shell_check.safe_for_argv:
+                result = await self._run_supervised(
+                    subprocess_runner=subprocess_runner,
+                    command=args.command,
+                    argv=shell_check.argv,
+                    cwd=args.cwd,
+                    timeout=timeout,
+                    max_stdout=max_stdout_cap,
+                    max_stderr=max_stderr_cap,
+                    start=start,
+                )
+                yield result
+                return
+            else:
+                # Shell features detected — refuse under supervised path
+                elapsed = (time.perf_counter() - start) * 1000
+                features_str = ", ".join(shell_check.detected_features)
+                yield BashResult(
+                    command=args.command,
+                    stdout="",
+                    stderr="",
+                    returncode=-1,
+                    status="refused",
+                    duration_ms=elapsed,
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                    stdout_truncated=False,
+                    stderr_truncated=False,
+                    error_kind="refused",
+                    refusal_reason=(
+                        f"Shell features require explicit policy and are not executed "
+                        f"by the supervised subprocess runner. "
+                        f"Detected: {features_str}"
+                    ),
+                )
+                return
 
         try:
             result = await self._run_subprocess(

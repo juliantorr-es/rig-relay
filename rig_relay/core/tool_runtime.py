@@ -30,6 +30,7 @@ from rig_relay.core.tool_runtime_models import (
     ToolRuntimeResult,
     ToolRuntimeStatus,
 )
+from rig_relay.core.tool_subprocess import ToolSubprocessRunner
 from rig_relay.core.tools.base import ToolPermissionError
 
 # ── Callback signatures for dependency injection ──────────────────────
@@ -45,9 +46,7 @@ CacheStoreFn = Callable[[str, dict[str, Any], dict[str, Any]], None]
 PermissionDecisionFn = Callable[[str, dict[str, Any], str], Awaitable[tuple[bool, str]]]
 """Returns (permitted: bool, reason: str). Skip reasons are returned as non-permitted."""
 
-ApprovalRequestFn = Callable[
-    [str, dict[str, Any], str], Awaitable[tuple[bool, str]]
-]
+ApprovalRequestFn = Callable[[str, dict[str, Any], str], Awaitable[tuple[bool, str]]]
 
 PatchGateCheckFn = Callable[[Any, Any], Any | None]
 """Returns a gating event if blocked, None if allowed. Takes (tool_call, tool_instance)."""
@@ -95,6 +94,8 @@ class ToolRuntime:
         receipt_capture: ReceiptCaptureFn | None = None,
         context_observe: ContextObserveFn | None = None,
         stats_delta: StatsDeltaFn | None = None,
+        subprocess_runner: ToolSubprocessRunner | None = None,
+        source_label: str = "agent_loop",
     ) -> None:
         self._invoke_tool = invoke_tool or self._default_invoke_tool
         self._cache_check = cache_check or (lambda t, a: (False, None))
@@ -102,23 +103,19 @@ class ToolRuntime:
         self._permission_decision = permission_decision or (
             lambda t, a, c: _async_allow()
         )
-        self._approval_request = approval_request or (
-            lambda t, a, c: _async_allow()
-        )
+        self._approval_request = approval_request or (lambda t, a, c: _async_allow())
         self._patch_gate_check = patch_gate_check or (lambda tc, ti: None)
         self._expand_args = expand_args or (lambda a: a)
         self._receipt_build = receipt_build or (lambda tn, rm: None)
         self._receipt_capture = receipt_capture or (lambda s, t, r: None)
-        self._context_observe = context_observe or (
-            lambda s, tn, a, bp: None
-        )
+        self._context_observe = context_observe or (lambda s, tn, a, bp: None)
         self._stats_delta = stats_delta or (lambda k, d: None)
+        self._subprocess_runner = subprocess_runner
+        self._source_label = source_label
 
     # ── Public API ──────────────────────────────────────────────────
 
-    async def execute_one(
-        self, request: ToolRuntimeRequest
-    ) -> ToolRuntimeResult:
+    async def execute_one(self, request: ToolRuntimeRequest) -> ToolRuntimeResult:
         """Execute a single tool call with full governance sequencing.
 
         Owns the entire path: cache → permission → approval →
@@ -152,11 +149,23 @@ class ToolRuntime:
 
     # ── Internal sequence ───────────────────────────────────────────
 
-    async def _execute_governed(
-        self, request: ToolRuntimeRequest
-    ) -> ToolRuntimeResult:
+    async def _execute_governed(self, request: ToolRuntimeRequest) -> ToolRuntimeResult:
         tn = request.tool_name
         cid = request.tool_call_id
+        tool_meta = dict(request.audit_context)
+        tool_meta.update(request.policy_hints)
+        tool_meta["source_kind"] = request.source_kind or self._source_label
+        tool_meta["source_id"] = request.source_id
+        tool_meta["invocation_id"] = request.invocation_id
+        tool_meta["session_id"] = request.session_id
+        tool_meta["lane_id"] = request.lane_id
+        tool_meta["lease_id"] = request.lease_id
+        tool_meta["workspace_root"] = request.workspace_root
+        tool_meta["worktree_path"] = request.worktree_path
+        tool_meta["actor"] = request.actor
+        tool_meta["runtime_envelope_sha256"] = request.runtime_envelope_sha256
+        if self._subprocess_runner is not None:
+            tool_meta["subprocess_runner"] = self._subprocess_runner
 
         # ── 1. Cache check ──────────────────────────────────────
         hit, cached = self._cache_check(tn, request.tool_args)
@@ -164,6 +173,12 @@ class ToolRuntime:
             self._stats_delta("tool_calls_succeeded", 1)
             return ToolRuntimeResult.cached_result(
                 tool_name=tn, tool_call_id=cid, provider_tool_response=cached
+            ).model_copy(
+                update={
+                    "source_kind": request.source_kind,
+                    "source_id": request.source_id,
+                    "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                }
             )
 
         # ── 2. Permission check ─────────────────────────────────
@@ -183,12 +198,16 @@ class ToolRuntime:
                         suggested_next_action="Adjust tool permissions or request approval",
                     ),
                     approval_status=ToolRuntimeApprovalStatus.DENIED,
+                ).model_copy(
+                    update={
+                        "source_kind": request.source_kind,
+                        "source_id": request.source_id,
+                        "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                    }
                 )
 
         # ── 3. Approval request ─────────────────────────────────
-        approved, reason = await self._approval_request(
-            tn, request.tool_args, cid
-        )
+        approved, reason = await self._approval_request(tn, request.tool_args, cid)
         if not approved:
             self._stats_delta("tool_calls_rejected", 1)
             return ToolRuntimeResult.refused(
@@ -201,6 +220,12 @@ class ToolRuntime:
                     suggested_next_action="Request user approval",
                 ),
                 approval_status=ToolRuntimeApprovalStatus.DENIED,
+            ).model_copy(
+                update={
+                    "source_kind": request.source_kind,
+                    "source_id": request.source_id,
+                    "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                }
             )
 
         # ── 4. Patch gate ───────────────────────────────────────
@@ -217,6 +242,12 @@ class ToolRuntime:
                     suggested_next_action="Submit a patch proposal instead",
                 ),
                 approval_status=ToolRuntimeApprovalStatus.NOT_REQUIRED,
+            ).model_copy(
+                update={
+                    "source_kind": request.source_kind,
+                    "source_id": request.source_id,
+                    "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                }
             )
 
         self._stats_delta("tool_calls_agreed", 1)
@@ -230,6 +261,7 @@ class ToolRuntime:
         start_time = asyncio.get_event_loop().time()
 
         try:
+            expanded_args["_tool_runtime_meta"] = tool_meta
             async for item in self._invoke_tool(expanded_args):
                 if hasattr(item, "model_dump"):
                     result_model = item
@@ -249,6 +281,12 @@ class ToolRuntime:
                     recoverable=False,
                 ),
                 approval_status=ToolRuntimeApprovalStatus.DENIED,
+            ).model_copy(
+                update={
+                    "source_kind": request.source_kind,
+                    "source_id": request.source_id,
+                    "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                }
             )
         except Exception as exc:
             self._stats_delta("tool_calls_failed", 1)
@@ -262,6 +300,12 @@ class ToolRuntime:
                     message=str(exc)[:200],
                     recoverable=True,
                 ),
+            ).model_copy(
+                update={
+                    "source_kind": request.source_kind,
+                    "source_id": request.source_id,
+                    "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                }
             )
 
         duration = asyncio.get_event_loop().time() - start_time
@@ -278,6 +322,12 @@ class ToolRuntime:
                     message="Tool did not yield a result",
                     recoverable=False,
                 ),
+            ).model_copy(
+                update={
+                    "source_kind": request.source_kind,
+                    "source_id": request.source_id,
+                    "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                }
             )
 
         # ── 6. Receipt ──────────────────────────────────────────
@@ -285,9 +335,7 @@ class ToolRuntime:
             receipt = self._receipt_build(tn, result_model)
             if receipt is not None:
                 self._receipt_capture(
-                    request.session_id or "",
-                    tn,
-                    receipt.model_dump(mode="json"),
+                    request.session_id or "", tn, receipt.model_dump(mode="json")
                 )
         except Exception:
             logger.warning("Receipt capture failed for %s", tn, exc_info=True)
@@ -296,9 +344,7 @@ class ToolRuntime:
         cache_status = ToolRuntimeCacheStatus.MISS
         try:
             self._cache_store(
-                tn,
-                request.tool_args,
-                result_model.model_dump(mode="json"),
+                tn, request.tool_args, result_model.model_dump(mode="json")
             )
         except Exception:
             cache_status = ToolRuntimeCacheStatus.WRITE_FAILED
@@ -319,16 +365,15 @@ class ToolRuntime:
         if obs_status == "context_observation_failed":
             degraded.append("context_observation_failed")
 
-        status = (
-            ToolRuntimeStatus.DEGRADED
-            if degraded
-            else ToolRuntimeStatus.COMPLETED
-        )
+        status = ToolRuntimeStatus.DEGRADED if degraded else ToolRuntimeStatus.COMPLETED
 
         return ToolRuntimeResult(
             status=status,
             tool_name=tn,
             tool_call_id=cid,
+            source_kind=request.source_kind,
+            source_id=request.source_id,
+            runtime_envelope_sha256=request.runtime_envelope_sha256,
             provider_tool_response=result_model,
             tool_events=tool_events,
             cache_status=cache_status,

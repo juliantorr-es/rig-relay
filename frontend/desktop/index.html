@@ -8,7 +8,7 @@
   default-src 'self';
   script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
-  connect-src ws://127.0.0.1:* ws://localhost:*;
+  connect-src 'self' https://127.0.0.1:* https://localhost:* wss://127.0.0.1:* wss://localhost:* ws://127.0.0.1:* ws://localhost:*;
   img-src 'self' data:;
   font-src 'self';
 ">

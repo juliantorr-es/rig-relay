@@ -53,6 +53,8 @@ class RuntimeAuditEvent(BaseModel):
     tool_status: str | None = None
     receipt_sha256: str | None = None
     runtime_result_sha256: str | None = None
+    runtime_envelope_sha256: str | None = None
+    source_kind: str | None = None
     changed_paths: list[str] = Field(default_factory=list)
     duration_ms: float | None = None
     error_kind: str | None = None
@@ -110,6 +112,8 @@ def build_runtime_audit_event(
         tool_status=result.tool_status,
         receipt_sha256=result.receipt_sha256,
         runtime_result_sha256=result_sha256,
+        runtime_envelope_sha256=getattr(result, "runtime_envelope_sha256", None),
+        source_kind=getattr(result, "source_kind", None),
         changed_paths=list(result.changed_paths),
         duration_ms=result.duration_ms,
         error_kind=result.error_kind,

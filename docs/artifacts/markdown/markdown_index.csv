@@ -1,0 +1,204 @@
+path,title,doc_kind,directory,sha256,body_sha256,line_count,heading_count,first_heading,code_fence_count,mermaid_fence_count,link_count,image_ref_count
+docs/README.md,Rig Relay Documentation,unknown,docs,5b1d7b3e13479294,5b1d7b3e13479294,10,2,Rig Relay Documentation,0,0,3,0
+docs/acp-setup.md,ACP Setup,unknown,docs,648535a0d616b308,648535a0d616b308,69,6,ACP Setup,3,0,4,0
+docs/architecture/rig-integration-contract.md,Rig Integration Contract,architecture,docs/architecture,25a0ecb2e325eccf,25a0ecb2e325eccf,93,10,Rig Integration Contract,2,0,0,0
+docs/audits/artifact-schema-doctrine.md,Artifact Schema Doctrine,audit,docs/audits,c5b89b5387439943,c5b89b5387439943,83,11,Artifact Schema Doctrine,0,0,0,0
+docs/audits/brand-refresh-bauhaus-phosphor.md,Rig Relay Brand Refresh Audit,audit,docs/audits,6a221d706d996eaa,6a221d706d996eaa,57,8,Rig Relay Brand Refresh Audit,0,0,0,0
+docs/audits/ci/ci-gate-architecture.md,CI Gate Architecture,audit,docs/audits/ci,f96bb999b5673f97,f96bb999b5673f97,147,15,CI Gate Architecture,0,0,0,0
+docs/audits/ci/ci-implementation-roadmap.md,CI Implementation Roadmap,audit,docs/audits/ci,fea4818c00a99297,fea4818c00a99297,267,12,CI Implementation Roadmap,1,0,0,0
+docs/audits/ci/ci-path-trigger-map.md,CI Path Trigger Map,audit,docs/audits/ci,d48d991fbe3a8e71,d48d991fbe3a8e71,137,17,CI Path Trigger Map,1,0,0,0
+docs/audits/ci/ci-surface-audit.md,CI Surface Audit,audit,docs/audits/ci,54bc17c768ca01a6,54bc17c768ca01a6,126,15,CI Surface Audit,0,0,0,0
+docs/audits/ci/ci-validate-alignment.md,CI–Validate Alignment,audit,docs/audits/ci,5fdfd4734abef497,5fdfd4734abef497,171,19,CI–Validate Alignment,9,0,0,0
+docs/audits/config-root-resolution-policy.md,Audit: Config Root Resolution Policy,audit,docs/audits,14634d19163101e7,14634d19163101e7,29,6,Audit: Config Root Resolution Policy,0,0,0,0
+docs/audits/coordination-guard-availability.md,Coordination Guard Availability Audit,audit,docs/audits,84d0fbbbc6149fa8,84d0fbbbc6149fa8,285,33,Coordination Guard Availability Audit,0,0,0,0
+docs/audits/coordination-migration-inventory.md,Coordination Migration Inventory,audit,docs/audits,ed3e91232178bf6d,ed3e91232178bf6d,212,24,Coordination Migration Inventory,0,0,0,0
+docs/audits/current-built-in-tools.md,Current Built-In Tool Inventory,audit,docs/audits,6c6d42908582afbf,6c6d42908582afbf,454,27,Current Built-In Tool Inventory,0,0,9,0
+docs/audits/deep-research-report1.md,Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy,audit,docs/audits,e8e6c17f6ab1dcbc,e8e6c17f6ab1dcbc,132,13,Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy,0,0,0,0
+docs/audits/deep-research-report2.md,Rig Relay audit of the context-caching assessment,audit,docs/audits,147e6403baf022c6,147e6403baf022c6,33,7,Rig Relay audit of the context-caching assessment,0,0,0,0
+docs/audits/deep-research-report3.md,Context Engineering and Context Caching,audit,docs/audits,718cbbee88e13479,718cbbee88e13479,290,19,Context Engineering and Context Caching,7,2,0,0
+docs/audits/determinism-maturity-matrix.md,Audit: Determinism Maturity Matrix,audit,docs/audits,0268176d1c98036f,0268176d1c98036f,32,6,Audit: Determinism Maturity Matrix,0,0,0,0
+docs/audits/evidence-contract-inventory.md,Audit: Evidence Contract Inventory,audit,docs/audits,bf7497b99f9ec6c4,bf7497b99f9ec6c4,57,10,Audit: Evidence Contract Inventory,0,0,0,0
+docs/audits/evidence-manifest-receipt-chain-design.md,Audit: Evidence Manifest and Receipt Chain Design,audit,docs/audits,3c529c369ce63f63,3c529c369ce63f63,68,9,Audit: Evidence Manifest and Receipt Chain Design,1,0,0,0
+docs/audits/evidence-root-policy-doctrine.md,Audit: Evidence Root Product Semantics and Policy Doctrine,audit,docs/audits,c7a60058a5ead5cb,c7a60058a5ead5cb,52,9,Audit: Evidence Root Product Semantics and Policy Doctrine,0,0,0,0
+docs/audits/evidence-security-privacy-boundary.md,Audit: Evidence Security and Privacy Boundary,audit,docs/audits,e6de8c8a5c2f827c,e6de8c8a5c2f827c,42,8,Audit: Evidence Security and Privacy Boundary,0,0,0,0
+docs/audits/frontend-security-audit-2026-05-14.md,Frontend Security Audit — Rig Relay Desktop,audit,docs/audits,f0f49ce350635ef6,f0f49ce350635ef6,97,13,Frontend Security Audit — Rig Relay Desktop,2,0,0,0
+docs/audits/global-rig-declutter/declutter-plan.md,Declutter Plan,audit,docs/audits/global-rig-declutter,02c582fba00401a2,02c582fba00401a2,189,4,Declutter Plan,0,0,0,0
+docs/audits/global-rig-declutter/inventory.md,Global Rig Declutter Inventory,audit,docs/audits/global-rig-declutter,cfbc35c1bfa38ae5,cfbc35c1bfa38ae5,200,3,Global Rig Declutter Inventory,0,0,0,0
+docs/audits/provider-adapter-contract-design.md,Audit: Provider Adapter Contract Design,audit,docs/audits,175035a344710bac,175035a344710bac,50,8,Audit: Provider Adapter Contract Design,1,0,0,0
+docs/audits/provider-boundary-adapter-contract-map.md,Audit: Provider Boundary and Adapter Contract Map,audit,docs/audits,1b62ae716f6b0c95,1b62ae716f6b0c95,44,7,Audit: Provider Boundary and Adapter Contract Map,0,0,0,0
+docs/audits/relay-entry-point-authority.md,Relay Entry Point Authority Audit,audit,docs/audits,78b8b75324d8b02b,78b8b75324d8b02b,391,37,Relay Entry Point Authority Audit,6,0,0,0
+docs/audits/relay-smoke-validation-doctrine.md,Audit: Relay Smoke and Validation Doctrine,audit,docs/audits,39794c7f3aac5694,39794c7f3aac5694,39,8,Audit: Relay Smoke and Validation Doctrine,0,0,0,0
+docs/audits/relay-validation-gates-roadmap.md,Audit: Relay Validation Gates and Doctor Roadmap,audit,docs/audits,d0cf77e1062fc221,d0cf77e1062fc221,54,8,Audit: Relay Validation Gates and Doctor Roadmap,0,0,0,0
+docs/audits/rig-intake-cannibalization-plan.md,Rig + Intake Cannibalization Plan for Rig Relay,audit,docs/audits,9257f0392bd0e1df,9257f0392bd0e1df,261,26,Rig + Intake Cannibalization Plan for Rig Relay,0,0,10,0
+docs/audits/rig-runtime-port/audit-trail-tamper-evidence-design.md,Audit Trail Tamper-Evidence Design Audit,audit,docs/audits/rig-runtime-port,76c52d635006466a,76c52d635006466a,59,6,Audit Trail Tamper-Evidence Design Audit,0,0,5,0
+docs/audits/rig-runtime-port/concept-map.md,Rig-to-Relay Runtime Concept Map,audit,docs/audits/rig-runtime-port,6ebadaeb9c996511,6ebadaeb9c996511,179,30,Rig-to-Relay Runtime Concept Map,0,0,0,0
+docs/audits/rig-runtime-port/execution-progress-projection-design.md,ExecutionProgress Projection Design — Audit Record,audit,docs/audits/rig-runtime-port,793aaf7acb96cf40,793aaf7acb96cf40,132,14,ExecutionProgress Projection Design — Audit Record,0,0,6,0
+docs/audits/rig-runtime-port/fleet-coordination-design.md,Fleet Coordination Plane — Design Audit,audit,docs/audits/rig-runtime-port,7ab6d24aae2ecd30,7ab6d24aae2ecd30,60,12,Fleet Coordination Plane — Design Audit,0,0,0,0
+docs/audits/rig-runtime-port/mission-context-duckdb-design.md,Mission Context DuckDB Design,audit,docs/audits/rig-runtime-port,043c40cdd207ce07,043c40cdd207ce07,46,7,Mission Context DuckDB Design,0,0,0,0
+docs/audits/rig-runtime-port/mission-envelope-spine-design.md,Mission Envelope Spine Design,audit,docs/audits/rig-runtime-port,8415fad9ecb63528,8415fad9ecb63528,79,7,Mission Envelope Spine Design,0,0,0,0
+docs/audits/rig-runtime-port/port-roadmap.md,Rig Runtime Port Roadmap,audit,docs/audits/rig-runtime-port,66e51b38009711ab,66e51b38009711ab,309,16,Rig Runtime Port Roadmap,1,0,0,0
+docs/audits/rig-runtime-port/rig-to-relay-runtime-audit.md,Rig Runtime Port Audit — Rig to Rig Relay,audit,docs/audits/rig-runtime-port,ed0b05241924a831,ed0b05241924a831,157,17,Rig Runtime Port Audit — Rig to Rig Relay,0,0,0,0
+docs/audits/rig-runtime-port/runtime-tool-invocation-adapter-design.md,Runtime Tool Invocation Adapter Design,audit,docs/audits/rig-runtime-port,dfba7e665abeeeb6,dfba7e665abeeeb6,115,14,Runtime Tool Invocation Adapter Design,0,0,0,0
+docs/audits/rig-runtime-port/runtime-tool-invocation-result-contract-audit.md,Runtime Tool Invocation Result Contract Audit,audit,docs/audits/rig-runtime-port,7fe9f1edd94db96d,7fe9f1edd94db96d,208,24,Runtime Tool Invocation Result Contract Audit,1,0,0,0
+docs/audits/session-lifecycle-state-machine.md,Audit: Session Lifecycle State Machine,audit,docs/audits,e1e3b808d9887046,e1e3b808d9887046,56,7,Audit: Session Lifecycle State Machine,1,1,0,0
+docs/audits/tests/test-cleanup-roadmap.md,Test Cleanup Roadmap,audit,docs/audits/tests,4ba44e88e5bab51b,4ba44e88e5bab51b,232,10,Test Cleanup Roadmap,2,0,0,0
+docs/audits/tests/test-quality-taxonomy.md,Test Quality Taxonomy,audit,docs/audits/tests,467f436fb2714d2d,467f436fb2714d2d,23,1,Test Quality Taxonomy,0,0,0,0
+docs/audits/tests/test-suite-quality-audit.md,Test Suite Quality Audit,audit,docs/audits/tests,94660c0db77a17eb,94660c0db77a17eb,184,16,Test Suite Quality Audit,0,0,0,0
+docs/audits/tool-determinism-inventory.md,Tool Determinism Inventory,audit,docs/audits,de180e296232388e,de180e296232388e,66,6,Tool Determinism Inventory,0,0,4,0
+docs/audits/tool-execution-artifact-safety-boundary.md,Audit: Tool Execution and Artifact Safety Boundary,audit,docs/audits,ace2814e04398910,ace2814e04398910,39,7,Audit: Tool Execution and Artifact Safety Boundary,0,0,0,0
+docs/audits/tool-hardening/bash-deterministic-envelope.md,Bash Deterministic Tool Envelope,audit,docs/audits/tool-hardening,7426af2c1bd6401a,7426af2c1bd6401a,161,13,Bash Deterministic Tool Envelope,0,0,0,0
+docs/audits/tool-hardening/mutation-tool-contract-matrix.md,Mutation Tool Contract Matrix,audit,docs/audits/tool-hardening,22cf749831c4b739,22cf749831c4b739,78,9,Mutation Tool Contract Matrix,0,0,0,0
+docs/audits/tool-hardening/orchestration-tool-hardening-gaps.md,Orchestration Tool Hardening Gaps,audit,docs/audits/tool-hardening,dcc294ced97a16f6,dcc294ced97a16f6,51,7,Orchestration Tool Hardening Gaps,0,0,0,0
+docs/audits/tool-hardening/read-only-inspection-tool-gaps.md,Read-Only Inspection Tool Gaps,audit,docs/audits/tool-hardening,be3636accef37e83,be3636accef37e83,66,9,Read-Only Inspection Tool Gaps,0,0,0,0
+docs/audits/tool-hardening/search-replace-final-gaps.md,SearchReplace Final Gaps,audit,docs/audits/tool-hardening,6b602a9ee05d5ccc,6b602a9ee05d5ccc,43,5,SearchReplace Final Gaps,0,0,0,0
+docs/audits/tool-hardening/search-replace-patch-contract.md,SearchReplace Patch Contract,audit,docs/audits/tool-hardening,24c64d5c16c50ae1,24c64d5c16c50ae1,292,25,SearchReplace Patch Contract,2,0,0,0
+docs/audits/tool-hardening/tool-hardening-implementation-roadmap.md,Tool Hardening Implementation Roadmap,audit,docs/audits/tool-hardening,cec79aa6cc060ab6,cec79aa6cc060ab6,218,9,Tool Hardening Implementation Roadmap,0,0,0,0
+docs/audits/tool-hardening/tool-hardening-roadmap-audit.md,Tool Hardening Roadmap Audit,audit,docs/audits/tool-hardening,e19ddeda787cdf3b,e19ddeda787cdf3b,423,18,Tool Hardening Roadmap Audit,0,0,0,0
+docs/audits/tool-hardening/write-file-final-gaps.md,WriteFile Hardening State,audit,docs/audits/tool-hardening,15571af81da94a57,15571af81da94a57,32,5,WriteFile Hardening State,0,0,0,0
+docs/audits/tool-hardening/write-file-legacy-result-content-audit.md,WriteFile Legacy Result Content Audit,audit,docs/audits/tool-hardening,e0b7287f523607aa,e0b7287f523607aa,87,10,WriteFile Legacy Result Content Audit,0,0,0,0
+docs/audits/tool-hardening/write-file-receipt-gap-closure.md,WriteFile Receipt Gap Closure,audit,docs/audits/tool-hardening,dab2451a3c912dd4,dab2451a3c912dd4,109,11,WriteFile Receipt Gap Closure,0,0,0,0
+docs/audits/tool-usage-analysis/schema-gaps.md,Schema Gaps,audit,docs/audits/tool-usage-analysis,df81f82716eef503,df81f82716eef503,18,1,Schema Gaps,0,0,0,0
+docs/audits/tool-usage-analysis/tool-hardening-priority.md,Tool Hardening Priority,audit,docs/audits/tool-usage-analysis,ba941a6fb9bad57a,ba941a6fb9bad57a,96,11,Tool Hardening Priority,0,0,0,0
+docs/audits/tool-usage-analysis/tool-usage-summary.md,Local Relay Tool Usage Summary,audit,docs/audits/tool-usage-analysis,7f7f7e1ce3259e8e,7f7f7e1ce3259e8e,66,6,Local Relay Tool Usage Summary,0,0,0,0
+docs/audits/ui/textual-rig-console-maturity-audit.md,Textual Rig Console Maturity Audit,audit,docs/audits/ui,38e99375f51023e0,38e99375f51023e0,86,12,Textual Rig Console Maturity Audit,0,0,0,0
+docs/audits/validate-tool/bash-usage-audit.md,Bash Usage Audit for Validate Design,audit,docs/audits/validate-tool,24daae6dda9eff10,24daae6dda9eff10,185,13,Bash Usage Audit for Validate Design,0,0,0,0
+docs/audits/validate-tool/validate-blocker-taxonomy.md,Validate Blocker Taxonomy,audit,docs/audits/validate-tool,0335c082f87f2efc,0335c082f87f2efc,174,19,Validate Blocker Taxonomy,0,0,0,0
+docs/audits/validate-tool/validate-convergence-audit.md,Validate Workstream Convergence Audit,audit,docs/audits/validate-tool,2fa28300a9e5392a,2fa28300a9e5392a,308,30,Validate Workstream Convergence Audit,3,0,0,0
+docs/audits/validate-tool/validate-implementation-roadmap.md,Validate Implementation Roadmap,audit,docs/audits/validate-tool,dfeced15efad8b35,dfeced15efad8b35,475,11,Validate Implementation Roadmap,0,0,0,0
+docs/audits/validate-tool/validate-profile-taxonomy.md,Validate Profile Taxonomy,audit,docs/audits/validate-tool,9051852eb2227177,9051852eb2227177,324,19,Validate Profile Taxonomy,0,0,0,0
+docs/audits/validate-tool/validate-tool-contract.md,Validate Tool Contract,audit,docs/audits/validate-tool,ba0e3392d63301d5,ba0e3392d63301d5,286,20,Validate Tool Contract,0,0,0,0
+docs/audits/vibe-cli-purge-inventory.md,Vibe CLI Purge Inventory,audit,docs/audits,11403378d0063763,11403378d0063763,90,13,Vibe CLI Purge Inventory,0,0,4,0
+docs/audits/vibe-legacy-boundary-inventory.md,Vibe Legacy Boundary Inventory,audit,docs/audits,fab4855028de4c25,fab4855028de4c25,177,17,Vibe Legacy Boundary Inventory,0,0,4,0
+docs/audits/vscodium-shell-lane/architecture-options.md,Architecture Options: VSCodium Shell Lane,audit,docs/audits/vscodium-shell-lane,12202d67538e90d4,12202d67538e90d4,43,6,Architecture Options: VSCodium Shell Lane,0,0,0,0
+docs/audits/vscodium-shell-lane/compatibility-with-chatgpt-macos.md,ChatGPT macOS Compatibility Audit,audit,docs/audits/vscodium-shell-lane,6e8ad7237d75d502,6e8ad7237d75d502,31,6,ChatGPT macOS Compatibility Audit,0,0,0,0
+docs/audits/vscodium-shell-lane/current-rig-reuse-map.md,Current Rig Reuse Map,audit,docs/audits/vscodium-shell-lane,fb0d778fb9d66fc1,fb0d778fb9d66fc1,20,2,Current Rig Reuse Map,0,0,0,0
+docs/audits/vscodium-shell-lane/effort-estimate.md,Effort Estimate: VSCodium Shell Lane,audit,docs/audits/vscodium-shell-lane,708c1478a7bf4b0a,708c1478a7bf4b0a,25,3,Effort Estimate: VSCodium Shell Lane,0,0,0,0
+docs/audits/vscodium-shell-lane/executive-summary.md,Executive Summary: VSCodium Shell Lane for Rig Relay,audit,docs/audits/vscodium-shell-lane,c01a3f4b24f103c9,c01a3f4b24f103c9,33,7,Executive Summary: VSCodium Shell Lane for Rig Relay,0,0,0,0
+docs/audits/vscodium-shell-lane/extension-api-study.md,VSCodium Extension API Study,audit,docs/audits/vscodium-shell-lane,c651ce79bb2e0d2e,c651ce79bb2e0d2e,37,5,VSCodium Extension API Study,0,0,0,0
+docs/audits/vscodium-shell-lane/extension-spike-results.md,Audit: VSCodium Extension Feasibility Spike Results,audit,docs/audits/vscodium-shell-lane,6e49c8149eaf1a00,6e49c8149eaf1a00,43,10,Audit: VSCodium Extension Feasibility Spike Results,0,0,0,0
+docs/audits/vscodium-shell-lane/final-recommendation.md,Final Recommendation: VSCodium Shell Lane,audit,docs/audits/vscodium-shell-lane,5a99ebd116a81c45,5a99ebd116a81c45,30,7,Final Recommendation: VSCodium Shell Lane,0,0,0,0
+docs/audits/vscodium-shell-lane/product-surface.md,Product Surface: Rig MVP for VSCodium,audit,docs/audits/vscodium-shell-lane,8e87b02fe742e253,8e87b02fe742e253,41,9,Product Surface: Rig MVP for VSCodium,0,0,0,0
+docs/audits/vscodium-shell-lane/protocol-design.md,Protocol Design: Extension ↔ Rig Daemon,audit,docs/audits/vscodium-shell-lane,b513647048892424,b513647048892424,57,7,Protocol Design: Extension ↔ Rig Daemon,2,0,0,0
+docs/audits/vscodium-shell-lane/risk-register.md,Risk Register: VSCodium Shell Lane,audit,docs/audits/vscodium-shell-lane,bfe9ea7346a6fa9c,bfe9ea7346a6fa9c,21,2,Risk Register: VSCodium Shell Lane,0,0,0,0
+docs/conversations/2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.md,Conversation Summary: Test Suite Quality Audit,conversation,docs/conversations,a6f4e94897e44608,a6f4e94897e44608,43,7,Conversation Summary: Test Suite Quality Audit,0,0,0,0
+docs/conversations/2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.md,2026-05-13 — Phase 1: Receipt-Gated Protected Intents,conversation,docs/conversations,c6201562997b18ab,c6201562997b18ab,28,7,2026-05-13 — Phase 1: Receipt-Gated Protected Intents,0,0,0,0
+docs/conversations/2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.md,Desktop Projection Shell Pattern Port,conversation,docs/conversations,76b06331fcab8349,76b06331fcab8349,54,9,Desktop Projection Shell Pattern Port,0,0,0,0
+docs/conversations/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.md,Rig Relay — Phase 3: Facade Extraction & Tool Hardening (search_replace),conversation,docs/conversations,daa34c9383244595,daa34c9383244595,222,28,Rig Relay — Phase 3: Facade Extraction & Tool Hardening (search_replace),6,0,0,0
+docs/conversations/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.md,Rig Relay — Complete Conversation Summary,conversation,docs/conversations,9746339402f85e92,9746339402f85e92,340,29,Rig Relay — Complete Conversation Summary,5,0,0,0
+docs/conversations/2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.md,Comprehensive Conversation Summary,conversation,docs/conversations,0aef8285da3939e1,0aef8285da3939e1,420,57,Comprehensive Conversation Summary,1,0,0,0
+docs/conversations/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.md,2026 05 13  Rig Relay  Phase P3  Audit Trail Adapter Coordination  Summary,conversation,docs/conversations,027d838f75685be2,027d838f75685be2,270,23,1. User's Primary Goals and Intent,6,0,0,0
+docs/conversations/2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.md,Fleet Coordination Completion — Phases 3–5,conversation,docs/conversations,b46013fc477e10a8,b46013fc477e10a8,198,36,Fleet Coordination Completion — Phases 3–5,0,0,0,0
+docs/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md,Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval,conversation,docs/conversations,93ae0a1a82f687a6,93ae0a1a82f687a6,70,13,Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval,0,0,0,0
+docs/conversations/2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.md,Rig Relay — Conversation Summary,conversation,docs/conversations,6df0986d6073e876,6df0986d6073e876,64,9,Rig Relay — Conversation Summary,0,0,0,0
+docs/conversations/README.md,Conversation Summaries,conversation,docs/conversations,6e4087ac98d884e0,6e4087ac98d884e0,43,3,Conversation Summaries,1,0,10,0
+docs/demo/mcp-night-demo.md,MCP Night Demo — Fresh-Clone Walkthrough,demo,docs/demo,ef59a0106dbe2a05,ef59a0106dbe2a05,207,24,MCP Night Demo — Fresh-Clone Walkthrough,9,0,0,0
+docs/demo/mcp-night-development-harness-demo.md,MCP Night — Rig Relay Development Harness Demo,demo,docs/demo,e200c79ba1e595b4,e200c79ba1e595b4,236,17,MCP Night — Rig Relay Development Harness Demo,6,0,0,0
+docs/dogfood/rig-relay-self-dogfood.md,Rig Relay Self-Dogfood Workflow,dogfood_proof,docs/dogfood,65fcc861c4c26417,65fcc861c4c26417,346,27,Rig Relay Self-Dogfood Workflow,12,0,50,0
+docs/evidence/README.md,Rig Relay Evidence,evidence,docs/evidence,6615cc0591bf83e0,6615cc0591bf83e0,18,1,Rig Relay Evidence,0,0,1,0
+docs/evidence/validation.md,Evidence Validation,evidence,docs/evidence,e49f8029fb99c136,e49f8029fb99c136,152,9,Evidence Validation,2,0,0,0
+docs/findings/language-practices/python.md,Python Language Practices,unknown,docs/findings/language-practices,f9b090feb341d160,f9b090feb341d160,96,8,Python Language Practices,2,0,7,0
+docs/findings/out-of-scope-findings.md,Out-of-Scope Findings Registry,unknown,docs/findings,4e2d2e6337866cde,4e2d2e6337866cde,126,15,Out-of-Scope Findings Registry,1,0,1,0
+docs/governance/agent-loop-boundary.md,Agent Loop Boundary,governance,docs/governance,d840b201ae6b5833,d840b201ae6b5833,80,7,Agent Loop Boundary,1,0,0,0
+docs/governance/artifact-tracking-policy.md,Artifact Tracking Policy,governance,docs/governance,fcc9e8d472f22281,fcc9e8d472f22281,47,7,Artifact Tracking Policy,0,0,0,0
+docs/governance/audit-trail-tamper-evidence.md,Audit Trail Tamper-Evidence Design,governance,docs/governance,e6e70546f076396f,e6e70546f076396f,294,23,Audit Trail Tamper-Evidence Design,7,0,0,0
+docs/governance/audit-trail.md,Audit Trail Store,governance,docs/governance,745313dd09bd5632,745313dd09bd5632,91,11,Audit Trail Store,0,0,1,0
+docs/governance/beta-telemetry-onboarding.md,Beta Telemetry Onboarding,governance,docs/governance,4a7b918668eeb83b,4a7b918668eeb83b,123,12,Beta Telemetry Onboarding,0,0,0,0
+docs/governance/context-compiler.md,Context Compiler Doctrine,governance,docs/governance,2197b57a87ada0d0,2197b57a87ada0d0,68,6,Context Compiler Doctrine,0,0,0,0
+docs/governance/context-observability.md,Context Observability Doctrine,governance,docs/governance,5bac452134f09854,5bac452134f09854,79,7,Context Observability Doctrine,2,0,0,0
+docs/governance/context-optimization-codecs.md,Context Optimization Codecs,governance,docs/governance,5d8654fc21ee82db,5d8654fc21ee82db,167,19,Context Optimization Codecs,3,0,0,0
+docs/governance/coordination-ownership-policy.md,Coordination Ownership Policy,governance,docs/governance,c99a398df29343fd,c99a398df29343fd,113,11,Coordination Ownership Policy,1,0,0,0
+docs/governance/cross-session-coordination.md,Cross-Session Coordination,governance,docs/governance,e57976b8d970354d,e57976b8d970354d,382,28,Cross-Session Coordination,5,0,9,0
+docs/governance/debug-bundle-policy.md,Debug Bundle Policy,governance,docs/governance,ff981d123dabb438,ff981d123dabb438,36,5,Debug Bundle Policy,0,0,3,0
+docs/governance/delegate-fleet-orchestration.md,Delegate/Fleet Orchestration Doctrine,governance,docs/governance,f3ddbf77d94a32cb,f3ddbf77d94a32cb,372,25,Delegate/Fleet Orchestration Doctrine,4,0,13,0
+docs/governance/dependency-policy.md,Rig Relay Dependency Policy,governance,docs/governance,b35966d8ef7e4af3,b35966d8ef7e4af3,98,10,Rig Relay Dependency Policy,0,0,6,0
+docs/governance/desktop-cockpit-ui.md,Rig Relay Desktop Cockpit UI,governance,docs/governance,5ff910190314cb50,5ff910190314cb50,617,57,Rig Relay Desktop Cockpit UI,6,0,8,0
+docs/governance/desktop-hitl-boundary.md,Desktop HITL Boundary,governance,docs/governance,5920278045b07b30,5920278045b07b30,155,13,Desktop HITL Boundary,2,0,0,0
+docs/governance/execution-progress-projection.md,ExecutionProgressProjection — Design,governance,docs/governance,7b8819a34612087b,7b8819a34612087b,259,22,ExecutionProgressProjection — Design,1,0,5,0
+docs/governance/fleet-coordination-plane.md,Rig Fleet Coordination Plane,governance,docs/governance,56c55a6c274edffa,56c55a6c274edffa,324,39,Rig Fleet Coordination Plane,2,0,0,0
+docs/governance/frontend-rendering-safety.md,Frontend Rendering Safety Doctrine,governance,docs/governance,6508b9cecd0bf4a7,6508b9cecd0bf4a7,121,15,Frontend Rendering Safety Doctrine,0,0,5,0
+docs/governance/future-passkey-plan.md,Future Passkey Plan,governance,docs/governance,277ef9cf5167e3d8,277ef9cf5167e3d8,30,5,Future Passkey Plan,0,0,2,0
+docs/governance/identity-provider-policy.md,Identity Provider Policy,governance,docs/governance,ceebe5810d51376d,ceebe5810d51376d,201,22,Identity Provider Policy,2,0,11,0
+docs/governance/mission-context-packets.md,Mission Context Packets,governance,docs/governance,ab70f65b4c3e2859,ab70f65b4c3e2859,68,8,Mission Context Packets,0,0,0,0
+docs/governance/mission-envelope.md,Mission Envelope,governance,docs/governance,e5741ea88883a8e0,e5741ea88883a8e0,72,6,Mission Envelope,1,0,0,0
+docs/governance/mission-router.md,Rig Mission Router — Phase 0,governance,docs/governance,c11bb87ff71d7d9e,c11bb87ff71d7d9e,65,8,Rig Mission Router — Phase 0,0,0,0,0
+docs/governance/model-observation-dataset.md,Model Observation Dataset,governance,docs/governance,8f46970c736ca014,8f46970c736ca014,268,19,Model Observation Dataset,0,0,8,0
+docs/governance/provider-onboarding-policy.md,Provider Onboarding Policy,governance,docs/governance,b93bc6facef4b419,b93bc6facef4b419,138,13,Provider Onboarding Policy,0,0,7,0
+docs/governance/ralph-background-loop.md,Ralph — Governed Background Maintenance Loop,governance,docs/governance,eba15e50bf6a66bb,eba15e50bf6a66bb,120,11,Ralph — Governed Background Maintenance Loop,2,0,0,0
+docs/governance/ralph-worktree-lanes.md,Ralph Worktree Lanes — Background Isolation Model,governance,docs/governance,e9c3eb9f70947fc0,e9c3eb9f70947fc0,76,8,Ralph Worktree Lanes — Background Isolation Model,1,0,0,0
+docs/governance/receipt-envelope.md,Receipt Envelope,governance,docs/governance,38cf64e3aafee34b,38cf64e3aafee34b,154,18,Receipt Envelope,1,0,7,0
+docs/governance/relay-desktop-projection-contract.md,Relay Desktop Projection Contract,governance,docs/governance,bd30099e5c31312d,bd30099e5c31312d,252,19,Relay Desktop Projection Contract,0,0,6,0
+docs/governance/relay-local-remote-boundary.md,Relay Local/Remote Authority Boundary,governance,docs/governance,4bda6dd2d715ed6f,4bda6dd2d715ed6f,126,15,Relay Local/Remote Authority Boundary,0,0,7,0
+docs/governance/relay-surface-matrix.md,Relay Surface Matrix,governance,docs/governance,57db3ebd79dc3f37,57db3ebd79dc3f37,31,5,Relay Surface Matrix,0,0,3,0
+docs/governance/reviewer-orchestrator.md,Reviewer Orchestrator Doctrine,governance,docs/governance,4b858fece1bae462,4b858fece1bae462,227,20,Reviewer Orchestrator Doctrine,1,0,12,0
+docs/governance/rig-to-relay-pattern-inventory.md,Rig-to-Relay Pattern Inventory,governance,docs/governance,8afc958af9493bd9,8afc958af9493bd9,157,16,Rig-to-Relay Pattern Inventory,0,0,4,0
+docs/governance/rig-to-relay-porting-doctrine.md,Rig-to-Relay Porting Doctrine,governance,docs/governance,60357fbb1298010a,60357fbb1298010a,123,18,Rig-to-Relay Porting Doctrine,0,0,9,0
+docs/governance/runtime-context-resolver.md,Runtime Context Resolver,governance,docs/governance,ae58609f1322bd6c,ae58609f1322bd6c,50,7,Runtime Context Resolver,0,0,1,0
+docs/governance/runtime-port-status.md,Runtime Port Status Normalization,governance,docs/governance,ec754be4813bc5e5,ec754be4813bc5e5,101,9,Runtime Port Status Normalization,0,0,0,0
+docs/governance/runtime-supervisor.md,RuntimeSupervisor Architecture,governance,docs/governance,9ead5289dbf23362,9ead5289dbf23362,242,27,RuntimeSupervisor Architecture,3,0,1,0
+docs/governance/runtime-tool-invocation-adapter-implementation.md,Runtime Tool Invocation Adapter — Implementation,governance,docs/governance,46698a703b878366,46698a703b878366,154,23,Runtime Tool Invocation Adapter — Implementation,1,0,1,0
+docs/governance/runtime-tool-invocation-adapter.md,Runtime Tool Invocation Adapter,governance,docs/governance,f9a9ce704e239030,f9a9ce704e239030,105,13,Runtime Tool Invocation Adapter,0,0,1,0
+docs/governance/runtime-tool-invocation-dry-run.md,Runtime Tool Invocation Dry-Run,governance,docs/governance,4475fccab5c56d79,4475fccab5c56d79,57,8,Runtime Tool Invocation Dry-Run,0,0,0,0
+docs/governance/runtime-tool-invocation-execution.md,Runtime Tool Invocation Execution,governance,docs/governance,6898a1737b185e97,6898a1737b185e97,343,29,Runtime Tool Invocation Execution,1,0,0,0
+docs/governance/runtime-tool-invocation-result-contract.md,Runtime Tool Invocation Result Contract,governance,docs/governance,11bab6cd0450bedc,11bab6cd0450bedc,164,19,Runtime Tool Invocation Result Contract,1,0,0,0
+docs/governance/session-lifecycle-finalize-tool.md,Session Lifecycle Finalize Tool,governance,docs/governance,7a0044ce139160ed,7a0044ce139160ed,136,12,Session Lifecycle Finalize Tool,1,0,3,0
+docs/governance/session-storage-lifecycle.md,Session Storage Lifecycle,governance,docs/governance,ea5e0b5078f40ef6,ea5e0b5078f40ef6,108,13,Session Storage Lifecycle,0,0,4,0
+docs/governance/step-up-authorization.md,Step-Up Authorization Doctrine,governance,docs/governance,a14a2dfdfe16f87f,a14a2dfdfe16f87f,149,13,Step-Up Authorization Doctrine,1,0,4,0
+docs/governance/storage-retention-policy.md,Storage Retention Policy,governance,docs/governance,a47b7c04aeb563ed,a47b7c04aeb563ed,52,7,Storage Retention Policy,0,0,3,0
+docs/governance/telemetry-contribution-policy.md,Telemetry Contribution Policy,governance,docs/governance,f5cfaaed53428ef1,f5cfaaed53428ef1,177,16,Telemetry Contribution Policy,4,0,9,0
+docs/governance/textual-retirement-policy.md,Textual TUI Retirement Policy,governance,docs/governance,6822e6aa7a7d254a,6822e6aa7a7d254a,101,11,Textual TUI Retirement Policy,0,0,6,0
+docs/governance/textual-rig-console.md,Textual Rig Console,governance,docs/governance,9a33716e975e88d1,9a33716e975e88d1,382,28,Textual Rig Console,3,0,3,0
+docs/governance/tool-runtime-boundary.md,ToolRuntime Boundary,governance,docs/governance,d113e38b1bda08be,d113e38b1bda08be,95,8,ToolRuntime Boundary,2,0,0,0
+docs/governance/update-policy.md,Rig Relay Update Policy,governance,docs/governance,2e6b9b9d357cf4e1,2e6b9b9d357cf4e1,96,8,Rig Relay Update Policy,3,0,3,0
+docs/governance/usage-data-doctrine.md,Rig Relay Usage Data Doctrine,governance,docs/governance,13930bc3fb28e75a,13930bc3fb28e75a,1106,74,Rig Relay Usage Data Doctrine,15,0,6,0
+docs/governance/validation-scheduler.md,Validation Scheduler,governance,docs/governance,98645e66925db7ba,98645e66925db7ba,181,21,Validation Scheduler,1,0,0,0
+docs/governance/vibe-legacy-deprecation.md,Vibe Legacy Deprecation Doctrine,governance,docs/governance,611254e28f0b5615,611254e28f0b5615,128,18,Vibe Legacy Deprecation Doctrine,0,0,9,0
+docs/governance/vibe-rig-compatibility-bridge.md,Vibe / Rig Compatibility Bridge,governance,docs/governance,bd4df61fd391c582,bd4df61fd391c582,52,6,Vibe / Rig Compatibility Bridge,0,0,0,0
+docs/governance/vscodium-extension-client.md,Governance: VSCodium Extension Client,governance,docs/governance,ced25f11f1b22080,ced25f11f1b22080,41,7,Governance: VSCodium Extension Client,0,0,0,0
+docs/governance/worktree-manager.md,Worktree Manager — Governance & Safety,governance,docs/governance,cb426d3642526ff3,cb426d3642526ff3,110,16,Worktree Manager — Governance & Safety,1,0,0,0
+docs/install.md,Rig Relay Install Channels,unknown,docs,677e7dd09b5fbe5a,677e7dd09b5fbe5a,90,12,Rig Relay Install Channels,6,0,2,0
+docs/legal/privacy-notice-alpha.md,Privacy Notice — Alpha,unknown,docs/legal,593187fc545f1ac9,593187fc545f1ac9,88,10,Privacy Notice — Alpha,0,0,0,0
+docs/legal/usage-data-license-alpha.md,Usage Data Commercial License — Alpha,unknown,docs/legal,5ee4bae70a429a4f,5ee4bae70a429a4f,72,7,Usage Data Commercial License — Alpha,0,0,3,0
+docs/protocol-surfaces.md,Protocol Surfaces,unknown,docs,3b1b5215e1ae7e09,3b1b5215e1ae7e09,84,6,Protocol Surfaces,3,0,0,0
+docs/protocols/ide-capability-map.md,IDE Capability Map,protocol,docs/protocols,85ef0923542f937e,85ef0923542f937e,80,6,IDE Capability Map,0,0,0,0
+docs/protocols/ide-sidecar-ipc.md,Rig IDE / Sidecar IPC Protocol (v1),protocol,docs/protocols,3bb68fe9894795d1,3bb68fe9894795d1,193,16,Rig IDE / Sidecar IPC Protocol (v1),9,0,0,0
+docs/protocols/mcp-context-tools.md,MCP Context Tools,protocol,docs/protocols,4d8ef4d3aca71175,4d8ef4d3aca71175,43,4,MCP Context Tools,1,0,0,0
+docs/proxy-setup.md,Proxy Setup,guide,docs,02e4743dcab191a7,02e4743dcab191a7,37,4,Proxy Setup,1,0,1,0
+docs/publishing/github-pages-artifact-site.md,GitHub Pages — Artifact-Rendered Documentation Site,publishing,docs/publishing,ce16a9519ce5982c,ce16a9519ce5982c,68,6,GitHub Pages — Artifact-Rendered Documentation Site,3,0,0,0
+docs/release/alpha-release-checklist.md,Alpha Release Checklist,unknown,docs/release,df2ea437a11cf277,df2ea437a11cf277,49,7,Alpha Release Checklist,0,0,0,0
+docs/release/known-limitations-alpha.md,Known Limitations for Alpha,unknown,docs/release,9fb6e6ab86daf947,9fb6e6ab86daf947,34,5,Known Limitations for Alpha,0,0,0,0
+docs/release/versioning-policy.md,Rig Relay Versioning Policy,unknown,docs/release,a0913605a45e995d,a0913605a45e995d,76,9,Rig Relay Versioning Policy,0,0,0,0
+docs/rig-mcp-capability-map.md,Rig MCP Server — Capability Map,unknown,docs,0997327598db9017,0997327598db9017,119,25,Rig MCP Server — Capability Map,2,0,0,0
+docs/troubleshooting/runtime-provenance.md,Runtime Provenance,unknown,docs/troubleshooting,999e329108aefe4c,999e329108aefe4c,105,14,Runtime Provenance,5,0,0,0
+docs/ui/textual-rig-console-progress-timeline.md,ProgressTimelineWidget — Design,ui_guide,docs/ui,edce7144fe8431e4,edce7144fe8431e4,213,17,ProgressTimelineWidget — Design,5,0,3,0
+docs/ui/textual-rig-console-slice-1.md,Textual Rig Console — Slice 1: Projection-Only SessionPaneWidget,ui_guide,docs/ui,2d01c43c2e84b73a,2d01c43c2e84b73a,161,14,Textual Rig Console — Slice 1: Projection-Only SessionPaneWidget,2,0,5,0
+docs/ui/textual-rig-console-slice-2-evidence-rail.md,Textual Rig Console — Slice 2: EvidenceRailWidget,ui_guide,docs/ui,7d760257e6c42918,7d760257e6c42918,82,9,Textual Rig Console — Slice 2: EvidenceRailWidget,0,0,4,0
+docs/ui/textual-rig-console-slice-3-dashboard.md,Textual Rig Console — Slice 3: DashboardScreen,ui_guide,docs/ui,cf33d3cc93805a2b,cf33d3cc93805a2b,169,17,Textual Rig Console — Slice 3: DashboardScreen,6,0,4,0
+docs/ui/textual-rig-console-slice-4-action-boundary.md,Textual Rig Console — Slice 4: Read-Only Action Surface and Projection Provider Boundary,ui_guide,docs/ui,1267acf224e74ad5,1267acf224e74ad5,209,20,Textual Rig Console — Slice 4: Read-Only Action Surface and Projection Provider ,6,0,5,0
+docs/ui/textual-rig-console-slice-5-1-worker-refresh.md,Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh,ui_guide,docs/ui,36a78018883f30dd,36a78018883f30dd,110,12,Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh,0,0,3,0
+docs/ui/textual-rig-console-slice-5-runtime-provider.md,Textual Rig Console — Slice 5: Read-Only Runtime Dashboard Provider,ui_guide,docs/ui,bc2969e475604897,bc2969e475604897,210,16,Textual Rig Console — Slice 5: Read-Only Runtime Dashboard Provider,4,0,6,0
+docs/ui/textual-rig-console-slice-6-coordination-session-enrichment.md,Textual Rig Console — Slice 6: Coordination/Session Enrichment,ui_guide,docs/ui,bc228fa95978738a,bc228fa95978738a,139,13,Textual Rig Console — Slice 6: Coordination/Session Enrichment,1,0,5,0
+docs/ui/textual-streaming-smoothness.md,Textual Streaming Smoothness — Provider Delta Coalescing,ui_guide,docs/ui,f6bf4e06ba2e9690,f6bf4e06ba2e9690,316,28,Textual Streaming Smoothness — Provider Delta Coalescing,4,0,0,0
+extensions/vscodium-rig-relay/README.md,Rig Relay VSCodium Extension Spike,unknown,extensions/vscodium-rig-relay,1e835591a39bb5c0,1e835591a39bb5c0,41,7,Rig Relay VSCodium Extension Spike,0,0,0,0
+packaging/macos/README.md,macOS App Bundle — Rig Relay,unknown,packaging/macos,9ca4a74497dc58c5,9ca4a74497dc58c5,103,10,macOS App Bundle — Rig Relay,4,0,0,0
+rig_relay/core/prompts/agents_doc.md,Agents Doc,unknown,rig_relay/core/prompts,7aeab55c2d205490,7aeab55c2d205490,6,0,,0,0,0,0
+rig_relay/core/prompts/cli.md,Cli,unknown,rig_relay/core/prompts,aaa90eecaf2fe1f3,aaa90eecaf2fe1f3,61,0,,0,0,0,0
+rig_relay/core/prompts/compact.md,Compact,unknown,rig_relay/core/prompts,f2cb4f8273dcedc3,f2cb4f8273dcedc3,49,7,1. User's Primary Goals and Intent,0,0,0,0
+rig_relay/core/prompts/dangerous_directory.md,Dangerous Directory,unknown,rig_relay/core/prompts,961069242e1635a3,961069242e1635a3,6,0,,0,0,0,0
+rig_relay/core/prompts/explore.md,Explore,unknown,rig_relay/core/prompts,0f45bb68b6779469,0f45bb68b6779469,51,0,,3,0,0,0
+rig_relay/core/prompts/lean.md,Lean,unknown,rig_relay/core/prompts,6ab83581252617b8,6ab83581252617b8,160,0,,1,0,0,0
+rig_relay/core/prompts/orchestrator.md,Orchestrator Agent,unknown,rig_relay/core/prompts,fc38a8a2eaaf823c,fc38a8a2eaaf823c,93,11,Orchestrator Agent,0,0,0,0
+rig_relay/core/prompts/project_context.md,Project Context,unknown,rig_relay/core/prompts,8bbbda30842a444b,8bbbda30842a444b,5,0,,0,0,0,0
+rig_relay/core/prompts/tests.md,Tests,unknown,rig_relay/core/prompts,95a2fb39a0089421,95a2fb39a0089421,3,0,,0,0,0,0
+rig_relay/core/prompts/turn_summary.md,Turn Summary,unknown,rig_relay/core/prompts,7d7970167b0637fb,7d7970167b0637fb,11,0,,0,0,0,0
+rig_relay/core/tools/builtins/prompts/ask_user_question.md,Ask User Question,unknown,rig_relay/core/tools/builtins/prompts,7c8d9061462121d8,7c8d9061462121d8,85,6,When to Use,2,0,0,0
+rig_relay/core/tools/builtins/prompts/bash.md,First chunk,unknown,rig_relay/core/tools/builtins/prompts,8f9e6a4419da906c,8f9e6a4419da906c,74,2,First chunk,4,0,0,0
+rig_relay/core/tools/builtins/prompts/grep.md,Grep,unknown,rig_relay/core/tools/builtins/prompts,fd462dfd795f7949,fd462dfd795f7949,5,0,,0,0,0,0
+rig_relay/core/tools/builtins/prompts/read_file.md,Read File,unknown,rig_relay/core/tools/builtins/prompts,4686acf78fd69ddc,4686acf78fd69ddc,19,0,,0,0,0,0
+rig_relay/core/tools/builtins/prompts/search_replace.md,Search Replace,unknown,rig_relay/core/tools/builtins/prompts,b69bbb24e9247de5,b69bbb24e9247de5,44,0,,2,0,0,0
+rig_relay/core/tools/builtins/prompts/skill.md,Skill,unknown,rig_relay/core/tools/builtins/prompts,efea02a929ffaad7,efea02a929ffaad7,20,3,When to Use This Tool,0,0,0,0
+rig_relay/core/tools/builtins/prompts/task.md,Task,unknown,rig_relay/core/tools/builtins/prompts,1acbce6f20922789,1acbce6f20922789,27,3,When to Use This Tool,0,0,0,0
+rig_relay/core/tools/builtins/prompts/todo.md,Todo,unknown,rig_relay/core/tools/builtins/prompts,5795efe64a086810,5795efe64a086810,200,6,How it works,5,0,0,0
+rig_relay/core/tools/builtins/prompts/webfetch.md,Webfetch,unknown,rig_relay/core/tools/builtins/prompts,20a9d5da72e5409e,20a9d5da72e5409e,8,0,,0,0,0,0
+rig_relay/core/tools/builtins/prompts/websearch.md,Websearch,unknown,rig_relay/core/tools/builtins/prompts,a8dce143976cb111,a8dce143976cb111,26,0,,0,0,0,0
+rig_relay/core/tools/builtins/prompts/write_file.md,Create a new file (will error if file exists),unknown,rig_relay/core/tools/builtins/prompts,a7bb08bbdb85a06f,a7bb08bbdb85a06f,43,4,Create a new file (will error if file exists),1,0,0,0
+scripts/README.md,Project Management Scripts,unknown,scripts,402ed1fea5fa7377,402ed1fea5fa7377,21,7,Project Management Scripts,1,0,0,0

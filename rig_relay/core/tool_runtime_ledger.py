@@ -12,8 +12,8 @@ Future: DurableToolRuntimeResultLedger, AnalyticsToolRuntimeSink.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Protocol
+from datetime import UTC, datetime
+from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -33,7 +33,7 @@ class ToolRuntimeLedgerEntry(BaseModel):
     degraded_capabilities: list[str] = Field(default_factory=list)
     duration_ms: float | None = None
     recorded_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
 
     @classmethod
@@ -63,7 +63,7 @@ class ToolRuntimeSummary(BaseModel):
 
     schema_version: str = "rig.ui.tool_runtime_summary.v1"
     generated_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
 
     recent_results: list[ToolRuntimeLedgerEntry] = Field(default_factory=list)
@@ -181,3 +181,36 @@ class InMemoryToolRuntimeResultLedger:
     @property
     def entry_count(self) -> int:
         return len(self._entries)
+
+
+# ── Session-level singleton (temporary bridge) ──────────────────
+# _active_ledger is a session-local desktop projection bridge.
+# NOT a durable analytics store. Reset between sessions/forks.
+# Future: SessionToolRuntimeLedger keyed by session_id.
+
+_active_ledger: InMemoryToolRuntimeResultLedger | None = None
+
+
+def get_active_ledger() -> InMemoryToolRuntimeResultLedger:
+    """Return the active session ledger, creating one if needed."""
+    global _active_ledger
+    if _active_ledger is None:
+        _active_ledger = InMemoryToolRuntimeResultLedger()
+    return _active_ledger
+
+
+def set_active_ledger(ledger: InMemoryToolRuntimeResultLedger) -> None:
+    """Set the active session ledger (called by AgentLoop on init)."""
+    global _active_ledger
+    _active_ledger = ledger
+
+
+def reset_active_ledger() -> None:
+    """Reset the active ledger (called on session close/fork).
+
+    Prevents cross-session result leakage.
+    """
+    global _active_ledger
+    if _active_ledger is not None:
+        _active_ledger.reset()
+    _active_ledger = None

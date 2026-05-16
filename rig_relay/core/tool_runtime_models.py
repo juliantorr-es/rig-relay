@@ -86,12 +86,24 @@ class ToolRuntimeRequest(BaseModel):
     tool_name: str
     tool_args: dict[str, Any] = Field(default_factory=dict)
     tool_call_id: str = ""
+    source_kind: str | None = None
+    source_id: str | None = None
+    invocation_id: str | None = None
     turn_id: str | None = None
     session_id: str | None = None
     agent_id: str | None = None
+    lane_id: str | None = None
+    lease_id: str | None = None
+    workspace_root: str | None = None
+    worktree_path: str | None = None
+    actor: str | None = None
     execution_mode: ToolRuntimeExecutionMode = ToolRuntimeExecutionMode.UNKNOWN
     context_envelope_id: str | None = None
     bypass_permissions: bool = False
+    audit_context: dict[str, Any] = Field(default_factory=dict)
+    runtime_envelope_sha256: str | None = None
+    receipt_context: dict[str, Any] = Field(default_factory=dict)
+    policy_hints: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolRuntimeRefusal(BaseModel):
@@ -126,6 +138,9 @@ class ToolRuntimeResult(BaseModel):
     status: ToolRuntimeStatus
     tool_name: str = ""
     tool_call_id: str = ""
+    source_kind: str | None = None
+    source_id: str | None = None
+    runtime_envelope_sha256: str | None = None
 
     # ── Provider-facing ───────────────────────────────────────────
     provider_tool_response: Any = None

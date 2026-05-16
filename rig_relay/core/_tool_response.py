@@ -10,26 +10,26 @@ import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from rig_relay.core.telemetry.tool_contract import (
-    ToolDeterminismClass,
-    ToolMutationClass,
-    ToolOutputKind,
-)
+from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
 from rig_relay.core.telemetry.artifacts import (
     ToolOutputArtifactWriter,
     should_artifact_tool_result,
 )
 from rig_relay.core.telemetry.local import dump_canonical_json
-from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+    ToolOutputKind,
+)
 from rig_relay.core.types import LLMMessage, ToolResultEvent
 
 _TRUNCATION_PROMPT_BYTES = 64_000
 
 if TYPE_CHECKING:
+    from opentelemetry import trace
+
     from rig_relay.core._agent_models import ToolDecision
     from rig_relay.core.llm.format import ResolvedToolCall
-    from rig_relay.core.tools.base import BaseTool
-    from opentelemetry import trace
 
 
 class ToolResponseMixin:
@@ -96,6 +96,7 @@ class ToolResponseMixin:
 
         if span is not None:
             from rig_relay.core.tracing import set_tool_result
+
             set_tool_result(span, text)
         self.telemetry_client.send_tool_call_finished(
             tool_call=tool_call,
@@ -189,6 +190,22 @@ class ToolResponseMixin:
 
         try:
             from rig_relay.evidence.model_observations import observe_tool_call
+            from rig_relay.identity.consent_store import ConsentStore
+            from rig_relay.identity.telemetry_consent import (
+                observation_allowed_by_consent,
+            )
+
+            record = ConsentStore().get()
+            provider = self.config.get_active_provider()
+            is_local = getattr(provider, "backend", "") in {
+                "mlx",
+                "llama_cpp",
+                "ollama",
+            } or provider.name in {"mlx", "llama_cpp", "ollama"}
+            observation_kind = "local_model" if is_local else "provider"
+
+            if not observation_allowed_by_consent(record, observation_kind):
+                return
 
             observe_tool_call(
                 session_id=self.session_id,
@@ -196,8 +213,8 @@ class ToolResponseMixin:
                 task_fingerprint=hashlib.sha256(
                     dump_canonical_json(tool_call.args_dict).encode("utf-8")
                 ).hexdigest(),
-                provider_kind=self.config.get_active_provider().name,
-                provider_name=self.config.get_active_provider().name,
+                provider_kind=provider.name,
+                provider_name=provider.name,
                 model_id=self.config.active_model,
                 tool_call_count=1,
                 tool_success_count=1 if status == "success" else 0,

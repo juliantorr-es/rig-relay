@@ -35,6 +35,7 @@ export const state = {
     runState: null,     // RalphRunState model dump
     lastIntent: null,   // { name, status, summary }
     lifecycle: null,    // RalphLifecycleProjection model dump
+    missionBoard: null, // OrchestratorMissionBoard model dump
   },
 };
 
@@ -45,6 +46,8 @@ const modeDefaults = {
     safetyState: 'compact',
     nextAction: 'compact',
     providerHealth: 'compact',
+    roleModel: 'standard',
+    missionBoard: 'standard',
     ralphScout: 'standard',
     ralphLifecycle: 'standard',
     validationSummary: 'compact',

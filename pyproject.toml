@@ -74,6 +74,7 @@ dependencies = [
     "pyobjc-framework-LocalAuthentication; sys_platform == 'darwin'",
     "pyrefly>=0.64.0",
     "ast-grep-py>=0.42.1",
+    "platformdirs>=4.9.6",
 ]
 
 [project.optional-dependencies]
@@ -115,6 +116,7 @@ required-version = ">=0.8.0"
 dev = [
     "debugpy>=1.8.19",
     "pre-commit>=4.2.0",
+    "pyinstaller>=6.20.0",
     "pyinstrument>=5.1.2",
     "pyright>=1.1.403",
     "pytest>=8.3.5",
@@ -188,6 +190,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/evidence/google_drive_upload.py" = ["PLR"]
 "rig_relay/core/tools/builtins/github_ci_cd.py" = ["PLR"]
 "rig_relay/core/agent_loop.py" = ["PLR"]
+"rig_relay/cli/desktop_cockpit.py" = ["PLR"]
 "rig_relay/core/tool_runtime.py" = ["PLR"]
 "rig_relay/core/tools/reroute.py" = ["PLR"]
 "rig_relay/cli/ide_sidecar.py" = ["PLR"]

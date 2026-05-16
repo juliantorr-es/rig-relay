@@ -287,11 +287,12 @@ def _build_telemetry_bundle(build_root: Path) -> dict[str, Any]:
 
 
 def _build_tool_runtime_summary() -> dict[str, Any]:
-    """Build tool runtime summary from in-memory ledger."""
+    """Build tool runtime summary from the active session ledger."""
     try:
-        from rig_relay.core.tool_runtime_projection import build_summary
+        from rig_relay.core.tool_runtime_ledger import get_active_ledger
 
-        summary = build_summary()
+        ledger = get_active_ledger()
+        summary = ledger.build_summary()
         return {
             "available": summary.total_executions > 0,
             **summary.model_dump(mode="json"),

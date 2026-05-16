@@ -84,7 +84,6 @@ if TYPE_CHECKING:
     )
 
 
-
 from rig_relay.core._agent_helpers import requires_init
 from rig_relay.core._agent_init import InitHelpersMixin
 from rig_relay.core._agent_models import ToolDecision, ToolExecutionResponse
@@ -158,13 +157,12 @@ class AgentLoop(
         self.message_observer = message_observer
         self._max_turns = max_turns
         self._max_price = max_price
+
+        self._init_core_managers(config, agent_name, is_subagent, defer_heavy_init)
+
         self.backend_factory = lambda: backend or self._select_backend()
         self.backend = self.backend_factory()
         self.enable_streaming = enable_streaming
-
-        self._init_core_managers(
-            config, agent_name, is_subagent, defer_heavy_init
-        )
 
         self.stats = AgentStats()
         self.approval_callback: ApprovalCallback | None = None
@@ -342,13 +340,23 @@ class AgentLoop(
             input_price_per_million=self.stats.input_price_per_million,
             output_price_per_million=self.stats.output_price_per_million,
             active_model=(
-                self.config.active_model
-                if hasattr(self.config, 'active_model')
-                else ""
+                self.config.active_model if hasattr(self.config, "active_model") else ""
             ),
             active_provider=self.config.get_active_provider().name,
             context_packet_available=self._context_packet is not None,
         )
+
+    @staticmethod
+    def _make_result_sink() -> Any:
+        """Create the tool result sink and register it as active."""
+        from rig_relay.core.tool_runtime_ledger import (
+            InMemoryToolRuntimeResultLedger,
+            set_active_ledger,
+        )
+
+        ledger = InMemoryToolRuntimeResultLedger()
+        set_active_ledger(ledger)
+        return ledger
 
     def _get_tool_runtime(self) -> ToolRuntime:
         """Lazily construct ToolRuntime with injected adapters."""
@@ -356,15 +364,15 @@ class AgentLoop(
             return self._tool_runtime
 
         # ── Invoke tool adapter ─────────────────────────────────
-        async def invoke_adapter(
-            args_dict: dict,
-        ) -> AsyncGenerator[Any, None]:
+        async def invoke_adapter(args_dict: dict) -> AsyncGenerator[Any, None]:
             """Adapter: ToolRuntime calls this, AgentLoop handles InvokeContext.
 
             ToolRuntime passes expanded args; we find the tool instance from
             the current tool call context stored on the request.
             """
             tool_name = args_dict.pop("_tool_runtime_name", "")
+            tool_meta = args_dict.pop("_tool_runtime_meta", {})
+            subprocess_runner = tool_meta.get("subprocess_runner")
             tool_instance = self.tool_manager.get(tool_name)
             async for item in tool_instance.invoke(
                 ctx=InvokeContext(
@@ -381,6 +389,7 @@ class AgentLoop(
                     skill_manager=self.skill_manager,
                     scratchpad_dir=self.scratchpad_dir,
                     tool_manager=self.tool_manager,
+                    subprocess_runner=subprocess_runner,
                 ),
                 **args_dict,
             ):
@@ -397,7 +406,10 @@ class AgentLoop(
             from rig_relay.core.tools.cache import get_cached_result
 
             determinism_str = str(determinism_cls.value)
-            if determinism_str not in {"DETERMINISTIC_PURE", "DETERMINISTIC_REPO_STATE"}:
+            if determinism_str not in {
+                "DETERMINISTIC_PURE",
+                "DETERMINISTIC_REPO_STATE",
+            }:
                 return False, None
             cached = get_cached_result(
                 tool_name=tool_name,
@@ -409,9 +421,7 @@ class AgentLoop(
                 return True, _result_model(**cached)
             return False, None
 
-        def cache_store(
-            tool_name: str, args_dict: dict, result_dict: dict
-        ) -> None:
+        def cache_store(tool_name: str, args_dict: dict, result_dict: dict) -> None:
             tool_class = self.tool_manager.available_tools.get(tool_name)
             if tool_class is None:
                 return
@@ -459,10 +469,7 @@ class AgentLoop(
                 from rig_relay.core.types import ApprovalResponse
 
                 response, feedback = await self.approval_callback(
-                    tool_name,
-                    tool_instance.ArgsModel(**args_dict),
-                    call_id,
-                    [],
+                    tool_name, tool_instance.ArgsModel(**args_dict), call_id, []
                 )
                 return response == ApprovalResponse.YES, feedback or ""
             except Exception:
@@ -473,7 +480,7 @@ class AgentLoop(
             """Patch gate check. tool_call_ref expected to be a ResolvedToolCall."""
             if tool_call_ref is None:
                 return None
-            tool_name = getattr(tool_call_ref, 'tool_name', '')
+            tool_name = getattr(tool_call_ref, "tool_name", "")
             try:
                 tool_instance = self.tool_manager.get(tool_name)
             except Exception:
@@ -534,7 +541,7 @@ class AgentLoop(
                     provider_name=self.config.get_active_provider().name,
                     model_id=(
                         self.config.active_model
-                        if hasattr(self.config, 'active_model')
+                        if hasattr(self.config, "active_model")
                         else ""
                     ),
                     tool_call_count=1,
@@ -561,8 +568,20 @@ class AgentLoop(
             receipt_capture=receipt_capture,
             context_observe=context_observe,
             stats_delta=stats_delta,
+            subprocess_runner=self._build_subprocess_runner(),
         )
         return self._tool_runtime
+
+    def _build_subprocess_runner(self) -> Any:
+        """Build a RuntimeSupervisor-backed subprocess runner if available."""
+        try:
+            from rig_relay.runtime.supervisor_invoker import (
+                RuntimeSupervisorToolSubprocessRunner,
+            )
+
+            return RuntimeSupervisorToolSubprocessRunner()
+        except Exception:
+            return None
 
     def refresh_config(self) -> None:
         self._base_config = VibeConfig.load()
@@ -763,8 +782,12 @@ class AgentLoop(
                     turn.advance(TurnPhase.CONTEXT_BUILDING)
                     await self._build_context_envelope(user_msg)
                     if self._current_context_envelope:
-                        turn.context_envelope_id = self._current_context_envelope.envelope_id
-                        turn.context_section_count = self._current_context_envelope.section_count
+                        turn.context_envelope_id = (
+                            self._current_context_envelope.envelope_id
+                        )
+                        turn.context_section_count = (
+                            self._current_context_envelope.section_count
+                        )
                     turn.advance(TurnPhase.CONTEXT_READY)
 
                 turn.advance(TurnPhase.MODEL_CALLING)
@@ -823,7 +846,7 @@ class AgentLoop(
         parsed = self.format_handler.parse_message(last_message)
         resolved = self.format_handler.resolve_tool_calls(parsed, self.tool_manager)
 
-        if (turn := getattr(self, '_current_turn', None)) is not None:
+        if (turn := getattr(self, "_current_turn", None)) is not None:
             turn.advance(TurnPhase.ASSISTANT_PARSED)
             if last_message.content:
                 turn.assistant_content_length = len(last_message.content)
@@ -831,14 +854,14 @@ class AgentLoop(
         if not resolved.tool_calls and not resolved.failed_calls:
             return
 
-        if (turn := getattr(self, '_current_turn', None)) is not None:
+        if (turn := getattr(self, "_current_turn", None)) is not None:
             turn.tool_call_count = len(resolved.tool_calls) + len(resolved.failed_calls)
             turn.advance(TurnPhase.TOOL_CALLS_RUNNING)
 
         profile_before = self.agent_profile.name
         async for event in self._handle_tool_calls(resolved):
             yield event
-        if (turn := getattr(self, '_current_turn', None)) is not None:
+        if (turn := getattr(self, "_current_turn", None)) is not None:
             turn.advance(TurnPhase.TOOL_CALLS_COMPLETED)
         if self.agent_profile.name != profile_before:
             yield AgentProfileChangedEvent(agent_name=self.agent_profile.name)
@@ -949,9 +972,7 @@ class AgentLoop(
         self, tool_call: ResolvedToolCall
     ) -> ToolResultEvent | None:
         """Check the deterministic tool result cache. Returns cached result event or None."""
-        determinism_cls = getattr(
-            tool_call.tool_class, "determinism_class", None
-        )
+        determinism_cls = getattr(tool_call.tool_class, "determinism_class", None)
         if determinism_cls is None:
             return None
 
@@ -998,9 +1019,7 @@ class AgentLoop(
             mut_cls = getattr(tool_call.tool_class, "mutation_class", None)
             if mut_cls is not None:
                 mut_str = (
-                    str(mut_cls.value)
-                    if hasattr(mut_cls, 'value')
-                    else str(mut_cls)
+                    str(mut_cls.value) if hasattr(mut_cls, "value") else str(mut_cls)
                 )
                 if "execution" in mut_str.lower():
                     exec_mode = ToolRuntimeExecutionMode.MUTATION_EXECUTION
@@ -1042,11 +1061,9 @@ class AgentLoop(
             result = await runtime.execute_one(request)
         except asyncio.CancelledError:
             cancel = str(
-                get_user_cancellation_message(
-                    CancellationReason.TOOL_INTERRUPTED
-                )
+                get_user_cancellation_message(CancellationReason.TOOL_INTERRUPTED)
             )
-            if (turn := getattr(self, '_current_turn', None)) is not None:
+            if (turn := getattr(self, "_current_turn", None)) is not None:
                 turn.tool_failure_count += 1
             yield self._tool_failure_event(
                 tool_call, cancel, None, cancelled=True, span=span
@@ -1054,7 +1071,7 @@ class AgentLoop(
             raise
 
         # ── Adapt result ─────────────────────────────────────────
-        if (turn := getattr(self, '_current_turn', None)) is not None:
+        if (turn := getattr(self, "_current_turn", None)) is not None:
             if result.duration_ms is not None:
                 turn.tool_total_duration_ms += result.duration_ms
 
@@ -1067,9 +1084,9 @@ class AgentLoop(
                     cached=True,
                     tool_call_id=cid,
                 )
-                if (turn := getattr(self, '_current_turn', None)) is not None:
+                if (turn := getattr(self, "_current_turn", None)) is not None:
                     turn.tool_success_count += 1
-                _record_tool_result(result)
+                self._tool_result_sink.record(result)
                 yield cached_event
                 return
 
@@ -1079,17 +1096,11 @@ class AgentLoop(
                     yield ev
 
                 response_model = result.provider_tool_response
-                duration_sec = (
-                    result.duration_ms / 1000 if result.duration_ms else 0
-                )
+                duration_sec = result.duration_ms / 1000 if result.duration_ms else 0
 
-                if response_model is not None and hasattr(
-                    response_model, "model_dump"
-                ):
+                if response_model is not None and hasattr(response_model, "model_dump"):
                     result_dict = response_model.model_dump()
-                    text = "\n".join(
-                        f"{k}: {v}" for k, v in result_dict.items()
-                    )
+                    text = "\n".join(f"{k}: {v}" for k, v in result_dict.items())
                     try:
                         of_interest = self.tool_manager.get(tn)
                         extra = of_interest.get_result_extra(response_model)
@@ -1120,9 +1131,9 @@ class AgentLoop(
                     duration=duration_sec,
                     tool_call_id=cid,
                 )
-                if (turn := getattr(self, '_current_turn', None)) is not None:
+                if (turn := getattr(self, "_current_turn", None)) is not None:
                     turn.tool_success_count += 1
-                _record_tool_result(result)
+                self._tool_result_sink.record(result)
                 return
 
             case ToolRuntimeStatus.REFUSED:
@@ -1136,13 +1147,13 @@ class AgentLoop(
                     cancelled=False,
                     tool_call_id=cid,
                 )
-                if (turn := getattr(self, '_current_turn', None)) is not None:
+                if (turn := getattr(self, "_current_turn", None)) is not None:
                     turn.tool_skip_count += 1
                 yield skip_event
                 self._handle_tool_response(
                     tool_call, reason, "skipped", None, span=span
                 )
-                _record_tool_result(result)
+                self._tool_result_sink.record(result)
                 return
 
             case ToolRuntimeStatus.FAILED:
@@ -1150,12 +1161,10 @@ class AgentLoop(
                     f"<{TOOL_ERROR_TAG}>{tn} failed: "
                     f"{result.error_message or ''}</{TOOL_ERROR_TAG}>"
                 )
-                if (turn := getattr(self, '_current_turn', None)) is not None:
+                if (turn := getattr(self, "_current_turn", None)) is not None:
                     turn.tool_failure_count += 1
-                yield self._tool_failure_event(
-                    tool_call, error_msg, None, span=span
-                )
-                _record_tool_result(result)
+                yield self._tool_failure_event(tool_call, error_msg, None, span=span)
+                self._tool_result_sink.record(result)
                 return
 
             case _:
@@ -1163,11 +1172,9 @@ class AgentLoop(
                     f"<{TOOL_ERROR_TAG}>{tn}: unknown status "
                     f"{result.status}</{TOOL_ERROR_TAG}>"
                 )
-                if (turn := getattr(self, '_current_turn', None)) is not None:
+                if (turn := getattr(self, "_current_turn", None)) is not None:
                     turn.tool_failure_count += 1
-                yield self._tool_failure_event(
-                    tool_call, error_msg, None, span=span
-                )
+                yield self._tool_failure_event(tool_call, error_msg, None, span=span)
 
     async def _handle_tool_calls(
         self, resolved: ResolvedMessage
@@ -1252,9 +1259,7 @@ class AgentLoop(
         try:
             from rig_relay.evidence.storage_lifecycle import compute_storage_summary
 
-            summary = compute_storage_summary(
-                self._workspace_root / ".rig" / "relay",
-            )
+            summary = compute_storage_summary(self._workspace_root / ".rig" / "relay")
             budget_status = summary.get("budget_status", "ok")
 
             if budget_status not in {"warn", "over_budget", "fleet_blocked"}:

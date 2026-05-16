@@ -13,6 +13,9 @@ from typing import Any, ClassVar
 from pydantic import BaseModel
 import pytest
 
+from rig_relay.core.config import VibeConfig
+from rig_relay.core.llm.format import ResolvedToolCall
+from rig_relay.core.tools.base import BaseTool
 from rig_relay.evidence.model_observations import Backend as ObsBackend
 from rig_relay.identity.telemetry_consent import (
     TelemetryConsentRecord,
@@ -21,9 +24,6 @@ from rig_relay.identity.telemetry_consent import (
     grant_consent,
     revoke_consent,
 )
-from rig_relay.core.config import VibeConfig
-from rig_relay.core.llm.format import ResolvedToolCall
-from rig_relay.core.tools.base import BaseTool
 
 # ═══════════════════════════════════════════════════════════════════════
 # ── Fixtures
@@ -128,16 +128,24 @@ class TestConsentScopeIntegration:
 
         Also monkeypatches ``observe_tool_call`` and ``ConsentStore.get``.
         """
+        from rig_relay.core._tool_response import ToolResponseMixin
+        from rig_relay.core.config.harness_files import init_harness_files_manager
         from rig_relay.evidence.model_observations import observe_tool_call
-        from rig_relay.core.agent_loop import AgentLoop
+
+        init_harness_files_manager("user", "project")
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "fake_key")
 
         config = VibeConfig()
         config.enable_local_observability = True
         config.enable_remote_telemetry = False
         config.active_model = "deepseek-v4-flash"
 
-        self._loop = AgentLoop(config=config)
-        self._loop.session_id = "test-consent-integration"
+        class DummyAgentLoop(ToolResponseMixin):
+            def __init__(self, cfg):
+                self.config = cfg
+                self.session_id = "test-consent-integration"
+
+        self._loop = DummyAgentLoop(config)
 
         # Monkeypatch observe_tool_call to record calls instead of writing
         monkeypatch.setattr(

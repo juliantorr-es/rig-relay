@@ -291,8 +291,16 @@ registerWidget('progressTimeline', (container, level) => {
 
 registerWidget('connectionStatus', (container, level) => {
   if (level !== 'standard') return;
+  const transportLabel =
+    state.transport === 'wss'
+      ? 'Secure local bridge'
+      : state.transport === 'ws'
+        ? 'Insecure dev bridge'
+        : state.transport === 'bridge'
+          ? 'Bridge'
+          : 'Offline';
   const html = '<table class="kv-table">' +
-    row('Transport', state.transport === 'ws' ? 'WebSocket' : (state.transport === 'bridge' ? 'Bridge' : 'Offline')) +
+    row('Transport', transportLabel) +
     row('WS Status', state.wsConnected ? 'Connected' : 'Disconnected') +
     '</table>';
   renderStandardCard(container, 'Connection', html, 'connectionStatus', state.wsConnected ? 'ok' : 'warn');
@@ -1309,4 +1317,242 @@ function renderRalphLifecycleExpanded(container, lc) {
 
   html += '</div>';
   renderExpandedWidget(container, 'Background Lane Lifecycle', html);
+}
+
+// ── Orchestrator Mission Board widget ───────────────────────────────
+
+registerWidget('missionBoard', function(container, level) {
+  const board = (state.projection && state.projection.orchestrator_board) || null;
+
+  if (!board) {
+    if (level === 'compact') return;
+    renderStandardCard(container, 'Mission Board', '<p style="color:var(--text-muted);margin:0;padding:8px">Type /orchestrator to create missions.</p>', 'missionBoard', '');
+    return;
+  }
+
+  if (level === 'compact') {
+    const count = board.active_missions || 0;
+    const ralphPending = board.pending_ralph_report_count || 0;
+    const label = ralphPending > 0 ? count + ' active + ' + ralphPending + ' Ralph' : count + ' active';
+    const cls = ralphPending > 0 ? 'warn' : (count > 0 ? 'ok' : '');
+    renderCompactChip(container, 'Missions', function() {
+      return { text: label, cls: cls };
+    });
+    return;
+  }
+
+  if (level === 'expanded') {
+    renderMissionBoardExpanded(container, board);
+    return;
+  }
+
+  var html = '';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+    '<span style="font-weight:600">Orchestrator Board</span>' +
+    '<span style="font-size:var(--font-size-xs);color:var(--text-muted)">' +
+    (board.active_missions || 0) + ' missions / ' + (board.pending_ralph_report_count || 0) + ' Ralph</span>' +
+    '</div>';
+
+  // Workstream 1: Assigned Subagent Lanes
+  if (board.assigned_subagent_lanes && board.assigned_subagent_lanes.length > 0) {
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:3px">Assigned Subagents</div>';
+    board.assigned_subagent_lanes.forEach(function(l) {
+      var isRalph = l.profile_kind === 'autonomous_background_worker';
+      var cls = isRalph ? '' : (l.active_missions > 0 ? 'ok' : '');
+      var icon = isRalph ? '🤖 ' : '▸ ';
+      var modelLabel = l.model_binding_label || '';
+      var providerLabel = l.provider_status === 'demo_local' ? ' (local demo)' : (l.provider_status === 'configured' ? ' (configured)' : '');
+      html += '<div style="font-size:var(--font-size-sm);margin-bottom:2px">' +
+        '<span class="widget-chip ' + cls + '">' + escapeHtml(l.status) + '</span> ' +
+        icon + escapeHtml(l.display_name) +
+        (modelLabel ? '<span style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:4px">' + escapeHtml(modelLabel) + escapeHtml(providerLabel) + '</span>' : '') +
+        '</div>';
+    });
+  }
+
+  // Workstream 2: Ralph Background Reports
+  if (board.ralph_reports && board.ralph_reports.length > 0) {
+    var pendingReports = board.ralph_reports.filter(function(r) { return r.requires_orchestrator_review; });
+    if (pendingReports.length > 0) {
+      html += '<div style="margin-top:6px;font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:3px">Ralph Background Reports</div>';
+      pendingReports.slice(0, 2).forEach(function(r) {
+        html += '<div style="font-size:var(--font-size-sm);margin-bottom:2px">' +
+          '<span class="widget-chip warn">' + escapeHtml(r.report_kind) + '</span> ' +
+          escapeHtml(r.title.substring(0, 45)) + '</div>';
+      });
+      if (pendingReports.length > 2) {
+        html += '<div style="font-size:var(--font-size-xs);color:var(--text-muted)">+ ' +
+          (pendingReports.length - 2) + ' more</div>';
+      }
+    }
+  }
+
+  // Workstream 3: Review entrypoint
+  if (board.review_entrypoint && board.review_entrypoint.available) {
+    var re = board.review_entrypoint;
+    html += '<div style="margin-top:6px">' +
+      '<button onclick="window.RigRelay.dispatchIntent(\'review_with_orchestrator\')" ' +
+      'style="background:var(--color-accent);color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:var(--font-size-sm)">' +
+      escapeHtml(re.label) + '</button></div>';
+  }
+
+  html += '<div class="widget-actions" style="margin-top:4px">' +
+    '<button onclick="window.RigRelay.dispatchIntent(\'orchestrator_new_mission\')">New</button>' +
+    '<button onclick="window.RigRelay.cycleWidgetDisclosure(\'missionBoard\')">Timeline →</button>' +
+    '</div>';
+
+  renderStandardCard(container, 'Orchestrator Board', html, 'missionBoard', (board.pending_ralph_report_count || 0) > 0 ? 'warn' : (board.active_missions > 0 ? 'ok' : ''));
+});
+
+function renderMissionBoardExpanded(container, board) {
+  var html = '<div style="max-width:700px;margin:0 auto">';
+  html += '<h3 style="margin:0 0 12px 0">Orchestrator Mission Board</h3>';
+
+  // Workstream 1: Assigned Subagent Lanes
+  if (board.assigned_subagent_lanes && board.assigned_subagent_lanes.length > 0) {
+    html += '<h4 style="margin:12px 0 8px 0">Assigned Subagents</h4>';
+    board.assigned_subagent_lanes.forEach(function(l) {
+      var isRalph = l.profile_kind === 'autonomous_background_worker';
+      var icon = isRalph ? '🤖' : '▸';
+      html += '<div style="margin-bottom:4px;padding:4px;border-left:3px solid var(--color-accent)">' +
+        '<div style="font-weight:600">' + icon + ' ' + escapeHtml(l.display_name) + '</div>' +
+        '<div style="font-size:var(--font-size-xs);color:var(--text-muted)">' +
+        escapeHtml(l.role) + ' | Profile: ' + escapeHtml(l.profile_kind) +
+        ' | Missions: ' + (l.active_missions || 0) + '/' + (l.max_concurrent || 0);
+      if (l.model_binding_label) {
+        html += ' | Model: ' + escapeHtml(l.model_binding_label);
+      }
+      if (l.provider_status) {
+        html += ' | Provider: ' + escapeHtml(l.provider_status);
+      }
+      html += '</div></div>';
+    });
+  }
+
+  // Workstream 2: Ralph Background Reports
+  if (board.ralph_reports && board.ralph_reports.length > 0) {
+    html += '<h4 style="margin:12px 0 8px 0">Ralph Background Reports (' + (board.pending_ralph_report_count || 0) + ' pending)</h4>';
+    board.ralph_reports.forEach(function(r) {
+      var cls = r.requires_orchestrator_review ? 'warn' : '';
+      html += '<div style="margin-bottom:4px;padding:4px;border-left:3px solid var(--warn)">' +
+        '<div style="font-weight:600">' + escapeHtml(r.title) + '</div>' +
+        '<div style="font-size:var(--font-size-xs);color:var(--text-muted)">' +
+        'Kind: ' + escapeHtml(r.report_kind) + ' | Status: ' + escapeHtml(r.status) +
+        ' | Relevance: ' + (r.relevance_score * 100).toFixed(0) + '%' +
+        (r.branch_name ? ' | Branch: ' + escapeHtml(r.branch_name) : '') +
+        '</div></div>';
+    });
+  }
+
+  // Workstream 3: Missions
+  if (board.missions && board.missions.length > 0) {
+    html += '<h4 style="margin:12px 0 8px 0">Assigned Missions</h4>';
+    board.missions.forEach(function(m) {
+      html += '<div style="margin-bottom:4px;padding:4px;border-left:3px solid var(--color-accent)">' +
+        '<div style="font-weight:600">' + escapeHtml(m.title) + '</div>' +
+        '<div style="font-size:var(--font-size-xs);color:var(--text-muted)">' +
+        escapeHtml(m.status) + (m.assigned_profile_name ? ' | Agent: ' + escapeHtml(m.assigned_profile_name) : '') +
+        ' | Lane: ' + escapeHtml(m.lane_id || '—') + '</div></div>';
+    });
+  }
+
+  if (board.lifecycle_timeline && board.lifecycle_timeline.length > 0) {
+    html += '<h4 style="margin:12px 0 8px 0">Ralph Lifecycle Timeline</h4>';
+    board.lifecycle_timeline.forEach(function(e) {
+      var icon = e.status === 'completed' ? '✅' : (e.blocked ? '🔒' : '⏳');
+      html += '<div style="display:flex;align-items:center;gap:8px;font-size:var(--font-size-sm);margin-bottom:3px">' +
+        '<span>' + icon + '</span>' +
+        '<span>' + escapeHtml(e.label) + '</span>' +
+        '<span style="color:var(--text-muted);font-size:var(--font-size-xs)">' + escapeHtml(e.detail) + '</span>' +
+        '</div>';
+    });
+  }
+
+  html += '<h4 style="margin:12px 0 8px 0">Execution Scopes</h4>';
+  html += '<table class="kv-table">' +
+    '<tr><td>Isolated lane</td><td>' + (board.isolated_lane_execution_enabled ? '✅' : '❌') + '</td></tr>' +
+    '<tr><td>Live runtime</td><td>❌</td></tr>' +
+    '<tr><td>Merge</td><td>' + (board.merge_enabled ? '✅' : '❌ requires adoption approval') + '</td></tr>' +
+    '<tr><td>Push</td><td>' + (board.push_enabled ? '✅' : '❌ requires preproduction approval') + '</td></tr>' +
+    '</table>';
+
+  html += '</div>';
+  renderExpandedWidget(container, 'Orchestrator Board', html);
+}
+
+// ── Role Model explainer widget ──────────────────────────────────────
+
+registerWidget('roleModel', function(container, level) {
+  const rm = (state.projection && state.projection.role_model) || null;
+
+  if (!rm) {
+    if (level === 'compact') return;
+    renderStandardCard(container, 'Role Model', '<p style="color:var(--text-muted);margin:0;padding:8px">Role model data not available.</p>', 'roleModel', '');
+    return;
+  }
+
+  if (level === 'compact') {
+    const count = (rm.assignable_subagent_count || 0);
+    const ralph = (rm.autonomous_worker_count || 0);
+    const label = count + ' subagents' + (ralph > 0 ? ' + Ralph' : '');
+    renderCompactChip(container, 'Roles', function() {
+      return { text: label, cls: '' };
+    });
+    return;
+  }
+
+  if (level === 'expanded') {
+    renderRoleModelExpanded(container, rm);
+    return;
+  }
+
+  var html = '';
+
+  html += '<div style="font-size:var(--font-size-sm);margin-bottom:8px">' +
+    '<span>' + (rm.assignable_subagent_count || 0) + ' subagents</span>' +
+    ' &middot; <span>' + (rm.autonomous_worker_count || 0) + ' autonomous</span>' +
+    ' &middot; <span>' + (rm.configured_model_binding_count || 0) + ' bindings</span>' +
+    '</div>';
+
+  if (rm.roles && rm.roles.length > 0) {
+    rm.roles.slice(0, 4).forEach(function(r) {
+      html += '<div style="font-size:var(--font-size-sm);margin-bottom:3px">' +
+        '<span>' + (r.emoji || '') + ' <strong>' + escapeHtml(r.role_name) + '</strong></span>' +
+        ' <span style="color:var(--text-muted);font-size:var(--font-size-xs)">' + escapeHtml(r.description.substring(0, 60)) + '</span>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="widget-actions" style="margin-top:4px">' +
+    '<button onclick="window.RigRelay.cycleWidgetDisclosure(\'roleModel\')">More</button>' +
+    '</div>';
+
+  renderStandardCard(container, 'Role Model', html, 'roleModel', '');
+});
+
+function renderRoleModelExpanded(container, rm) {
+  var html = '<div style="max-width:700px;margin:0 auto">';
+  html += '<h3 style="margin:0 0 12px 0">Role Model</h3>';
+
+  if (rm.roles && rm.roles.length > 0) {
+    rm.roles.forEach(function(r) {
+      html += '<div style="margin-bottom:12px;padding:8px;border-left:3px solid var(--color-accent);background:#161b22;border-radius:4px">' +
+        '<div style="font-weight:600;margin-bottom:4px">' + (r.emoji || '') + ' ' + escapeHtml(r.role_name) +
+        ' <span style="font-size:var(--font-size-xs);color:var(--text-muted)">(' + escapeHtml(r.role_kind) + ')</span>' +
+        '</div>' +
+        '<div style="font-size:var(--font-size-sm);color:var(--text-muted)">' + escapeHtml(r.description) + '</div>' +
+        '<div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:2px">Count: ' + (r.count || 0) + '</div>' +
+        '</div>';
+    });
+  }
+
+  html += '<table class="kv-table" style="margin-top:16px">' +
+    '<tr><td>Assignable subagents</td><td>' + (rm.assignable_subagent_count || 0) + '</td></tr>' +
+    '<tr><td>Autonomous workers</td><td>' + (rm.autonomous_worker_count || 0) + '</td></tr>' +
+    '<tr><td>Model bindings</td><td>' + (rm.configured_model_binding_count || 0) + '</td></tr>' +
+    '<tr><td>Pending Ralph reports</td><td>' + (rm.pending_ralph_report_count || 0) + '</td></tr>' +
+    '</table>';
+
+  html += '</div>';
+  renderExpandedWidget(container, 'Role Model', html);
 }
