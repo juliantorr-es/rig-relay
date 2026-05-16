@@ -9,10 +9,10 @@ from acp.schema import TextContentBlock
 import pytest
 from pytest import raises
 
-from tests.mock.utils import mock_llm_chunk
-from tests.stubs.fake_backend import FakeBackend
 from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
 from rig_relay.core.types import Role
+from tests.mock.utils import mock_llm_chunk
+from tests.stubs.fake_backend import FakeBackend
 
 
 class TestMultiSessionCore:

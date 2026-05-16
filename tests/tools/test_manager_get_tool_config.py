@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.tools.base import BaseToolConfig, ToolPermission
 from rig_relay.core.tools.manager import ToolManager
+from tests.conftest import build_test_vibe_config
 
 
 @pytest.fixture

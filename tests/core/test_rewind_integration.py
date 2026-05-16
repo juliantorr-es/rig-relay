@@ -13,11 +13,11 @@ from pathlib import Path
 
 import pytest
 
+from rig_relay.core.agents.models import BuiltinAgentName
+from rig_relay.core.types import BaseEvent, FunctionCall, ToolCall
 from tests.conftest import build_test_agent_loop, build_test_vibe_config
 from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend
-from rig_relay.core.agents.models import BuiltinAgentName
-from rig_relay.core.types import BaseEvent, FunctionCall, ToolCall
 
 
 async def _act_and_collect(agent_loop, prompt: str) -> list[BaseEvent]:

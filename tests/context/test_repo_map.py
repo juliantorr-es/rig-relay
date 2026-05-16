@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from rig_relay.context.repo_map import (
     build_repo_info,
     build_subsystem_map,

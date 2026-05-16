@@ -6,8 +6,6 @@ Proves correlation does not block tool calls and missing context produces safe d
 
 from __future__ import annotations
 
-import itertools
-
 import pytest
 
 from rig_relay.context.correlation import (
@@ -19,11 +17,7 @@ from rig_relay.context.correlation import (
     _touched_hard_denied,
     correlate_tool_call_with_context,
 )
-from rig_relay.context.models import (
-    ContextPacket,
-    PathRecommendation,
-    RepoInfo,
-)
+from rig_relay.context.models import ContextPacket, PathRecommendation, RepoInfo
 
 
 def _make_packet(**overrides: dict) -> ContextPacket:

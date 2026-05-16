@@ -7,11 +7,10 @@ heading extraction, link extraction, and code fence counting.
 
 from __future__ import annotations
 
-import hashlib
-import json
-import re
 from datetime import UTC, datetime
+import hashlib
 from pathlib import Path
+import re
 from typing import Any
 
 import yaml
@@ -290,8 +289,8 @@ __all__ = [
     "extract_headings",
     "extract_images",
     "extract_links",
-    "infer_doc_kind",
     "infer_audience",
+    "infer_doc_kind",
     "inventory_markdown",
     "parse_front_matter",
     "scan_file",

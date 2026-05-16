@@ -4,7 +4,12 @@ from collections.abc import AsyncGenerator
 
 from pydantic import BaseModel
 
-from rig_relay.core.tools.base import BaseTool, BaseToolConfig, BaseToolState, InvokeContext
+from rig_relay.core.tools.base import (
+    BaseTool,
+    BaseToolConfig,
+    BaseToolState,
+    InvokeContext,
+)
 from rig_relay.core.types import ToolStreamEvent
 
 

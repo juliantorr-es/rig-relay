@@ -7,16 +7,9 @@ Conservative, content-light session audit / compaction / GC helpers for
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from enum import StrEnum, auto
-import gzip
-import hashlib
-import json
 from pathlib import Path
 from typing import Any
-
-from rig_relay.governance.mission_envelope import MissionEnvelope
-
 
 
 class SessionStorageCategory(StrEnum):

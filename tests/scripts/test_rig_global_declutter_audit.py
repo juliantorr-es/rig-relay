@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.rig_global_declutter_audit import inventory_rig, quarantine, write_reports
 
+pytestmark = [pytest.mark.migration]
 
 def _touch(path: Path, content: str = "x") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

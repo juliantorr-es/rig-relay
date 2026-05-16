@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
 from pytest import MonkeyPatch
 
 from scripts.rig_relay_dataset_report import (
@@ -17,6 +18,9 @@ from scripts.rig_relay_dataset_report import (
 
 # ── Fixture helpers ──────────────────────────────────────────────────────
 
+
+
+pytestmark = [pytest.mark.migration]
 
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

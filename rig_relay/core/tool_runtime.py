@@ -95,6 +95,7 @@ class ToolRuntime:
         context_observe: ContextObserveFn | None = None,
         stats_delta: StatsDeltaFn | None = None,
         subprocess_runner: ToolSubprocessRunner | None = None,
+        trace_recorder: Any | None = None,
         source_label: str = "agent_loop",
     ) -> None:
         self._invoke_tool = invoke_tool or self._default_invoke_tool
@@ -111,6 +112,7 @@ class ToolRuntime:
         self._context_observe = context_observe or (lambda s, tn, a, bp: None)
         self._stats_delta = stats_delta or (lambda k, d: None)
         self._subprocess_runner = subprocess_runner
+        self._trace_recorder = trace_recorder
         self._source_label = source_label
 
     # ── Public API ──────────────────────────────────────────────────
@@ -167,10 +169,37 @@ class ToolRuntime:
         if self._subprocess_runner is not None:
             tool_meta["subprocess_runner"] = self._subprocess_runner
 
+        # ── Start tracing span ────────────────────────────────
+        trace_span: Any = None
+        trace_status: Any = None
+        recorder: Any = None
+        if self._trace_recorder is not None:
+            recorder = self._trace_recorder
+            from rig_relay.tracing.models import TraceStatus as _TS
+
+            trace_status = _TS
+            trace_span = recorder.start_span(
+                "tool_runtime.execute_one",
+                attributes={
+                    "tool.name": tn,
+                    "tool.call_id": cid,
+                    "rig.runtime_source": request.source_kind or self._source_label,
+                    "rig.execution_mode": str(request.execution_mode),
+                },
+            )
+
         # ── 1. Cache check ──────────────────────────────────────
         hit, cached = self._cache_check(tn, request.tool_args)
+        if trace_span is not None:
+            trace_span.event("tool_runtime.cache_check", attributes={"cache.hit": hit})
         if hit and cached is not None:
             self._stats_delta("tool_calls_succeeded", 1)
+            if trace_span is not None:
+                getattr(recorder, "end_span")(
+                    trace_span,
+                    status=trace_status.ok,
+                    attributes={"tool.status": "cached", "cache.hit": True},
+                )
             return ToolRuntimeResult.cached_result(
                 tool_name=tn, tool_call_id=cid, provider_tool_response=cached
             ).model_copy(
@@ -366,6 +395,20 @@ class ToolRuntime:
             degraded.append("context_observation_failed")
 
         status = ToolRuntimeStatus.DEGRADED if degraded else ToolRuntimeStatus.COMPLETED
+
+        if trace_span is not None:
+            end_status = (
+                trace_status.ok
+                if status == ToolRuntimeStatus.COMPLETED
+                else trace_status.degraded
+            )
+            end_attrs: dict[str, Any] = {
+                "tool.status": status,
+                "tool.degraded": bool(degraded),
+            }
+            getattr(recorder, "end_span")(
+                trace_span, status=end_status, attributes=end_attrs
+            )
 
         return ToolRuntimeResult(
             status=status,

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from enum import StrEnum, auto
+
 from pydantic import BaseModel
 
 from rig_relay.core.tools.permissions import ToolPermission

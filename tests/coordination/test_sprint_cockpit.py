@@ -1,6 +1,10 @@
 """Tests for the sprint cockpit generator and reviewer orchestrator schemas."""
 
 from __future__ import annotations
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
 
 import json
 from pathlib import Path

@@ -15,7 +15,10 @@ from mistralai.client.models import (
 )
 from pydantic import BaseModel, Field
 
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,

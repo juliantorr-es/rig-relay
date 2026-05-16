@@ -6,32 +6,31 @@ Conservative, content-light session audit / compaction / GC helpers for
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from enum import StrEnum, auto
 import gzip
 import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
-from rig_relay.governance.mission_envelope import MissionEnvelope
 from rig_relay.evidence._lifecycle_models import (
-    SessionStorageCategory,
-    SessionPruneCandidate,
-    SessionCompactionCandidate,
-    SessionStorageSummary,
     ClassifiedArtifact,
     CompactionResult,
-    Refusal,
     DeletedArtifact,
-    SessionRetentionPolicy,
-    SessionLifecycleReceipt,
-    SessionLifecycleManifestEntry,
-    SessionLifecycleManifest,
+    Refusal,
+    SessionCompactionCandidate,
     SessionFinalizeResult,
+    SessionLifecycleManifest,
+    SessionLifecycleManifestEntry,
+    SessionLifecycleReceipt,
+    SessionPruneCandidate,
+    SessionRetentionPolicy,
+    SessionStorageCategory,
+    SessionStorageSummary,
     _FinalizeState,
 )
+from rig_relay.governance.mission_envelope import MissionEnvelope
+
 
 def default_sessions_root() -> Path:
     return Path.home() / ".rig" / "sessions"

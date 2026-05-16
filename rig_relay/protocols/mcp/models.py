@@ -292,17 +292,17 @@ PROMPTS: list[MCPPrompt] = [
 
 __all__ = [
     "GATED_TOOLS",
-    "MCPPrompt",
-    "MCPResource",
-    "MCPTool",
-    "MCPToolTier",
     "PROMPTS",
     "READ_ONLY_RESOURCES",
     "READ_ONLY_TOOLS",
-    "ServerCapabilities",
     "TIER_1_TOOLS",
     "TIER_2_TOOLS",
     "TIER_3_TOOLS",
     "TIER_4_TOOLS",
     "TIER_5_TOOLS",
+    "MCPPrompt",
+    "MCPResource",
+    "MCPTool",
+    "MCPToolTier",
+    "ServerCapabilities",
 ]

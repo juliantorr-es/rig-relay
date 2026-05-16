@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 REQUIRED_INVENTORY_PATTERNS = [
@@ -40,6 +42,9 @@ REQUIRED_CORE_RULES = [
 
 REQUIRED_CROSS_REFS = ["rig-to-relay-pattern-inventory.md"]
 
+
+
+pytestmark = [pytest.mark.migration]
 
 class TestDoctrinesExist:
     def test_doctrine_exists(self):

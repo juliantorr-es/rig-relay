@@ -14,6 +14,7 @@ class ProjectionWebSocketClient {
     this.onError = options.onError || (() => {});
     this.onAuthFailed = options.onAuthFailed || (() => {});
     this.onMessage = options.onMessage || (() => {});
+    this.transportMachine = options.transportMachine || null;
 
     this.ws = null;
     this.connected = false;
@@ -22,6 +23,7 @@ class ProjectionWebSocketClient {
     this.currentDelay = this.reconnectDelay;
     this._intentionalClose = false;
     this._subscriptionActive = false;
+    this._firstProjectionReceived = false;
 
     if (this.token) {
       this.connect();
@@ -38,6 +40,9 @@ class ProjectionWebSocketClient {
     }
 
     try {
+      this.transportMachine && this.transportMachine.transition('websocket_connecting', {
+        ws_url: this.wsUrl,
+      });
       this.ws = new WebSocket(this.wsUrl);
     } catch (e) {
       this._handleError('WebSocket construction failed: ' + e.message);
@@ -48,10 +53,22 @@ class ProjectionWebSocketClient {
     this.ws.onopen = () => {
       this.connected = true;
       this.authenticated = false;
+      console.log("[bridge:frontend] WebSocket opened");
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.record_frontend_event) {
+        window.pywebview.api.record_frontend_event({
+          type: "frontend_ws_open"
+          }).catch(function() {});
+      }
+      this.transportMachine && this.transportMachine.transition('websocket_open', {
+        ws_url: this.wsUrl,
+      });
       this.onStatusChange('authenticating');
 
       // Send auth as first message
       this.send({ type: 'auth', token: this.token });
+      this.transportMachine && this.transportMachine.transition('auth_sent', {
+        ws_url: this.wsUrl,
+      });
     };
 
     this.ws.onmessage = (event) => {
@@ -68,6 +85,9 @@ class ProjectionWebSocketClient {
           this.authenticated = true;
           this.reconnectAttempts = 0;
           this.currentDelay = this.reconnectDelay;
+          this.transportMachine && this.transportMachine.transition('auth_ok', {
+            ws_url: this.wsUrl,
+          });
           this.onStatusChange('connected');
 
           // Request initial data
@@ -77,6 +97,10 @@ class ProjectionWebSocketClient {
 
         case 'auth_error':
           this.authenticated = false;
+          this.transportMachine && this.transportMachine.transition('auth_failed', {
+            reason: message.message || 'Invalid token',
+            ws_url: this.wsUrl,
+          });
           this.onAuthFailed('Server rejected token: ' + (message.message || 'unknown'));
           this.onStatusChange('auth_failed', message.message || 'Invalid token');
           this._intentionalClose = true;
@@ -85,6 +109,10 @@ class ProjectionWebSocketClient {
 
         case 'auth_required':
           this.authenticated = false;
+          this.transportMachine && this.transportMachine.transition('auth_failed', {
+            reason: 'Authentication required',
+            ws_url: this.wsUrl,
+          });
           this.onAuthFailed('Server requires authentication');
           this.onStatusChange('auth_failed', 'Authentication required');
           this._intentionalClose = true;
@@ -93,6 +121,10 @@ class ProjectionWebSocketClient {
 
         case 'auth_timeout':
           this.authenticated = false;
+          this.transportMachine && this.transportMachine.transition('auth_failed', {
+            reason: message.message || 'Authentication timeout',
+            ws_url: this.wsUrl,
+          });
           this.onAuthFailed('Authentication timed out: ' + (message.message || ''));
           this.onStatusChange('auth_failed', message.message || 'Authentication timeout');
           this._intentionalClose = true;
@@ -101,6 +133,10 @@ class ProjectionWebSocketClient {
 
         case 'rate_limited':
           this._handleError('Rate limited by server: ' + (message.message || ''));
+          this.transportMachine && this.transportMachine.transition('boot_error', {
+            reason: message.message || 'Rate limited',
+            ws_url: this.wsUrl,
+          });
           this.onStatusChange('auth_failed', message.message || 'Rate limited');
           this._intentionalClose = true;
           this.ws.close();
@@ -108,13 +144,31 @@ class ProjectionWebSocketClient {
 
         case 'message_too_large':
           this._handleError('Message too large: ' + (message.message || ''));
+          this.transportMachine && this.transportMachine.transition('boot_error', {
+            reason: message.message || 'Message too large',
+            ws_url: this.wsUrl,
+          });
           this.onStatusChange('auth_failed', message.message || 'Message too large');
           this._intentionalClose = true;
           this.ws.close();
           break;
 
         case 'projection':
+          if (!this._firstProjectionReceived) {
+            this._firstProjectionReceived = true;
+            console.log("[bridge:frontend] first projection received from server");
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.record_frontend_event) {
+              window.pywebview.api.record_frontend_event({type: "frontend_first_projection_received"}).catch(function() {});
+            }
+          }
+          this.transportMachine && this.transportMachine.transition('projection_received', {
+            ws_url: this.wsUrl,
+          });
           this.onProjection(message.data);
+          this.transportMachine && this.transportMachine.transition('projection_rendered', {
+            ws_url: this.wsUrl,
+            projection_digest: message.data && message.data.digest,
+          });
           break;
 
         case 'available_actions':
@@ -154,6 +208,10 @@ class ProjectionWebSocketClient {
     this.ws.onclose = () => {
       this.connected = false;
       this.authenticated = false;
+      this.transportMachine && this.transportMachine.transition('websocket_closed', {
+        reason: 'socket closed',
+        ws_url: this.wsUrl,
+      });
       this.onStatusChange('disconnected');
       if (!this._intentionalClose) {
         this._scheduleReconnect();

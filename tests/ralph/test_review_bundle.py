@@ -1,6 +1,11 @@
-from rig_relay.ralph.review_bundle import build_review_bundle, build_review_projection
-from rig_relay.ralph.lane_contracts import RalphLane
+from __future__ import annotations
 
+import pytest
+
+from rig_relay.ralph.lane_contracts import RalphLane
+from rig_relay.ralph.review_bundle import build_review_bundle, build_review_projection
+
+pytestmark = [pytest.mark.integration]
 
 def test_bundle_from_lane():
     lane = RalphLane(

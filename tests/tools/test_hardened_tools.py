@@ -5,8 +5,12 @@ import json
 
 import pytest
 
-from tests.mock.utils import collect_result
-from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
+from rig_relay.core.tools.base import (
+    BaseToolState,
+    InvokeContext,
+    ToolError,
+    ToolPermission,
+)
 from rig_relay.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
 from rig_relay.core.tools.builtins.search_replace import (
     SearchReplace,
@@ -19,6 +23,7 @@ from rig_relay.core.tools.builtins.write_file import (
     WriteFileConfig,
 )
 from rig_relay.core.tools.permissions import PermissionContext
+from tests.mock.utils import collect_result
 
 
 @pytest.fixture

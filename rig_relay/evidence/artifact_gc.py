@@ -13,7 +13,6 @@ from pathlib import Path
 import shutil
 from typing import Any
 
-
 # ── Budget defaults ─────────────────────────────────────────────────────
 
 DEFAULT_BUDGET: dict[str, Any] = {

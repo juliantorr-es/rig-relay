@@ -11,14 +11,6 @@ import zipfile
 
 import pytest
 
-from rig_relay.evidence.telemetry_bundle import validate_bundle as relay_validate_bundle
-from scripts.rig_relay_create_telemetry_bundle import (
-    _forbidden_content_in_json,
-    _forbidden_content_in_text,
-    create_bundle,
-)
-from scripts.rig_relay_upload_google_drive import _upload_dry_run, upload_bundle
-from scripts.rig_relay_validate_telemetry_bundle import validate_bundle
 from rig_relay.core.config.telemetry_modes import (
     ALLOWED_SHARE_LEVELS_FOR_UPLOAD,
     can_upload_remote_beta_data,
@@ -32,6 +24,14 @@ from rig_relay.core.config.telemetry_modes import (
     can_use_replay_debug,
     disabled_features_for_settings,
 )
+from rig_relay.evidence.telemetry_bundle import validate_bundle as relay_validate_bundle
+from scripts.rig_relay_create_telemetry_bundle import (
+    _forbidden_content_in_json,
+    _forbidden_content_in_text,
+    create_bundle,
+)
+from scripts.rig_relay_upload_google_drive import _upload_dry_run, upload_bundle
+from scripts.rig_relay_validate_telemetry_bundle import validate_bundle
 
 SCHEMAS_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "schemas"
 CONSENT_SCHEMA = SCHEMAS_DIR / "rig.relay.telemetry_consent.v1.schema.json"
@@ -43,6 +43,9 @@ UPLOAD_RECEIPT_SCHEMA = (
 )
 TELEMETRY_SETTINGS_SCHEMA = SCHEMAS_DIR / "rig.relay.telemetry_settings.v1.schema.json"
 
+
+
+pytestmark = [pytest.mark.migration]
 
 def _try_validate(instance: dict, schema_path: Path) -> list[str]:
     """Validate instance against schema, return errors."""

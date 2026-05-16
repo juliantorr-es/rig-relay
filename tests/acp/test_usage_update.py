@@ -8,14 +8,14 @@ from unittest.mock import patch
 from acp.schema import TextContentBlock, UsageUpdate
 import pytest
 
-from tests.acp.conftest import _create_acp_agent
-from tests.conftest import build_test_vibe_config
-from tests.stubs.fake_backend import FakeBackend
-from tests.stubs.fake_client import FakeClient
 from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
 from rig_relay.core.agent_loop import AgentLoop
 from rig_relay.core.config import SessionLoggingConfig
 from rig_relay.core.types import LLMChunk, LLMMessage, LLMUsage, Role
+from tests.acp.conftest import _create_acp_agent
+from tests.conftest import build_test_vibe_config
+from tests.stubs.fake_backend import FakeBackend
+from tests.stubs.fake_client import FakeClient
 
 
 def _make_backend(prompt_tokens: int = 100, completion_tokens: int = 50) -> FakeBackend:

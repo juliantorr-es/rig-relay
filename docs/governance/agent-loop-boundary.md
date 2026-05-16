@@ -9,6 +9,7 @@ The AgentLoop class (`rig_relay/core/agent_loop.py`) is the turn/session **condu
 | **AgentLoop** | `rig_relay/core/agent_loop.py` | Turn/session topology, public API (`act()`, `fork()`, `compact()`, `clear_history()`). Coordinates other runtimes. |
 | **AgentRuntimeState** | `rig_relay/core/runtime_state.py` | Mutable session/turn state snapshot. Readiness, stats, limits, session identity. Serializable for debug and durable execution. |
 | **ConversationTurnRuntime** | `rig_relay/core/conversation_turn.py` | One-turn phase state machine. Phase transitions, outcome, tool batch metadata. Does not execute LLM or tool calls. |
+| **ConversationRuntime** | `rig_relay/core/conversation_runtime/` | Turn phase event recorder, result builder, **trace evidence emitter** (`PhaseTraceHook`), and **loop decision policy** (`ConversationLoopDecision` — Phase 2A). Observes the conversation loop and owns terminal outcome classification. Owns the phase event log and builds JSON-safe `ConversationRuntimeResult`. Accepts optional `PhaseTraceHook` for structured trace consumers. |
 | **LLMCallMixin** | `rig_relay/core/_llm_call.py` | Provider call preparation, streaming and non-streaming calls, retry/error classification. |
 | **ToolResponseMixin** | `rig_relay/core/_tool_response.py` | Tool response recording, telemetry, failure event construction. |
 | **SessionLifecycleMixin** | `rig_relay/core/_session_lifecycle.py` | Message history cleanup, missing response filling, session reset, fork message extraction. |
@@ -21,9 +22,9 @@ The AgentLoop class (`rig_relay/core/agent_loop.py`) is the turn/session **condu
 
 | Component | Future location | Will own |
 |---|---|---|
-| **ToolRuntime** | `rig_relay/core/tool_runtime.py` | Governed tool execution: cache check, permission decision, approval handoff, patch/mutation gate, tool invocation, result normalization, receipt emission. |
 | **SessionRuntime** | `rig_relay/core/session_runtime.py` | Fork, compact, reset, clear_history, switch_agent, reload_with_initial_messages. |
-| **MaintenanceRuntime** | `rig_relay/core/maintenance_runtime.py` | Passive GC after tool execution, storage budget checks. |
+| **ApprovalRuntime** | `rig_relay/core/approval_runtime.py` | Approval handoff, callbacks, permission rules. |
+| **MissionEnvelopeBridge** | `rig_relay/core/mission_envelope.py` | Mission metadata → AgentLoop context/runtime wiring. |
 
 ## Dependency boundaries (enforced)
 

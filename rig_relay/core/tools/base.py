@@ -65,6 +65,7 @@ class InvokeContext:
     scratchpad_dir: Path | None = field(default=None)
     tool_manager: Any | None = field(default=None)
     subprocess_runner: Any | None = field(default=None)
+    trace_recorder: Any | None = field(default=None)
 
 
 class ToolError(Exception):

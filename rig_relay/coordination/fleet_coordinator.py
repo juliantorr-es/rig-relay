@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import logging
 from pathlib import Path
+from typing import Any
 
 from rig_relay.coordination.fleet_queue import FleetQueue
 from rig_relay.coordination.fleet_queue_runner import (
@@ -16,7 +17,6 @@ from rig_relay.coordination.patch_workflow import (
     record_patch_decision,
 )
 from rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionRunner
-from typing import Any
 
 logger = logging.getLogger(__name__)
 

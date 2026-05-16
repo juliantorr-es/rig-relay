@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import pytest
+
 from rig_relay.ralph.reporting import (
     RalphReport,
     RalphReportStore,
@@ -76,6 +80,7 @@ def test_accepted_for_adoption_does_not_merge():
     assert updated.merge_enabled is False
 
 
+@pytest.mark.smoke
 def test_demo_reports_exist():
     reports = build_demo_ralph_reports()
     assert len(reports) >= 1

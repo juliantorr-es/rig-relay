@@ -1,3 +1,9 @@
+from __future__ import annotations
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
+
 from rig_relay.ralph.mission_contracts import (
     FORBIDDEN_CAPABILITIES,
     RalphMissionExecutionRefusal,

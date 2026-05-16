@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
+
 import json
 from pathlib import Path
 
@@ -45,38 +50,76 @@ def test_no_schema_contains_python_syntax():
     assert not failures, "Python syntax contamination found:\n" + "\n".join(failures)
 
 
-# ── check_forbidden_tokens unit tests ────────────────────────────────────
+# ── check_forbidden_tokens unit tests (parametrized) ─────────
 
 
-def test_forbidden_tokens_detects_from_future():
-    """check_forbidden_tokens detects from __future__ import annotations."""
-    text = 'from __future__ import annotations\n\n{"$schema": "..."}'
-    errors = check_forbidden_tokens(text, "test.json")
-    # Both 'from __future__ import' and 'import ' tokens match
-    assert len(errors) >= 1
-    assert any("from __future__ import" in e for e in errors)
+from dataclasses import dataclass
 
 
-def test_forbidden_tokens_detects_ruff_directive():
-    """check_forbidden_tokens detects # ruff: directives."""
-    text = '# ruff: noqa\n{"$schema": "..."}'
-    errors = check_forbidden_tokens(text, "test.json")
-    assert len(errors) == 1
-    assert "# ruff:" in errors[0]
+@dataclass(frozen=True)
+class _ForbiddenTokenCase:
+    case_id: str
+    text: str
+    expected_min_errors: int = 0
+    expected_substrings: tuple[str, ...] = ()
+    expected_exact_count: int | None = None
 
 
-def test_forbidden_tokens_clean_json():
-    """Clean JSON produces no errors."""
-    text = '{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"}'
-    errors = check_forbidden_tokens(text, "clean.json")
-    assert len(errors) == 0
+_forbidden_token_cases = [
+    pytest.param(
+        _ForbiddenTokenCase(
+            "clean_json",
+            '{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"}',
+        ),
+        id="clean_json",
+    ),
+    pytest.param(
+        _ForbiddenTokenCase(
+            "from_future",
+            'from __future__ import annotations\n\n{"$schema": "..."}',
+            expected_min_errors=1,
+            expected_substrings=("from __future__ import",),
+        ),
+        id="from_future",
+    ),
+    pytest.param(
+        _ForbiddenTokenCase(
+            "ruff_directive",
+            '# ruff: noqa\n{"$schema": "..."}',
+            expected_exact_count=1,
+            expected_substrings=("# ruff:",),
+        ),
+        id="ruff_directive",
+    ),
+    pytest.param(
+        _ForbiddenTokenCase(
+            "import_statement",
+            'import os\n{"$schema": "..."}',
+            expected_min_errors=1,
+            expected_substrings=("import ",),
+        ),
+        id="import_statement",
+    ),
+]
 
 
-def test_forbidden_tokens_detects_import():
-    """check_forbidden_tokens detects import statements."""
-    text = 'import os\n{"$schema": "..."}'
-    errors = check_forbidden_tokens(text, "test.json")
-    assert any("import " in e for e in errors)
+@pytest.mark.parametrize("case", _forbidden_token_cases)
+def test_forbidden_token_detection(case: _ForbiddenTokenCase) -> None:
+    errors = check_forbidden_tokens(case.text, "test.json")
+    if case.expected_exact_count is not None:
+        assert len(errors) == case.expected_exact_count, (
+            f"[{case.case_id}] expected {case.expected_exact_count} errors, "
+            f"got {len(errors)}: {errors}"
+        )
+    else:
+        assert len(errors) >= case.expected_min_errors, (
+            f"[{case.case_id}] expected at least {case.expected_min_errors} errors, "
+            f"got {len(errors)}: {errors}"
+        )
+    for substr in case.expected_substrings:
+        assert any(substr in e for e in errors), (
+            f"[{case.case_id}] expected error containing '{substr}' but got: {errors}"
+        )
 
 
 # ── validate_schema unit tests ────────────────────────────────────────────

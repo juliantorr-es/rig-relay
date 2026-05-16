@@ -16,6 +16,7 @@ Reuse policy:
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 import hashlib
 import json
 from pathlib import Path
@@ -179,6 +180,7 @@ def _file_fingerprint(path: Path) -> str:
         return ""
 
 
+@lru_cache(maxsize=8)
 def _tool_version(binary: str) -> str:
     """Get version string for a tool. Returns empty string if unavailable."""
     try:
@@ -188,6 +190,22 @@ def _tool_version(binary: str) -> str:
         return hashlib.sha256(result.stdout.encode("utf-8")).hexdigest()[:16]
     except (OSError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
         return ""
+
+
+def _schema_fingerprints(root: Path) -> list[str]:
+    schema_dir = root / _SCHEMA_DIR
+    if not schema_dir.is_dir():
+        return []
+    schema_fps: list[str] = []
+    try:
+        for path in sorted(schema_dir.iterdir()):
+            if path.suffix == ".json" and path.is_file():
+                sfp = _file_fingerprint(path)
+                if sfp:
+                    schema_fps.append(sfp)
+    except (OSError, ValueError):
+        return []
+    return schema_fps
 
 
 def compute_input_fingerprint(
@@ -220,23 +238,15 @@ def compute_input_fingerprint(
 
     # Schema files for schema validation
     if command_kind == "schema":
-        schema_dir = root / _SCHEMA_DIR
-        if schema_dir.is_dir():
-            schema_fps: list[str] = []
-            try:
-                for p in sorted(schema_dir.iterdir()):
-                    if p.suffix == ".json" and p.is_file():
-                        sfp = _file_fingerprint(p)
-                        if sfp:
-                            file_fps[str(p.relative_to(root))] = sfp
-                            schema_fps.append(sfp)
-            except (OSError, ValueError):
-                pass
-            if schema_fps:
-                combined = hashlib.sha256(
-                    "".join(schema_fps).encode("utf-8")
-                ).hexdigest()
-                parts.append(f"schemas:{combined}")
+        schema_fps = _schema_fingerprints(root)
+        if schema_fps:
+            for p in sorted((root / _SCHEMA_DIR).iterdir()):
+                if p.suffix == ".json" and p.is_file():
+                    sfp = _file_fingerprint(p)
+                    if sfp:
+                        file_fps[str(p.relative_to(root))] = sfp
+            combined = hashlib.sha256("".join(schema_fps).encode("utf-8")).hexdigest()
+            parts.append(f"schemas:{combined}")
 
     # Python version
     py_ver = platform.python_version()
@@ -373,26 +383,24 @@ def decide_cache_eligibility(
 
     Returns (cache_status, reason_or_none).
     """
-    if cache_policy == CACHE_POLICY_DISABLED:
-        return CACHE_STATUS_DISABLED, None
-
+    status = CACHE_STATUS_DISABLED
+    reason: str | None = None
     if cache_policy == CACHE_POLICY_FORCE_RERUN:
-        return CACHE_STATUS_MISS_FORCE_RERUN, "force_rerun_policy"
-
-    if lookup.cache_status == CACHE_STATUS_MISS_MISSING_RECORD:
-        return CACHE_STATUS_MISS_MISSING_RECORD, None
-
-    if lookup.record is None:
-        return CACHE_STATUS_MISS_MISSING_RECORD, None
-
-    # Passed → reuse
-    if lookup.record.is_passed():
-        return CACHE_STATUS_HIT, None
-
-    # Failed → only reuse if explicitly allowed
-    if allow_failed_reuse:
-        return CACHE_STATUS_HIT, "reused_failed_result"
-    return CACHE_STATUS_MISS_FAILED_REUSE_DISABLED, "failed_result_not_reused"
+        status = CACHE_STATUS_MISS_FORCE_RERUN
+        reason = "force_rerun_policy"
+    elif cache_policy == CACHE_POLICY_DISABLED:
+        status = CACHE_STATUS_DISABLED
+    elif lookup.cache_status == CACHE_STATUS_MISS_MISSING_RECORD or lookup.record is None:
+        status = CACHE_STATUS_MISS_MISSING_RECORD
+    elif lookup.record.is_passed():
+        status = CACHE_STATUS_HIT
+    elif allow_failed_reuse:
+        status = CACHE_STATUS_HIT
+        reason = "reused_failed_result"
+    else:
+        status = CACHE_STATUS_MISS_FAILED_REUSE_DISABLED
+        reason = "failed_result_not_reused"
+    return status, reason
 
 
 __all__ = [

@@ -6,7 +6,6 @@ from pathlib import Path
 from pydantic import BaseModel
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.agents.models import AgentProfile, AgentSafety, BuiltinAgentName
 from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError
 from rig_relay.core.tools.builtins.ask_user_question import (
@@ -19,6 +18,7 @@ from rig_relay.core.tools.builtins.exit_plan_mode import (
     ExitPlanModeArgs,
     ExitPlanModeConfig,
 )
+from tests.mock.utils import collect_result
 
 
 @dataclass

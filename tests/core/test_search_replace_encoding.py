@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.tools.base import BaseToolState
 from rig_relay.core.tools.builtins.search_replace import (
     SearchReplace,
     SearchReplaceArgs,
     SearchReplaceConfig,
 )
+from tests.mock.utils import collect_result
 
 
 @pytest.mark.asyncio

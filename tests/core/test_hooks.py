@@ -6,9 +6,6 @@ import sys
 import pytest
 import tomli_w
 
-from tests.conftest import build_test_agent_loop
-from tests.mock.utils import mock_llm_chunk
-from tests.stubs.fake_backend import FakeBackend
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.hooks.config import (
     HookConfig,
@@ -27,6 +24,9 @@ from rig_relay.core.hooks.models import (
     HookUserMessage,
 )
 from rig_relay.core.types import BaseEvent
+from tests.conftest import build_test_agent_loop
+from tests.mock.utils import mock_llm_chunk
+from tests.stubs.fake_backend import FakeBackend
 
 
 @pytest.fixture

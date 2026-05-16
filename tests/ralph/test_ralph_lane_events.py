@@ -1,5 +1,10 @@
+from __future__ import annotations
+
+import pytest
+
 from rig_relay.ralph.lane_events import LaneEvent, LaneEventStore, LaneReceipt
 
+pytestmark = [pytest.mark.integration]
 
 def test_proposed_event():
     event = LaneEvent(

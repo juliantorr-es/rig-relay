@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.config import (
     DEFAULT_TTS_MODELS,
     DEFAULT_TTS_PROVIDERS,
@@ -10,6 +9,7 @@ from rig_relay.core.config import (
     TTSModelConfig,
     TTSProviderConfig,
 )
+from tests.conftest import build_test_vibe_config
 
 
 class TestTTSConfigDefaults:

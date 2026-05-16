@@ -7,7 +7,8 @@ export const state = {
 
   // Transport connection
   wsConnected: false,
-  transport: 'bridge',  // 'ws' | 'bridge' | 'none'
+  transport: 'idle',
+  _transportStatus: '',
 
   // Projection data (last received)
   projection: null,

@@ -16,7 +16,11 @@ from rig_relay.acp.tools.session_update import (
     fallback_tool_call,
     resolve_kind,
 )
-from rig_relay.core.tools.builtins.task import Task as CoreTaskTool, TaskArgs, TaskResult
+from rig_relay.core.tools.builtins.task import (
+    Task as CoreTaskTool,
+    TaskArgs,
+    TaskResult,
+)
 from rig_relay.core.types import ToolCallEvent, ToolResultEvent
 
 

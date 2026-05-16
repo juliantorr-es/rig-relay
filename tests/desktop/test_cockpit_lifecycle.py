@@ -54,6 +54,7 @@ def test_cockpit_api_idempotency_duplicate_client_id(api):
     assert api._adapter.process_message.call_count == 0
 
 
+@pytest.mark.integration
 def test_cockpit_api_cross_thread_scheduling(api):
     loop = MagicMock()
     api._loop_holder = [loop]

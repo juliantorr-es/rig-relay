@@ -5,16 +5,21 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.skills.manager import SkillManager
 from rig_relay.core.skills.models import SkillInfo
-from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
+from rig_relay.core.tools.base import (
+    BaseToolState,
+    InvokeContext,
+    ToolError,
+    ToolPermission,
+)
 from rig_relay.core.tools.builtins.skill import (
     Skill,
     SkillArgs,
     SkillResult,
     SkillToolConfig,
 )
+from tests.mock.utils import collect_result
 
 
 def _make_skill_dir(

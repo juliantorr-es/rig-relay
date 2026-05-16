@@ -8,11 +8,9 @@ Future: JSONL sink, analytics compiler integration.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+import hashlib
+from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field

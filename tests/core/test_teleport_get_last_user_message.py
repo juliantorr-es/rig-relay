@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = [pytest.mark.migration]
+
+
 from rig_relay.core.teleport.nuage import TeleportSession
 from rig_relay.core.teleport.teleport import TeleportService
 

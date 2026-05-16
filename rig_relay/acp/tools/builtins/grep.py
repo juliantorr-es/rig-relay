@@ -19,7 +19,11 @@ from rig_relay.acp.tools.session_update import (
     fallback_tool_call,
     resolve_kind,
 )
-from rig_relay.core.tools.builtins.grep import Grep as CoreGrepTool, GrepArgs, GrepResult
+from rig_relay.core.tools.builtins.grep import (
+    Grep as CoreGrepTool,
+    GrepArgs,
+    GrepResult,
+)
 from rig_relay.core.types import ToolCallEvent, ToolResultEvent
 
 

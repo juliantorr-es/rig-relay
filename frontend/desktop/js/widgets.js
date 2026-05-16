@@ -2,6 +2,7 @@
 // Registry, render coordination, disclosure levels
 
 import { state, getDisclosure, setDisclosure } from './state.js';
+import { TransportState } from './transportState.js';
 import { escapeHtml, el, row, monoRow, formatBytes, formatTimestamp } from './utils.js';
 
 // Widget renderers keyed by widget ID
@@ -292,13 +293,15 @@ registerWidget('progressTimeline', (container, level) => {
 registerWidget('connectionStatus', (container, level) => {
   if (level !== 'standard') return;
   const transportLabel =
-    state.transport === 'wss'
+    state.transport === TransportState.CONNECTED && state.wsConnected
       ? 'Secure local bridge'
-      : state.transport === 'ws'
-        ? 'Insecure dev bridge'
-        : state.transport === 'bridge'
-          ? 'Bridge'
-          : 'Offline';
+      : state.transport === TransportState.AUTHENTICATING
+        ? 'Authenticating'
+        : state.transport === TransportState.TOKEN_MISSING
+          ? 'Token missing'
+          : state.transport === TransportState.BACKEND_UNAVAILABLE
+            ? 'Backend unavailable'
+            : 'Offline';
   const html = '<table class="kv-table">' +
     row('Transport', transportLabel) +
     row('WS Status', state.wsConnected ? 'Connected' : 'Disconnected') +

@@ -5,9 +5,14 @@ from collections.abc import AsyncGenerator
 from pydantic import BaseModel
 import pytest
 
-from tests.mock.utils import collect_result
-from rig_relay.core.tools.base import BaseTool, BaseToolConfig, BaseToolState, InvokeContext
+from rig_relay.core.tools.base import (
+    BaseTool,
+    BaseToolConfig,
+    BaseToolState,
+    InvokeContext,
+)
 from rig_relay.core.types import ApprovalCallback, ApprovalResponse, ToolStreamEvent
+from tests.mock.utils import collect_result
 
 
 class SimpleArgs(BaseModel):

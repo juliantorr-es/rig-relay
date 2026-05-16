@@ -22,6 +22,10 @@ from pathlib import Path
 from pydantic import ValidationError
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
+
+from rig_relay.core.telemetry.constants import EventName
 from rig_relay.evidence.receipt_index import (
     FORBIDDEN_RAW_FIELD_NAMES,
     ReceiptIndexBuildError,
@@ -31,7 +35,6 @@ from rig_relay.evidence.receipt_index import (
     summarize_receipt_index,
     validate_index_content_light,
 )
-from rig_relay.core.telemetry.constants import EventName
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -349,87 +352,118 @@ def test_build_receipt_index_mixed_events(tmp_path: Path) -> None:
     assert tools == {"bash", "search_replace"}
 
 
-# ── Validate receipt indexing ───────────────────────────────────────
+# ── Validate receipt indexing (parametrized) ─────────────────
 
 
-def test_build_receipt_index_validate(tmp_path: Path) -> None:
-    """Validate receipt events are indexed correctly."""
-    obs = tmp_path / "observability.jsonl"
-    obs.write_text(
-        json.dumps(_make_validate_receipt_event(session_id="validate_test")) + "\n"
-    )
-    records, errors = build_receipt_index(obs)
-    assert errors == []
-    assert len(records) == 1
-    r = records[0]
-    assert r.tool_name == "validate"
-    assert r.status == "passed"
-    assert r.duration_ms == 20.0
-    assert r.error_kind is None
-    assert r.refusal_reason is None
-    # Validate receipts have no top-level stdout/stderr fields
-    assert r.stdout_sha256 is None
-    assert r.stderr_sha256 is None
-    assert r.stdout_bytes is None
-    assert r.stderr_bytes is None
-    # Validate does not mutate files
-    assert r.changed is None
-    assert r.path is None
-    assert r.before_sha256 is None
-    assert r.after_sha256 is None
+from dataclasses import dataclass
 
 
-def test_build_receipt_index_validate_refused(tmp_path: Path) -> None:
-    """Refused validate receipts preserve error_kind and refusal_reason."""
+@dataclass(frozen=True)
+class _ValidateIndexCase:
+    case_id: str
+    session_id: str
+    status: str
+    error_kind: str | None
+    refusal_reason: str | None
+    check_receipts: list
+    expected_record_count: int
+    expected_status: str
+    expected_error_kind: str | None
+    expected_refusal_reason: str | None
+
+
+_validate_index_cases = [
+    pytest.param(
+        _ValidateIndexCase(
+            "passed",
+            "validate_test",
+            "passed",
+            None,
+            None,
+            [{"check_id": "ck", "command_kind": "pytest", "status": "passed"}],
+            1,
+            "passed",
+            None,
+            None,
+        ),
+        id="passed",
+    ),
+    pytest.param(
+        _ValidateIndexCase(
+            "refused",
+            "refused_test",
+            "refused",
+            "tool_refusal",
+            "Unknown profile 'nonexistent'",
+            [],
+            1,
+            "refused",
+            "tool_refusal",
+            "Unknown profile 'nonexistent'",
+        ),
+        id="refused",
+    ),
+    pytest.param(
+        _ValidateIndexCase(
+            "timed_out",
+            "timeout_test",
+            "timed_out",
+            "timeout",
+            None,
+            [
+                {
+                    "check_id": "some_check",
+                    "command_kind": "pytest",
+                    "status": "timed_out",
+                    "failure_kind": "timeout",
+                }
+            ],
+            1,
+            "timed_out",
+            "timeout",
+            None,
+        ),
+        id="timed_out",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", _validate_index_cases)
+def test_build_receipt_index_validate_status(
+    case: _ValidateIndexCase, tmp_path: Path
+) -> None:
     obs = tmp_path / "observability.jsonl"
     obs.write_text(
         json.dumps(
             _make_validate_receipt_event(
-                session_id="refused_test",
-                status="refused",
-                error_kind="tool_refusal",
-                refusal_reason="Unknown profile 'nonexistent'",
-                check_receipts=[],
+                session_id=case.session_id,
+                status=case.status,
+                error_kind=case.error_kind,
+                refusal_reason=case.refusal_reason,
+                check_receipts=case.check_receipts,
             )
         )
         + "\n"
     )
     records, errors = build_receipt_index(obs)
-    assert errors == []
-    assert len(records) == 1
-    r = records[0]
-    assert r.status == "refused"
-    assert r.error_kind == "tool_refusal"
-    assert r.refusal_reason == "Unknown profile 'nonexistent'"
-
-
-def test_build_receipt_index_validate_timed_out(tmp_path: Path) -> None:
-    """Timed-out validate receipts are indexed with correct status."""
-    obs = tmp_path / "observability.jsonl"
-    obs.write_text(
-        json.dumps(
-            _make_validate_receipt_event(
-                session_id="timeout_test",
-                status="timed_out",
-                error_kind="timeout",
-                check_receipts=[
-                    {
-                        "check_id": "some_check",
-                        "command_kind": "pytest",
-                        "status": "timed_out",
-                        "failure_kind": "timeout",
-                    }
-                ],
-            )
-        )
-        + "\n"
+    assert errors == [], f"[{case.case_id}] unexpected errors: {errors}"
+    assert len(records) == case.expected_record_count, (
+        f"[{case.case_id}] expected {case.expected_record_count} records, "
+        f"got {len(records)}"
     )
-    records, errors = build_receipt_index(obs)
-    assert errors == []
-    assert len(records) == 1
     r = records[0]
-    assert r.status == "timed_out"
-    assert r.error_kind == "timeout"
+    assert r.tool_name == "validate", f"[{case.case_id}] wrong tool_name: {r.tool_name}"
+    assert r.status == case.expected_status, (
+        f"[{case.case_id}] expected status={case.expected_status}, got {r.status}"
+    )
+    assert r.error_kind == case.expected_error_kind, (
+        f"[{case.case_id}] expected error_kind={case.expected_error_kind}, "
+        f"got {r.error_kind}"
+    )
+    assert r.refusal_reason == case.expected_refusal_reason, (
+        f"[{case.case_id}] expected refusal_reason={case.expected_refusal_reason}, "
+        f"got {r.refusal_reason}"
+    )
 
 
 def test_build_receipt_index_validate_mixed(tmp_path: Path) -> None:

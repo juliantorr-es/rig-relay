@@ -1,19 +1,16 @@
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
 import pytest
 
 from rig_relay.ralph.models import (
+    SCAN_ALLOWED_ACTIONS,
     ApprovalState,
     CandidateKind,
-    MissionCandidate,
-    RalphDecisionRequest,
-    RalphDecisionResult,
-    RalphPanel,
     RalphRunState,
-    RalphScanResult,
     RunStatus,
-    SCAN_ALLOWED_ACTIONS,
     ScanStopReason,
 )
 from rig_relay.ralph.scanner import (
@@ -24,6 +21,7 @@ from rig_relay.ralph.scanner import (
     scan_projections,
 )
 
+pytestmark = [pytest.mark.integration]
 
 def test_empty_projections_produces_no_candidate(tmp_path: Path):
     nonexistent = tmp_path / "nonexistent.jsonl"

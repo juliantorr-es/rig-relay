@@ -14,7 +14,10 @@ from pydantic import BaseModel, Field
 from rig_relay.coordination.store import CoordinationStore
 from rig_relay.core.guard import DirtyFileGuard, get_guard
 from rig_relay.core.telemetry.local import dump_canonical_json
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,

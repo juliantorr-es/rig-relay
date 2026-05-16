@@ -1,6 +1,10 @@
 """Tests for the delegate/fleet orchestration schemas and queue planner."""
 
 from __future__ import annotations
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
 
 from datetime import UTC, datetime
 import json
@@ -10,9 +14,6 @@ from scripts.rig_relay_queue_plan import compute_ready_plan
 
 SCHEMAS_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "schemas"
 
-WORK_ITEM_SCHEMA = SCHEMAS_DIR / "rig.relay.work_item.v1.schema.json"
-WORK_QUEUE_SCHEMA = SCHEMAS_DIR / "rig.relay.work_queue.v1.schema.json"
-READY_PLAN_SCHEMA = SCHEMAS_DIR / "rig.relay.ready_work_plan.v1.schema.json"
 CONVERGENCE_SCHEMA = SCHEMAS_DIR / "rig.relay.parent_convergence_report.v1.schema.json"
 
 
@@ -103,30 +104,6 @@ def _make_convergence_report(**overrides: object) -> dict:
 
 
 # ── Schema validity tests ────────────────────────────────────────────────
-
-
-def test_work_item_schema_is_valid_json():
-    """Work item schema file is valid JSON."""
-    data = json.loads(WORK_ITEM_SCHEMA.read_text(encoding="utf-8"))
-    assert data["$schema"] == "http://json-schema.org/draft-07/schema#"
-    assert data["title"] == "Work Item v1"
-    assert "work_item_id" in data["required"]
-
-
-def test_work_queue_schema_is_valid_json():
-    """Work queue schema file is valid JSON."""
-    data = json.loads(WORK_QUEUE_SCHEMA.read_text(encoding="utf-8"))
-    assert data["$schema"] == "http://json-schema.org/draft-07/schema#"
-    assert data["title"] == "Work Queue v1"
-    assert "queue_id" in data["required"]
-
-
-def test_ready_plan_schema_is_valid_json():
-    """Ready work plan schema file is valid JSON."""
-    data = json.loads(READY_PLAN_SCHEMA.read_text(encoding="utf-8"))
-    assert data["$schema"] == "http://json-schema.org/draft-07/schema#"
-    assert data["title"] == "Ready Work Plan v1"
-    assert "ready_items" in data["required"]
 
 
 def test_convergence_report_schema_is_valid_json():

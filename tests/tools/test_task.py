@@ -7,13 +7,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
-from tests.mock.utils import collect_result
 from rig_relay.core.agents.manager import AgentManager
 from rig_relay.core.agents.models import BUILTIN_AGENTS, AgentType
 from rig_relay.core.config import ProviderConfig
 from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
-from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError, ToolPermission
+from rig_relay.core.tools.base import (
+    BaseToolState,
+    InvokeContext,
+    ToolError,
+    ToolPermission,
+)
 from rig_relay.core.tools.builtins.task import (
     Task,
     TaskArgs,
@@ -26,6 +29,8 @@ from rig_relay.core.tools.builtins.task import (
 )
 from rig_relay.core.tools.permissions import PermissionContext
 from rig_relay.core.types import AssistantEvent, LLMMessage, Role
+from tests.conftest import build_test_vibe_config
+from tests.mock.utils import collect_result
 
 
 @pytest.fixture

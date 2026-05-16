@@ -26,6 +26,9 @@ RECEIPT_SCHEMA_PATH = (
 )
 
 
+
+pytestmark = [pytest.mark.integration]
+
 def _mission_envelope() -> MissionEnvelope:
     return MissionEnvelope.model_validate({
         "schema_version": "rig.mission_envelope.v1",

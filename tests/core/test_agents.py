@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.agents.manager import AgentManager
 from rig_relay.core.agents.models import BUILTIN_AGENTS, EXPLORE, AgentSafety, AgentType
+from tests.conftest import build_test_vibe_config
 
 
 class TestAgentProfile:

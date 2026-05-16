@@ -13,11 +13,15 @@ from mistralai.client.models import (
 )
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.config import ProviderConfig
 from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError
-from rig_relay.core.tools.builtins.websearch import WebSearch, WebSearchArgs, WebSearchConfig
+from rig_relay.core.tools.builtins.websearch import (
+    WebSearch,
+    WebSearchArgs,
+    WebSearchConfig,
+)
 from rig_relay.core.types import Backend
+from tests.mock.utils import collect_result
 
 
 def _make_response(

@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.acp.tools.builtins.write_file import AcpWriteFileState, WriteFile
 from rig_relay.core.tools.base import ToolError
 from rig_relay.core.tools.builtins.write_file import (
@@ -13,6 +12,7 @@ from rig_relay.core.tools.builtins.write_file import (
     WriteFileResult,
 )
 from rig_relay.core.types import ToolCallEvent, ToolResultEvent
+from tests.mock.utils import collect_result
 
 
 class MockClient:

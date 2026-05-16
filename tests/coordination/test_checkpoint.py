@@ -9,6 +9,7 @@ import pytest
 from rig_relay.coordination import CoordinationStore
 from rig_relay.core.guard import get_guard, reset_guard
 
+pytestmark = [pytest.mark.integration]
 
 @pytest.fixture(autouse=True)
 def _reset_guard() -> None:
@@ -61,7 +62,10 @@ def _touch(repo: Path, *paths: str) -> None:
 
 def _make_tool(store_path: Path):
     from rig_relay.core.tools.base import BaseToolState
-    from rig_relay.core.tools.builtins.checkpoint import Checkpoint, CheckpointToolConfig
+    from rig_relay.core.tools.builtins.checkpoint import (
+        Checkpoint,
+        CheckpointToolConfig,
+    )
 
     return Checkpoint(
         config_getter=lambda: CheckpointToolConfig(store_root=store_path),

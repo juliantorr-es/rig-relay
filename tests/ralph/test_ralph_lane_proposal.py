@@ -1,3 +1,9 @@
+from __future__ import annotations
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
+
 from rig_relay.ralph.background_policy import RalphBackgroundPolicy
 from rig_relay.ralph.lane_proposal import build_lane_proposal
 

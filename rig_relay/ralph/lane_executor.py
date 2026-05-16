@@ -8,8 +8,8 @@ Commit lifecycle is gated by policy.allow_ralph_branch_commits.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
+import subprocess
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field

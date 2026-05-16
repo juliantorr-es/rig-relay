@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from tests.conftest import build_test_agent_loop, build_test_vibe_config
-from rig_relay.core.agents.models import BUILTIN_AGENTS, CHAT, AgentProfile, BuiltinAgentName
+from rig_relay.core.agents.models import (
+    BUILTIN_AGENTS,
+    CHAT,
+    AgentProfile,
+    BuiltinAgentName,
+)
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.middleware import (
     CHAT_AGENT_EXIT,
@@ -17,6 +21,7 @@ from rig_relay.core.middleware import (
     make_plan_agent_reminder,
 )
 from rig_relay.core.types import AgentStats, MessageList
+from tests.conftest import build_test_agent_loop, build_test_vibe_config
 
 REMINDER = "test reminder"
 EXIT_MSG = "test exit"

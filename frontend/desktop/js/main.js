@@ -12,6 +12,19 @@ import { sendChatMessage, clearChat, cancelChat, dispatchIntent,
 import { getAutocompleteMatches } from './commands.js';
 import { setText, el } from './utils.js';
 import { initToolRuntimeWidget } from './tool_runtime_widget.js';
+import { createTransportStateMachine } from './transportState.js';
+
+const transportMachine = createTransportStateMachine({
+  recordFrontendEvent(payload) {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.record_frontend_event) {
+      window.pywebview.api.record_frontend_event({
+        type: payload.event,
+        message: payload.detail && payload.detail.reason ? payload.detail.reason : '',
+        token_present: !!(payload.detail && payload.detail.token_present),
+      }).catch(function() {});
+    }
+  },
+});
 
 // Window API for HTML onclick handlers
 window.RigRelay = {
@@ -110,6 +123,10 @@ window.RigRelay = {
 function handleMessage(msg) {
   switch (msg.type) {
     case '_transport':
+      if (msg.status) {
+        state._transportStatus = msg.status;
+        state._transportDetail = msg.detail || '';
+      }
       renderStatusBar();
       break;
     case 'auth_error':
@@ -193,7 +210,16 @@ function renderPanelColumn() {
   });
 }
 
+function _recordFrontendEvent(type, message) {
+  if (window.pywebview && window.pywebview.api && window.pywebview.api.record_frontend_event) {
+    window.pywebview.api.record_frontend_event({type: type, message: message || ''}).catch(function() {});
+  }
+}
+
 async function init() {
+  console.log("[bridge:frontend] init started");
+  transportMachine.transition('boot_started', { reason: 'DOMContentLoaded' });
+  _recordFrontendEvent("frontend_boot_started", "DOMContentLoaded");
   applyModeDefaults();
 
   // Register widget renderers (must happen before first projection)
@@ -238,13 +264,50 @@ async function init() {
   renderPanelColumn();
 
   let config = null;
+  let configSource = 'fallback';
+
+  // Wait for pywebview API to become available (up to 5s in debug)
+  if (window.pywebview === undefined && typeof window.pywebviewready !== 'undefined') {
+    console.log("[bridge:frontend] waiting for pywebviewready...");
+    transportMachine.transition('pywebview_wait_started', { reason: 'waiting for pywebviewready' });
+  }
+  let _pywebviewWaitMs = 0;
+  const _pywebviewMaxWait = 5000;
+  while (
+    _pywebviewWaitMs < _pywebviewMaxWait &&
+    (!window.pywebview || !window.pywebview.api || !window.pywebview.api.get_runtime_config)
+  ) {
+    await new Promise(function(r) { setTimeout(r, 100); });
+    _pywebviewWaitMs += 100;
+  }
+  if (_pywebviewWaitMs > 0) {
+    console.log("[bridge:frontend] pywebview API wait: " + _pywebviewWaitMs + "ms");
+  }
+
   if (window.pywebview && window.pywebview.api && window.pywebview.api.get_runtime_config) {
     try {
+      transportMachine.transition('config_requested', { reason: 'request runtime config' });
+      _recordFrontendEvent("frontend_runtime_config_requested");
       config = await window.pywebview.api.get_runtime_config();
+      configSource = 'pywebview_api';
+      var tokenPresent = !!(config && config.token);
+      transportMachine.transition(tokenPresent ? 'config_loaded' : 'config_token_missing', {
+        reason: 'runtime config loaded',
+        token_present: tokenPresent,
+        ws_url: config && config.ws_url ? config.ws_url : '',
+      });
+      _recordFrontendEvent("frontend_runtime_config_loaded", "source=" + configSource + " token=" + (tokenPresent ? 'present' : 'MISSING'));
+      console.log("[bridge:frontend] runtime config loaded from pywebview API, token=" + (tokenPresent ? 'present' : 'MISSING'));
     } catch (e) {
       console.warn("Failed to fetch runtime config from bridge:", e);
+      _recordFrontendEvent("frontend_boot_error", "Failed to fetch runtime config: " + (e.message || 'unknown'));
+      transportMachine.transition('boot_error', { reason: e.message || 'runtime config fetch failed' });
+      configSource = 'error';
     }
+  } else {
+    console.log("[bridge:frontend] no pywebview API after " + _pywebviewWaitMs + "ms wait — using default config");
   }
+
   if (!config) {
     config = {
       ws_url: 'ws://127.0.0.1:9876',
@@ -256,11 +319,21 @@ async function init() {
       push_enabled: false,
       token: '',
     };
+    transportMachine.transition('config_token_missing', { reason: 'fallback config', token_present: false });
   }
 
-  const wsUrl = config.ws_url || 'ws://127.0.0.1:9876';
-  const token = config.token || (window.pywebview && window.pywebview.token) || '';
-  initTransport(wsUrl, token, handleMessage);
+  var token = config.token || (window.pywebview && window.pywebview.token) || '';
+  var wsUrl = config.ws_url || 'ws://127.0.0.1:9876';
+  var hasToken = !!token;
+  console.log("[bridge:frontend] config: source=" + configSource + " token_present=" + hasToken + " ws_url=" + wsUrl);
+
+  if (!hasToken) {
+    console.warn("[bridge:frontend] WARNING: No auth token — WebSocket auth will fail");
+    _recordFrontendEvent("frontend_boot_error", "No auth token in runtime config (source=" + configSource + ")");
+  }
+
+  initTransport(wsUrl, token, handleMessage, transportMachine);
+  console.log("[bridge:frontend] init complete");
 }
 
 document.addEventListener('DOMContentLoaded', init);

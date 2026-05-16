@@ -1,28 +1,33 @@
 {
   "doctrine_version": "1.0.0",
-  "generated_at": "2026-05-16T01:18:02Z",
+  "generated_at": "2026-05-16T04:45:48Z",
   "repo_root": "/Users/user/Developer/GitHub/rig-relay",
   "stats": {
-    "total_test_files": 325,
-    "total_findings": 238,
+    "total_test_files": 327,
+    "total_findings": 239,
     "by_severity": {
       "critical": 0,
       "high": 11,
       "medium": 20,
       "low": 64,
-      "info": 143
+      "info": 144
     },
     "by_rule": {
       "LAYOUT_ROOT_LEVEL": 15,
       "LAYOUT_MIS_SCOPED_SCRIPTS": 3,
       "NAMING_VAGUE": 2,
       "DUPLICATE_KNOWN_PAIR": 2,
-      "DUPLICATE_SAME_MODULE": 143,
+      "DUPLICATE_SAME_MODULE": 144,
       "DUPLICATE_SAME_NAME_CROSS_DIR": 55,
       "DETERM_HARDCODED_PATH": 11,
       "DETERM_SLEEP": 7
     },
-    "marker_coverage": {},
+    "marker_coverage": {
+      "smoke": 11,
+      "contract": 3,
+      "slow": 8,
+      "integration": 7
+    },
     "conftest_exists": true,
     "conftest_pycache_count": 1
   },
@@ -1139,6 +1144,17 @@
       "autofixable": false
     },
     {
+      "finding_id": "F-0b3bd0384cb3",
+      "severity": "info",
+      "rule_id": "DUPLICATE_SAME_MODULE",
+      "path": "tests/desktop/test_bridge_diagnostics.py",
+      "line": null,
+      "message": "Module 'rig_relay.desktop.bridge_server' imported by 6 test files: tests/desktop/test_bridge_diagnostics.py, tests/desktop/test_bridge_diagnostics.py, tests/desktop/test_bridge_diagnostics.py, tests/desktop/test_bridge_diagnostics.py, tests/desktop/test_bridge_diagnostics.py, tests/desktop/test_bridge_diagnostics.py. Review for overlapping coverage.",
+      "suggested_fix": "Review test coverage; merge overlapping assertions or split by concern.",
+      "status": "open",
+      "autofixable": false
+    },
+    {
       "finding_id": "F-dc3b4f9dfd21",
       "severity": "info",
       "rule_id": "DUPLICATE_SAME_MODULE",
@@ -2085,12 +2101,12 @@
       "autofixable": false
     },
     {
-      "finding_id": "F-dce03800b91e",
+      "finding_id": "F-b4cbeeec63de",
       "severity": "low",
       "rule_id": "DUPLICATE_SAME_NAME_CROSS_DIR",
       "path": "tests/coordination/test_fleet_queue.py",
       "line": null,
-      "message": "Test function 'test_empty' appears in multiple directories: tests/coordination, tests/scripts. Possible duplicate \u2014 verify.",
+      "message": "Test function 'test_empty' appears in multiple directories: tests/coordination, tests/desktop, tests/scripts. Possible duplicate \u2014 verify.",
       "suggested_fix": "Check whether these test the same behavior; remove or rename duplicates.",
       "status": "open",
       "autofixable": false

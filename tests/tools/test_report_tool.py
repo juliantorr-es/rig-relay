@@ -9,13 +9,13 @@ from pathlib import Path
 
 import pytest
 
+from rig_relay.core.tools.base import BaseToolState
 from rig_relay.core.tools.builtins.report import (
     Report,
     ReportArgs,
     ReportResult,
     ReportToolConfig,
 )
-from rig_relay.core.tools.base import BaseToolState
 from rig_relay.reports.report_store import (
     REPORT_KINDS,
     compute_report_sha256,

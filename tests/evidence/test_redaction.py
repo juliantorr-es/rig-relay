@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from rig_relay.desktop.intent_audit import emit_result
 from rig_relay.evidence.redaction import (
     assert_remote_safe,
@@ -15,6 +17,7 @@ from scripts import (
     rig_relay_create_telemetry_bundle as telemetry_bundle,
 )
 
+pytestmark = [pytest.mark.integration]
 
 def test_redact_for_remote_redacts_sensitive_payload() -> None:
     payload = {

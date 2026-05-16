@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.config.harness_files import (
     init_harness_files_manager,
     reset_harness_files_manager,
@@ -19,6 +18,7 @@ from rig_relay.core.tools.builtins.read_file import (
 )
 from rig_relay.core.trusted_folders import trusted_folders_manager
 from rig_relay.core.utils import VIBE_WARNING_TAG
+from tests.mock.utils import collect_result
 
 
 @pytest.fixture()

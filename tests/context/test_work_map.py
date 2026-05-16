@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rig_relay.context.models import ActiveLane, CollisionWarning
+from rig_relay.context.models import ActiveLane
 from rig_relay.context.work_map import (
     build_active_work,
     compute_collision_warnings,
@@ -14,6 +14,7 @@ from rig_relay.context.work_map import (
     scan_worktrees,
 )
 
+pytestmark = [pytest.mark.integration]
 
 class TestScanWorktrees:
     def test_no_worktrees_returns_empty(self, tmp_path: Path) -> None:

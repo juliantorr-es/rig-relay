@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rig_relay.analytics.model_rows import (
     build_model_behavior_summary,
     normalize_model_turn,

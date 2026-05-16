@@ -4,6 +4,8 @@ import gzip
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.analyze_relay_tool_usage import (
     analyze_relay,
     infer_risk_tier,
@@ -11,6 +13,7 @@ from scripts.analyze_relay_tool_usage import (
     normalize_tool_name,
 )
 
+pytestmark = [pytest.mark.migration]
 
 def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

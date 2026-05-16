@@ -15,7 +15,10 @@ from rig_relay.core.telemetry.artifacts import (
     GitStateFile,
     ToolOutputArtifactWriter,
 )
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,

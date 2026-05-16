@@ -11,18 +11,18 @@ from urllib.parse import urlencode
 
 import pytest
 
-from tests.browser_sign_in.stubs import (
-    StubBrowserSignInGateway,
-    build_poll_failed_error,
-    build_sign_in_process,
-    noop_sleep,
-)
 from rig_relay.setup.auth import (
     BrowserSignInError,
     BrowserSignInErrorCode,
     BrowserSignInPollResult,
     BrowserSignInProcess,
     BrowserSignInService,
+)
+from tests.browser_sign_in.stubs import (
+    StubBrowserSignInGateway,
+    build_poll_failed_error,
+    build_sign_in_process,
+    noop_sleep,
 )
 
 TEST_NOW = datetime(2026, 3, 16, tzinfo=UTC)

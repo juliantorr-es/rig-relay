@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.tools.base import BaseToolState, ToolError, ToolPermission
 from rig_relay.core.tools.builtins.git import (
     GitBranch,
@@ -18,6 +17,7 @@ from rig_relay.core.tools.builtins.git import (
     GitStatus,
     GitStatusArgs,
 )
+from tests.mock.utils import collect_result
 
 
 @pytest.fixture

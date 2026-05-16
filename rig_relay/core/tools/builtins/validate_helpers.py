@@ -4,6 +4,16 @@ from collections.abc import Callable, Coroutine
 import time
 from typing import Any
 
+from rig_relay.core.tools.builtins.validate_models import (
+    ProfileCheck,
+    ValidateArgs,
+    ValidateCheckResult,
+)
+from rig_relay.core.tools.builtins.validate_paths import _scope_check_argv
+from rig_relay.core.tools.builtins.validate_runner import (
+    _compute_fingerprint,
+    _run_check,
+)
 from rig_relay.evidence.validation_cache import (
     CACHE_STATUS_DISABLED,
     CACHE_STATUS_HIT,
@@ -21,13 +31,6 @@ from rig_relay.evidence.validation_scheduler import (
     ValidationSchedulerStore,
     apply_parallel_policy,
 )
-from rig_relay.core.tools.builtins.validate_models import (
-    ProfileCheck,
-    ValidateArgs,
-    ValidateCheckResult,
-)
-from rig_relay.core.tools.builtins.validate_paths import _scope_check_argv
-from rig_relay.core.tools.builtins.validate_runner import _compute_fingerprint, _run_check
 
 
 def run_validate_check(

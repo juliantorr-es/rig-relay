@@ -123,6 +123,18 @@ def _generate_ws_token() -> str:
     return secrets.token_hex(32)
 
 
+def _frontend_event_to_step(event_type: str) -> str | None:
+    match event_type:
+        case "frontend_runtime_config_requested" | "frontend_runtime_config_loaded":
+            return "bridge:13"
+        case "frontend_first_projection_rendered":
+            return "bridge:18"
+        case "frontend_boot_error":
+            return "bridge:19"
+        case _:
+            return None
+
+
 class CockpitAPI:
     """Read-only API exposed to JS bridge (fallback transport)."""
 
@@ -294,6 +306,49 @@ class CockpitAPI:
 
     def get_chat_state(self) -> dict:
         return self._chat_state.model_dump(mode="json")
+
+    def record_frontend_event(self, event: dict) -> dict:
+        """Record a frontend lifecycle event for the bridge probe ladder.
+
+        Accepts: {type: str, ...}. Rejects mutations/commands.
+        Never logs the auth token.
+        """
+        event_type = event.get("type", "") if isinstance(event, dict) else ""
+        allowed = {
+            "frontend_boot_started",
+            "frontend_runtime_config_requested",
+            "frontend_runtime_config_loaded",
+            "frontend_ws_open",
+            "frontend_auth_ok",
+            "frontend_first_projection_received",
+            "frontend_first_projection_rendered",
+            "frontend_boot_error",
+        }
+        if event_type not in allowed:
+            return {"status": "ignored", "reason": f"unknown event type: {event_type}"}
+
+        # Strip token if accidentally included
+        safe_event = {k: v for k, v in event.items() if k not in ("token", "auth_token")}
+
+        probe = getattr(self, "_bridge_probe", None)
+        if probe is not None:
+            step_id = _frontend_event_to_step(event_type)
+            if step_id:
+                probe.add_ok(
+                    step_id,
+                    event_type.replace("_", " "),
+                    details=safe_event,
+                    message=event.get("message", ""),
+                )
+            # Append to log
+            try:
+                logs_dir = resources.app_support_dir() / "logs"
+                probe.write_json(logs_dir / "bridge_probe.json")
+                probe.write_text_log(logs_dir / "bridge.log")
+            except Exception:
+                pass
+
+        return {"status": "ok"}
 
     def open_provider_web(self, provider: str) -> dict:
         """Open a provider's web app in a pywebview companion window.
@@ -907,6 +962,8 @@ def _open_window(
     bridge_debug = os.getenv("RIG_RELAY_BRIDGE_DEBUG", "1")
     bridge_verbose = bridge_debug in ("1", "true", "yes")
     bridge_probe = BridgeProbeReport(mode="source", tls_enabled=tls_config.enabled)
+    if bridge_verbose:
+        bridge_probe.enable_echo()
 
     bridge_config = DesktopBridgeConfig(
         host="127.0.0.1",
@@ -1005,6 +1062,9 @@ def _open_window(
     if hasattr(api, "set_runtime_config"):
         api.set_runtime_config(runtime_config)
 
+    # Wire bridge probe for frontend event recording
+    api._bridge_probe = bridge_probe  # type: ignore[attr-defined]
+
     if server_only:
         print("Server-only mode. Bridge is running.")
         print(f"URL: {runtime_config['frontend_url']}")
@@ -1023,6 +1083,11 @@ def _open_window(
     try:
         import webview  # type: ignore[import-untyped]
     except ImportError:
+        bridge_probe.add_fail(
+            "bridge:11", "create pywebview window",
+            message="pywebview not available",
+            remediation="Install with: uv add pywebview",
+        )
         print("pywebview not available. Install with: uv add pywebview")
         print("Running dry-run instead...")
         _dry_run(bridge_port)
@@ -1030,17 +1095,40 @@ def _open_window(
     if not hasattr(webview, "__version__"):  # type: ignore[reportAttributeAccessIssue]
         webview.__version__ = "6.2.1"  # type: ignore[reportAttributeAccessIssue]
 
+    frontend_url = runtime_config["frontend_url"]
+    bridge_probe.add_ok(
+        "bridge:11", "create pywebview window",
+        details={
+            "url": frontend_url,
+            "title": "Rig Relay",
+            "js_api": True,
+            "width": 1200,
+            "height": 800,
+        },
+        message=f"pywebview window → {frontend_url}",
+    )
     webview.create_window(
         title="Rig Relay",
-        url=runtime_config["frontend_url"],
+        url=frontend_url,
         js_api=api,
         width=1200,
         height=800,
         resizable=True,
         min_size=(800, 600),
     )
+
+    bridge_probe.add_ok(
+        "bridge:12", "pywebview start called",
+        details={
+            "gui": "cocoa",
+            "mode": "packaged" if packaged else "source",
+            "debug": False,
+        },
+        message="webview.start(gui=cocoa) — blocking until window closes",
+    )
     # Do NOT use http_server=True — the bridge server handles all HTTP
     webview.start(gui="cocoa")
+    bridge_probe.add_ok("bridge:12", "pywebview window closed", message="user closed window — bridge shutting down")
 
     # Clean up bridge on window close
     if bridge_loop is not None:

@@ -7,7 +7,10 @@ from typing import Any, ClassVar, Literal
 from pydantic import BaseModel, Field
 
 from rig_relay.coordination.tool import execute_coordination_action, resolve_store_root
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,

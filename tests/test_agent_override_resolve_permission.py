@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from tests.conftest import build_test_agent_loop, build_test_vibe_config
 from rig_relay.core.agents.models import BuiltinAgentName
 from rig_relay.core.paths import PLANS_DIR
 from rig_relay.core.tools.base import ToolPermission
+from tests.conftest import build_test_agent_loop, build_test_vibe_config
 
 
 class TestPlanAgentWriteFileResolvePermission:

@@ -1,9 +1,13 @@
+from __future__ import annotations
+
+import pytest
+
 from rig_relay.ralph.review_session import (
     RalphReviewSessionRequest,
-    RalphWidgetProjection,
     build_widget_projection,
 )
 
+pytestmark = [pytest.mark.integration]
 
 def test_widget_projection_defaults_disabled():
     widget = build_widget_projection()

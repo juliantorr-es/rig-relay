@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 @dataclass
 class ReceiptEvent:
     """Emitted when a tool call produces a receipt."""
+
     tool_call_id: str
     tool_name: str
     receipt_id: str
@@ -22,6 +23,7 @@ class ReceiptEvent:
 @dataclass
 class CouncilFindingsEvent:
     """Emitted when Council consultation completes."""
+
     receipt_id: str
     provider_count: int
     consensus_findings: list[str] = field(default_factory=list)
@@ -32,6 +34,7 @@ class CouncilFindingsEvent:
 @dataclass
 class DesktopIntentEvent:
     """Emitted when a desktop intent completes (fleet cycle, worktree op, etc.)."""
+
     intent_id: str
     intent_kind: str
     status: str

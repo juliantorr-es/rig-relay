@@ -53,6 +53,7 @@ session-token security envelope.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 import hashlib
 import json
 from pathlib import Path
@@ -60,9 +61,9 @@ import secrets
 import ssl
 from typing import Any
 
-from collections.abc import Callable
-
 from rig_relay.core.logger import logger
+from rig_relay.tracing.recorder import TraceRecorder
+from rig_relay.tracing.store import get_default_trace_store
 from rig_relay.desktop.intents import execute_desktop_intent, validate_intent_request
 from rig_relay.desktop.progress_events import ProgressEventBuffer
 from rig_relay.desktop.projection import READ_ONLY_ACTIONS, build_projection
@@ -94,7 +95,12 @@ DEFAULT_AUTH_TIMEOUT = 5
 DEFAULT_MAX_MESSAGE_BYTES = 65536
 DEFAULT_RATE_LIMIT_PER_MINUTE = 60
 DEFAULT_MAX_CONNECTIONS = 10
-DEFAULT_WS_ORIGINS: frozenset[str] = frozenset({"127.0.0.1", "localhost", "file://", "null"})
+DEFAULT_WS_ORIGINS: frozenset[str] = frozenset({
+    "127.0.0.1",
+    "localhost",
+    "file://",
+    "null",
+})
 _RATE_WINDOW_SECONDS = 60
 
 # Per-message-type rate limit multipliers.
@@ -102,12 +108,12 @@ _RATE_WINDOW_SECONDS = 60
 # The base rate limit is _rate_limit_per_minute. The effective limit
 # for a message type is floor(base / multiplier).
 _RATE_LIMIT_BY_TYPE: dict[str, float] = {
-    "auth": 3.0,             # Strict: 20/min at base 60
+    "auth": 3.0,  # Strict: 20/min at base 60
     "send_chat_message": 4.0,  # Very strict: 15/min at base 60
     "desktop_intent": 4.0,
     "desktop_intent_request": 4.0,
-    "subscribe": 6.0,          # Most strict: 10/min
-    "get_projection": 0.5,     # Loose: 120/min
+    "subscribe": 6.0,  # Most strict: 10/min
+    "get_projection": 0.5,  # Loose: 120/min
 }
 
 # JSON schema: required fields and types per message type.
@@ -231,6 +237,7 @@ class ProjectionWebSocketServer:
         self._chat_message_handler = chat_message_handler
         self._ssl_context = ssl_context
         self._probe_callback = probe_callback
+        self._first_projection_sent = False
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
         self._server: Any = None
@@ -382,6 +389,9 @@ class ProjectionWebSocketServer:
         """Handle a single WebSocket connection with token auth + abuse controls."""
         import websockets
 
+        _trace = TraceRecorder(get_default_trace_store())
+        _trace.event("desktop.websocket.connection_begin")
+
         async with self._lock:
             self._connection_seq += 1
 
@@ -445,13 +455,13 @@ class ProjectionWebSocketServer:
                     await _send_json(
                         websocket,
                         self._make_error(
-                            "invalid_message_shape",
-                            "; ".join(shape_errors),
+                            "invalid_message_shape", "; ".join(shape_errors)
                         ),
                     )
                     continue
 
                 import time
+
                 now = time.monotonic()
                 if now - rate_window_start > _RATE_WINDOW_SECONDS:
                     message_count = 0
@@ -459,7 +469,9 @@ class ProjectionWebSocketServer:
 
                 # Per-type rate limit multiplier
                 msg_multiplier = _RATE_LIMIT_BY_TYPE.get(msg_type, 1.0)
-                effective_limit = max(1, int(self._rate_limit_per_minute / msg_multiplier))
+                effective_limit = max(
+                    1, int(self._rate_limit_per_minute / msg_multiplier)
+                )
 
                 message_count += 1
                 if message_count > effective_limit:
@@ -486,9 +498,7 @@ class ProjectionWebSocketServer:
     async def _reject_oversized(self, websocket: Any) -> None:
         async with self._lock:
             self._oversized_message_count += 1
-        logger.warning(
-            "audit.rate.oversized max_bytes=%s", self._max_message_bytes
-        )
+        logger.warning("audit.rate.oversized max_bytes=%s", self._max_message_bytes)
         await _send_json(
             websocket,
             {
@@ -513,28 +523,32 @@ class ProjectionWebSocketServer:
         if msg_type == "auth":
             provided = message.get("token", "")
             self._emit_probe(
-                "bridge:15", "websocket auth message received",
+                "bridge:15",
+                "websocket auth message received",
                 {"token_present": bool(provided)},
             )
             if provided == self._token:
                 async with self._lock:
                     self._connection_count += 1
                     from datetime import UTC, datetime
+
                     self._last_connection_at = datetime.now(UTC).isoformat()
                 await _send_json(websocket, {"type": "auth_ok"})
                 async with self._lock:
                     self._connections.add(websocket)
                 self._emit_probe(
-                    "bridge:16", "websocket auth accepted",
-                    {"token_present": True},
+                    "bridge:16", "websocket auth accepted", {"token_present": True}
                 )
+                _trace = TraceRecorder(get_default_trace_store())
+                _trace.event("desktop.websocket.auth_ok", {"token_present": True, "token_length": len(provided)})
                 return True
             async with self._lock:
                 self._rejected_count += 1
                 self._last_rejection_reason = "invalid_token"
             logger.warning("audit.auth.invalid_token")
             self._emit_probe(
-                "bridge:16", "websocket auth refused",
+                "bridge:16",
+                "websocket auth refused",
                 {"reason": "invalid_token", "token_present": bool(provided)},
             )
             await _send_json(
@@ -548,7 +562,7 @@ class ProjectionWebSocketServer:
         await _send_json(websocket, {"type": "auth_required"})
         return False
 
-    async def _handle_authenticated_message(  
+    async def _handle_authenticated_message(
         self,
         websocket: Any,
         message: dict[str, Any],
@@ -560,15 +574,32 @@ class ProjectionWebSocketServer:
             case "get_projection":
                 loop = asyncio.get_running_loop()
                 projection = await loop.run_in_executor(None, self._build_projection)
-                # Compute digest and embed it for client-side dedup
-                digest_src = {k: v for k, v in projection.items() if k not in {"generated_at", "_schema_validation_errors"}}
-                raw = json.dumps(digest_src, sort_keys=True, ensure_ascii=False).encode("utf-8")
+                digest_src = {
+                    k: v
+                    for k, v in projection.items()
+                    if k not in {"generated_at", "_schema_validation_errors"}
+                }
+                raw = json.dumps(digest_src, sort_keys=True, ensure_ascii=False).encode(
+                    "utf-8"
+                )
                 digest = hashlib.sha256(raw).hexdigest()
                 projection["digest"] = digest
                 await _send_json(
                     websocket,
                     {"type": "projection", "data": projection, "seq": self._next_seq()},
                 )
+                if not self._first_projection_sent:
+                    self._first_projection_sent = True
+                    self._emit_probe(
+                        "bridge:17",
+                        "first projection sent",
+                        {
+                            "schema_version": projection.get(
+                                "schema_version", "unknown"
+                            ),
+                            "size_bytes": len(json.dumps(projection)),
+                        },
+                    )
 
             case "get_available_actions":
                 await _send_json(
@@ -594,7 +625,9 @@ class ProjectionWebSocketServer:
                 else:
                     await _send_json(
                         websocket,
-                        self._make_error(self.ERR_CHAT_UNAVAILABLE, "Chat state not available"),
+                        self._make_error(
+                            self.ERR_CHAT_UNAVAILABLE, "Chat state not available"
+                        ),
                     )
 
             case "get_progress_events":
@@ -617,7 +650,9 @@ class ProjectionWebSocketServer:
                 interval = message.get("interval", 30)
                 if not isinstance(interval, (int, float)):
                     interval = 30
-                interval = int(max(MIN_SUBSCRIBE_INTERVAL, min(interval, MAX_SUBSCRIBE_INTERVAL)))
+                interval = int(
+                    max(MIN_SUBSCRIBE_INTERVAL, min(interval, MAX_SUBSCRIBE_INTERVAL))
+                )
                 async with self._lock:
                     self._active_subscriptions += 1
                 subscribe_task = asyncio.create_task(
@@ -652,7 +687,9 @@ class ProjectionWebSocketServer:
             case _:
                 await _send_json(
                     websocket,
-                    self._make_error(self.ERR_UNKNOWN_TYPE, f"Unknown message type: {msg_type}"),
+                    self._make_error(
+                        self.ERR_UNKNOWN_TYPE, f"Unknown message type: {msg_type}"
+                    ),
                 )
 
         return subscribe_task
@@ -661,7 +698,9 @@ class ProjectionWebSocketServer:
         if self._chat_message_handler is None:
             await _send_json(
                 websocket,
-                self._make_error(self.ERR_NO_CHAT_HANDLER, "Chat message handler not configured"),
+                self._make_error(
+                    self.ERR_NO_CHAT_HANDLER, "Chat message handler not configured"
+                ),
             )
             return
 
@@ -671,7 +710,9 @@ class ProjectionWebSocketServer:
         if not isinstance(text, str) or not text.strip():
             await _send_json(
                 websocket,
-                self._make_error(self.ERR_EMPTY_MESSAGE, "Empty or invalid message text"),
+                self._make_error(
+                    self.ERR_EMPTY_MESSAGE, "Empty or invalid message text"
+                ),
             )
             return
 
@@ -691,15 +732,16 @@ class ProjectionWebSocketServer:
             )
         except Exception as e:
             await _send_json(
-                websocket,
-                self._make_error(self.ERR_CHAT_HANDLER_FAILED, str(e)),
+                websocket, self._make_error(self.ERR_CHAT_HANDLER_FAILED, str(e))
             )
 
     async def _handle_clear_chat(self, websocket: Any, message: dict) -> None:
         if self._chat_message_handler is None:
             await _send_json(
                 websocket,
-                self._make_error(self.ERR_NO_CHAT_HANDLER, "Chat message handler not configured"),
+                self._make_error(
+                    self.ERR_NO_CHAT_HANDLER, "Chat message handler not configured"
+                ),
             )
             return
         try:
@@ -710,15 +752,16 @@ class ProjectionWebSocketServer:
             )
         except Exception as e:
             await _send_json(
-                websocket,
-                self._make_error(self.ERR_CHAT_HANDLER_FAILED, str(e)),
+                websocket, self._make_error(self.ERR_CHAT_HANDLER_FAILED, str(e))
             )
 
     async def _handle_cancel_chat(self, websocket: Any, message: dict) -> None:
         if self._chat_message_handler is None:
             await _send_json(
                 websocket,
-                self._make_error(self.ERR_NO_CHAT_HANDLER, "Chat message handler not configured"),
+                self._make_error(
+                    self.ERR_NO_CHAT_HANDLER, "Chat message handler not configured"
+                ),
             )
             return
         try:
@@ -729,8 +772,7 @@ class ProjectionWebSocketServer:
             )
         except Exception as e:
             await _send_json(
-                websocket,
-                self._make_error(self.ERR_CHAT_HANDLER_FAILED, str(e)),
+                websocket, self._make_error(self.ERR_CHAT_HANDLER_FAILED, str(e))
             )
 
     async def _handle_desktop_intent(
@@ -767,6 +809,7 @@ class ProjectionWebSocketServer:
                 },
             )
         else:
+
             async def _progress_emitter(event_data: dict[str, Any]) -> None:
                 await self.broadcast_progress_event(event_data)
 
@@ -843,8 +886,14 @@ class ProjectionWebSocketServer:
                 projection = await loop.run_in_executor(None, self._build_projection)
 
                 # Compute digest on a copy that excludes volatile fields
-                digest_src = {k: v for k, v in projection.items() if k not in {"generated_at", "_schema_validation_errors"}}
-                raw = json.dumps(digest_src, sort_keys=True, ensure_ascii=False).encode("utf-8")
+                digest_src = {
+                    k: v
+                    for k, v in projection.items()
+                    if k not in {"generated_at", "_schema_validation_errors"}
+                }
+                raw = json.dumps(digest_src, sort_keys=True, ensure_ascii=False).encode(
+                    "utf-8"
+                )
                 digest = hashlib.sha256(raw).hexdigest()
 
                 # Skip push when content hasn't changed
@@ -887,6 +936,7 @@ def _parse_message(raw: Any) -> dict[str, Any] | None:
 
 async def _send_json(websocket: Any, data: dict[str, Any]) -> None:
     import websockets
+
     try:
         await websocket.send(json.dumps(data, sort_keys=True, ensure_ascii=False))
     except websockets.ConnectionClosed:

@@ -22,7 +22,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ═══ Schemas ═══════════════════════════════════════════════════════════
 
 _SCHEMA_CONSULTATION_REQUEST = "rig.relay.council.consultation_request.v1"

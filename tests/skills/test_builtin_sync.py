@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
-from tests.skills.conftest import create_skill
 from rig_relay.core.skills.builtins import BUILTIN_SKILLS
 from rig_relay.core.skills.manager import SkillManager
+from tests.conftest import build_test_vibe_config
+from tests.skills.conftest import create_skill
 
 
 class TestBuiltinSkills:

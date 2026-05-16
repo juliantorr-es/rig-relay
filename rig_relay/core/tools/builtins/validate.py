@@ -13,35 +13,15 @@ Not a general shell wrapper. Not a replacement for bash.
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 import os
 import time
-from typing import ClassVar, final
+from typing import Any, ClassVar, final
 
-from rig_relay.evidence.validation_cache import (
-    CACHE_POLICY_DISABLED,
-    CACHE_STATUS_BLOCKED_RUNNING,
-    CACHE_STATUS_DISABLED,
-    CACHE_STATUS_HIT,
-    CACHE_STATUS_MISS_RAN,
-    ValidationCacheRecord,
-    ValidationCacheStore,
-    compute_cache_key,
-    compute_input_fingerprint,
-    decide_cache_eligibility,
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
 )
-from rig_relay.evidence.validation_scheduler import (
-    PARALLEL_ENABLED,
-    SCHEDULER_BLOCKED_DUPLICATE,
-    SCHEDULER_COMPLETED,
-    SCHEDULER_NOT_SCHEDULED,
-    SCHEDULER_RUNNING,
-    ValidationSchedulerStore,
-    apply_parallel_policy,
-    check_lifecycle_policy,
-    resolve_cache_root,
-    resolve_scheduler_root,
-)
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
 from rig_relay.core.tools.base import BaseTool, BaseToolState, InvokeContext
 
 # Git state
@@ -89,6 +69,10 @@ from rig_relay.core.tools.builtins.validate_runner import (
     check_missing_dependency,
     classify_failure,
 )
+from rig_relay.core.tools.builtins.validate_state_machine import (
+    ValidateProfileEvent,
+    ValidateProfileStateMachine,
+)
 
 # Summaries
 from rig_relay.core.tools.builtins.validate_summaries import (
@@ -101,6 +85,91 @@ from rig_relay.core.tools.builtins.validate_summaries import (
 )
 from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from rig_relay.core.types import ToolResultEvent, ToolStreamEvent
+from rig_relay.evidence.validation_cache import (
+    CACHE_POLICY_DISABLED,
+    CACHE_STATUS_BLOCKED_RUNNING,
+    CACHE_STATUS_DISABLED,
+    CACHE_STATUS_HIT,
+    CACHE_STATUS_MISS_RAN,
+    ValidationCacheRecord,
+    ValidationCacheStore,
+    compute_cache_key,
+    compute_input_fingerprint,
+    decide_cache_eligibility,
+)
+from rig_relay.evidence.validation_scheduler import (
+    PARALLEL_ENABLED,
+    SCHEDULER_BLOCKED_DUPLICATE,
+    SCHEDULER_COMPLETED,
+    SCHEDULER_NOT_SCHEDULED,
+    SCHEDULER_RUNNING,
+    ValidationSchedulerStore,
+    apply_parallel_policy,
+    check_lifecycle_policy,
+    resolve_cache_root,
+    resolve_scheduler_root,
+)
+
+
+@dataclass(slots=True)
+class _ValidateProfileRunContext:
+    args: ValidateArgs
+    profile: Profile
+    normalized_paths: list[str]
+    cwd: str
+    output_cap: int
+    cache_store: ValidationCacheStore
+    scheduler_store: ValidationSchedulerStore
+    cache_enabled: bool
+    scheduler_enabled: bool
+    scheduler_warnings: list[str]
+    timeout: float
+    state_machine: ValidateProfileStateMachine
+
+
+@dataclass(slots=True)
+class _ValidateCheckRunContext:
+    run: _ValidateProfileRunContext
+    check: ProfileCheck
+    check_timeout: float
+    run_argv: list[str]
+    cmd_fp: str
+    input_fp: str
+    file_fps: dict[str, str]
+    cache_key: str
+    modified_argv: list[str]
+    parallel_status: str
+
+
+@dataclass(slots=True)
+class _ValidateProfileExecutionContext:
+    args: ValidateArgs
+    ctx: InvokeContext | None
+    profile: Profile
+    start: float
+    cwd: str
+    state_machine: ValidateProfileStateMachine
+    normalized_paths: list[str]
+    before_git_state: ValidateGitState | None
+    output_cap: int
+    cache_store: ValidationCacheStore
+    scheduler_store: ValidationSchedulerStore
+    cache_enabled: bool
+    scheduler_enabled: bool
+    scheduler_warnings: list[str]
+
+
+@dataclass(slots=True)
+class _ValidateRunContext:
+    start: float
+    cwd: str
+    output_cap: int
+    cache_store: ValidationCacheStore
+    scheduler_store: ValidationSchedulerStore
+    cache_enabled: bool
+    scheduler_enabled: bool
+    scheduler_warnings: list[str]
+
 
 __all__ = [
     "DIRTY_POLICY_ALLOW_DIRTY",
@@ -139,6 +208,50 @@ __all__ = [
     "get_profile",
     "list_profiles",
 ]
+
+
+def _make_trace_on_transition(recorder: Any) -> Any:
+    """Create an on_transition callback that emits trace events."""
+
+    def _on_transition(**kwargs: Any) -> None:
+        from_state = kwargs.get("from_state")
+        to_state = kwargs.get("to_state")
+        event = kwargs.get("event")
+        reason = kwargs.get("reason")
+        attrs_from_kwargs = kwargs.get("attributes", {}) or {}
+        attrs: dict[str, object] = {
+            "profile.state.from": from_state.value
+            if hasattr(from_state, "value")
+            else str(from_state),
+            "profile.state.to": to_state.value
+            if hasattr(to_state, "value")
+            else str(to_state),
+            "profile.event": event.value if hasattr(event, "value") else str(event),
+        }
+        if reason:
+            attrs["profile.reason"] = str(reason)[:200]
+        if attrs_from_kwargs:
+            safe = {
+                k: v
+                for k, v in attrs_from_kwargs.items()
+                if k
+                in {
+                    "profile",
+                    "check_count",
+                    "check_name",
+                    "check_kind",
+                    "check_index",
+                    "check_status",
+                    "refusal_code",
+                    "failure_kind",
+                    "duration_ms",
+                    "exit_code",
+                }
+            }
+            attrs.update(safe)
+        recorder.event("validate.state.transition", attributes=attrs)
+
+    return _on_transition
 
 
 class Validate(
@@ -371,7 +484,9 @@ class Validate(
             after_git_state=after_git_state,
         )
 
-    def _refuse(self, args: ValidateArgs, *, error_kind: str, reason: str) -> ValidateResult:
+    def _refuse(
+        self, args: ValidateArgs, *, error_kind: str, reason: str
+    ) -> ValidateResult:
         return ValidateResult(
             status="refused",
             profile=args.profile,
@@ -392,18 +507,11 @@ class Validate(
 
     def _build_run_context(
         self, args: ValidateArgs, ctx: InvokeContext | None
-    ) -> tuple[
-        float,
-        str,
-        int,
-        ValidationCacheStore,
-        ValidationSchedulerStore,
-        bool,
-        bool,
-        list[str],
-    ]:
+    ) -> _ValidateRunContext:
         start = time.perf_counter()
-        output_cap = min(args.output_cap_bytes or self.config.default_output_cap, MAX_CAP_BYTES)
+        output_cap = min(
+            args.output_cap_bytes or self.config.default_output_cap, MAX_CAP_BYTES
+        )
         cwd = args.workspace_root
         if cwd is None and ctx and ctx.session_dir:
             cwd = str(ctx.session_dir.parent.parent.resolve())
@@ -417,100 +525,363 @@ class Validate(
         scheduler_warnings = [
             warning
             for check in (profile.checks if profile is not None else [])
-            for warning in check_lifecycle_policy(args.validation_phase, args.profile, check.argv)
+            for warning in check_lifecycle_policy(
+                args.validation_phase, args.profile, check.argv
+            )
         ]
-        return (
-            start,
-            cwd,
-            output_cap,
-            cache_store,
-            scheduler_store,
-            cache_enabled,
-            scheduler_enabled,
-            scheduler_warnings,
+        return _ValidateRunContext(
+            start=start,
+            cwd=cwd,
+            output_cap=output_cap,
+            cache_store=cache_store,
+            scheduler_store=scheduler_store,
+            cache_enabled=cache_enabled,
+            scheduler_enabled=scheduler_enabled,
+            scheduler_warnings=scheduler_warnings,
         )
 
-    async def run(  # type: ignore[override]
-        self, args: ValidateArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[ToolStreamEvent | ValidateResult | str, None]:
+    def _new_state_machine(self) -> ValidateProfileStateMachine:
+        return ValidateProfileStateMachine()
+
+    async def _run_profile_checks(
+        self, run: _ValidateProfileRunContext
+    ) -> list[ValidateCheckResult]:
+        results: list[ValidateCheckResult] = []
+        for check in self._build_checks(run.profile, run.normalized_paths):
+            run.state_machine.transition(
+                ValidateProfileEvent.CHECK_STARTED,
+                reason="check started",
+                attributes={
+                    "profile": run.args.profile,
+                    "check_id": check.check_id,
+                    "command_kind": check.command_kind,
+                },
+            )
+            results.append(await self._run_profile_check(run, check=check))
+        return results
+
+    async def _run_profile_check(
+        self, run: _ValidateProfileRunContext, check: ProfileCheck
+    ) -> ValidateCheckResult:
+        prepared = await self._prepare_profile_check(run, check)
+        if isinstance(prepared, ValidateCheckResult):
+            return prepared
+        cr = await self._execute_profile_check(prepared)
+        if prepared.run.normalized_paths:
+            cr.affected_paths = list(prepared.run.normalized_paths)
+        if cr.status == "passed":
+            prepared.run.state_machine.transition(
+                ValidateProfileEvent.CHECK_PASSED,
+                reason="check passed",
+                attributes={
+                    "profile": prepared.run.args.profile,
+                    "check_id": check.check_id,
+                },
+            )
+        elif cr.status == "failed":
+            prepared.run.state_machine.transition(
+                ValidateProfileEvent.CHECK_FAILED,
+                reason="check failed",
+                attributes={
+                    "profile": prepared.run.args.profile,
+                    "check_id": check.check_id,
+                },
+            )
+        elif cr.status == "timed_out":
+            prepared.run.state_machine.transition(
+                ValidateProfileEvent.TIMEOUT,
+                reason="check timed out",
+                attributes={
+                    "profile": prepared.run.args.profile,
+                    "check_id": check.check_id,
+                },
+            )
+        cr.cache_status = (
+            CACHE_STATUS_MISS_RAN
+            if prepared.run.cache_enabled
+            else CACHE_STATUS_DISABLED
+        )
+        cr.cache_key = prepared.cache_key
+        cr.input_fingerprint = prepared.input_fp
+        cr.scheduler_status = (
+            SCHEDULER_RUNNING
+            if prepared.run.scheduler_enabled
+            else SCHEDULER_NOT_SCHEDULED
+        )
+        cr.parallel_status = prepared.parallel_status
+        cr.validation_phase = prepared.run.args.validation_phase
+        if prepared.parallel_status == PARALLEL_ENABLED:
+            cr.worker_count = prepared.run.args.max_workers or 4
+            cr.distribution = prepared.run.args.xdist_distribution
+        if prepared.run.cache_enabled and cr.status in {"passed", "failed"}:
+            record = ValidationCacheRecord(
+                cache_key=prepared.cache_key,
+                check_id=check.check_id,
+                command_kind=check.command_kind,
+                command_fingerprint=prepared.cmd_fp,
+                input_fingerprint=prepared.input_fp,
+                input_file_fingerprints=prepared.file_fps,
+                status=cr.status,
+                exit_code=cr.exit_code,
+                duration_ms=cr.duration_ms,
+                stdout_sha256=cr.stdout_sha256,
+                stderr_sha256=cr.stderr_sha256,
+                stdout_bytes=cr.stdout_bytes,
+                stderr_bytes=cr.stderr_bytes,
+                failure_kind=cr.failure_kind,
+                created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                validation_phase=prepared.run.args.validation_phase,
+                worker_count=cr.worker_count,
+                distribution=cr.distribution,
+                warnings=list(prepared.run.scheduler_warnings),
+            )
+            cr.cache_record_sha256 = record.record_sha256()
+            prepared.run.cache_store.store(record)
+        return cr
+
+    async def _prepare_profile_check(
+        self, run: _ValidateProfileRunContext, check: ProfileCheck
+    ) -> _ValidateCheckRunContext | ValidateCheckResult:
+        run_argv = check.argv
+        if run.normalized_paths:
+            scoped_argv, should_run = _scope_check_argv(check, run.normalized_paths)
+            if not should_run:
+                run.state_machine.transition(
+                    ValidateProfileEvent.CHECK_SKIPPED,
+                    reason="check skipped by path scope",
+                    attributes={
+                        "profile": run.args.profile,
+                        "check_id": check.check_id,
+                    },
+                )
+                return self._skipped_result(check)
+            run_argv = scoped_argv
+        if (check.allow_mutation and not run.args.allow_mutation) or (
+            check.allow_network and not run.args.allow_network
+        ):
+            run.state_machine.transition(
+                ValidateProfileEvent.CHECK_SKIPPED,
+                reason="check skipped by policy",
+                attributes={"profile": run.args.profile, "check_id": check.check_id},
+            )
+            return self._skipped_result(check)
+
+        cmd_fp = _compute_fingerprint(run_argv)
+        input_fp, file_fps = compute_input_fingerprint(
+            run.cwd, cmd_fp, check.command_kind
+        )
+        cache_key = compute_cache_key(
+            check.check_id, check.command_kind, cmd_fp, input_fp, run.cwd, run.cwd
+        )
+        if run.cache_enabled and run.args.cache_policy != "force_rerun":
+            lookup = run.cache_store.lookup(cache_key)
+            cache_status, _reason = decide_cache_eligibility(
+                run.args.cache_policy, lookup, run.args.allow_failed_cache_reuse
+            )
+            if cache_status == CACHE_STATUS_HIT and lookup.record is not None:
+                run.state_machine.transition(
+                    ValidateProfileEvent.CHECK_PASSED,
+                    reason="check returned from cache",
+                    attributes={
+                        "profile": run.args.profile,
+                        "check_id": check.check_id,
+                    },
+                )
+                return self._build_cached_result(
+                    check, cache_status, cache_key, input_fp, lookup.record
+                )
+        if run.scheduler_enabled and run.args.lock_running_checks:
+            acquired, _blocking_key = run.scheduler_store.acquire_lock(cache_key)
+            if not acquired:
+                run.state_machine.transition(
+                    ValidateProfileEvent.CHECK_SKIPPED,
+                    reason="validation already running",
+                    attributes={
+                        "profile": run.args.profile,
+                        "check_id": check.check_id,
+                    },
+                )
+                return self._build_blocked_result(
+                    check,
+                    reason="validation_already_running",
+                    cache_key=cache_key,
+                    input_fingerprint=input_fp,
+                )
+        modified_argv, parallel_status, parallel_warning = apply_parallel_policy(
+            run_argv,
+            run.args.parallel_policy,
+            run.args.max_workers,
+            run.args.xdist_distribution,
+        )
+        if parallel_warning:
+            run.scheduler_warnings.append(parallel_warning)
+        return _ValidateCheckRunContext(
+            run=run,
+            check=check,
+            check_timeout=min(run.timeout, 600),
+            run_argv=run_argv,
+            cmd_fp=cmd_fp,
+            input_fp=input_fp,
+            file_fps=file_fps,
+            cache_key=cache_key,
+            modified_argv=modified_argv,
+            parallel_status=parallel_status,
+        )
+
+    async def _execute_profile_check(
+        self, prepared: _ValidateCheckRunContext
+    ) -> ValidateCheckResult:
+        try:
+            return await _run_check(
+                prepared.modified_argv,
+                output_cap=prepared.run.output_cap,
+                timeout=int(prepared.check_timeout),
+                cwd=prepared.run.cwd,
+            )
+        finally:
+            if prepared.run.scheduler_enabled:
+                prepared.run.scheduler_store.release_lock(prepared.cache_key)
+
+    async def _prepare_validate_profile_run(
+        self, args: ValidateArgs, ctx: InvokeContext | None, recorder: Any | None = None
+    ) -> _ValidateProfileExecutionContext | ValidateResult | str:
         profile = get_profile(args.profile)
         if profile is None:
             known = ", ".join(list_profiles())
-            yield self._refuse(
+            return self._refuse(
                 args,
                 error_kind="tool_refusal",
                 reason=f"Unknown profile '{args.profile}'. Known profiles: {known}",
             )
-            return
 
         denied_reason = self._denied_profile_reason(args, profile)
         if denied_reason is not None:
-            yield denied_reason
-            return
+            self._new_state_machine().transition(
+                ValidateProfileEvent.PROFILE_REFUSED,
+                reason=denied_reason,
+                attributes={"profile": args.profile},
+            )
+            return denied_reason
 
-        start, cwd, output_cap, cache_store, scheduler_store, cache_enabled, scheduler_enabled, scheduler_warnings = self._build_run_context(args, ctx)
-        normalized_paths, refusal = self._resolve_paths(args, cwd)
+        run_context = self._build_run_context(args, ctx)
+        state_machine = ValidateProfileStateMachine(
+            on_transition=_make_trace_on_transition(recorder) if recorder else None
+        )
+        state_machine.transition(
+            ValidateProfileEvent.PROFILE_REQUESTED,
+            reason="validate profile requested",
+            attributes={"profile": args.profile},
+        )
+        normalized_paths, refusal = self._resolve_paths(args, run_context.cwd)
         if refusal:
-            yield self._refuse(args, error_kind="unsafe_paths", reason=refusal)
-            return
+            state_machine.transition(
+                ValidateProfileEvent.PROFILE_REFUSED,
+                reason=refusal,
+                attributes={"profile": args.profile},
+            )
+            return self._refuse(args, error_kind="unsafe_paths", reason=refusal)
 
-        before_git_state = await _collect_git_state(cwd)
-        policy_reason = _check_dirty_policy(before_git_state, args.expected_dirty_policy, normalized_paths)
+        before_git_state = await _collect_git_state(run_context.cwd)
+        policy_reason = _check_dirty_policy(
+            before_git_state, args.expected_dirty_policy, normalized_paths
+        )
         if policy_reason:
-            yield ValidateResult(status="failed", profile=args.profile, error_kind="dirty_workspace", refusal_reason=policy_reason, before_git_state=before_git_state, blocker_summary={"dirty_workspace": 1})
+            state_machine.transition(
+                ValidateProfileEvent.PROFILE_REFUSED,
+                reason=policy_reason,
+                attributes={"profile": args.profile},
+            )
+            return ValidateResult(
+                status="failed",
+                profile=args.profile,
+                error_kind="dirty_workspace",
+                refusal_reason=policy_reason,
+                before_git_state=before_git_state,
+                blocker_summary={"dirty_workspace": 1},
+            )
+
+        state_machine.transition(
+            ValidateProfileEvent.CHECKS_SELECTED,
+            reason="checks selected",
+            attributes={
+                "profile": args.profile,
+                "check_count": len(self._build_checks(profile, normalized_paths)),
+            },
+        )
+        return _ValidateProfileExecutionContext(
+            args=args,
+            ctx=ctx,
+            profile=profile,
+            start=run_context.start,
+            cwd=run_context.cwd,
+            state_machine=state_machine,
+            normalized_paths=normalized_paths,
+            before_git_state=before_git_state,
+            output_cap=run_context.output_cap,
+            cache_store=run_context.cache_store,
+            scheduler_store=run_context.scheduler_store,
+            cache_enabled=run_context.cache_enabled,
+            scheduler_enabled=run_context.scheduler_enabled,
+            scheduler_warnings=run_context.scheduler_warnings,
+        )
+
+    async def _execute_validate_profile_run(
+        self, run: _ValidateProfileExecutionContext
+    ) -> AsyncGenerator[ToolStreamEvent | ValidateResult | str, None]:
+        timeout = run.args.timeout_seconds or run.profile.default_timeout
+        results = await self._run_profile_checks(
+            _ValidateProfileRunContext(
+                args=run.args,
+                profile=run.profile,
+                normalized_paths=run.normalized_paths,
+                cwd=run.cwd,
+                output_cap=run.output_cap,
+                cache_store=run.cache_store,
+                scheduler_store=run.scheduler_store,
+                cache_enabled=run.cache_enabled,
+                scheduler_enabled=run.scheduler_enabled,
+                scheduler_warnings=run.scheduler_warnings,
+                timeout=timeout,
+                state_machine=run.state_machine,
+            )
+        )
+        after_git_state = await _collect_git_state(run.cwd)
+        overall_result = self._build_run_result(
+            results,
+            run.profile,
+            run.start,
+            before_git_state=run.before_git_state,
+            after_git_state=after_git_state,
+        )
+        run.state_machine.transition(
+            ValidateProfileEvent.PROFILE_COMPLETED,
+            reason=f"validate {overall_result.status}",
+            attributes={"profile": run.args.profile, "status": overall_result.status},
+        )
+        yield overall_result
+
+    async def run(  # type: ignore[override]
+        self, args: ValidateArgs, ctx: InvokeContext | None = None
+    ) -> AsyncGenerator[ToolStreamEvent | ValidateResult | str, None]:
+        trace_span: Any = None
+        recorder: Any = None
+        if ctx is not None and ctx.trace_recorder is not None:
+            recorder = ctx.trace_recorder
+            trace_span = recorder.start_span(
+                "validate.profile", attributes={"profile": args.profile}
+            )
+
+        prepared = await self._prepare_validate_profile_run(args, ctx, recorder)
+        if isinstance(prepared, _ValidateProfileExecutionContext):
+            async for event in self._execute_validate_profile_run(prepared):
+                yield event
+            if trace_span is not None:
+                from rig_relay.tracing.models import TraceStatus
+
+                recorder.end_span(trace_span, status=TraceStatus.ok)
             return
+        if trace_span is not None:
+            from rig_relay.tracing.models import TraceStatus
 
-        checks = self._build_checks(profile, normalized_paths)
-        timeout = args.timeout_seconds or profile.default_timeout
-        results: list[ValidateCheckResult] = []
-        for check in checks:
-            check_timeout = min(timeout, 600)
-            run_argv = check.argv
-            if normalized_paths:
-                scoped_argv, should_run = _scope_check_argv(check, normalized_paths)
-                if not should_run:
-                    results.append(self._skipped_result(check))
-                    continue
-                run_argv = scoped_argv
-            if (check.allow_mutation and not args.allow_mutation) or (check.allow_network and not args.allow_network):
-                results.append(self._skipped_result(check))
-                continue
-            cmd_fp = _compute_fingerprint(run_argv)
-            input_fp, file_fps = compute_input_fingerprint(cwd, cmd_fp, check.command_kind)
-            ck = compute_cache_key(check.check_id, check.command_kind, cmd_fp, input_fp, cwd, cwd)
-            if cache_enabled and args.cache_policy != "force_rerun":
-                lookup = cache_store.lookup(ck)
-                cache_status, _reason = decide_cache_eligibility(args.cache_policy, lookup, args.allow_failed_cache_reuse)
-                if cache_status == CACHE_STATUS_HIT and lookup.record is not None:
-                    results.append(self._build_cached_result(check, cache_status, ck, input_fp, lookup.record))
-                    continue
-            if scheduler_enabled and args.lock_running_checks:
-                acquired, _blocking_key = scheduler_store.acquire_lock(ck)
-                if not acquired:
-                    results.append(self._build_blocked_result(check, reason="validation_already_running", cache_key=ck, input_fingerprint=input_fp))
-                    continue
-            modified_argv, parallel_status, parallel_warning = apply_parallel_policy(run_argv, args.parallel_policy, args.max_workers, args.xdist_distribution)
-            if parallel_warning:
-                scheduler_warnings.append(parallel_warning)
-            cr = await _run_check(modified_argv, output_cap=output_cap, timeout=check_timeout, cwd=cwd)
-            if normalized_paths:
-                cr.affected_paths = list(normalized_paths)
-            cr.cache_status = CACHE_STATUS_MISS_RAN if cache_enabled else CACHE_STATUS_DISABLED
-            cr.cache_key = ck
-            cr.input_fingerprint = input_fp
-            cr.scheduler_status = SCHEDULER_RUNNING if scheduler_enabled else SCHEDULER_NOT_SCHEDULED
-            cr.parallel_status = parallel_status
-            cr.validation_phase = args.validation_phase
-            if parallel_status == PARALLEL_ENABLED:
-                cr.worker_count = args.max_workers or 4
-                cr.distribution = args.xdist_distribution
-            results.append(cr)
-            if cache_enabled and cr.status in {"passed", "failed"}:
-                record = ValidationCacheRecord(cache_key=ck, check_id=check.check_id, command_kind=check.command_kind, command_fingerprint=cmd_fp, input_fingerprint=input_fp, input_file_fingerprints=file_fps, status=cr.status, exit_code=cr.exit_code, duration_ms=cr.duration_ms, stdout_sha256=cr.stdout_sha256, stderr_sha256=cr.stderr_sha256, stdout_bytes=cr.stdout_bytes, stderr_bytes=cr.stderr_bytes, failure_kind=cr.failure_kind, created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), validation_phase=args.validation_phase, worker_count=cr.worker_count, distribution=cr.distribution, warnings=list(scheduler_warnings))
-                cr.cache_record_sha256 = record.record_sha256()
-                cache_store.store(record)
-            if scheduler_enabled:
-                scheduler_store.release_lock(ck)
-
-        after_git_state = await _collect_git_state(cwd)
-        yield self._build_run_result(results, profile, start, before_git_state=before_git_state, after_git_state=after_git_state)
+            recorder.end_span(trace_span, status=TraceStatus.error)
+        yield prepared

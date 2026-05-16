@@ -3,12 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from rig_relay.coordination.models import (
-    CoordinationSession,
-    salted_path_hash,
-    stable_path_key,
-)
-from rig_relay.coordination.store import CoordinationStore
 from rig_relay.coordination import (
     CoordinationStore as LegacyCoordinationStore,
     FileCoordinationStore,
@@ -17,7 +11,15 @@ from rig_relay.coordination._models import (
     CoordinationSession as LegacyCoordinationSession,
     reset_path_salt_for_testing,
 )
-from rig_relay.coordination.store import CoordinationStore as LegacyStoreModuleStore
+from rig_relay.coordination.models import (
+    CoordinationSession,
+    salted_path_hash,
+    stable_path_key,
+)
+from rig_relay.coordination.store import (
+    CoordinationStore,
+    CoordinationStore as LegacyStoreModuleStore,
+)
 
 
 def test_relay_native_imports_work() -> None:

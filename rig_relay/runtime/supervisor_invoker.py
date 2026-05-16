@@ -19,6 +19,7 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 import hashlib
 from pathlib import Path
+from typing import Any
 import uuid
 
 from pydantic import BaseModel, ConfigDict
@@ -31,8 +32,21 @@ from rig_relay.runtime.stream_types import (
     RuntimeFailureEvent,
     RuntimeInvocationStatus,
     RuntimeOutputChunkEvent,
+    RuntimeStreamEventKind,
 )
 from rig_relay.runtime.supervisor import RuntimeSupervisor
+from rig_relay.runtime.supervisor_result import (
+    RuntimeSupervisorCleanup,
+    RuntimeSupervisorCommandDigest,
+    RuntimeSupervisorEnvelopeContext,
+    RuntimeSupervisorFailure,
+    RuntimeSupervisorOutputDigest,
+    RuntimeSupervisorResourceUsage,
+    RuntimeSupervisorResultClassification,
+    RuntimeSupervisorResultEnvelope,
+    RuntimeSupervisorTiming,
+    build_runtime_supervisor_result_envelope,
+)
 
 
 class SupervisorExecutionStatus:
@@ -69,12 +83,30 @@ class SupervisorExecutionResult(BaseModel):
     cwd: str = ""
     refusal_code: str | None = None
     error_message: str | None = None
+    result_envelope: RuntimeSupervisorResultEnvelope | None = None
 
 
 def _sha256_text(text: str) -> str:
     return (
         "sha256:" + hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
     )
+
+
+def _classify_cwd_kind(cwd_path: str) -> str:
+    """Classify a working directory path into a safe category."""
+    import os
+
+    p = str(cwd_path).lower()
+    home = os.path.expanduser("~").lower()
+    if p.startswith("/tmp") or "/var/folders" in p:
+        return "temp"
+    if "worktree" in p or "worktrees" in p:
+        return "worktree"
+    if p.startswith(home):
+        return "repo"
+    if "application support" in p:
+        return "app_support"
+    return "unknown"
 
 
 class SupervisorCommandInvoker:
@@ -100,10 +132,229 @@ class SupervisorCommandInvoker:
         max_stdout_bytes: int = 65536,
         max_stderr_bytes: int = 65536,
         heartbeat_interval_ms: int = 1000,
+        trace_recorder: Any | None = None,
     ) -> None:
         self._max_stdout_bytes = max_stdout_bytes
         self._max_stderr_bytes = max_stderr_bytes
         self._heartbeat_interval_ms = heartbeat_interval_ms
+        self._trace_recorder = trace_recorder
+
+    def _start_trace_span(
+        self, argv: list[str], cwd_str: str, timeout_seconds: float
+    ) -> tuple[Any | None, Any | None, Any | None]:
+        if self._trace_recorder is None:
+            return None, None, None
+        from rig_relay.tracing.models import TraceStatus as _TS
+
+        recorder = self._trace_recorder
+        trace_span = recorder.start_span(
+            "runtime.subprocess.execute",
+            attributes={
+                "executable": argv[0],
+                "argv_hash": hashlib.sha256(" ".join(argv).encode()).hexdigest()[:16],
+                "argv_count": len(argv),
+                "cwd_hash": hashlib.sha256(cwd_str.encode()).hexdigest()[:16],
+                "cwd_kind": _classify_cwd_kind(cwd_str),
+                "timeout_seconds": timeout_seconds,
+            },
+        )
+        return recorder, trace_span, _TS
+
+    @staticmethod
+    def _sha256_hex_prefixed(text: str) -> str:
+        return "sha256:" + hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+
+    @staticmethod
+    def _command_digest(argv: list[str], cwd_str: str) -> RuntimeSupervisorCommandDigest:
+        return RuntimeSupervisorCommandDigest(
+            executable=argv[0],
+            argv_hash=SupervisorCommandInvoker._sha256_hex_prefixed(" ".join(argv)),
+            argc=len(argv),
+            cwd_hash=SupervisorCommandInvoker._sha256_hex_prefixed(cwd_str),
+            cwd_kind=_classify_cwd_kind(cwd_str),
+        )
+
+    @staticmethod
+    def _output_digest(
+        stdout_sha256: str,
+        stderr_sha256: str,
+        stdout_bytes: int,
+        stderr_bytes: int,
+        stdout_truncated: bool,
+        stderr_truncated: bool,
+    ) -> RuntimeSupervisorOutputDigest:
+        return RuntimeSupervisorOutputDigest(
+            stdout_sha256=stdout_sha256,
+            stderr_sha256=stderr_sha256,
+            stdout_bytes=stdout_bytes,
+            stderr_bytes=stderr_bytes,
+            stdout_truncated=stdout_truncated,
+            stderr_truncated=stderr_truncated,
+        )
+
+    @staticmethod
+    def _timing_digest(
+        *, started_at: str | None = None, completed_at: str | None = None, duration_ms: float | None = None
+    ) -> RuntimeSupervisorTiming:
+        return RuntimeSupervisorTiming(
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+        )
+
+    @staticmethod
+    def _resource_usage(
+        event: RuntimeCompletionEvent | RuntimeFailureEvent,
+    ) -> RuntimeSupervisorResourceUsage:
+        return RuntimeSupervisorResourceUsage(
+            exit_code=getattr(event, "exit_code", None),
+            signal=None,
+            timed_out=getattr(event, "status", None) == RuntimeInvocationStatus.TIMED_OUT,
+            killed=False,
+            cancelled=getattr(event, "status", None) == RuntimeInvocationStatus.CANCELLED,
+            pid=None,
+        )
+
+    @staticmethod
+    def _classify_terminal(
+        event: RuntimeCompletionEvent | RuntimeFailureEvent,
+    ) -> RuntimeSupervisorResultClassification:
+        if isinstance(event, RuntimeCompletionEvent):
+            return (
+                RuntimeSupervisorResultClassification.COMPLETED
+                if event.status == RuntimeInvocationStatus.SUCCEEDED
+                else RuntimeSupervisorResultClassification.FAILED
+            )
+        match event.status:
+            case RuntimeInvocationStatus.TIMED_OUT:
+                return RuntimeSupervisorResultClassification.TIMED_OUT
+            case RuntimeInvocationStatus.CANCELLED:
+                return RuntimeSupervisorResultClassification.CANCELLED
+            case RuntimeInvocationStatus.BLOCKED:
+                return RuntimeSupervisorResultClassification.REFUSED
+            case RuntimeInvocationStatus.FAILED if getattr(event, "error_kind", "") in {
+                "command_not_found",
+                "spawn_error",
+            }:
+                return RuntimeSupervisorResultClassification.SPAWN_FAILED
+            case _:
+                return RuntimeSupervisorResultClassification.FAILED
+
+    def _build_result_envelope(
+        self,
+        *,
+        argv: list[str],
+        cwd_str: str,
+        terminal_event: RuntimeCompletionEvent | RuntimeFailureEvent,
+        stdout_text: str,
+        stderr_text: str,
+        trace_span: Any | None,
+        trace_status: Any | None,
+        started_at: str | None = None,
+    ) -> RuntimeSupervisorResultEnvelope:
+        command = self._command_digest(argv, cwd_str)
+        output = self._output_digest(
+            stdout_sha256=getattr(terminal_event, "stdout_sha256", "")
+            or _sha256_text(stdout_text),
+            stderr_sha256=getattr(terminal_event, "stderr_sha256", "")
+            or _sha256_text(stderr_text),
+            stdout_bytes=getattr(terminal_event, "stdout_bytes", 0) or 0,
+            stderr_bytes=getattr(terminal_event, "stderr_bytes", 0) or 0,
+            stdout_truncated=getattr(terminal_event, "stdout_truncated", False),
+            stderr_truncated=getattr(terminal_event, "stderr_truncated", False),
+        )
+        timing = self._timing_digest(
+            started_at=started_at,
+            completed_at=getattr(terminal_event, "captured_at", None),
+            duration_ms=getattr(terminal_event, "duration_ms", None),
+        )
+        classification = self._classify_terminal(terminal_event)
+        resource_usage = self._resource_usage(terminal_event)
+        cleanup = RuntimeSupervisorCleanup(
+            status="completed",
+            reason=None,
+        )
+        error = None
+        if isinstance(terminal_event, RuntimeFailureEvent):
+            error = RuntimeSupervisorFailure(
+                error_kind=terminal_event.error_kind,
+                reason=terminal_event.refusal_reason,
+                cleanup_status=cleanup.status,
+            )
+        evidence = {
+            "trace_id": getattr(trace_span, "trace_id", None),
+            "parent_span_id": getattr(trace_span, "parent_span_id", None),
+            "span_id": getattr(trace_span, "span_id", None),
+        }
+        return build_runtime_supervisor_result_envelope(
+            command=command,
+            cwd={"cwd_hash": command.cwd_hash, "cwd_kind": command.cwd_kind},
+            state_projection={
+                "current_state": classification.value,
+                "previous_state": None,
+                "last_event": terminal_event.event_kind.value,
+                "transition_count": 0,
+                "exit_code": getattr(terminal_event, "exit_code", None),
+                "timed_out": classification
+                == RuntimeSupervisorResultClassification.TIMED_OUT,
+                "killed": classification == RuntimeSupervisorResultClassification.KILLED,
+                "stdout_bytes": output.stdout_bytes,
+                "stderr_bytes": output.stderr_bytes,
+            },
+            classification=classification,
+            resource_usage=resource_usage,
+            output=output,
+            timing=timing,
+                context=RuntimeSupervisorEnvelopeContext(
+                    trace_id=evidence["trace_id"],
+                    parent_span_id=evidence["parent_span_id"],
+                    span_id=evidence["span_id"],
+                    error=error,
+                    cleanup=cleanup,
+                ),
+            )
+
+    @staticmethod
+    def _end_trace_span(
+        recorder: Any | None,
+        trace_span: Any | None,
+        trace_status: Any | None,
+        *,
+        result: SupervisorExecutionResult | None = None,
+        status: Any | None = None,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
+        if recorder is None or trace_span is None or trace_status is None:
+            return
+        end_status = status
+        end_attrs = attributes or {}
+        if result is not None:
+            envelope_classification = (
+                result.result_envelope.classification.value
+                if result.result_envelope is not None
+                else result.status
+            )
+            end_status = (
+                trace_status.ok
+                if envelope_classification == "completed"
+                else trace_status.error
+            )
+            if envelope_classification == "timed_out":
+                end_status = trace_status.timed_out
+            elif envelope_classification == "refused":
+                end_status = trace_status.refused
+            elif envelope_classification == "cancelled":
+                end_status = trace_status.cancelled
+            end_attrs = {
+                "exit_code": result.exit_code,
+                "status": envelope_classification,
+                "duration_ms": result.duration_ms,
+                "stdout_bytes": result.stdout_bytes,
+                "stderr_bytes": result.stderr_bytes,
+                "stdout_truncated": result.stdout_truncated,
+                "stderr_truncated": result.stderr_truncated,
+            }
+        recorder.end_span(trace_span, status=end_status, attributes=end_attrs)
 
     async def invoke(
         self,
@@ -132,19 +383,106 @@ class SupervisorCommandInvoker:
             worktree_path: Optional worktree path.
         """
         if not argv or not argv[0]:
+            envelope = build_runtime_supervisor_result_envelope(
+                command=RuntimeSupervisorCommandDigest(
+                    executable="",
+                    argv_hash=SupervisorCommandInvoker._sha256_hex_prefixed(""),
+                    argc=0,
+                    cwd_hash=SupervisorCommandInvoker._sha256_hex_prefixed(""),
+                    cwd_kind="unknown",
+                ),
+                cwd={"cwd_hash": SupervisorCommandInvoker._sha256_hex_prefixed(""), "cwd_kind": "unknown"},
+                state_projection={
+                    "current_state": "refused",
+                    "previous_state": None,
+                    "last_event": "precondition_failed",
+                    "transition_count": 0,
+                    "exit_code": None,
+                    "timed_out": False,
+                    "killed": False,
+                    "stdout_bytes": 0,
+                    "stderr_bytes": 0,
+                },
+                classification=RuntimeSupervisorResultClassification.REFUSED,
+                resource_usage=RuntimeSupervisorResourceUsage(),
+                output=RuntimeSupervisorOutputDigest(
+                    stdout_sha256=_sha256_text(""),
+                    stderr_sha256=_sha256_text(""),
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                ),
+                timing=RuntimeSupervisorTiming(),
+                context=RuntimeSupervisorEnvelopeContext(
+                    cleanup=RuntimeSupervisorCleanup(
+                        status="not_started",
+                        reason="empty_argv",
+                    ),
+                    error=RuntimeSupervisorFailure(
+                        error_kind="empty_argv",
+                        reason="argv must be non-empty",
+                        cleanup_status="not_started",
+                    ),
+                ),
+            )
             return SupervisorExecutionResult(
                 status="refused",
                 refusal_code="empty_argv",
                 error_message="argv must be non-empty",
+                result_envelope=envelope,
             )
 
         cwd_str = str(cwd)
         if not Path(cwd_str).is_dir():
+            envelope = build_runtime_supervisor_result_envelope(
+                command=RuntimeSupervisorCommandDigest(
+                    executable=argv[0],
+                    argv_hash=SupervisorCommandInvoker._sha256_hex_prefixed(" ".join(argv)),
+                    argc=len(argv),
+                    cwd_hash=SupervisorCommandInvoker._sha256_hex_prefixed(cwd_str),
+                    cwd_kind=_classify_cwd_kind(cwd_str),
+                ),
+                cwd={
+                    "cwd_hash": SupervisorCommandInvoker._sha256_hex_prefixed(cwd_str),
+                    "cwd_kind": _classify_cwd_kind(cwd_str),
+                },
+                state_projection={
+                    "current_state": "refused",
+                    "previous_state": None,
+                    "last_event": "precondition_failed",
+                    "transition_count": 0,
+                    "exit_code": None,
+                    "timed_out": False,
+                    "killed": False,
+                    "stdout_bytes": 0,
+                    "stderr_bytes": 0,
+                },
+                classification=RuntimeSupervisorResultClassification.REFUSED,
+                resource_usage=RuntimeSupervisorResourceUsage(),
+                output=RuntimeSupervisorOutputDigest(
+                    stdout_sha256=_sha256_text(""),
+                    stderr_sha256=_sha256_text(""),
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                ),
+                timing=RuntimeSupervisorTiming(),
+                context=RuntimeSupervisorEnvelopeContext(
+                    cleanup=RuntimeSupervisorCleanup(
+                        status="not_started",
+                        reason="cwd_not_found",
+                    ),
+                    error=RuntimeSupervisorFailure(
+                        error_kind="cwd_not_found",
+                        reason=f"cwd does not exist: {cwd_str}",
+                        cleanup_status="not_started",
+                    ),
+                ),
+            )
             return SupervisorExecutionResult(
                 status="refused",
                 refusal_code="cwd_not_found",
                 error_message=f"cwd does not exist: {cwd_str}",
                 cwd=cwd_str,
+                result_envelope=envelope,
             )
 
         supervisor = RuntimeSupervisor(
@@ -152,6 +490,10 @@ class SupervisorCommandInvoker:
             max_stdout_bytes=stdout_limit_bytes or self._max_stdout_bytes,
             max_stderr_bytes=stderr_limit_bytes or self._max_stderr_bytes,
             heartbeat_interval_ms=self._heartbeat_interval_ms,
+        )
+
+        recorder, trace_span, trace_status = self._start_trace_span(
+            argv, cwd_str, timeout_seconds
         )
 
         lease = self._build_ephemeral_lease(
@@ -181,27 +523,91 @@ class SupervisorCommandInvoker:
                     elif event.stream == "stderr":
                         stderr_chunks.append(chunk_text)
         except asyncio.CancelledError:
+            self._end_trace_span(
+                recorder,
+                trace_span,
+                trace_status,
+                status=trace_status.cancelled if trace_status is not None else None,
+                attributes={"status": "cancelled"},
+            )
             return SupervisorExecutionResult(
                 status="failed",
                 refusal_code="cancelled",
                 error_message="Execution was cancelled",
                 cwd=cwd_str,
+                result_envelope=self._build_result_envelope(
+                    argv=argv,
+                    cwd_str=cwd_str,
+                    terminal_event=RuntimeFailureEvent(
+                        event_id="cancelled",
+                        lease_id=lease.lease_id,
+                        request_id=lease.request.request_id,
+                        event_kind=RuntimeStreamEventKind.FAILURE,
+                        captured_at=datetime.now(UTC).isoformat(),
+                        status=RuntimeInvocationStatus.CANCELLED,
+                        error_kind="cancelled",
+                        refusal_reason="Execution was cancelled",
+                    ),
+                    stdout_text="",
+                    stderr_text="",
+                    trace_span=trace_span,
+                    trace_status=trace_status,
+                ),
             )
 
         if terminal_event is None:
+            self._end_trace_span(
+                recorder,
+                trace_span,
+                trace_status,
+                status=trace_status.error if trace_status is not None else None,
+                attributes={"status": "no_terminal_event"},
+            )
             return SupervisorExecutionResult(
                 status="failed",
                 refusal_code="no_terminal_event",
                 error_message="Supervisor did not emit a terminal event",
                 cwd=cwd_str,
+                result_envelope=self._build_result_envelope(
+                    argv=argv,
+                    cwd_str=cwd_str,
+                    terminal_event=RuntimeFailureEvent(
+                        event_id="no_terminal_event",
+                        lease_id=lease.lease_id,
+                        request_id=lease.request.request_id,
+                        event_kind=RuntimeStreamEventKind.FAILURE,
+                        captured_at=datetime.now(UTC).isoformat(),
+                        status=RuntimeInvocationStatus.FAILED,
+                        error_kind="no_terminal_event",
+                        refusal_reason="Supervisor did not emit a terminal event",
+                    ),
+                    stdout_text="",
+                    stderr_text="",
+                    trace_span=trace_span,
+                    trace_status=trace_status,
+                ),
             )
 
         stdout_text = "".join(stdout_chunks)
         stderr_text = "".join(stderr_chunks)
         command_family = " ".join(argv[:2])
-        return self._terminal_to_result(
+        result = self._terminal_to_result(
             terminal_event, stdout_text, stderr_text, command_family, cwd_str
         )
+        result.result_envelope = self._build_result_envelope(
+            argv=argv,
+            cwd_str=cwd_str,
+            terminal_event=terminal_event,
+            stdout_text=stdout_text,
+            stderr_text=stderr_text,
+            trace_span=trace_span,
+            trace_status=trace_status,
+            started_at=lease.acquired_at,
+        )
+
+        self._end_trace_span(recorder, trace_span, trace_status, result=result)
+
+        return result
 
     @staticmethod
     def _terminal_to_result(
@@ -243,8 +649,8 @@ class SupervisorCommandInvoker:
             exit_code=getattr(terminal_event, "exit_code", None),
             stdout_text=stdout_text,
             stderr_text=stderr_text,
-            stdout_bytes=getattr(terminal_event, "stdout_bytes", 0),
-            stderr_bytes=getattr(terminal_event, "stderr_bytes", 0),
+            stdout_bytes=getattr(terminal_event, "stdout_bytes", 0) or 0,
+            stderr_bytes=getattr(terminal_event, "stderr_bytes", 0) or 0,
             stdout_truncated=getattr(terminal_event, "stdout_truncated", False),
             stderr_truncated=getattr(terminal_event, "stderr_truncated", False),
             stdout_sha256=getattr(terminal_event, "stdout_sha256", "")

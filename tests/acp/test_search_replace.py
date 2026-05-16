@@ -5,8 +5,10 @@ from pathlib import Path
 from acp import ReadTextFileResponse
 import pytest
 
-from tests.mock.utils import collect_result
-from rig_relay.acp.tools.builtins.search_replace import AcpSearchReplaceState, SearchReplace
+from rig_relay.acp.tools.builtins.search_replace import (
+    AcpSearchReplaceState,
+    SearchReplace,
+)
 from rig_relay.core.tools.base import ToolError
 from rig_relay.core.tools.builtins.search_replace import (
     SearchReplaceArgs,
@@ -14,6 +16,7 @@ from rig_relay.core.tools.builtins.search_replace import (
     SearchReplaceResult,
 )
 from rig_relay.core.types import ToolCallEvent, ToolResultEvent
+from tests.mock.utils import collect_result
 
 
 class MockClient:

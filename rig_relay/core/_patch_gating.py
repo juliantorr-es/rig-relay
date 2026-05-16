@@ -7,7 +7,6 @@ patch_proposal_mode=True.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rig_relay.core.types import ToolResultEvent

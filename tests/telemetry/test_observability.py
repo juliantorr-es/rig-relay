@@ -44,10 +44,6 @@ def mock_config():
 @pytest.fixture
 def real_telemetry_client(monkeypatch):
     """Force reload of telemetry modules to ensure we use the real implementation."""
-    import rig_relay.core.paths._vibe_home
-    import rig_relay.core.telemetry.local
-    import rig_relay.core.telemetry.send
-
     importlib.reload(vibe.core.paths._vibe_home)
     importlib.reload(vibe.core.telemetry.local)
     importlib.reload(vibe.core.telemetry.send)

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Expected deliverables from the cannibalization plan
@@ -34,6 +36,9 @@ REQUIRED_FRONTEND_SAFETY_TEST = (
 # Expected doc from port_now item 4 (Textual retirement)
 REQUIRED_TEXTUAL_RETIREMENT_DOC = "docs/governance/textual-retirement-policy.md"
 
+
+
+pytestmark = [pytest.mark.migration]
 
 def test_deliverables_exist() -> None:
     """All five required deliverables exist."""

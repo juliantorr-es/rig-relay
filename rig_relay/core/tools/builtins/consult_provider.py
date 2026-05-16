@@ -13,7 +13,7 @@ Content-light: raw transcripts are hashed, never logged.
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -23,7 +23,6 @@ from rig_relay.core.tools.base import (
     BaseToolState,
     InvokeContext,
     ToolDeterminismClass,
-    ToolError,
     ToolMutationClass,
     ToolPermission,
 )

@@ -9,10 +9,10 @@ No git commands, no worktree creation, no merge.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import hashlib
 import json
 import os
-from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 

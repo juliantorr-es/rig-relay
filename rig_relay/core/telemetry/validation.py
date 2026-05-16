@@ -9,7 +9,11 @@ from typing import Any
 from rig_relay.core.telemetry.constants import EventName
 from rig_relay.core.telemetry.local import dump_canonical_json
 from rig_relay.core.telemetry.manifest import load_manifest
-from rig_relay.core.telemetry.receipts import EvidenceReceipt, load_receipts, verify_receipt
+from rig_relay.core.telemetry.receipts import (
+    EvidenceReceipt,
+    load_receipts,
+    verify_receipt,
+)
 
 
 @dataclass(slots=True)

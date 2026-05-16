@@ -6,7 +6,6 @@ import subprocess
 
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.guard import (
     DirtyGuardFailurePolicy,
     GuardCaptureReason,
@@ -24,6 +23,7 @@ from rig_relay.core.tools.builtins.write_file import (
     WriteFileArgs,
     WriteFileConfig,
 )
+from tests.mock.utils import collect_result
 
 
 @pytest.fixture(autouse=True)

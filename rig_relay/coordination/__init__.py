@@ -2,6 +2,7 @@
 
 Canonical re-exports for commonly used coordination types.
 """
+from __future__ import annotations
 
 from rig_relay.coordination.models import (
     CoordinationArtifactRef,

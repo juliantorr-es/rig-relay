@@ -13,14 +13,14 @@ from opentelemetry.sdk.trace.export import (
 from opentelemetry.trace import StatusCode
 import pytest
 
-from tests.conftest import build_test_agent_loop, build_test_vibe_config
-from tests.mock.utils import mock_llm_chunk
-from tests.stubs.fake_backend import FakeBackend
 from rig_relay.core import tracing
 from rig_relay.core.config import OtelSpanExporterConfig
 from rig_relay.core.tools.base import BaseToolConfig, ToolPermission
 from rig_relay.core.tracing import agent_span, setup_tracing, tool_span
 from rig_relay.core.types import BaseEvent, FunctionCall, ToolCall
+from tests.conftest import build_test_agent_loop, build_test_vibe_config
+from tests.mock.utils import mock_llm_chunk
+from tests.stubs.fake_backend import FakeBackend
 
 
 class _CollectingExporter(SpanExporter):

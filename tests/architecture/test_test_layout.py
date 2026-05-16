@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 TESTS = HERE.parent
@@ -47,6 +49,8 @@ def _scripts_test_files() -> list[Path]:
     ]
 
 
+@pytest.mark.smoke
+@pytest.mark.contract
 def test_layout_audit() -> None:
     """Warn (but don't fail) on layout violations."""
     violations: list[str] = []

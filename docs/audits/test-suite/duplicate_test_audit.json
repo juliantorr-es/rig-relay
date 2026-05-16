@@ -1,0 +1,9 @@
+{
+  "total_tests_scanned": 5970,
+  "exact_body_groups": 1,
+  "normalized_ast_groups": 35,
+  "assert_shape_groups": 618,
+  "exact_body_test_count": 2,
+  "normalized_ast_test_count": 91,
+  "assert_shape_test_count": 3307
+}

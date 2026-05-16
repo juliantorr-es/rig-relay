@@ -4,12 +4,12 @@ import sys
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.agents import AgentManager
 from rig_relay.core.scratchpad import init_scratchpad
 from rig_relay.core.skills.manager import SkillManager
 from rig_relay.core.system_prompt import get_universal_system_prompt
 from rig_relay.core.tools.manager import ToolManager
+from tests.conftest import build_test_vibe_config
 
 
 def test_get_universal_system_prompt_includes_windows_prompt_on_windows(

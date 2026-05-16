@@ -622,18 +622,9 @@ class TestReceiptEnvelopeSchema:
     def test_schema_has_no_forbidden_raw_fields(
         self, schema_dict: dict[str, Any]
     ) -> None:
-        def _check(obj: Any, path: str) -> None:
-            if isinstance(obj, dict):
-                for k, v in obj.items():
-                    assert k not in FORBIDDEN_RAW_FIELD_NAMES, (
-                        f"Forbidden field '{k}' at {path}"
-                    )
-                    _check(v, f"{path}.{k}")
-            elif isinstance(obj, list):
-                for i, item in enumerate(obj):
-                    _check(item, f"{path}[{i}]")
+        from tests.evidence._helpers import check_schema_for_forbidden_fields
 
-        _check(schema_dict, "schema")
+        check_schema_for_forbidden_fields(schema_dict)
 
 
 # ── Placeholder tests ────────────────────────────────────────────────

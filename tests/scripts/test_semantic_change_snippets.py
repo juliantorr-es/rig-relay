@@ -10,6 +10,9 @@ import pytest
 # ── Fixtures ─────────────────────────────────────────────────────────────
 
 SIMPLE_FUNCTION = """
+
+pytestmark = [pytest.mark.migration]
+
 def my_function(param_one, param_two):
     \"\"\"This is a docstring.\"\"\"
     # This is a comment

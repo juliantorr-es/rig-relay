@@ -1,11 +1,13 @@
-from rig_relay.ralph.background_policy import demo_policy, default_policy
-from rig_relay.ralph.lifecycle_projection import (
-    LifecycleGateStatus,
-    build_lifecycle_projection,
-)
+from __future__ import annotations
+
+import pytest
+
+from rig_relay.ralph.background_policy import demo_policy
 from rig_relay.ralph.lane_contracts import RalphLane
+from rig_relay.ralph.lifecycle_projection import build_lifecycle_projection
 
 
+@pytest.mark.smoke
 def test_lifecycle_projection_default_disabled():
     proj = build_lifecycle_projection()
     assert proj.background_enabled is False
@@ -17,6 +19,7 @@ def test_lifecycle_projection_default_disabled():
     assert proj.schema_version == "rig.ui.ralph_background_lifecycle.v1"
 
 
+@pytest.mark.smoke
 def test_lifecycle_projection_demo_enabled():
     proj = build_lifecycle_projection(policy=demo_policy())
     assert proj.background_enabled is True

@@ -1,6 +1,10 @@
 """Tests for the current-state pulse generator and schema."""
 
 from __future__ import annotations
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
 
 from datetime import UTC, datetime, timedelta
 import json

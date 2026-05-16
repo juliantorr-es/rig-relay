@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import tomllib
 
-from tests.conftest import build_test_agent_loop, build_test_vibe_config
 from rig_relay.core.tools.permissions import PermissionScope, RequiredPermission
+from tests.conftest import build_test_agent_loop, build_test_vibe_config
 
 
 def _read_persisted_config(config_dir: Path) -> dict:

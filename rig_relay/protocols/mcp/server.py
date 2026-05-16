@@ -22,18 +22,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
-
-from rig_relay.coordination.council import ConsultationRequest, RedactionMode
+from rig_relay.coordination.council import RedactionMode
 from rig_relay.protocols.mcp.models import (
     GATED_TOOLS,
+    PROMPTS,
+    READ_ONLY_RESOURCES,
+    READ_ONLY_TOOLS,
     MCPPrompt,
     MCPResource,
     MCPTool,
     MCPToolTier,
-    PROMPTS,
-    READ_ONLY_RESOURCES,
-    READ_ONLY_TOOLS,
     ServerCapabilities,
 )
 

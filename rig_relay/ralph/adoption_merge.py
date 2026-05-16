@@ -8,12 +8,10 @@ Default: disabled. Demo: contract-only.
 from __future__ import annotations
 
 import hashlib
-import subprocess
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+import subprocess
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from rig_relay.ralph.background_policy import RalphBackgroundPolicy
 

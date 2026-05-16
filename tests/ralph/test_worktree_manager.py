@@ -1,10 +1,13 @@
-import tempfile
-from pathlib import Path
+from __future__ import annotations
 
-from rig_relay.ralph.background_policy import demo_policy, default_policy
+from pathlib import Path
+import tempfile
+
+import pytest
+
+from rig_relay.ralph.background_policy import default_policy, demo_policy
 from rig_relay.ralph.lane_contracts import RalphLane
 from rig_relay.ralph.worktree_manager import (
-    LaneWorktreeResult,
     build_safe_branch_name,
     build_safe_worktree_path,
     create_lane_worktree,
@@ -36,6 +39,8 @@ def test_default_policy_refuses_worktree_creation():
     assert "disabled" in result.error
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_demo_policy_creates_worktree_in_temp_repo():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp) / "repo"

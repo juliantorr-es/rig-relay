@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.config import VibeConfig
+from tests.conftest import build_test_vibe_config
 
 
 @pytest.fixture

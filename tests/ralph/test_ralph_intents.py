@@ -1,14 +1,16 @@
-import json
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
 from rig_relay.desktop.ralph_intents import (
-    execute_ralph_intent,
-    build_ralph_projection,
     _RALPH_STATE,
+    build_ralph_projection,
+    execute_ralph_intent,
 )
-from rig_relay.ralph.models import ApprovalState, RunStatus
 
 
 def test_ralph_scan_returns_intent_envelope():

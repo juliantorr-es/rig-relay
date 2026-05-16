@@ -47,6 +47,7 @@ def test_chat_store_append_event(chat_root: Path):
         assert "content_sha256" in event
 
 
+@pytest.mark.integration
 def test_cockpit_api_persistence(chat_root: Path):
     # Mock BUILD_ROOT in CockpitAPI is hard
     # We'll just test that it uses the store correctly
@@ -88,6 +89,7 @@ def test_cockpit_api_idempotency_after_reload(chat_root: Path):
     assert len(res["messages"]) == initial_count
 
 
+@pytest.mark.integration
 def test_cockpit_api_clear_persists(chat_root: Path):
     store = ChatStore(chat_root=chat_root)
     api = CockpitAPI()

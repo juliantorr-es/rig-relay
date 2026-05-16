@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.tools.base import BaseToolState, InvokeContext
 from rig_relay.core.tools.builtins.coordination import (
     Coordination,
     CoordinationArgs,
     CoordinationToolConfig,
 )
+from tests.mock.utils import collect_result
 
 
 @pytest.fixture

@@ -8,8 +8,6 @@ import httpx
 import pytest
 import respx
 
-from tests.stubs.fake_connector_registry import FakeConnectorRegistry
-from tests.stubs.fake_mcp_registry import FakeMCPRegistry
 from rig_relay.core.config import ConnectorConfig, VibeConfig
 from rig_relay.core.tools.base import BaseToolConfig, ToolError
 from rig_relay.core.tools.connectors import CONNECTORS_ENV_VAR
@@ -23,6 +21,8 @@ from rig_relay.core.tools.connectors.connector_registry import (
 )
 from rig_relay.core.tools.manager import ToolManager
 from rig_relay.core.tools.mcp.tools import MCPTool, MCPToolResult
+from tests.stubs.fake_connector_registry import FakeConnectorRegistry
+from tests.stubs.fake_mcp_registry import FakeMCPRegistry
 
 # ---------------------------------------------------------------------------
 # Unit tests for helper functions

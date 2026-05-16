@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.behavior_patch_receipt.v1",
+  "title": "BehaviorPatchReceipt",
+  "description": "Cryptographically verifiable evidence receipt proving a Red -> Green -> Refactor TDD cycle.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.behavior_patch_receipt.v1"
+    },
+    "behavior_statement": {
+      "type": "string"
+    },
+    "red_test_path": {
+      "type": "string"
+    },
+    "red_command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "red_failed": {
+      "type": "boolean",
+      "const": true
+    },
+    "red_failure_summary": {
+      "type": "string"
+    },
+    "implementation_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "green_command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "green_passed": {
+      "type": "boolean",
+      "const": true
+    },
+    "focused_validation_command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "focused_validation_result": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "git_head": {
+      "type": "string"
+    },
+    "dirty_files_before": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dirty_files_after": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "receipt_sha256": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "behavior_statement",
+    "red_test_path",
+    "red_command",
+    "red_failed",
+    "red_failure_summary",
+    "implementation_files",
+    "green_command",
+    "green_passed",
+    "focused_validation_command",
+    "focused_validation_result",
+    "trace_id",
+    "git_head",
+    "dirty_files_before",
+    "dirty_files_after",
+    "receipt_sha256"
+  ],
+  "additionalProperties": false
+}

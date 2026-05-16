@@ -6,8 +6,6 @@ Content-light: hashes, counts, latency. No raw prompts or completions.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from typing import Any
 
 

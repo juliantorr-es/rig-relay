@@ -1,5 +1,8 @@
-import hashlib
-import json
+from __future__ import annotations
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
 
 from rig_relay.ralph.decision_events import (
     DecisionEvent,

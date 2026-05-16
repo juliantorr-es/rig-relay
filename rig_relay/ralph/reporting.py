@@ -9,10 +9,7 @@ Content-light: IDs, hashes, status enums. No raw payloads.
 
 from __future__ import annotations
 
-import json
-import os
 from datetime import UTC, datetime
-from pathlib import Path
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field

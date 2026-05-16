@@ -5,12 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.acp.conftest import _create_acp_agent
-from tests.conftest import build_test_vibe_config
 from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
 from rig_relay.core.agent_loop import AgentLoop
 from rig_relay.core.agents.models import BuiltinAgentName
 from rig_relay.core.config import ModelConfig
+from tests.acp.conftest import _create_acp_agent
+from tests.conftest import build_test_vibe_config
 
 
 @pytest.fixture

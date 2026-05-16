@@ -14,7 +14,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 _SCHEMA_ROADMAP = "rig.fleet.roadmap.v1"
 _SCHEMA_SPRINT = "rig.fleet.sprint.v1"
 _SCHEMA_MISSION = "rig.fleet.mission.v1"

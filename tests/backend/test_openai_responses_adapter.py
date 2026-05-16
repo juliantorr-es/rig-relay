@@ -16,16 +16,6 @@ from pydantic import ValidationError
 import pytest
 import respx
 
-from tests.backend.data import Chunk, JsonResponse, ResultData, Url
-from tests.backend.data.openai_responses import (
-    COMMENTARY_CONVERSATION_PARAMS,
-    OPENAI_RESPONSES_TEST_BASE_URL,
-    SIMPLE_CONVERSATION_PARAMS,
-    STREAMED_COMMENTARY_CONVERSATION_PARAMS,
-    STREAMED_SIMPLE_CONVERSATION_PARAMS,
-    STREAMED_TOOL_CONVERSATION_PARAMS,
-    TOOL_CONVERSATION_PARAMS,
-)
 from rig_relay.core.config import ModelConfig, ProviderConfig
 from rig_relay.core.llm.backend.generic import GenericBackend
 from rig_relay.core.llm.backend.openai_responses import OpenAIResponsesAdapter
@@ -37,6 +27,16 @@ from rig_relay.core.types import (
     LLMMessage,
     Role,
     ToolCall,
+)
+from tests.backend.data import Chunk, JsonResponse, ResultData, Url
+from tests.backend.data.openai_responses import (
+    COMMENTARY_CONVERSATION_PARAMS,
+    OPENAI_RESPONSES_TEST_BASE_URL,
+    SIMPLE_CONVERSATION_PARAMS,
+    STREAMED_COMMENTARY_CONVERSATION_PARAMS,
+    STREAMED_SIMPLE_CONVERSATION_PARAMS,
+    STREAMED_TOOL_CONVERSATION_PARAMS,
+    TOOL_CONVERSATION_PARAMS,
 )
 
 

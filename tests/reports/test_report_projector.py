@@ -20,6 +20,7 @@ from rig_relay.reports.projector import (
 )
 from rig_relay.reports.report_store import write_report_to_ledger
 
+pytestmark = [pytest.mark.integration]
 
 def _add_report(ledger: Path, **fields: str | list[str]) -> None:
     """Helper: write a minimal report to the test ledger."""

@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
+from rig_relay.analytics import connect_in_memory, rows_to_dicts
 from rig_relay.analytics.bash_rows import (
     create_bash_invocations_table,
     detect_command_family,
@@ -15,7 +14,6 @@ from rig_relay.analytics.bash_rows import (
     detect_risk_tags,
     normalize_bash_record,
 )
-from rig_relay.analytics import connect_in_memory, rows_to_dicts
 
 
 class TestDetectCommandFamily:

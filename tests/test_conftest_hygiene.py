@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 INCORRECT_PYCACHE_SIGNATURES = ["HarnessFilesManager.reset_instance"]
 CORRECT_CONFTEST_SIGNATURES = ["init_harness_files_manager", "reset_harness_files_manager"]
 
 
+@pytest.mark.smoke
+@pytest.mark.contract
 def test_conftest_source_has_init_reset_not_stale_reset_instance():
     conftest = Path(__file__).resolve().parent / "conftest.py"
     source = conftest.read_text()

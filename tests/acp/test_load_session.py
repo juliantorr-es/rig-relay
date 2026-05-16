@@ -12,14 +12,14 @@ from acp.schema import (
 )
 import pytest
 
-from tests.conftest import build_test_vibe_config
-from tests.stubs.fake_backend import FakeBackend
-from tests.stubs.fake_client import FakeClient
 from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
 from rig_relay.core.agent_loop import AgentLoop
 from rig_relay.core.agents.models import BuiltinAgentName
 from rig_relay.core.config import ModelConfig, SessionLoggingConfig
 from rig_relay.core.types import Role
+from tests.conftest import build_test_vibe_config
+from tests.stubs.fake_backend import FakeBackend
+from tests.stubs.fake_client import FakeClient
 
 
 @pytest.fixture

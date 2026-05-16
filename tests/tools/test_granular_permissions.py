@@ -23,7 +23,11 @@ from rig_relay.core.tools.builtins.search_replace import (
     SearchReplaceArgs,
     SearchReplaceConfig,
 )
-from rig_relay.core.tools.builtins.webfetch import WebFetch, WebFetchArgs, WebFetchConfig
+from rig_relay.core.tools.builtins.webfetch import (
+    WebFetch,
+    WebFetchArgs,
+    WebFetchConfig,
+)
 from rig_relay.core.tools.builtins.write_file import (
     WriteFile,
     WriteFileArgs,

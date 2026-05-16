@@ -5,12 +5,12 @@ from typing import cast
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
-from tests.skills.conftest import create_skill
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.skills.builtins import BUILTIN_SKILLS
 from rig_relay.core.skills.manager import SkillManager
 from rig_relay.core.trusted_folders import trusted_folders_manager
+from tests.conftest import build_test_vibe_config
+from tests.skills.conftest import create_skill
 
 
 @pytest.fixture

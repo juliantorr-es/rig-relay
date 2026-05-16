@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
 from scripts.rig_relay_export_coordination_datasets import (
     _build_artifact_reuse_row,
     _build_checkpoint_row,

@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
 from scripts.rig_relay_create_review_packet import (
     VALID_REVIEW_KINDS,
     _generate_review_id,

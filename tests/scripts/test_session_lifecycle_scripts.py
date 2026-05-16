@@ -11,6 +11,7 @@ import scripts.rig_relay_sessions_audit as audit_script
 import scripts.rig_relay_sessions_compact as compact_script
 import scripts.rig_relay_sessions_gc as gc_script
 
+pytestmark = [pytest.mark.migration]
 
 def _make_file(path: Path, text: str = "x") -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -18,7 +18,11 @@ from rig_relay.acp.tools.base import AcpToolState, BaseAcpTool
 from rig_relay.acp.tools.session_update import resolve_kind
 from rig_relay.core.logger import logger
 from rig_relay.core.tools.base import BaseToolState, InvokeContext, ToolError
-from rig_relay.core.tools.builtins.bash import Bash as CoreBashTool, BashArgs, BashResult
+from rig_relay.core.tools.builtins.bash import (
+    Bash as CoreBashTool,
+    BashArgs,
+    BashResult,
+)
 from rig_relay.core.types import ToolCallEvent, ToolResultEvent, ToolStreamEvent
 
 

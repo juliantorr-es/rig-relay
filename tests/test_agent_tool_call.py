@@ -10,10 +10,6 @@ import pytest
 
 from rig_relay.context.models import ContextEnvelopeReceipt
 from rig_relay.context.symbol_codec import compress_with_manifest
-from tests.conftest import build_test_agent_loop, build_test_vibe_config
-from tests.mock.utils import mock_llm_chunk
-from tests.stubs.fake_backend import FakeBackend
-from tests.stubs.fake_tool import FakeTool
 from rig_relay.core.agent_loop import AgentLoop
 from rig_relay.core.agents.models import BuiltinAgentName
 from rig_relay.core.config import VibeConfig
@@ -43,6 +39,10 @@ from rig_relay.core.types import (
     ToolResultEvent,
     UserMessageEvent,
 )
+from tests.conftest import build_test_agent_loop, build_test_vibe_config
+from tests.mock.utils import mock_llm_chunk
+from tests.stubs.fake_backend import FakeBackend
+from tests.stubs.fake_tool import FakeTool
 
 
 async def act_and_collect_events(agent_loop: AgentLoop, prompt: str) -> list[BaseEvent]:

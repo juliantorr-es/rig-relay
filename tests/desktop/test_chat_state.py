@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import pytest
+
 from rig_relay.desktop.chat_state import ChatMessage, ChatRole, ChatState
 
+pytestmark = [pytest.mark.integration]
 
 def test_chat_state_creation():
     state = ChatState()

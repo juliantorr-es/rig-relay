@@ -1,10 +1,15 @@
+from __future__ import annotations
+
+import pytest
+
 from rig_relay.ralph.lane_contracts import RalphLane
 from rig_relay.ralph.lane_store import (
-    InMemoryRalphLaneStore,
     FilesystemRalphLaneStore,
+    InMemoryRalphLaneStore,
     RalphLaneStore,
 )
 
+pytestmark = [pytest.mark.integration]
 
 def test_lane_save_load_roundtrip():
     store = InMemoryRalphLaneStore()

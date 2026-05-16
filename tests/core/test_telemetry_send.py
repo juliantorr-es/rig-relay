@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
-from tests.stubs.fake_tool import FakeTool, FakeToolArgs
 from rig_relay.core.agent_loop import ToolDecision, ToolExecutionResponse
 from rig_relay.core.config import DEFAULT_MISTRAL_API_ENV_KEY
 from rig_relay.core.llm.format import ResolvedToolCall
@@ -21,6 +19,8 @@ from rig_relay.core.telemetry.types import EntrypointMetadata, TelemetryRequestM
 from rig_relay.core.tools.base import BaseTool, ToolPermission
 from rig_relay.core.types import Backend
 from rig_relay.core.utils import get_user_agent
+from tests.conftest import build_test_vibe_config
+from tests.stubs.fake_tool import FakeTool, FakeToolArgs
 
 _original_send_telemetry_event = TelemetryClient.send_telemetry_event
 from rig_relay.core.tools.builtins.write_file import WriteFile, WriteFileArgs

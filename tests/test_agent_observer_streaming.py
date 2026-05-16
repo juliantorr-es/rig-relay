@@ -10,9 +10,6 @@ import httpx
 from pydantic import BaseModel
 import pytest
 
-from tests.conftest import build_test_agent_loop, build_test_vibe_config
-from tests.mock.utils import mock_llm_chunk
-from tests.stubs.fake_backend import FakeBackend
 from rig_relay.core.agents.models import BuiltinAgentName
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.llm.exceptions import BackendError, BackendErrorBuilder
@@ -38,6 +35,9 @@ from rig_relay.core.types import (
     UserMessageEvent,
 )
 from rig_relay.core.utils import CancellationReason, get_user_cancellation_message
+from tests.conftest import build_test_agent_loop, build_test_vibe_config
+from tests.mock.utils import mock_llm_chunk
+from tests.stubs.fake_backend import FakeBackend
 
 
 class InjectBeforeMiddleware:

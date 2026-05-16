@@ -1,4 +1,9 @@
 """Tests for markdown inventory and artifact generation."""
+from __future__ import annotations
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
 
 import csv
 import json

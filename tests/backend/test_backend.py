@@ -23,6 +23,21 @@ from mistralai.client.utils.retries import BackoffStrategy, RetryConfig
 import pytest
 import respx
 
+from rig_relay.core.config import ModelConfig, ProviderConfig
+from rig_relay.core.llm.backend.factory import BACKEND_FACTORY
+from rig_relay.core.llm.backend.generic import GenericBackend
+from rig_relay.core.llm.backend.mistral import MistralBackend, MistralMapper
+from rig_relay.core.llm.exceptions import BackendError, BackendErrorBuilder
+from rig_relay.core.llm.types import BackendLike
+from rig_relay.core.types import (
+    Backend,
+    FunctionCall,
+    LLMChunk,
+    LLMMessage,
+    Role,
+    ToolCall,
+)
+from rig_relay.core.utils import get_user_agent
 from tests.backend.data import Chunk, JsonResponse, ResultData, Url
 from tests.backend.data.fireworks import (
     SIMPLE_CONVERSATION_PARAMS as FIREWORKS_SIMPLE_CONVERSATION_PARAMS,
@@ -36,14 +51,6 @@ from tests.backend.data.mistral import (
     STREAMED_TOOL_CONVERSATION_PARAMS as MISTRAL_STREAMED_TOOL_CONVERSATION_PARAMS,
     TOOL_CONVERSATION_PARAMS as MISTRAL_TOOL_CONVERSATION_PARAMS,
 )
-from rig_relay.core.config import ModelConfig, ProviderConfig
-from rig_relay.core.llm.backend.factory import BACKEND_FACTORY
-from rig_relay.core.llm.backend.generic import GenericBackend
-from rig_relay.core.llm.backend.mistral import MistralBackend, MistralMapper
-from rig_relay.core.llm.exceptions import BackendError, BackendErrorBuilder
-from rig_relay.core.llm.types import BackendLike
-from rig_relay.core.types import Backend, FunctionCall, LLMChunk, LLMMessage, Role, ToolCall
-from rig_relay.core.utils import get_user_agent
 
 
 class TestBackend:

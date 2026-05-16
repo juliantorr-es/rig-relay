@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
 from rig_relay.core.telemetry import validate_evidence_session, write_session_manifest
 from rig_relay.core.telemetry.constants import EventName
 from rig_relay.core.telemetry.local import dump_canonical_json

@@ -8,11 +8,11 @@ Storage: .rig/ralph/runs/run_<run_id>.json (one file per run)
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import json
 import os
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 

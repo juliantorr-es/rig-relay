@@ -6,7 +6,10 @@ from typing import ClassVar, cast
 from pydantic import BaseModel
 
 from rig_relay.core.agents.models import BuiltinAgentName
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,

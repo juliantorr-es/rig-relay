@@ -1,14 +1,14 @@
 # Test Quality Audit Summary
 
-**Generated**: 2026-05-16T01:18:02Z
+**Generated**: 2026-05-16T04:45:48Z
 **Doctrine**: docs/governance/test-suite-doctrine.md
 
 ## Statistics
 
 | Metric | Value |
 |---|---|
-| Total test files | 325 |
-| Total findings | 238 |
+| Total test files | 327 |
+| Total findings | 239 |
 | conftest.py exists | True |
 | __pycache__/conftest*.pyc | 1 |
 
@@ -18,14 +18,14 @@
 - **high**: 11
 - **medium**: 20
 - **low**: 64
-- **info**: 143
+- **info**: 144
 
 ## Findings by Rule
 
 - **DETERM_HARDCODED_PATH**: 11
 - **DETERM_SLEEP**: 7
 - **DUPLICATE_KNOWN_PAIR**: 2
-- **DUPLICATE_SAME_MODULE**: 143
+- **DUPLICATE_SAME_MODULE**: 144
 - **DUPLICATE_SAME_NAME_CROSS_DIR**: 55
 - **LAYOUT_MIS_SCOPED_SCRIPTS**: 3
 - **LAYOUT_ROOT_LEVEL**: 15
@@ -35,7 +35,10 @@
 
 | Marker | Count |
 |---|---|
-| *(none)* | 0 |
+| contract | 3 |
+| integration | 7 |
+| slow | 8 |
+| smoke | 11 |
 
 ## Commands
 

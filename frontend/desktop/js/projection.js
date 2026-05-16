@@ -73,7 +73,18 @@ export function handleProjection(data) {
   if (effectiveDigest && effectiveDigest === _lastDigest) {
     return;
   }
+  const isFirst = !_lastDigest;
   _lastDigest = effectiveDigest;
+  if (isFirst) {
+    console.log("[bridge:frontend] first projection rendered, digest=" + effectiveDigest.substring(0, 12));
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.record_frontend_event) {
+      window.pywebview.api.record_frontend_event({
+        type: "frontend_first_projection_rendered",
+        message: "digest=" + effectiveDigest.substring(0, 12),
+        digest: effectiveDigest
+      }).catch(function() {});
+    }
+  }
 
   if (projection.ralph_lifecycle) {
     state.ralph.lifecycle = projection.ralph_lifecycle;

@@ -1,4 +1,5 @@
 """rig_relay.protocols.acp — ACP agent exposing Rig to editors/IDEs."""
+from __future__ import annotations
 
 from rig_relay.protocols.acp.agent import (
     ACPAgentCapabilities,

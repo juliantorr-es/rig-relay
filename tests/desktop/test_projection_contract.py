@@ -31,6 +31,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PROJECTION_MODULE_PATH = REPO_ROOT / "rig_relay" / "desktop" / "projection_widgets.py"
 
 
+
+pytestmark = [pytest.mark.integration]
+
 class TestWidgetContractExistence:
     def test_projection_widgets_module_exists(self) -> None:
         assert PROJECTION_MODULE_PATH.is_file()

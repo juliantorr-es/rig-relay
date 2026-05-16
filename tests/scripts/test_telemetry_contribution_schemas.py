@@ -16,6 +16,9 @@ RECEIPT_SCHEMA_PATH = SCHEMA_DIR / "rig.relay.contribution_receipt.v1.schema.jso
 RESULT_SCHEMA_PATH = SCHEMA_DIR / "rig.relay.contribution_result.v1.schema.json"
 
 
+
+pytestmark = [pytest.mark.migration]
+
 @pytest.fixture
 def receipt_schema() -> dict:
     with open(RECEIPT_SCHEMA_PATH) as f:

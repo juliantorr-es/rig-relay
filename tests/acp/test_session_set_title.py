@@ -7,13 +7,17 @@ from acp.schema import SessionInfoUpdate
 import pytest
 import tomli_w
 
+from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
+from rig_relay.acp.exceptions import (
+    InternalError,
+    InvalidRequestError,
+    SessionNotFoundError,
+)
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.config import ModelConfig, SessionLoggingConfig
 from tests.conftest import build_test_vibe_config, get_base_config
 from tests.stubs.fake_backend import FakeBackend
 from tests.stubs.fake_client import FakeClient
-from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
-from rig_relay.acp.exceptions import InternalError, InvalidRequestError, SessionNotFoundError
-from rig_relay.core.agent_loop import AgentLoop
-from rig_relay.core.config import ModelConfig, SessionLoggingConfig
 
 
 @pytest.fixture

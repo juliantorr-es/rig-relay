@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Callable
-import json
 from typing import Any, cast
 
 from jsonpatch import JsonPatch, JsonPatchException  # type: ignore[import-untyped]
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
-from rig_relay.core.logger import logger
 from rig_relay.core.nuage._input_events import InputEventsMixin
 from rig_relay.core.nuage._json_helpers import JsonHelpersMixin
 from rig_relay.core.nuage._output_normalization import OutputNormalizationMixin
@@ -31,16 +29,9 @@ from rig_relay.core.nuage.events import (
     WorkflowExecutionFailed,
 )
 from rig_relay.core.nuage.remote_workflow_event_models import (
-    AgentToolCallState,
-    AnyToolUIState,
-    AskUserQuestionArgs,
     AssistantMessageState,
     BaseUIState,
-    CommandUIState,
-    FileUIState,
-    GenericToolUIState,
     PendingInputRequest,
-    PredefinedAnswersState,
     RemoteToolArgs,
     RemoteToolResult,
     WaitForInputPayload,
@@ -54,12 +45,9 @@ from rig_relay.core.types import (
     AgentStats,
     AssistantEvent,
     BaseEvent,
-    FunctionCall,
     LLMMessage,
     ReasoningEvent,
     Role,
-    ToolCall,
-    ToolCallEvent,
     ToolResultEvent,
     ToolStreamEvent,
     UserMessageEvent,

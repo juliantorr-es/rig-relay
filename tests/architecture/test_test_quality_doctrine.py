@@ -11,13 +11,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 AUDIT_SCRIPT = REPO_ROOT / "scripts" / "rig_relay_test_quality_audit.py"
 REPORT_PATH = REPO_ROOT / "docs" / "audits" / "test-suite" / "test_quality_report.json"
 
-pytestmark = pytest.mark.smoke
+# Individual tests are marked with appropriate markers
 
 
 def test_audit_script_exists() -> None:
     assert AUDIT_SCRIPT.exists(), f"Audit script missing: {AUDIT_SCRIPT}"
 
 
+@pytest.mark.slow
 def test_audit_script_runs() -> None:
     result = subprocess.run(
         [sys.executable, str(AUDIT_SCRIPT)],
@@ -68,6 +69,7 @@ def test_no_pycache_conftest_without_source() -> None:
         )
 
 
+@pytest.mark.slow
 def test_markers_registered() -> None:
     result = subprocess.run(
         ["uv", "run", "pytest", "--markers"],

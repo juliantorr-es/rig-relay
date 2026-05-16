@@ -7,7 +7,6 @@ Derives lane_id, branch_name, worktree_path from candidate + policy.
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, datetime
 from typing import Any
 
 from rig_relay.ralph.background_policy import RalphBackgroundPolicy

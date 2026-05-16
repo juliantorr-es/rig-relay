@@ -3,7 +3,10 @@ from __future__ import annotations
 import pytest
 
 from rig_relay.core.paths import DEFAULT_TOOL_DIR
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.manager import ToolManager
 
 
@@ -61,7 +64,10 @@ def test_builtin_tools_have_explicit_metadata():
 
 def test_tool_metadata_serializes_cleanly():
     """Metadata should match the ToolDogfoodContract schema."""
-    from rig_relay.core.telemetry.tool_contract import ToolDogfoodContract, ToolOutputKind
+    from rig_relay.core.telemetry.tool_contract import (
+        ToolDogfoodContract,
+        ToolOutputKind,
+    )
 
     contract = ToolDogfoodContract(
         tool_name="test",

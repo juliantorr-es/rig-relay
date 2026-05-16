@@ -7,6 +7,9 @@ import re
 
 import pytest
 
+pytestmark = [pytest.mark.migration]
+
+
 CONVERSATIONS_DIR = (
     Path(__file__).resolve().parent.parent.parent / "docs" / "conversations"
 )

@@ -51,12 +51,6 @@ def mock_config():
 @pytest.fixture
 def real_telemetry_client(monkeypatch):
     """Force reload of telemetry modules to ensure we use the real implementation."""
-    import rig_relay.core.agent_loop
-    import rig_relay.core.paths._vibe_home
-    import rig_relay.core.telemetry.duckdb_projection
-    import rig_relay.core.telemetry.local
-    import rig_relay.core.telemetry.send
-
     importlib.reload(vibe.core.paths._vibe_home)
     importlib.reload(vibe.core.telemetry.local)
     importlib.reload(vibe.core.telemetry.send)
@@ -429,8 +423,9 @@ async def test_shadow_request_assembly_failure_does_not_fail_model_request(
 ):
     monkeypatch.chdir(tmp_path)
 
-    from rig_relay.core.agent_loop import AgentLoop
     from rig_relay.core.context import assembler as assembler_mod
+
+    from rig_relay.core.agent_loop import AgentLoop
     from rig_relay.core.types import LLMMessage, Role
 
     session_id = "e2e-session-shadow-failure"
@@ -474,9 +469,6 @@ async def test_provider_independent_repo_local_evidence_smoke(
 
     from pydantic import BaseModel
 
-    from tests.conftest import build_test_vibe_config
-    from tests.mock.utils import mock_llm_chunk
-    from tests.stubs.fake_backend import FakeBackend
     from rig_relay.core.agent_loop import AgentLoop
     from rig_relay.core.config.harness_files import (
         init_harness_files_manager,
@@ -487,6 +479,9 @@ async def test_provider_independent_repo_local_evidence_smoke(
     from rig_relay.core.telemetry.constants import EventName
     from rig_relay.core.tools.base import BaseTool
     from rig_relay.core.types import LLMMessage, Role
+    from tests.conftest import build_test_vibe_config
+    from tests.mock.utils import mock_llm_chunk
+    from tests.stubs.fake_backend import FakeBackend
 
     class MockArgs(BaseModel):
         path: str = "big_log.txt"

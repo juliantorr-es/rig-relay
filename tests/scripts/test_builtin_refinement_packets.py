@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 
 import jsonschema
+import pytest
 
 from scripts.rig_relay_create_builtin_refinement_packets import generate_packets
 
+pytestmark = [pytest.mark.migration]
 
 def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

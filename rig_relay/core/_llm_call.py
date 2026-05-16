@@ -7,16 +7,16 @@ and _update_stats.
 
 from __future__ import annotations
 
-import time
 from collections.abc import AsyncGenerator
+import time
 from typing import TYPE_CHECKING
 
-from rig_relay.core._errors import AgentLoopLLMResponseError
 from rig_relay.core._agent_helpers import (
     _is_context_too_long_error,
     _is_non_retryable_error,
     _should_raise_rate_limit_error,
 )
+from rig_relay.core._errors import AgentLoopLLMResponseError
 from rig_relay.core.types import (
     ContextTooLongError,
     LLMChunk,

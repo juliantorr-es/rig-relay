@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
+
 import json
 from pathlib import Path
 
@@ -78,60 +83,86 @@ def test_raw_stdout_rejected() -> None:
     assert findings[0].severity == "error"
 
 
-def test_raw_stderr_rejected() -> None:
-    """stderr field is forbidden."""
-    findings = validate_receipt_payload({"receipt": {"stderr": "error!"}})
-    assert len(findings) == 1
-    assert "stderr" in findings[0].field_path
+# ── Forbidden fields are rejected (parametrized) ──
 
 
-def test_old_new_diff_snippet_rejected() -> None:
-    """old, new, diff, and snippet fields are all forbidden."""
-    receipt = {
-        "old": "original",
-        "new": "replacement",
-        "diff": "diff",
-        "snippet": "snippet",
-    }
-    findings = validate_receipt_payload({"receipt": receipt})
-    paths = {f.field_path for f in findings}
-    assert "receipt.old" in paths
-    assert "receipt.new" in paths
-    assert "receipt.diff" in paths
-    assert "receipt.snippet" in paths
+from dataclasses import dataclass
 
 
-def test_replacement_text_rejected() -> None:
-    """replacement and replacement_text are forbidden."""
-    receipt = {"replacement": "x", "replacement_text": "y"}
-    findings = validate_receipt_payload({"receipt": receipt})
-    assert len(findings) == 2
+@dataclass(frozen=True)
+class _ForbiddenFieldCase:
+    case_id: str
+    receipt: dict
+    expected_count: int
+    expected_paths: set[str] | None = None
 
 
-def test_command_output_rejected() -> None:
-    """command_output is forbidden."""
-    findings = validate_receipt_payload({"receipt": {"command_output": "data"}})
-    assert len(findings) == 1
+_forbidden_field_cases = [
+    pytest.param(
+        _ForbiddenFieldCase("raw_stderr", {"stderr": "error!"}, 1, {"receipt.stderr"}),
+        id="raw_stderr",
+    ),
+    pytest.param(
+        _ForbiddenFieldCase(
+            "command_output", {"command_output": "data"}, 1, {"receipt.command_output"}
+        ),
+        id="command_output",
+    ),
+    pytest.param(
+        _ForbiddenFieldCase(
+            "replacement_fields", {"replacement": "x", "replacement_text": "y"}, 2, None
+        ),
+        id="replacement_fields",
+    ),
+    pytest.param(
+        _ForbiddenFieldCase(
+            "patch_and_context",
+            {"patch": "--- a/file", "context": "some lines"},
+            2,
+            None,
+        ),
+        id="patch_and_context",
+    ),
+    pytest.param(
+        _ForbiddenFieldCase(
+            "old_new_diff_snippet",
+            {
+                "old": "original",
+                "new": "replacement",
+                "diff": "diff",
+                "snippet": "snippet",
+            },
+            4,
+            {"receipt.old", "receipt.new", "receipt.diff", "receipt.snippet"},
+        ),
+        id="old_new_diff_snippet",
+    ),
+    pytest.param(
+        _ForbiddenFieldCase(
+            "nested_forbidden",
+            {"meta": {"stdout": "leaked", "stderr": "leaked_too"}},
+            2,
+            {"receipt.meta.stdout", "receipt.meta.stderr"},
+        ),
+        id="nested_forbidden",
+    ),
+]
 
 
-def test_patch_and_context_rejected() -> None:
-    """patch and context are forbidden."""
-    receipt = {"patch": "--- a/file", "context": "some lines"}
-    findings = validate_receipt_payload({"receipt": receipt})
-    assert len(findings) == 2
-
-
-# ── Nested forbidden fields ──
-
-
-def test_nested_forbidden_fields_rejected() -> None:
-    """Forbidden fields inside nested dicts are caught."""
-    receipt = {"meta": {"stdout": "leaked", "stderr": "leaked_too"}}
-    findings = validate_receipt_payload({"receipt": receipt})
-    assert len(findings) == 2
-    paths = {f.field_path for f in findings}
-    assert "receipt.meta.stdout" in paths
-    assert "receipt.meta.stderr" in paths
+@pytest.mark.parametrize("case", _forbidden_field_cases)
+def test_forbidden_field_rejected(case: _ForbiddenFieldCase) -> None:
+    findings = validate_receipt_payload({"receipt": case.receipt})
+    assert len(findings) == case.expected_count, (
+        f"[{case.case_id}] expected {case.expected_count} finding(s), "
+        f"got {len(findings)}: {[f.field_path for f in findings]}"
+    )
+    if case.expected_paths is not None:
+        paths = {f.field_path for f in findings}
+        missing = case.expected_paths - paths
+        assert not missing, (
+            f"[{case.case_id}] expected paths {case.expected_paths} "
+            f"but missing: {missing}"
+        )
 
 
 # ── Unrelated events ──

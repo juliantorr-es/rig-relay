@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.rig_relay_cleanup_coordination_leases import (
     _delete_files,
     _parse_iso_datetime,
@@ -13,6 +15,7 @@ from scripts.rig_relay_cleanup_coordination_leases import (
     run_cleanup,
 )
 
+pytestmark = [pytest.mark.migration]
 
 def test_parse_iso_datetime_with_z():
     dt = _parse_iso_datetime("2026-05-13T17:17:15.165891+00:00")

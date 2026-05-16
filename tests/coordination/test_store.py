@@ -4,9 +4,12 @@ from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
 
+import pytest
+
 from rig_relay.coordination.models import CoordinationConflict, CoordinationSession
 from rig_relay.coordination.store import CoordinationStore
 
+pytestmark = [pytest.mark.integration]
 
 def test_register_session_and_heartbeat(tmp_path: Path) -> None:
     store = CoordinationStore(tmp_path)

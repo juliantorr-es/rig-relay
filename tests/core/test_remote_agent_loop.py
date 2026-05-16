@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
 from typing import Any
 from unittest.mock import patch
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.nuage.events import (
     CustomTaskCanceled,
     CustomTaskCanceledAttributes,
@@ -30,6 +33,7 @@ from rig_relay.core.types import (
     UserMessageEvent,
     WaitingForInputEvent,
 )
+from tests.conftest import build_test_vibe_config
 
 _EXEC_ID = "session-123"
 

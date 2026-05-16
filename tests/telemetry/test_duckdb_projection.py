@@ -153,7 +153,6 @@ def test_analyzer_handles_empty_root(tmp_path):
 
 
 def test_analyzer_handles_missing_duckdb_gracefully(session_root, monkeypatch):
-    import rig_relay.core.telemetry.duckdb_projection
 
     monkeypatch.setattr(vibe.core.telemetry.duckdb_projection, "HAS_DUCKDB", False)
 

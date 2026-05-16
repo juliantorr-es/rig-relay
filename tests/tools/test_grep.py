@@ -7,9 +7,14 @@ import shutil
 import jsonschema
 import pytest
 
-from tests.mock.utils import collect_result
 from rig_relay.core.tools.base import BaseToolState, ToolError
-from rig_relay.core.tools.builtins.grep import Grep, GrepArgs, GrepBackend, GrepToolConfig
+from rig_relay.core.tools.builtins.grep import (
+    Grep,
+    GrepArgs,
+    GrepBackend,
+    GrepToolConfig,
+)
+from tests.mock.utils import collect_result
 
 
 @pytest.fixture

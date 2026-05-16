@@ -10,6 +10,11 @@ from mcp.types import (
 )
 import pytest
 
+from rig_relay.core.agents.models import BuiltinAgentName
+from rig_relay.core.config import ModelConfig, ProviderConfig, VibeConfig
+from rig_relay.core.telemetry.types import EntrypointMetadata
+from rig_relay.core.tools.base import BaseToolConfig, ToolPermission
+from rig_relay.core.types import Backend, FunctionCall, Role, ToolCall
 from tests.conftest import (
     build_test_agent_loop,
     build_test_vibe_config,
@@ -17,11 +22,6 @@ from tests.conftest import (
 )
 from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend
-from rig_relay.core.agents.models import BuiltinAgentName
-from rig_relay.core.config import ModelConfig, ProviderConfig, VibeConfig
-from rig_relay.core.telemetry.types import EntrypointMetadata
-from rig_relay.core.tools.base import BaseToolConfig, ToolPermission
-from rig_relay.core.types import Backend, FunctionCall, Role, ToolCall
 
 
 def _two_model_vibe_config(active_model: str) -> VibeConfig:

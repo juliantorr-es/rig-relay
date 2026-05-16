@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import pytest
+
 from rig_relay.ralph.mission_board import build_mission_board
 
 
+@pytest.mark.smoke
 def test_mission_board_default():
     board = build_mission_board()
     assert board.schema_version == "rig.ui.orchestrator_mission_board.v2"

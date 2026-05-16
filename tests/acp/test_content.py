@@ -11,9 +11,9 @@ from acp.schema import (
 )
 import pytest
 
-from tests.stubs.fake_backend import FakeBackend
 from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
 from rig_relay.core.types import Role
+from tests.stubs.fake_backend import FakeBackend
 
 
 class TestACPContent:

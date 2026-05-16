@@ -1,9 +1,11 @@
-from rig_relay.ralph.adoption import (
-    RalphAdoptionProposal,
-    build_adoption_proposal,
-)
+from __future__ import annotations
+
+import pytest
+
+from rig_relay.ralph.adoption import RalphAdoptionProposal, build_adoption_proposal
 from rig_relay.ralph.lane_contracts import RalphLane
 
+pytestmark = [pytest.mark.integration]
 
 def test_adoption_proposal_to_orchestrator():
     lane = RalphLane(

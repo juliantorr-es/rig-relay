@@ -73,6 +73,8 @@ from rig_relay.runtime.stream_types import (
     RuntimeStreamWarningKind,
     RuntimeWarningEvent,
 )
+from rig_relay.tracing.models import TraceStatus
+from rig_relay.tracing.recorder import TraceRecorder
 
 
 def _now_str() -> str:
@@ -81,6 +83,16 @@ def _now_str() -> str:
 
 def _sha256_bytes(data: bytes) -> str:
     return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def _hash_text(text: str) -> str:
+    return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _hash_argv(argv: list[str]) -> str:
+    return "sha256:" + hashlib.sha256(
+        "|".join(argv).encode("utf-8")
+    ).hexdigest()
 
 
 class StreamDrainResult:
@@ -190,6 +202,22 @@ async def _drain_stream_collect(
     result.truncated = truncated
 
 
+async def _finalize_subprocess(proc: asyncio.subprocess.Process, *, timeout_seconds: float = 5.0) -> None:
+    if proc.returncode is None:
+        try:
+            proc.terminate()
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=timeout_seconds)
+            except TimeoutError:
+                proc.kill()
+                await asyncio.wait_for(proc.wait(), timeout=timeout_seconds)
+        except ProcessLookupError:
+            pass
+    transport = getattr(proc, "_transport", None)
+    if transport is not None:
+        transport.close()
+
+
 @dataclass
 class _StreamProgress:
     """Tracks output progress for stall detection."""
@@ -231,6 +259,7 @@ class RuntimeSupervisor:
         dirty_policy_satisfied: bool = True,
         audit_trail_store: AuditTrailStore | None = None,
         audit_actor: ReceiptActor | None = None,
+        trace_recorder: TraceRecorder | None = None,
     ) -> None:
         self._lease_store = lease_store
         self._max_stdout_bytes = max_stdout_bytes
@@ -249,6 +278,7 @@ class RuntimeSupervisor:
         self._dirty_policy_satisfied = dirty_policy_satisfied
         self._audit_trail_store = audit_trail_store
         self._audit_actor = audit_actor
+        self._trace_recorder = trace_recorder
 
     async def execute(self, lease: ExecutionLease) -> AsyncIterator[RuntimeStreamEvent]:
         """Execute the lease's request under supervision.
@@ -326,6 +356,38 @@ class RuntimeSupervisor:
             )
             return
 
+        recorder = self._trace_recorder
+        trace_span = None
+        if recorder is not None:
+            trace_span = recorder.start_span(
+                "runtime.subprocess.execute",
+                attributes={
+                    "executable": request.argv[0],
+                    "argv_hash": _hash_argv(request.argv),
+                    "argv_count": len(request.argv),
+                    "cwd_hash": _hash_text(cwd),
+                    "timeout_seconds": request.timeout_ms / 1000.0,
+                    "lease_id": lease_id,
+                    "lane_id": request.workspace_id,
+                    "shell_used": False,
+                },
+            )
+
+        def trace_event(name: str, attributes: dict[str, object] | None = None) -> None:
+            if recorder is None or trace_span is None:
+                return
+            recorder.event(name, attributes=attributes)
+
+        def trace_end(
+            *,
+            status: TraceStatus,
+            attributes: dict[str, object] | None = None,
+            error: str | None = None,
+        ) -> None:
+            if recorder is None or trace_span is None:
+                return
+            recorder.end_span(trace_span, status=status, attributes=attributes, error=error)
+
         # ── Governance evaluation ───────────────────────────────────
         if self._governance_engine is not None:
             decision = self._governance_engine.evaluate_action_legality(
@@ -352,6 +414,7 @@ class RuntimeSupervisor:
                     else "Governance blocked",
                 )
                 await _release_lease(self._lease_store, lease_id)
+                trace_end(status=TraceStatus.error, attributes={"status": "blocked"})
                 return
 
             if decision.decision == GovernanceDecisionKind.REQUIRES_REVIEW:
@@ -366,6 +429,7 @@ class RuntimeSupervisor:
                     else "Governance requires review",
                 )
                 await _release_lease(self._lease_store, lease_id)
+                trace_end(status=TraceStatus.error, attributes={"status": "blocked"})
                 return
 
         # ── Build env ───────────────────────────────────────────────
@@ -384,10 +448,15 @@ class RuntimeSupervisor:
             status=RuntimeInvocationStatus.STARTING,
             message=f"Starting: {' '.join(request.argv)}",
         )
+        trace_event(
+            "runtime.subprocess.spawn.start",
+            attributes={"executable": request.argv[0], "argv_count": len(request.argv)},
+        )
 
         # ── Spawn subprocess ────────────────────────────────────────
         start_time = datetime.now(UTC)
 
+        proc: asyncio.subprocess.Process | None = None
         try:
             proc = await asyncio.create_subprocess_exec(
                 *request.argv,
@@ -398,6 +467,11 @@ class RuntimeSupervisor:
             )
         except FileNotFoundError:
             elapsed = (datetime.now(UTC) - start_time).total_seconds() * 1000
+            trace_event("runtime.subprocess.spawn.ok", attributes={"spawned": False})
+            trace_end(
+                status=TraceStatus.error,
+                attributes={"status": "failed", "error_kind": "command_not_found"},
+            )
             yield _make_failure(
                 event_base,
                 lease_id,
@@ -411,6 +485,11 @@ class RuntimeSupervisor:
             return
         except OSError as e:
             elapsed = (datetime.now(UTC) - start_time).total_seconds() * 1000
+            trace_event("runtime.subprocess.spawn.ok", attributes={"spawned": False})
+            trace_end(
+                status=TraceStatus.error,
+                attributes={"status": "failed", "error_kind": "spawn_error"},
+            )
             yield _make_failure(
                 event_base,
                 lease_id,
@@ -424,6 +503,10 @@ class RuntimeSupervisor:
             return
 
         # ── Emit running status ─────────────────────────────────────
+        trace_event(
+            "runtime.subprocess.spawn.ok",
+            attributes={"spawned": True, "pid": getattr(proc, "pid", None)},
+        )
         yield RuntimeStatusEvent(
             event_id=f"{event_base}_running",
             lease_id=lease_id,
@@ -455,6 +538,10 @@ class RuntimeSupervisor:
                 chunk_events,
                 progress,
             )
+            trace_event(
+                "runtime.subprocess.stdout.chunk",
+                attributes={"stdout_bytes": stdout_result.total_bytes},
+            )
 
         async def drain_stderr() -> None:
             assert proc.stderr is not None
@@ -469,6 +556,10 @@ class RuntimeSupervisor:
                 stderr_result,
                 chunk_events,
                 progress,
+            )
+            trace_event(
+                "runtime.subprocess.stderr.chunk",
+                attributes={"stderr_bytes": stderr_result.total_bytes},
             )
 
         drain_tasks: list[asyncio.Task[None]] = [
@@ -508,6 +599,10 @@ class RuntimeSupervisor:
                 remaining = deadline_ts - now_ts
                 if remaining <= 0:
                     timed_out = True
+                    trace_event(
+                        "runtime.subprocess.timeout",
+                        attributes={"timeout_seconds": timeout_s},
+                    )
                     break
 
                 # Check if process already exited
@@ -574,6 +669,10 @@ class RuntimeSupervisor:
                             terminate_s = self._stall_terminate_after_ms / 1000.0
                             if stall_elapsed >= terminate_s:
                                 timed_out = True
+                                trace_event(
+                                    "runtime.subprocess.kill",
+                                    attributes={"reason": "stall"},
+                                )
                                 try:
                                     proc.terminate()
                                     try:
@@ -587,19 +686,13 @@ class RuntimeSupervisor:
 
         except asyncio.CancelledError:
             cancelled = True
-            try:
-                proc.terminate()
-                try:
-                    await asyncio.wait_for(proc.wait(), timeout=5.0)
-                except TimeoutError:
-                    proc.kill()
-                    await proc.wait()
-            except ProcessLookupError:
-                pass
+            trace_event("runtime.subprocess.kill", attributes={"reason": "cancelled"})
         finally:
             for t in drain_tasks:
                 t.cancel()
             await asyncio.gather(*drain_tasks, return_exceptions=True)
+            if proc is not None:
+                await _finalize_subprocess(proc)
 
         elapsed_ms = (datetime.now(UTC) - start_time).total_seconds() * 1000
 
@@ -682,6 +775,49 @@ class RuntimeSupervisor:
             )
 
         yield terminal_event
+        trace_event(
+            "runtime.subprocess.exit",
+            attributes={"exit_code": exit_code, "timed_out": timed_out, "cancelled": cancelled},
+        )
+        trace_event(
+            "runtime.subprocess.result_classified",
+            attributes={
+                "status": terminal_event.status.value
+                if hasattr(terminal_event, "status") and terminal_event.status is not None
+                else None,
+                "exit_code": exit_code,
+                "stdout_bytes": stdout_result.total_bytes,
+                "stderr_bytes": stderr_result.total_bytes,
+                "timed_out": timed_out,
+                "killed": False,
+                "cancelled": cancelled,
+            },
+        )
+        end_status = (
+            TraceStatus.ok
+            if isinstance(terminal_event, RuntimeCompletionEvent)
+            and terminal_event.status == RuntimeInvocationStatus.SUCCEEDED
+            else TraceStatus.error
+        )
+        if timed_out:
+            end_status = TraceStatus.timed_out
+        elif cancelled:
+            end_status = TraceStatus.cancelled
+        trace_end(
+            status=end_status,
+            attributes={
+                "exit_code": exit_code,
+                "status": terminal_event.status.value
+                if hasattr(terminal_event, "status") and terminal_event.status is not None
+                else None,
+                "duration_ms": elapsed_ms,
+                "stdout_bytes": stdout_result.total_bytes,
+                "stderr_bytes": stderr_result.total_bytes,
+                "timed_out": timed_out,
+                "killed": False,
+                "cancelled": cancelled,
+            },
+        )
 
         # ── Audit terminal event (optional, failure-safe) ───────────
         if self._audit_trail_store is not None:

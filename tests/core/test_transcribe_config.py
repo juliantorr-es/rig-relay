@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.config import (
     DEFAULT_TRANSCRIBE_MODELS,
     DEFAULT_TRANSCRIBE_PROVIDERS,
@@ -10,6 +9,7 @@ from rig_relay.core.config import (
     TranscribeModelConfig,
     TranscribeProviderConfig,
 )
+from tests.conftest import build_test_vibe_config
 
 
 class TestTranscribeConfigDefaults:

@@ -5,7 +5,6 @@ from collections.abc import Callable
 import hashlib
 from typing import TYPE_CHECKING, Any
 
-from rig_relay.desktop.chat_state import ChatMessage, ChatRole
 from rig_relay.core._receipt_events import (
     CouncilFindingsEvent,
     DesktopIntentEvent,
@@ -21,6 +20,7 @@ from rig_relay.core.types import (
     ToolStreamEvent,
     UserMessageEvent,
 )
+from rig_relay.desktop.chat_state import ChatMessage, ChatRole
 
 if TYPE_CHECKING:
     from rig_relay.core.agent_loop import AgentLoop

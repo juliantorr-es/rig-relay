@@ -9,10 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from rig_relay.analytics import (
-    LedgerLoadResult,
     build_projection_metadata,
     create_reports_table,
     load_jsonl,

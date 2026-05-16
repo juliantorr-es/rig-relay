@@ -5,6 +5,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 from rig_relay.core.telemetry import validate_evidence_session
 from rig_relay.core.telemetry.artifacts import ToolOutputArtifactWriter
 from rig_relay.core.telemetry.constants import EventName
@@ -13,6 +15,7 @@ import rig_relay.core.telemetry.manifest as manifest_mod
 from rig_relay.core.telemetry.manifest import write_session_manifest
 from rig_relay.core.telemetry.receipts import write_session_receipts
 
+pytestmark = [pytest.mark.integration]
 
 def _write_event(log_file: Path, event: dict) -> None:
     log_file.parent.mkdir(parents=True, exist_ok=True)

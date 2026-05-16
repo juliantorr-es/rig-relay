@@ -9,13 +9,13 @@ from pathlib import Path
 
 import pytest
 
+from rig_relay.core.tools.base import BaseToolState
 from rig_relay.core.tools.builtins.get_context import (
     GetContext,
     GetContextArgs,
     GetContextResult,
     GetContextToolConfig,
 )
-from rig_relay.core.tools.base import BaseToolState
 
 
 class TestGetContextArgs:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ssl
 
+import pytest
+
 from rig_relay.desktop.tls import (
     ensure_local_tls_material,
     load_ssl_context,
@@ -9,6 +11,7 @@ from rig_relay.desktop.tls import (
 )
 
 
+@pytest.mark.contract
 def test_ensure_local_tls_material_creates_cert_and_key(tmp_path):
     material = ensure_local_tls_material(tmp_path, packaged=False)
     assert material.cert_path.is_file()

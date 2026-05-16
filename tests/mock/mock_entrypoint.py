@@ -19,9 +19,9 @@ from rig_relay.core.config.harness_files import init_harness_files_manager
 if __name__ == "__main__":
     init_harness_files_manager("user", "project")
 
+    from rig_relay.core.types import LLMChunk
     from tests import TESTS_ROOT
     from tests.mock.utils import MOCK_DATA_ENV_VAR
-    from rig_relay.core.types import LLMChunk
 
     sys.path.insert(0, str(TESTS_ROOT))
 

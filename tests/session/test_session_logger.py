@@ -8,13 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.agents.models import AgentProfile, AgentSafety
 from rig_relay.core.config import SessionLoggingConfig, VibeConfig
 from rig_relay.core.loop import ScheduledLoop
 from rig_relay.core.session.session_logger import SessionLogger
 from rig_relay.core.tools.manager import ToolManager
 from rig_relay.core.types import AgentStats, LLMMessage, Role, SessionMetadata
+from tests.conftest import build_test_vibe_config
 
 
 @pytest.fixture

@@ -1,11 +1,16 @@
+from __future__ import annotations
+
+import pytest
+
 from rig_relay.orchestrator.model_bindings import (
-    build_demo_bindings,
-    build_demo_profile_bindings,
     BindingRegistry,
     ModelProviderBinding,
+    build_demo_bindings,
+    build_demo_profile_bindings,
 )
 
 
+@pytest.mark.smoke
 def test_local_demo_binding_available():
     registry = build_demo_bindings()
     demo = registry.get("binding-local-demo")

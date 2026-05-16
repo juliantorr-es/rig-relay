@@ -6,6 +6,8 @@ import subprocess
 
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
 from rig_relay.core.guard import (
     DirtyFileGuard,
     DirtyGuardFailurePolicy,

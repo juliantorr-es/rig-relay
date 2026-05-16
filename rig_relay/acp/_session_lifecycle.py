@@ -1,158 +1,61 @@
 """ACP mixin — session lifecycle."""
 from __future__ import annotations
+
 import asyncio
-from collections.abc import AsyncGenerator, Callable
-from contextlib import aclosing
-import logging
 import os
 from pathlib import Path
-import signal
 import sys
-from typing import Any, cast, override
-from uuid import uuid4
+from typing import Any, override
+
 from acp import (
     PROTOCOL_VERSION,
-    Agent as AcpAgent,
-    Client,
     InitializeResponse,
     LoadSessionResponse,
     NewSessionResponse,
-    PromptResponse,
-    SetSessionModelResponse,
-    SetSessionModeResponse,
-    run_agent,
 )
-from acp.helpers import ContentBlock, SessionUpdate, update_available_commands
 from acp.schema import (
     AgentCapabilities,
-    AgentMessageChunk,
-    AgentThoughtChunk,
-    AllowedOutcome,
-    AuthenticateResponse,
     AuthMethodAgent,
-    AvailableCommand,
-    AvailableCommandInput,
     ClientCapabilities,
     CloseSessionResponse,
-    ConfigOptionUpdate,
-    ContentToolCallContent,
-    Cost,
     EnvVarAuthMethod,
     ForkSessionResponse,
     HttpMcpServer,
     Implementation,
-    ListSessionsResponse,
     McpServerStdio,
     PromptCapabilities,
     ResumeSessionResponse,
     SessionCapabilities,
     SessionCloseCapabilities,
-    SessionConfigOptionBoolean,
-    SessionConfigOptionSelect,
     SessionForkCapabilities,
-    SessionInfo,
-    SessionInfoUpdate,
     SessionListCapabilities,
-    SetSessionConfigOptionResponse,
     SseMcpServer,
     TerminalAuthMethod,
-    TextContentBlock,
-    TextResourceContents,
-    ToolCallProgress,
-    ToolCallUpdate,
-    UnstructuredCommandInput,
-    Usage,
-    UsageUpdate,
 )
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
-from rig_relay import RIG_ROOT, __version__
-from rig_relay.acp.acp_logger import acp_message_observer
+from pydantic import ValidationError
+
+from rig_relay import __version__
 from rig_relay.acp.commands import AcpCommandRegistry
 from rig_relay.acp.exceptions import (
     ConfigurationError,
-    ContextTooLongError,
-    ConversationLimitError,
-    InternalError,
     InvalidRequestError,
     NotImplementedMethodError,
-    RateLimitError,
     SessionLoadError,
     SessionNotFoundError,
-    UnauthenticatedError,
 )
 from rig_relay.acp.session import AcpSessionLoop
-from rig_relay.acp.tools.base import BaseAcpTool
-from rig_relay.acp.tools.session_update import (
-    resolve_kind,
-    tool_call_session_update,
-    tool_result_session_update,
-)
-from rig_relay.acp.utils import (
-    THINKING_LEVELS,
-    ThinkingLevel,
-    ToolOption,
-    build_mode_state,
-    build_model_state,
-    build_permission_options,
-    create_assistant_message_replay,
-    create_compact_end_session_update,
-    create_compact_start_session_update,
-    create_reasoning_replay,
-    create_tool_call_replay,
-    create_tool_result_replay,
-    create_user_message_replay,
-    get_proxy_help_text,
-    is_valid_acp_mode,
-    make_thinking_response,
-)
+from rig_relay.acp.utils import build_mode_state, build_model_state
 from rig_relay.core.agent_loop import AgentLoop
 from rig_relay.core.agents.models import CHAT as CHAT_AGENT, BuiltinAgentName
-from rig_relay.core.autocompletion.path_prompt_adapter import render_path_prompt
 from rig_relay.core.config import (
     MissingAPIKeyError,
     SessionLoggingConfig,
     VibeConfig,
     load_dotenv_values,
 )
-from rig_relay.core.data_retention import DATA_RETENTION_MESSAGE
 from rig_relay.core.hooks.config import load_hooks_from_fs
-from rig_relay.core.proxy_setup import (
-    ProxySetupError,
-    parse_proxy_command,
-    set_proxy_var,
-    unset_proxy_var,
-)
-from rig_relay.core.session.saved_sessions import (
-    update_saved_session_title,
-    update_saved_session_title_at_path,
-)
 from rig_relay.core.session.session_loader import SessionLoader
-from rig_relay.core.skills.manager import SkillManager
-from rig_relay.core.telemetry.build_metadata import build_entrypoint_metadata
-from rig_relay.core.telemetry.send import TelemetryClient
-from rig_relay.core.telemetry.types import EntrypointMetadata
-from rig_relay.core.tools.permissions import RequiredPermission
-from rig_relay.core.types import (
-    AgentProfileChangedEvent,
-    ApprovalCallback,
-    ApprovalResponse,
-    AssistantEvent,
-    CompactEndEvent,
-    CompactStartEvent,
-    ContextTooLongError as CoreContextTooLongError,
-    LLMMessage,
-    RateLimitError as CoreRateLimitError,
-    ReasoningEvent,
-    Role,
-    ToolCallEvent,
-    ToolResultEvent,
-    ToolStreamEvent,
-)
-from rig_relay.core.utils import (
-    CancellationReason,
-    ConversationLimitException,
-    get_user_cancellation_message,
-)
+from rig_relay.core.types import Role
 
 
 class SessionLifecycleMixin:

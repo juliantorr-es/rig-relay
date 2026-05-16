@@ -7,11 +7,10 @@ No git commands, no worktree creation.
 
 from __future__ import annotations
 
-import json
-import os
 from datetime import UTC, datetime
+import os
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from rig_relay.ralph.lane_contracts import RalphLane
 

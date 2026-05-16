@@ -3,6 +3,7 @@
 // All DOM construction — no innerHTML
 
 import { state } from './state.js';
+import { TransportState } from './transportState.js';
 import { el } from './utils.js';
 
 function setChip(chip, className, text) {
@@ -23,8 +24,21 @@ export function renderStatusBar() {
 export function renderConnection() {
   const chip = el('status-connection');
   if (!chip) return;
-  setChip(chip, state.wsConnected ? 'ok' : 'warn',
-    state.wsConnected ? 'Connected' : 'Offline');
+  if (state.wsConnected) {
+    setChip(chip, 'ok', 'Connected');
+  } else if (state.transport === TransportState.AUTHENTICATING) {
+    setChip(chip, '', 'Authenticating…');
+  } else if (state.transport === TransportState.TOKEN_MISSING || state._transportStatus === 'token_missing') {
+    setChip(chip, 'warn', 'Token Missing');
+  } else if (state.transport === TransportState.BACKEND_UNAVAILABLE || state._transportStatus === 'offline') {
+    setChip(chip, 'warn', 'Backend Unavailable');
+  } else if (state.transport === TransportState.PROJECTION_READY) {
+    setChip(chip, 'ok', 'Projection Ready');
+  } else if (state.transport === TransportState.AUTH_FAILED) {
+    setChip(chip, 'warn', 'Auth Failed');
+  } else {
+    setChip(chip, 'warn', 'Offline');
+  }
 }
 
 export function renderSession() {

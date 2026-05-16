@@ -6,7 +6,6 @@ Contract-only: no orchestrator execution, no merge, no git commands.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -75,8 +74,8 @@ def build_widget_projection(
 
 
 __all__ = [
+    "WIDGET_VERSION",
     "RalphReviewSessionRequest",
     "RalphWidgetProjection",
-    "WIDGET_VERSION",
     "build_widget_projection",
 ]

@@ -5,8 +5,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from rig_relay.desktop.chat_agent_adapter import ChatAgentAdapter
-from rig_relay.desktop.chat_store import ChatStore
 from rig_relay.core.tools.base import BaseTool
 from rig_relay.core.types import (
     AssistantEvent,
@@ -14,6 +12,8 @@ from rig_relay.core.types import (
     ToolResultEvent,
     UserMessageEvent,
 )
+from rig_relay.desktop.chat_agent_adapter import ChatAgentAdapter
+from rig_relay.desktop.chat_store import ChatStore
 
 
 class DummyTool(BaseTool):

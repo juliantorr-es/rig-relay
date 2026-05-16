@@ -17,6 +17,7 @@ from rig_relay.core.config.schema import (
 )
 from rig_relay.core.utils.merge import MergeConflictError, MergeKeyError, MergeStrategy
 
+pytestmark = [pytest.mark.slow]
 
 class TestMergeFieldMetadata:
     def test_frozen(self) -> None:

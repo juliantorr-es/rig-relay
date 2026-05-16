@@ -8,7 +8,7 @@ import subprocess
 import sys
 from typing import Any
 
-from rig_relay import __version__, RIG_ROOT
+from rig_relay import RIG_ROOT, __version__
 
 _CRITICAL_SYMBOLS = [
     "write_assembly_report",

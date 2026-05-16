@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator
-from contextlib import aclosing
 from datetime import UTC, datetime
 import fnmatch
 import hashlib
@@ -11,17 +10,20 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
-from rig_relay.core.agent_loop import AgentLoop
-from rig_relay.core.agents.models import AgentType, BuiltinAgentName
-from rig_relay.core.config import ModelConfig, SessionLoggingConfig, VibeConfig
 from rig_relay.coordination.store import CoordinationStore
+from rig_relay.core.agents.models import AgentType, BuiltinAgentName
+from rig_relay.core.config import ModelConfig, VibeConfig
+from rig_relay.core.subagents import SubagentMission, SubagentResult, SubagentRuntime
 from rig_relay.core.telemetry.artifacts import (
     TaskSessionLinkArtifact,
     ToolOutputArtifact,
     ToolOutputArtifactWriter,
 )
 from rig_relay.core.telemetry.local import dump_canonical_json
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -31,19 +33,8 @@ from rig_relay.core.tools.base import (
     ToolPermission,
 )
 from rig_relay.core.tools.permissions import PermissionContext
-from rig_relay.core.tools.ui import (
-    ToolCallDisplay,
-    ToolResultDisplay,
-    ToolUIData,
-    ToolUIDataAdapter,
-)
-from rig_relay.core.types import (
-    AssistantEvent,
-    Role,
-    ToolCallEvent,
-    ToolResultEvent,
-    ToolStreamEvent,
-)
+from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
+from rig_relay.core.types import ToolCallEvent, ToolResultEvent, ToolStreamEvent
 
 
 class TaskScope(BaseModel):
@@ -458,73 +449,41 @@ class Task(
         emit_tool_events: bool,
     ) -> tuple[TaskExecutionSummary, list[ToolStreamEvent]]:
         self._ensure_subagent_agent(agent_manager, agent_profile_name)
-        subagent_loop = self._build_subagent_loop(
-            ctx=ctx,
-            args=args,
-            agent_manager=agent_manager,
-            plan=plan,
-            agent_profile_name=agent_profile_name,
-        )
 
-        task_text = prompt_text
-        if ctx.scratchpad_dir:
-            task_text = (
-                f"Scratchpad directory: {ctx.scratchpad_dir}\n"
-                "You can read and write files here without permission prompts.\n\n"
-                f"{prompt_text}"
+        mission = self._build_subagent_mission(
+            ctx=ctx,
+            agent_profile_name=agent_profile_name,
+            prompt_text=prompt_text,
+            plan=plan,
+        )
+        runtime = SubagentRuntime(mission)
+
+        try:
+            result = await runtime.execute()
+        except asyncio.CancelledError:
+            result = SubagentResult(
+                mission_id=mission.mission_id,
+                status="cancelled",
+                errors=["cancelled by parent"],
+            )
+        except Exception as exc:
+            result = SubagentResult(
+                mission_id=mission.mission_id, status="error", errors=[str(exc)[:500]]
             )
 
-        accumulated_response: list[str] = []
-        completed = True
-        tool_events: list[ToolStreamEvent] = []
-        try:
-            async with aclosing(subagent_loop.act(task_text)) as events:
-                async for event in events:
-                    if isinstance(event, AssistantEvent) and event.content:
-                        accumulated_response.append(event.content)
-                        if event.stopped_by_middleware:
-                            completed = False
-                    elif isinstance(event, ToolResultEvent):
-                        if event.skipped:
-                            completed = False
-                        elif emit_tool_events and event.result and event.tool_class:
-                            adapter = ToolUIDataAdapter(event.tool_class)
-                            display = adapter.get_result_display(event)
-                            tool_events.append(
-                                ToolStreamEvent(
-                                    tool_name=self.get_name(),
-                                    message=f"{event.tool_name}: {display.message}",
-                                    tool_call_id=ctx.tool_call_id,
-                                )
-                            )
-        except Exception as e:
-            completed = False
-            accumulated_response.append(f"\n[Subagent error: {e}]")
-
-        turns_used = sum(msg.role == Role.assistant for msg in subagent_loop.messages)
-        result = self._build_task_result(
-            response="".join(accumulated_response),
-            turns_used=turns_used,
-            completed=completed,
+        task_result = self._build_task_result(
+            response=result.summary,
+            turns_used=result.turns_used,
+            completed=result.status == "completed",
             plan=plan,
-        )
-        child_session_dir = subagent_loop.session_logger.session_dir
-        child_session_path = (
-            child_session_dir if isinstance(child_session_dir, Path) else None
         )
         return (
             TaskExecutionSummary(
-                result=result,
-                child_session_dir=(
-                    child_session_path.name if child_session_path is not None else None
-                ),
-                child_artifact_manifest_sha256=(
-                    self._file_sha256(child_session_path / "manifest.json")
-                    if child_session_path is not None
-                    else None
-                ),
+                result=task_result,
+                child_session_dir=result.child_session_id,
+                child_artifact_manifest_sha256=result.child_artifact_manifest_sha256,
             ),
-            tool_events,
+            [],
         )
 
     async def _execute_subagent_task(
@@ -734,36 +693,26 @@ class Task(
                 yield item.result
 
     @staticmethod
-    def _build_subagent_loop(
+    def _build_subagent_mission(
         *,
         ctx: InvokeContext,
-        args: TaskArgs,
-        agent_manager: Any,
-        plan: TaskExecutionPlan,
         agent_profile_name: str,
-    ) -> AgentLoop:
-        call_config = Task._build_call_config(
-            VibeConfig.load(
-                session_logging=SessionLoggingConfig(
-                    save_dir=str(ctx.session_dir / "agents") if ctx.session_dir else "",
-                    session_prefix=agent_profile_name,
-                    enabled=ctx.session_dir is not None,
-                )
-            ),
-            plan,
+        prompt_text: str,
+        plan: TaskExecutionPlan,
+    ) -> SubagentMission:
+        return SubagentMission(
+            parent_session_id=ctx.session_dir.name if ctx.session_dir else "",
+            parent_turn_id=ctx.parent_turn_id,
+            parent_tool_call_id=ctx.tool_call_id,
+            task=prompt_text,
+            agent_profile=agent_profile_name,
+            budget_max_turns=plan.max_turns if hasattr(plan, "max_turns") else 10,
+            budget_max_seconds=plan.timeout_seconds or 300.0,
+            model=plan.model,
+            provider=plan.provider,
+            thinking_enabled=plan.thinking_enabled,
+            timeout_seconds=plan.timeout_seconds,
         )
-        subagent_loop = AgentLoop(
-            config=call_config,
-            agent_name=agent_profile_name,
-            entrypoint_metadata=ctx.entrypoint_metadata,
-            is_subagent=True,
-            defer_heavy_init=True,
-        )
-
-        if ctx.approval_callback:
-            subagent_loop.set_approval_callback(ctx.approval_callback)
-
-        return subagent_loop
 
     @staticmethod
     def _derive_task_session_status(*, plan: TaskExecutionPlan, completed: bool) -> str:

@@ -6,9 +6,8 @@ Outputs under docs/artifacts/markdown/ (committed, used for GitHub Pages).
 from __future__ import annotations
 
 import csv
-import io
-import json
 from datetime import UTC, datetime
+import json
 from pathlib import Path
 from typing import Any
 

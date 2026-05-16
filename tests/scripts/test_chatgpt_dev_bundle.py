@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
+import pytest
 
 from scripts.rig_relay_create_chatgpt_dev_bundle import (
     HARD_FILE_LIMIT_MB,
@@ -20,6 +21,7 @@ from scripts.rig_relay_create_chatgpt_dev_bundle import (
     _sha256_bytes,
 )
 
+pytestmark = [pytest.mark.migration]
 
 class TestTokenEstimator:
     """Token estimator uses tiktoken and returns positive counts."""

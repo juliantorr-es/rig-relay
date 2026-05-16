@@ -29,12 +29,16 @@ from websockets.asyncio.server import Server, ServerConnection, serve
 from websockets.http11 import Headers, Request, Response
 
 from rig_relay.core.logger import logger
-from rig_relay.desktop.bridge_diagnostics import (
-    BridgeProbeReport,
-    BridgeProbeStatus,
-    _redact_token,
+from rig_relay.desktop.bridge_diagnostics import BridgeProbeReport
+from rig_relay.desktop.bridge_state_machine import (
+    DesktopBridgeEvent,
+    DesktopBridgeStateMachine,
+    InvalidBridgeTransitionError,
+    TerminalBridgeStateError,
 )
 from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
+from rig_relay.tracing.recorder import TraceRecorder
+from rig_relay.tracing.store import get_default_trace_store
 
 mimetypes.init()
 
@@ -53,9 +57,7 @@ def _extract_qs_token(path: str) -> str:
     return urllib.parse.parse_qs(qs).get("token", [""])[0]
 
 
-def _json_response(
-    data: dict[str, Any], status_code: int = 200
-) -> Response:
+def _json_response(data: dict[str, Any], status_code: int = 200) -> Response:
     return Response(
         status_code=status_code,
         reason_phrase="OK" if status_code == HTTP_OK else "Error",
@@ -73,9 +75,7 @@ def _empty_response(status_code: int, reason_phrase: str) -> Response:
     )
 
 
-def _bytes_response(
-    body: bytes, content_type: str, status_code: int = 200
-) -> Response:
+def _bytes_response(body: bytes, content_type: str, status_code: int = 200) -> Response:
     return Response(
         status_code=status_code,
         reason_phrase="OK" if status_code == HTTP_OK else "Error",
@@ -190,6 +190,7 @@ class DesktopBridgeServer:
         self._bound_port: int = 0
         self._started: bool = False
         self._runtime_config: DesktopBridgeRuntimeConfig | None = None
+        self._state_machine = DesktopBridgeStateMachine()
         self._debug = debug
         self.probe_report = probe_report or BridgeProbeReport(
             mode="packaged" if getattr(config, "build_root", None) else "source",
@@ -207,10 +208,29 @@ class DesktopBridgeServer:
             raise RuntimeError("Bridge not started. Call start() first.")
         return self._runtime_config
 
-    async def start(self) -> None:
+    def _transition_state(
+        self,
+        event: DesktopBridgeEvent,
+        *,
+        reason: str,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
+        try:
+            self._state_machine.transition(event, reason=reason, attributes=attributes)
+        except (InvalidBridgeTransitionError, TerminalBridgeStateError):
+            return
+
+    async def start(self) -> None:  # noqa: PLR0915,PLR0914
         """Start the bridge server with probe ladder."""
         if self._started:
             return
+
+        _trace = TraceRecorder(get_default_trace_store())
+        _trace.event("desktop.bridge.start_begin", {
+            "host": self._config.host,
+            "port": self._config.port or 0,
+            "tls_enabled": self._config.tls_enabled,
+        })
 
         host = self._config.host
         port = self._config.port or 0
@@ -220,24 +240,46 @@ class DesktopBridgeServer:
         report.ws_url = ""
 
         # ── bridge:01 resolve frontend_dir ──────────────────────────
+        self._state_machine.transition(
+            DesktopBridgeEvent.RESOLVING_FRONTEND,
+            reason="resolve frontend_dir",
+            attributes={"step_id": "bridge:01"},
+        )
         if frontend_dir is None:
             report.add_fail(
-                "bridge:01", "resolve frontend_dir",
+                "bridge:01",
+                "resolve frontend_dir",
                 message="frontend_dir is None",
                 remediation="Set frontend_dir in DesktopBridgeConfig or check FRONTEND_DIR constant.",
             )
             raise ValueError("frontend_dir is required")
+        if not frontend_dir.is_dir():
+            report.add_fail(
+                "bridge:01",
+                "resolve frontend_dir",
+                details={"path": str(frontend_dir)},
+                message=f"Directory does not exist: {frontend_dir}",
+                remediation=f"Ensure {frontend_dir} exists or set correct frontend_dir.",
+            )
+            raise ValueError(f"frontend_dir does not exist: {frontend_dir}")
         report.add_ok(
-            "bridge:01", "resolve frontend_dir",
-            details={"path": str(frontend_dir), "exists": frontend_dir.is_dir()},
+            "bridge:01",
+            "resolve frontend_dir",
+            details={"path": str(frontend_dir)},
             message=str(frontend_dir),
+        )
+        self._transition_state(
+            DesktopBridgeEvent.ASSETS_VERIFIED,
+            reason="verify asset files",
+            attributes={"step_id": "bridge:03"},
         )
 
         # ── bridge:02 resolve index_path ────────────────────────────
         index_path = frontend_dir / "index.html"
         if not index_path.is_file():
             report.add_fail(
-                "bridge:02", "resolve index.html",
+                "bridge:02",
+                "resolve index.html",
                 details={"path": str(index_path)},
                 message="index.html not found",
                 remediation=f"Ensure index.html exists at {frontend_dir}/index.html. Run build step.",
@@ -245,7 +287,8 @@ class DesktopBridgeServer:
             raise FileNotFoundError(f"index.html not found at {index_path}")
         index_size = index_path.stat().st_size
         report.add_ok(
-            "bridge:02", "resolve index.html",
+            "bridge:02",
+            "resolve index.html",
             details={"path": str(index_path), "size_bytes": index_size},
             message=f"{index_size / 1024:.1f} KB",
         )
@@ -255,7 +298,6 @@ class DesktopBridgeServer:
         css_dir = frontend_dir / "css"
         main_js_ok = main_js.is_file()
         css_ok = css_dir.is_dir()
-        asset_status = "ok" if main_js_ok and css_ok else "warn"
         asset_details: dict[str, Any] = {
             "js/main.js": main_js_ok,
             "js/main.js_size": main_js.stat().st_size if main_js_ok else 0,
@@ -263,7 +305,8 @@ class DesktopBridgeServer:
         }
         if not main_js_ok:
             report.add_fail(
-                "bridge:03", "verify asset files",
+                "bridge:03",
+                "verify asset files",
                 details=asset_details,
                 message="js/main.js missing",
                 remediation=f"Ensure {frontend_dir}/js/main.js exists. Check frontend build.",
@@ -271,14 +314,16 @@ class DesktopBridgeServer:
             raise FileNotFoundError(f"js/main.js not found at {main_js}")
         if not css_ok:
             report.add_warn(
-                "bridge:03", "verify asset files",
+                "bridge:03",
+                "verify asset files",
                 details=asset_details,
                 message="css dir missing — UI may be unstyled",
                 remediation=f"Ensure {frontend_dir}/css/ directory exists.",
             )
         else:
             report.add_ok(
-                "bridge:03", "verify asset files",
+                "bridge:03",
+                "verify asset files",
                 details=asset_details,
                 message=f"js/main.js={main_js.stat().st_size / 1024:.1f}KB, css dir ok",
             )
@@ -295,7 +340,8 @@ class DesktopBridgeServer:
         report.frontend_url = self._runtime_config.frontend_url
         report.ws_url = self._runtime_config.ws_url
         report.add_ok(
-            "bridge:04", "build runtime_config",
+            "bridge:04",
+            "build runtime_config",
             details={
                 "host": host,
                 "port": port,
@@ -305,8 +351,17 @@ class DesktopBridgeServer:
             },
             message=f"{self._runtime_config.transport_label}, token={'yes' if self._config.auth_token else 'no'}",
         )
+        self._transition_state(
+            DesktopBridgeEvent.CONFIG_BUILT,
+            reason="build runtime_config",
+            attributes={"step_id": "bridge:04"},
+        )
 
-        # ── bridge:05 create aiohttp … actually websockets serve ─────
+        # ── bridge:05 create WS server ───────────────────────────────
+        def _on_ws_probe(step_id: str, label: str, details: dict[str, Any]) -> None:
+            report.add_ok(step_id, label, details=details, message=label)
+            self._apply_probe_transition(step_id, details)
+
         self._ws_server = ProjectionWebSocketServer(
             build_root=self._config.build_root,
             host=host,
@@ -315,8 +370,16 @@ class DesktopBridgeServer:
             ssl_context=self._config.ssl_context,
             chat_state_provider=self._config.chat_state_provider,
             chat_message_handler=self._config.chat_message_handler,
+            probe_callback=_on_ws_probe,
         )
-        report.add_ok("bridge:05", "create WS server", message="ProjectionWebSocketServer ready")
+        report.add_ok(
+            "bridge:05", "create WS server", message="ProjectionWebSocketServer ready"
+        )
+        self._transition_state(
+            DesktopBridgeEvent.SERVER_CREATED,
+            reason="create WS server",
+            attributes={"step_id": "bridge:05"},
+        )
 
         # ── bridge:06 bind host/port ─────────────────────────────────
         async def ws_handler(conn: ServerConnection) -> None:
@@ -339,7 +402,8 @@ class DesktopBridgeServer:
             )
         except Exception as exc:
             report.add_fail(
-                "bridge:06", "bind host/port",
+                "bridge:06",
+                "bind host/port",
                 details={"host": host, "port": port, "error": str(exc)},
                 message=f"Failed to bind {host}:{port}: {exc}",
                 remediation="Check if port is already in use. Try RIG_RELAY_DESKTOP_TLS=0 or a different port.",
@@ -358,47 +422,69 @@ class DesktopBridgeServer:
             self._bound_port = port
 
         report.add_ok(
-            "bridge:06", "bind host/port",
+            "bridge:06",
+            "bind host/port",
             details={"host": host, "bound_port": self._bound_port},
             message=f"http://{host}:{self._bound_port}",
             duration_ms=bind_ms,
         )
+        self._transition_state(
+            DesktopBridgeEvent.SERVER_BOUND,
+            reason="bind host/port",
+            attributes={"step_id": "bridge:06", "bound_port": self._bound_port},
+        )
 
         self._runtime_config.bridge_port = self._bound_port
-        self._runtime_config.frontend_url = (
-            f"{'https' if self._config.tls_enabled else 'http'}://{host}:{self._bound_port}/index.html"
-        )
-        self._runtime_config.ws_url = (
-            f"{'wss' if self._config.tls_enabled else 'ws'}://{host}:{self._bound_port}/ws"
-        )
-        self._runtime_config.bridge_origin = (
-            f"{'https' if self._config.tls_enabled else 'http'}://{host}:{self._bound_port}"
-        )
+        self._runtime_config.frontend_url = f"{'https' if self._config.tls_enabled else 'http'}://{host}:{self._bound_port}/index.html"
+        self._runtime_config.ws_url = f"{'wss' if self._config.tls_enabled else 'ws'}://{host}:{self._bound_port}/ws"
+        self._runtime_config.bridge_origin = f"{'https' if self._config.tls_enabled else 'http'}://{host}:{self._bound_port}"
         report.frontend_url = self._runtime_config.frontend_url
         report.ws_url = self._runtime_config.ws_url
 
         # ── bridge:07 probe /healthz ─────────────────────────────────
         await self._probe_healthz(report)
+        self._transition_state(
+            DesktopBridgeEvent.SELF_PROBED,
+            reason="probe ladder complete",
+            attributes={"step_id": "bridge:07-10"},
+        )
 
         # ── bridge:08 probe /index.html ──────────────────────────────
-        await self._probe_path(report, "/index.html", "bridge:08", "probe /index.html", "text/html")
+        await self._probe_path(
+            report, "/index.html", "bridge:08", "probe /index.html", "text/html"
+        )
 
         # ── bridge:09 probe /js/main.js ──────────────────────────────
-        await self._probe_path(report, "/js/main.js", "bridge:09", "probe /js/main.js", "javascript")
+        await self._probe_path(
+            report, "/js/main.js", "bridge:09", "probe /js/main.js", "javascript"
+        )
 
         # ── bridge:10 probe CSS ──────────────────────────────────────
         css_files = sorted(css_dir.glob("*.css")) if css_dir.is_dir() else []
         if css_files:
             first_css = f"/css/{css_files[0].name}"
-            await self._probe_path(report, first_css, "bridge:10", f"probe {first_css}", "css")
+            await self._probe_path(
+                report, first_css, "bridge:10", f"probe {first_css}", "css"
+            )
         else:
             report.add_warn(
-                "bridge:10", "probe CSS",
+                "bridge:10",
+                "probe CSS",
                 message="no CSS files found in css/",
                 remediation="CSS directory is empty — UI will be unstyled.",
             )
 
         self._started = True
+        self._transition_state(
+            DesktopBridgeEvent.WEBVIEW_CREATED,
+            reason="webview created",
+            attributes={"step_id": "bridge:11"},
+        )
+        self._transition_state(
+            DesktopBridgeEvent.WEBVIEW_STARTED,
+            reason="webview started",
+            attributes={"step_id": "bridge:12"},
+        )
         logger.info(
             "DesktopBridgeServer started on %s:%s (TLS=%s) frontend=%s ws=%s",
             host,
@@ -416,11 +502,7 @@ class DesktopBridgeServer:
             self._server = None
         self._started = False
 
-    def _handle_http(
-        self,
-        request: Request,
-        frontend_dir: Path,
-    ) -> Response | None:
+    def _handle_http(self, request: Request, frontend_dir: Path) -> Response | None:
         raw_path = request.path or "/"
         path = raw_path.split("?", 1)[0] if "?" in raw_path else raw_path
 
@@ -438,6 +520,11 @@ class DesktopBridgeServer:
             config_dict = self._runtime_config.to_dict()
             config_dict.pop("auth_token", None)
             config_dict.pop("token", None)
+            self._transition_state(
+                DesktopBridgeEvent.FRONTEND_CONFIG_LOADED,
+                reason="runtime-config.json served",
+                attributes={"step_id": "bridge:13"},
+            )
             return _json_response(config_dict)
 
         # /index.html or /
@@ -460,14 +547,10 @@ class DesktopBridgeServer:
         except OSError:
             return _empty_response(500, "Internal Server Error")
 
-    def _serve_static(
-        self, path: str, frontend_dir: Path
-    ) -> Response | None:
+    def _serve_static(self, path: str, frontend_dir: Path) -> Response | None:
         """Serve static assets from frontend_dir. Prevents path traversal."""
         normalized = (
-            Path(path).resolve()
-            if path.startswith("/")
-            else Path("/" + path).resolve()
+            Path(path).resolve() if path.startswith("/") else Path("/" + path).resolve()
         )
         requested = frontend_dir / normalized.relative_to("/")
 
@@ -486,13 +569,20 @@ class DesktopBridgeServer:
         report = self.probe_report
         remote = conn.remote_address[0] if conn.remote_address else "unknown"
         report.add_ok(
-            "bridge:14", "websocket upgrade accepted",
+            "bridge:14",
+            "websocket upgrade accepted",
             details={"remote": remote, "path": "/ws"},
             message=f"WS upgrade from {remote}",
         )
+        self._transition_state(
+            DesktopBridgeEvent.WEBSOCKET_CONNECTED,
+            reason="websocket upgrade accepted",
+            attributes={"step_id": "bridge:14", "remote": remote},
+        )
         if self._ws_server is None:
             report.add_fail(
-                "bridge:14", "websocket upgrade accepted",
+                "bridge:14",
+                "websocket upgrade accepted",
                 message="WS server is None",
                 remediation="Bridge may not have started correctly. Check bridge:05.",
             )
@@ -505,20 +595,26 @@ class DesktopBridgeServer:
             resp = self._build_healthz()
             body = json.loads(resp.body) if isinstance(resp.body, bytes) else {}
             report.add_ok(
-                "bridge:07", "probe /healthz",
+                "bridge:07",
+                "probe /healthz",
                 details={"status": resp.status_code, "ok": body.get("ok")},
                 message=f"HTTP {resp.status_code}, ok={body.get('ok')}",
             )
         except Exception as exc:
             report.add_warn(
-                "bridge:07", "probe /healthz",
+                "bridge:07",
+                "probe /healthz",
                 message=f"Self-probe failed: {exc}",
                 remediation="Bridge is running but /healthz is not responding.",
             )
 
     async def _probe_path(
-        self, report: BridgeProbeReport, path: str, step_id: str,
-        label: str, expected_content_type: str,
+        self,
+        report: BridgeProbeReport,
+        path: str,
+        step_id: str,
+        label: str,
+        expected_content_type: str,
     ) -> None:
         try:
             resp = self._handle_http(
@@ -527,40 +623,87 @@ class DesktopBridgeServer:
             )
             if resp is None:
                 report.add_fail(
-                    step_id, label,
+                    step_id,
+                    label,
                     details={"path": path},
                     message="No response (WebSocket upgrade intercepted?)",
                     remediation=f"Check route for {path}.",
                 )
                 return
             ct = resp.headers.get("Content-Type", "")
-            ok = resp.status_code == 200
-            if ok and expected_content_type == "javascript" and "text/html" in ct:
+            ok_status = resp.status_code == HTTP_OK
+            if (
+                ok_status
+                and expected_content_type == "javascript"
+                and "text/html" in ct
+            ):
                 report.add_fail(
-                    step_id, label,
-                    details={"path": path, "status": resp.status_code, "content_type": ct},
+                    step_id,
+                    label,
+                    details={
+                        "path": path,
+                        "status": resp.status_code,
+                        "content_type": ct,
+                    },
                     message=f"Returned {ct}; expected javascript",
                     remediation=f"Check that {path} is served as static file, not index.html fallback.",
                 )
-            elif ok:
+            elif ok_status:
                 report.add_ok(
-                    step_id, label,
-                    details={"path": path, "status": resp.status_code, "content_type": ct},
+                    step_id,
+                    label,
+                    details={
+                        "path": path,
+                        "status": resp.status_code,
+                        "content_type": ct,
+                    },
                     message=f"HTTP {resp.status_code}, {ct}",
                 )
             else:
                 report.add_fail(
-                    step_id, label,
+                    step_id,
+                    label,
                     details={"path": path, "status": resp.status_code},
                     message=f"HTTP {resp.status_code}",
                     remediation=f"Check that {path} exists under frontend_dir.",
                 )
         except Exception as exc:
             report.add_fail(
-                step_id, label,
+                step_id,
+                label,
                 message=f"Probe failed: {exc}",
                 remediation=f"Check server is running and {path} is accessible.",
             )
+
+    def _apply_probe_transition(
+        self, step_id: str, details: dict[str, Any] | None = None
+    ) -> None:
+        payload = {"step_id": step_id, **(details or {})}
+        match step_id:
+            case "bridge:15":
+                self._transition_state(
+                    DesktopBridgeEvent.WEBSOCKET_CONNECTED,
+                    reason="websocket auth message received",
+                    attributes=payload,
+                )
+            case "bridge:16":
+                self._transition_state(
+                    DesktopBridgeEvent.AUTHENTICATED,
+                    reason="websocket auth accepted",
+                    attributes=payload,
+                )
+            case "bridge:17":
+                self._transition_state(
+                    DesktopBridgeEvent.PROJECTION_SENT,
+                    reason="first projection sent",
+                    attributes=payload,
+                )
+            case "bridge:18":
+                self._transition_state(
+                    DesktopBridgeEvent.PROJECTION_RENDERED,
+                    reason="projection rendered",
+                    attributes=payload,
+                )
 
     def _build_healthz(self) -> Response:
         return _json_response({
@@ -579,13 +722,18 @@ class DesktopBridgeServer:
             "ws_path": "/ws",
             "auth_required": True,
             "frontend_url": (
-                self._runtime_config.frontend_url
-                if self._runtime_config
-                else ""
+                self._runtime_config.frontend_url if self._runtime_config else ""
             ),
-            "ws_url": (
-                self._runtime_config.ws_url if self._runtime_config else ""
+            "ws_url": (self._runtime_config.ws_url if self._runtime_config else ""),
+            "bridge_state": self._state_machine.current_state.value,
+            "bridge_previous_state": (
+                self._state_machine.export_projection()["previous_state"]
             ),
+            "bridge_last_event": self._state_machine.export_projection()["last_event"],
+            "bridge_failed_step": self._state_machine.export_projection()["failed_step"],
+            "bridge_transition_count": self._state_machine.export_projection()[
+                "transition_count"
+            ],
             "frontend_dir_exists": (
                 self._config.frontend_dir.is_dir()
                 if self._config.frontend_dir

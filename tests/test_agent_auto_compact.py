@@ -6,13 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from tests.conftest import (
-    build_test_agent_loop,
-    build_test_vibe_config,
-    make_test_models,
-)
-from tests.mock.utils import mock_llm_chunk
-from tests.stubs.fake_backend import FakeBackend
 from rig_relay.core.config import ModelConfig
 from rig_relay.core.types import (
     AssistantEvent,
@@ -22,6 +15,13 @@ from rig_relay.core.types import (
     Role,
     UserMessageEvent,
 )
+from tests.conftest import (
+    build_test_agent_loop,
+    build_test_vibe_config,
+    make_test_models,
+)
+from tests.mock.utils import mock_llm_chunk
+from tests.stubs.fake_backend import FakeBackend
 
 
 def _get_auto_compact_properties(

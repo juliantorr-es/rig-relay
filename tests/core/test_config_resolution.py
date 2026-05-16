@@ -8,7 +8,6 @@ from typing import Literal, TypedDict, Unpack
 import pytest
 import tomli_w
 
-from tests.conftest import build_test_vibe_config
 from rig_relay.core.config import ModelConfig, ProviderConfig, VibeConfig
 from rig_relay.core.config._settings import (
     DEFAULT_MISTRAL_BROWSER_AUTH_API_BASE_URL,
@@ -24,7 +23,9 @@ from rig_relay.core.paths import VIBE_HOME
 from rig_relay.core.trusted_folders import trusted_folders_manager
 from rig_relay.core.types import Backend
 from rig_relay.setup.onboarding.context import OnboardingContext
+from tests.conftest import build_test_vibe_config
 
+pytestmark = [pytest.mark.slow, pytest.mark.integration]
 
 class _ProviderConfigOverrides(TypedDict, total=False):
     api_key_env_var: str

@@ -27,16 +27,16 @@ class InitHelpersMixin:
         defer_heavy_init: bool,
     ) -> None:
         from rig_relay.core.agents.manager import AgentManager
+        from rig_relay.core.llm.format import APIToolFormatHandler
+        from rig_relay.core.middleware import MiddlewarePipeline
+        from rig_relay.core.plan_session import PlanSession
+        from rig_relay.core.scratchpad import init_scratchpad
+        from rig_relay.core.session.session_id import generate_session_id
+        from rig_relay.core.skills.manager import SkillManager
+        from rig_relay.core.system_prompt import get_universal_system_prompt
         from rig_relay.core.tools.manager import ToolManager
         from rig_relay.core.tools.mcp import MCPRegistry
-        from rig_relay.core.skills.manager import SkillManager
-        from rig_relay.core.plan_session import PlanSession
-        from rig_relay.core.llm.format import APIToolFormatHandler
         from rig_relay.core.tools.mcp_sampling import MCPSamplingHandler
-        from rig_relay.core.middleware import MiddlewarePipeline
-        from rig_relay.core.scratchpad import init_scratchpad
-        from rig_relay.core.system_prompt import get_universal_system_prompt
-        from rig_relay.core.session.session_id import generate_session_id
 
         self.mcp_registry = MCPRegistry()
         self.connector_registry = self._create_connector_registry()
@@ -91,7 +91,6 @@ class InitHelpersMixin:
     def _init_context_compiler(
         self, defer_heavy_init: bool
     ) -> None:
-        from rig_relay.context.compiler import ContextCompiler
         from rig_relay.context.repo_index import RepoContextIndex
 
         self._repo_index = None
@@ -117,8 +116,6 @@ class InitHelpersMixin:
         is_subagent: bool,
         hook_config_result: Any,
     ) -> None:
-        from rig_relay.core.telemetry.send import TelemetryClient
-        from rig_relay.core.session.session_logger import SessionLogger
         from rig_relay.core.guard import (
             DirtyGuardFailurePolicy,
             GuardCaptureReason,
@@ -126,6 +123,8 @@ class InitHelpersMixin:
         )
         from rig_relay.core.hooks.manager import HooksManager
         from rig_relay.core.rewind import RewindManager
+        from rig_relay.core.session.session_logger import SessionLogger
+        from rig_relay.core.telemetry.send import TelemetryClient
 
         self.telemetry_client = TelemetryClient(
             config_getter=lambda: self.config,
@@ -175,7 +174,6 @@ class InitHelpersMixin:
     @staticmethod
     def _make_receipt_store() -> Any:
         from rig_relay.evidence.receipt_store import FilesystemReceiptStore
-        from pathlib import Path
 
         return FilesystemReceiptStore(
             Path.cwd() / ".rig" / "relay" / "receipts"
@@ -187,7 +185,6 @@ class InitHelpersMixin:
         receipt_store: Any,
     ) -> Any:
         from rig_relay.context.compiler import ContextCompiler
-        from pathlib import Path
 
         return ContextCompiler(
             session_id="",  # overwritten by caller

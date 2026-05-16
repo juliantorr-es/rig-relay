@@ -14,6 +14,9 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
+
 from rig_relay.core.tools.base import BaseToolState
 from rig_relay.core.tools.builtins.search_replace import SearchReplaceResult
 
@@ -250,8 +253,8 @@ def test_bash_refusal_receipt_content_light(bash_tool: type) -> None:
 
 def test_capture_bash_receipt_integration(tmp_path: Path) -> None:
     """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
-    from rig_relay.evidence.model_observations import capture_tool_receipt
     from rig_relay.core.tools.builtins.bash import Bash, BashResult, BashToolConfig
+    from rig_relay.evidence.model_observations import capture_tool_receipt
 
     tool = Bash(
         config_getter=lambda: BashToolConfig(
@@ -568,11 +571,11 @@ def test_capture_search_replace_receipt_integration(
     tmp_path: Path, sr_tool: type, sr_result_success: SearchReplaceResult
 ) -> None:
     """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
-    from rig_relay.evidence.model_observations import capture_tool_receipt
     from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
+    from rig_relay.evidence.model_observations import capture_tool_receipt
 
     tool = SearchReplace(
         config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
@@ -714,40 +717,38 @@ def test_search_replace_no_match_refusal_sanitized(sr_tool: type) -> None:
     assert "whitespace/indentation" in receipt_dict["refusal_reason"]
 
 
-def test_search_replace_sanitize_refusal_none(sr_tool: type) -> None:
-    """_sanitize_refusal_for_receipt returns None for None input."""
+@pytest.mark.parametrize(
+    "input_value, expected",
+    [
+        pytest.param(None, None, id="none_returns_none"),
+        pytest.param("", None, id="empty_returns_none"),
+        pytest.param(
+            "Expected 2 replacements but got 1. File was not mutated.",
+            "Expected 2 replacements but got 1. File was not mutated.",
+            id="safe_string_preserved",
+        ),
+    ],
+)
+def test_search_replace_sanitize_refusal(input_value: str | None, expected: str | None) -> None:
+    """_sanitize_refusal_for_receipt sanitizes refusal reason safely."""
     from rig_relay.core.tools.builtins.search_replace import SearchReplace
 
-    result = SearchReplace._sanitize_refusal_for_receipt(None)
-    assert result is None
-
-
-def test_search_replace_sanitize_refusal_empty(sr_tool: type) -> None:
-    """_sanitize_refusal_for_receipt returns None for empty string."""
-    from rig_relay.core.tools.builtins.search_replace import SearchReplace
-
-    result = SearchReplace._sanitize_refusal_for_receipt("")
-    assert result is None
-
-
-def test_search_replace_sanitize_refusal_safe_string_preserved(sr_tool: type) -> None:
-    """_sanitize_refusal_for_receipt preserves safe refusal strings."""
-    from rig_relay.core.tools.builtins.search_replace import SearchReplace
-
-    safe = "Expected 2 replacements but got 1. File was not mutated."
-    result = SearchReplace._sanitize_refusal_for_receipt(safe)
-    assert result == safe
+    result = SearchReplace._sanitize_refusal_for_receipt(input_value)
+    if expected is None:
+        assert result is None, f"Expected None, got: {result!r}"
+    else:
+        assert result == expected, f"Expected {expected!r}, got: {result!r}"
 
 
 def test_search_replace_receipt_passes_policy_validator(
     sr_tool: type, sr_result_success: SearchReplaceResult
 ) -> None:
     """Success SearchReplace receipt passes the content-light policy validator."""
-    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
     from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
+    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
 
     tool = SearchReplace(
         config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
@@ -760,12 +761,12 @@ def test_search_replace_receipt_passes_policy_validator(
 
 def test_search_replace_no_match_receipt_passes_policy_validator(sr_tool: type) -> None:
     """No-match SearchReplace receipt passes policy validator even with context."""
-    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
     from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
         SearchReplaceResult,
     )
+    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
 
     tool = SearchReplace(
         config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
@@ -807,12 +808,12 @@ def test_search_replace_no_match_receipt_passes_policy_validator(sr_tool: type) 
 
 def test_search_replace_refused_receipt_passes_policy_validator(sr_tool: type) -> None:
     """Refused SearchReplace receipt passes policy validator."""
-    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
     from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
         SearchReplaceResult,
     )
+    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
 
     tool = SearchReplace(
         config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
@@ -880,11 +881,11 @@ def test_search_replace_receipt_passes_validate_event(
     sr_tool: type, sr_result_success: SearchReplaceResult
 ) -> None:
     """SearchReplace receipt passes validate_event from policy validator."""
-    from rig_relay.evidence.tool_receipt_policy import validate_event
     from rig_relay.core.tools.builtins.search_replace import (
         SearchReplace,
         SearchReplaceConfig,
     )
+    from rig_relay.evidence.tool_receipt_policy import validate_event
 
     tool = SearchReplace(
         config_getter=lambda: SearchReplaceConfig(), state=BaseToolState()
@@ -1054,7 +1055,6 @@ def test_validate_receipt_includes_hashes() -> None:
 
 def test_capture_validate_receipt_integration(tmp_path: Path) -> None:
     """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
-    from rig_relay.evidence.model_observations import capture_tool_receipt
     from rig_relay.core.tools.base import BaseToolState
     from rig_relay.core.tools.builtins.validate import (
         Validate,
@@ -1062,6 +1062,7 @@ def test_capture_validate_receipt_integration(tmp_path: Path) -> None:
         ValidateResult,
         ValidateToolConfig,
     )
+    from rig_relay.evidence.model_observations import capture_tool_receipt
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -1129,7 +1130,6 @@ def test_capture_validate_receipt_integration(tmp_path: Path) -> None:
 
 def test_validate_receipt_passes_policy_validator() -> None:
     """Validate receipt passes content-light policy validator."""
-    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
     from rig_relay.core.tools.base import BaseToolState
     from rig_relay.core.tools.builtins.validate import (
         Validate,
@@ -1137,6 +1137,7 @@ def test_validate_receipt_passes_policy_validator() -> None:
         ValidateResult,
         ValidateToolConfig,
     )
+    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
 
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
@@ -1365,13 +1366,13 @@ def test_write_file_receipt_includes_overwrite_fields() -> None:
 
 def test_capture_write_file_receipt_integration(tmp_path: Path) -> None:
     """Full flow: build_receipt -> capture_tool_receipt writes content-light event."""
-    from rig_relay.evidence.model_observations import capture_tool_receipt
     from rig_relay.core.tools.base import BaseToolState
     from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,
     )
+    from rig_relay.evidence.model_observations import capture_tool_receipt
 
     tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
     result = WriteFileResult(
@@ -1492,13 +1493,13 @@ def test_write_file_receipt_schema_validates(tmp_path: Path) -> None:
 
 def test_write_file_receipt_passes_policy_validator() -> None:
     """WriteFile receipt passes the receipt policy validator."""
-    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
     from rig_relay.core.tools.base import BaseToolState
     from rig_relay.core.tools.builtins.write_file import (
         WriteFile,
         WriteFileConfig,
         WriteFileResult,
     )
+    from rig_relay.evidence.tool_receipt_policy import validate_receipt_payload
 
     tool = WriteFile(config_getter=lambda: WriteFileConfig(), state=BaseToolState())
 

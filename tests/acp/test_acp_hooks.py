@@ -6,13 +6,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 import tomli_w
 
-from tests.conftest import get_base_config
-from tests.stubs.fake_backend import FakeBackend
-from tests.stubs.fake_client import FakeClient
 from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
 from rig_relay.core.agent_loop import AgentLoop
 from rig_relay.core.hooks.models import HookConfigResult, HookType
 from rig_relay.core.types import LLMChunk, LLMMessage, LLMUsage, Role, SessionMetadata
+from tests.conftest import get_base_config
+from tests.stubs.fake_backend import FakeBackend
+from tests.stubs.fake_client import FakeClient
 
 
 @pytest.fixture

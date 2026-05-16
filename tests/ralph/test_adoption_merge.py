@@ -1,5 +1,9 @@
-from rig_relay.ralph.background_policy import demo_policy, default_policy
+from __future__ import annotations
+
+import pytest
+
 from rig_relay.ralph.adoption_merge import execute_adoption_merge
+from rig_relay.ralph.background_policy import default_policy, demo_policy
 
 
 def test_merge_refused_when_policy_disabled():
@@ -54,9 +58,12 @@ def test_merge_to_main_requires_preproduction():
     assert "preproduction" in result.error.lower()
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_merge_succeeds_in_temp_repo():
-    import tempfile, subprocess
     from pathlib import Path
+    import subprocess
+    import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp) / "repo"

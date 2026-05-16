@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from typing import Any
 
-import pytest
 from pydantic import BaseModel
+import pytest
 
 from rig_relay.core.tool_runtime import ToolRuntime
 from rig_relay.core.tool_runtime_models import (
@@ -17,7 +17,6 @@ from rig_relay.core.tool_runtime_models import (
     ToolRuntimeRequest,
     ToolRuntimeStatus,
 )
-
 
 # ── Test doubles ────────────────────────────────────────────────────
 

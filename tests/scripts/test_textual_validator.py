@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from scripts.rig_relay_textual_validator import (
     _ERR_ALIGN_ARITY,
     _ERR_ALIGN_VALUE,
@@ -16,6 +18,7 @@ from scripts.rig_relay_textual_validator import (
     validate_textual_source,
 )
 
+pytestmark = [pytest.mark.migration]
 
 def _check(tmp_path: Path, content: str, code: str) -> list:
     f = tmp_path / "test_file.py"

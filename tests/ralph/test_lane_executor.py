@@ -1,13 +1,17 @@
-import tempfile
-import subprocess
-from pathlib import Path
+from __future__ import annotations
 
-from rig_relay.ralph.background_policy import demo_policy, default_policy
+from pathlib import Path
+import subprocess
+import tempfile
+
+import pytest
+
+from rig_relay.ralph.background_policy import default_policy, demo_policy
 from rig_relay.ralph.lane_contracts import RalphLane
 from rig_relay.ralph.lane_executor import (
     LaneExecutionPlan,
-    execute_in_lane,
     commit_in_lane,
+    execute_in_lane,
 )
 
 
@@ -34,6 +38,8 @@ def test_execute_refused_when_lane_not_ready():
     assert "not ready" in result.error
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_execute_read_only_in_temp_worktree():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp) / "repo"
@@ -88,6 +94,8 @@ def test_commit_refused_no_changes():
     assert "no changes" in result.error
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_commit_in_temp_worktree():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp) / "repo"

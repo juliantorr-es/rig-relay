@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from rig_relay.orchestrator.subagent_profiles import (
     PROFILE_KIND_AUTONOMOUS_BACKGROUND,
     PROFILE_KIND_STANDARD_SUBAGENT,
@@ -15,6 +17,7 @@ from rig_relay.orchestrator.subagent_profiles import (
 )
 
 
+@pytest.mark.smoke
 def test_build_demo_profiles_creates_six_profiles():
     registry = build_demo_profiles()
     profiles = registry.list_all()
@@ -29,6 +32,7 @@ def test_assignable_excludes_ralph():
         assert p.profile_id not in ralph_ids
 
 
+@pytest.mark.smoke
 def test_autonomous_worker_is_ralph():
     registry = build_demo_profiles()
     workers = registry.autonomous_workers()
@@ -147,10 +151,7 @@ def test_demo_bindings_no_api_key_required():
 
 
 def test_runtime_agent_has_binding():
-    from rig_relay.orchestrator.subagent_profiles import (
-        build_demo_bindings,
-        get_binding_registry,
-    )
+    from rig_relay.orchestrator.subagent_profiles import build_demo_bindings
 
     registry = build_demo_bindings()
     binding = registry.get_for_profile("profile-runtime-agent")
@@ -160,10 +161,7 @@ def test_runtime_agent_has_binding():
 
 
 def test_ralph_background_binding():
-    from rig_relay.orchestrator.subagent_profiles import (
-        build_demo_bindings,
-        get_binding_registry,
-    )
+    from rig_relay.orchestrator.subagent_profiles import build_demo_bindings
 
     registry = build_demo_bindings()
     binding = registry.get_for_profile("profile-ralph-background")
@@ -175,10 +173,7 @@ def test_ralph_background_binding():
 
 
 def test_unbound_profile_returns_none():
-    from rig_relay.orchestrator.subagent_profiles import (
-        build_demo_bindings,
-        get_binding_registry,
-    )
+    from rig_relay.orchestrator.subagent_profiles import build_demo_bindings
 
     registry = build_demo_bindings()
     binding = registry.get_for_profile("nonexistent-profile")

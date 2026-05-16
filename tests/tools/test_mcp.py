@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from pydantic import ValidationError
 import pytest
 
-from tests.stubs.fake_mcp_registry import FakeMCPRegistry
 from rig_relay.core.config import MCPHttp, MCPStdio, MCPStreamableHttp, VibeConfig
 from rig_relay.core.tools.mcp import (
     MCPRegistry,
@@ -24,6 +23,7 @@ from rig_relay.core.tools.mcp import (
     create_mcp_stdio_proxy_tool_class,
     list_tools_stdio,
 )
+from tests.stubs.fake_mcp_registry import FakeMCPRegistry
 
 
 class TestRemoteTool:

@@ -7,11 +7,10 @@ policy.allow_push_to_preproduction=True. Default: disabled.
 from __future__ import annotations
 
 import hashlib
-import subprocess
 from pathlib import Path
-from typing import Any
+import subprocess
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from rig_relay.ralph.background_policy import RalphBackgroundPolicy
 

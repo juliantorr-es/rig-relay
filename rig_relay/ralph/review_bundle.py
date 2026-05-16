@@ -7,9 +7,8 @@ Content-light: hashes for large artifacts, inline summaries for small ones.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import UTC, datetime
+import hashlib
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field

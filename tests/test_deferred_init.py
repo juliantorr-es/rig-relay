@@ -7,15 +7,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from rig_relay.core.agent_loop import AgentLoop
+from rig_relay.core.config import MCPStdio
+from rig_relay.core.tools.manager import ToolManager
+from rig_relay.core.tools.mcp.tools import RemoteTool
 from tests.conftest import build_test_agent_loop, build_test_vibe_config
 from tests.mock.utils import mock_llm_chunk
 from tests.stubs.fake_backend import FakeBackend
 from tests.stubs.fake_connector_registry import FakeConnectorRegistry
 from tests.stubs.fake_mcp_registry import FakeMCPRegistry
-from rig_relay.core.agent_loop import AgentLoop
-from rig_relay.core.config import MCPStdio
-from rig_relay.core.tools.manager import ToolManager
-from rig_relay.core.tools.mcp.tools import RemoteTool
 
 
 def _build_uninitiated_loop(**kwargs):

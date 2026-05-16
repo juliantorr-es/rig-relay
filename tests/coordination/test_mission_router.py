@@ -12,6 +12,9 @@ from typing import Any
 
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
+
 from rig_relay.coordination.mission_router import (
     MissionBatch,
     MissionRoute,

@@ -6,10 +6,10 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.acp.conftest import _create_acp_agent
 from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
 from rig_relay.acp.exceptions import InvalidRequestError
 from rig_relay.core.agent_loop import AgentLoop
+from tests.acp.conftest import _create_acp_agent
 
 
 @pytest.fixture

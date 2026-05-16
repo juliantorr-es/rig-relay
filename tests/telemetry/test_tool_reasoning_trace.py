@@ -4,8 +4,11 @@ import json
 from pathlib import Path
 
 from jsonschema import validate
+import pytest
 
 from rig_relay.core.telemetry.tool_contract import ToolOutputKind, ToolReasoningTrace
+
+pytestmark = [pytest.mark.integration]
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 SCHEMA_DIR = REPO_ROOT / "docs" / "schemas"

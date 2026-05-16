@@ -1,6 +1,10 @@
 """Tests for the coordination migration inventory document."""
 
 from __future__ import annotations
+import pytest
+
+pytestmark = [pytest.mark.migration]
+
 
 from pathlib import Path
 

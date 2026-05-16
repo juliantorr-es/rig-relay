@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from rig_relay.desktop.chat_state import ChatMessage, ChatState
 from rig_relay.core.utils.io import read_safe
+from rig_relay.desktop.chat_state import ChatMessage, ChatState
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_CHAT_ROOT = REPO_ROOT / ".build" / "rig-relay" / "desktop" / "chat"

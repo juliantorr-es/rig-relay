@@ -16,7 +16,10 @@ from rig_relay.core.guard import get_guard
 from rig_relay.core.rewind.manager import FileSnapshot
 from rig_relay.core.scratchpad import is_scratchpad_path
 from rig_relay.core.telemetry.artifacts import ToolOutputArtifactWriter
-from rig_relay.core.telemetry.tool_contract import ToolDeterminismClass, ToolMutationClass
+from rig_relay.core.telemetry.tool_contract import (
+    ToolDeterminismClass,
+    ToolMutationClass,
+)
 from rig_relay.core.tools.base import (
     BaseTool,
     BaseToolConfig,
@@ -25,7 +28,10 @@ from rig_relay.core.tools.base import (
     ToolError,
     ToolPermission,
 )
-from rig_relay.core.tools.determinism import normalize_tool_path, require_path_within_workdir
+from rig_relay.core.tools.determinism import (
+    normalize_tool_path,
+    require_path_within_workdir,
+)
 from rig_relay.core.tools.permissions import PermissionContext
 from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from rig_relay.core.tools.utils import resolve_file_tool_permission, sha256_file_bytes

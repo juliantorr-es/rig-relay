@@ -7,9 +7,8 @@ branch name sanitization, path escape detection, policy enforcement.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
-from typing import Any
+import re
 
 from rig_relay.ralph.background_policy import RalphBackgroundPolicy
 from rig_relay.ralph.lane_contracts import RalphLane

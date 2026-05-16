@@ -6,9 +6,9 @@ No external CDN, no JavaScript framework, safe HTML escaping.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import html
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 

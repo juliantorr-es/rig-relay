@@ -8,6 +8,9 @@ import uuid
 from pydantic import ValidationError
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
+
 from rig_relay.coordination.fleet_models import (
     FleetAgentMessage,
     FleetAgentSession,

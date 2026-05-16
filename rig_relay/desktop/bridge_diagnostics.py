@@ -9,16 +9,17 @@ status (ok/warn/fail/skipped), details, and a remediation hint on failure.
 
 from __future__ import annotations
 
+from enum import StrEnum
 import json
-import time
-from enum import Enum
 from pathlib import Path
+import time
 from typing import Any
 
 BRIDGE_PROBE_SCHEMA = "rig.desktop.bridge_probe.v1"
+_REDACT_SHORT_THRESHOLD = 8
 
 
-class BridgeProbeStatus(str, Enum):
+class BridgeProbeStatus(StrEnum):
     ok = "ok"
     warn = "warn"
     fail = "fail"
@@ -27,8 +28,13 @@ class BridgeProbeStatus(str, Enum):
 
 class BridgeProbeStep:
     __slots__ = (
-        "step_id", "label", "status", "details",
-        "message", "remediation", "duration_ms",
+        "step_id",
+        "label",
+        "status",
+        "details",
+        "message",
+        "remediation",
+        "duration_ms",
     )
 
     def __init__(
@@ -67,8 +73,16 @@ class BridgeProbeStep:
 
 class BridgeProbeReport:
     __slots__ = (
-        "schema_version", "started_at", "mode", "tls_enabled",
-        "frontend_url", "ws_url", "steps", "_failed_ids", "_warning_ids",
+        "schema_version",
+        "started_at",
+        "mode",
+        "tls_enabled",
+        "frontend_url",
+        "ws_url",
+        "steps",
+        "_failed_ids",
+        "_warning_ids",
+        "_echo",
     )
 
     def __init__(
@@ -88,6 +102,11 @@ class BridgeProbeReport:
         self.steps: list[BridgeProbeStep] = []
         self._failed_ids: list[str] = []
         self._warning_ids: list[str] = []
+        self._echo: bool = False
+
+    def enable_echo(self) -> None:
+        """Enable live terminal printing of each step as it's added."""
+        self._echo = True
 
     @property
     def ok(self) -> bool:
@@ -107,6 +126,8 @@ class BridgeProbeReport:
             self._failed_ids.append(step.step_id)
         elif step.status == BridgeProbeStatus.warn:
             self._warning_ids.append(step.step_id)
+        if self._echo:
+            self._print_one(step)
 
     def add_ok(
         self,
@@ -183,6 +204,15 @@ class BridgeProbeReport:
             "steps": [s.to_dict() for s in self.steps],
         }
 
+    def _print_one(self, step: BridgeProbeStep) -> None:
+        icon = _status_icon(step.status)
+        line = f"  {icon} [{step.step_id}] {step.label}"
+        if step.message:
+            line += f": {step.message}"
+        if step.remediation and step.status != BridgeProbeStatus.ok:
+            line += f"\n       ↳ {step.remediation}"
+        print(line)
+
     def print_terminal(self, verbose: bool = False) -> None:
         for step in self.steps:
             icon = _status_icon(step.status)
@@ -252,14 +282,14 @@ def _terminal_icon(status: BridgeProbeStatus) -> str:
 def _redact_token(token: str) -> str:
     if not token:
         return "(empty)"
-    if len(token) <= 8:
+    if len(token) <= _REDACT_SHORT_THRESHOLD:
         return "*" * len(token)
     return token[:4] + "…" + token[-4:]
 
 
 __all__ = [
     "BRIDGE_PROBE_SCHEMA",
+    "BridgeProbeReport",
     "BridgeProbeStatus",
     "BridgeProbeStep",
-    "BridgeProbeReport",
 ]

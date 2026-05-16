@@ -48,6 +48,11 @@ from rig_relay.core.tools.builtins.validate import (
     get_profile,
     list_profiles,
 )
+from rig_relay.core.tools.builtins.validate_models import ValidateArgs
+from rig_relay.core.tools.builtins.validate_state_machine import (
+    ValidateProfileEvent,
+    ValidateProfileStateMachine,
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -407,6 +412,60 @@ def test_validate_receipt_no_raw_output() -> None:
     dumped = r.model_dump(mode="json")
     for key in ("stdout", "stderr", "output", "content"):
         assert key not in dumped
+
+
+@pytest.mark.asyncio
+async def test_validate_run_emits_state_transitions(monkeypatch: pytest.MonkeyPatch) -> None:
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.validate import Validate, ValidateToolConfig
+
+    events: list[tuple[str, str]] = []
+
+    class RecordingStateMachine(ValidateProfileStateMachine):
+        def __init__(self) -> None:
+            super().__init__(
+                on_transition=lambda **payload: events.append(
+                    (str(payload["event"]), str(payload["to_state"]))
+                )
+            )
+
+    async def fake_git_state(_cwd: str):
+        return None
+
+    async def fake_run_check(argv, **kwargs):
+        return ValidateCheckResult(
+            check_id="git_status",
+            command_kind="git",
+            command_display="git status",
+            command_fingerprint="abc",
+            status="passed",
+            exit_code=0,
+            duration_ms=1.0,
+        )
+
+    monkeypatch.setattr("rig_relay.core.tools.builtins.validate._collect_git_state", fake_git_state)
+    monkeypatch.setattr("rig_relay.core.tools.builtins.validate._run_check", fake_run_check)
+    monkeypatch.setattr(
+        "rig_relay.core.tools.builtins.validate.compute_input_fingerprint",
+        lambda cwd, cmd_fp, kind: ("input-fp", {}),
+    )
+    monkeypatch.setattr(
+        "rig_relay.core.tools.builtins.validate.Validate._new_state_machine",
+        lambda self: RecordingStateMachine(),
+    )
+
+    tool = Validate(config_getter=lambda: ValidateToolConfig(), state=BaseToolState())
+    args = ValidateArgs(profile="quick")
+    results = []
+    async for event in tool.run(args, None):
+        results.append(event)
+
+    assert any(evt[0] == str(ValidateProfileEvent.PROFILE_REQUESTED) for evt in events)
+    assert any(evt[0] == str(ValidateProfileEvent.CHECKS_SELECTED) for evt in events)
+    assert any(evt[0] == str(ValidateProfileEvent.CHECK_STARTED) for evt in events)
+    assert any(evt[0] == str(ValidateProfileEvent.CHECK_PASSED) for evt in events)
+    assert any(evt[0] == str(ValidateProfileEvent.PROFILE_COMPLETED) for evt in events)
+    assert results
 
 
 def test_validate_receipt_schema_version() -> None:

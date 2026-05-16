@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+
+import pytest
+
+pytestmark = [pytest.mark.migration]
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +25,7 @@ from scripts.rig_relay_dataset_export import (
 )
 
 # ── Fixture helpers ──────────────────────────────────────────────────────
+
 
 
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -367,6 +372,7 @@ def test_export_all_missing_inputs_non_strict(tmp_path: Path) -> None:
 def test_export_all_strict_fails_on_missing(tmp_path: Path) -> None:
     """Strict mode fails when required inputs are missing."""
     import pytest
+
 
     with pytest.raises(FileNotFoundError):
         export_all(
