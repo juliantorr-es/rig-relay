@@ -459,6 +459,8 @@ class Task(
         runtime = SubagentRuntime(
             mission,
             tool_runtime=getattr(ctx, "tool_runtime", None) if ctx else None,
+            trace_recorder=getattr(ctx, "trace_recorder", None) if ctx else None,
+            allow_legacy_direct=False,
         )
 
         try:

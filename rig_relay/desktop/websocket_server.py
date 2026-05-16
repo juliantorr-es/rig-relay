@@ -62,8 +62,11 @@ import ssl
 from typing import Any
 
 from rig_relay.core.logger import logger
-from rig_relay.tracing.recorder import TraceRecorder
-from rig_relay.tracing.store import get_default_trace_store
+from rig_relay.desktop.correlation import (
+    DesktopCorrelation,
+    hash_dict_payload,
+    new_transport_session_id,
+)
 from rig_relay.desktop.intents import execute_desktop_intent, validate_intent_request
 from rig_relay.desktop.progress_events import ProgressEventBuffer
 from rig_relay.desktop.projection import READ_ONLY_ACTIONS, build_projection
@@ -220,6 +223,7 @@ class ProjectionWebSocketServer:
         chat_message_handler: Any | None = None,
         ssl_context: ssl.SSLContext | None = None,
         probe_callback: Callable[[str, str, dict[str, Any]], None] | None = None,
+        trace_recorder: Any | None = None,
     ) -> None:
         self._build_root = build_root
         self._host = host
@@ -237,6 +241,7 @@ class ProjectionWebSocketServer:
         self._chat_message_handler = chat_message_handler
         self._ssl_context = ssl_context
         self._probe_callback = probe_callback
+        self._trace_recorder = trace_recorder
         self._first_projection_sent = False
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
@@ -259,6 +264,39 @@ class ProjectionWebSocketServer:
                 self._probe_callback(step_id, label, details)
             except Exception:
                 pass
+
+    def _new_connection_correlation(self) -> DesktopCorrelation:
+        """Create a DesktopCorrelation for a new WebSocket connection."""
+        return DesktopCorrelation(trace_recorder=self._trace_recorder)
+
+    @staticmethod
+    def _safe_message_hash(message: dict[str, Any]) -> str:
+        """Return a content-safe hash of an incoming/outgoing message."""
+        return hash_dict_payload(message)
+
+    @staticmethod
+    def _safe_message_kind(message: dict[str, Any]) -> str:
+        """Return the message kind for trace safety."""
+        kind = message.get("type", "unknown")
+        if kind in {"auth", "ping", "pong", "subscribe", "unsubscribe"}:
+            return kind
+        if kind in {
+            "send_chat_message",
+            "get_chat_state",
+            "clear_chat",
+            "cancel_chat_response",
+            "chat_state_updated",
+        }:
+            return "chat"
+        if kind in {
+            "desktop_intent",
+            "desktop_intent_request",
+            "desktop_intent_result",
+        }:
+            return "intent"
+        if kind in {"get_projection", "get_available_actions", "get_progress_events"}:
+            return "projection"
+        return "unknown"
 
     @property
     def port(self) -> int:
@@ -389,8 +427,17 @@ class ProjectionWebSocketServer:
         """Handle a single WebSocket connection with token auth + abuse controls."""
         import websockets
 
-        _trace = TraceRecorder(get_default_trace_store())
-        _trace.event("desktop.websocket.connection_begin")
+        corr = self._new_connection_correlation()
+        transport_id = new_transport_session_id()
+        corr.emit_transport_event(
+            "desktop.transport.connection_begin",
+            transport_session_id=transport_id,
+            attributes={
+                "transport.session_id": transport_id,
+                "transport.host": self._host,
+                "transport.port": self._port,
+            },
+        )
 
         async with self._lock:
             self._connection_seq += 1
@@ -441,6 +488,11 @@ class ProjectionWebSocketServer:
                         timeout_task.cancel()
                         message_count = 0
                         rate_window_start = 0.0
+                        corr.emit_transport_event(
+                            "desktop.transport.auth_ok",
+                            transport_session_id=transport_id,
+                            attributes={"transport.session_id": transport_id},
+                        )
                     continue
 
                 # Validate message shape before dispatch
@@ -481,9 +533,27 @@ class ProjectionWebSocketServer:
                 subscribe_task = await self._handle_authenticated_message(
                     websocket, message, subscribe_task
                 )
+                # Emit safe message receipt evidence
+                corr.emit_transport_event(
+                    "desktop.transport.message_received",
+                    transport_session_id=transport_id,
+                    attributes={
+                        "transport.session_id": transport_id,
+                        "message.kind": self._safe_message_kind(message),
+                        "message.payload_hash": self._safe_message_hash(message),
+                        "message.payload_bytes": len(json.dumps(message)),
+                    },
+                )
 
         except (asyncio.CancelledError, ConnectionResetError, BrokenPipeError):
-            pass
+            corr.emit_transport_event(
+                "desktop.transport.error",
+                transport_session_id=transport_id,
+                attributes={
+                    "transport.session_id": transport_id,
+                    "transport.error_kind": "connection_reset",
+                },
+            )
         except websockets.ConnectionClosed:
             pass
         finally:
@@ -494,6 +564,14 @@ class ProjectionWebSocketServer:
                 self._connections.discard(websocket)
                 if subscribe_task is not None and self._active_subscriptions > 0:
                     self._active_subscriptions -= 1
+            corr.emit_transport_event(
+                "desktop.transport.connection_close",
+                transport_session_id=transport_id,
+                attributes={
+                    "transport.session_id": transport_id,
+                    "transport.was_clean": True,
+                },
+            )
 
     async def _reject_oversized(self, websocket: Any) -> None:
         async with self._lock:
@@ -539,8 +617,6 @@ class ProjectionWebSocketServer:
                 self._emit_probe(
                     "bridge:16", "websocket auth accepted", {"token_present": True}
                 )
-                _trace = TraceRecorder(get_default_trace_store())
-                _trace.event("desktop.websocket.auth_ok", {"token_present": True, "token_length": len(provided)})
                 return True
             async with self._lock:
                 self._rejected_count += 1

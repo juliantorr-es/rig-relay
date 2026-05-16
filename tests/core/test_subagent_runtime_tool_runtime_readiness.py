@@ -44,9 +44,10 @@ class TestTaskProductionWiring:
     def test_no_legacy_direct_as_default(self) -> None:
         runtime_path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "runtime.py"
         source = runtime_path.read_text()
-        assert "fallback only when no ToolRuntime" in source, (
-            "Legacy direct path must be explicitly marked as fallback-only"
-        )
+        assert (
+            "fallback only when no ToolRuntime" in source
+            or "explicit opt-in only" in source
+        ), "Legacy direct path must be explicitly marked as fallback-only"
 
 
 class TestToolAdapterEnvelopePassthrough:

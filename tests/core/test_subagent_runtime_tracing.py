@@ -239,9 +239,9 @@ class TestSubagentTracePropagation:
 
 
 class TestSubagentToolExecutionMode:
-    def test_legacy_direct_mode_is_default(self) -> None:
+    def test_tool_runtime_required_when_no_tool_runtime_no_legacy(self) -> None:
         runtime = SubagentRuntime(_make_mission())
-        assert runtime._tool_execution_mode == "legacy_direct"
+        assert runtime._tool_execution_mode == "tool_runtime_required"
 
     def test_mode_appears_in_result_metadata(self) -> None:
         runtime = SubagentRuntime(_make_mission())
@@ -249,7 +249,8 @@ class TestSubagentToolExecutionMode:
         runtime._mono_start = time.monotonic()
 
         result = runtime._build_result(status="completed")
-        assert result.metadata["tool_execution_mode"] == "legacy_direct"
+        assert result.metadata["tool_execution_mode"] == "tool_runtime_required"
+        assert result.metadata["legacy_direct_allowed"] is False
 
     def test_mode_appears_in_trace_attributes(self) -> None:
         store = MagicMock()

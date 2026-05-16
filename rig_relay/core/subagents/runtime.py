@@ -47,12 +47,14 @@ class SubagentRuntime:
         *,
         trace_recorder: Any | None = None,
         tool_runtime: Any | None = None,
+        allow_legacy_direct: bool = False,
     ) -> None:
         self._mission = mission
         self._messages: list[LLMMessage] = []
         self._backend: BackendLike | None = None
         self._tool_manager: ToolManager | None = None
         self._tool_runtime = tool_runtime
+        self._allow_legacy_direct = allow_legacy_direct
         self._config: VibeConfig | None = None
         self._format_handler = APIToolFormatHandler()
         self._mono_start: float = 0.0
@@ -64,9 +66,12 @@ class SubagentRuntime:
         self._trace_id: str | None = None
         self._trace_recorder = trace_recorder
         self._trace_span: Any = None
-        self._tool_execution_mode: str = (
-            "legacy_direct" if tool_runtime is None else "tool_runtime"
-        )
+        if tool_runtime is not None:
+            self._tool_execution_mode = "tool_runtime"
+        elif allow_legacy_direct:
+            self._tool_execution_mode = "legacy_direct"
+        else:
+            self._tool_execution_mode = "tool_runtime_required"
 
     async def execute(self) -> SubagentResult:
         self._mono_start = time.monotonic()
@@ -116,6 +121,7 @@ class SubagentRuntime:
             trace_id=self._trace_id,
             metadata={
                 "tool_execution_mode": self._tool_execution_mode,
+                "legacy_direct_allowed": self._allow_legacy_direct,
                 "duration_ms": int((time.monotonic() - self._mono_start) * 1000),
             },
         )
@@ -298,8 +304,24 @@ class SubagentRuntime:
                 await self._execute_tool_call_governed(tc)
                 continue
 
-            # ── Legacy direct path (fallback only when no ToolRuntime) ─
-            await self._execute_tool_call_legacy(tc)
+            # ── Legacy direct path (explicit opt-in only) ────────────
+            if self._allow_legacy_direct:
+                await self._execute_tool_call_legacy(tc)
+                continue
+
+            # ── No ToolRuntime, no legacy opt-in → structured refusal ─
+            self._messages.append(
+                LLMMessage(
+                    role=Role.tool,
+                    content=(
+                        f"<{TOOL_ERROR_TAG}>ToolRuntime required for"
+                        f" '{tc.tool_name}' — subagent constructed without"
+                        f" tool_runtime= and allow_legacy_direct=False"
+                        f"</{TOOL_ERROR_TAG}>"
+                    ),
+                )
+            )
+            self._tool_calls_failed += 1
 
     async def _execute_tool_call_governed(self, tc: Any) -> None:
         assert self._tool_runtime is not None

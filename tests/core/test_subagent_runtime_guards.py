@@ -160,8 +160,8 @@ class TestSubagentRuntimeDirectExecutionGuards:
             "Legacy path removed entirely — restore as fallback until ToolRuntime is always provided"
         )
         assert (
-            """# ── Legacy direct path (fallback only when no ToolRuntime) ─"""
-            in source
+            "Legacy direct path (explicit opt-in only)" in source
+            or "Legacy direct path (explicit opt-in only)" in source
         ), "Legacy path must be clearly marked as fallback-only"
 
     def test_governed_path_is_primary(self) -> None:

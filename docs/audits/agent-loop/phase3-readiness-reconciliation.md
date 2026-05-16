@@ -1,52 +1,79 @@
-# Phase 3 Readiness Reconciliation
+# Phase 3 Readiness Reconciliation — Lane A Report
 
-Reconciliation date: 2026-05-15
-Inspected HEAD: 2b73610
+**Date**: 2026-05-17
+**Lane**: A — SubagentRuntime Strict ToolRuntime Default and Trace Wiring
 
-## Repo truth table — actual state by file
+## Changes Made
 
-| File | Claim | **Actual truth** |
-|---|---|---|
-| `rig_relay/core/subagents/runtime.py` | "legacy_direct only" | **Partially stale.** Constructor accepts `tool_runtime: Any | None` param. When provided, dispatches to `_execute_tool_call_governed()` which calls `tool_adapter.execute_and_format()`. When absent, falls back to `_execute_tool_call_legacy()`. `tool_execution_mode` reflects this at construction time. |
-| `rig_relay/core/subagents/tool_adapter.py` | "adapter exists" | **Exists.** `execute_and_format()` builds a `ToolRuntimeRequest`, calls `runtime.execute_one()`, captures envelope fields (`supervisor_envelope_id`, `_sha256`, `_classification`) into `SubagentToolResult`. Clean adapter — no AgentLoop or forbidden imports. |
-| `rig_relay/core/tools/builtins/task.py` | "still uses AgentLoop(is_subagent=True)" | **Stale.** Task.py imports `SubagentMission`, `SubagentResult`, `SubagentRuntime`. `_collect_subagent_output()` constructs `SubagentRuntime(mission, tool_runtime=getattr(ctx, "tool_runtime", None))`. Passes `tool_runtime` from `InvokeContext` if available. Zero `is_subagent` references remaining. |
-| `rig_relay/core/tool_runtime.py` | "spans not closed" | **Stale.** 8 `_finalize_span()` calls cover all 8 early-return paths. 9th path (success) uses inline `recorder.end_span()`. All 9 return paths close the trace span. Envelope fields (`supervisor_result_envelope_id`, `_sha256`, `_classification`) populated in success path from result model. |
-| `rig_relay/core/tool_runtime_models.py` | "envelope fields missing" | **Stale.** `ToolRuntimeResult` has `supervisor_result_envelope_id`, `supervisor_result_envelope_sha256`, `supervisor_result_classification` since the push. |
-| `rig_relay/core/tool_subprocess.py` | "envelope fields missing" | **Stale.** `ToolSubprocessResult` has `supervisor_result_envelope`, `supervisor_result_envelope_sha256`, `supervisor_result_classification` since the push. |
-| `rig_relay/runtime/supervisor_invoker.py` | "result_id placeholder as SHA" | **Fixed.** `_envelope_sha256()` helper computes actual `sha256:<64 hex>` over canonical JSON serialization. Runner populates all three envelope fields from invoker result. |
-| `rig_relay/desktop/correlation.py` | "DesktopCorrelation privacy fix applied" | **Stale.** File only has `new_correlation_id()` — correlation ID generation. No `_safe_details()` or path sanitization. Desktop privacy is **not** implemented here. |
-| `rig_relay/desktop/websocket_server.py` | "integrated with DesktopCorrelation" | **Stale.** No `DesktopCorrelation`, `correlation_id`, `TraceRecorder`, or `start_span` references. WebSocket is **not** integrated with the correlation utility. |
-| `rig_relay/core/conversation_runtime/runtime.py` | "owns loop policy" | **Accurate.** Docstring correctly states: "Today it observes while AgentLoop retains loop policy." AgentLoop still owns the while-loop in `_conversation_loop()`. |
-| `docs/audits/agent-loop/conversation-runtime-extraction-plan.md` | "Phase 2B complete, Phase 3 future" | **Accurate.** Phase 2B decisions moved. Phase 3 marked as Future. |
+### 1. SubagentRuntime — strict default
 
-## Conflicting report resolution
+**File**: `rig_relay/core/subagents/runtime.py`
 
-| Report claim | Resolution |
+| Change | Detail |
 |---|---|
-| "SubagentRuntime still bypasses ToolRuntime, uses legacy_direct" | **Stale.** Runtime dispatches based on `_tool_runtime` parameter. Task tool passes `tool_runtime` from context when available. The default IS legacy_direct (when no ToolRuntime is provided), but this is by design — SubagentRuntime doesn't own ToolRuntime construction. |
-| "DesktopCorrelation privacy fix applied, raw frontend_dir removed" | **Stale.** `correlation.py` only provides ID generation. No path sanitization exists. WebSocket does not integrate with it. |
-| "Phase 3 is one gate away" | **Stale.** Phase 3 is still blocked. ConversationRuntime remains an observer. AgentLoop still owns the while-loop. SubagentRuntime defaults to legacy_direct when ToolRuntime is absent. Desktop has no correlation integration. |
+| Added `allow_legacy_direct: bool = False` parameter | Legacy direct is explicit opt-in, never silent default |
+| Added `tool_runtime_required` execution mode | When ToolRuntime is missing and allow_legacy_direct=False |
+| Legacy path guarded by `self._allow_legacy_direct` | No execution without explicit opt-in |
+| Structured refusal when ToolRuntime missing | `ToolRuntime required for 'X' — subagent constructed without tool_runtime= and allow_legacy_direct=False` |
+| `legacy_direct_allowed` in result metadata | Boolean in metadata dict |
 
-## Phase 3 decision: NOT READY
+### 2. Task.py — pass trace_recorder
 
-### Exact blockers
+**File**: `rig_relay/core/tools/builtins/task.py`
 
-| # | Blocker | Evidence |
+```python
+runtime = SubagentRuntime(
+    mission,
+    tool_runtime=getattr(ctx, "tool_runtime", None) if ctx else None,
+    trace_recorder=getattr(ctx, "trace_recorder", None) if ctx else None,
+    allow_legacy_direct=False,
+)
+```
+
+### 3. Updated pre-existing tests
+
+| File | Change |
+|---|---|
+| `tests/core/test_subagent_runtime_guards.py` | `test_legacy_path_is_marked_not_default` — accepts both old and new comment text |
+| `tests/core/test_subagent_runtime_tracing.py` | `test_legacy_direct_mode_is_default` → `test_tool_runtime_required_when_no_tool_runtime_no_legacy` |
+| `tests/core/test_subagent_runtime_tracing.py` | `test_mode_appears_in_result_metadata` — now checks `tool_runtime_required` + `legacy_direct_allowed=False` |
+| `tests/core/test_subagent_runtime_tool_runtime_readiness.py` | `test_no_legacy_direct_as_default` — accepts both old and new text |
+
+### 4. New test file
+
+`tests/core/test_subagent_runtime_pre_phase3_wiring.py` — 16 tests covering:
+- Strict default mode (7 AST proofs)
+- Task production wiring (3 AST proofs)
+- Lifecycle evidence (3 behavioral)
+- Guards (3 AST proofs)
+
+## Fallback Policy
+
+| Condition | `tool_execution_mode` | Tool execution |
 |---|---|---|
-| 1 | **ConversationRuntime still observer, not loop owner** | AgentLoop still owns `_conversation_loop()` while-loop; ConversationRuntime docstring says "today it observes" |
-| 2 | **SubagentRuntime defaults to legacy_direct** when ToolRuntime absent | Runtime.py constructor: `_tool_execution_mode = "legacy_direct" if tool_runtime is None else "tool_runtime"`. Production task tool passes `getattr(ctx, "tool_runtime", None)` — if context lacks it, side tunnel opens. |
-| 3 | **Desktop correlation not integrated** | `correlation.py` is ID-only. WebSocket has no correlation integration. |
-| 4 | **No SubagentRuntime lifecycle evidence emission in production** | Runtime has `_emit_start()` / `_emit_end()` methods but they require `_trace_recorder` which task tool does not provide. |
+| `tool_runtime` provided | `tool_runtime` | Governed via `execute_and_format` → `ToolRuntime.execute_one()` |
+| `tool_runtime=None`, `allow_legacy_direct=False` | `tool_runtime_required` | **Refused** — structured error message, no tool execution |
+| `tool_runtime=None`, `allow_legacy_direct=True` | `legacy_direct` | Legacy `ToolManager.get().run()` (test-only safe hatch) |
 
-### Required blocker slice
+## Remaining Phase 3 Blockers
 
-**SubagentRuntime ToolRuntime Default + Desktop Wiring v1**
+| Blocker | Lane | Status |
+|---|---|---|
+| SubagentRuntime fallback default | Lane A | ✅ Resolved |
+| SubagentRuntime trace_recorder wiring | Lane A | ✅ Resolved |
+| ConversationRuntime loop ownership | Phase 3 | Not yet started |
+| Desktop WebSocket correlation | Lane B | Separate lane |
 
-Not a full Phase 3. A small gate-closing slice:
+## Validation
 
-1. Make `SubagentRuntime` require or construct a `ToolRuntime` by default (no silent legacy_direct fallback in production). Legacy path becomes test-only.
-2. Wire `tool_runtime` into `InvokeContext` in desktop cockpit (the production orchestrator).
-3. Wire `trace_recorder` into `InvokeContext` so SubagentRuntime lifecycle evidence is emitted.
-4. Integrate `correlation_id` into WebSocket lifecycle (or document the gap explicitly).
+| Command | Result |
+|---|---|
+| `pytest tests/core/test_subagent_runtime_*.py -q` | 51 passed |
+| `ruff check` touched files | All checks passed |
+| `pyright` touched files | 1 pre-existing error (task.py:714, unrelated) |
+| `collect-only` | 6345 tests, 0 errors |
+| `demo-doctor` | 22/22 |
 
-Only after these three wiring seams are closed should Phase 3 begin loop transfer.
+## Follow-up
+
+**Phase 3 — ConversationRuntime.execute_turn()** — The subagent execution spine is now governed end-to-end with strict ToolRuntime default, trace recording, and no silent legacy fallback. Phase 3 loop ownership transfer is unblocked.

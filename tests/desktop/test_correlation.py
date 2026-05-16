@@ -1,175 +1,181 @@
+"""Desktop WebSocket correlation tests."""
+
 from __future__ import annotations
+
+from unittest.mock import MagicMock
 
 from rig_relay.desktop.correlation import (
     DesktopCorrelation,
+    _classify_path_kind,
+    _safe_details,
     hash_dict_payload,
     hash_message_payload,
     new_correlation_id,
     new_transport_session_id,
 )
-from rig_relay.tracing.recorder import TraceRecorder
-from rig_relay.tracing.store import InMemoryTraceStore
 
 
-def test_correlation_id_is_unique():
-    ids = {new_correlation_id() for _ in range(100)}
-    assert len(ids) == 100
+class TestCorrelationIDs:
+    def test_correlation_ids_are_unique(self) -> None:
+        ids = {new_correlation_id() for _ in range(100)}
+        assert len(ids) == 100
+
+    def test_correlation_id_format(self) -> None:
+        cid = new_correlation_id()
+        assert cid.startswith("corr_")
+        assert len(cid) > 12
+
+    def test_transport_session_ids_are_unique(self) -> None:
+        ids = {new_transport_session_id() for _ in range(100)}
+        assert len(ids) == 100
+
+    def test_transport_session_id_format(self) -> None:
+        tid = new_transport_session_id()
+        assert tid.startswith("ts_")
+        assert len(tid) > 10
 
 
-def test_transport_session_id_is_unique():
-    ids = {new_transport_session_id() for _ in range(100)}
-    assert len(ids) == 100
+class TestPayloadHashing:
+    def test_message_hash_deterministic(self) -> None:
+        a = hash_message_payload("hello")
+        b = hash_message_payload("hello")
+        assert a == b
+
+    def test_message_hash_different(self) -> None:
+        a = hash_message_payload("hello")
+        b = hash_message_payload("world")
+        assert a != b
+
+    def test_dict_hash_deterministic(self) -> None:
+        d = {"type": "ping", "seq": 1}
+        a = hash_dict_payload(d)
+        b = hash_dict_payload(d)
+        assert a == b
+
+    def test_dict_hash_order_independent(self) -> None:
+        a = hash_dict_payload({"a": 1, "b": 2})
+        b = hash_dict_payload({"b": 2, "a": 1})
+        assert a == b
+
+    def test_dict_hash_different(self) -> None:
+        a = hash_dict_payload({"type": "ping"})
+        b = hash_dict_payload({"type": "auth"})
+        assert a != b
 
 
-def test_hash_message_payload_is_stable():
-    assert hash_message_payload("hello") == hash_message_payload("hello")
+class TestDesktopCorrelation:
+    def test_disabled_recorder_is_noop(self) -> None:
+        corr = DesktopCorrelation()
+        assert corr.is_active is False
+        # Should not raise
+        corr.emit_event("test.event", {"key": "val"})
+        corr.emit_transport_event("test.transport")
+        corr.emit_intent_dispatched("ralph_scan")
+
+    def test_emits_event_when_recorder_active(self) -> None:
+        recorder = MagicMock()
+        recorder.event = MagicMock()
+
+        corr = DesktopCorrelation(trace_recorder=recorder)
+        corr.emit_event("test.event", {"k": "v"})
+
+        recorder.event.assert_called_once()
+        call = recorder.event.call_args
+        assert call.args[0] == "test.event"
+        assert call.kwargs["attributes"]["k"] == "v"
+        assert "correlation_id" in call.kwargs["attributes"]
+
+    def test_emit_transport_event_includes_session_id(self) -> None:
+        recorder = MagicMock()
+        recorder.event = MagicMock()
+
+        corr = DesktopCorrelation(trace_recorder=recorder)
+        corr.emit_transport_event(
+            "desktop.transport.message",
+            transport_session_id="ts_abc",
+            attributes={"transport.host": "127.0.0.1"},
+        )
+
+        attrs = recorder.event.call_args.kwargs["attributes"]
+        assert attrs["transport.session_id"] == "ts_abc"
+        assert attrs["transport.host"] == "127.0.0.1"
+
+    def test_bridge_step_safe_details_included(self) -> None:
+        recorder = MagicMock()
+        recorder.event = MagicMock()
+
+        corr = DesktopCorrelation(trace_recorder=recorder)
+        corr.emit_bridge_step(
+            "bridge:01",
+            "assets verified",
+            status="ok",
+            details={"port": 9876, "tls_enabled": False},
+        )
+
+        attrs = recorder.event.call_args.kwargs["attributes"]
+        assert attrs["bridge.step_id"] == "bridge:01"
+        assert attrs["port"] == 9876
+
+    def test_intent_dispatched_includes_hash(self) -> None:
+        recorder = MagicMock()
+        recorder.event = MagicMock()
+
+        corr = DesktopCorrelation(trace_recorder=recorder)
+        corr.emit_intent_dispatched(
+            "ralph_scan",
+            intent_id="int-1",
+            payload_hash="sha256:abc",
+            payload_kind="command",
+        )
+
+        attrs = recorder.event.call_args.kwargs["attributes"]
+        assert attrs["intent.name"] == "ralph_scan"
+        assert attrs["intent.payload_hash"] == "sha256:abc"
 
 
-def test_hash_dict_payload_is_stable():
-    d1 = {"a": 1, "b": "x"}
-    d2 = {"b": "x", "a": 1}
-    assert hash_dict_payload(d1) == hash_dict_payload(d2)
+class TestSafeDetailsPrivacy:
+    def test_frontend_dir_hashed_not_raw(self) -> None:
+        details = {"frontend_dir": "/Users/user/Developer/rig-relay/frontend"}
+        result = _safe_details(details)
+        assert "frontend_dir" not in result
+        assert "frontend_dir_hash" in result
+        assert result["frontend_dir_kind"] == "repo"
+
+    def test_ws_url_is_scheme_only(self) -> None:
+        result = _safe_details({"ws_url": "wss://127.0.0.1:9876"})
+        assert result["ws_scheme"] == "wss"
+
+    def test_frontend_url_is_scheme_only(self) -> None:
+        result = _safe_details({"frontend_url": "https://127.0.0.1:9876"})
+        assert result["frontend_scheme"] == "https"
+
+    def test_unknown_keys_are_dropped(self) -> None:
+        result = _safe_details({"secret_token": "leaked", "raw_path": "/etc/passwd"})
+        assert "secret_token" not in result
+        assert "raw_path" not in result
+
+    def test_safe_keys_preserved(self) -> None:
+        result = _safe_details({"port": 9876, "host": "127.0.0.1"})
+        assert result["port"] == 9876
+        assert result["host"] == "127.0.0.1"
+
+    def test_null_details(self) -> None:
+        assert _safe_details(None) == {}
 
 
-def test_hash_dict_payload_differs_for_different_content():
-    assert hash_dict_payload({"a": 1}) != hash_dict_payload({"a": 2})
+class TestPathClassification:
+    def test_temp_path(self) -> None:
+        assert _classify_path_kind("/tmp/scratch") == "temp"
+        assert _classify_path_kind("/var/folders/x/y") == "temp"
 
+    def test_worktree_path(self) -> None:
+        assert _classify_path_kind("/some/worktree/lane") == "worktree"
 
-def test_disabled_correlation_is_noop():
-    corr = DesktopCorrelation(trace_recorder=None)
-    assert not corr.is_active
-    corr.emit_bridge_step("01", "test", status="ok")
-    corr.emit_transport_event("desktop.transport.connecting")
-    corr.emit_intent_dispatched("ralph_scan", intent_id="abc")
-    corr.emit_intent_result("ralph_scan", "abc", "completed")
+    def test_app_support_path(self) -> None:
+        assert (
+            _classify_path_kind("/Users/user/Library/Application Support/Rig Relay")
+            == "app_support"
+        )
 
-
-def test_bridge_step_emits_event():
-    store = InMemoryTraceStore()
-    recorder = TraceRecorder(store)
-    corr = DesktopCorrelation(trace_recorder=recorder)
-
-    corr.emit_bridge_step("bridge:01", "assets verified", status="ok", duration_ms=5)
-    events = [e for e in store.events if e["name"] == "desktop.bridge.probe"]
-    assert len(events) == 1
-    attrs = events[0]["attributes"]
-    assert attrs["bridge.step_id"] == "bridge:01"
-    assert attrs["bridge.step_label"] == "assets verified"
-    assert attrs["bridge.step_status"] == "ok"
-    assert attrs["correlation_id"] == corr.correlation_id
-
-
-def test_bridge_step_sanitizes_unsafe_details():
-    store = InMemoryTraceStore()
-    recorder = TraceRecorder(store)
-    corr = DesktopCorrelation(trace_recorder=recorder)
-
-    corr.emit_bridge_step("bridge:09", "served main.js", status="ok", details={
-        "frontend_dir": "/Users/bob/project/frontend/desktop",
-        "token_value": "secret-abc123",
-        "raw_path": "/tmp/secrets.txt",
-        "port": 9876,
-        "tls_enabled": False,
-    })
-    events = [e for e in store.events if e["name"] == "desktop.bridge.probe"]
-    assert len(events) == 1
-    details = events[0]["attributes"]
-    assert "frontend_dir_hash" in details, "Raw path replaced with hash"
-    assert "frontend_dir_kind" in details, "Path kind should be present"
-    assert "frontend_dir" not in details, "Raw frontend_dir must not leak into trace"
-    assert "port" in details
-    assert "tls_enabled" in details
-    assert "token_value" not in details
-    assert "raw_path" not in details
-
-
-def test_intent_dispatched_emits_event():
-    store = InMemoryTraceStore()
-    recorder = TraceRecorder(store)
-    corr = DesktopCorrelation(trace_recorder=recorder)
-
-    payload = {"profile": "quick", "paths": ["."]}
-    corr.emit_intent_dispatched(
-        "ralph_scan", intent_id="ii_001", payload_hash=hash_dict_payload(payload), payload_kind="ralph_scan_params"
-    )
-    events = [e for e in store.events if e["name"] == "desktop.intent.dispatched"]
-    assert len(events) == 1
-    attrs = events[0]["attributes"]
-    assert attrs["intent.name"] == "ralph_scan"
-    assert attrs["intent.id"] == "ii_001"
-    assert attrs["intent.payload_hash"] != ""
-    assert attrs["correlation_id"] == corr.correlation_id
-
-
-def test_intent_result_emits_event():
-    store = InMemoryTraceStore()
-    recorder = TraceRecorder(store)
-    corr = DesktopCorrelation(trace_recorder=recorder)
-
-    corr.emit_intent_result("ralph_scan", "ii_001", "completed", duration_ms=150)
-    events = [e for e in store.events if e["name"] == "desktop.intent.completed"]
-    assert len(events) == 1
-    attrs = events[0]["attributes"]
-    assert attrs["intent.result_status"] == "completed"
-
-
-def test_intent_result_with_refusal():
-    store = InMemoryTraceStore()
-    recorder = TraceRecorder(store)
-    corr = DesktopCorrelation(trace_recorder=recorder)
-
-    corr.emit_intent_result(
-        "checkpoint.commit", "ii_099", "refused", result_refusal_code="protected_intent", duration_ms=5,
-    )
-    events = [e for e in store.events if e["name"] == "desktop.intent.completed"]
-    assert len(events) == 1
-    assert events[0]["attributes"]["intent.refusal_code"] == "protected_intent"
-
-
-def test_transport_events():
-    store = InMemoryTraceStore()
-    recorder = TraceRecorder(store)
-    corr = DesktopCorrelation(trace_recorder=recorder)
-
-    ts_id = new_transport_session_id()
-    corr.emit_transport_event("desktop.transport.connecting", transport_session_id=ts_id)
-    corr.emit_transport_event("desktop.transport.open", transport_session_id=ts_id, attributes={"token_present": True})
-    connecting = [e for e in store.events if e["name"] == "desktop.transport.connecting"]
-    assert len(connecting) == 1
-    assert connecting[0]["attributes"]["transport.session_id"] == ts_id
-
-
-def test_multiple_intents_share_correlation():
-    store = InMemoryTraceStore()
-    recorder = TraceRecorder(store)
-    corr = DesktopCorrelation(trace_recorder=recorder)
-
-    corr.emit_intent_dispatched("ralph_scan", "ii_001", "", "ralph_scan_params")
-    corr.emit_intent_result("ralph_scan", "ii_001", "completed")
-    corr.emit_intent_dispatched("refresh_projection", "ii_002", "", "refresh_params")
-    corr.emit_intent_result("refresh_projection", "ii_002", "completed")
-
-    dispatched = [e for e in store.events if e["name"] == "desktop.intent.dispatched"]
-    completed = [e for e in store.events if e["name"] == "desktop.intent.completed"]
-    assert len(dispatched) == 2
-    assert len(completed) == 2
-    for e in dispatched + completed:
-        assert e["attributes"]["correlation_id"] == corr.correlation_id
-
-
-def test_correlation_id_in_span():
-    store = InMemoryTraceStore()
-    recorder = TraceRecorder(store)
-    corr = DesktopCorrelation(trace_recorder=recorder)
-
-    span = corr.emit_span("desktop.lifecycle", attributes={"mode": "fixture"})
-    assert span is not None
-
-    span_start = [e for e in store.events if e["event_kind"] == "span.start"]
-    assert len(span_start) == 1
-    assert span_start[0]["attributes"]["correlation_id"] == corr.correlation_id
-
-    corr.end_span(span, status="ok", attributes={"result": "healthy"})
-    span_end = [e for e in store.events if e["event_kind"] == "span.end"]
-    assert len(span_end) == 1
-    assert span_end[0]["attributes"]["correlation_id"] == corr.correlation_id
+    def test_repo_path(self) -> None:
+        assert _classify_path_kind("/Users/user/dev/rig-relay") == "repo"

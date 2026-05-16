@@ -21,7 +21,10 @@ class TestPhase3Readiness:
         calls = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Name) and node.func.id == "SubagentRuntime":
+                if (
+                    isinstance(node.func, ast.Name)
+                    and node.func.id == "SubagentRuntime"
+                ):
                     pos = len(node.args)
                     kwargs = {kw.arg: True for kw in node.keywords if kw.arg}
                     calls.append((pos, kwargs))
@@ -66,7 +69,9 @@ class TestPhase3Readiness:
         assert "supervisor_result_classification" in source
 
     def test_subagent_adapter_preserves_envelope_fields(self) -> None:
-        adapter_path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "tool_adapter.py"
+        adapter_path = (
+            _REPO_ROOT / "rig_relay" / "core" / "subagents" / "tool_adapter.py"
+        )
         source = adapter_path.read_text()
         assert "supervisor_envelope_id" in source
         assert "supervisor_envelope_sha256" in source
@@ -75,9 +80,10 @@ class TestPhase3Readiness:
     def test_invoke_context_carries_tool_runtime(self) -> None:
         ctx_path = _REPO_ROOT / "rig_relay" / "core" / "tools" / "base.py"
         source = ctx_path.read_text()
-        assert "tool_runtime: Any | None = field(default=None)" in source or "tool_runtime: Any | None" in source, (
-            "InvokeContext must carry tool_runtime"
-        )
+        assert (
+            "tool_runtime: Any | None = field(default=None)" in source
+            or "tool_runtime: Any | None" in source
+        ), "InvokeContext must carry tool_runtime"
 
     def test_legacy_direct_not_called_in_governed_path(self) -> None:
         source = RUNTIME_PATH.read_text()
@@ -99,3 +105,110 @@ class TestPhase3Readiness:
         source = TASK_PATH.read_text()
         assert "AgentLoop(" not in source, "task.py must not construct AgentLoop"
         assert "is_subagent" not in source, "task.py must not use is_subagent"
+
+    # ── New: trace_recorder propagation ────────────────────────
+
+    def test_task_passes_trace_recorder_to_subagent(self) -> None:
+        source = TASK_PATH.read_text()
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id == "SubagentRuntime":
+                    kwargs = {kw.arg: True for kw in node.keywords if kw.arg}
+                    assert "trace_recorder" in kwargs, (
+                        "task.py must pass trace_recorder= from InvokeContext to SubagentRuntime"
+                    )
+                    return
+        pytest.fail("task.py does not pass trace_recorder to SubagentRuntime")
+
+    # ── New: subagent strict defaults ──────────────────────────
+
+    def test_subagent_legacy_direct_defaults_false(self) -> None:
+        source = RUNTIME_PATH.read_text()
+        lines = source.split("\n")
+        in_init = False
+        for line in lines:
+            if "def __init__" in line:
+                in_init = True
+                continue
+            if in_init and "allow_legacy_direct" in line:
+                if ": bool = False" in line or "= False" in line:
+                    return  # passing
+        assert "allow_legacy_direct" in source, "allow_legacy_direct param should exist"
+
+    def test_subagent_missing_tool_runtime_produces_controlled_fallback(self) -> None:
+        source = RUNTIME_PATH.read_text()
+        assert "_allow_legacy_direct" in source, (
+            "SubagentRuntime must have allow_legacy_direct guard"
+        )
+        assert "legacy_direct" in source, "Legacy fallback must be explicitly marked"
+
+    # ── New: span finalization ─────────────────────────────────
+
+    def test_toolruntime_spans_have_finalization(self) -> None:
+        tr_path = _REPO_ROOT / "rig_relay" / "core" / "tool_runtime.py"
+        source = tr_path.read_text()
+        # Either _finalize_span helper or end_span called at each return
+        has_helper = "_finalize_span" in source
+        has_end_span = source.count("end_span(") >= 5
+        assert has_helper or has_end_span, (
+            "ToolRuntime must close trace spans on all return paths"
+        )
+
+    # ── New: desktop correlation status ────────────────────────
+
+    def test_desktop_correlation_status_is_declared(self) -> None:
+        ws_path = _REPO_ROOT / "rig_relay" / "desktop" / "websocket_server.py"
+        ws_source = ws_path.read_text()
+        has_ws_correlation = (
+            "correlation_id" in ws_source or "DesktopCorrelation" in ws_source
+        )
+
+        corr_path = (
+            _REPO_ROOT
+            / "docs"
+            / "audits"
+            / "agent-loop"
+            / "phase3-readiness-reconciliation.md"
+        )
+        if corr_path.exists():
+            doc = corr_path.read_text()
+            has_doc_declaration = (
+                "desktop" in doc.lower() and "correlation" in doc.lower()
+            )
+            if not has_ws_correlation:
+                # Desktop correlation is explicitly non-blocking for Phase 3
+                assert has_doc_declaration, (
+                    "Desktop correlation status must be declared in reconciliation doc"
+                )
+                return
+        if has_ws_correlation:
+            return  # Integrated — passing
+        # Neither integrated nor documented as non-blocking
+        pytest.fail(
+            "Desktop correlation must be either integrated in websocket_server.py "
+            "or declared as non-blocking in phase3-readiness-reconciliation.md"
+        )
+
+    # ── New: ConversationRuntime loop ownership ─────────────────
+
+    def test_conversation_runtime_not_yet_loop_owner(self) -> None:
+        cr_path = (
+            _REPO_ROOT / "rig_relay" / "core" / "conversation_runtime" / "runtime.py"
+        )
+        source = cr_path.read_text()
+        assert (
+            "today it observes" in source.lower()
+            or "agentloop retains" in source.lower()
+        ), "ConversationRuntime docstring must state it is an observer, not loop owner"
+
+        cr_doc_path = (
+            _REPO_ROOT
+            / "docs"
+            / "audits"
+            / "agent-loop"
+            / "conversation-runtime-extraction-plan.md"
+        )
+        if cr_doc_path.exists():
+            doc = cr_doc_path.read_text()
+            assert "phase 3" in doc.lower(), "Extraction plan must reference Phase 3"

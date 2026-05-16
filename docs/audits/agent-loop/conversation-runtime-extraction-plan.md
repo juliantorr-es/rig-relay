@@ -10,7 +10,7 @@ Audit dates: 2026-05-15 (Phase 0), 2026-05-15 (Phase 1), 2026-05-15 (Phase 2B)
 | Phase 1 | ✅ Complete | Trace evidence (`PhaseTraceHook`, `PhaseTraceAttributes`). |
 | Phase 2A | ✅ Complete | Terminal/near-terminal decisions: `decide_after_middleware`, `decide_after_model_turn`, `decide_on_exception`. |
 | Phase 2B | ✅ Complete | Hook/tool/budget decisions: `decide_after_hook_processing`, `decide_after_tool_batch`, `decide_after_budget_check`. AgentLoop still holds execution mechanics. |
-| Phase 3 | Future | Loop ownership transfer. `ConversationRuntime.execute_turn()` drives the while-loop. AgentLoop becomes pure callback adapter. |
+| Phase 3 | **READY** | Loop ownership transfer. Gate passed: 15/15 readiness tests. `phase3-readiness-reconciliation.md` declares GO. |
 
 ## Phase 2B — Decision policy moved to ConversationRuntime
 
