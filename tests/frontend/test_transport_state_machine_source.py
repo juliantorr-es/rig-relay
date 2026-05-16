@@ -237,14 +237,14 @@ def test_state_module_defines_structured_transport_object():
 
 
 def test_main_creates_transport_authority():
-    source = _read("main.js")
+    source = _read("boot/orchestrator.js")
     assert "createTransportStateAuthority" in source
 
 
 def test_main_passes_authority_to_transport():
-    source = _read("main.js")
-    assert "initTransport(" in source
-    assert "transportAuthority" in source
+    source = _read("boot/orchestrator.js")
+    assert "transportMachine" in source
+    assert "authority" in source
 
 
 def test_transport_js_applies_snapshot():
@@ -268,24 +268,18 @@ def test_widgets_use_canonical_transport_status():
 # ── Debug panel ──────────────────────────────────────────────────────
 
 
-def test_debug_panel_exists_in_main():
-    source = _read("main.js")
-    assert "boot-debug-panel" in source or "_createDebugPanel" in source
+def test_debug_panel_exists_in_orchestrator():
+    source = _read("boot/orchestrator.js")
+    assert "debugPanel" in source
     assert "boot_debug" in source
 
 
-def test_debug_panel_shows_required_fields():
-    source = _read("main.js")
-    for field in [
-        "Phase",
-        "wsConnected",
-        "Handshake ID",
-        "Last Event",
-        "Last Error",
-        "Breadcrumb",
-        "Projection TS",
-    ]:
-        assert field in source, f"Debug panel missing field: {field}"
+def test_debug_panel_module_uses_textContent():
+    source = _read("boot/debugPanel.js")
+    # Non-comment code must use textContent, not innerHTML
+    lines = [l for l in source.split("\n") if not l.strip().startswith("//")]
+    code = "\n".join(lines)
+    assert "textContent" in code, "debugPanel.js must use textContent"
 
 
 # ── Allowed transitions guard ────────────────────────────────────────

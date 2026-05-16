@@ -10,7 +10,12 @@ from rig_relay.context.models import ContextMode, ContextRequest, ContextScope
 
 class TestRendererPublicAPI:
     def test_compiler_uses_renderer_public_section_count(self) -> None:
-        path = Path(__file__).resolve().parent.parent.parent / "rig_relay" / "context" / "compiler.py"
+        path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "rig_relay"
+            / "context"
+            / "compiler.py"
+        )
         source = path.read_text()
         assert "renderer._sections" not in source, (
             "Compiler must not access renderer._sections directly"
@@ -20,7 +25,12 @@ class TestRendererPublicAPI:
         )
 
     def test_compiler_uses_renderer_add_warning(self) -> None:
-        path = Path(__file__).resolve().parent.parent.parent / "rig_relay" / "context" / "compiler.py"
+        path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "rig_relay"
+            / "context"
+            / "compiler.py"
+        )
         source = path.read_text()
         assert "renderer.add_warning" in source, (
             "Compiler must use renderer.add_warning() public API"
@@ -80,14 +90,24 @@ class TestCanonicalHashStable:
 
 class TestBuildReceiptHardening:
     def test_build_receipt_no_bare_except_pass(self) -> None:
-        path = Path(__file__).resolve().parent.parent.parent / "rig_relay" / "context" / "compiler.py"
+        path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "rig_relay"
+            / "context"
+            / "compiler.py"
+        )
         source = path.read_text()
         assert "ContextWarningCode.FINDINGS_SUMMARY_FAILED" in source, (
             "build_receipt must surface findings failures as warnings"
         )
 
     def test_renderer_has_add_warning(self) -> None:
-        path = Path(__file__).resolve().parent.parent.parent / "rig_relay" / "context" / "renderer.py"
+        path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "rig_relay"
+            / "context"
+            / "renderer.py"
+        )
         source = path.read_text()
         assert "def add_warning" in source, (
             "Renderer must have public add_warning method"

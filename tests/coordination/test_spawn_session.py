@@ -1,6 +1,7 @@
 """Tests for the spawn session planner and spawn plan schema."""
 
 from __future__ import annotations
+
 import pytest
 
 pytestmark = [pytest.mark.integration]

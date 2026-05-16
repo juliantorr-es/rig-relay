@@ -85,7 +85,11 @@ class RalphBackgroundPolicy(BaseModel):
         return violations
 
     def active_lanes_allowed(self, current_count: int) -> bool:
-        return self.enabled and self.allow_isolated_worktree_creation and current_count < self.max_active_lanes
+        return (
+            self.enabled
+            and self.allow_isolated_worktree_creation
+            and current_count < self.max_active_lanes
+        )
 
     def can_create_worktree(self) -> bool:
         return self.enabled and self.allow_isolated_worktree_creation

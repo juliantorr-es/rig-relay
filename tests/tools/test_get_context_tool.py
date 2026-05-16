@@ -75,6 +75,7 @@ class TestGetContextToolRegistration:
 
     def test_tool_is_not_abstract(self) -> None:
         import inspect
+
         assert not inspect.isabstract(GetContext)
         # Should be instantiable
         config = GetContextToolConfig()
@@ -90,6 +91,7 @@ class TestGetContextToolReadOnly:
     async def test_run_does_not_write_files(self, tmp_path: Path) -> None:
         """Run get_context in a temp dir with no git repo and verify no files created."""
         import os
+
         orig_cwd = Path.cwd()
         os.chdir(str(tmp_path))
 
@@ -203,6 +205,7 @@ class TestGetContextCollisionMode:
     @pytest.mark.asyncio
     async def test_does_not_write_files_in_collision_mode(self, tmp_path: Path) -> None:
         import os
+
         orig_cwd = Path.cwd()
         os.chdir(str(tmp_path))
 

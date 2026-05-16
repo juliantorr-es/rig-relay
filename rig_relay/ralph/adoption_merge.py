@@ -95,7 +95,9 @@ def execute_adoption_merge(
         try:
             actual = subprocess.run(
                 ["git", "-C", str(root), "rev-parse", source_branch],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             ).stdout.strip()
             if actual and actual != source_head_sha:
                 return AdoptionMergeResult(
@@ -112,16 +114,32 @@ def execute_adoption_merge(
         root = repo_root or Path.cwd()
         subprocess.run(
             ["git", "-C", str(root), "checkout", target_branch],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         result = subprocess.run(
-            ["git", "-C", str(root), "merge", "--no-ff", source_branch, "-m",
-             f"ralph adoption: merge {source_branch} into {target_branch}"],
-            capture_output=True, text=True, timeout=30,
+            [
+                "git",
+                "-C",
+                str(root),
+                "merge",
+                "--no-ff",
+                source_branch,
+                "-m",
+                f"ralph adoption: merge {source_branch} into {target_branch}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode != 0:
-            subprocess.run(["git", "-C", str(root), "merge", "--abort"],
-                          capture_output=True, text=True, timeout=10)
+            subprocess.run(
+                ["git", "-C", str(root), "merge", "--abort"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
             return AdoptionMergeResult(
                 status="failed",
                 source_branch=source_branch,
@@ -132,7 +150,9 @@ def execute_adoption_merge(
 
         sha_result = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         merge_sha = sha_result.stdout.strip()
         merge_result = AdoptionMergeResult(
@@ -154,7 +174,4 @@ def execute_adoption_merge(
         )
 
 
-__all__ = [
-    "AdoptionMergeResult",
-    "execute_adoption_merge",
-]
+__all__ = ["AdoptionMergeResult", "execute_adoption_merge"]

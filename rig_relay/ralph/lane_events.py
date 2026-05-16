@@ -55,8 +55,7 @@ class LaneEvent(BaseModel):
 
     def compute_sha256(self) -> str:
         payload = self.model_dump_json(
-            exclude={"event_sha256", "occurred_at", "event_id"},
-            exclude_none=True,
+            exclude={"event_sha256", "occurred_at", "event_id"}, exclude_none=True
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -79,8 +78,7 @@ class LaneReceipt(BaseModel):
 
     def compute_sha256(self) -> str:
         payload = self.model_dump_json(
-            exclude={"receipt_sha256", "created_at"},
-            exclude_none=True,
+            exclude={"receipt_sha256", "created_at"}, exclude_none=True
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 

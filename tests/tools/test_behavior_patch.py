@@ -31,7 +31,9 @@ def test_behavior_patch_args_validation() -> None:
 
 
 def test_behavior_patch_build_receipt() -> None:
-    tool = BehaviorPatch(config_getter=lambda: BehaviorPatchConfig(), state=BaseToolState())
+    tool = BehaviorPatch(
+        config_getter=lambda: BehaviorPatchConfig(), state=BaseToolState()
+    )
     result = BehaviorPatchResult(
         status="passed",
         behavior_statement="Add explicit state transitions",
@@ -61,7 +63,9 @@ def test_behavior_patch_build_receipt() -> None:
 
 @pytest.mark.asyncio
 async def test_behavior_patch_refuse_broad_command() -> None:
-    tool = BehaviorPatch(config_getter=lambda: BehaviorPatchConfig(), state=BaseToolState())
+    tool = BehaviorPatch(
+        config_getter=lambda: BehaviorPatchConfig(), state=BaseToolState()
+    )
     args = BehaviorPatchArgs(
         behavior_statement="Refactor everything",
         target_files=["rig_relay/core/agent_loop.py"],
@@ -80,7 +84,9 @@ async def test_behavior_patch_refuse_broad_command() -> None:
 
 @pytest.mark.asyncio
 async def test_behavior_patch_refuse_unsafe_target() -> None:
-    tool = BehaviorPatch(config_getter=lambda: BehaviorPatchConfig(), state=BaseToolState())
+    tool = BehaviorPatch(
+        config_getter=lambda: BehaviorPatchConfig(), state=BaseToolState()
+    )
     args = BehaviorPatchArgs(
         behavior_statement="Disable security guard to allow arbitrary bash",
         target_files=["rig_relay/core/guard.py"],
@@ -99,7 +105,9 @@ async def test_behavior_patch_refuse_unsafe_target() -> None:
 
 @pytest.mark.asyncio
 async def test_behavior_patch_successful_run_skeleton() -> None:
-    tool = BehaviorPatch(config_getter=lambda: BehaviorPatchConfig(), state=BaseToolState())
+    tool = BehaviorPatch(
+        config_getter=lambda: BehaviorPatchConfig(), state=BaseToolState()
+    )
     args = BehaviorPatchArgs(
         behavior_statement="Implement explicit DesktopBridgeStateMachine",
         target_files=["rig_relay/desktop/bridge_server.py"],

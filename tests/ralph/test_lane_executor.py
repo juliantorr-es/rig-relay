@@ -45,12 +45,23 @@ def test_execute_read_only_in_temp_worktree():
         root = Path(tmp) / "repo"
         root.mkdir()
         subprocess.run(["git", "-C", str(root), "init"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.email", "test@test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"], capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.email", "test@test"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"],
+            capture_output=True,
+        )
 
         wt = root / "worktree"
-        subprocess.run(["git", "-C", str(root), "worktree", "add", str(wt), "HEAD"], capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(root), "worktree", "add", str(wt), "HEAD"],
+            capture_output=True,
+        )
 
         lane = RalphLane(
             lane_id="lane-exec-1",
@@ -101,10 +112,21 @@ def test_commit_in_temp_worktree():
         root = Path(tmp) / "repo"
         root.mkdir()
         subprocess.run(["git", "-C", str(root), "init"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.email", "test@test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "checkout", "-b", "ralph/test-commit"], capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.email", "test@test"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "checkout", "-b", "ralph/test-commit"],
+            capture_output=True,
+        )
 
         (root / "test.txt").write_text("hello")
         lane = RalphLane(lane_id="lane-c1", branch_name="ralph/test-commit")

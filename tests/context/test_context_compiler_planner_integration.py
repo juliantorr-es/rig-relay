@@ -76,9 +76,7 @@ class TestPlannerIntegration:
         request = ContextRequest(
             mode=ContextMode.PACKET,
             scope=ContextScope(
-                paths=[str(tmp_path / "src")],
-                include_tests=True,
-                include_docs=True,
+                paths=[str(tmp_path / "src")], include_tests=True, include_docs=True
             ),
             budget=ContextBudget(max_tokens=500),
         )

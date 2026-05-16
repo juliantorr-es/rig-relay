@@ -46,10 +46,19 @@ def test_demo_policy_creates_worktree_in_temp_repo():
         root = Path(tmp) / "repo"
         root.mkdir()
         import subprocess
+
         subprocess.run(["git", "-C", str(root), "init"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.email", "test@test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"], capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.email", "test@test"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"],
+            capture_output=True,
+        )
 
         policy = demo_policy()
         policy.lane_root = str(root / ".rig" / "worktrees" / "ralph")
@@ -68,16 +77,27 @@ def test_max_active_lanes_refused():
         root = Path(tmp) / "repo"
         root.mkdir()
         import subprocess
+
         subprocess.run(["git", "-C", str(root), "init"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.email", "test@test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"], capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.email", "test@test"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"],
+            capture_output=True,
+        )
 
         policy = demo_policy()
         policy.max_active_lanes = 1
         policy.lane_root = str(root / ".rig" / "worktrees" / "ralph")
         lane = RalphLane(lane_id="lane-max-1")
 
-        result = create_lane_worktree(lane, policy, repo_root=root, existing_lane_count=1)
+        result = create_lane_worktree(
+            lane, policy, repo_root=root, existing_lane_count=1
+        )
         assert result.status == "refused"
         assert "max active" in result.error.lower()

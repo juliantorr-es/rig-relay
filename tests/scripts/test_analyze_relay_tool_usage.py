@@ -15,6 +15,7 @@ from scripts.analyze_relay_tool_usage import (
 
 pytestmark = [pytest.mark.migration]
 
+
 def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:

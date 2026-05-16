@@ -282,35 +282,40 @@ Rules:
 
 ## Documentation Policy — Canonical JSON Artifacts
 
-New documentation must be created as **canonical JSON artifacts**, not Markdown, unless the file is in the explicitly allowed Markdown exceptions list below.
-
-Old Markdown docs must be migrated to JSON before deletion. Markdown deletion is only allowed when:
-- the JSON replacement exists,
-- the JSON replacement preserves the content semantically,
-- there is a migration map from old path to new path,
-- references are updated,
-- tests/proofs pass,
-- the deletion is listed in the final report.
-
-### Canonical docs paths
-- `docs/json/` — primary JSON documentation artifacts
-- `docs/governance/*.json` — governance artifacts
-- `docs/proofs/*.json` — proof artifacts
-- `docs/schemas/*.schema.json` — JSON Schema artifacts
+New project documentation must be written as **canonical JSON artifacts** using the `rig.documentation.page.v1` schema, unless the file is an explicitly allowed Markdown/legal/interface exception.
 
 ### Allowed Markdown exceptions
-These files may remain as Markdown:
 - `AGENTS.md` — agent instructions are conventionally Markdown
 - `README.md` — GitHub landing page
-- `CONTRIBUTING.md` — GitHub contribution UI
-- `CONTRIBUTOR_LICENSE_AGREEMENT.md` — contributor license agreement (also available as JSON)
-- `SECURITY.md` — GitHub security policy
-- `CODE_OF_CONDUCT.md` — if used
+- `CONTRIBUTING.md` — contribution UI
+- `CONTRIBUTOR_LICENSE_AGREEMENT.md` — legal
 - `LICENSE` — must remain plain license text, not JSON
-- `ATTRIBUTION.md` / `NOTICE` — for human readability (also add JSON artifact)
+- `ATTRIBUTION.md` — human-readable attribution (JSON companion required)
+- `UPSTREAM.md` — upstream attribution and lineage
+- `THIRD_PARTY_NOTICES.md` — third-party license notices
+- `CHANGELOG.md` — if release tooling requires it
+- `SECURITY.md` — if present
+- `CODE_OF_CONDUCT.md` — if present
+
+### Migration rules
+Old Markdown docs must not be deleted until:
+- a JSON replacement exists,
+- the JSON replacement validates against a schema,
+- the static renderer renders it,
+- the migration manifest maps `old_path` to `new_path`,
+- references are updated,
+- tests pass,
+- the deletion is listed in the final report.
+
+Agents must not create new Markdown docs for plans, audits, architecture notes, proofs, reports, roadmaps, or task records. Create JSON docs using the appropriate schema. If no schema exists, add or extend a schema first.
+
+### Static site rendering
+The documentation site is rendered locally by `scripts/render_static_docs.py`. The generated static site is committed under `docs/` and published via GitHub Pages from the main branch `/docs` folder. No custom GitHub Actions workflow is required.
+
+Canonical source: `docs/json/`, `docs/schemas/`
+Generated site: `docs/index.html`, `docs/pages/`, `docs/assets/`, `docs/search-index.json`, `docs/render-manifest.json`
 
 ### Migration manifest
-A migration manifest must exist at:
-`docs/json/documentation_migration_manifest.v1.json`
+A migration manifest must exist at: `docs/json/documentation_migration_manifest.v1.json`
 
-Fields: `schema_version`, `generated_at`, `policy`, `migrations[]` (each with `old_path`, `new_path`, `status`, `reason`, `content_sha256_old`, `content_sha256_new`, `references_updated`, `review_notes`).
+Fields: `schema_version`, `generated_at`, `policy`, `migrations[]` (each with `old_path`, `new_path`, `status`: pending\|migrated\|deleted\|retained_exception, `reason`, `content_sha256_old`, `content_sha256_new`, `references_updated`, `review_notes`).

@@ -13,7 +13,9 @@ from rig_relay.runtime.stream_types import RuntimeFailureEvent
 from rig_relay.runtime.supervisor import RuntimeSupervisor, _finalize_subprocess
 
 
-def _request(*, argv: list[str], cwd: Path, timeout_ms: int = 10_000) -> ExecutionRequest:
+def _request(
+    *, argv: list[str], cwd: Path, timeout_ms: int = 10_000
+) -> ExecutionRequest:
     return ExecutionRequest(
         request_id="req-teardown-001",
         argv=argv,
@@ -23,7 +25,9 @@ def _request(*, argv: list[str], cwd: Path, timeout_ms: int = 10_000) -> Executi
     )
 
 
-def _lease(request: ExecutionRequest, *, expires_delta: timedelta = timedelta(hours=1)) -> ExecutionLease:
+def _lease(
+    request: ExecutionRequest, *, expires_delta: timedelta = timedelta(hours=1)
+) -> ExecutionLease:
     now = datetime.now(UTC)
     return ExecutionLease(
         lease_id=request.request_id,

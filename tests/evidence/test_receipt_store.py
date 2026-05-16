@@ -14,7 +14,9 @@ from rig_relay.evidence.receipt_envelope import (
 from rig_relay.evidence.receipt_store import FilesystemReceiptStore, ReceiptStore
 
 
-def _make_envelope(session_id: str = "s1", kind: str = "tool_invocation") -> ReceiptEnvelope:
+def _make_envelope(
+    session_id: str = "s1", kind: str = "tool_invocation"
+) -> ReceiptEnvelope:
     return ReceiptEnvelope(
         envelope_id=f"env-{session_id}-test",
         receipt_kind=kind,

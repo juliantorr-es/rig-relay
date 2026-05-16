@@ -48,12 +48,37 @@ PROTECTED_NAMES = (
 )
 
 RETENTION_RULES: list[tuple[str, str, list[str] | None, str]] = [
-    ("coordination/leases", "stale_leases_hours", None, "Stale coordination leases (>24h)"),
+    (
+        "coordination/leases",
+        "stale_leases_hours",
+        None,
+        "Stale coordination leases (>24h)",
+    ),
     ("coordination/artifacts", "raw_tool_artifacts_days", None, "Raw tool artifacts"),
-    ("coordination", "coordination_events_days", [".jsonl"], "Coordination events (events.jsonl)"),
-    ("desktop", "desktop_projection_snapshots_days", None, "Desktop projection snapshots"),
-    ("telemetry-bundles", "telemetry_bundle_zip_days", [".zip"], "Telemetry bundle zips (keep manifests)"),
-    ("derived", "derived_jsonl_days", [".jsonl"], "Derived JSONL datasets (only if Parquet exists)"),
+    (
+        "coordination",
+        "coordination_events_days",
+        [".jsonl"],
+        "Coordination events (events.jsonl)",
+    ),
+    (
+        "desktop",
+        "desktop_projection_snapshots_days",
+        None,
+        "Desktop projection snapshots",
+    ),
+    (
+        "telemetry-bundles",
+        "telemetry_bundle_zip_days",
+        [".zip"],
+        "Telemetry bundle zips (keep manifests)",
+    ),
+    (
+        "derived",
+        "derived_jsonl_days",
+        [".jsonl"],
+        "Derived JSONL datasets (only if Parquet exists)",
+    ),
     ("reports", "reports_days", None, "Reports"),
     ("chatgpt-bundles", "chatgpt_bundles_days", None, "ChatGPT dev bundles"),
     ("cockpit", "cockpit_days", None, "Cockpit snapshots"),
@@ -134,7 +159,9 @@ def _find_gc_candidates(root: Path, budget: dict[str, Any]) -> list[dict[str, An
                     continue
                 candidates.append({
                     "path": str(f),
-                    "relative_path": str(f.relative_to(root.parent)) if f.is_relative_to(root.parent) else str(f),
+                    "relative_path": str(f.relative_to(root.parent))
+                    if f.is_relative_to(root.parent)
+                    else str(f),
                     "category": subdir,
                     "size_mb": round(f.stat().st_size / 1_048_576.0, 3),
                     "modified": mtime.isoformat(),
@@ -165,7 +192,9 @@ def _find_gc_candidates(root: Path, budget: dict[str, Any]) -> list[dict[str, An
                     continue
             candidates.append({
                 "path": str(f),
-                "relative_path": str(f.relative_to(root.parent)) if f.is_relative_to(root.parent) else str(f),
+                "relative_path": str(f.relative_to(root.parent))
+                if f.is_relative_to(root.parent)
+                else str(f),
                 "category": subdir,
                 "size_mb": round(f.stat().st_size / 1_048_576.0, 3),
                 "modified": mtime.isoformat(),
@@ -292,7 +321,4 @@ def run_artifact_gc(
     }
 
 
-__all__ = [
-    "DEFAULT_BUDGET",
-    "run_artifact_gc",
-]
+__all__ = ["DEFAULT_BUDGET", "run_artifact_gc"]

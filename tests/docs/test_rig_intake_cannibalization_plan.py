@@ -37,8 +37,8 @@ REQUIRED_FRONTEND_SAFETY_TEST = (
 REQUIRED_TEXTUAL_RETIREMENT_DOC = "docs/governance/textual-retirement-policy.md"
 
 
-
 pytestmark = [pytest.mark.migration]
+
 
 def test_deliverables_exist() -> None:
     """All five required deliverables exist."""

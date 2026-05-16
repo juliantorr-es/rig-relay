@@ -23,6 +23,7 @@ from rig_relay.ralph.scanner import (
 
 pytestmark = [pytest.mark.integration]
 
+
 def test_empty_projections_produces_no_candidate(tmp_path: Path):
     nonexistent = tmp_path / "nonexistent.jsonl"
     result = scan_projections(findings_path=nonexistent)
@@ -58,12 +59,20 @@ def test_projections_preferred_over_fallback(tmp_path: Path):
     )
 
     candidate_json = proj_dir / "candidate_findings.json"
-    candidate_json.write_text(json.dumps({
-        "findings": [
-            {"finding_id": "proj1", "status": "open", "severity": "medium",
-             "finding_kind": "architecture_seam", "title": "Projection finding", "why_it_matters": "real"}
-        ]
-    }))
+    candidate_json.write_text(
+        json.dumps({
+            "findings": [
+                {
+                    "finding_id": "proj1",
+                    "status": "open",
+                    "severity": "medium",
+                    "finding_kind": "architecture_seam",
+                    "title": "Projection finding",
+                    "why_it_matters": "real",
+                }
+            ]
+        })
+    )
 
     result = scan_projections(findings_path=findings_path, projection_dir=proj_dir)
 
@@ -90,7 +99,11 @@ def test_malformed_projections_injected_as_candidate(tmp_path: Path):
     assert not result.input_snapshot.canonical_fallback_used
     assert result.input_snapshot.input_source == "report_projections"
 
-    integrity = [c for c in result.ranked_candidates if c.source_kind == CandidateKind.PROJECTION_INTEGRITY]
+    integrity = [
+        c
+        for c in result.ranked_candidates
+        if c.source_kind == CandidateKind.PROJECTION_INTEGRITY
+    ]
     assert len(integrity) >= 0
 
 
@@ -125,7 +138,9 @@ def test_mission_candidate_actions_distinct_from_scan(tmp_path: Path):
     assert "compute deterministic ranking" not in mission.allowed_actions
     for a in SCAN_ALLOWED_ACTIONS:
         if "read" not in a:
-            assert a not in mission.allowed_actions, f"scan action leaked into mission: {a}"
+            assert a not in mission.allowed_actions, (
+                f"scan action leaked into mission: {a}"
+            )
 
 
 def test_panel_has_stable_hashes(tmp_path: Path):
@@ -305,7 +320,7 @@ def test_score_components_present(tmp_path: Path):
 
 def test_malformed_input_handled_gracefully(tmp_path: Path):
     findings_path = tmp_path / "findings.jsonl"
-    findings_path.write_text("not valid json\n{\"garbage\": true}\n")
+    findings_path.write_text('not valid json\n{"garbage": true}\n')
 
     result = scan_projections(findings_path=findings_path)
     assert result.total_findings_inspected == 0

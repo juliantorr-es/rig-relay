@@ -190,10 +190,7 @@ class TestAuth:
         material = ensure_local_tls_material(tmp_path, packaged=True)
         context = load_ssl_context(material.cert_path, material.key_path)
         server = ProjectionWebSocketServer(
-            port=0,
-            token="secret",
-            auth_timeout=100,
-            ssl_context=context,
+            port=0, token="secret", auth_timeout=100, ssl_context=context
         )
         assert server.scheme == "wss"
 

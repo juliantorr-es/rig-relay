@@ -35,10 +35,7 @@ class ConsultProviderArgs(BaseModel):
         default="chatgpt",
         description="Provider to consult: chatgpt, claude, gemini, deepseek, mistral, perplexity",
     )
-    prompt: str = Field(
-        ...,
-        description="The prompt to send to the provider's web app",
-    )
+    prompt: str = Field(..., description="The prompt to send to the provider's web app")
     wait_seconds: int = Field(
         default=0,
         description="Seconds to wait for the provider to respond before reading (0 = immediate return, caller should poll)",
@@ -62,10 +59,7 @@ class ConsultProviderConfig(BaseToolConfig):
 
 class ConsultProvider(
     BaseTool[
-        ConsultProviderArgs,
-        ConsultProviderResult,
-        ConsultProviderConfig,
-        BaseToolState,
+        ConsultProviderArgs, ConsultProviderResult, ConsultProviderConfig, BaseToolState
     ],
     ToolUIData[ConsultProviderArgs, ConsultProviderResult],
 ):
@@ -83,9 +77,7 @@ class ConsultProvider(
     """
 
     async def run(
-        self,
-        args: ConsultProviderArgs,
-        ctx: InvokeContext | None = None,
+        self, args: ConsultProviderArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | ConsultProviderResult, None]:
         import asyncio
 
@@ -146,7 +138,9 @@ class ConsultProvider(
         yield ConsultProviderResult(
             status="sent",
             provider=args.provider,
-            response_text=response_text[:4000] if response_text else "(no response yet — the provider may still be generating)",
+            response_text=response_text[:4000]
+            if response_text
+            else "(no response yet — the provider may still be generating)",
         )
 
     @staticmethod
@@ -154,12 +148,12 @@ class ConsultProvider(
         import json
 
         selectors = {
-            "chatgpt": '#prompt-textarea',
+            "chatgpt": "#prompt-textarea",
             "claude": 'div[contenteditable="true"]',
             "gemini": 'div[contenteditable="true"]',
-            "deepseek": '#chat-input, textarea',
+            "deepseek": "#chat-input, textarea",
             "mistral": 'textarea, div[contenteditable="true"]',
-            "perplexity": 'textarea',
+            "perplexity": "textarea",
         }
         selector = selectors.get(provider, 'textarea, div[contenteditable="true"]')
         escaped = json.dumps(prompt)

@@ -67,9 +67,7 @@ def _ensure_db() -> Any:
 
 
 def _compute_cache_key(
-    tool_name: str,
-    task_fingerprint: str,
-    repo_fingerprint: str,
+    tool_name: str, task_fingerprint: str, repo_fingerprint: str
 ) -> str:
     raw = f"{tool_name}:{task_fingerprint}:{repo_fingerprint}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -84,15 +82,18 @@ def _compute_repo_fingerprint() -> str:
     try:
         import subprocess
 
-        head = subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            stderr=subprocess.DEVNULL,
-            timeout=2,
-        ).decode("utf-8").strip()
+        head = (
+            subprocess
+            .check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            )
+            .decode("utf-8")
+            .strip()
+        )
         status = subprocess.check_output(
-            ["git", "status", "--short"],
-            stderr=subprocess.DEVNULL,
-            timeout=2,
+            ["git", "status", "--short"], stderr=subprocess.DEVNULL, timeout=2
         ).decode("utf-8")
     except Exception:
         return "no-git"
@@ -243,9 +244,7 @@ def cache_stats() -> dict[str, Any]:
     """Return content-light cache statistics."""
     try:
         con = _ensure_db()
-        total = con.execute(
-            "SELECT count(*) FROM tool_result_cache"
-        ).fetchone()[0]
+        total = con.execute("SELECT count(*) FROM tool_result_cache").fetchone()[0]
         expired = con.execute(
             "SELECT count(*) FROM tool_result_cache WHERE expires_at < ?",
             (time.time(),),

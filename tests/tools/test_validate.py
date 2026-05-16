@@ -415,7 +415,9 @@ def test_validate_receipt_no_raw_output() -> None:
 
 
 @pytest.mark.asyncio
-async def test_validate_run_emits_state_transitions(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_validate_run_emits_state_transitions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from rig_relay.core.tools.base import BaseToolState
     from rig_relay.core.tools.builtins.validate import Validate, ValidateToolConfig
 
@@ -424,9 +426,10 @@ async def test_validate_run_emits_state_transitions(monkeypatch: pytest.MonkeyPa
     class RecordingStateMachine(ValidateProfileStateMachine):
         def __init__(self) -> None:
             super().__init__(
-                on_transition=lambda **payload: events.append(
-                    (str(payload["event"]), str(payload["to_state"]))
-                )
+                on_transition=lambda **payload: events.append((
+                    str(payload["event"]),
+                    str(payload["to_state"]),
+                ))
             )
 
     async def fake_git_state(_cwd: str):
@@ -443,8 +446,12 @@ async def test_validate_run_emits_state_transitions(monkeypatch: pytest.MonkeyPa
             duration_ms=1.0,
         )
 
-    monkeypatch.setattr("rig_relay.core.tools.builtins.validate._collect_git_state", fake_git_state)
-    monkeypatch.setattr("rig_relay.core.tools.builtins.validate._run_check", fake_run_check)
+    monkeypatch.setattr(
+        "rig_relay.core.tools.builtins.validate._collect_git_state", fake_git_state
+    )
+    monkeypatch.setattr(
+        "rig_relay.core.tools.builtins.validate._run_check", fake_run_check
+    )
     monkeypatch.setattr(
         "rig_relay.core.tools.builtins.validate.compute_input_fingerprint",
         lambda cwd, cmd_fp, kind: ("input-fp", {}),

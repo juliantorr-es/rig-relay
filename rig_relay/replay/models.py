@@ -76,7 +76,9 @@ class ReplayEvent:
 
     def __lt__(self, other: ReplayEvent) -> bool:
         return (self.sequence, self.created_at, self.event_id) < (
-            other.sequence, other.created_at, other.event_id
+            other.sequence,
+            other.created_at,
+            other.event_id,
         )
 
 
@@ -171,7 +173,8 @@ class ReplayResult:
     @property
     def all_passed(self) -> bool:
         return not any(
-            f.severity in {ReplayIntegritySeverity.ERROR, ReplayIntegritySeverity.CRITICAL}
+            f.severity
+            in {ReplayIntegritySeverity.ERROR, ReplayIntegritySeverity.CRITICAL}
             for f in self.findings
         )
 

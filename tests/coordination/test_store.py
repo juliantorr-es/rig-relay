@@ -11,6 +11,7 @@ from rig_relay.coordination.store import CoordinationStore
 
 pytestmark = [pytest.mark.integration]
 
+
 def test_register_session_and_heartbeat(tmp_path: Path) -> None:
     store = CoordinationStore(tmp_path)
     session = store.register_session(

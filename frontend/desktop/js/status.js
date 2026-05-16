@@ -4,8 +4,9 @@
 // Renders ONLY from the canonical transport state authority.
 
 import { state } from './state.js';
-import { TransportStatus, STATUS_LABELS, STATUS_CHIP_CLASS } from './transportState.js';
-import { el, recordFrontendEvent } from './utils.js';
+import { TransportStatus, STATUS_LABELS, STATUS_CHIP_CLASS, detectStatusContradiction } from './transportState.js';
+import { el } from './utils.js';
+import { recordFrontendEvent } from './telemetry/frontendTrace.js';
 
 function setChip(chip, className, text) {
   while (chip.firstChild) chip.removeChild(chip.firstChild);
@@ -20,6 +21,14 @@ export function renderStatusBar() {
   renderConnection();
   renderSession();
   renderSafety();
+}
+
+export function renderStatusFromState(snap) {
+  const chip = el('status-connection');
+  if (!chip || !snap) return;
+  const label = snap.label || STATUS_LABELS[snap.transport.status] || 'Unknown';
+  const chipClass = snap.chipClass || STATUS_CHIP_CLASS[snap.transport.status] || 'warn';
+  setChip(chip, chipClass, label);
 }
 
 export function renderConnection() {
@@ -37,6 +46,9 @@ export function renderConnection() {
     phase: state.transport.phase || 'unknown',
     last_event: state.transport.lastEvent || '',
   });
+
+  // Golden-path contradiction detection
+  detectStatusContradiction({ transport: state.transport, wsConnected: state.wsConnected }, label);
 
   setChip(chip, chipClass, label);
 }

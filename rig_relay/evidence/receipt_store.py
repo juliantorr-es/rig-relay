@@ -33,9 +33,7 @@ class ReceiptStore(Protocol):
         """Retrieve a receipt envelope by ID, or None if not found."""
         ...
 
-    def list(
-        self, limit: int = 100, offset: int = 0
-    ) -> list[ReceiptEnvelope]:
+    def list(self, limit: int = 100, offset: int = 0) -> list[ReceiptEnvelope]:
         """List receipt envelopes ordered by creation time (newest first)."""
         ...
 
@@ -79,14 +77,20 @@ class FilesystemReceiptStore:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         data = envelope.model_dump(mode="json")
-        path.write_text(json.dumps(data, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+        path.write_text(
+            json.dumps(data, ensure_ascii=False, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
-        manifest_line = json.dumps({
-            "envelope_id": envelope.envelope_id,
-            "receipt_kind": envelope.receipt_kind,
-            "session_id": envelope.subject.session_id,
-            "created_at": envelope.created_at,
-        }, sort_keys=True)
+        manifest_line = json.dumps(
+            {
+                "envelope_id": envelope.envelope_id,
+                "receipt_kind": envelope.receipt_kind,
+                "session_id": envelope.subject.session_id,
+                "created_at": envelope.created_at,
+            },
+            sort_keys=True,
+        )
         with self._manifest_path.open("a", encoding="utf-8") as f:
             f.write(manifest_line + "\n")
 
@@ -102,9 +106,7 @@ class FilesystemReceiptStore:
         except (json.JSONDecodeError, ValueError, KeyError):
             return None
 
-    def list(
-        self, limit: int = 100, offset: int = 0
-    ) -> list[ReceiptEnvelope]:
+    def list(self, limit: int = 100, offset: int = 0) -> list[ReceiptEnvelope]:
         return self._list_from_manifest(limit=limit, offset=offset)
 
     def list_by_session(
@@ -132,10 +134,7 @@ class FilesystemReceiptStore:
         return count
 
     def _list_from_manifest(
-        self,
-        session_id: str | None = None,
-        limit: int = 100,
-        offset: int = 0,
+        self, session_id: str | None = None, limit: int = 100, offset: int = 0
     ) -> list[ReceiptEnvelope]:
         if not self._manifest_path.is_file():
             return []
@@ -156,7 +155,7 @@ class FilesystemReceiptStore:
 
         # Newest first (manifest is append-only, so reverse)
         entries.reverse()
-        sliced = entries[offset:offset + limit]
+        sliced = entries[offset : offset + limit]
 
         result: list[ReceiptEnvelope] = []
         for entry in sliced:
@@ -166,7 +165,4 @@ class FilesystemReceiptStore:
         return result
 
 
-__all__ = [
-    "FilesystemReceiptStore",
-    "ReceiptStore",
-]
+__all__ = ["FilesystemReceiptStore", "ReceiptStore"]

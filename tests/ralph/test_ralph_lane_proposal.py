@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pytest
 
 pytestmark = [pytest.mark.integration]
@@ -15,7 +16,9 @@ def test_proposal_from_candidate_succeeds():
         "title": "Fix DirtyFileGuard singleton",
         "source_kind": "architecture_seam",
     }
-    lane, violations = build_lane_proposal(candidate=candidate, background_policy=policy)
+    lane, violations = build_lane_proposal(
+        candidate=candidate, background_policy=policy
+    )
 
     assert lane is not None
     assert violations == []
@@ -29,7 +32,9 @@ def test_proposal_from_candidate_succeeds():
 def test_policy_disabled_refuses():
     policy = RalphBackgroundPolicy(enabled=False)
     candidate = {"candidate_id": "r1", "title": "Test"}
-    lane, violations = build_lane_proposal(candidate=candidate, background_policy=policy)
+    lane, violations = build_lane_proposal(
+        candidate=candidate, background_policy=policy
+    )
 
     assert lane is None
     assert "disabled" in violations[0]
@@ -43,7 +48,9 @@ def test_missing_candidate_refuses():
 
 def test_missing_candidate_id_refuses():
     policy = RalphBackgroundPolicy(enabled=True)
-    lane, violations = build_lane_proposal(candidate={"title": "no id"}, background_policy=policy)
+    lane, violations = build_lane_proposal(
+        candidate={"title": "no id"}, background_policy=policy
+    )
     assert lane is None
 
 
@@ -64,7 +71,9 @@ def test_run_state_preserved():
     policy = RalphBackgroundPolicy(enabled=True)
     candidate = {"candidate_id": "r1", "title": "Test"}
     run_state = {"run_id": "run-42", "scan_id": "scan-7"}
-    lane, _ = build_lane_proposal(candidate=candidate, background_policy=policy, run_state=run_state)
+    lane, _ = build_lane_proposal(
+        candidate=candidate, background_policy=policy, run_state=run_state
+    )
 
     assert lane.source_run_id == "run-42"
     assert lane.source_scan_id == "scan-7"
@@ -72,6 +81,7 @@ def test_run_state_preserved():
 
 def test_no_git_commands_in_proposal_builder():
     import ast
+
     with open("rig_relay/ralph/lane_proposal.py") as f:
         tree = ast.parse(f.read())
     calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)]

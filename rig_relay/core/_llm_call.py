@@ -34,10 +34,16 @@ class LLMCallMixin:
     """Mixin providing LLM completion call orchestration."""
 
     async def _prepare_llm_call(
-        self,
-        max_tokens: int | None = None,
-        model_override: ModelConfig | None = None,
-    ) -> tuple[ModelConfig, ProviderConfig, dict[str, object], object, object, object | None, TelemetryRequestMetadata]:
+        self, max_tokens: int | None = None, model_override: ModelConfig | None = None
+    ) -> tuple[
+        ModelConfig,
+        ProviderConfig,
+        dict[str, object],
+        object,
+        object,
+        object | None,
+        TelemetryRequestMetadata,
+    ]:
         active_model = model_override or self.config.get_active_model()
         provider = self.config.get_provider_for_model(active_model)
         backend_metadata = self._build_backend_metadata()
@@ -67,14 +73,28 @@ class LLMCallMixin:
 
         await self._report_context_assembly(active_model)
 
-        return active_model, provider, backend_metadata.model_dump(exclude_none=True), available_tools, tool_choice, last_user_message, backend_metadata
+        return (
+            active_model,
+            provider,
+            backend_metadata.model_dump(exclude_none=True),
+            available_tools,
+            tool_choice,
+            last_user_message,
+            backend_metadata,
+        )
 
     async def _chat(
         self, max_tokens: int | None = None, model_override: ModelConfig | None = None
     ) -> LLMChunk:
-        active_model, provider, metadata, available_tools, tool_choice, _, _ = (
-            await self._prepare_llm_call(max_tokens, model_override)
-        )
+        (
+            active_model,
+            provider,
+            metadata,
+            available_tools,
+            tool_choice,
+            _,
+            _,
+        ) = await self._prepare_llm_call(max_tokens, model_override)
 
         try:
             start_time = time.perf_counter()
@@ -112,9 +132,15 @@ class LLMCallMixin:
     async def _chat_streaming(
         self, max_tokens: int | None = None
     ) -> AsyncGenerator[LLMChunk]:
-        active_model, provider, metadata, available_tools, tool_choice, _, _ = (
-            await self._prepare_llm_call(max_tokens)
-        )
+        (
+            active_model,
+            provider,
+            metadata,
+            available_tools,
+            tool_choice,
+            _,
+            _,
+        ) = await self._prepare_llm_call(max_tokens)
 
         try:
             start_time = time.perf_counter()

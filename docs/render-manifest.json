@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-05-16T21:18:48.098062+00:00",
+  "git_commit": "aaef6b5b8009",
+  "page_count": 7,
+  "pages": [
+    {
+      "document_id": "documentation-policy",
+      "title": "Documentation Policy",
+      "source": "docs/json/documentation_policy.v1.json"
+    },
+    {
+      "document_id": "agent-loop-boundary",
+      "title": "Agent Loop Boundary",
+      "source": "docs/json/governance/agent_loop_boundary.v1.json"
+    },
+    {
+      "document_id": "orchestrator-loop-boundary",
+      "title": "Orchestrator Loop Boundary",
+      "source": "docs/json/governance/orchestrator_loop_boundary.v1.json"
+    },
+    {
+      "document_id": "storage-retention-policy",
+      "title": "Storage Retention Policy",
+      "source": "docs/json/governance/storage_retention_policy.v1.json"
+    },
+    {
+      "document_id": "test-suite-doctrine",
+      "title": "Test Suite Doctrine",
+      "source": "docs/json/governance/test_suite_doctrine.v1.json"
+    },
+    {
+      "document_id": "tool-runtime-boundary",
+      "title": "ToolRuntime Boundary",
+      "source": "docs/json/governance/tool_runtime_boundary.v1.json"
+    },
+    {
+      "document_id": "tracing-doctrine",
+      "title": "Tracing Doctrine",
+      "source": "docs/json/governance/tracing_doctrine.v1.json"
+    }
+  ]
+}

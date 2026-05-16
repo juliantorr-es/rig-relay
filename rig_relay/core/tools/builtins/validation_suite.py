@@ -419,7 +419,13 @@ def _base_env() -> dict[str, str]:
 
 def _default_paths(kind: str) -> list[str]:
     match kind:
-        case "ruff_check" | "ruff_format_check" | "ruff_format_fix" | "pyright" | "pyrefly":
+        case (
+            "ruff_check"
+            | "ruff_format_check"
+            | "ruff_format_fix"
+            | "pyright"
+            | "pyrefly"
+        ):
             return ["vibe/core/tools/builtins/validation_suite.py"]
         case "pytest":
             return ["tests/coordination/test_tool.py"]

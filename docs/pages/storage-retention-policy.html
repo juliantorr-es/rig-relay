@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage Retention Policy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Retention policy for local Rig Relay storage including sessions, artifacts, telemetry, and traces.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Storage Retention Policy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-18</p>
+</header>
+<main>
+<h1 id="title">Storage Retention Policy</h1>
+
+<div class="callout callout-info" id="status-callout">
+  
+  <p>This policy is active for local Rig Relay storage. Review required before enabling remote telemetry or cloud sync.</p>
+</div>
+
+<h2 id="scope">Scope</h2>
+
+<ul id="scope-list">
+  <li>Session interaction logs (.rig/relay/sessions/)</li>
+  <li>Artifact storage (.build/rig-relay/)</li>
+  <li>Telemetry events (observability.jsonl)</li>
+  <li>Trace events (trace_events.jsonl)</li>
+  <li>Coordination store (.build/rig-relay/coordination/)</li>
+  <li>Desktop cockpit state (chat_state.json, chat_events.jsonl)</li>
+</ul>
+
+<h2 id="defaults">Default Retention Periods</h2>
+
+<table id="defaults-table">
+<thead><tr><th>Artifact Type</th><th>Default Retention</th><th>GC Trigger</th></tr></thead>
+<tbody>
+<tr><td>Session logs</td><td>30 days</td><td>Storage budget exceeded</td></tr>
+<tr><td>Artifacts (build)</td><td>Until next clean build</td><td>Manual or GC sweep</td></tr>
+<tr><td>Telemetry events</td><td>90 days</td><td>Storage budget exceeded</td></tr>
+<tr><td>Trace events</td><td>30 days</td><td>Storage budget exceeded</td></tr>
+<tr><td>Coordination store</td><td>7 days after lease expiry</td><td>Lease cleanup sweep</td></tr>
+<tr><td>Desktop cockpit state</td><td>Indefinite (single file)</td><td>Manual or clear_chat</td></tr>
+</tbody>
+</table>
+
+<h2 id="gc">Garbage Collection</h2>
+
+<p id="gc-content">Passive GC runs after tool execution when the storage budget is exceeded. Active GC can be triggered via scripts/rig_relay_gc_artifacts.py. The GC policy prunes stale leases, expired artifacts, and old session data. Evidence and receipts are preserved unless they exceed the retention window.</p>
+
+<h2 id="env">Configuration</h2>
+
+<table id="env-table">
+<thead><tr><th>Variable</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td>RIG_RELAY_LOCAL_MODE=1</td><td>Disable remote telemetry and cloud sync</td></tr>
+<tr><td>RIG_RELAY_ENABLE_MERGE=0</td><td>Disable merge operations</td></tr>
+<tr><td>RIG_RELAY_ENABLE_PUSH=0</td><td>Disable push operations</td></tr>
+<tr><td>LOG_LEVEL</td><td>Control log verbosity (default WARNING)</td></tr>
+</tbody>
+</table>
+
+<h2 id="privacy">Privacy</h2>
+
+<p id="privacy-content">All storage is local-first by default. No data leaves the machine without explicit opt-in. Telemetry and trace exports are opt-in only. Artifact GC never transmits data externally. The packaged app stores data under ~/Library/Application Support/Rig Relay/.</p>
+
+<h2 id="budget">Storage Budget</h2>
+
+<p id="budget-content">compute_storage_summary() checks total artifact size against a configurable budget. Status values: ok (under budget), warn (approaching limit), over_budget (GC triggered), fleet_blocked (no new sessions until GC completes).</p>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/storage_retention_policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -27,9 +27,7 @@ class TestCompilerIntegration:
     def test_compiler_execute_calls_plan_context(self) -> None:
         compiler = _REPO_ROOT / "rig_relay/context/compiler.py"
         source = compiler.read_text()
-        assert "plan_context(" in source, (
-            "compiler.execute() must call plan_context()"
-        )
+        assert "plan_context(" in source, "compiler.execute() must call plan_context()"
 
     def test_compiler_execute_constructs_repo_index(self) -> None:
         compiler = _REPO_ROOT / "rig_relay/context/compiler.py"
@@ -46,7 +44,10 @@ class TestCompilerIntegration:
                 for child in ast.walk(node):
                     if isinstance(child, ast.Try):
                         for handler in child.handlers:
-                            if isinstance(handler.type, ast.Name) and handler.type.id == "Exception":
+                            if (
+                                isinstance(handler.type, ast.Name)
+                                and handler.type.id == "Exception"
+                            ):
                                 for stmt in handler.body:
                                     if isinstance(stmt, ast.Pass):
                                         pytest.fail(
@@ -109,24 +110,27 @@ class TestRendererContracts:
 
 class TestFinalDocConsistency:
     def test_final_reconciliation_exists(self) -> None:
-        doc = _REPO_ROOT / "docs/audits/context/context-assembler-final-reconciliation.md"
+        doc = (
+            _REPO_ROOT / "docs/audits/context/context-assembler-final-reconciliation.md"
+        )
         assert doc.exists(), "Final reconciliation doc must exist"
 
     def test_final_status_is_complete_or_integrated(self) -> None:
-        doc = _REPO_ROOT / "docs/audits/context/context-assembler-final-reconciliation.md"
+        doc = (
+            _REPO_ROOT / "docs/audits/context/context-assembler-final-reconciliation.md"
+        )
         content = doc.read_text()
         valid = any(
             status in content
-            for status in [
-                "CONTEXT_ASSEMBLER_V1_COMPLETE",
-                "INTEGRATED_WITH_GAPS",
-            ]
+            for status in ["CONTEXT_ASSEMBLER_V1_COMPLETE", "INTEGRATED_WITH_GAPS"]
         )
         assert valid, f"Final doc must declare status: {content[:200]}"
 
     def test_no_known_failures_claim_without_actual_failures(self) -> None:
         """If doc says no failures, tests should confirm."""
-        doc = _REPO_ROOT / "docs/audits/context/context-assembler-final-reconciliation.md"
+        doc = (
+            _REPO_ROOT / "docs/audits/context/context-assembler-final-reconciliation.md"
+        )
         content = doc.read_text()
         # The doc may mention "pre-existing" failures — that's fine
         # Just verify the doc exists and is well-formed

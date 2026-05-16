@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orchestrator Loop Boundary — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Ownership doctrine for Rig Relay runtimes: who may run a full turn loop, 7 principles governing OrchestratorLoop, ConversationRuntime, SubagentRuntime, RalphRuntime, ToolRuntime, and handoff receipts.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Orchestrator Loop Boundary</h1>
+  <p class="meta">Status: active | Updated: 2026-05-18</p>
+</header>
+<main>
+<h1 id="title">Orchestrator Loop Boundary</h1>
+
+<h2 id="p1">Principle 1 — Only an Owner May Run a Full Turn Loop</h2>
+
+<p id="p1-text">An owner faces the user (directly or through an adapter), owns the session, decides delegation/handoff/approval/disposition, synthesizes final answers, and controls merge/push. Owners: desktop cockpit, ACP server, IDE sidecar. Subagents, Ralph, and test fixtures are NOT owners.</p>
+
+<h2 id="p2">Principle 2 — OrchestratorLoop</h2>
+
+<p id="p2-text">OrchestratorLoop (currently AgentLoop) owns user-facing turn orchestration, model call sequence, tool-call planning, delegation/handoff decisions, approval boundaries, mission assignment, and final synthesis. It is the only entity allowed to run a full turn loop.</p>
+
+<h2 id="p3">Principle 3 — ConversationRuntime</h2>
+
+<p id="p3-text">ConversationRuntime owns turn phase state (_phase(), _finish()), loop decision policy (decide_after_middleware, decide_after_model_turn, decide_after_hook_processing, decide_after_tool_batch, decide_after_budget_check), outcome classification, trace/phase evidence (PhaseTraceHook, PhaseTraceAttributes), and JSON-safe result (build_result()).</p>
+
+<h2 id="p4">Principle 4 — SubagentRuntime (IMPLEMENTED v1)</h2>
+
+<h3 id="p4-owns">Owns</h3>
+
+<ul id="p4-owns-list">
+  <li>Bounded mission execution</li>
+  <li>Lifecycle evidence emission via TraceRecorder</li>
+  <li>Explicit tool_execution_mode marker</li>
+  <li>Structured SubagentResult with metadata</li>
+  <li>Assigned lane/worktree</li>
+  <li>Allowed tools/profile/model binding</li>
+  <li>Budget (turns, price, time)</li>
+  <li>Expected artifact contract</li>
+  <li>Validation receipt</li>
+  <li>Patch proposal or report output</li>
+</ul>
+
+<h3 id="p4-not-owns">Does NOT Own</h3>
+
+<ul id="p4-not-list">
+  <li>Global session history — scoped to mission</li>
+  <li>Final user-facing answer — synthesized by owner</li>
+  <li>Global approval policy — inherited from owner</li>
+  <li>Unbounded tool loops — budget-enforced</li>
+  <li>Merge/push — orchestrator-only</li>
+  <li>Switch_agent / compact / fork — bounded lifecycle</li>
+</ul>
+
+<h2 id="p5">Principle 5 — RalphRuntime (Planned)</h2>
+
+<p id="p5-text">RalphRuntime will use SubagentRuntime with profile_kind=AUTONOMOUS_BACKGROUND and trust_tier=OBSERVE. Owns background observation (read-only), report generation, proposal output. No normal assignable missions. No merge/push.</p>
+
+<h2 id="p6">Principle 6 — ToolRuntime</h2>
+
+<p id="p6-text">ToolRuntime owns governed tool execution. It is NOT a loop owner. See docs/governance/tool-runtime-boundary.md.</p>
+
+<h2 id="p7">Principle 7 — Handoff Receipt</h2>
+
+<p id="p7-intro">Ownership transfer (e.g. orchestrator to subagent) requires a handoff receipt with the following fields:</p>
+
+<table id="p7-table">
+<thead><tr><th>Field</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>owner_before</td><td>Session/agent ID of delegator</td></tr>
+<tr><td>owner_after</td><td>Session/agent ID of subagent</td></tr>
+<tr><td>reason</td><td>Why the handoff is needed</td></tr>
+<tr><td>scope</td><td>What the subagent may do</td></tr>
+<tr><td>budget</td><td>Turns, price, time limits</td></tr>
+<tr><td>return_condition</td><td>When ownership returns</td></tr>
+<tr><td>trace_id</td><td>For observability correlation</td></tr>
+</tbody>
+</table>
+
+<h2 id="phase3">Phase 3 Recommendation</h2>
+
+<ol id="phase3-list">
+  <li>Move the while-loop into ConversationRuntime.execute_turn() — OrchestratorLoop becomes thin adapter</li>
+  <li>Do not create full AgentLoops for subagents — SubagentRuntime is bounded</li>
+  <li>Do not give Ralph any loop ownership — uses SubagentRuntime with AUTONOMOUS_BACKGROUND</li>
+  <li>AgentLoop rename to OrchestratorLoop only after SubagentRuntime exists</li>
+</ol>
+
+<h2 id="readiness">Phase 3 Readiness Doctrine</h2>
+
+<table id="readiness-table">
+<thead><tr><th>Doctrine</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>no silent legacy direct</td><td>SubagentRuntime defaults to tool_runtime_required; allow_legacy_direct=True required for legacy path</td></tr>
+<tr><td>production subagents use ToolRuntime</td><td>task.py passes tool_runtime= from InvokeContext; governed path is primary</td></tr>
+<tr><td>trace recorder propagation</td><td>task.py passes trace_recorder=; lifecycle evidence emitted in production</td></tr>
+<tr><td>desktop correlation</td><td>Integrated in websocket_server.py via DesktopCorrelation</td></tr>
+<tr><td>loop ownership transferred</td><td>ConversationRuntime.execute_turn_loop() owns the while-loop; AgentLoop delegates via _ConversationLoopAdapter</td></tr>
+<tr><td>tool batch adapter gap</td><td>execute_tool_batch() is a stub; Lane A follow-up required</td></tr>
+<tr><td>AgentLoop rename deferred</td><td>OrchestratorLoop rename waits until tool batch adapter is real and all tests green</td></tr>
+</tbody>
+</table>
+
+<h2 id="debt">Known Debt</h2>
+
+<ul id="debt-items">
+  <li>execute_tool_batch() stub — Lane A follow-up</li>
+  <li>AgentLoop still named AgentLoop — rename deferred to OrchestratorLoop</li>
+</ul>
+
+<h2 id="validation">Validation Gates</h2>
+
+<ul id="validation-items">
+  <li>SubagentRuntime guard tests block AgentLoop construction in task/subagent/Ralph paths</li>
+  <li>InvokeContext carries tool_runtime and trace_recorder</li>
+  <li>ToolRuntime.execute_one() spans finalize on all paths</li>
+  <li>Desktop correlation integrated in websocket_server.py</li>
+</ul>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/orchestrator_loop_boundary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

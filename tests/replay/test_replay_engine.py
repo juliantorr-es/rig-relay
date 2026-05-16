@@ -47,20 +47,44 @@ class TestBuildEventFromObservability:
 class TestCheckDuplicates:
     def test_no_duplicates(self) -> None:
         events = [
-            ReplayEvent(event_id="a", sequence=0, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at=""),
-            ReplayEvent(event_id="b", sequence=1, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at=""),
+            ReplayEvent(
+                event_id="a",
+                sequence=0,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+            ),
+            ReplayEvent(
+                event_id="b",
+                sequence=1,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+            ),
         ]
         findings = _check_duplicates(events)
         assert len(findings) == 0
 
     def test_duplicate_detected(self) -> None:
         events = [
-            ReplayEvent(event_id="a", sequence=0, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at=""),
-            ReplayEvent(event_id="a", sequence=1, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at=""),
+            ReplayEvent(
+                event_id="a",
+                sequence=0,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+            ),
+            ReplayEvent(
+                event_id="a",
+                sequence=1,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+            ),
         ]
         findings = _check_duplicates(events)
         assert len(findings) >= 1
@@ -70,10 +94,24 @@ class TestCheckDuplicates:
 class TestFrameEvents:
     def test_single_tool_frames(self) -> None:
         events = [
-            ReplayEvent(event_id="a", sequence=0, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at="", tool_name="bash"),
-            ReplayEvent(event_id="b", sequence=1, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at="", tool_name="bash"),
+            ReplayEvent(
+                event_id="a",
+                sequence=0,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+                tool_name="bash",
+            ),
+            ReplayEvent(
+                event_id="b",
+                sequence=1,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+                tool_name="bash",
+            ),
         ]
         frames, findings = _frame_events(events)
         assert len(frames) == 1
@@ -81,20 +119,48 @@ class TestFrameEvents:
 
     def test_multiple_tools_split(self) -> None:
         events = [
-            ReplayEvent(event_id="a", sequence=0, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at="", tool_name="bash"),
-            ReplayEvent(event_id="b", sequence=1, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at="", tool_name="search_replace"),
+            ReplayEvent(
+                event_id="a",
+                sequence=0,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+                tool_name="bash",
+            ),
+            ReplayEvent(
+                event_id="b",
+                sequence=1,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+                tool_name="search_replace",
+            ),
         ]
         frames, _findings = _frame_events(events)
         assert len(frames) == 2
 
     def test_sequence_gap_detected(self) -> None:
         events = [
-            ReplayEvent(event_id="a", sequence=0, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at="", tool_name="bash"),
-            ReplayEvent(event_id="b", sequence=5, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at="", tool_name="bash"),
+            ReplayEvent(
+                event_id="a",
+                sequence=0,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+                tool_name="bash",
+            ),
+            ReplayEvent(
+                event_id="b",
+                sequence=5,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+                tool_name="bash",
+            ),
         ]
         _frames, findings = _frame_events(events)
         gap_findings = [f for f in findings if "Sequence gap" in f.message]
@@ -102,8 +168,15 @@ class TestFrameEvents:
 
     def test_frame_hash_chain(self) -> None:
         events = [
-            ReplayEvent(event_id="a", sequence=0, event_kind=ReplayEventKind.RECEIPT,
-                        event_name="x", session_id="s1", created_at="", tool_name="bash"),
+            ReplayEvent(
+                event_id="a",
+                sequence=0,
+                event_kind=ReplayEventKind.RECEIPT,
+                event_name="x",
+                session_id="s1",
+                created_at="",
+                tool_name="bash",
+            )
         ]
         frames, _findings = _frame_events(events)
         assert len(frames) == 1
@@ -113,9 +186,7 @@ class TestFrameEvents:
 
 class TestReplaySessionFromObservability:
     def test_missing_file(self, tmp_path: Path) -> None:
-        result = replay_session_from_observability(
-            "s1", tmp_path / "nonexistent.jsonl"
-        )
+        result = replay_session_from_observability("s1", tmp_path / "nonexistent.jsonl")
         assert result.state == ReplayState.FAILED
         assert len(result.findings) >= 1
 
@@ -172,8 +243,7 @@ class TestReplaySessionFromReceiptIndex:
         from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord
 
         record = ToolReceiptIndexRecord(
-            session_id="s1", tool_name="bash", status="completed",
-            event_id="e1",
+            session_id="s1", tool_name="bash", status="completed", event_id="e1"
         )
         result = replay_session_from_receipt_index("s1", [record])
         assert result.total_events == 1
@@ -183,9 +253,18 @@ class TestReplaySessionFromReceiptIndex:
         from rig_relay.evidence.receipt_index import ToolReceiptIndexRecord
 
         records = [
-            ToolReceiptIndexRecord(session_id="s1", tool_name="bash", status="completed", event_id="e1"),
-            ToolReceiptIndexRecord(session_id="s1", tool_name="bash", status="completed", event_id="e2"),
-            ToolReceiptIndexRecord(session_id="s1", tool_name="search_replace", status="completed", event_id="e3"),
+            ToolReceiptIndexRecord(
+                session_id="s1", tool_name="bash", status="completed", event_id="e1"
+            ),
+            ToolReceiptIndexRecord(
+                session_id="s1", tool_name="bash", status="completed", event_id="e2"
+            ),
+            ToolReceiptIndexRecord(
+                session_id="s1",
+                tool_name="search_replace",
+                status="completed",
+                event_id="e3",
+            ),
         ]
         result = replay_session_from_receipt_index("s1", records)
         assert result.total_events == 3

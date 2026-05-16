@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pytest
 
 pytestmark = [pytest.mark.integration]
@@ -156,15 +157,17 @@ def test_event_ledger_grows(tmp_path):
     store = DecisionEventStore(root=root)
 
     for i in range(3):
-        store.append_event(DecisionEvent(
-            event_kind="ralph.decision.approved",
-            run_id=f"run-{i}",
-            decision_action="approve",
-            approval_state_before="pending",
-            approval_state_after="approved",
-            status="completed",
-            execution_enabled=False,
-        ))
+        store.append_event(
+            DecisionEvent(
+                event_kind="ralph.decision.approved",
+                run_id=f"run-{i}",
+                decision_action="approve",
+                approval_state_before="pending",
+                approval_state_after="approved",
+                status="completed",
+                execution_enabled=False,
+            )
+        )
 
     events = store.list_events()
     assert len(events) == 3

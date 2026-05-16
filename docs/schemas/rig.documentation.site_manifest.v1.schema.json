@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.documentation.site_manifest.v1.schema.json",
+  "title": "Rig Documentation Site Manifest",
+  "description": "Defines navigation structure and collections for the static documentation site.",
+  "type": "object",
+  "required": ["schema_version", "site_title", "collections"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.documentation.site_manifest.v1"
+    },
+    "site_title": {
+      "type": "string"
+    },
+    "site_description": {
+      "type": "string"
+    },
+    "base_url": {
+      "type": "string"
+    },
+    "collections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["collection_id", "title", "documents"],
+        "properties": {
+          "collection_id": {"type": "string"},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "order": {"type": "integer"},
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["document_id", "path"],
+              "properties": {
+                "document_id": {"type": "string"},
+                "path": {"type": "string"},
+                "title_override": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "standalone_pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["document_id", "path"],
+        "properties": {
+          "document_id": {"type": "string"},
+          "path": {"type": "string"},
+          "title_override": {"type": "string"}
+        }
+      }
+    }
+  }
+}

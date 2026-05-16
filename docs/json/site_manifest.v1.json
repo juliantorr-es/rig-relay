@@ -1,0 +1,26 @@
+{
+  "schema_version": "rig.documentation.site_manifest.v1",
+  "site_title": "Rig Relay Documentation",
+  "site_description": "Local governed runtime for agent work — architecture, governance, policies, and proofs.",
+  "base_url": "https://juliantorr-es.github.io/rig-relay",
+  "collections": [
+    {
+      "collection_id": "governance",
+      "title": "Governance",
+      "description": "Project policies, licensing, contribution terms, and operational doctrine.",
+      "order": 1,
+      "documents": [
+        {"document_id": "repository-policy", "path": "docs/json/repository_policy.v1.json"},
+        {"document_id": "license-policy", "path": "docs/json/license_policy.v1.json"},
+        {"document_id": "contribution-policy", "path": "docs/json/contribution_policy.v1.json"},
+        {"document_id": "documentation-policy", "path": "docs/json/documentation_policy.v1.json"},
+        {"document_id": "tracing-doctrine", "path": "docs/json/governance/tracing_doctrine.v1.json"},
+        {"document_id": "test-suite-doctrine", "path": "docs/json/governance/test_suite_doctrine.v1.json"},
+        {"document_id": "storage-retention-policy", "path": "docs/json/governance/storage_retention_policy.v1.json"},
+        {"document_id": "agent-loop-boundary", "path": "docs/json/governance/agent_loop_boundary.v1.json"},
+        {"document_id": "tool-runtime-boundary", "path": "docs/json/governance/tool_runtime_boundary.v1.json"},
+        {"document_id": "orchestrator-loop-boundary", "path": "docs/json/governance/orchestrator_loop_boundary.v1.json"}
+      ]
+    }
+  ]
+}

@@ -169,11 +169,37 @@ class TestBashQueryFunctions:
     def _make_ledger(self, tmp_path: Path) -> Path:
         ledger = tmp_path / "bash_invocations.jsonl"
         records = [
-            {"command_text": "git status --short", "status": "completed", "duration_ms": 100, "session_id": "s1"},
-            {"command_text": "pytest tests/ -x", "status": "completed", "duration_ms": 5000, "session_id": "s1"},
-            {"command_text": "pytest tests/ -x", "status": "timed_out", "duration_ms": 120000, "timeout_seconds": 120, "session_id": "s2"},
-            {"command_text": "rm -rf /tmp/build", "status": "refused", "refusal_reason": "Dangerous", "session_id": "s2"},
-            {"command_text": "cat file.py", "status": "completed", "duration_ms": 10, "session_id": "s1"},
+            {
+                "command_text": "git status --short",
+                "status": "completed",
+                "duration_ms": 100,
+                "session_id": "s1",
+            },
+            {
+                "command_text": "pytest tests/ -x",
+                "status": "completed",
+                "duration_ms": 5000,
+                "session_id": "s1",
+            },
+            {
+                "command_text": "pytest tests/ -x",
+                "status": "timed_out",
+                "duration_ms": 120000,
+                "timeout_seconds": 120,
+                "session_id": "s2",
+            },
+            {
+                "command_text": "rm -rf /tmp/build",
+                "status": "refused",
+                "refusal_reason": "Dangerous",
+                "session_id": "s2",
+            },
+            {
+                "command_text": "cat file.py",
+                "status": "completed",
+                "duration_ms": 10,
+                "session_id": "s1",
+            },
         ]
         ledger.write_text("\n".join(json.dumps(r) for r in records) + "\n")
         return ledger
@@ -236,12 +262,19 @@ class TestBashProjector:
 
         # Write a temp ledger with one record
         ledger = tmp_path / "bash_invocations.jsonl"
-        ledger.write_text(json.dumps({"command_text": "git status", "status": "completed"}) + "\n")
+        ledger.write_text(
+            json.dumps({"command_text": "git status", "status": "completed"}) + "\n"
+        )
         indexes_dir = tmp_path / "indexes"
         written = write_bash_indexes(indexes_dir, ledger)
         assert len(written) == 5
-        for name in ("bash_usage_summary", "bash_failure_clusters", "bash_timeout_clusters",
-                     "bash_risk_patterns", "bash_replacement_candidates"):
+        for name in (
+            "bash_usage_summary",
+            "bash_failure_clusters",
+            "bash_timeout_clusters",
+            "bash_risk_patterns",
+            "bash_replacement_candidates",
+        ):
             assert name in written
             assert written[name].is_file()
 
@@ -257,7 +290,9 @@ class TestNoMutation:
         (findings_dir / "out-of-scope-findings.md").write_text("# Empty")
 
         ledger = tmp_path / "bash_invocations.jsonl"
-        ledger.write_text(json.dumps({"command_text": "ls", "status": "completed"}) + "\n")
+        ledger.write_text(
+            json.dumps({"command_text": "ls", "status": "completed"}) + "\n"
+        )
         query_bash_usage_summary(ledger)
 
         assert (findings_dir / "out-of-scope-findings.jsonl").read_text() == ""

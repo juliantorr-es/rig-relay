@@ -28,8 +28,8 @@ INTEGRITY_SCHEMA_PATH = (
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
-
 pytestmark = [pytest.mark.integration]
+
 
 def _make_receipt(
     tool_name: str = "bash",

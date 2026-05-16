@@ -193,7 +193,10 @@ class DesktopBridgeStateMachine:
         reason: str | None = None,
         attributes: dict[str, Any] | None = None,
     ) -> DesktopBridgeTransition:
-        if self.is_terminal and event not in {DesktopBridgeEvent.FAILED, DesktopBridgeEvent.CLOSED}:
+        if self.is_terminal and event not in {
+            DesktopBridgeEvent.FAILED,
+            DesktopBridgeEvent.CLOSED,
+        }:
             raise TerminalBridgeStateError(f"{self._state} is terminal")
         target = _EVENT_TO_STATE.get(event)
         if target is None:
@@ -209,7 +212,9 @@ class DesktopBridgeStateMachine:
     ) -> DesktopBridgeTransition:
         attrs = dict(attributes or {})
         if self._state == state and self._last_event == event:
-            return self._build_transition(self._state, state, event, reason, attrs, record=False)
+            return self._build_transition(
+                self._state, state, event, reason, attrs, record=False
+            )
         if self.is_terminal and state not in {
             DesktopBridgeState.FAILED,
             DesktopBridgeState.CLOSED,
@@ -237,34 +242,25 @@ class DesktopBridgeStateMachine:
     ) -> DesktopBridgeTransition:
         self._failed_step = str((attributes or {}).get("step_id") or event.name)
         return self.transition_to(
-            DesktopBridgeState.FAILED,
-            event,
-            reason=reason,
-            attributes=attributes,
+            DesktopBridgeState.FAILED, event, reason=reason, attributes=attributes
         )
 
     def close(self, event: str = "closed") -> DesktopBridgeTransition:
         bridge_event = DesktopBridgeEvent.CLOSED
         if self._state == DesktopBridgeState.CLOSED:
             return self._build_transition(
-                self._state,
-                self._state,
-                bridge_event,
-                event,
-                {},
-                record=False,
+                self._state, self._state, bridge_event, event, {}, record=False
             )
         return self.transition_to(
-            DesktopBridgeState.CLOSED,
-            bridge_event,
-            reason=event,
-            attributes=None,
+            DesktopBridgeState.CLOSED, bridge_event, reason=event, attributes=None
         )
 
     def export_projection(self) -> dict[str, Any]:
         return {
             "state": self._state.value,
-            "previous_state": self._previous_state.value if self._previous_state else None,
+            "previous_state": self._previous_state.value
+            if self._previous_state
+            else None,
             "last_event": self._last_event.value if self._last_event else None,
             "failed_step": self._failed_step,
             "transition_count": self._transition_count,

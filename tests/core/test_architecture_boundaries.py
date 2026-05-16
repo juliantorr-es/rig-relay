@@ -60,9 +60,7 @@ class TestAgentLoopBoundary:
         path = CORE_DIR / "agent_loop.py"
         imports = _imports_in_file(path)
         for imp in imports:
-            assert not imp.startswith("rig_relay.ralph"), (
-                f"agent_loop.py imports {imp}"
-            )
+            assert not imp.startswith("rig_relay.ralph"), f"agent_loop.py imports {imp}"
 
     def test_agent_loop_does_not_import_scripts(self):
         path = CORE_DIR / "agent_loop.py"
@@ -76,9 +74,7 @@ class TestAgentLoopBoundary:
         path = CORE_DIR / "agent_loop.py"
         imports = _imports_in_file(path)
         for imp in imports:
-            assert not imp.startswith("duckdb"), (
-                "agent_loop.py imports duckdb"
-            )
+            assert not imp.startswith("duckdb"), "agent_loop.py imports duckdb"
 
     def test_agent_loop_does_not_import_analytics_query(self):
         path = CORE_DIR / "agent_loop.py"
@@ -103,9 +99,7 @@ class TestCoreMixinBoundaries:
                 for forbidden in FORBIDDEN_MODULES:
                     if imp.startswith(forbidden):
                         violations.append((path.name, imp))
-        assert not violations, (
-            f"Core mixins import forbidden modules: {violations}"
-        )
+        assert not violations, f"Core mixins import forbidden modules: {violations}"
 
 
 class TestRuntimeStateBoundaries:
@@ -114,9 +108,7 @@ class TestRuntimeStateBoundaries:
         imports = _imports_in_file(path)
         for imp in imports:
             for forbidden in FORBIDDEN_MODULES:
-                assert not imp.startswith(forbidden), (
-                    f"runtime_state.py imports {imp}"
-                )
+                assert not imp.startswith(forbidden), f"runtime_state.py imports {imp}"
 
 
 class TestConversationTurnBoundaries:

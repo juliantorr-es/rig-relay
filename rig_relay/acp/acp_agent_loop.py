@@ -42,12 +42,19 @@ from rig_relay.core.types import ApprovalCallback, ApprovalResponse
 from rig_relay.core.utils import CancellationReason, get_user_cancellation_message
 
 
-class VibeAcpAgentLoop(SessionLifecycleMixin, CommandsMixin, ConfigMixin, UsageMixin, ProtocolMixin, PromptMixin, AcpAgent):
+class VibeAcpAgentLoop(
+    SessionLifecycleMixin,
+    CommandsMixin,
+    ConfigMixin,
+    UsageMixin,
+    ProtocolMixin,
+    PromptMixin,
+    AcpAgent,
+):
     def __init__(self) -> None:
         self.sessions: dict[str, AcpSessionLoop] = {}
         self.client_capabilities: ClientCapabilities | None = None
         self.client_info: Implementation | None = None
-
 
     def _build_entrypoint_metadata(self) -> EntrypointMetadata:
         return build_entrypoint_metadata(
@@ -56,7 +63,6 @@ class VibeAcpAgentLoop(SessionLifecycleMixin, CommandsMixin, ConfigMixin, UsageM
             client_name=self.client_info.name if self.client_info else "",
             client_version=self.client_info.version if self.client_info else "",
         )
-
 
     def _load_config(self) -> VibeConfig:
         try:
@@ -67,7 +73,6 @@ class VibeAcpAgentLoop(SessionLifecycleMixin, CommandsMixin, ConfigMixin, UsageM
             raise UnauthenticatedError.from_missing_api_key(e) from e
         except Exception as e:
             raise ConfigurationError(str(e)) from e
-
 
     def _get_acp_tool_overrides(self) -> list[Path]:
         overrides = ["todo", "grep", "web_fetch", "web_search", "skill", "task"]
@@ -86,7 +91,6 @@ class VibeAcpAgentLoop(SessionLifecycleMixin, CommandsMixin, ConfigMixin, UsageM
             RIG_ROOT / "acp" / "tools" / "builtins" / f"{override}.py"
             for override in overrides
         ]
-
 
     def _create_approval_callback(self, session_id: str) -> ApprovalCallback:
         session = self._get_session(session_id)
@@ -158,7 +162,6 @@ class VibeAcpAgentLoop(SessionLifecycleMixin, CommandsMixin, ConfigMixin, UsageM
 
         return approval_callback
 
-
     @override
     async def list_sessions(
         self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
@@ -185,7 +188,6 @@ class VibeAcpAgentLoop(SessionLifecycleMixin, CommandsMixin, ConfigMixin, UsageM
 
         return ListSessionsResponse(sessions=sessions)
 
-
     @override
     async def cancel(self, session_id: str, **kwargs: Any) -> None:
         session = self._get_session(session_id)
@@ -193,7 +195,6 @@ class VibeAcpAgentLoop(SessionLifecycleMixin, CommandsMixin, ConfigMixin, UsageM
             "interrupt_agent"
         )
         await session.cancel_prompt()
-
 
     def _handle_telemetry_notification(self, params: dict[str, Any]) -> None:
         try:

@@ -51,7 +51,9 @@ class TerminalValidateProfileStateError(RuntimeError):
     """Raised when a terminal validate profile state rejects transitions."""
 
 
-_TRANSITIONS: dict[ValidateProfileState, dict[ValidateProfileEvent, ValidateProfileState]] = {
+_TRANSITIONS: dict[
+    ValidateProfileState, dict[ValidateProfileEvent, ValidateProfileState]
+] = {
     ValidateProfileState.IDLE: {
         ValidateProfileEvent.PROFILE_REQUESTED: ValidateProfileState.PLANNING,
         ValidateProfileEvent.PROFILE_REFUSED: ValidateProfileState.REFUSED,
@@ -147,7 +149,9 @@ class ValidateProfileStateMachine:
     ) -> ValidateProfileTransition:
         attrs = dict(attributes or {})
         if self._state == state and self._last_event == event:
-            return self._build_transition(self._state, state, event, reason, attrs, emit=False)
+            return self._build_transition(
+                self._state, state, event, reason, attrs, emit=False
+            )
         if self.is_terminal and state != self._state:
             raise TerminalValidateProfileStateError(f"{self._state} is terminal")
         if event == ValidateProfileEvent.PROFILE_COMPLETED:
@@ -167,12 +171,7 @@ class ValidateProfileStateMachine:
                 self._reason = reason
                 self._transition_count += 1
                 transition = self._build_transition(
-                    self._previous_state,
-                    state,
-                    event,
-                    reason,
-                    attrs,
-                    emit=False,
+                    self._previous_state, state, event, reason, attrs, emit=False
                 )
                 self._emit(transition)
                 return transition
@@ -188,12 +187,7 @@ class ValidateProfileStateMachine:
                 self._reason = reason
                 self._transition_count += 1
                 transition = self._build_transition(
-                    self._previous_state,
-                    state,
-                    event,
-                    reason,
-                    attrs,
-                    emit=False,
+                    self._previous_state, state, event, reason, attrs, emit=False
                 )
                 self._emit(transition)
                 return transition
@@ -215,7 +209,9 @@ class ValidateProfileStateMachine:
     def export_projection(self) -> dict[str, Any]:
         return {
             "state": self._state.value,
-            "previous_state": self._previous_state.value if self._previous_state else None,
+            "previous_state": self._previous_state.value
+            if self._previous_state
+            else None,
             "last_event": self._last_event.value if self._last_event else None,
             "reason": self._reason,
             "transition_count": self._transition_count,
@@ -228,7 +224,9 @@ class ValidateProfileStateMachine:
         target: ValidateProfileState | None = None
         match event:
             case ValidateProfileEvent.PROFILE_COMPLETED:
-                outcome = str(attributes.get("status") or attributes.get("outcome") or "passed")
+                outcome = str(
+                    attributes.get("status") or attributes.get("outcome") or "passed"
+                )
                 completion_states = {
                     "passed": ValidateProfileState.PASSED,
                     "failed": ValidateProfileState.FAILED,

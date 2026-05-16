@@ -106,7 +106,9 @@ def scan_projections(
     scan_input = ScanInput(findings_path=str(path))
     snapshot = InputSnapshot()
 
-    projection_findings, snapshot = _load_projections_or_fallback(path, proj_dir, snapshot)
+    projection_findings, snapshot = _load_projections_or_fallback(
+        path, proj_dir, snapshot
+    )
     scan_input = _fill_scan_input(scan_input, path, snapshot)
 
     if time.perf_counter() - start > max_duration_seconds:
@@ -135,7 +137,9 @@ def scan_projections(
     mission = _build_mission_candidate(candidates[0]) if candidates else None
 
     return RalphScanResult(
-        stop_reason=ScanStopReason.COMPLETED.value if candidates else ScanStopReason.NO_CANDIDATES.value,
+        stop_reason=ScanStopReason.COMPLETED.value
+        if candidates
+        else ScanStopReason.NO_CANDIDATES.value,
         inputs=scan_input,
         input_snapshot=snapshot,
         total_findings_inspected=len(projection_findings),
@@ -149,20 +153,30 @@ def scan_projections(
 def build_ralph_panel(result: RalphScanResult) -> RalphPanel:
     mission_sha = ""
     if result.mission_candidate:
-        mission_sha = _compute_content_hash(result.mission_candidate.model_dump(mode="json"))
+        mission_sha = _compute_content_hash(
+            result.mission_candidate.model_dump(mode="json")
+        )
 
     snapshot_sha = ""
     if result.input_snapshot:
-        snapshot_sha = _compute_content_hash(result.input_snapshot.model_dump(mode="json"))
+        snapshot_sha = _compute_content_hash(
+            result.input_snapshot.model_dump(mode="json")
+        )
 
     panel = RalphPanel(
         status="ready" if result.ranked_candidates else "idle",
         summary=RalphPanelSummary(
             candidate_count=len(result.ranked_candidates),
-            top_score=result.ranked_candidates[0].score if result.ranked_candidates else 0.0,
-            top_severity=result.ranked_candidates[0].severity if result.ranked_candidates else "none",
+            top_score=result.ranked_candidates[0].score
+            if result.ranked_candidates
+            else 0.0,
+            top_severity=result.ranked_candidates[0].severity
+            if result.ranked_candidates
+            else "none",
             input_source=(
-                result.input_snapshot.input_source if result.input_snapshot else "unknown"
+                result.input_snapshot.input_source
+                if result.input_snapshot
+                else "unknown"
             ),
             stop_reason=result.stop_reason,
             ranking_policy_version=result.ranking_policy_version,
@@ -177,18 +191,16 @@ def build_ralph_panel(result: RalphScanResult) -> RalphPanel:
                 requires_confirmation=True,
             ),
             RalphPanelAction(
-                action="decline",
-                label="Decline",
-                requires_confirmation=True,
+                action="decline", label="Decline", requires_confirmation=True
             ),
             RalphPanelAction(
-                action="rescan",
-                label="Rescan",
-                requires_confirmation=False,
+                action="rescan", label="Rescan", requires_confirmation=False
             ),
         ],
         decision_required=bool(result.mission_candidate),
-        approval_state=ApprovalState.PENDING.value if result.mission_candidate else ApprovalState.NOT_REQUESTED.value,
+        approval_state=ApprovalState.PENDING.value
+        if result.mission_candidate
+        else ApprovalState.NOT_REQUESTED.value,
         mission_candidate_sha256=mission_sha,
         input_snapshot_sha256=snapshot_sha,
     )
@@ -211,7 +223,9 @@ def build_run_state(panel: RalphPanel) -> RalphRunState:
         scan_id=panel.summary.stop_reason,
         panel_sha256=panel.panel_sha256,
         mission_candidate_sha256=panel.mission_candidate_sha256,
-        selected_candidate_id=panel.top_candidate.candidate_id if panel.top_candidate else "",
+        selected_candidate_id=panel.top_candidate.candidate_id
+        if panel.top_candidate
+        else "",
         approval_state=panel.approval_state,
     )
 
@@ -220,6 +234,7 @@ def compute_decision_request(panel: RalphPanel) -> Any:
     if not panel.top_candidate or not panel.mission_candidate:
         return None
     from rig_relay.ralph.models import RalphDecisionRequest
+
     return RalphDecisionRequest(
         scan_id=panel.summary.stop_reason,
         candidate_id=panel.top_candidate.candidate_id,
@@ -239,13 +254,16 @@ def compute_decision_result(
     rationale: str = "",
 ) -> Any:
     from rig_relay.ralph.models import RalphDecisionResult
+
     return RalphDecisionResult(
         decision_id=decision_id,
         scan_id=scan_id,
         candidate_id=candidate_id,
         decision=decision,
         rationale=rationale,
-        next_phase="execution" if decision == ApprovalState.APPROVED.value else "closed",
+        next_phase="execution"
+        if decision == ApprovalState.APPROVED.value
+        else "closed",
     )
 
 
@@ -263,7 +281,9 @@ def _load_projections_or_fallback(
         snapshot.input_hashes = {}
         try:
             raw = findings_path.read_bytes()
-            snapshot.input_hashes = {str(findings_path): hashlib.sha256(raw).hexdigest()}
+            snapshot.input_hashes = {
+                str(findings_path): hashlib.sha256(raw).hexdigest()
+            }
         except OSError:
             pass
         return fallback, snapshot
@@ -323,13 +343,13 @@ def _load_projection_findings(
     return all_findings
 
 
-def _extract_findings_from_projection(
-    data: Any, filename: str
-) -> list[dict[str, Any]]:
+def _extract_findings_from_projection(data: Any, filename: str) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
 
     if isinstance(data, dict):
-        candidates = data.get("findings") or data.get("candidates") or data.get("items") or []
+        candidates = (
+            data.get("findings") or data.get("candidates") or data.get("items") or []
+        )
         if isinstance(candidates, list):
             items.extend(candidates)
         if data.get("status") == "open" and data.get("finding_id"):
@@ -404,7 +424,12 @@ def _rank_candidates(findings: list[dict[str, Any]]) -> list[RankedCandidate]:
             staleness_weight=staleness_w,
             diagnostic_weight=diagnostic_w,
             recurrence_weight=integrity_w,
-            total_score=severity_w + kind_w + evidence_b + staleness_w + diagnostic_w + integrity_w,
+            total_score=severity_w
+            + kind_w
+            + evidence_b
+            + staleness_w
+            + diagnostic_w
+            + integrity_w,
         )
         candidate.score = candidate.score_components.total_score
         candidate.ranking_policy_version = RANKING_POLICY_VERSION
@@ -435,10 +460,21 @@ def _to_candidate(finding: dict[str, Any]) -> RankedCandidate | None:
         command_text = finding.get("command_text", "")
         title = f"Bash {bash_kind.replace('bash_', '').replace('_', ' ')}: {command_family or command_text[:60] or 'unknown'}"
         candidate_id = f"ralph_bash_{hashlib.sha256(command_text.encode()).hexdigest()[:12] if command_text else base}"
-        invocation_count = finding.get("invocation_count", finding.get("failure_count", finding.get("timeout_count", 0)))
-        severity = "medium" if invocation_count and int(invocation_count) >= 3 else "low"
+        invocation_count = finding.get(
+            "invocation_count",
+            finding.get("failure_count", finding.get("timeout_count", 0)),
+        )
+        severity = (
+            "medium" if invocation_count and int(invocation_count) >= 3 else "low"
+        )
         replacement = finding.get("replacement_candidate", "")
-        reason = f"{replacement} replacement candidate" if replacement else f"{invocation_count} occurrences" if invocation_count else bash_kind
+        reason = (
+            f"{replacement} replacement candidate"
+            if replacement
+            else f"{invocation_count} occurrences"
+            if invocation_count
+            else bash_kind
+        )
         return RankedCandidate(
             candidate_id=candidate_id,
             source_kind=bash_kind,
@@ -446,7 +482,9 @@ def _to_candidate(finding: dict[str, Any]) -> RankedCandidate | None:
             severity=severity,
             status="open",
             reason=reason[:200],
-            recommended_mission_kind=MISSION_KIND_FROM_CANDIDATE.get(bash_kind, "bash_safety_audit"),
+            recommended_mission_kind=MISSION_KIND_FROM_CANDIDATE.get(
+                bash_kind, "bash_safety_audit"
+            ),
             risk_tier=AutonomyTier.OBSERVE,
             requires_approval_for_execution=True,
             related_files=[],
@@ -484,9 +522,7 @@ def _build_mission_candidate(top: RankedCandidate) -> MissionCandidate:
         candidate_id=top.candidate_id,
         title=top.title,
         mission_kind=top.recommended_mission_kind,
-        source_refs=[
-            SourceRef(kind="finding", id=top.source_finding_id or "")
-        ],
+        source_refs=[SourceRef(kind="finding", id=top.source_finding_id or "")],
         allowed_actions=list(MISSION_ALLOWED_ACTIONS_DEFAULT),
         requires_approval=True,
         required_autonomy_tier=AutonomyTier.OBSERVE,

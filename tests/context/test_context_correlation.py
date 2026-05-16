@@ -78,7 +78,10 @@ class TestNormalizePaths:
         assert _normalize_paths(["", " ", "a.py"]) == ["a.py"]
 
     def test_preserves_already_normalized(self) -> None:
-        assert _normalize_paths(["src/main.py", "docs/guide.md"]) == ["src/main.py", "docs/guide.md"]
+        assert _normalize_paths(["src/main.py", "docs/guide.md"]) == [
+            "src/main.py",
+            "docs/guide.md",
+        ]
 
 
 # ── Recommended context matching ─────────────────────────────────
@@ -86,21 +89,27 @@ class TestNormalizePaths:
 
 class TestMatchRecommendedContext:
     def test_exact_match(self) -> None:
-        packet = _make_packet(recommended_context=[
-            PathRecommendation(path="docs/guide.md", reason="Important"),
-        ])
+        packet = _make_packet(
+            recommended_context=[
+                PathRecommendation(path="docs/guide.md", reason="Important")
+            ]
+        )
         assert _match_recommended_context(packet, ["docs/guide.md"]) is True
 
     def test_no_match(self) -> None:
-        packet = _make_packet(recommended_context=[
-            PathRecommendation(path="docs/guide.md", reason="Important"),
-        ])
+        packet = _make_packet(
+            recommended_context=[
+                PathRecommendation(path="docs/guide.md", reason="Important")
+            ]
+        )
         assert _match_recommended_context(packet, ["src/main.py"]) is False
 
     def test_empty_paths(self) -> None:
-        packet = _make_packet(recommended_context=[
-            PathRecommendation(path="docs/guide.md", reason="Important"),
-        ])
+        packet = _make_packet(
+            recommended_context=[
+                PathRecommendation(path="docs/guide.md", reason="Important")
+            ]
+        )
         assert _match_recommended_context(packet, []) is False
 
     def test_empty_recommendations(self) -> None:
@@ -113,31 +122,55 @@ class TestMatchRecommendedContext:
 
 class TestOverlapActiveWork:
     def test_collision_warning_match(self) -> None:
-        packet = _make_packet(active_work={
-            "lanes": [],
-            "collision_warnings": [{"path": "src/main.py", "claimed_by": "a1", "reason": "test"}],
-        })
+        packet = _make_packet(
+            active_work={
+                "lanes": [],
+                "collision_warnings": [
+                    {"path": "src/main.py", "claimed_by": "a1", "reason": "test"}
+                ],
+            }
+        )
         assert _overlap_active_work(packet, ["src/main.py"]) is True
 
     def test_claimed_paths_match(self) -> None:
-        packet = _make_packet(active_work={
-            "lanes": [{"agent_id": "a1", "claimed_paths": ["src/main.py"], "status": "active"}],
-            "collision_warnings": [],
-        })
+        packet = _make_packet(
+            active_work={
+                "lanes": [
+                    {
+                        "agent_id": "a1",
+                        "claimed_paths": ["src/main.py"],
+                        "status": "active",
+                    }
+                ],
+                "collision_warnings": [],
+            }
+        )
         assert _overlap_active_work(packet, ["src/main.py"]) is True
 
     def test_no_overlap(self) -> None:
-        packet = _make_packet(active_work={
-            "lanes": [{"agent_id": "a1", "claimed_paths": ["docs/"], "status": "active"}],
-            "collision_warnings": [],
-        })
+        packet = _make_packet(
+            active_work={
+                "lanes": [
+                    {"agent_id": "a1", "claimed_paths": ["docs/"], "status": "active"}
+                ],
+                "collision_warnings": [],
+            }
+        )
         assert _overlap_active_work(packet, ["src/main.py"]) is False
 
     def test_empty_paths(self) -> None:
-        packet = _make_packet(active_work={
-            "lanes": [{"agent_id": "a1", "claimed_paths": ["src/main.py"], "status": "active"}],
-            "collision_warnings": [],
-        })
+        packet = _make_packet(
+            active_work={
+                "lanes": [
+                    {
+                        "agent_id": "a1",
+                        "claimed_paths": ["src/main.py"],
+                        "status": "active",
+                    }
+                ],
+                "collision_warnings": [],
+            }
+        )
         assert _overlap_active_work(packet, []) is False
 
 
@@ -146,24 +179,36 @@ class TestOverlapActiveWork:
 
 class TestTouchedDirtyPaths:
     def test_dirty_count_indicates_possible_match(self) -> None:
-        packet = _make_packet(repo=RepoInfo(
-            root="/repo", head="h", branch="b",
-            dirty_summary={"modified": 3, "untracked": 1, "staged": 0},
-        ))
+        packet = _make_packet(
+            repo=RepoInfo(
+                root="/repo",
+                head="h",
+                branch="b",
+                dirty_summary={"modified": 3, "untracked": 1, "staged": 0},
+            )
+        )
         assert _touched_dirty_paths(packet, ["src/main.py"]) is True
 
     def test_clean_repo(self) -> None:
-        packet = _make_packet(repo=RepoInfo(
-            root="/repo", head="h", branch="b",
-            dirty_summary={"modified": 0, "untracked": 0, "staged": 0},
-        ))
+        packet = _make_packet(
+            repo=RepoInfo(
+                root="/repo",
+                head="h",
+                branch="b",
+                dirty_summary={"modified": 0, "untracked": 0, "staged": 0},
+            )
+        )
         assert _touched_dirty_paths(packet, ["src/main.py"]) is False
 
     def test_empty_paths(self) -> None:
-        packet = _make_packet(repo=RepoInfo(
-            root="/repo", head="h", branch="b",
-            dirty_summary={"modified": 3, "untracked": 0, "staged": 0},
-        ))
+        packet = _make_packet(
+            repo=RepoInfo(
+                root="/repo",
+                head="h",
+                branch="b",
+                dirty_summary={"modified": 3, "untracked": 0, "staged": 0},
+            )
+        )
         assert _touched_dirty_paths(packet, []) is False
 
 
@@ -172,15 +217,15 @@ class TestTouchedDirtyPaths:
 
 class TestTouchedHardDenied:
     def test_exact_match(self) -> None:
-        packet = _make_packet(do_not_touch=[
-            PathRecommendation(path="secrets.json", reason="Credentials"),
-        ])
+        packet = _make_packet(
+            do_not_touch=[PathRecommendation(path="secrets.json", reason="Credentials")]
+        )
         assert _touched_hard_denied(packet, ["secrets.json"]) is True
 
     def test_no_match(self) -> None:
-        packet = _make_packet(do_not_touch=[
-            PathRecommendation(path="secrets.json", reason="Credentials"),
-        ])
+        packet = _make_packet(
+            do_not_touch=[PathRecommendation(path="secrets.json", reason="Credentials")]
+        )
         assert _touched_hard_denied(packet, ["src/main.py"]) is False
 
     def test_empty_deny_list(self) -> None:
@@ -207,33 +252,29 @@ class TestCorrelateToolCallWithContext:
     def test_does_not_raise_without_args(self) -> None:
         """Missing args must not cause errors."""
         obs = correlate_tool_call_with_context(
-            context_packet=_make_packet(),
-            tool_name="read_file",
-            tool_args=None,
+            context_packet=_make_packet(), tool_name="read_file", tool_args=None
         )
         assert obs.context_available is True
         assert obs.target_paths == []
 
     def test_context_available_true_with_packet(self) -> None:
         obs = correlate_tool_call_with_context(
-            context_packet=_make_packet(),
-            tool_name="bash",
-            tool_args={"command": "ls"},
+            context_packet=_make_packet(), tool_name="bash", tool_args={"command": "ls"}
         )
         assert obs.context_available is True
 
     def test_observation_only_is_always_true(self) -> None:
         obs = correlate_tool_call_with_context(
-            context_packet=None,
-            tool_name="bash",
-            tool_args={"command": "rm -rf /"},
+            context_packet=None, tool_name="bash", tool_args={"command": "rm -rf /"}
         )
         assert obs.observation_only is True
 
     def test_match_recommended_detected(self) -> None:
-        packet = _make_packet(recommended_context=[
-            PathRecommendation(path="docs/guide.md", reason="Read first"),
-        ])
+        packet = _make_packet(
+            recommended_context=[
+                PathRecommendation(path="docs/guide.md", reason="Read first")
+            ]
+        )
         obs = correlate_tool_call_with_context(
             context_packet=packet,
             tool_name="read_file",
@@ -242,10 +283,18 @@ class TestCorrelateToolCallWithContext:
         assert obs.matched_recommended_context is True
 
     def test_overlap_detected(self) -> None:
-        packet = _make_packet(active_work={
-            "lanes": [{"agent_id": "a1", "claimed_paths": ["src/main.py"], "status": "active"}],
-            "collision_warnings": [],
-        })
+        packet = _make_packet(
+            active_work={
+                "lanes": [
+                    {
+                        "agent_id": "a1",
+                        "claimed_paths": ["src/main.py"],
+                        "status": "active",
+                    }
+                ],
+                "collision_warnings": [],
+            }
+        )
         obs = correlate_tool_call_with_context(
             context_packet=packet,
             tool_name="search_replace",
@@ -273,9 +322,11 @@ class TestCorrelateToolCallWithContext:
 
     def test_multiple_target_paths(self) -> None:
         obs = correlate_tool_call_with_context(
-            context_packet=_make_packet(do_not_touch=[
-                PathRecommendation(path="secret.key", reason="Key material"),
-            ]),
+            context_packet=_make_packet(
+                do_not_touch=[
+                    PathRecommendation(path="secret.key", reason="Key material")
+                ]
+            ),
             tool_name="search_replace",
             tool_args={"file_path": "secret.key"},
             tool_status="refused",
@@ -298,12 +349,12 @@ class TestCorrelationDoesNotBlock:
             ("get_context", {"mode": "map"}),
         ],
     )
-    def test_all_tool_types_produce_observation(self, tool_name: str, tool_args: dict) -> None:
+    def test_all_tool_types_produce_observation(
+        self, tool_name: str, tool_args: dict
+    ) -> None:
         """Prove correlation never raises for any tool type."""
         obs = correlate_tool_call_with_context(
-            context_packet=_make_packet(),
-            tool_name=tool_name,
-            tool_args=tool_args,
+            context_packet=_make_packet(), tool_name=tool_name, tool_args=tool_args
         )
         assert obs.tool_name == tool_name
         assert obs.observation_only is True

@@ -27,6 +27,7 @@ def test_ralph_scan_returns_intent_envelope():
 
 def test_idle_projection_when_no_scan():
     import rig_relay.desktop.ralph_intents as ri
+
     ri._RALPH_STATE.clear()
 
     proj = build_ralph_projection()
@@ -56,12 +57,15 @@ def test_approve_with_identity_binding():
     run_id = state["run_id"]
     scan_id = state["scan_id"]
 
-    result = execute_ralph_intent("ralph_approve", params={
-        "run_id": run_id,
-        "scan_id": scan_id,
-        "panel_sha256": panel["panel_sha256"],
-        "mission_candidate_sha256": panel["mission_candidate_sha256"],
-    })
+    result = execute_ralph_intent(
+        "ralph_approve",
+        params={
+            "run_id": run_id,
+            "scan_id": scan_id,
+            "panel_sha256": panel["panel_sha256"],
+            "mission_candidate_sha256": panel["mission_candidate_sha256"],
+        },
+    )
 
     assert result["ok"] is True
     assert result["status"] == "completed"
@@ -70,11 +74,14 @@ def test_approve_with_identity_binding():
 def test_approve_refuses_stale_run_id():
     execute_ralph_intent("ralph_scan")
 
-    result = execute_ralph_intent("ralph_approve", params={
-        "run_id": "00000000-0000-0000-0000-000000000000",
-        "panel_sha256": "a" * 64,
-        "mission_candidate_sha256": "b" * 64,
-    })
+    result = execute_ralph_intent(
+        "ralph_approve",
+        params={
+            "run_id": "00000000-0000-0000-0000-000000000000",
+            "panel_sha256": "a" * 64,
+            "mission_candidate_sha256": "b" * 64,
+        },
+    )
 
     assert result["ok"] is False
     assert result["status"] == "refused"
@@ -84,11 +91,14 @@ def test_approve_refuses_stale_run_id():
 def test_approve_refuses_stale_scan_id():
     execute_ralph_intent("ralph_scan")
 
-    result = execute_ralph_intent("ralph_approve", params={
-        "scan_id": "wrong-scan-id",
-        "panel_sha256": "a" * 64,
-        "mission_candidate_sha256": "b" * 64,
-    })
+    result = execute_ralph_intent(
+        "ralph_approve",
+        params={
+            "scan_id": "wrong-scan-id",
+            "panel_sha256": "a" * 64,
+            "mission_candidate_sha256": "b" * 64,
+        },
+    )
 
     assert result["ok"] is False
     assert result["error_code"] == "stale_scan_id"
@@ -101,12 +111,15 @@ def test_scan_a_rescan_b_approve_a_refused():
 
     execute_ralph_intent("ralph_rescan")
 
-    result = execute_ralph_intent("ralph_approve", params={
-        "run_id": run_id_a,
-        "scan_id": panel_a.get("scan_id", ""),
-        "panel_sha256": panel_a["panel_sha256"],
-        "mission_candidate_sha256": panel_a["mission_candidate_sha256"],
-    })
+    result = execute_ralph_intent(
+        "ralph_approve",
+        params={
+            "run_id": run_id_a,
+            "scan_id": panel_a.get("scan_id", ""),
+            "panel_sha256": panel_a["panel_sha256"],
+            "mission_candidate_sha256": panel_a["mission_candidate_sha256"],
+        },
+    )
 
     assert result["ok"] is False
     assert result["error_code"] in ("stale_run_id", "stale_scan_id")
@@ -119,11 +132,14 @@ def test_rescan_invalidates_previous_decline():
 
     execute_ralph_intent("ralph_rescan")
 
-    result = execute_ralph_intent("ralph_decline", params={
-        "run_id": run_id_a,
-        "panel_sha256": panel_a["panel_sha256"],
-        "mission_candidate_sha256": panel_a["mission_candidate_sha256"],
-    })
+    result = execute_ralph_intent(
+        "ralph_decline",
+        params={
+            "run_id": run_id_a,
+            "panel_sha256": panel_a["panel_sha256"],
+            "mission_candidate_sha256": panel_a["mission_candidate_sha256"],
+        },
+    )
 
     assert result["ok"] is False
 
@@ -132,10 +148,13 @@ def test_approve_fails_with_stale_panel_hash():
     scan = execute_ralph_intent("ralph_scan")
     panel = scan["ralph"]["panel"]
 
-    result = execute_ralph_intent("ralph_approve", params={
-        "panel_sha256": "0" * 64,
-        "mission_candidate_sha256": panel["mission_candidate_sha256"],
-    })
+    result = execute_ralph_intent(
+        "ralph_approve",
+        params={
+            "panel_sha256": "0" * 64,
+            "mission_candidate_sha256": panel["mission_candidate_sha256"],
+        },
+    )
 
     assert result["ok"] is False
     assert result["error_code"] == "stale_panel_hash"
@@ -145,10 +164,13 @@ def test_approve_fails_with_stale_mission_hash():
     scan = execute_ralph_intent("ralph_scan")
     panel = scan["ralph"]["panel"]
 
-    result = execute_ralph_intent("ralph_approve", params={
-        "panel_sha256": panel["panel_sha256"],
-        "mission_candidate_sha256": "0" * 64,
-    })
+    result = execute_ralph_intent(
+        "ralph_approve",
+        params={
+            "panel_sha256": panel["panel_sha256"],
+            "mission_candidate_sha256": "0" * 64,
+        },
+    )
 
     assert result["ok"] is False
     assert result["error_code"] == "stale_mission_hash"
@@ -157,10 +179,10 @@ def test_approve_fails_with_stale_mission_hash():
 def test_approve_fails_without_prior_scan():
     _RALPH_STATE.clear()
 
-    result = execute_ralph_intent("ralph_approve", params={
-        "panel_sha256": "a" * 64,
-        "mission_candidate_sha256": "b" * 64,
-    })
+    result = execute_ralph_intent(
+        "ralph_approve",
+        params={"panel_sha256": "a" * 64, "mission_candidate_sha256": "b" * 64},
+    )
 
     assert result["ok"] is False
     assert result["error_code"] == "no_scan_state"
@@ -177,10 +199,13 @@ def test_decline_succeeds():
     scan = execute_ralph_intent("ralph_scan")
     panel = scan["ralph"]["panel"]
 
-    result = execute_ralph_intent("ralph_decline", params={
-        "panel_sha256": panel["panel_sha256"],
-        "mission_candidate_sha256": panel["mission_candidate_sha256"],
-    })
+    result = execute_ralph_intent(
+        "ralph_decline",
+        params={
+            "panel_sha256": panel["panel_sha256"],
+            "mission_candidate_sha256": panel["mission_candidate_sha256"],
+        },
+    )
 
     assert result["ok"] is True
     assert result["next_phase"] == "closed"
@@ -207,17 +232,23 @@ def test_execution_flag_never_true():
 
     scan = execute_ralph_intent("ralph_scan")
     panel = scan["ralph"]["panel"]
-    approve = execute_ralph_intent("ralph_approve", params={
-        "panel_sha256": panel["panel_sha256"],
-        "mission_candidate_sha256": panel["mission_candidate_sha256"],
-    })
+    approve = execute_ralph_intent(
+        "ralph_approve",
+        params={
+            "panel_sha256": panel["panel_sha256"],
+            "mission_candidate_sha256": panel["mission_candidate_sha256"],
+        },
+    )
 
     scan2 = execute_ralph_intent("ralph_scan")
     panel2 = scan2["ralph"]["panel"]
-    decline = execute_ralph_intent("ralph_decline", params={
-        "panel_sha256": panel2["panel_sha256"],
-        "mission_candidate_sha256": panel2["mission_candidate_sha256"],
-    })
+    decline = execute_ralph_intent(
+        "ralph_decline",
+        params={
+            "panel_sha256": panel2["panel_sha256"],
+            "mission_candidate_sha256": panel2["mission_candidate_sha256"],
+        },
+    )
 
     assert scan["execution_enabled"] is False
     assert approve["execution_enabled"] is False
@@ -233,20 +264,20 @@ def test_no_disk_writes(tmp_path: Path):
 
     _RALPH_STATE.clear()
     execute_ralph_intent("ralph_scan")
-    execute_ralph_intent("ralph_approve", params={
-        "panel_sha256": "any",
-        "mission_candidate_sha256": "any",
-    })
+    execute_ralph_intent(
+        "ralph_approve",
+        params={"panel_sha256": "any", "mission_candidate_sha256": "any"},
+    )
 
     assert findings_path.stat().st_mtime == mtime_before
 
 
 def test_refusal_is_structured():
     _RALPH_STATE.clear()
-    result = execute_ralph_intent("ralph_approve", params={
-        "panel_sha256": "a" * 64,
-        "mission_candidate_sha256": "b" * 64,
-    })
+    result = execute_ralph_intent(
+        "ralph_approve",
+        params={"panel_sha256": "a" * 64, "mission_candidate_sha256": "b" * 64},
+    )
 
     assert result["ok"] is False
     assert result["schema_version"] == "rig.desktop.intent_result.v1"

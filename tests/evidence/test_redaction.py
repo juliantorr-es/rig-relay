@@ -19,6 +19,7 @@ from scripts import (
 
 pytestmark = [pytest.mark.integration]
 
+
 def test_redact_for_remote_redacts_sensitive_payload() -> None:
     payload = {
         "authorization_receipt": {"raw": "secret"},

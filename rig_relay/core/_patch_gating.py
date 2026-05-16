@@ -20,9 +20,7 @@ class PatchGatingMixin:
     """Mixin providing patch proposal gating for mutation tools."""
 
     def _check_patch_proposal_gating(
-        self,
-        tool_call: ResolvedToolCall,
-        tool_instance: BaseTool,
+        self, tool_call: ResolvedToolCall, tool_instance: BaseTool
     ) -> ToolResultEvent | None:
         """Gate mutation tools when agent profile has patch_proposal_mode=True.
 
@@ -39,7 +37,9 @@ class PatchGatingMixin:
 
         mutation_str = str(mutation_cls.value)
         mutation_write = mutation_str in {
-            "FILE_WRITE", "FILE_DELETE", "WORKTREE_CHECKPOINT",
+            "FILE_WRITE",
+            "FILE_DELETE",
+            "WORKTREE_CHECKPOINT",
         }
         if not mutation_write:
             return None
@@ -47,7 +47,9 @@ class PatchGatingMixin:
         from rig_relay.coordination.patch_proposal import PatchProposal
         from rig_relay.coordination.patch_workflow import PatchWorkflowStore
 
-        store = PatchWorkflowStore(self._workspace_root / ".rig" / "relay" / "coordination")
+        store = PatchWorkflowStore(
+            self._workspace_root / ".rig" / "relay" / "coordination"
+        )
 
         proposal = PatchProposal(
             proposal_id=f"prop-{tool_call.call_id}",

@@ -19,8 +19,18 @@ def test_mission_board_default():
 
 def test_mission_board_with_custom_missions():
     missions = [
-        {"mission_id": "m1", "title": "Task A", "status": "active", "lane_id": "lane-a"},
-        {"mission_id": "m2", "title": "Task B", "status": "completed", "lane_id": "lane-b"},
+        {
+            "mission_id": "m1",
+            "title": "Task A",
+            "status": "active",
+            "lane_id": "lane-a",
+        },
+        {
+            "mission_id": "m2",
+            "title": "Task B",
+            "status": "completed",
+            "lane_id": "lane-b",
+        },
     ]
     board = build_mission_board(missions=missions)
     assert board.total_missions == 2
@@ -41,7 +51,9 @@ def test_lifecycle_timeline_merge_push_blocked():
     board = build_mission_board()
     merge = [e for e in board.lifecycle_timeline if e.label == "Merge"][0]
     assert merge.blocked is True
-    push = [e for e in board.lifecycle_timeline if e.label == "Push to preproduction"][0]
+    push = [e for e in board.lifecycle_timeline if e.label == "Push to preproduction"][
+        0
+    ]
     assert push.blocked is True
 
 
@@ -59,9 +71,14 @@ def test_review_entrypoint_none_when_no_pending():
 
 
 def test_execution_scopes_always_distinct():
-    board = build_mission_board(background_enabled=True,
-                               lifecycle={"isolated_lane_execution_enabled": True,
-                                          "merge_enabled": False, "push_enabled": False})
+    board = build_mission_board(
+        background_enabled=True,
+        lifecycle={
+            "isolated_lane_execution_enabled": True,
+            "merge_enabled": False,
+            "push_enabled": False,
+        },
+    )
     assert board.isolated_lane_execution_enabled is True
     assert board.live_runtime_mutation_enabled is False
     assert board.merge_enabled is False
@@ -77,11 +94,19 @@ def test_available_actions():
 
 
 def test_lifecycle_timeline_respects_active_lanes():
-    lifecycle = {"active_lanes": [{"latest_commit_sha": "abc123", "review_bundle_sha256": "def456"}]}
+    lifecycle = {
+        "active_lanes": [
+            {"latest_commit_sha": "abc123", "review_bundle_sha256": "def456"}
+        ]
+    }
     board = build_mission_board(background_enabled=True, lifecycle=lifecycle)
     lane_step = [e for e in board.lifecycle_timeline if e.label == "Lane created"][0]
     assert lane_step.status == "completed"
-    commit_step = [e for e in board.lifecycle_timeline if e.label == "Commit recorded"][0]
+    commit_step = [e for e in board.lifecycle_timeline if e.label == "Commit recorded"][
+        0
+    ]
     assert commit_step.status == "completed"
-    bundle_step = [e for e in board.lifecycle_timeline if e.label == "Review bundle sealed"][0]
+    bundle_step = [
+        e for e in board.lifecycle_timeline if e.label == "Review bundle sealed"
+    ][0]
     assert bundle_step.status == "completed"

@@ -1,4 +1,5 @@
 """ACP mixin — config."""
+
 from __future__ import annotations
 
 from typing import Any, cast, override
@@ -42,14 +43,12 @@ class ConfigMixin:
 
         return True
 
-
     async def _reload_config(self, session: AcpSessionLoop) -> None:
         new_config = VibeConfig.load(
             tool_paths=session.agent_loop.config.tool_paths,
             disabled_tools=NON_INTERACTIVE_DISABLED_TOOLS,
         )
         await session.agent_loop.reload_with_initial_messages(base_config=new_config)
-
 
     async def _apply_model_change(self, session: AcpSessionLoop, model_id: str) -> bool:
         model_aliases = [model.alias for model in session.agent_loop.config.models]
@@ -60,14 +59,12 @@ class ConfigMixin:
         await self._reload_config(session)
         return True
 
-
     async def _apply_thinking_change(
         self, session: AcpSessionLoop, level: ThinkingLevel
     ) -> bool:
         session.agent_loop.config.set_thinking(level)
         await self._reload_config(session)
         return True
-
 
     @override
     async def set_session_mode(
@@ -80,7 +77,6 @@ class ConfigMixin:
 
         return SetSessionModeResponse()
 
-
     @override
     async def set_session_model(
         self, model_id: str, session_id: str, **kwargs: Any
@@ -91,7 +87,6 @@ class ConfigMixin:
             return None
 
         return SetSessionModelResponse()
-
 
     @override
     async def set_config_option(
@@ -118,7 +113,6 @@ class ConfigMixin:
             config_options=self._build_config_options(session)
         )
 
-
     def _build_config_options(
         self, session: AcpSessionLoop
     ) -> list[SessionConfigOptionSelect | SessionConfigOptionBoolean]:
@@ -135,7 +129,6 @@ class ConfigMixin:
         )
         return [modes_config, models_config, thinking_config]
 
-
     async def _send_config_option_update(self, session: AcpSessionLoop) -> None:
         """Push updated config options (modes, models) to the client."""
         await self.client.session_update(
@@ -145,4 +138,3 @@ class ConfigMixin:
                 config_options=self._build_config_options(session),
             ),
         )
-

@@ -30,7 +30,9 @@ class TestReportArgs:
     """Argument model validation."""
 
     def test_minimal_args(self) -> None:
-        args = ReportArgs(kind="bug_report", title="Test bug", summary="Something broke")
+        args = ReportArgs(
+            kind="bug_report", title="Test bug", summary="Something broke"
+        )
         assert args.kind == "bug_report"
         assert args.severity == "medium"
         assert args.status == "open"
@@ -50,7 +52,12 @@ class TestReportArgs:
 
     def test_extra_fields_rejected(self) -> None:
         with pytest.raises(ValueError):
-            ReportArgs.model_validate({"kind": "bug_report", "title": "t", "summary": "s", "unknown": "x"})  # type: ignore
+            ReportArgs.model_validate({
+                "kind": "bug_report",
+                "title": "t",
+                "summary": "s",
+                "unknown": "x",
+            })  # type: ignore
 
     def test_affected_paths(self) -> None:
         args = ReportArgs(
@@ -66,7 +73,13 @@ class TestReportArgs:
             kind="data_race",
             title="Race",
             summary="Concurrent write",
-            evidence=[{"kind": "code_reference", "path": "src/main.py", "summary": "Race at line 42"}],
+            evidence=[
+                {
+                    "kind": "code_reference",
+                    "path": "src/main.py",
+                    "summary": "Race at line 42",
+                }
+            ],
         )
         assert len(args.evidence) == 1
 
@@ -120,13 +133,29 @@ class TestReportStore:
         assert len(rid) > 20
 
     def test_derive_dedupe_key(self) -> None:
-        key1 = derive_dedupe_key({"kind": "bug", "title": "Test", "affected_paths": ["a.py"]})
-        key2 = derive_dedupe_key({"kind": "bug", "title": "Test", "affected_paths": ["a.py"]})
+        key1 = derive_dedupe_key({
+            "kind": "bug",
+            "title": "Test",
+            "affected_paths": ["a.py"],
+        })
+        key2 = derive_dedupe_key({
+            "kind": "bug",
+            "title": "Test",
+            "affected_paths": ["a.py"],
+        })
         assert key1 == key2
 
     def test_dedupe_key_different_for_different_content(self) -> None:
-        key1 = derive_dedupe_key({"kind": "bug", "title": "One", "affected_paths": ["a.py"]})
-        key2 = derive_dedupe_key({"kind": "bug", "title": "Two", "affected_paths": ["a.py"]})
+        key1 = derive_dedupe_key({
+            "kind": "bug",
+            "title": "One",
+            "affected_paths": ["a.py"],
+        })
+        key2 = derive_dedupe_key({
+            "kind": "bug",
+            "title": "Two",
+            "affected_paths": ["a.py"],
+        })
         assert key1 != key2
 
     def test_compute_report_sha256(self) -> None:
@@ -160,8 +189,12 @@ class TestReportStore:
     def test_ledger_is_append_only(self, tmp_path: Path) -> None:
         """Prove that writing a second report doesn't destroy the first."""
         ledger = tmp_path / "reports.jsonl"
-        write_report_to_ledger({"report_id": "r1", "dedupe_key": "k1", "title": "First"}, ledger)
-        write_report_to_ledger({"report_id": "r2", "dedupe_key": "k2", "title": "Second"}, ledger)
+        write_report_to_ledger(
+            {"report_id": "r1", "dedupe_key": "k1", "title": "First"}, ledger
+        )
+        write_report_to_ledger(
+            {"report_id": "r2", "dedupe_key": "k2", "title": "Second"}, ledger
+        )
 
         lines = ledger.read_text().strip().split("\n")
         assert len(lines) == 2
@@ -172,14 +205,18 @@ class TestReportStore:
         """Prove that a report with the same dedupe_key is detected as duplicate."""
         ledger = tmp_path / "reports.jsonl"
         key = "dupe_key_123"
-        write_report_to_ledger({"report_id": "r1", "dedupe_key": key, "title": "Original"}, ledger)
+        write_report_to_ledger(
+            {"report_id": "r1", "dedupe_key": key, "title": "Original"}, ledger
+        )
         found = find_existing_report(key, ledger)
         assert found is not None
         assert found["title"] == "Original"
 
     def test_dedupe_no_false_positive(self, tmp_path: Path) -> None:
         ledger = tmp_path / "reports.jsonl"
-        write_report_to_ledger({"report_id": "r1", "dedupe_key": "key_a", "title": "A"}, ledger)
+        write_report_to_ledger(
+            {"report_id": "r1", "dedupe_key": "key_a", "title": "A"}, ledger
+        )
         found = find_existing_report("key_b", ledger)
         assert found is None
 
@@ -193,6 +230,7 @@ class TestReportToolRegistration:
 
     def test_tool_is_not_abstract(self) -> None:
         import inspect
+
         assert not inspect.isabstract(Report)
         config = ReportToolConfig()
         state = BaseToolState()
@@ -209,6 +247,7 @@ class TestReportToolDoesNotMutateFindings:
     @pytest.mark.asyncio
     async def test_no_modification_to_findings_registry(self, tmp_path: Path) -> None:
         import os
+
         orig_cwd = Path.cwd()
         os.chdir(str(tmp_path))
 
@@ -255,7 +294,13 @@ class TestReportDataRaceDetails:
             severity="high",
             confidence="confirmed",
             affected_paths=["rig_relay/coordination/store.py"],
-            evidence=[{"kind": "code_reference", "path": "rig_relay/coordination/store.py", "summary": "No advisory lock before put"}],
+            evidence=[
+                {
+                    "kind": "code_reference",
+                    "path": "rig_relay/coordination/store.py",
+                    "summary": "No advisory lock before put",
+                }
+            ],
             details={
                 "shared_resource": ".build/rig-relay/coordination/",
                 "race_condition": "Concurrent writers can overwrite job state without advisory lock",

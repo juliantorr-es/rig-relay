@@ -43,8 +43,8 @@ REQUIRED_CORE_RULES = [
 REQUIRED_CROSS_REFS = ["rig-to-relay-pattern-inventory.md"]
 
 
-
 pytestmark = [pytest.mark.migration]
+
 
 class TestDoctrinesExist:
     def test_doctrine_exists(self):

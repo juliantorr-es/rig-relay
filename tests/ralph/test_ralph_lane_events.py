@@ -6,6 +6,7 @@ from rig_relay.ralph.lane_events import LaneEvent, LaneEventStore, LaneReceipt
 
 pytestmark = [pytest.mark.integration]
 
+
 def test_proposed_event():
     event = LaneEvent(
         event_kind="ralph.lane.proposed",

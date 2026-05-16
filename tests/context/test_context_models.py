@@ -71,7 +71,12 @@ class TestRepoInfo:
 
     def test_extra_fields_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            RepoInfo.model_validate({"root": "/r", "head": "h", "branch": "b", "unknown": "x"})
+            RepoInfo.model_validate({
+                "root": "/r",
+                "head": "h",
+                "branch": "b",
+                "unknown": "x",
+            })
 
 
 class TestContextPacket:
@@ -111,10 +116,7 @@ class TestContextPacket:
 class TestContextReceipt:
     def test_minimal_receipt(self) -> None:
         receipt = ContextReceipt(
-            context_id="ctx_test",
-            mode="map",
-            request_sha256="s",
-            packet_sha256="s",
+            context_id="ctx_test", mode="map", request_sha256="s", packet_sha256="s"
         )
         assert receipt.kind == "rig.context.receipt.v1"
 

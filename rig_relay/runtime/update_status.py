@@ -40,6 +40,7 @@ VALID_STATES = frozenset({
 
 def _get_current_version() -> str:
     from rig_relay import __version__
+
     return __version__
 
 

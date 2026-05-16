@@ -19,8 +19,17 @@ from rig_relay.context.observation import ContextObservation
 
 # Tool argument field names that may contain file paths
 _PATH_FIELDS: set[str] = {
-    "path", "paths", "file_path", "file", "target", "targets",
-    "source", "destination", "src", "dst", "root",
+    "path",
+    "paths",
+    "file_path",
+    "file",
+    "target",
+    "targets",
+    "source",
+    "destination",
+    "src",
+    "dst",
+    "root",
 }
 
 

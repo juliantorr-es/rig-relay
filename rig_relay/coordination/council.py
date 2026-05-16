@@ -34,17 +34,17 @@ _SCHEMA_PROVIDER_OPINION = "rig.relay.council.provider_opinion.v1"
 class RedactionMode(StrEnum):
     """How much context to include in a consultation packet."""
 
-    MINIMAL = "minimal"    # task, error, path hashes only
+    MINIMAL = "minimal"  # task, error, path hashes only
     STANDARD = "standard"  # mission brief, relevant files, receipts
-    FULL = "full"          # complete context packet
+    FULL = "full"  # complete context packet
     PARANOID = "paranoid"  # symbols + summaries only, no source bodies
 
 
 class ProviderSurface(StrEnum):
     """How the consultation was conducted."""
 
-    BROWSER = "browser"        # pywebview companion window via JS bridge
-    API = "api"                # provider API
+    BROWSER = "browser"  # pywebview companion window via JS bridge
+    API = "api"  # provider API
     MANUAL_PASTE = "manual_paste"  # user copy-pasted
 
 
@@ -207,9 +207,7 @@ class Council:
             redaction_mode=redaction_mode,
         )
 
-    async def consult(
-        self, request: ConsultationRequest
-    ) -> ConsultationReceipt:
+    async def consult(self, request: ConsultationRequest) -> ConsultationReceipt:
         consultations: list[NormalizedConsultation] = []
         for provider in request.providers:
             nc = await self._consult_one(request, provider)

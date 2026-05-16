@@ -1,0 +1,103 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "orchestrator-loop-boundary",
+  "document_type": "governance",
+  "title": "Orchestrator Loop Boundary",
+  "summary": "Ownership doctrine for Rig Relay runtimes: who may run a full turn loop, 7 principles governing OrchestratorLoop, ConversationRuntime, SubagentRuntime, RalphRuntime, ToolRuntime, and handoff receipts.",
+  "status": "active",
+  "created_at": "2026-05-18",
+  "updated_at": "2026-05-18",
+  "source_commit": "aaef6b5b",
+  "owners": ["maintainer"],
+  "tags": ["architecture", "orchestrator", "loop", "ownership", "runtime", "doctrine"],
+  "audience": ["contributor", "agent", "maintainer"],
+  "canonical_path": "docs/json/governance/orchestrator_loop_boundary.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {"block_id": "title", "type": "heading", "level": 1, "content": "Orchestrator Loop Boundary"},
+    {"block_id": "p1", "type": "heading", "level": 2, "content": "Principle 1 — Only an Owner May Run a Full Turn Loop"},
+    {"block_id": "p1-text", "type": "paragraph", "content": "An owner faces the user (directly or through an adapter), owns the session, decides delegation/handoff/approval/disposition, synthesizes final answers, and controls merge/push. Owners: desktop cockpit, ACP server, IDE sidecar. Subagents, Ralph, and test fixtures are NOT owners."},
+    {"block_id": "p2", "type": "heading", "level": 2, "content": "Principle 2 — OrchestratorLoop"},
+    {"block_id": "p2-text", "type": "paragraph", "content": "OrchestratorLoop (currently AgentLoop) owns user-facing turn orchestration, model call sequence, tool-call planning, delegation/handoff decisions, approval boundaries, mission assignment, and final synthesis. It is the only entity allowed to run a full turn loop."},
+    {"block_id": "p3", "type": "heading", "level": 2, "content": "Principle 3 — ConversationRuntime"},
+    {"block_id": "p3-text", "type": "paragraph", "content": "ConversationRuntime owns turn phase state (_phase(), _finish()), loop decision policy (decide_after_middleware, decide_after_model_turn, decide_after_hook_processing, decide_after_tool_batch, decide_after_budget_check), outcome classification, trace/phase evidence (PhaseTraceHook, PhaseTraceAttributes), and JSON-safe result (build_result())."},
+    {"block_id": "p4", "type": "heading", "level": 2, "content": "Principle 4 — SubagentRuntime (IMPLEMENTED v1)"},
+    {"block_id": "p4-owns", "type": "heading", "level": 3, "content": "Owns"},
+    {"block_id": "p4-owns-list", "type": "list", "items": [
+      "Bounded mission execution",
+      "Lifecycle evidence emission via TraceRecorder",
+      "Explicit tool_execution_mode marker",
+      "Structured SubagentResult with metadata",
+      "Assigned lane/worktree",
+      "Allowed tools/profile/model binding",
+      "Budget (turns, price, time)",
+      "Expected artifact contract",
+      "Validation receipt",
+      "Patch proposal or report output"
+    ]},
+    {"block_id": "p4-not-owns", "type": "heading", "level": 3, "content": "Does NOT Own"},
+    {"block_id": "p4-not-list", "type": "list", "items": [
+      "Global session history — scoped to mission",
+      "Final user-facing answer — synthesized by owner",
+      "Global approval policy — inherited from owner",
+      "Unbounded tool loops — budget-enforced",
+      "Merge/push — orchestrator-only",
+      "Switch_agent / compact / fork — bounded lifecycle"
+    ]},
+    {"block_id": "p5", "type": "heading", "level": 2, "content": "Principle 5 — RalphRuntime (Planned)"},
+    {"block_id": "p5-text", "type": "paragraph", "content": "RalphRuntime will use SubagentRuntime with profile_kind=AUTONOMOUS_BACKGROUND and trust_tier=OBSERVE. Owns background observation (read-only), report generation, proposal output. No normal assignable missions. No merge/push."},
+    {"block_id": "p6", "type": "heading", "level": 2, "content": "Principle 6 — ToolRuntime"},
+    {"block_id": "p6-text", "type": "paragraph", "content": "ToolRuntime owns governed tool execution. It is NOT a loop owner. See docs/governance/tool-runtime-boundary.md."},
+    {"block_id": "p7", "type": "heading", "level": 2, "content": "Principle 7 — Handoff Receipt"},
+    {"block_id": "p7-intro", "type": "paragraph", "content": "Ownership transfer (e.g. orchestrator to subagent) requires a handoff receipt with the following fields:"},
+    {"block_id": "p7-table", "type": "table", "columns": ["Field", "Description"], "rows": [
+      ["owner_before", "Session/agent ID of delegator"],
+      ["owner_after", "Session/agent ID of subagent"],
+      ["reason", "Why the handoff is needed"],
+      ["scope", "What the subagent may do"],
+      ["budget", "Turns, price, time limits"],
+      ["return_condition", "When ownership returns"],
+      ["trace_id", "For observability correlation"]
+    ]},
+    {"block_id": "phase3", "type": "heading", "level": 2, "content": "Phase 3 Recommendation"},
+    {"block_id": "phase3-list", "type": "list", "ordered": true, "items": [
+      "Move the while-loop into ConversationRuntime.execute_turn() — OrchestratorLoop becomes thin adapter",
+      "Do not create full AgentLoops for subagents — SubagentRuntime is bounded",
+      "Do not give Ralph any loop ownership — uses SubagentRuntime with AUTONOMOUS_BACKGROUND",
+      "AgentLoop rename to OrchestratorLoop only after SubagentRuntime exists"
+    ]},
+    {"block_id": "readiness", "type": "heading", "level": 2, "content": "Phase 3 Readiness Doctrine"},
+    {"block_id": "readiness-table", "type": "table", "columns": ["Doctrine", "Meaning"], "rows": [
+      ["no silent legacy direct", "SubagentRuntime defaults to tool_runtime_required; allow_legacy_direct=True required for legacy path"],
+      ["production subagents use ToolRuntime", "task.py passes tool_runtime= from InvokeContext; governed path is primary"],
+      ["trace recorder propagation", "task.py passes trace_recorder=; lifecycle evidence emitted in production"],
+      ["desktop correlation", "Integrated in websocket_server.py via DesktopCorrelation"],
+      ["loop ownership transferred", "ConversationRuntime.execute_turn_loop() owns the while-loop; AgentLoop delegates via _ConversationLoopAdapter"],
+      ["tool batch adapter gap", "execute_tool_batch() is a stub; Lane A follow-up required"],
+      ["AgentLoop rename deferred", "OrchestratorLoop rename waits until tool batch adapter is real and all tests green"]
+    ]},
+    {"block_id": "debt", "type": "heading", "level": 2, "content": "Known Debt"},
+    {"block_id": "debt-items", "type": "list", "items": [
+      "execute_tool_batch() stub — Lane A follow-up",
+      "AgentLoop still named AgentLoop — rename deferred to OrchestratorLoop"
+    ]},
+    {"block_id": "validation", "type": "heading", "level": 2, "content": "Validation Gates"},
+    {"block_id": "validation-items", "type": "list", "items": [
+      "SubagentRuntime guard tests block AgentLoop construction in task/subagent/Ralph paths",
+      "InvokeContext carries tool_runtime and trace_recorder",
+      "ToolRuntime.execute_one() spans finalize on all paths",
+      "Desktop correlation integrated in websocket_server.py"
+    ]}
+  ],
+  "references": [
+    {"document_id": "agent-loop-boundary", "title": "Agent Loop Boundary"},
+    {"document_id": "tool-runtime-boundary", "title": "ToolRuntime Boundary"}
+  ],
+  "related_documents": [
+    {"document_id": "agent-loop-boundary", "title": "Agent Loop Boundary", "relationship": "parent"},
+    {"document_id": "tool-runtime-boundary", "title": "ToolRuntime Boundary", "relationship": "sibling"}
+  ],
+  "provenance": {
+    "source_files": ["docs/governance/orchestrator-loop-boundary.md"]
+  }
+}

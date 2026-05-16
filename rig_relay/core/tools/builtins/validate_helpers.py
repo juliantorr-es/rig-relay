@@ -46,7 +46,10 @@ def run_validate_check(
     scheduler_store: ValidationSchedulerStore,
     scheduler_warnings: list[str],
     output_cap: int,
-) -> tuple[ValidateCheckResult | None, Callable[[], Coroutine[Any, Any, ValidateCheckResult]] | None]:
+) -> tuple[
+    ValidateCheckResult | None,
+    Callable[[], Coroutine[Any, Any, ValidateCheckResult]] | None,
+]:
     check_timeout = min(timeout, 600)
     run_argv = check.argv
     if normalized_paths:
@@ -61,7 +64,9 @@ def run_validate_check(
 
     cmd_fp = _compute_fingerprint(run_argv)
     input_fp, file_fps = compute_input_fingerprint(cwd, cmd_fp, check.command_kind)
-    ck = compute_cache_key(check.check_id, check.command_kind, cmd_fp, input_fp, cwd, cwd)
+    ck = compute_cache_key(
+        check.check_id, check.command_kind, cmd_fp, input_fp, cwd, cwd
+    )
 
     if cache_enabled and args.cache_policy != "force_rerun":
         lookup = cache_store.lookup(ck)
@@ -111,10 +116,14 @@ def run_validate_check(
         )
         if normalized_paths:
             cr.affected_paths = list(normalized_paths)
-        cr.cache_status = CACHE_STATUS_MISS_RAN if cache_enabled else CACHE_STATUS_DISABLED
+        cr.cache_status = (
+            CACHE_STATUS_MISS_RAN if cache_enabled else CACHE_STATUS_DISABLED
+        )
         cr.cache_key = ck
         cr.input_fingerprint = input_fp
-        cr.scheduler_status = SCHEDULER_RUNNING if scheduler_enabled else SCHEDULER_NOT_SCHEDULED
+        cr.scheduler_status = (
+            SCHEDULER_RUNNING if scheduler_enabled else SCHEDULER_NOT_SCHEDULED
+        )
         cr.parallel_status = parallel_status
         cr.validation_phase = args.validation_phase
         if parallel_status == PARALLEL_ENABLED:

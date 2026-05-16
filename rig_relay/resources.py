@@ -89,11 +89,7 @@ import platformdirs
 
 
 def _app_support_dir() -> Path:
-    return Path(
-        platformdirs.user_data_dir(
-            "Rig Relay", "RigRelay", ensure_exists=True
-        )
-    )
+    return Path(platformdirs.user_data_dir("Rig Relay", "RigRelay", ensure_exists=True))
 
 
 def _bundle_resource_root() -> Path:

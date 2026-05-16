@@ -402,6 +402,38 @@ export function createTransportStateMachine(options = {}) {
   return createTransportStateAuthority(options);
 }
 
+// ── Status contradiction detector ───────────────────────────────────
+// Compares the rendered status label to the canonical transport state.
+// Emits frontend.status_contradiction_detected if they don't agree.
+function detectStatusContradiction(snap, renderedLabel) {
+  if (!snap) return null;
+  const canonical = snap.transport.status;
+  const connectedStatuses = new Set([
+    TransportStatus.AUTHENTICATED,
+    TransportStatus.PROJECTION_WAITING,
+    TransportStatus.READY,
+  ]);
+  const disconnectedRendered = (
+    renderedLabel === 'Disconnected' ||
+    renderedLabel === 'Connecting' ||
+    renderedLabel === (STATUS_LABELS[TransportStatus.DISCONNECTED] || 'Disconnected')
+  );
+  if (connectedStatuses.has(canonical) && disconnectedRendered) {
+    const contradiction = {
+      type: 'frontend.status_contradiction_detected',
+      canonical_status: canonical,
+      rendered_label: renderedLabel,
+      canonical_phase: snap.transport.phase,
+      ws_connected: snap.wsConnected,
+      handshake_id: snap.transport.handshakeId,
+      timestamp: new Date().toISOString(),
+    };
+    emitBreadcrumb(contradiction);
+    return contradiction;
+  }
+  return null;
+}
+
 export {
   TransportStatus,
   TransportState,
@@ -412,4 +444,5 @@ export {
   EVENT_TO_STATUS,
   ALLOWED_TRANSITIONS,
   emitBreadcrumb,
+  detectStatusContradiction,
 };

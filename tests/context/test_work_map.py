@@ -16,6 +16,7 @@ from rig_relay.context.work_map import (
 
 pytestmark = [pytest.mark.integration]
 
+
 class TestScanWorktrees:
     def test_no_worktrees_returns_empty(self, tmp_path: Path) -> None:
         lanes = scan_worktrees(tmp_path)

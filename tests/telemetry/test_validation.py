@@ -17,6 +17,7 @@ from rig_relay.core.telemetry.receipts import write_session_receipts
 
 pytestmark = [pytest.mark.integration]
 
+
 def _write_event(log_file: Path, event: dict) -> None:
     log_file.parent.mkdir(parents=True, exist_ok=True)
     with log_file.open("a", encoding="utf-8") as handle:

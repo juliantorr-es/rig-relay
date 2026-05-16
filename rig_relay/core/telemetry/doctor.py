@@ -331,12 +331,16 @@ def _print_tool_reasoning_report(result: dict[str, Any], session_id: str) -> Non
         (
             "[bold red]Slowest Tool Calls:[/]",
             "slowest_tool_calls",
-            lambda t: f"  {t.get('tool_name', '?')} ({t.get('latency_ms', 0):.1f} ms, {t.get('output_bytes', 0):,} bytes)",
+            lambda t: (
+                f"  {t.get('tool_name', '?')} ({t.get('latency_ms', 0):.1f} ms, {t.get('output_bytes', 0):,} bytes)"
+            ),
         ),
         (
             "[bold yellow]Largest Inline Outputs (token-pressure candidates):[/]",
             "largest_inline_outputs",
-            lambda t: f"  {t.get('tool_name', '?')} ({t.get('inline_output_bytes', 0):,} inline bytes, kind={t.get('tool_output_kind', '?')})",
+            lambda t: (
+                f"  {t.get('tool_name', '?')} ({t.get('inline_output_bytes', 0):,} inline bytes, kind={t.get('tool_output_kind', '?')})"
+            ),
         ),
         (
             "[bold yellow]Calls Missing Rationale Summary:[/]",
@@ -357,7 +361,9 @@ def _print_tool_reasoning_report(result: dict[str, Any], session_id: str) -> Non
         for orig_id, retries_list in retries.items():
             rprint(f"  Original: {orig_id}")
             for rt in retries_list:
-                rprint(f"    Retry: {rt.get('tool_name', '?')} ({rt.get('tool_call_id', '?')})")
+                rprint(
+                    f"    Retry: {rt.get('tool_name', '?')} ({rt.get('tool_call_id', '?')})"
+                )
 
     slow_candidates = [
         f"  {t.get('tool_name')}: {t.get('latency_ms', 0):.1f} ms"

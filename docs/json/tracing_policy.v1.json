@@ -1,0 +1,93 @@
+{
+  "schema_version": "rig.tracing_policy.v1",
+  "title": "Rig Relay Golden Path Tracing Policy",
+  "generated_at": "2026-05-16T00:00:00Z",
+  "policy": {
+    "release_gate": "Every release-critical golden-path stage emits a correlated trace event carrying trace_id, span_id, and handshake_id. The app does not 'work' until the golden path can prove it worked from one correlated trace.",
+    "trace_name": "desktop_launch_trace",
+    "envelope_version": "rig.trace_event.v1",
+    "content_rule": "Trace payloads are content-light. No token values, no full file contents, no prompt payloads, no model outputs.",
+    "receipts_vs_traces": "Receipts are durable evidence with content hashes. Traces are causal navigation with correlation IDs. They are separate stores.",
+    "redaction_rule": "token_value_included must always be false in emitted golden-path traces. token_present may be true as a boolean.",
+    "handshake_rule": "Desktop/frontend/WebSocket events must carry handshake_id for cross-subsystem correlation.",
+    "projection_rule": "Projection events must carry projection_id when available.",
+    "status_contradiction_rule": "UI rendered state must be trace-comparable to canonical reducer state. Contradictions emit frontend.status_contradiction_detected.",
+    "shutdown_rule": "Shutdown must write or print a trace summary.",
+    "strict_mode_stages": [
+      "bridge started",
+      "server bound",
+      "frontend booted",
+      "runtime config loaded",
+      "websocket connected",
+      "auth ok",
+      "projection sent",
+      "projection received",
+      "projection rendered",
+      "status rendered",
+      "ready reached",
+      "shutdown observed"
+    ],
+    "failure_conditions": {
+      "missing_trace_id": "Cannot correlate. Useless breadcrumb confetti.",
+      "missing_handshake_id_on_desktop_frontend_websocket_events": "Cannot join frontend to bridge.",
+      "token_value_appears_anywhere": "Security bug. Straight to airlock.",
+      "frontend_auth_ok_without_desktop_websocket_auth_ok": "Split-brain auth trace.",
+      "desktop_projection_sent_without_frontend_projection_received": "Transport/protocol seam broke.",
+      "frontend_projection_received_without_frontend_projection_rendered": "Renderer seam broke.",
+      "frontend_status_rendered_contradicts_reducer_state": "UI is lying."
+    }
+  },
+  "golden_path_event_names": {
+    "bridge": [
+      "desktop.bridge.launch_requested",
+      "desktop.bridge.frontend_resolved",
+      "desktop.bridge.index_resolved",
+      "desktop.bridge.asset_probe_passed",
+      "desktop.bridge.runtime_config_built",
+      "desktop.bridge.websocket_server_created",
+      "desktop.bridge.server_bound",
+      "desktop.bridge.health_probe_passed",
+      "desktop.bridge.index_probe_passed",
+      "desktop.bridge.frontend_url_announced",
+      "desktop.bridge.websocket_url_announced",
+      "desktop.bridge.window_created",
+      "desktop.bridge.window_start_called",
+      "desktop.bridge.window_closed",
+      "desktop.bridge.shutdown"
+    ],
+    "websocket_backend": [
+      "desktop.websocket.accepted",
+      "desktop.websocket.auth_received",
+      "desktop.websocket.auth_ok",
+      "desktop.websocket.auth_failed",
+      "desktop.websocket.closed"
+    ],
+    "websocket_frontend": [
+      "frontend.websocket_connecting",
+      "frontend.websocket_open",
+      "frontend.auth_sent",
+      "frontend.auth_ok",
+      "frontend.auth_failed",
+      "frontend.websocket_closed",
+      "frontend.websocket_error"
+    ],
+    "projection_backend": [
+      "desktop.projection.build_started",
+      "desktop.projection.build_ok",
+      "desktop.projection.sent",
+      "desktop.projection.send_failed"
+    ],
+    "projection_frontend": [
+      "frontend.projection_received",
+      "frontend.projection_render_started",
+      "frontend.projection_rendered",
+      "frontend.projection_render_failed"
+    ],
+    "frontend_state": [
+      "frontend.transport_state",
+      "frontend.status_rendered",
+      "frontend.status_contradiction_detected",
+      "frontend.ready"
+    ]
+  }
+}

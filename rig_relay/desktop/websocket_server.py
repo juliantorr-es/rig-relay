@@ -224,6 +224,8 @@ class ProjectionWebSocketServer:
         ssl_context: ssl.SSLContext | None = None,
         probe_callback: Callable[[str, str, dict[str, Any]], None] | None = None,
         trace_recorder: Any | None = None,
+        golden_trace_id: str = "",
+        golden_handshake_id: str = "",
     ) -> None:
         self._build_root = build_root
         self._host = host
@@ -242,6 +244,8 @@ class ProjectionWebSocketServer:
         self._ssl_context = ssl_context
         self._probe_callback = probe_callback
         self._trace_recorder = trace_recorder
+        self._golden_trace_id = golden_trace_id
+        self._golden_handshake_id = golden_handshake_id
         self._first_projection_sent = False
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
@@ -268,6 +272,44 @@ class ProjectionWebSocketServer:
     def _new_connection_correlation(self) -> DesktopCorrelation:
         """Create a DesktopCorrelation for a new WebSocket connection."""
         return DesktopCorrelation(trace_recorder=self._trace_recorder)
+
+    def _emit_golden_event(
+        self,
+        event_type: str,
+        *,
+        status: str | None = None,
+        payload: dict[str, Any] | None = None,
+        handshake_id: str = "",
+        duration_ms: int | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        from rig_relay.tracing.golden_path import (
+            TraceAuthorityKind,
+            build_golden_path_event,
+        )
+        from rig_relay.tracing.models import TraceStatus
+
+        if self._trace_recorder is None:
+            return
+        event = build_golden_path_event(
+            event_type=event_type,
+            trace_id=self._golden_trace_id or None,
+            handshake_id=handshake_id or self._golden_handshake_id,
+            parent_span_id=None,
+            status=TraceStatus(status) if status else None,
+            authority={
+                "authority_kind": TraceAuthorityKind.websocket_server.value,
+                "trusted": True,
+                "source_path": "rig_relay/desktop/websocket_server.py",
+            },
+            payload=payload,
+            duration_ms=duration_ms,
+            error_message=error_message,
+            host=self._host,
+            port=self._port,
+            token_present=bool(self._token),
+        )
+        self._trace_recorder.store.write(event)
 
     @staticmethod
     def _safe_message_hash(message: dict[str, Any]) -> str:
@@ -429,6 +471,7 @@ class ProjectionWebSocketServer:
 
         corr = self._new_connection_correlation()
         transport_id = new_transport_session_id()
+        self._emit_golden_event("desktop.websocket.accepted")
         corr.emit_transport_event(
             "desktop.transport.connection_begin",
             transport_session_id=transport_id,
@@ -566,6 +609,7 @@ class ProjectionWebSocketServer:
                 self._connections.discard(websocket)
                 if subscribe_task is not None and self._active_subscriptions > 0:
                     self._active_subscriptions -= 1
+            self._emit_golden_event("desktop.websocket.closed")
             corr.emit_transport_event(
                 "desktop.transport.connection_close",
                 transport_session_id=transport_id,
@@ -609,6 +653,11 @@ class ProjectionWebSocketServer:
         if msg_type == "auth":
             provided = message.get("token", "")
             handshake_id = message.get("handshake_id", "")
+            self._emit_golden_event(
+                "desktop.websocket.auth_received",
+                handshake_id=handshake_id,
+                payload={"token_present": bool(provided)},
+            )
             corr.emit_transport_event(
                 "desktop.transport.auth_received",
                 transport_session_id=transport_id,
@@ -621,10 +670,7 @@ class ProjectionWebSocketServer:
             self._emit_probe(
                 "bridge:15",
                 "websocket auth message received",
-                {
-                    "token_present": bool(provided),
-                    "handshake_id": handshake_id,
-                },
+                {"token_present": bool(provided), "handshake_id": handshake_id},
             )
             if provided == self._token:
                 async with self._lock:
@@ -635,6 +681,9 @@ class ProjectionWebSocketServer:
                 await _send_json(websocket, {"type": "auth_ok"})
                 async with self._lock:
                     self._connections.add(websocket)
+                self._emit_golden_event(
+                    "desktop.websocket.auth_ok", handshake_id=handshake_id
+                )
                 corr.emit_transport_event(
                     "desktop.transport.handshake_succeeded",
                     transport_session_id=transport_id,
@@ -653,6 +702,12 @@ class ProjectionWebSocketServer:
             async with self._lock:
                 self._rejected_count += 1
                 self._last_rejection_reason = "invalid_token"
+            self._emit_golden_event(
+                "desktop.websocket.auth_failed",
+                handshake_id=handshake_id,
+                status="error",
+                error_message="invalid_token",
+            )
             logger.warning("audit.auth.invalid_token")
             self._emit_probe(
                 "bridge:16",
@@ -684,8 +739,25 @@ class ProjectionWebSocketServer:
 
         match msg_type:
             case "get_projection":
+                self._emit_golden_event("desktop.projection.build_started")
                 loop = asyncio.get_running_loop()
-                projection = await loop.run_in_executor(None, self._build_projection)
+                try:
+                    projection = await loop.run_in_executor(
+                        None, self._build_projection
+                    )
+                    self._emit_golden_event(
+                        "desktop.projection.build_ok",
+                        payload={
+                            "schema_version": projection.get("schema_version", "")
+                        },
+                    )
+                except Exception as exc:
+                    self._emit_golden_event(
+                        "desktop.projection.send_failed",
+                        status="error",
+                        error_message=str(exc)[:500],
+                    )
+                    raise
                 digest_src = {
                     k: v
                     for k, v in projection.items()
@@ -696,6 +768,13 @@ class ProjectionWebSocketServer:
                 )
                 digest = hashlib.sha256(raw).hexdigest()
                 projection["digest"] = digest
+                self._emit_golden_event(
+                    "desktop.projection.sent",
+                    payload={
+                        "schema_version": projection.get("schema_version", ""),
+                        "size_bytes": len(json.dumps(projection)),
+                    },
+                )
                 await _send_json(
                     websocket,
                     {"type": "projection", "data": projection, "seq": self._next_seq()},

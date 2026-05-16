@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Suite Doctrine — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Governance doctrine for Rig Relay&#x27;s 6,500+ test suite covering layout, parametrization, test quality taxonomy, and lifecycle management.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Test Suite Doctrine</h1>
+  <p class="meta">Status: active | Updated: 2026-05-18</p>
+</header>
+<main>
+<h1 id="title">Test Suite Doctrine</h1>
+
+<h2 id="purpose">Purpose</h2>
+
+<p id="purpose-text">Rig Relay ships a test suite of 6,500+ collected tests. Without a doctrine, the suite accumulates debt: root-level orphan tests, mis-scoped test files buried in tests/scripts/, duplicate assertions across files, pycache-dependent collection, and tests that pass on one machine but fail on a clean clone.</p>
+
+<h2 id="layout">Layout Rule</h2>
+
+<div class="callout callout-info" id="layout-rule">
+  
+  <p>Every test file must live under a path that mirrors its target source package. tests/core/test_agent_loop.py is correct. tests/test_agent_loop.py is a layout violation.</p>
+</div>
+
+<ul id="layout-list">
+  <li>Root-level tests/test_*.py files are violations unless explicitly allowed</li>
+  <li>tests/scripts/test_*.py files whose target source is not scripts/ are violations</li>
+  <li>Canonical tests map 1:1 with rig_relay/ package structure</li>
+</ul>
+
+<h2 id="parametrization">Parametrization Rule</h2>
+
+<p id="param-rule">Tests with identical setup/act/assert skeletons must be consolidated into parametrized tests with explicit case IDs. Use pytest.mark.parametrize and pytest.param(id=&#x27;explicit_case_id&#x27;). Case IDs must be stable, behavior-based, and free of vague names like case1/case2/happy/sad.</p>
+
+<h2 id="duplication">Duplication Rule</h2>
+
+<p id="dup-rule">Each test behavior must exist in exactly one place. When a concern grows large enough for its own file, the original tests must be removed. Duplicate test bodies create maintenance burden and naming collisions.</p>
+
+<h2 id="quality">Test Quality Taxonomy</h2>
+
+<table id="quality-table">
+<thead><tr><th>Category</th><th>Definition</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>Behavior-named</td><td>Name describes the behavior under test</td><td>test_create_user_returns_403_when_unauthorized</td></tr>
+<tr><td>Parametrized</td><td>One function covers N cases via parametrize</td><td>test_forbidden_field_rejected[id=raw_stderr]</td></tr>
+<tr><td>Duplicate</td><td>Same behavior exists in two files</td><td>test_collect_git_state in both validate files</td></tr>
+<tr><td>Layout violation</td><td>Test file location doesn&#x27;t match source</td><td>tests/test_agents.py instead of tests/core/</td></tr>
+<tr><td>Brittle</td><td>Test depends on mutable global state or timing</td><td>test_that_depends_on_pycache_persistence</td></tr>
+</tbody>
+</table>
+
+<h2 id="lifecycle">Test Lifecycle</h2>
+
+<ol id="lifecycle-list">
+  <li>Write behavior-named test in correct layout directory</li>
+  <li>If test body matches existing test, parametrize instead of copying</li>
+  <li>If test concern grows &gt;10 related tests, extract to own file, remove originals</li>
+  <li>Run PYTHONDONTWRITEBYTECODE=1 uv run pytest before claiming green</li>
+  <li>Run uv run ruff check --fix and uv run ruff format after changes</li>
+  <li>Delete stale tests targeting removed modules; never xfail/skip to hide deletion debt</li>
+</ol>
+
+<h2 id="layout-audit">Layout Audit</h2>
+
+<p id="audit-content">tests/architecture/test_test_layout.py provides a report-only layout guard detecting root-level orphans, mis-scoped scripts/ tests, and known duplicate pairs. Tests marked known_blocked are quarantined with findings in docs/findings/out-of-scope-findings.jsonl.</p>
+
+<h2 id="collection">Collection Integrity</h2>
+
+<div class="callout callout-warning" id="collection-rule">
+  
+  <p>PYTHONDONTWRITEBYTECODE=1 uv run pytest --collect-only must complete with zero errors. The test suite must be deterministic in clean clones. Stale pycache files, deleted conftest helpers, and orphan tests importing deleted modules are collection poison and must be removed.</p>
+</div>
+
+<h2 id="purging">Purge / Delete Policy</h2>
+
+<ul id="purge-list">
+  <li>Tests for intentionally removed features must be deleted, not skipped or marked xfail</li>
+  <li>Each deletion must be documented in an audit note with the deleted module and replacement coverage</li>
+  <li>Stale stub/double files only referenced by deleted tests should be cleaned up</li>
+  <li>Test directory removal is only safe after verifying no non-failing sibling tests exist</li>
+</ul>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/test_suite_doctrine.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -192,7 +192,9 @@ class ConversationRuntimeCallbacks(Protocol):
 
     # ── Context ──────────────────────────────────────────────────
 
-    async def build_context_envelope(self, request: ConversationRuntimeRequest) -> Any | None:
+    async def build_context_envelope(
+        self, request: ConversationRuntimeRequest
+    ) -> Any | None:
         """Build context envelope. Returns receipt or None."""
         ...
 

@@ -24,10 +24,7 @@ def _available() -> bool:
 
 
 async def ast_search(
-    pattern: str,
-    path: str = ".",
-    lang: str = "python",
-    max_results: int = 50,
+    pattern: str, path: str = ".", lang: str = "python", max_results: int = 50
 ) -> list[dict[str, Any]]:
     """Search code using AST-aware pattern matching.
 
@@ -43,21 +40,13 @@ async def ast_search(
     if not _available():
         return []
 
-    cmd = [
-        "sg",
-        "-p", pattern,
-        "--lang", lang,
-        "--json",
-        "-l",
-    ]
+    cmd = ["sg", "-p", pattern, "--lang", lang, "--json", "-l"]
     if path != ".":
         cmd.append(path)
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
 
@@ -79,8 +68,7 @@ async def ast_search(
 
 
 async def find_function_definitions(
-    path: str = ".",
-    func_name: str | None = None,
+    path: str = ".", func_name: str | None = None
 ) -> list[dict[str, Any]]:
     """Find function definitions in Python files.
 
@@ -96,8 +84,7 @@ async def find_function_definitions(
 
 
 async def find_class_definitions(
-    path: str = ".",
-    class_name: str | None = None,
+    path: str = ".", class_name: str | None = None
 ) -> list[dict[str, Any]]:
     """Find class definitions in Python files."""
     pattern = f"class {class_name}:$$$" if class_name else "class $$$:$$$"
@@ -105,8 +92,7 @@ async def find_class_definitions(
 
 
 async def find_imports(
-    module_name: str | None = None,
-    path: str = ".",
+    module_name: str | None = None, path: str = "."
 ) -> list[dict[str, Any]]:
     """Find import statements matching a module name."""
     if module_name:
@@ -137,8 +123,19 @@ def detect_dangerous_bash_patterns(command: str) -> list[str]:
         )
 
     # Inline code execution via interpreter -c/-e/-r flags
-    for interpreter in {"python3", "python", "ruby", "perl", "node", "deno", "bun", "php"}:
-        if interpreter in command and ("-c" in command or "-e" in command or "-r" in command):
+    for interpreter in {
+        "python3",
+        "python",
+        "ruby",
+        "perl",
+        "node",
+        "deno",
+        "bun",
+        "php",
+    }:
+        if interpreter in command and (
+            "-c" in command or "-e" in command or "-r" in command
+        ):
             warnings.append(
                 f"Command uses '{interpreter} -c/-e' to execute inline code. "
                 f"This can bypass command allowlists."

@@ -22,6 +22,12 @@ export async function fetchRuntimeConfig() {
     fetch('/runtime-config')
       .then(res => res.json())
       .then(config => {
+        // Merge embedded config token (bridge strips it from HTTP response for security)
+        var embedded = window.__RIG_RELAY_RUNTIME_CONFIG__ || {};
+        if (embedded.token && !config.auth_token) {
+          config.auth_token = embedded.token;
+          config.token = embedded.token;
+        }
         recordFrontendEvent('frontend_runtime_config_loaded', { source: 'fetch' });
         resolve(config);
       })

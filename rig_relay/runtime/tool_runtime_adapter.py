@@ -120,7 +120,4 @@ class RuntimeToolRuntimeAdapter:
         return tool_name in {RuntimeToolName.SEARCH_REPLACE, RuntimeToolName.WRITE_FILE}
 
 
-__all__ = [
-    "RuntimeToolRuntimeAdapter",
-    "RuntimeToolRuntimeRequestBundle",
-]
+__all__ = ["RuntimeToolRuntimeAdapter", "RuntimeToolRuntimeRequestBundle"]

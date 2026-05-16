@@ -37,9 +37,15 @@ class RoleModelSummary(BaseModel):
     configured_model_binding_count: int = 0
     pending_ralph_report_count: int = 0
 
-    available_actions: list[dict[str, str | bool]] = Field(default_factory=lambda: [
-        {"action": "role_model_info", "label": "Dismiss", "requires_confirmation": False},
-    ])
+    available_actions: list[dict[str, str | bool]] = Field(
+        default_factory=lambda: [
+            {
+                "action": "role_model_info",
+                "label": "Dismiss",
+                "requires_confirmation": False,
+            }
+        ]
+    )
 
 
 def build_role_model_summary(
@@ -50,8 +56,17 @@ def build_role_model_summary(
     profiles = profiles or []
     bindings = bindings or []
 
-    assignable = [p for p in profiles if getattr(p, "assignable", False) and getattr(p, "profile_kind", "") != "autonomous_background_worker"]
-    autonomous = [p for p in profiles if getattr(p, "profile_kind", "") == "autonomous_background_worker"]
+    assignable = [
+        p
+        for p in profiles
+        if getattr(p, "assignable", False)
+        and getattr(p, "profile_kind", "") != "autonomous_background_worker"
+    ]
+    autonomous = [
+        p
+        for p in profiles
+        if getattr(p, "profile_kind", "") == "autonomous_background_worker"
+    ]
 
     roles = [
         RoleEntry(

@@ -18,11 +18,17 @@ def test_valid_lifecycle_chain() -> None:
     assert machine.current_state == RuntimeSupervisorState.SPAWNING
     machine.transition(RuntimeSupervisorEvent.SPAWN_SUCCEEDED)
     assert machine.current_state == RuntimeSupervisorState.RUNNING
-    machine.transition(RuntimeSupervisorEvent.STDOUT_CHUNK, attributes={"stdout_bytes": 3})
+    machine.transition(
+        RuntimeSupervisorEvent.STDOUT_CHUNK, attributes={"stdout_bytes": 3}
+    )
     assert machine.current_state == RuntimeSupervisorState.RUNNING
-    machine.transition(RuntimeSupervisorEvent.PROCESS_EXITED, attributes={"exit_code": 0})
+    machine.transition(
+        RuntimeSupervisorEvent.PROCESS_EXITED, attributes={"exit_code": 0}
+    )
     assert machine.current_state == RuntimeSupervisorState.DRAINING
-    machine.transition(RuntimeSupervisorEvent.DRAIN_COMPLETED, attributes={"exit_code": 0})
+    machine.transition(
+        RuntimeSupervisorEvent.DRAIN_COMPLETED, attributes={"exit_code": 0}
+    )
     assert machine.current_state == RuntimeSupervisorState.COMPLETED
 
 
@@ -39,7 +45,9 @@ def test_terminal_immutability() -> None:
     machine.transition(RuntimeSupervisorEvent.SPAWN_SUCCEEDED)
     machine.transition(RuntimeSupervisorEvent.PROCESS_EXITED)
     assert machine.current_state == RuntimeSupervisorState.DRAINING
-    machine.transition(RuntimeSupervisorEvent.DRAIN_COMPLETED, attributes={"exit_code": 0})
+    machine.transition(
+        RuntimeSupervisorEvent.DRAIN_COMPLETED, attributes={"exit_code": 0}
+    )
     assert machine.current_state == RuntimeSupervisorState.COMPLETED
     with pytest.raises(InvalidRuntimeSupervisorTransition):
         machine.transition(RuntimeSupervisorEvent.STDOUT_CHUNK)

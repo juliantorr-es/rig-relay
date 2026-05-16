@@ -166,7 +166,6 @@ class _FinalizeState:
     warnings: list[str]
 
 
-
 _CATEGORY_RULES: tuple[tuple[SessionStorageCategory, tuple[str, ...], bool], ...] = (
     (SessionStorageCategory.UPLOAD_RECEIPTS, ("upload", "receipt"), True),
     (SessionStorageCategory.RECEIPTS, ("receipt", "receipts"), False),
@@ -179,6 +178,3 @@ _CATEGORY_RULES: tuple[tuple[SessionStorageCategory, tuple[str, ...], bool], ...
     (SessionStorageCategory.STDOUT_STDERR, ("stdout", "stderr", "shell"), False),
     (SessionStorageCategory.DEBUG_DUMPS, ("debug", "dump"), False),
 )
-
-
-

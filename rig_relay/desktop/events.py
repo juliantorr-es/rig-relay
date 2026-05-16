@@ -39,8 +39,7 @@ class DesktopEventRecord(BaseModel):
 
     def compute_sha256(self) -> str:
         payload = self.model_dump_json(
-            exclude={"event_sha256", "occurred_at", "created_at"},
-            exclude_none=True,
+            exclude={"event_sha256", "occurred_at", "created_at"}, exclude_none=True
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 

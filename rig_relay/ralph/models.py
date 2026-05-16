@@ -174,7 +174,9 @@ class RankedCandidate(BaseModel):
     risk_tier: int = AutonomyTier.OBSERVE
     requires_approval_for_execution: bool = True
     related_files: list[str] = Field(default_factory=list)
-    scan_allowed_actions: list[str] = Field(default_factory=lambda: list(SCAN_ALLOWED_ACTIONS))
+    scan_allowed_actions: list[str] = Field(
+        default_factory=lambda: list(SCAN_ALLOWED_ACTIONS)
+    )
 
 
 class MissionCandidate(BaseModel):
@@ -185,12 +187,20 @@ class MissionCandidate(BaseModel):
     title: str = ""
     mission_kind: str = "read_only_audit"
     source_refs: list[SourceRef] = Field(default_factory=list)
-    allowed_actions: list[str] = Field(default_factory=lambda: list(MISSION_ALLOWED_ACTIONS_DEFAULT))
-    forbidden_actions: list[str] = Field(default_factory=lambda: list(FORBIDDEN_ACTIONS_V0))
+    allowed_actions: list[str] = Field(
+        default_factory=lambda: list(MISSION_ALLOWED_ACTIONS_DEFAULT)
+    )
+    forbidden_actions: list[str] = Field(
+        default_factory=lambda: list(FORBIDDEN_ACTIONS_V0)
+    )
     requires_approval: bool = True
     required_autonomy_tier: int = AutonomyTier.OBSERVE
-    success_criteria: list[str] = Field(default_factory=lambda: list(SUCCESS_CRITERIA_DEFAULT))
-    stop_conditions: list[str] = Field(default_factory=lambda: list(STOP_CONDITIONS_MISSION))
+    success_criteria: list[str] = Field(
+        default_factory=lambda: list(SUCCESS_CRITERIA_DEFAULT)
+    )
+    stop_conditions: list[str] = Field(
+        default_factory=lambda: list(STOP_CONDITIONS_MISSION)
+    )
     risk_tier: int = AutonomyTier.OBSERVE
 
 

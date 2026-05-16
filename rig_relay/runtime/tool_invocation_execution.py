@@ -809,7 +809,9 @@ class RuntimeToolExecutionRunner:
         )
         supervisor_result_envelope_id = None
         if isinstance(provider_supervisor_envelope, dict):
-            supervisor_result_envelope_id = provider_supervisor_envelope.get("result_id")
+            supervisor_result_envelope_id = provider_supervisor_envelope.get(
+                "result_id"
+            )
 
         result = RuntimeToolExecutionResult(
             status=execution_status,
@@ -951,9 +953,7 @@ class RuntimeToolExecutionRunner:
         return result
 
     async def _run_bash_tool(
-        self,
-        envelope: RuntimeToolInvocationEnvelope,
-        invoke_ctx: Any | None = None,
+        self, envelope: RuntimeToolInvocationEnvelope, invoke_ctx: Any | None = None
     ) -> Any:
         """Run the bash tool with runtime context injected."""
         from rig_relay.core.tools.base import BaseToolState

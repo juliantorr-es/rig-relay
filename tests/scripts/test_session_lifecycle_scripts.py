@@ -13,6 +13,7 @@ import scripts.rig_relay_sessions_gc as gc_script
 
 pytestmark = [pytest.mark.migration]
 
+
 def _make_file(path: Path, text: str = "x") -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")

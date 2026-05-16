@@ -32,9 +32,7 @@ class ToolRuntimeLedgerEntry(BaseModel):
     refusal_code: str | None = None
     degraded_capabilities: list[str] = Field(default_factory=list)
     duration_ms: float | None = None
-    recorded_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    recorded_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     @classmethod
     def from_result(cls, result: ToolRuntimeResult) -> ToolRuntimeLedgerEntry:
@@ -62,9 +60,7 @@ class ToolRuntimeSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = "rig.ui.tool_runtime_summary.v1"
-    generated_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    generated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     recent_results: list[ToolRuntimeLedgerEntry] = Field(default_factory=list)
     total_executions: int = 0
@@ -141,31 +137,17 @@ class InMemoryToolRuntimeResultLedger:
                     approval_denied += 1
 
             for cap in e.degraded_capabilities:
-                degradation_counts[cap] = (
-                    degradation_counts.get(cap, 0) + 1
-                )
+                degradation_counts[cap] = degradation_counts.get(cap, 0) + 1
 
         return ToolRuntimeSummary(
             recent_results=entries[-max_recent:],
             total_executions=len(entries),
-            completed_count=status_counts.get(
-                ToolRuntimeStatus.COMPLETED.value, 0
-            ),
-            cached_count=status_counts.get(
-                ToolRuntimeStatus.CACHED.value, 0
-            ),
-            refused_count=status_counts.get(
-                ToolRuntimeStatus.REFUSED.value, 0
-            ),
-            failed_count=status_counts.get(
-                ToolRuntimeStatus.FAILED.value, 0
-            ),
-            degraded_count=status_counts.get(
-                ToolRuntimeStatus.DEGRADED.value, 0
-            ),
-            skipped_count=status_counts.get(
-                ToolRuntimeStatus.SKIPPED.value, 0
-            ),
+            completed_count=status_counts.get(ToolRuntimeStatus.COMPLETED.value, 0),
+            cached_count=status_counts.get(ToolRuntimeStatus.CACHED.value, 0),
+            refused_count=status_counts.get(ToolRuntimeStatus.REFUSED.value, 0),
+            failed_count=status_counts.get(ToolRuntimeStatus.FAILED.value, 0),
+            degraded_count=status_counts.get(ToolRuntimeStatus.DEGRADED.value, 0),
+            skipped_count=status_counts.get(ToolRuntimeStatus.SKIPPED.value, 0),
             refusal_counts=refusal_counts,
             degradation_counts=degradation_counts,
             cache_hit_count=cache_hit,

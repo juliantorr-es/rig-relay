@@ -40,14 +40,29 @@ __all__ = [
 class BehaviorPatchArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    behavior_statement: str = Field(description="Plain-text description of target behavior change or bug fix.")
-    target_files: list[str] = Field(description="Specific workspace files authorized for implementation edits.")
-    expected_test_file: str = Field(description="Path to the test file verifying this behavior.")
+    behavior_statement: str = Field(
+        description="Plain-text description of target behavior change or bug fix."
+    )
+    target_files: list[str] = Field(
+        description="Specific workspace files authorized for implementation edits."
+    )
+    expected_test_file: str = Field(
+        description="Path to the test file verifying this behavior."
+    )
     test_command: list[str] = Field(description="Narrow, scoped test command.")
-    implementation_constraints: list[str] = Field(description="Architectural rules to maintain.")
-    validation_profile: str = Field(default="quick", description="Name of the validate profile to run upon success.")
-    max_iterations: int = Field(default=3, description="Maximum red/green attempt cycles before aborting.")
-    allow_new_test_file: bool = Field(default=False, description="Whether the tool is permitted to create a new test file.")
+    implementation_constraints: list[str] = Field(
+        description="Architectural rules to maintain."
+    )
+    validation_profile: str = Field(
+        default="quick", description="Name of the validate profile to run upon success."
+    )
+    max_iterations: int = Field(
+        default=3, description="Maximum red/green attempt cycles before aborting."
+    )
+    allow_new_test_file: bool = Field(
+        default=False,
+        description="Whether the tool is permitted to create a new test file.",
+    )
 
 
 class BehaviorPatchResult(BaseModel):
@@ -99,7 +114,9 @@ class BehaviorPatchConfig(BaseToolConfig):
 
 
 class BehaviorPatch(
-    BaseTool[BehaviorPatchArgs, BehaviorPatchResult, BehaviorPatchConfig, BaseToolState],
+    BaseTool[
+        BehaviorPatchArgs, BehaviorPatchResult, BehaviorPatchConfig, BaseToolState
+    ],
     ToolUIData[BehaviorPatchArgs, BehaviorPatchResult],
 ):
     description: ClassVar[str] = (
@@ -125,7 +142,9 @@ class BehaviorPatch(
             )
         r = event.result
         if r.status == "refused":
-            return ToolResultDisplay(success=False, message=f"Refused: {r.refusal_reason}")
+            return ToolResultDisplay(
+                success=False, message=f"Refused: {r.refusal_reason}"
+            )
         return ToolResultDisplay(
             success=r.status == "passed",
             message=f"behavior_patch {r.status}: {r.behavior_statement[:50]}...",
@@ -179,7 +198,9 @@ class BehaviorPatch(
             receipt_sha256=receipt_sha256,
         )
 
-    def _refuse(self, args: BehaviorPatchArgs, error_kind: str, reason: str) -> BehaviorPatchResult:
+    def _refuse(
+        self, args: BehaviorPatchArgs, error_kind: str, reason: str
+    ) -> BehaviorPatchResult:
         return BehaviorPatchResult(
             status="refused",
             behavior_statement=args.behavior_statement,
@@ -190,7 +211,12 @@ class BehaviorPatch(
             implementation_files=args.target_files,
             green_command=args.test_command,
             green_passed=False,
-            focused_validation_command=["uv", "run", "validate", args.validation_profile],
+            focused_validation_command=[
+                "uv",
+                "run",
+                "validate",
+                args.validation_profile,
+            ],
             focused_validation_result="skipped",
             trace_id=f"trace_{int(time.time())}",
             git_head="unknown",
@@ -206,13 +232,29 @@ class BehaviorPatch(
         # ── Refusal Check: Command Too Broad ──
         cmd_str = " ".join(args.test_command)
         if "pytest" in cmd_str and not any(p in cmd_str for p in ["tests/", ".py"]):
-            yield self._refuse(args, error_kind="command_too_broad", reason="Test command invokes full suite without path scoping.")
+            yield self._refuse(
+                args,
+                error_kind="command_too_broad",
+                reason="Test command invokes full suite without path scoping.",
+            )
             return
 
         # ── Refusal Check: Unsafe Target ──
         lower_stmt = args.behavior_statement.lower()
-        if any(w in lower_stmt for w in ["security guard", "blocklist", "bypass permission", "disable guard"]):
-            yield self._refuse(args, error_kind="unsafe_target", reason="Behavior statement requests modifying security guards or blocklists.")
+        if any(
+            w in lower_stmt
+            for w in [
+                "security guard",
+                "blocklist",
+                "bypass permission",
+                "disable guard",
+            ]
+        ):
+            yield self._refuse(
+                args,
+                error_kind="unsafe_target",
+                reason="Behavior statement requests modifying security guards or blocklists.",
+            )
             return
 
         # Skeleton implementation for receipt/model testing
@@ -226,12 +268,20 @@ class BehaviorPatch(
             "implementation_files": args.target_files,
             "green_command": args.test_command,
             "green_passed": True,
-            "focused_validation_command": ["uv", "run", "validate", args.validation_profile],
+            "focused_validation_command": [
+                "uv",
+                "run",
+                "validate",
+                args.validation_profile,
+            ],
             "focused_validation_result": "passed",
             "trace_id": f"trace_{int(time.time())}",
             "git_head": "a1b2c3d4e5f6",
             "dirty_files_before": ["tests/tools/test_behavior_patch.py"],
-            "dirty_files_after": ["tests/tools/test_behavior_patch.py", args.target_files[0] if args.target_files else "unknown.py"],
+            "dirty_files_after": [
+                "tests/tools/test_behavior_patch.py",
+                args.target_files[0] if args.target_files else "unknown.py",
+            ],
             "receipt_sha256": "",
         }
         raw = json.dumps(temp_dict, sort_keys=True).encode("utf-8")
@@ -247,7 +297,12 @@ class BehaviorPatch(
             implementation_files=args.target_files,
             green_command=args.test_command,
             green_passed=True,
-            focused_validation_command=["uv", "run", "validate", args.validation_profile],
+            focused_validation_command=[
+                "uv",
+                "run",
+                "validate",
+                args.validation_profile,
+            ],
             focused_validation_result="passed",
             trace_id=temp_dict["trace_id"],
             git_head=temp_dict["git_head"],

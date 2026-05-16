@@ -330,13 +330,14 @@ class ConversationRuntime:
                 # ── Decision after model turn ───────────────
                 should_break = adapter.last_message_has_no_tool_calls()
                 decision = self.decide_after_model_turn(
-                    user_cancelled=user_cancelled,
-                    assistant_final=should_break,
+                    user_cancelled=user_cancelled, assistant_final=should_break
                 )
 
                 if decision.kind == "stop_cancelled":
                     self._finish(TurnOutcome.USER_CANCELLED, "user cancelled")
-                    adapter.mark_turn_outcome(TurnOutcome.USER_CANCELLED, "user cancelled")
+                    adapter.mark_turn_outcome(
+                        TurnOutcome.USER_CANCELLED, "user cancelled"
+                    )
                     return
 
                 if decision.kind == "fail_error":

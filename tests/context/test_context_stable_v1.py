@@ -87,7 +87,9 @@ class TestReceiptScanWarnings:
             bad_file = receipts_dir / "bad.receipt"
             bad_file.write_text("test")
 
-            with patch.object(Path, "read_bytes", side_effect=OSError("secret /Users/leak")):
+            with patch.object(
+                Path, "read_bytes", side_effect=OSError("secret /Users/leak")
+            ):
                 _scan_receipts(root, warnings=warnings)
 
             for w in warnings:
@@ -152,9 +154,7 @@ class TestCriticalPathNoSilentPass:
                             silent_count += 1
 
         # Allow up to 1 silent pass (in build_envelope's broad safety net)
-        assert silent_count <= 1, (
-            f"Found {silent_count} silent except:pass in compiler"
-        )
+        assert silent_count <= 1, f"Found {silent_count} silent except:pass in compiler"
 
     def test_renderer_no_silent_except_pass(self) -> None:
         renderer = _REPO_ROOT / "rig_relay/context/renderer.py"

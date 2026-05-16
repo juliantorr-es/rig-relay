@@ -22,9 +22,7 @@ class _FakeResultWithEnvelope(BaseModel):
     supervisor_result_classification: str = "timed_out"
 
 
-async def _fake_invoke(
-    _args_dict: dict[str, Any],
-) -> AsyncGenerator[Any, None]:
+async def _fake_invoke(_args_dict: dict[str, Any]) -> AsyncGenerator[Any, None]:
     if False:
         yield None
     yield _FakeResultWithEnvelope()
@@ -48,7 +46,9 @@ async def test_tool_runtime_span_uses_supervisor_envelope_classification() -> No
     )
 
     result = await runtime.execute_one(
-        ToolRuntimeRequest(tool_name="bash", tool_args={"command": "sleep 1"}, tool_call_id="c1")
+        ToolRuntimeRequest(
+            tool_name="bash", tool_args={"command": "sleep 1"}, tool_call_id="c1"
+        )
     )
 
     assert result.supervisor_result_classification == "timed_out"

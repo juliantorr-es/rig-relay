@@ -33,7 +33,9 @@ def render_site(
     written["css"] = _write_css(out / "assets" / "site.css")
     written["index"] = _render_index(out / "index.html", docs)
     written["documents"] = _render_documents(out / "documents.html", docs)
-    written["governance"] = _render_kind_page(out / "governance.html", docs, "governance")
+    written["governance"] = _render_kind_page(
+        out / "governance.html", docs, "governance"
+    )
     written["audits"] = _render_kind_page(out / "audits.html", docs, "audit")
     written["demos"] = _render_kind_page(out / "demos.html", docs, "demo")
     written["fences"] = _render_fences(out / "code-fences.html", docs)
@@ -71,7 +73,7 @@ def _page(title: str, body: str, docs: list[dict] | None = None) -> str:
 <header><h1>Rig Relay Documentation</h1>{nav}</header>
 <main>{body}</main>
 <footer>
-  <p>Generated {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')} |
+  <p>Generated {datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")} |
   <a href="index.html">Home</a> |
   <a href="documents.html">Documents</a></p>
 </footer>
@@ -114,18 +116,18 @@ def _render_index(path: Path, docs: list[dict]) -> Path:
 
 <h3>By Kind</h3>
 <table class="kv">
-{''.join(f'<tr><td>{html.escape(k)}</td><td>{v}</td></tr>' for k, v in sorted(kinds.items()))}
+{"".join(f"<tr><td>{html.escape(k)}</td><td>{v}</td></tr>" for k, v in sorted(kinds.items()))}
 </table>
 
 <h3>By Directory</h3>
 <table class="kv">
-{''.join(f'<tr><td>{html.escape(k)}</td><td>{v}</td></tr>' for k, v in sorted(dirs.items())[:20])}
+{"".join(f"<tr><td>{html.escape(k)}</td><td>{v}</td></tr>" for k, v in sorted(dirs.items())[:20])}
 </table>
 
 <h3>Recent Documents</h3>
 <table>
 <tr><th>Title</th><th>Kind</th><th>Path</th></tr>
-{''.join(_doc_row(d) for d in docs[:30])}
+{"".join(_doc_row(d) for d in docs[:30])}
 </table>
 """
     path.write_text(_page("Home", body, docs), encoding="utf-8")
@@ -144,7 +146,10 @@ def _render_kind_page(path: Path, docs: list[dict], kind: str) -> Path:
     filtered = [d for d in docs if d["inferred_doc_kind"] == kind]
     title = kind.capitalize()
     body = f"<h2>{title} ({len(filtered)})</h2>\n<table>\n<tr><th>Title</th><th>Path</th><th>Lines</th></tr>\n"
-    body += "".join(f"<tr><td>{html.escape(d['title'])}</td><td><code>{html.escape(d['path'])}</code></td><td>{d['line_count']}</td></tr>" for d in filtered)
+    body += "".join(
+        f"<tr><td>{html.escape(d['title'])}</td><td><code>{html.escape(d['path'])}</code></td><td>{d['line_count']}</td></tr>"
+        for d in filtered
+    )
     body += "</table>"
     path.write_text(_page(title, body, docs), encoding="utf-8")
     return path
@@ -163,7 +168,7 @@ def _render_fences(path: Path, docs: list[dict]) -> Path:
 <p>Total: {len(all_fences)} | Mermaid: {len(mermaid)}</p>
 <table>
 <tr><th>Source</th><th>Language</th><th>Lines</th><th>SHA</th></tr>
-{''.join(f'<tr><td><code>{html.escape(f["_source_path"])}</code></td><td>{html.escape(f["language"])}</td><td>{f["line_end"] - f["line_start"] + 1}</td><td><code>{f["code_sha256"][:12]}</code></td></tr>' for f in all_fences[:100])}
+{"".join(f"<tr><td><code>{html.escape(f['_source_path'])}</code></td><td>{html.escape(f['language'])}</td><td>{f['line_end'] - f['line_start'] + 1}</td><td><code>{f['code_sha256'][:12]}</code></td></tr>" for f in all_fences[:100])}
 </table>
 """
     path.write_text(_page("Code Fences", body, docs), encoding="utf-8")
@@ -175,6 +180,7 @@ def _render_links(path: Path, docs: list[dict]) -> Path:
     for d in docs:
         for l in d["links"]:
             from rig_relay.docs_render.markdown_inventory import classify_link
+
             l["_source"] = d["path"]
             l["_kind"] = classify_link(l["href"])
             all_links.append(l)
@@ -187,7 +193,7 @@ def _render_links(path: Path, docs: list[dict]) -> Path:
 <h3>External Links</h3>
 <table>
 <tr><th>Source</th><th>Text</th><th>URL</th></tr>
-{''.join(f'<tr><td><code>{html.escape(l["_source"])}</code></td><td>{html.escape(l["text"][:80])}</td><td><a href="{html.escape(l["href"])}">{html.escape(l["href"][:80])}</a></td></tr>' for l in external[:50])}
+{"".join(f'<tr><td><code>{html.escape(l["_source"])}</code></td><td>{html.escape(l["text"][:80])}</td><td><a href="{html.escape(l["href"])}">{html.escape(l["href"][:80])}</a></td></tr>' for l in external[:50])}
 </table>
 """
     path.write_text(_page("Links", body, docs), encoding="utf-8")

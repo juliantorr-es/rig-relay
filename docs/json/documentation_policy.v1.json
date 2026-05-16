@@ -1,0 +1,109 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "documentation-policy",
+  "document_type": "policy",
+  "title": "Documentation Policy",
+  "summary": "Canonical JSON documentation policy for Rig Relay. New docs must be JSON. Old Markdown must be migrated before deletion.",
+  "status": "active",
+  "created_at": "2026-05-18",
+  "owners": ["maintainer"],
+  "tags": ["documentation", "policy", "json"],
+  "audience": ["contributor", "agent", "maintainer"],
+  "canonical_path": "docs/json/documentation_policy.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {
+      "block_id": "heading-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Documentation Policy"
+    },
+    {
+      "block_id": "policy-statement",
+      "type": "callout",
+      "severity": "info",
+      "content": "New project documentation must be written as canonical JSON artifacts using the rig.documentation.page.v1 schema. Markdown is only permitted for explicitly allowed exceptions. Old Markdown docs must be migrated to JSON before deletion."
+    },
+    {
+      "block_id": "heading-allowed",
+      "type": "heading",
+      "level": 2,
+      "content": "Allowed Markdown Exceptions"
+    },
+    {
+      "block_id": "allowed-list",
+      "type": "list",
+      "items": [
+        "AGENTS.md — agent instructions",
+        "README.md — GitHub landing page",
+        "CONTRIBUTING.md — contribution UI",
+        "CONTRIBUTOR_LICENSE_AGREEMENT.md — legal",
+        "LICENSE — plain license text",
+        "ATTRIBUTION.md — human-readable attribution",
+        "CHANGELOG.md — if release tooling requires it"
+      ]
+    },
+    {
+      "block_id": "heading-rules",
+      "type": "heading",
+      "level": 2,
+      "content": "Migration Rules"
+    },
+    {
+      "block_id": "migration-rules",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "JSON replacement must exist and validate against a schema",
+        "Static renderer must render it",
+        "Migration manifest must map old_path to new_path",
+        "References must be updated",
+        "Tests must pass",
+        "Deletion must be listed in the final report"
+      ]
+    },
+    {
+      "block_id": "heading-schemas",
+      "type": "heading",
+      "level": 2,
+      "content": "Required Schema Validation"
+    },
+    {
+      "block_id": "schemas-list",
+      "type": "list",
+      "items": [
+        "rig.documentation.page.v1 — individual documentation pages",
+        "rig.documentation.collection.v1 — named document collections",
+        "rig.documentation.migration_manifest.v1 — migration tracking",
+        "rig.documentation.site_manifest.v1 — site navigation structure"
+      ]
+    },
+    {
+      "block_id": "heading-render",
+      "type": "heading",
+      "level": 2,
+      "content": "Static Site Rendering"
+    },
+    {
+      "block_id": "render-info",
+      "type": "paragraph",
+      "content": "Documentation is rendered to static HTML by scripts/render_static_docs.py. The generated site is committed under docs/ and published via GitHub Pages from the main branch /docs folder. No custom GitHub Actions workflow is required."
+    },
+    {
+      "block_id": "heading-actions",
+      "type": "heading",
+      "level": 2,
+      "content": "Actions Policy"
+    },
+    {
+      "block_id": "actions-policy",
+      "type": "table",
+      "columns": ["Setting", "Value"],
+      "rows": [
+        ["Custom GitHub Actions required", "false"],
+        ["Default publish model", "local_render_committed_static_site"],
+        ["Reason", "Avoid unnecessary GitHub Actions quota and artifact storage use"]
+      ]
+    }
+  ]
+}

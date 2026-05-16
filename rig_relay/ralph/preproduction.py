@@ -84,7 +84,9 @@ def execute_preproduction_push(
         try:
             actual = subprocess.run(
                 ["git", "-C", str(root), "rev-parse", source_branch],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             ).stdout.strip()
             if actual and actual != merge_sha:
                 return PreproductionPushResult(
@@ -101,8 +103,17 @@ def execute_preproduction_push(
     try:
         root = repo_root or Path.cwd()
         result = subprocess.run(
-            ["git", "-C", str(root), "push", "origin", f"{source_branch}:{target_branch}"],
-            capture_output=True, text=True, timeout=30,
+            [
+                "git",
+                "-C",
+                str(root),
+                "push",
+                "origin",
+                f"{source_branch}:{target_branch}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode != 0:
             return PreproductionPushResult(
@@ -132,7 +143,4 @@ def execute_preproduction_push(
         )
 
 
-__all__ = [
-    "PreproductionPushResult",
-    "execute_preproduction_push",
-]
+__all__ = ["PreproductionPushResult", "execute_preproduction_push"]

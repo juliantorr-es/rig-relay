@@ -729,7 +729,9 @@ def test_search_replace_no_match_refusal_sanitized(sr_tool: type) -> None:
         ),
     ],
 )
-def test_search_replace_sanitize_refusal(input_value: str | None, expected: str | None) -> None:
+def test_search_replace_sanitize_refusal(
+    input_value: str | None, expected: str | None
+) -> None:
     """_sanitize_refusal_for_receipt sanitizes refusal reason safely."""
     from rig_relay.core.tools.builtins.search_replace import SearchReplace
 

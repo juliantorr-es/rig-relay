@@ -113,8 +113,7 @@ class TestDebugSnapshot:
 class TestConstructionWithoutToolExecution:
     def test_can_construct_without_full_tool_context(self):
         turn = ConversationTurnRuntime(
-            session_id="abc",
-            user_message_text="test message",
+            session_id="abc", user_message_text="test message"
         )
         assert turn.session_id == "abc"
         assert turn.tool_call_count == 0

@@ -38,8 +38,7 @@ class RalphReviewBundle(BaseModel):
 
     def compute_sha256(self) -> str:
         payload = self.model_dump_json(
-            exclude={"bundle_sha256", "created_at"},
-            exclude_none=True,
+            exclude={"bundle_sha256", "created_at"}, exclude_none=True
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -58,8 +57,12 @@ def build_review_bundle(
         head_sha=getattr(lane, "latest_commit_sha", "") or "",
         commit_shas=list((execution_result or {}).get("commit_shas", [])),
         changed_files=list((execution_result or {}).get("changed_files", [])),
-        summary=f"Ralph lane completed: {objective[:120]}" if objective else "Ralph lane completed",
-        why=f"Triggered by findings: {', '.join(source_findings or [])[:120]}" if source_findings else "",
+        summary=f"Ralph lane completed: {objective[:120]}"
+        if objective
+        else "Ralph lane completed",
+        why=f"Triggered by findings: {', '.join(source_findings or [])[:120]}"
+        if source_findings
+        else "",
         evidence_refs=[
             {"kind": "finding", "id": fid} for fid in (source_findings or [])
         ],
@@ -85,22 +88,41 @@ class ReviewSessionProjection(BaseModel):
     summary: str = ""
     execution_enabled: bool = False
     merge_enabled: bool = False
-    available_actions: list[dict[str, str | bool]] = Field(default_factory=lambda: [
-        {"action": "review_accept", "label": "Accept for review", "requires_confirmation": True},
-        {"action": "review_reject", "label": "Reject", "requires_confirmation": True},
-        {"action": "review_defer", "label": "Defer", "requires_confirmation": False},
-    ])
+    available_actions: list[dict[str, str | bool]] = Field(
+        default_factory=lambda: [
+            {
+                "action": "review_accept",
+                "label": "Accept for review",
+                "requires_confirmation": True,
+            },
+            {
+                "action": "review_reject",
+                "label": "Reject",
+                "requires_confirmation": True,
+            },
+            {
+                "action": "review_defer",
+                "label": "Defer",
+                "requires_confirmation": False,
+            },
+        ]
+    )
 
 
 def build_review_projection(
-    bundles: list[Any],
-    proposals: list[Any] | None = None,
+    bundles: list[Any], proposals: list[Any] | None = None
 ) -> ReviewSessionProjection:
     return ReviewSessionProjection(
         session_id=f"review_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
         pending_lane_count=len(bundles),
-        bundles=[b.model_dump(mode="json") if hasattr(b, 'model_dump') else b for b in bundles],
-        adoption_proposals=[p.model_dump(mode="json") if hasattr(p, 'model_dump') else p for p in (proposals or [])],
+        bundles=[
+            b.model_dump(mode="json") if hasattr(b, "model_dump") else b
+            for b in bundles
+        ],
+        adoption_proposals=[
+            p.model_dump(mode="json") if hasattr(p, "model_dump") else p
+            for p in (proposals or [])
+        ],
         summary=f"{len(bundles)} completed Ralph lanes awaiting review",
         execution_enabled=False,
         merge_enabled=False,

@@ -20,15 +20,15 @@ TESTS = HERE.parent
 
 # ── Known duplicate pairs (canonical, shadow) ─────────────────
 KNOWN_DUPLICATES: list[tuple[str, str]] = [
-    ("tests/telemetry/test_observability.py", "tests/telemetry/test_observability_e2e.py"),
+    (
+        "tests/telemetry/test_observability.py",
+        "tests/telemetry/test_observability_e2e.py",
+    ),
     ("tests/tools/test_bash.py", "tests/tools/test_bash_hardening.py"),
 ]
 
 # ── Root-level test files allowed (explicit singletons) ───────
-ALLOWED_ROOT = {
-    "test_install_script.py",
-    "test_conftest_hygiene.py",
-}
+ALLOWED_ROOT = {"test_install_script.py", "test_conftest_hygiene.py"}
 
 # ── scripts/ test files allowed (target IS scripts/) ──────────
 ALLOWED_SCRIPTS: set[str] = set()

@@ -6,6 +6,8 @@
 
 import { state } from './state.js';
 import { ProjectionWebSocketClient } from '../websocket.js';
+
+export { ProjectionWebSocketClient };
 import { auditLog, audit } from './audit.js';
 import { renderStatusBar } from './status.js';
 

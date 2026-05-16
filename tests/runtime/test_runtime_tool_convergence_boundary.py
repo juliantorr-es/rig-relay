@@ -31,7 +31,9 @@ def _resolved_context(**overrides: object) -> RuntimeContext:
     return RuntimeContext(**kwargs)  # type: ignore[arg-type]
 
 
-def _resolved(status: str = "resolved", **overrides: object) -> RuntimeContextResolution:
+def _resolved(
+    status: str = "resolved", **overrides: object
+) -> RuntimeContextResolution:
     kwargs: dict[str, object] = {
         "status": status,
         "context": _resolved_context() if status == "resolved" else None,
@@ -65,7 +67,10 @@ def _method_source(name: str) -> str:
     class_def = tree.body[0]
     assert isinstance(class_def, ast.ClassDef)
     for node in class_def.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == name
+        ):
             return ast.get_source_segment(source, node) or ""
     raise AssertionError(f"method {name} not found")
 
@@ -103,14 +108,18 @@ class TestArchitectureBoundaries:
 
 class TestRuntimeDispatch:
     @pytest.mark.asyncio
-    async def test_validate_routes_through_tool_runtime(self, tmp_path: Path, monkeypatch) -> None:
+    async def test_validate_routes_through_tool_runtime(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
         runner = RuntimeToolExecutionRunner()
         repo = tmp_path / "repo"
         repo.mkdir()
         (repo / "pyproject.toml").write_text("[project]\nname='x'\nversion='0.1.0'\n")
         ctx = _resolved_context(worktree_path=str(repo), repo_root=str(repo))
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
-        intent = _intent(RuntimeToolName.VALIDATE, payload={"profile": "worktree-readiness"})
+        intent = _intent(
+            RuntimeToolName.VALIDATE, payload={"profile": "worktree-readiness"}
+        )
         calls: list[object] = []
 
         async def fake_execute_one(request):
@@ -164,7 +173,9 @@ class TestRuntimeDispatch:
             )
 
         monkeypatch.setattr(runner._tool_runtime, "execute_one", fake_execute_one)
-        monkeypatch.setattr(runner, "_release_mutation_lease", lambda *args: releases.append(args))
+        monkeypatch.setattr(
+            runner, "_release_mutation_lease", lambda *args: releases.append(args)
+        )
         result = await runner.execute_search_replace(intent, resolution)
         assert len(calls) == 1
         assert result.status == RuntimeToolExecutionStatus.COMPLETED
@@ -200,7 +211,9 @@ class TestRuntimeDispatch:
             )
 
         monkeypatch.setattr(runner._tool_runtime, "execute_one", fake_execute_one)
-        monkeypatch.setattr(runner, "_release_mutation_lease", lambda *args: releases.append(args))
+        monkeypatch.setattr(
+            runner, "_release_mutation_lease", lambda *args: releases.append(args)
+        )
         result = await runner.execute_write_file(intent, resolution)
         assert len(calls) == 1
         assert result.status == RuntimeToolExecutionStatus.COMPLETED
@@ -208,7 +221,9 @@ class TestRuntimeDispatch:
         assert releases
 
     @pytest.mark.asyncio
-    async def test_bash_routes_through_tool_runtime(self, tmp_path: Path, monkeypatch) -> None:
+    async def test_bash_routes_through_tool_runtime(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
         runner = RuntimeToolExecutionRunner()
         ctx = _resolved_context(worktree_path=str(tmp_path), repo_root=str(tmp_path))
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
@@ -243,7 +258,9 @@ class TestRuntimeDispatch:
         runner = RuntimeToolExecutionRunner()
         ctx = _resolved_context(worktree_path=str(tmp_path), repo_root=str(tmp_path))
         resolution = RuntimeContextResolution(status="resolved", context=ctx)
-        intent = _intent(RuntimeToolName.WRITE_FILE, payload={"content": "missing path"})
+        intent = _intent(
+            RuntimeToolName.WRITE_FILE, payload={"content": "missing path"}
+        )
         called = {"count": 0}
 
         async def fake_execute_one(request):

@@ -214,9 +214,18 @@ ORCHESTRATOR = AgentProfile(
     agent_type=AgentType.AGENT,
     overrides={
         "enabled_tools": [
-            "grep", "read_file", "task", "ask_user_question",
-            "write_file", "search_replace", "git_status", "git_diff",
-            "git_branch", "git_log", "git_show", "git_ls_files",
+            "grep",
+            "read_file",
+            "task",
+            "ask_user_question",
+            "write_file",
+            "search_replace",
+            "git_status",
+            "git_diff",
+            "git_branch",
+            "git_log",
+            "git_show",
+            "git_ls_files",
             "consult_provider",
         ],
         "tools": {
@@ -243,8 +252,12 @@ CLEANER = AgentProfile(
     agent_type=AgentType.SUBAGENT,
     overrides={
         "enabled_tools": [
-            "grep", "read_file", "write_file", "search_replace",
-            "validate", "validation_suite",
+            "grep",
+            "read_file",
+            "write_file",
+            "search_replace",
+            "validate",
+            "validation_suite",
         ],
         "tools": {
             "write_file": {"permission": "always"},
@@ -261,10 +274,7 @@ BUILDER = AgentProfile(
     safety=AgentSafety.DESTRUCTIVE,
     agent_type=AgentType.SUBAGENT,
     overrides={
-        "enabled_tools": [
-            "grep", "read_file", "write_file", "search_replace",
-            "task",
-        ],
+        "enabled_tools": ["grep", "read_file", "write_file", "search_replace", "task"],
         "tools": {
             "write_file": {"permission": "always"},
             "search_replace": {"permission": "always"},
@@ -281,8 +291,13 @@ BUG_EXTERMINATOR = AgentProfile(
     agent_type=AgentType.SUBAGENT,
     overrides={
         "enabled_tools": [
-            "grep", "read_file", "write_file", "search_replace",
-            "validate", "validation_suite", "task",
+            "grep",
+            "read_file",
+            "write_file",
+            "search_replace",
+            "validate",
+            "validation_suite",
+            "task",
         ],
         "tools": {
             "write_file": {"permission": "always"},

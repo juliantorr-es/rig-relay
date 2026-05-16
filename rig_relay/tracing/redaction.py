@@ -29,7 +29,13 @@ REDACT_KEYS = frozenset({
     "bearer",
 })
 
-SAFE_TOKEN_ADJACENT = frozenset({"token_present", "token_length"})
+SAFE_TOKEN_ADJACENT = frozenset({
+    "token_present",
+    "token_length",
+    "token_value_included",
+    "contains_secret",
+    "secret_fields_redacted",
+})
 
 MAX_STRING_LENGTH = 1000
 MAX_BYTES_LENGTH = 128

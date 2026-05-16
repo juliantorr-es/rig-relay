@@ -390,7 +390,9 @@ def decide_cache_eligibility(
         reason = "force_rerun_policy"
     elif cache_policy == CACHE_POLICY_DISABLED:
         status = CACHE_STATUS_DISABLED
-    elif lookup.cache_status == CACHE_STATUS_MISS_MISSING_RECORD or lookup.record is None:
+    elif (
+        lookup.cache_status == CACHE_STATUS_MISS_MISSING_RECORD or lookup.record is None
+    ):
         status = CACHE_STATUS_MISS_MISSING_RECORD
     elif lookup.record.is_passed():
         status = CACHE_STATUS_HIT

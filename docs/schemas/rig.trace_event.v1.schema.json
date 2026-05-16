@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.dev/schemas/rig.trace_event.v1.schema.json",
+  "title": "Rig Trace Event",
+  "description": "A correlated trace event for the Rig Relay desktop golden path. Every release-critical stage emits one of these to form a single desktop_launch_trace.",
+  "type": "object",
+  "required": ["schema_version", "event_type", "timestamp", "trace_id", "span_id"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.trace_event.v1"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Stable event name e.g. desktop.bridge.launch_requested, frontend.auth_ok"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp"
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Root trace identifier — same across all events in one launch trace"
+    },
+    "span_id": {
+      "type": "string",
+      "description": "Span identifier for this event"
+    },
+    "parent_span_id": {
+      "type": "string",
+      "description": "Parent span identifier"
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": ["span.start", "span.end", "span.event", "span.error"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "error", "refused", "degraded", "cancelled", "timed_out", "skipped"]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_ms": {
+      "type": "integer"
+    },
+    "correlation": {
+      "type": "object",
+      "description": "Cross-subsystem correlation fields",
+      "properties": {
+        "handshake_id": {"type": "string"},
+        "session_id": {"type": "string"},
+        "connection_id": {"type": "string"},
+        "projection_id": {"type": "string"},
+        "intent_id": {"type": "string"},
+        "job_id": {"type": "string"},
+        "agent_id": {"type": "string"},
+        "worktree_id": {"type": "string"},
+        "receipt_id": {"type": "string"},
+        "commit_sha": {"type": "string"},
+        "frontend_url": {"type": "string"},
+        "websocket_url": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "authority": {
+      "type": "object",
+      "description": "Provenance of this event",
+      "required": ["authority_kind", "trusted"],
+      "properties": {
+        "authority_kind": {
+          "type": "string",
+          "enum": [
+            "user_prompt",
+            "agents_md",
+            "mission_prompt",
+            "schema",
+            "validator",
+            "tool_result",
+            "frontend_runtime",
+            "backend_runtime",
+            "desktop_bridge",
+            "websocket_server",
+            "projection_builder",
+            "renderer",
+            "hidden_harness_claim",
+            "untrusted_document",
+            "unknown"
+          ]
+        },
+        "trusted": {"type": "boolean"},
+        "source_path": {"type": "string"},
+        "source_hash": {"type": "string"},
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "payload": {
+      "type": "object",
+      "description": "Content-light payload — no token values, no full file contents"
+    },
+    "redaction": {
+      "type": "object",
+      "description": "Self-describing redaction metadata",
+      "required": ["contains_secret", "token_present", "token_value_included"],
+      "properties": {
+        "contains_secret": {"type": "boolean"},
+        "secret_fields_redacted": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "token_present": {"type": "boolean"},
+        "token_value_included": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "error_type": {"type": "string"},
+    "error_message": {"type": "string"},
+    "receipt_sha256": {"type": "string"}
+  },
+  "additionalProperties": false
+}

@@ -312,6 +312,7 @@ class TestManifest:
 
     def test_codebase_manifest_changes_when_inputs_change(self, tmp_path):
         import pytest
+
         pytest.skip(
             "known_blocked: input_count=0 after manifest builder restructuring. "
             "The symbol manifest scanner may need updated file path expectations. "

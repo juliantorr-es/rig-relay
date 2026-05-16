@@ -26,9 +26,7 @@ STALE_DAYS = 30
 # ── Public projector functions ───────────────────────────────────
 
 
-def build_report_summary(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-) -> dict[str, Any]:
+def build_report_summary(ledger_path: Path = DEFAULT_LEDGER_PATH) -> dict[str, Any]:
     """Aggregate counts from the report ledger via DuckDB query layer."""
     from rig_relay.reports.query import query_report_summary
 
@@ -36,8 +34,7 @@ def build_report_summary(
 
 
 def build_report_snapshots(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-    limit: int = 100,
+    ledger_path: Path = DEFAULT_LEDGER_PATH, limit: int = 100
 ) -> list[dict[str, Any]]:
     """Build current snapshot for each report via DuckDB query layer."""
     from rig_relay.reports.query import query_report_snapshots
@@ -46,8 +43,7 @@ def build_report_snapshots(
 
 
 def build_open_raw_reports(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-    limit: int = 100,
+    ledger_path: Path = DEFAULT_LEDGER_PATH, limit: int = 100
 ) -> list[dict[str, Any]]:
     """Return reports with status=open via DuckDB query layer."""
     from rig_relay.reports.query import query_open_raw_reports
@@ -65,8 +61,7 @@ def build_duplicate_candidates(
 
 
 def build_candidate_findings(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-    limit: int = 50,
+    ledger_path: Path = DEFAULT_LEDGER_PATH, limit: int = 50
 ) -> list[dict[str, Any]]:
     """Return plausible candidate findings via DuckDB query layer."""
     from rig_relay.reports.query import query_candidate_findings
@@ -75,8 +70,7 @@ def build_candidate_findings(
 
 
 def write_indexes(
-    indexes_dir: Path = DEFAULT_INDEXES_DIR,
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
+    indexes_dir: Path = DEFAULT_INDEXES_DIR, ledger_path: Path = DEFAULT_LEDGER_PATH
 ) -> dict[str, Path]:
     """Write all projections to .rig/reports/indexes/.
 

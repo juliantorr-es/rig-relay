@@ -11,6 +11,7 @@ from rig_relay.ralph.lane_store import (
 
 pytestmark = [pytest.mark.integration]
 
+
 def test_lane_save_load_roundtrip():
     store = InMemoryRalphLaneStore()
     lane = RalphLane(
@@ -81,7 +82,9 @@ def test_lane_defaults_disabled():
 
 def test_branch_name_sanitization():
     lane = RalphLane()
-    name = lane.sanitize_branch_name("Fix DirtyFileGuard singleton ownership across forked agents!!!", "abc12345")
+    name = lane.sanitize_branch_name(
+        "Fix DirtyFileGuard singleton ownership across forked agents!!!", "abc12345"
+    )
     assert name.startswith("ralph/")
     assert "!!!" not in name
     assert "abc12345" in name
@@ -96,11 +99,7 @@ def test_filesystem_save_load_roundtrip(tmp_path):
     root = tmp_path / ".rig" / "ralph"
     store = FilesystemRalphLaneStore(root=root)
 
-    lane = RalphLane(
-        lane_id="fs-lane-1",
-        branch_name="ralph/test-1",
-        status="proposed",
-    )
+    lane = RalphLane(lane_id="fs-lane-1", branch_name="ralph/test-1", status="proposed")
     store.save_lane(lane)
 
     loaded = store.load_lane("fs-lane-1")

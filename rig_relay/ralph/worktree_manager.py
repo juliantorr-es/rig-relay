@@ -32,9 +32,15 @@ def build_safe_worktree_path(lane_root: str, lane_id: str) -> str:
 
 
 class LaneWorktreeResult:
-    def __init__(self, status: str, lane: RalphLane | None = None,
-                 branch_name: str = "", worktree_path: str = "",
-                 base_head: str = "", error: str = "") -> None:
+    def __init__(
+        self,
+        status: str,
+        lane: RalphLane | None = None,
+        branch_name: str = "",
+        worktree_path: str = "",
+        base_head: str = "",
+        error: str = "",
+    ) -> None:
         self.status = status
         self.lane = lane
         self.branch_name = branch_name
@@ -50,25 +56,32 @@ def create_lane_worktree(
     existing_lane_count: int = 0,
 ) -> LaneWorktreeResult:
     if not policy.can_create_worktree():
-        return LaneWorktreeResult("refused", error="worktree creation disabled by policy")
+        return LaneWorktreeResult(
+            "refused", error="worktree creation disabled by policy"
+        )
 
     if not policy.active_lanes_allowed(existing_lane_count):
-        return LaneWorktreeResult("refused", error=f"max active lanes ({policy.max_active_lanes}) reached")
+        return LaneWorktreeResult(
+            "refused", error=f"max active lanes ({policy.max_active_lanes}) reached"
+        )
 
     branch_name = build_safe_branch_name(
-        "mission",
-        lane.lane_id[-12:] if lane.lane_id else "unknown",
+        "mission", lane.lane_id[-12:] if lane.lane_id else "unknown"
     )
     if _UNSAFE_BRANCH_CHARS.search(branch_name):
         return LaneWorktreeResult("refused", error=f"unsafe branch name: {branch_name}")
 
     worktree_path = build_safe_worktree_path(policy.lane_root, lane.lane_id)
     if not worktree_path:
-        return LaneWorktreeResult("refused", error=f"worktree path escape detected: {policy.lane_root}/{lane.lane_id}")
+        return LaneWorktreeResult(
+            "refused",
+            error=f"worktree path escape detected: {policy.lane_root}/{lane.lane_id}",
+        )
 
     root = (repo_root or Path.cwd()).resolve()
     try:
         from rig_relay.coordination.worktree_manager import WorktreeManager
+
         mgr = WorktreeManager(repo_root=root, worktree_root=Path(worktree_path).parent)
         result = mgr.create(workspace_id=lane.lane_id, branch_name=branch_name)
         if result.status == "created" and result.record:
@@ -78,12 +91,15 @@ def create_lane_worktree(
             lane.base_branch = ""
             lane.status = "worktree_created"
             return LaneWorktreeResult(
-                "created", lane=lane,
+                "created",
+                lane=lane,
                 branch_name=branch_name,
                 worktree_path=str(result.record.path),
                 base_head=lane.base_head,
             )
-        return LaneWorktreeResult("failed", error=f"worktree creation failed: {result.status}")
+        return LaneWorktreeResult(
+            "failed", error=f"worktree creation failed: {result.status}"
+        )
     except ImportError:
         return LaneWorktreeResult("refused", error="WorktreeManager not available")
     except Exception as e:

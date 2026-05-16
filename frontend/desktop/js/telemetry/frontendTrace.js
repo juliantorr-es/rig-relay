@@ -29,12 +29,15 @@ export function recordFrontendEvent(type, detail = {}) {
     }
   }
 
-  // 2. Fetch fallback (for browser debug)
+  // 2. HTTP GET fallback (for browser debug) — uses query params, never hits /ws
+  const detailParam = encodeURIComponent(JSON.stringify(detail || {}));
+  const url = `/frontend-event?type=${encodeURIComponent(type)}&handshake_id=${encodeURIComponent(sharedHandshakeId || '')}&detail=${detailParam}`;
   try {
-    fetch('/frontend-event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    fetch(url, {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      keepalive: true,
     }).catch(() => { /* silent fallback */ });
   } catch (e) {
     // silent

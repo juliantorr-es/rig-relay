@@ -10,8 +10,8 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-
 pytestmark = [pytest.mark.migration]
+
 
 def _load_script(name: str):
     import importlib.util as iu

@@ -5,7 +5,10 @@ from pathlib import Path
 import pytest
 
 INCORRECT_PYCACHE_SIGNATURES = ["HarnessFilesManager.reset_instance"]
-CORRECT_CONFTEST_SIGNATURES = ["init_harness_files_manager", "reset_harness_files_manager"]
+CORRECT_CONFTEST_SIGNATURES = [
+    "init_harness_files_manager",
+    "reset_harness_files_manager",
+]
 
 
 @pytest.mark.smoke

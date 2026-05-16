@@ -39,11 +39,7 @@ class TestLoadJsonl:
 
     def test_malformed_line_counted(self, tmp_path: Path) -> None:
         ledger = tmp_path / "test.jsonl"
-        ledger.write_text(
-            '{"report_id": "r1"}\n'
-            'not json\n'
-            '{"report_id": "r2"}\n'
-        )
+        ledger.write_text('{"report_id": "r1"}\nnot json\n{"report_id": "r2"}\n')
         result = load_jsonl(ledger)
         assert len(result.valid_records) == 2
         assert result.diagnostics["valid_record_count"] == 2
@@ -108,7 +104,13 @@ class TestCreateReportsTable:
         from rig_relay.analytics import connect_in_memory
 
         con = connect_in_memory()
-        records = [normalize_report_record({"report_id": "r1", "kind": "test", "severity": "low"})]
+        records = [
+            normalize_report_record({
+                "report_id": "r1",
+                "kind": "test",
+                "severity": "low",
+            })
+        ]
         create_reports_table(con, records)
         rows = rows_to_dicts(con, "SELECT count(*) AS cnt FROM reports")
         assert rows[0]["cnt"] == 1
@@ -136,9 +138,7 @@ class TestProjectionMetadata:
 
     def test_invalid_kind_produces_metadata(self) -> None:
         """Any string is now accepted as projection_kind."""
-        meta = build_projection_metadata(
-            "any_kind", Path("/tmp/x.jsonl"), {},
-        )
+        meta = build_projection_metadata("any_kind", Path("/tmp/x.jsonl"), {})
         assert meta["projection_kind"] == "any_kind"
 
 
@@ -177,7 +177,9 @@ class TestRowsToDicts:
         from rig_relay.analytics import connect_in_memory
 
         con = connect_in_memory()
-        con.execute("CREATE TABLE t AS SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS t(x, y)")
+        con.execute(
+            "CREATE TABLE t AS SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS t(x, y)"
+        )
         rows = rows_to_dicts(con, "SELECT * FROM t ORDER BY x")
         assert len(rows) == 2
         assert rows[0]["x"] == 1

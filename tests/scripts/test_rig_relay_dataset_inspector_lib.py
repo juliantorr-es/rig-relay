@@ -22,8 +22,8 @@ from scripts.rig_relay_dataset_inspector_lib import (
 # ── Fixture helpers ──────────────────────────────────────────────────────
 
 
-
 pytestmark = [pytest.mark.migration]
+
 
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

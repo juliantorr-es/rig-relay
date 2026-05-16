@@ -11,6 +11,7 @@ v0.6 adds:
 - Projection-integrity candidate detection
 - No execution, no scheduling, no mutation.
 """
+
 from __future__ import annotations
 
 from rig_relay.ralph.models import (

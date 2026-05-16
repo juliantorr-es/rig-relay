@@ -69,19 +69,39 @@ def test_merge_succeeds_in_temp_repo():
         root = Path(tmp) / "repo"
         root.mkdir()
         subprocess.run(["git", "-C", str(root), "init"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.email", "test@test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "checkout", "-b", "feature/target"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "commit", "--allow-empty", "-m", "target"], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "checkout", "-b", "ralph/test-source"], capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.email", "test@test"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.name", "Test"], capture_output=True
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "commit", "--allow-empty", "-m", "init"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "checkout", "-b", "feature/target"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "commit", "--allow-empty", "-m", "target"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "checkout", "-b", "ralph/test-source"],
+            capture_output=True,
+        )
         (root / "src").mkdir()
         (root / "src" / "patch.py").write_text("# ralph patch")
         subprocess.run(["git", "-C", str(root), "add", "."], capture_output=True)
-        subprocess.run(["git", "-C", str(root), "commit", "-m", "ralph work"], capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(root), "commit", "-m", "ralph work"], capture_output=True
+        )
         sha = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         ).stdout.strip()
 
         p = demo_policy()

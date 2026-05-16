@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pytest
 
 pytestmark = [pytest.mark.integration]
@@ -36,20 +37,14 @@ def test_mission_request_accepts_read_only_capabilities():
 
 
 def test_mission_plan_execution_disabled():
-    plan = RalphReadOnlyMissionPlan(
-        request_id="req-1",
-        run_id="run-1",
-    )
+    plan = RalphReadOnlyMissionPlan(request_id="req-1", run_id="run-1")
 
     assert plan.execution_enabled is False
     assert plan.implementation_status == "contract_only"
 
 
 def test_mission_plan_lists_forbidden_capabilities():
-    plan = RalphReadOnlyMissionPlan(
-        request_id="req-1",
-        run_id="run-1",
-    )
+    plan = RalphReadOnlyMissionPlan(request_id="req-1", run_id="run-1")
 
     assert "source_code_mutation" in plan.forbidden_capabilities
     assert "git_commit" in plan.forbidden_capabilities
@@ -57,9 +52,7 @@ def test_mission_plan_lists_forbidden_capabilities():
 
 
 def test_mission_result_is_not_implemented():
-    result = RalphReadOnlyMissionResult(
-        plan_id="plan-1",
-    )
+    result = RalphReadOnlyMissionResult(plan_id="plan-1")
 
     assert result.status == "not_implemented"
     assert result.implementation_status == "contract_only"
@@ -67,9 +60,7 @@ def test_mission_result_is_not_implemented():
 
 
 def test_refusal_default_reason():
-    refusal = RalphMissionExecutionRefusal(
-        request_id="req-1",
-    )
+    refusal = RalphMissionExecutionRefusal(request_id="req-1")
 
     assert refusal.reason == "execution_not_implemented"
     assert "not yet implemented" in refusal.message
@@ -99,13 +90,10 @@ def test_all_forbidden_capabilities_are_documented():
 
 def test_execution_never_enabled():
     request = RalphReadOnlyMissionRequest(
-        run_id="run-1",
-        candidate_id="cand-1",
-        capabilities=["read_files"],
+        run_id="run-1", candidate_id="cand-1", capabilities=["read_files"]
     )
     plan = RalphReadOnlyMissionPlan(
-        request_id=request.request_id,
-        run_id=request.run_id,
+        request_id=request.request_id, run_id=request.run_id
     )
     result = RalphReadOnlyMissionResult(plan_id=plan.plan_id)
 

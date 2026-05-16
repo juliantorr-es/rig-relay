@@ -9,6 +9,7 @@ from rig_relay.ralph.review_session import (
 
 pytestmark = [pytest.mark.integration]
 
+
 def test_widget_projection_defaults_disabled():
     widget = build_widget_projection()
     assert widget.background_enabled is False

@@ -17,9 +17,7 @@ _RESULT_PATTERN = re.compile(
 
 
 async def type_check(
-    paths: list[str] | None = None,
-    config_path: str | None = None,
-    timeout: int = 120,
+    paths: list[str] | None = None, config_path: str | None = None, timeout: int = 120
 ) -> dict[str, Any]:
     """Run pyrefly type check on the given paths.
 
@@ -49,9 +47,7 @@ async def type_check(
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         stdout_bytes, stderr_bytes = await asyncio.wait_for(
             proc.communicate(), timeout=timeout

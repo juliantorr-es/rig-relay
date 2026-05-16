@@ -1,4 +1,5 @@
 """rig_relay.protocols.mcp — MCP server exposing Rig tools, resources, and prompts."""
+
 from __future__ import annotations
 
 from rig_relay.protocols.mcp.models import (

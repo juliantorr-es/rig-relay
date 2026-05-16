@@ -56,7 +56,8 @@ class RalphReportStore:
 
     def list_pending_reports(self) -> list[RalphReport]:
         return [
-            r for r in self._reports.values()
+            r
+            for r in self._reports.values()
             if r.status not in ("reviewed", "deferred", "rejected")
         ]
 
@@ -111,7 +112,9 @@ def build_demo_ralph_reports() -> list[RalphReport]:
             title="DirtyFileGuard singleton ownership fix completed",
             summary="Identified shared guard singleton across forked agents. Prepared fix in isolated lane.",
             why="Triggered by finding_20260513_dirty_guard_singleton",
-            source_refs=[{"kind": "finding", "id": "finding_20260513_dirty_guard_singleton"}],
+            source_refs=[
+                {"kind": "finding", "id": "finding_20260513_dirty_guard_singleton"}
+            ],
             target_assignment_id="assignment-runtime-agent-1",
             relevance_score=0.9,
             status="created",
@@ -126,7 +129,9 @@ def build_demo_ralph_reports() -> list[RalphReport]:
             title="AgentLoop runtime kernel boundary seam identified",
             summary="Multiple architecture seams converge on AgentLoop. Prepared boundary documentation and lane proposal.",
             why="Triggered by finding_20260514_agent_loop_runtime_kernel",
-            source_refs=[{"kind": "finding", "id": "finding_20260514_agent_loop_runtime_kernel"}],
+            source_refs=[
+                {"kind": "finding", "id": "finding_20260514_agent_loop_runtime_kernel"}
+            ],
             status="created",
         ),
     ]

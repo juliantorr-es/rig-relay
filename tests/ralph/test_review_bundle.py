@@ -7,6 +7,7 @@ from rig_relay.ralph.review_bundle import build_review_bundle, build_review_proj
 
 pytestmark = [pytest.mark.integration]
 
+
 def test_bundle_from_lane():
     lane = RalphLane(
         lane_id="lane-1",
@@ -29,14 +30,18 @@ def test_bundle_from_lane():
 
 
 def test_bundle_hash_stable():
-    lane = RalphLane(lane_id="lane-1", branch_name="ralph/test", base_head="abc", status="sealed")
+    lane = RalphLane(
+        lane_id="lane-1", branch_name="ralph/test", base_head="abc", status="sealed"
+    )
     b1 = build_review_bundle(lane, objective="test")
     b2 = build_review_bundle(lane, objective="test")
     assert b1.compute_sha256() == b2.compute_sha256()
 
 
 def test_review_projection_from_bundles():
-    lane = RalphLane(lane_id="lane-1", branch_name="ralph/test", base_head="abc", status="sealed")
+    lane = RalphLane(
+        lane_id="lane-1", branch_name="ralph/test", base_head="abc", status="sealed"
+    )
     bundle = build_review_bundle(lane, objective="test")
     proj = build_review_projection([bundle])
 
@@ -47,7 +52,9 @@ def test_review_projection_from_bundles():
 
 
 def test_bundle_includes_evidence_refs():
-    lane = RalphLane(lane_id="lane-1", branch_name="ralph/test", base_head="abc", status="sealed")
+    lane = RalphLane(
+        lane_id="lane-1", branch_name="ralph/test", base_head="abc", status="sealed"
+    )
     bundle = build_review_bundle(lane, source_findings=["finding-1", "finding-2"])
     assert len(bundle.evidence_refs) == 2
     assert bundle.evidence_refs[0]["kind"] == "finding"

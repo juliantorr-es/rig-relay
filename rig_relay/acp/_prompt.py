@@ -1,4 +1,5 @@
 """ACP mixin — prompt."""
+
 from __future__ import annotations
 
 import asyncio
@@ -128,7 +129,6 @@ class PromptMixin:
             user_message_id=resolved_message_id,
         )
 
-
     def _build_text_prompt(self, acp_prompt: list[ContentBlock]) -> str:
         text_prompt = ""
         for block in acp_prompt:
@@ -175,7 +175,6 @@ class PromptMixin:
                         f"We currently don't support {block.type} content blocks"
                     )
         return text_prompt
-
 
     async def _run_agent_loop(
         self, session: AcpSessionLoop, prompt: str, client_message_id: str | None = None
@@ -243,4 +242,3 @@ class PromptMixin:
 
                 elif isinstance(event, AgentProfileChangedEvent):
                     pass
-

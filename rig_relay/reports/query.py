@@ -53,21 +53,20 @@ def _connect(records: list[dict[str, Any]]) -> Any:
     return con
 
 
-def query_report_summary(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-) -> dict[str, Any]:
+def query_report_summary(ledger_path: Path = DEFAULT_LEDGER_PATH) -> dict[str, Any]:
     """Aggregate report counts from the ledger."""
     con, diagnostics = _prep(ledger_path)
 
     result: dict[str, Any] = build_projection_metadata(
-        "report_summary", ledger_path, diagnostics,
+        "report_summary", ledger_path, diagnostics
     )
 
     records = rows_to_dicts(con, "SELECT count(*) AS cnt FROM reports")
     result["total_reports"] = records[0]["cnt"] if records else 0
 
     by_status = rows_to_dicts(
-        con, "SELECT status, count(*) AS cnt FROM reports GROUP BY status ORDER BY status"
+        con,
+        "SELECT status, count(*) AS cnt FROM reports GROUP BY status ORDER BY status",
     )
     result["by_status"] = {r["status"]: r["cnt"] for r in by_status}
 
@@ -111,19 +110,16 @@ def query_report_summary(
     return result
 
 
-def query_report_diagnostics(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-) -> dict[str, Any]:
+def query_report_diagnostics(ledger_path: Path = DEFAULT_LEDGER_PATH) -> dict[str, Any]:
     """Return ledger diagnostics without building full projections."""
     _result = load_jsonl(ledger_path)
     return build_projection_metadata(
-        "report_diagnostics", ledger_path, _result.diagnostics,
+        "report_diagnostics", ledger_path, _result.diagnostics
     )
 
 
 def query_report_snapshots(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-    limit: int = 100,
+    ledger_path: Path = DEFAULT_LEDGER_PATH, limit: int = 100
 ) -> list[dict[str, Any]]:
     """Return the latest snapshot per report, newest first."""
     con, _diagnostics = _prep(ledger_path)
@@ -138,8 +134,7 @@ def query_report_snapshots(
 
 
 def query_open_raw_reports(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-    limit: int = 100,
+    ledger_path: Path = DEFAULT_LEDGER_PATH, limit: int = 100
 ) -> list[dict[str, Any]]:
     """Return reports with status=open, sorted newest first."""
     con, _diagnostics = _prep(ledger_path)
@@ -177,8 +172,7 @@ def query_duplicate_candidates(
 
 
 def query_candidate_findings(
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
-    limit: int = 50,
+    ledger_path: Path = DEFAULT_LEDGER_PATH, limit: int = 50
 ) -> list[dict[str, Any]]:
     """Return reports that qualify as candidate findings.
 

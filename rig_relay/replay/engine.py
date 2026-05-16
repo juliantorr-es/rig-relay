@@ -86,7 +86,9 @@ def _build_event_from_observability(
         if isinstance(receipt, dict):
             status = receipt.get("status") or payload.get("status")
             error_kind = receipt.get("error_kind") or payload.get("error_kind")
-            refusal_reason = receipt.get("refusal_reason") or payload.get("refusal_reason")
+            refusal_reason = receipt.get("refusal_reason") or payload.get(
+                "refusal_reason"
+            )
             duration_ms = receipt.get("duration_ms") or payload.get("duration_ms")
         else:
             status = payload.get("status")
@@ -132,16 +134,20 @@ def _frame_events(
         gap = curr.sequence - prev.sequence
 
         if gap > 1:
-            findings.append(ReplayIntegrityFinding(
-                finding_id=str(uuid4()),
-                severity=ReplayIntegritySeverity.WARNING,
-                message=f"Sequence gap between {prev.sequence} and {curr.sequence}",
-                conflict_type=ReplayConflictType.SEQUENCE_GAP,
-                event_ids=[prev.event_id, curr.event_id],
-            ))
+            findings.append(
+                ReplayIntegrityFinding(
+                    finding_id=str(uuid4()),
+                    severity=ReplayIntegritySeverity.WARNING,
+                    message=f"Sequence gap between {prev.sequence} and {curr.sequence}",
+                    conflict_type=ReplayConflictType.SEQUENCE_GAP,
+                    event_ids=[prev.event_id, curr.event_id],
+                )
+            )
 
         # Frame boundary: tool change or sequence gap > 1
-        if gap > 1 or (curr.tool_name and prev.tool_name and curr.tool_name != prev.tool_name):
+        if gap > 1 or (
+            curr.tool_name and prev.tool_name and curr.tool_name != prev.tool_name
+        ):
             frame = _build_frame(current_group, len(frames), previous_hash)
             frames.append(frame)
             previous_hash = frame.frame_hash
@@ -150,14 +156,18 @@ def _frame_events(
             current_group.append(curr)
 
     if current_group:
-        frame = _build_frame(current_group, len(frames), previous_hash, is_terminal=True)
+        frame = _build_frame(
+            current_group, len(frames), previous_hash, is_terminal=True
+        )
         frames.append(frame)
 
     return frames, findings
 
 
 def _build_frame(
-    events: list[ReplayEvent], index: int, previous_hash: str | None,
+    events: list[ReplayEvent],
+    index: int,
+    previous_hash: str | None,
     is_terminal: bool = False,
 ) -> ReplayFrame:
     event_ids = "".join(e.event_id for e in events)
@@ -171,27 +181,25 @@ def _build_frame(
     )
 
 
-def _check_duplicates(
-    events: list[ReplayEvent],
-) -> list[ReplayIntegrityFinding]:
+def _check_duplicates(events: list[ReplayEvent]) -> list[ReplayIntegrityFinding]:
     findings: list[ReplayIntegrityFinding] = []
     seen: set[str] = set()
     for event in events:
         if event.event_id in seen:
-            findings.append(ReplayIntegrityFinding(
-                finding_id=str(uuid4()),
-                severity=ReplayIntegritySeverity.ERROR,
-                message=f"Duplicate event: {event.event_id}",
-                conflict_type=ReplayConflictType.DUPLICATE_SEQUENCE,
-                event_ids=[event.event_id],
-            ))
+            findings.append(
+                ReplayIntegrityFinding(
+                    finding_id=str(uuid4()),
+                    severity=ReplayIntegritySeverity.ERROR,
+                    message=f"Duplicate event: {event.event_id}",
+                    conflict_type=ReplayConflictType.DUPLICATE_SEQUENCE,
+                    event_ids=[event.event_id],
+                )
+            )
         seen.add(event.event_id)
     return findings
 
 
-def _build_summary(
-    result: ReplayResult,
-) -> dict[str, Any]:
+def _build_summary(result: ReplayResult) -> dict[str, Any]:
     tool_counts: dict[str, int] = {}
     status_counts: dict[str, int] = {}
     for frame in result.frames:
@@ -202,8 +210,10 @@ def _build_summary(
                 status_counts[event.status] = status_counts.get(event.status, 0) + 1
 
     error_count = sum(
-        1 for f in result.findings
-        if f.severity in {ReplayIntegritySeverity.ERROR, ReplayIntegritySeverity.CRITICAL}
+        1
+        for f in result.findings
+        if f.severity
+        in {ReplayIntegritySeverity.ERROR, ReplayIntegritySeverity.CRITICAL}
     )
 
     return {
@@ -218,8 +228,7 @@ def _build_summary(
 
 
 def replay_session_from_observability(
-    session_id: str,
-    observability_path: Path,
+    session_id: str, observability_path: Path
 ) -> ReplayResult:
     """Replay a session from its local observability JSONL.
 
@@ -233,18 +242,18 @@ def replay_session_from_observability(
     """
     replay_id = str(uuid4())
     result = ReplayResult(
-        replay_id=replay_id,
-        session_id=session_id,
-        state=ReplayState.PROCESSING,
+        replay_id=replay_id, session_id=session_id, state=ReplayState.PROCESSING
     )
 
     if not observability_path.is_file():
         result.state = ReplayState.FAILED
-        result.findings.append(ReplayIntegrityFinding(
-            finding_id=str(uuid4()),
-            severity=ReplayIntegritySeverity.ERROR,
-            message=f"Observability file not found: {observability_path}",
-        ))
+        result.findings.append(
+            ReplayIntegrityFinding(
+                finding_id=str(uuid4()),
+                severity=ReplayIntegritySeverity.ERROR,
+                message=f"Observability file not found: {observability_path}",
+            )
+        )
         result.summary = _build_summary(result)
         return result
 
@@ -279,9 +288,7 @@ def replay_session_from_observability(
     result.total_events = len(events)
     result.state = ReplayState.COMPLETE
     result.cursor = ReplayCursor(
-        current_frame_index=0,
-        total_frames=len(frames),
-        can_go_forward=len(frames) > 1,
+        current_frame_index=0, total_frames=len(frames), can_go_forward=len(frames) > 1
     )
     result.summary = _build_summary(result)
 
@@ -289,8 +296,7 @@ def replay_session_from_observability(
 
 
 def replay_session_from_receipt_index(  # noqa: PLR0914
-    session_id: str,
-    records: list,
+    session_id: str, records: list
 ) -> ReplayResult:
     """Replay a session from an existing receipt index (no file I/O).
 
@@ -304,14 +310,14 @@ def replay_session_from_receipt_index(  # noqa: PLR0914
     """
     replay_id = str(uuid4())
     result = ReplayResult(
-        replay_id=replay_id,
-        session_id=session_id,
-        state=ReplayState.PROCESSING,
+        replay_id=replay_id, session_id=session_id, state=ReplayState.PROCESSING
     )
 
     events: list[ReplayEvent] = []
     for seq, record in enumerate(records):
-        kind = _event_kind_from_event_name(getattr(record, "event_name", "tool_receipt"))
+        kind = _event_kind_from_event_name(
+            getattr(record, "event_name", "tool_receipt")
+        )
         tool_name = getattr(record, "tool_name", None)
         status = getattr(record, "status", None)
         error_kind = getattr(record, "error_kind", None)
@@ -320,23 +326,27 @@ def replay_session_from_receipt_index(  # noqa: PLR0914
         created_at = getattr(record, "captured_at", "")
         event_id = getattr(record, "event_id", str(uuid4()))
 
-        payload = record.model_dump(mode="json") if hasattr(record, "model_dump") else {}
+        payload = (
+            record.model_dump(mode="json") if hasattr(record, "model_dump") else {}
+        )
         payload_hash = _compute_hash(json.dumps(payload, sort_keys=True))
 
-        events.append(ReplayEvent(
-            event_id=event_id,
-            sequence=seq,
-            event_kind=kind,
-            event_name="tool_invocation",
-            session_id=session_id,
-            created_at=created_at,
-            tool_name=tool_name,
-            status=status,
-            error_kind=error_kind,
-            refusal_reason=refusal_reason,
-            duration_ms=duration_ms,
-            payload_hash=payload_hash,
-        ))
+        events.append(
+            ReplayEvent(
+                event_id=event_id,
+                sequence=seq,
+                event_kind=kind,
+                event_name="tool_invocation",
+                session_id=session_id,
+                created_at=created_at,
+                tool_name=tool_name,
+                status=status,
+                error_kind=error_kind,
+                refusal_reason=refusal_reason,
+                duration_ms=duration_ms,
+                payload_hash=payload_hash,
+            )
+        )
 
     findings = _check_duplicates(events)
     frames, frame_findings = _frame_events(events)
@@ -347,16 +357,11 @@ def replay_session_from_receipt_index(  # noqa: PLR0914
     result.total_events = len(events)
     result.state = ReplayState.COMPLETE
     result.cursor = ReplayCursor(
-        current_frame_index=0,
-        total_frames=len(frames),
-        can_go_forward=len(frames) > 1,
+        current_frame_index=0, total_frames=len(frames), can_go_forward=len(frames) > 1
     )
     result.summary = _build_summary(result)
 
     return result
 
 
-__all__ = [
-    "replay_session_from_observability",
-    "replay_session_from_receipt_index",
-]
+__all__ = ["replay_session_from_observability", "replay_session_from_receipt_index"]

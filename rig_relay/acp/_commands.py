@@ -1,4 +1,5 @@
 """ACP mixin — commands."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -68,7 +69,6 @@ class CommandsMixin:
             session_id=session.id, update=update_available_commands(commands)
         )
 
-
     async def _maybe_handle_builtin_command(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
     ) -> PromptResponse | None:
@@ -86,7 +86,6 @@ class CommandsMixin:
         handler = getattr(self, command.handler)
         return await handler(session, text_prompt, message_id)
 
-
     async def _command_reply(
         self, session: AcpSessionLoop, text: str, message_id: str
     ) -> PromptResponse:
@@ -100,7 +99,6 @@ class CommandsMixin:
             ),
         )
         return PromptResponse(stop_reason="end_turn", user_message_id=message_id)
-
 
     async def _handle_help(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
@@ -122,7 +120,6 @@ class CommandsMixin:
                 lines.append(f"- `/{name}`: {info.description}")
 
         return await self._command_reply(session, "\n".join(lines), message_id)
-
 
     async def _handle_compact(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
@@ -165,7 +162,6 @@ class CommandsMixin:
 
         return PromptResponse(stop_reason="end_turn", user_message_id=message_id)
 
-
     async def _reload_session_config(self, session: AcpSessionLoop) -> None:
         """Reload config from disk and reinitialize the agent loop."""
         new_config = VibeConfig.load(
@@ -173,7 +169,6 @@ class CommandsMixin:
             disabled_tools=NON_INTERACTIVE_DISABLED_TOOLS,
         )
         await session.agent_loop.reload_with_initial_messages(base_config=new_config)
-
 
     async def _handle_reload(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
@@ -200,7 +195,6 @@ class CommandsMixin:
             message_id,
         )
 
-
     async def _handle_log(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
     ) -> PromptResponse:
@@ -216,7 +210,6 @@ class CommandsMixin:
             "You can send this directory to share your interaction.",
             message_id,
         )
-
 
     async def _handle_proxy_setup(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
@@ -246,7 +239,6 @@ class CommandsMixin:
 
         return await self._command_reply(session, message, message_id)
 
-
     async def _handle_leanstall(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
     ) -> PromptResponse:
@@ -265,7 +257,6 @@ class CommandsMixin:
             message_id,
         )
 
-
     async def _handle_unleanstall(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
     ) -> PromptResponse:
@@ -282,10 +273,7 @@ class CommandsMixin:
         await self._send_config_option_update(session)
         return await self._command_reply(session, "Lean agent uninstalled.", message_id)
 
-
     async def _handle_data_retention(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
     ) -> PromptResponse:
         return await self._command_reply(session, DATA_RETENTION_MESSAGE, message_id)
-
-

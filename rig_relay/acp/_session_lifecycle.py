@@ -1,4 +1,5 @@
 """ACP mixin — session lifecycle."""
+
 from __future__ import annotations
 
 import asyncio
@@ -134,7 +135,6 @@ class SessionLifecycleMixin:
         )
         return response
 
-
     async def _create_acp_session(
         self, session_id: str, agent_loop: AgentLoop
     ) -> AcpSessionLoop:
@@ -157,7 +157,6 @@ class SessionLifecycleMixin:
 
         return session
 
-
     async def _warm_up_agent_loop(self, agent_loop: AgentLoop) -> None:
         """Proactively await deferred init so `vibe.ready` telemetry is emitted
         without waiting for the user's first prompt. Errors are swallowed here
@@ -167,7 +166,6 @@ class SessionLifecycleMixin:
             await agent_loop.wait_until_ready()
         except Exception:
             pass
-
 
     def _create_agent_loop(
         self, config: VibeConfig, agent_name: str, hook_config_result: Any = None
@@ -183,7 +181,6 @@ class SessionLifecycleMixin:
         agent_loop.agent_manager.register_agent(CHAT_AGENT)
         return agent_loop
 
-
     def _build_session_state(
         self, session: AcpSessionLoop
     ) -> tuple[Any, Any, Any, Any]:
@@ -195,7 +192,6 @@ class SessionLifecycleMixin:
             session.agent_loop.config.models, session.agent_loop.config.active_model
         )
         return modes_state, modes_config, models_state, models_config
-
 
     @override
     async def new_session(
@@ -233,12 +229,10 @@ class SessionLifecycleMixin:
             config_options=self._build_config_options(session),
         )
 
-
     def _get_session(self, session_id: str) -> AcpSessionLoop:
         if session_id not in self.sessions:
             raise SessionNotFoundError(session_id)
         return self.sessions[session_id]
-
 
     def _find_acp_session_by_vibe_session_id(
         self, session_id: str
@@ -248,7 +242,6 @@ class SessionLifecycleMixin:
                 return candidate
 
         return None
-
 
     def _load_session_logging_config(self) -> SessionLoggingConfig:
         try:
@@ -263,7 +256,6 @@ class SessionLifecycleMixin:
                 raise ConfigurationError(str(e)) from e
         except Exception as e:
             raise ConfigurationError(str(e)) from e
-
 
     @override
     async def load_session(
@@ -317,7 +309,6 @@ class SessionLifecycleMixin:
             config_options=self._build_config_options(session),
         )
 
-
     @override
     async def close_session(
         self, session_id: str, **kwargs: Any
@@ -331,7 +322,6 @@ class SessionLifecycleMixin:
 
         return CloseSessionResponse()
 
-
     async def emit_session_closed_for_active_sessions(self) -> None:
         agent_loops = [session.agent_loop for session in self.sessions.values()]
         for agent_loop in agent_loops:
@@ -342,7 +332,6 @@ class SessionLifecycleMixin:
             return_exceptions=True,
         )
 
-
     async def _close_agent_loop(self, agent_loop: AgentLoop) -> None:
         deferred_init_thread = agent_loop._deferred_init_thread
         if deferred_init_thread is not None and deferred_init_thread.is_alive():
@@ -350,7 +339,6 @@ class SessionLifecycleMixin:
 
         await agent_loop.aclose()
         await agent_loop.telemetry_client.aclose()
-
 
     @override
     async def fork_session(
@@ -396,7 +384,6 @@ class SessionLifecycleMixin:
             config_options=self._build_config_options(session),
         )
 
-
     @override
     async def resume_session(
         self,
@@ -406,4 +393,3 @@ class SessionLifecycleMixin:
         **kwargs: Any,
     ) -> ResumeSessionResponse:
         raise NotImplementedMethodError("resume_session")
-

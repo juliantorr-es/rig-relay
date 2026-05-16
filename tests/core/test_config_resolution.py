@@ -27,6 +27,7 @@ from tests.conftest import build_test_vibe_config
 
 pytestmark = [pytest.mark.slow, pytest.mark.integration]
 
+
 class _ProviderConfigOverrides(TypedDict, total=False):
     api_key_env_var: str
     browser_auth_base_url: str | None

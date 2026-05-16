@@ -2,7 +2,7 @@
 
 Analysis date: 2026-05-16
 Inspected HEAD: c5a31bbe
-Status: Phase 3 TRANSFERRED_WITH_GAPS (1 stub remains)
+Status: Phase 3 COMPLETE — split-phase tool execution landed
 
 ## Phase 3 Residual Inventory — What Still Lives in AgentLoop
 
@@ -13,7 +13,7 @@ Status: Phase 3 TRANSFERRED_WITH_GAPS (1 stub remains)
 | `_handle_tool_calls()` — tool batch orchestration | adapter via ToolRuntime | 1132-1200 | Keep in adapter |
 | `_run_tools_concurrently()` — concurrent execution queue | adapter | 1164-1207 | Keep in adapter |
 | `_build_loop_adapter()` — adapter factory | adapter boundary | 746-748 | Formalize |
-| `_ConversationLoopAdapter` — all methods except `execute_tool_batch()` | adapter | 1495-1584 | Finish `execute_tool_batch()`, then freeze |
+| `_ConversationLoopAdapter` — all methods including `execute_tool_batch()` | adapter | 1495-1593 | Frozen — split-phase landed |
 | `_should_execute_tool()` / `_ask_approval()` — governance | adapter | 1245-1279 | Keep; future: move to GovernanceRuntime |
 | `fork()` — session fork and handoff | adapter | 1281-1316 | Keep; future: HandoffReceipt |
 | `_get_conversation_runtime()` — CR factory | adapter | 644-647 | Keep |
@@ -60,7 +60,7 @@ These three goals form one convergent phase because they're all about making the
 
 | Gate | Current |
 |---|---|
-| Phase 3 PHASE_3_COMPLETE | ❌ TRANSFERRED_WITH_GAPS — `execute_tool_batch()` stub |
+| Phase 3 PHASE_3_COMPLETE | ✅ COMPLETE — `execute_tool_batch()` split-phase implementation |
 | collect-only green | ✅ 6391 tests, 0 errors |
 | demo-doctor green | ✅ 22/22 |
 | no silent legacy direct | ✅ guarded |
@@ -103,7 +103,7 @@ Sequence: 4A → 4B → 4C → 4D. Each slice builds on the previous without maj
 | **Rename breaks imports** | Medium | Alias `AgentLoop` as `OrchestratorLoop` first; remove old name in Phase 4D only after all callers use new name |
 | **Turn envelope grows too large** | Low | Content-light fields only: hashes, counts, trace_ids. No raw content. |
 | **Handoff receipt adds friction** | Low | Receipts are evidence-only, not blocking. Emission is non-disruptive to existing fork/delegate flows. |
-| **Phase 3 gap stalls 4A** | Medium | Phase 4 entry gate requires PHASE_3_COMPLETE. If gap unresolved, Phase 4 does not start. |
+| **Phase 3 complete — 4A unblocked** | Resolved | Phase 4 entry gate PHASE_3_COMPLETE met. Split-phase tool batch execution: stream_llm_turn stores, execute_tool_batch executes via _execute_pending_tool_batch. |
 | **ContextAssemblyPlan scope creep** | Medium | Explicitly deferred to Phase 5. Context envelope build stays in adapter. |
 | **Parallel lane conflicts** | Low | Phase 4 has one clear converged objective. Lane split: A=shell+rename, B=envelope+receipts, C=docs+guards. Known pattern from Phase 3. |
 

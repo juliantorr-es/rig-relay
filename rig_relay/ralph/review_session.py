@@ -28,12 +28,30 @@ class RalphWidgetProjection(BaseModel):
     risk_warning_count: int = 0
     execution_enabled: bool = False
     merge_enabled: bool = False
-    available_actions: list[dict[str, str | bool]] = Field(default_factory=lambda: [
-        {"action": "ralph_background_toggle_on", "label": "Enable background lanes", "requires_confirmation": True},
-        {"action": "ralph_background_toggle_off", "label": "Disable background lanes", "requires_confirmation": True},
-        {"action": "ralph_review_finished_lanes", "label": "Review finished lanes", "requires_confirmation": False},
-        {"action": "ralph_lane_propose", "label": "Propose lane from candidate", "requires_confirmation": True},
-    ])
+    available_actions: list[dict[str, str | bool]] = Field(
+        default_factory=lambda: [
+            {
+                "action": "ralph_background_toggle_on",
+                "label": "Enable background lanes",
+                "requires_confirmation": True,
+            },
+            {
+                "action": "ralph_background_toggle_off",
+                "label": "Disable background lanes",
+                "requires_confirmation": True,
+            },
+            {
+                "action": "ralph_review_finished_lanes",
+                "label": "Review finished lanes",
+                "requires_confirmation": False,
+            },
+            {
+                "action": "ralph_lane_propose",
+                "label": "Propose lane from candidate",
+                "requires_confirmation": True,
+            },
+        ]
+    )
 
 
 class RalphReviewSessionRequest(BaseModel):

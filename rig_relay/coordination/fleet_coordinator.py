@@ -48,7 +48,9 @@ class FleetCoordinator:
         proposal, recorded = record_patch_decision(self._coordination_root, decision)
         return proposal.proposal_id, recorded.decision_id
 
-    def enqueue_mission(self, mission_id: str, agent_profile: str, payload: dict[str, Any] | None = None) -> str:
+    def enqueue_mission(
+        self, mission_id: str, agent_profile: str, payload: dict[str, Any] | None = None
+    ) -> str:
         from rig_relay.coordination.fleet_queue import FleetQueueItemKind
 
         queue_item_id = self._queue.enqueue_item(
@@ -60,7 +62,9 @@ class FleetCoordinator:
         item_id = queue_item_id.queue_item_id
         logger.info(
             "audit.fleet.enqueued mission_id=%s agent=%s queue_item_id=%s",
-            mission_id, agent_profile, item_id,
+            mission_id,
+            agent_profile,
+            item_id,
         )
         return item_id
 
@@ -136,9 +140,7 @@ class FleetCoordinator:
                 proposal = self._patches.load_proposal(proposal_id)
             except Exception as exc:
                 logger.warning(
-                    "audit.patch.load_failed proposal_id=%s error=%s",
-                    proposal_id,
-                    exc,
+                    "audit.patch.load_failed proposal_id=%s error=%s", proposal_id, exc
                 )
                 continue
 

@@ -19,10 +19,16 @@ from rig_relay.ralph.lane_contracts import RalphLane
 class RalphLaneStore(Protocol):
     def save_lane(self, lane: RalphLane) -> Path: ...
     def load_lane(self, lane_id: str) -> RalphLane | None: ...
-    def list_lanes(self, status: str | None = None, limit: int = 50) -> list[RalphLane]: ...
+    def list_lanes(
+        self, status: str | None = None, limit: int = 50
+    ) -> list[RalphLane]: ...
     def expire_lane(self, lane_id: str, reason: str) -> None: ...
-    def seal_lane(self, lane_id: str, review_bundle_sha256: str) -> RalphLane | None: ...
-    def mark_adoption_proposed(self, lane_id: str, proposal_id: str) -> RalphLane | None: ...
+    def seal_lane(
+        self, lane_id: str, review_bundle_sha256: str
+    ) -> RalphLane | None: ...
+    def mark_adoption_proposed(
+        self, lane_id: str, proposal_id: str
+    ) -> RalphLane | None: ...
 
 
 class InMemoryRalphLaneStore:
@@ -59,7 +65,9 @@ class InMemoryRalphLaneStore:
             lane.updated_at = datetime.now(UTC).isoformat()
         return lane
 
-    def mark_adoption_proposed(self, lane_id: str, proposal_id: str) -> RalphLane | None:
+    def mark_adoption_proposed(
+        self, lane_id: str, proposal_id: str
+    ) -> RalphLane | None:
         lane = self._lanes.get(lane_id)
         if lane:
             lane.status = "adoption_proposed"
@@ -91,7 +99,9 @@ class FilesystemRalphLaneStore:
         lanes: list[RalphLane] = []
         if not self._lanes_dir.is_dir():
             return lanes
-        for p in sorted(self._lanes_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        for p in sorted(
+            self._lanes_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             if not p.is_file():
                 continue
             try:
@@ -122,7 +132,9 @@ class FilesystemRalphLaneStore:
             self.save_lane(lane)
         return lane
 
-    def mark_adoption_proposed(self, lane_id: str, proposal_id: str) -> RalphLane | None:
+    def mark_adoption_proposed(
+        self, lane_id: str, proposal_id: str
+    ) -> RalphLane | None:
         lane = self.load_lane(lane_id)
         if lane:
             lane.status = "adoption_proposed"
@@ -144,8 +156,4 @@ class FilesystemRalphLaneStore:
                 tmp.unlink()
 
 
-__all__ = [
-    "FilesystemRalphLaneStore",
-    "InMemoryRalphLaneStore",
-    "RalphLaneStore",
-]
+__all__ = ["FilesystemRalphLaneStore", "InMemoryRalphLaneStore", "RalphLaneStore"]

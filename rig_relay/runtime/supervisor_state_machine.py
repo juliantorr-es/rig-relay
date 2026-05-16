@@ -48,9 +48,11 @@ class InvalidRuntimeSupervisorTransition(Exception):
     pass
 
 
-_TRANSITIONS: dict[RuntimeSupervisorState, dict[RuntimeSupervisorEvent, RuntimeSupervisorState]] = {
+_TRANSITIONS: dict[
+    RuntimeSupervisorState, dict[RuntimeSupervisorEvent, RuntimeSupervisorState]
+] = {
     RuntimeSupervisorState.IDLE: {
-        RuntimeSupervisorEvent.LEASE_ACQUIRED: RuntimeSupervisorState.LEASED,
+        RuntimeSupervisorEvent.LEASE_ACQUIRED: RuntimeSupervisorState.LEASED
     },
     RuntimeSupervisorState.LEASED: {
         RuntimeSupervisorEvent.SPAWN_STARTED: RuntimeSupervisorState.SPAWNING,
@@ -118,7 +120,10 @@ class RuntimeSupervisorStateMachine:
         attributes: dict[str, Any] | None = None,
     ) -> RuntimeSupervisorTransition:
         attrs = dict(attributes or {})
-        if event in {RuntimeSupervisorEvent.STDOUT_CHUNK, RuntimeSupervisorEvent.STDERR_CHUNK}:
+        if event in {
+            RuntimeSupervisorEvent.STDOUT_CHUNK,
+            RuntimeSupervisorEvent.STDERR_CHUNK,
+        }:
             self._stdout_bytes = int(attrs.get("stdout_bytes", self._stdout_bytes))
             self._stderr_bytes = int(attrs.get("stderr_bytes", self._stderr_bytes))
         if event == RuntimeSupervisorEvent.TIMEOUT:
@@ -131,7 +136,9 @@ class RuntimeSupervisorStateMachine:
         if self.is_terminal and target != self._state:
             raise InvalidRuntimeSupervisorTransition(f"{self._state} is terminal")
         if self._state == target and self._last_event == event:
-            return self._build_transition(self._state, target, event, reason, attrs, emit=False)
+            return self._build_transition(
+                self._state, target, event, reason, attrs, emit=False
+            )
         previous = self._state
         self._previous_state = previous
         self._state = target
@@ -144,7 +151,9 @@ class RuntimeSupervisorStateMachine:
     def export_projection(self) -> dict[str, Any]:
         return {
             "current_state": self._state.value,
-            "previous_state": self._previous_state.value if self._previous_state else None,
+            "previous_state": self._previous_state.value
+            if self._previous_state
+            else None,
             "last_event": self._last_event.value if self._last_event else None,
             "transition_count": self._transition_count,
             "exit_code": self._exit_code,

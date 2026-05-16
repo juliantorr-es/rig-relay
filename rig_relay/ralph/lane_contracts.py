@@ -51,11 +51,10 @@ class RalphLane(BaseModel):
     latest_receipt_sha256: str | None = None
 
     def sanitize_branch_name(self, slug: str, short_id: str) -> str:
-        safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in slug.lower())[:40]
+        safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in slug.lower())[
+            :40
+        ]
         return f"ralph/{safe}-{short_id[:8]}"
 
 
-__all__ = [
-    "LANE_VERSION",
-    "RalphLane",
-]
+__all__ = ["LANE_VERSION", "RalphLane"]

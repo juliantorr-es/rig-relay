@@ -52,7 +52,9 @@ def tiny_events_path(tmp_path: Path) -> Path:
                 "agent_profile_name": "explore",
                 "event_kind": "session_registered",
                 "status": "running",
-                "path_hashes": ["sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
+                "path_hashes": [
+                    "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+                ],
                 "path_count": 1,
             },
         },
@@ -71,7 +73,10 @@ def tiny_events_path(tmp_path: Path) -> Path:
                 "event_kind": "path_reserved",
                 "reservation_mode": "write",
                 "reservation_status": "active",
-                "path_hashes": ["sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34", "sha256:50ae61e841fac4e8f9e40baf2ad36ec868922ea48368c18f9535e47db56dd7fb"],
+                "path_hashes": [
+                    "sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34",
+                    "sha256:50ae61e841fac4e8f9e40baf2ad36ec868922ea48368c18f9535e47db56dd7fb",
+                ],
                 "path_count": 2,
             },
         },
@@ -93,7 +98,9 @@ def tiny_events_path(tmp_path: Path) -> Path:
                 "conflict_id": "c-1",
                 "other_session_id": "sess-a",
                 "resolution_kind": "serialize_or_split_scope",
-                "path_hashes": ["sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34"],
+                "path_hashes": [
+                    "sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34"
+                ],
                 "path_count": 1,
             },
         },
@@ -131,7 +138,9 @@ def tiny_events_path(tmp_path: Path) -> Path:
                 "conflict_kind": "stale_lease",
                 "other_session_id": "sess-a",
                 "resolution_kind": "takeover",
-                "path_hashes": ["sha256:268f277c6d766d31334fda0f7a5533a185598d269e61c76a805870244828a5f1"],
+                "path_hashes": [
+                    "sha256:268f277c6d766d31334fda0f7a5533a185598d269e61c76a805870244828a5f1"
+                ],
                 "path_count": 1,
             },
         },
@@ -208,7 +217,9 @@ def test_build_coordination_row() -> None:
             "task_id": "task-1",
             "event_kind": "session_registered",
             "status": "running",
-            "path_hashes": ["sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
+            "path_hashes": [
+                "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+            ],
             "path_count": 1,
         },
     }
@@ -218,7 +229,9 @@ def test_build_coordination_row() -> None:
     assert row["event_name"] == "coord.session.registered"
     assert row["event_kind"] == "session_registered"
     assert row["path_count"] == 1
-    assert row["path_hashes"] == ["sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"]
+    assert row["path_hashes"] == [
+        "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ]
 
 
 def test_build_conflict_row_from_refused() -> None:
@@ -234,7 +247,9 @@ def test_build_conflict_row_from_refused() -> None:
             "session_id": "sess-b",
             "other_session_id": "sess-a",
             "resolution_kind": "serialize_or_split_scope",
-            "path_hashes": ["sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34"],
+            "path_hashes": [
+                "sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34"
+            ],
             "path_count": 1,
         },
     }
@@ -272,7 +287,10 @@ def test_build_artifact_reuse_row() -> None:
     row = _build_artifact_reuse_row(event)
     assert row is not None
     assert row["artifact_kind"] == "search_results"
-    assert row["artifact_sha256"] == "sha256:2fdceec5cd7cf785f9caedb75f09d901ed20eabb93dab14eac23ac579214372c"
+    assert (
+        row["artifact_sha256"]
+        == "sha256:2fdceec5cd7cf785f9caedb75f09d901ed20eabb93dab14eac23ac579214372c"
+    )
 
 
 def test_build_artifact_reuse_row_missing_fields() -> None:
@@ -336,7 +354,10 @@ def test_check_forbidden_rejects_raw_content() -> None:
 
 
 def test_check_forbidden_accepts_clean_row() -> None:
-    row = {"session_id": "x", "artifact_sha256": "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}
+    row = {
+        "session_id": "x",
+        "artifact_sha256": "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    }
     violations = _check_forbidden(row)
     assert violations == []
 

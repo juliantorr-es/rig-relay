@@ -104,7 +104,9 @@ def detect_pattern_tags(command_text: str) -> list[str]:
     return tags
 
 
-def detect_risk_tags(command_text: str, record: dict[str, Any] | None = None) -> list[str]:
+def detect_risk_tags(
+    command_text: str, record: dict[str, Any] | None = None
+) -> list[str]:
     """Detect risk tags from the command text and optional record fields."""
     tags: list[str] = []
     tokens = command_text.split()
@@ -194,7 +196,9 @@ def normalize_bash_record(record: dict[str, Any]) -> dict[str, Any]:
     stderr_bytes = record.get("stderr_bytes", 0) or 0
 
     return {
-        "bash_invocation_id": record.get("bash_invocation_id", record.get("event_id", "")),
+        "bash_invocation_id": record.get(
+            "bash_invocation_id", record.get("event_id", "")
+        ),
         "event_name": record.get("event_name", "rig.bash.invocation.completed"),
         "session_id": record.get("session_id", ""),
         "turn_id": record.get("turn_id", ""),
@@ -229,8 +233,12 @@ def normalize_bash_record(record: dict[str, Any]) -> dict[str, Any]:
         "is_validation_command": 1 if family in {"pytest", "ruff", "pyright"} else 0,
         "is_git_command": 1 if family.startswith("git") else 0,
         "is_search_command": 1 if family in {"rg", "fd", "jq"} else 0,
-        "is_python_heredoc": 1 if "python" in command_text and "-c" in command_text else 0,
-        "is_destructive_candidate": 1 if "mutates_repo" in risk_tags or "uses_rm" in risk_tags else 0,
+        "is_python_heredoc": 1
+        if "python" in command_text and "-c" in command_text
+        else 0,
+        "is_destructive_candidate": 1
+        if "mutates_repo" in risk_tags or "uses_rm" in risk_tags
+        else 0,
         "is_replacement_candidate": 1 if replacement is not None else 0,
     }
 

@@ -118,6 +118,7 @@ def test_related_files_pack_uses_index(tmp_path: Path) -> None:
     test_repo_index_in_compiler below.
     """
     import pytest
+
     pytest.skip(
         "known_blocked: RelatedFilesPack removed in compiler restructuring. "
         "Feature is internal to ContextCompiler.build_envelope()."
@@ -131,6 +132,7 @@ def test_relevant_tests_pack_falls_back_without_index(tmp_path: Path) -> None:
     ContextCompiler.build_envelope().
     """
     import pytest
+
     pytest.skip(
         "known_blocked: RelevantTestsPack removed in compiler restructuring. "
         "Feature is internal to ContextCompiler.build_envelope()."
@@ -177,6 +179,4 @@ def _git_add_all(path: Path) -> None:
     import subprocess
 
     subprocess.run(["git", "add", "."], cwd=path, capture_output=True)
-    subprocess.run(
-        ["git", "commit", "-m", "test"], cwd=path, capture_output=True
-    )
+    subprocess.run(["git", "commit", "-m", "test"], cwd=path, capture_output=True)

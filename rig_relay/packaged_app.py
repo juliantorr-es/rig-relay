@@ -157,7 +157,12 @@ def _build_docs_site() -> None:
         if repo:
             doc_src = repo / "docs" / "demo" / "mcp-night-demo.md"
         else:
-            doc_src = resources._bundle_resource_root() / "docs" / "demo" / "mcp-night-demo.md"
+            doc_src = (
+                resources._bundle_resource_root()
+                / "docs"
+                / "demo"
+                / "mcp-night-demo.md"
+            )
 
         if doc_src.is_file():
             text = doc_src.read_text()
@@ -194,7 +199,7 @@ def _show_error(tb: str) -> None:
         <h1>Rig Relay — Startup Error</h1>
         <p>Something went wrong during startup.</p>
         <p>Check the log file at:</p>
-        <p><code>{resources.logs_dir() / 'startup.log'}</code></p>
+        <p><code>{resources.logs_dir() / "startup.log"}</code></p>
         <pre style="background:#f5f5f5;padding:10px;font-size:12px;max-height:400px;overflow:auto">{tb[:2000]}</pre>
         </body></html>"""
         webview.create_window(
@@ -222,7 +227,7 @@ def _markdown_to_html(text: str) -> str:
     result = [
         "<!DOCTYPE html>",
         '<html><head><meta charset="utf-8"><title>Rig Relay Docs</title>',
-        '<style>body{font-family:-apple-system;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6}',
+        "<style>body{font-family:-apple-system;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6}",
         "pre{background:#f5f5f5;padding:10px;border-radius:4px;overflow-x:auto}",
         "code{font-size:13px}",
         "h1,h2{border-bottom:1px solid #eee;padding-bottom:8px}</style>",

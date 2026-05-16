@@ -20,7 +20,9 @@ from rig_relay.core.tool_runtime_models import (
 )
 
 
-def _completed_result(tool_name: str = "read_file", duration_ms: float = 2.0) -> ToolRuntimeResult:
+def _completed_result(
+    tool_name: str = "read_file", duration_ms: float = 2.0
+) -> ToolRuntimeResult:
     return ToolRuntimeResult.completed(
         tool_name=tool_name,
         tool_call_id="c1",
@@ -129,11 +131,13 @@ class TestSummary:
     def test_summary_cache_counts(self):
         ledger = InMemoryToolRuntimeResultLedger()
         ledger.record(_completed_result())  # cache=hit
-        ledger.record(ToolRuntimeResult.completed(
-            tool_name="grep",
-            tool_call_id="c5",
-            cache_status=ToolRuntimeCacheStatus.MISS,
-        ))
+        ledger.record(
+            ToolRuntimeResult.completed(
+                tool_name="grep",
+                tool_call_id="c5",
+                cache_status=ToolRuntimeCacheStatus.MISS,
+            )
+        )
         ledger.record(_degraded_result())  # cache=write_failed
 
         s = ledger.build_summary()
@@ -157,9 +161,9 @@ class TestSummary:
     def test_recent_results_capped(self):
         ledger = InMemoryToolRuntimeResultLedger()
         for i in range(15):
-            ledger.record(_completed_result(
-                tool_name=f"tool_{i}", duration_ms=float(i)
-            ))
+            ledger.record(
+                _completed_result(tool_name=f"tool_{i}", duration_ms=float(i))
+            )
         s = ledger.build_summary(max_recent=10)
         assert len(s.recent_results) == 10
         assert s.recent_results[-1].tool_name == "tool_14"
@@ -178,6 +182,7 @@ class TestSingletonAccess:
         set_active_ledger(None)
         # Reset global
         import rig_relay.core.tool_runtime_ledger as mod
+
         mod._active_ledger = None
         ledger = get_active_ledger()
         assert ledger is not None
@@ -207,7 +212,9 @@ class TestArchitectureBoundaries:
         )
         path = (
             Path(__file__).resolve().parent.parent.parent
-            / "rig_relay" / "core" / "tool_runtime_ledger.py"
+            / "rig_relay"
+            / "core"
+            / "tool_runtime_ledger.py"
         )
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
@@ -241,7 +248,8 @@ def test_ledger_reset_clears_entries():
     set_active_ledger(ledger)
 
     result = ToolRuntimeResult(
-        tool_name="test_tool", tool_call_id="tc-1",
+        tool_name="test_tool",
+        tool_call_id="tc-1",
         status=ToolRuntimeStatus.COMPLETED,
         cache_status=ToolRuntimeCacheStatus.MISS,
     )
@@ -273,7 +281,8 @@ def test_cross_session_no_leakage():
     reset_active_ledger()
     ledger1 = get_active_ledger()
     result = ToolRuntimeResult(
-        tool_name="session_a", tool_call_id="a-1",
+        tool_name="session_a",
+        tool_call_id="a-1",
         status=ToolRuntimeStatus.COMPLETED,
         cache_status=ToolRuntimeCacheStatus.MISS,
     )
@@ -288,6 +297,7 @@ def test_cross_session_no_leakage():
 
 def test_singleton_documented_as_temporary():
     import rig_relay.core.tool_runtime_ledger
+
     source_file = rig_relay.core.tool_runtime_ledger.__file__
     assert source_file is not None
     with open(source_file) as f:

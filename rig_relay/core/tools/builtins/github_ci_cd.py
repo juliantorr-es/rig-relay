@@ -267,7 +267,9 @@ def _execute_dispatch(args: GitHubDispatchArgs, token: str) -> GitHubDispatchRes
 def _execute_workflow_status(
     args: GitHubWorkflowStatusArgs, token: str
 ) -> GitHubWorkflowRun:
-    data = _api_get(f"/repos/{args.owner}/{args.repo}/actions/runs/{args.run_id}", token)
+    data = _api_get(
+        f"/repos/{args.owner}/{args.repo}/actions/runs/{args.run_id}", token
+    )
     return GitHubWorkflowRun(
         run_id=data.get("id", args.run_id),
         workflow_id=str(data.get("workflow_id", "")),
@@ -299,8 +301,7 @@ def _execute_list_runs(args: GitHubListRunsArgs, token: str) -> list[GitHubWorkf
     params: dict[str, Any] = {"per_page": min(args.limit, 50)}
     if args.workflow_id:
         path = (
-            f"/repos/{args.owner}/{args.repo}"
-            f"/actions/workflows/{args.workflow_id}/runs"
+            f"/repos/{args.owner}/{args.repo}/actions/workflows/{args.workflow_id}/runs"
         )
     else:
         path = f"/repos/{args.owner}/{args.repo}/actions/runs"
@@ -324,9 +325,7 @@ def _execute_list_runs(args: GitHubListRunsArgs, token: str) -> list[GitHubWorkf
 
 
 def _execute_check_pr(args: GitHubCheckPRArgs, token: str) -> GitHubPRInfo:
-    pr_data = _api_get(
-        f"/repos/{args.owner}/{args.repo}/pulls/{args.pr_number}", token
-    )
+    pr_data = _api_get(f"/repos/{args.owner}/{args.repo}/pulls/{args.pr_number}", token)
     # Fetch latest commit status
     head_sha = pr_data.get("head", {}).get("sha", "")
     check_status = "unknown"
@@ -392,9 +391,7 @@ class GitHubTool(
         return "Interacting with GitHub CI/CD"
 
     @classmethod
-    def format_result_display(
-        cls, result: GitHubToolResult
-    ) -> ToolResultDisplay:
+    def format_result_display(cls, result: GitHubToolResult) -> ToolResultDisplay:
         return ToolResultDisplay(
             success=result.status == "ok",
             message=result.summary,
@@ -442,9 +439,7 @@ class GitHubTool(
 
                 case "workflow_status":
                     wa = GitHubWorkflowStatusArgs(
-                        owner=args.owner,
-                        repo=args.repo,
-                        run_id=args.run_id,
+                        owner=args.owner, repo=args.repo, run_id=args.run_id
                     )
                     run = await loop.run_in_executor(
                         None, _execute_workflow_status, wa, token
@@ -491,9 +486,7 @@ class GitHubTool(
 
                 case "check_pr":
                     pa = GitHubCheckPRArgs(
-                        owner=args.owner,
-                        repo=args.repo,
-                        pr_number=args.pr_number,
+                        owner=args.owner, repo=args.repo, pr_number=args.pr_number
                     )
                     pr_info = await loop.run_in_executor(
                         None, _execute_check_pr, pa, token
@@ -513,7 +506,9 @@ class GitHubTool(
                         action=args.action,
                         status="error",
                         summary=f"Unknown action: {args.action}",
-                        warnings=["Valid actions: dispatch, workflow_status, list_workflows, list_runs, check_pr"],
+                        warnings=[
+                            "Valid actions: dispatch, workflow_status, list_workflows, list_runs, check_pr"
+                        ],
                     )
 
         except Exception as e:
@@ -525,8 +520,4 @@ class GitHubTool(
             )
 
 
-__all__ = [
-    "GitHubTool",
-    "GitHubToolArgs",
-    "GitHubToolResult",
-]
+__all__ = ["GitHubTool", "GitHubToolArgs", "GitHubToolResult"]

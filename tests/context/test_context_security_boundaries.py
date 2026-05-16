@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from rig_relay.context.renderer import ContextRenderer, TrustTier
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -60,7 +58,9 @@ class TestProvenanceRegressions:
         )
         renderer.add_recent_messages_section([FakeMsg()])
         renderer.add_active_work_section(
-            lane_count=1, collision_count=1, collision_paths=["/Users/alice/src/main.py"]
+            lane_count=1,
+            collision_count=1,
+            collision_paths=["/Users/alice/src/main.py"],
         )
         rendered = renderer.rendered_content
 

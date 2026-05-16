@@ -15,8 +15,7 @@ from rig_relay.docs_render.markdown_inventory import inventory_markdown
 
 
 def write_all_artifacts(
-    repo_root: Path | None = None,
-    output_dir: Path | None = None,
+    repo_root: Path | None = None, output_dir: Path | None = None
 ) -> dict[str, Path]:
     root = (repo_root or Path.cwd()).resolve()
     out = (output_dir or root / "docs" / "artifacts" / "markdown").resolve()
@@ -62,18 +61,35 @@ def _write_csv_index(path: Path, docs: list[dict]) -> Path:
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([
-            "path", "title", "doc_kind", "directory", "sha256", "body_sha256",
-            "line_count", "heading_count", "first_heading",
-            "code_fence_count", "mermaid_fence_count",
-            "link_count", "image_ref_count",
+            "path",
+            "title",
+            "doc_kind",
+            "directory",
+            "sha256",
+            "body_sha256",
+            "line_count",
+            "heading_count",
+            "first_heading",
+            "code_fence_count",
+            "mermaid_fence_count",
+            "link_count",
+            "image_ref_count",
         ])
         for d in docs:
             writer.writerow([
-                d["path"], d["title"], d["inferred_doc_kind"], d["directory"],
-                d["sha256"][:16], d["body_sha256"][:16],
-                d["line_count"], d["heading_count"], d["first_heading"][:80],
-                d["code_fence_count"], d["mermaid_fence_count"],
-                len(d["links"]), len(d["image_refs"]),
+                d["path"],
+                d["title"],
+                d["inferred_doc_kind"],
+                d["directory"],
+                d["sha256"][:16],
+                d["body_sha256"][:16],
+                d["line_count"],
+                d["heading_count"],
+                d["first_heading"][:80],
+                d["code_fence_count"],
+                d["mermaid_fence_count"],
+                len(d["links"]),
+                len(d["image_refs"]),
             ])
     return path
 
@@ -148,9 +164,12 @@ def _write_summary(path: Path, inventory: dict) -> Path:
         "total_internal_links": internal_links,
         "root_markdown_excluded": inventory["excluded_root_count"],
         "generated_artifacts": [
-            "markdown_documents.json", "markdown_documents.jsonl",
-            "markdown_index.csv", "markdown_links.jsonl",
-            "markdown_code_fences.jsonl", "markdown_summary.json",
+            "markdown_documents.json",
+            "markdown_documents.jsonl",
+            "markdown_index.csv",
+            "markdown_links.jsonl",
+            "markdown_code_fences.jsonl",
+            "markdown_summary.json",
         ],
     }
     return _write_json(path, summary)

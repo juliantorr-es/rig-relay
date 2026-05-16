@@ -88,9 +88,7 @@ class InitHelpersMixin:
             initial=[system_message], observer=self.message_observer
         )
 
-    def _init_context_compiler(
-        self, defer_heavy_init: bool
-    ) -> None:
+    def _init_context_compiler(self, defer_heavy_init: bool) -> None:
         from rig_relay.context.repo_index import RepoContextIndex
 
         self._repo_index = None
@@ -105,8 +103,7 @@ class InitHelpersMixin:
             except Exception:
                 pass
             self._context_compiler = self._make_context_compiler(
-                repo_index=self._repo_index,
-                receipt_store=self._make_receipt_store(),
+                repo_index=self._repo_index, receipt_store=self._make_receipt_store()
             )
 
     def _init_telemetry_and_guard(
@@ -175,15 +172,10 @@ class InitHelpersMixin:
     def _make_receipt_store() -> Any:
         from rig_relay.evidence.receipt_store import FilesystemReceiptStore
 
-        return FilesystemReceiptStore(
-            Path.cwd() / ".rig" / "relay" / "receipts"
-        )
+        return FilesystemReceiptStore(Path.cwd() / ".rig" / "relay" / "receipts")
 
     @staticmethod
-    def _make_context_compiler(
-        repo_index: Any,
-        receipt_store: Any,
-    ) -> Any:
+    def _make_context_compiler(repo_index: Any, receipt_store: Any) -> Any:
         from rig_relay.context.compiler import ContextCompiler
 
         return ContextCompiler(

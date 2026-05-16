@@ -119,7 +119,9 @@ def _has_xdist_flag(argv: list[str]) -> bool:
     for arg in argv:
         if arg in {"-n", "--numprocesses", "--dist"}:
             return True
-        if arg.startswith(_XDIST_SHORT_FLAG_PREFIX) and len(arg) > len(_XDIST_SHORT_FLAG_PREFIX):
+        if arg.startswith(_XDIST_SHORT_FLAG_PREFIX) and len(arg) > len(
+            _XDIST_SHORT_FLAG_PREFIX
+        ):
             return True
     return False
 

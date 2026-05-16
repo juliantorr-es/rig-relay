@@ -1,4 +1,5 @@
 """Remote workflow event translator mixin — tool events."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -38,7 +39,6 @@ class ToolEventsMixin:
         )
         return events
 
-
     def _tool_args_from_ui_state(
         self, ui_state: AnyToolUIState | None
     ) -> dict[str, Any]:
@@ -57,7 +57,6 @@ class ToolEventsMixin:
             return ui_state.arguments
         return {}
 
-
     def _tool_result_from_ui_state(
         self, ui_state: AnyToolUIState | None
     ) -> tuple[dict[str, Any] | None, str | None]:
@@ -68,7 +67,6 @@ class ToolEventsMixin:
         if isinstance(ui_state, GenericToolUIState):
             return self._generic_ui_result(ui_state)
         return None, None
-
 
     def _file_ui_result(
         self, ui_state: FileUIState
@@ -82,7 +80,6 @@ class ToolEventsMixin:
             "file_existed": op.type == "replace",
             "content": op.content,
         }, None
-
 
     def _command_ui_result(
         self, ui_state: CommandUIState
@@ -99,7 +96,6 @@ class ToolEventsMixin:
             "returncode": 0,
         }, None
 
-
     def _generic_ui_result(
         self, ui_state: GenericToolUIState
     ) -> tuple[dict[str, Any] | None, str | None]:
@@ -109,7 +105,6 @@ class ToolEventsMixin:
         if result.status == "failed":
             return None, result.error or "Tool failed"
         return ui_state.arguments, None
-
 
     def _emit_tool_call_events(
         self,
@@ -162,7 +157,6 @@ class ToolEventsMixin:
             *question_events,
         ]
 
-
     def _tool_stream_events(
         self, tool_name: str, tool_call_id: str, result_key: str, output: Any
     ) -> list[ToolStreamEvent]:
@@ -184,7 +178,6 @@ class ToolEventsMixin:
             )
         ]
 
-
     def _resolve_tool_class(self, tool_name: str) -> type[BaseTool]:
         if tool_class := self._available_tools.get(tool_name):
             return tool_class
@@ -205,13 +198,11 @@ class ToolEventsMixin:
 
         return _remote_tool_class(tool_name)
 
-
     def _finalize_tool_call(self, tool_call_id: str) -> None:
         self._seen_tool_results.add(tool_call_id)
         self._open_tool_calls.pop(tool_call_id, None)
         self._pending_tool_progress.pop(tool_call_id, None)
         self._tool_stream_snapshots.pop(tool_call_id, None)
-
 
     def _emit_tool_result_events(
         self, *, tool_name: str, tool_call_id: str, output: Any, error: str | None
@@ -278,7 +269,6 @@ class ToolEventsMixin:
             )
         ]
 
-
     def _emit_missing_tool_output(
         self, tool_name: str, tool_class: type[BaseTool], tool_call_id: str
     ) -> list[BaseEvent]:
@@ -298,7 +288,6 @@ class ToolEventsMixin:
             )
         ]
 
-
     def _emit_tool_error_result(
         self, tool_name: str, tool_class: type[BaseTool], tool_call_id: str, error: str
     ) -> list[BaseEvent]:
@@ -316,7 +305,6 @@ class ToolEventsMixin:
                 tool_call_id=tool_call_id,
             )
         ]
-
 
     def _tool_call_and_stream_events(
         self, task_id: str, state: dict[str, Any]
@@ -357,7 +345,6 @@ class ToolEventsMixin:
         )
         return events
 
-
     def _tool_terminal_events(
         self,
         task_id: str,
@@ -396,7 +383,6 @@ class ToolEventsMixin:
             )
         ]
 
-
     def _tool_terminal_error(
         self, event: CustomTaskFailed | CustomTaskTimedOut | CustomTaskCanceled
     ) -> str:
@@ -410,4 +396,3 @@ class ToolEventsMixin:
         if event.attributes.reason:
             return f"Canceled: {event.attributes.reason}"
         return "Canceled"
-

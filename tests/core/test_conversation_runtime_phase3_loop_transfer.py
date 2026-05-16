@@ -50,7 +50,9 @@ class FakeAdapter:
     def persist_turn_state(self) -> None:
         pass
 
-    async def middleware_before_turn(self, ctx: dict[str, str]) -> tuple[Any, list[Any]]:
+    async def middleware_before_turn(
+        self, ctx: dict[str, str]
+    ) -> tuple[Any, list[Any]]:
         self.middleware_calls += 1
         result = MagicMock()
         result.action = self.middleware_action
@@ -59,7 +61,7 @@ class FakeAdapter:
     def reset_hooks(self) -> None:
         pass
 
-    def build_context_envelope(self, request: Any | None) -> Any | None:
+    async def build_context_envelope(self, request: Any | None) -> Any | None:
         self.context_build_calls += 1
         envelope = MagicMock()
         envelope.envelope_id = "env-001"
@@ -96,13 +98,14 @@ class FakeAdapter:
         return self._hook_retry is not None and event is self._hook_retry
 
     def inject_hook_message(self, hook_message: Any) -> None:
-        pass
+        self._hook_retry = None
 
     def last_message_has_no_tool_calls(self) -> bool:
         return not self._tool_call_mode
 
     async def execute_tool_batch(self):
         self.tool_batch_calls += 1
+        self._tool_call_mode = False
         if False:
             yield
 
@@ -187,9 +190,7 @@ class TestExecuteTurnLoopOwnership:
                 pass
 
         _run_async(_run())
-        assert any(
-            str(o) == "llm_error" for o, _r in adapter.turn_outcomes
-        ) or any(
+        assert any(str(o) == "llm_error" for o, _r in adapter.turn_outcomes) or any(
             "budget" in str(r).lower() for _o, r in adapter.turn_outcomes
         )
 
@@ -204,6 +205,7 @@ class TestExecuteTurnLoopOwnership:
         adapter = BrokenAdapter()
 
         with pytest.raises(ValueError, match="simulated LLM failure"):
+
             async def _run():
                 async for _event in cr.execute_turn_loop(adapter):
                     pass
@@ -226,10 +228,6 @@ class TestAgentLoopDelegatesToConversationRuntime:
 
     def test_execute_turn_loop_exists(self) -> None:
         source = (
-            _REPO_ROOT
-            / "rig_relay"
-            / "core"
-            / "conversation_runtime"
-            / "runtime.py"
+            _REPO_ROOT / "rig_relay" / "core" / "conversation_runtime" / "runtime.py"
         ).read_text()
         assert "async def execute_turn_loop" in source

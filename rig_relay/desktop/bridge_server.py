@@ -19,6 +19,7 @@ auth, projection, chat, and intent handling.
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import os
 from pathlib import Path
@@ -39,6 +40,7 @@ from rig_relay.desktop.bridge_state_machine import (
 )
 from rig_relay.desktop.correlation import DesktopCorrelation, new_correlation_id
 from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
+from rig_relay.tracing.golden_path import TraceAuthorityKind, build_golden_path_event
 from rig_relay.tracing.recorder import TraceRecorder
 from rig_relay.tracing.store import get_default_trace_store
 from scripts.rig_relay_trace_handshake import (
@@ -52,6 +54,31 @@ mimetypes.init()
 HTTP_OK = 200
 
 _JSON_HEADERS = Headers({"Content-Type": "application/json"})
+
+
+class _WebSocketNoiseFilter(logging.Filter):
+    """Downgrade non-WebSocket HTTP request errors to warnings.
+
+    The websockets library's Request.parse() validates GET method before
+    process_request() runs. Non-GET requests (POST, OPTIONS, etc.) trigger
+    ValueError with full traceback. This filter downgrades those specific
+    errors to WARNING level — they are expected noise from browser
+    breadcrumbs / pywebview preflight, not real WebSocket failures.
+    """
+
+    _SUPPRESS_PATTERNS = (
+        "unsupported HTTP method",
+        "unsupported protocol",
+        "invalid HTTP request line",
+    )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        if any(pattern in msg for pattern in self._SUPPRESS_PATTERNS):
+            record.levelno = logging.WARNING
+            record.levelname = "WARNING"
+            record.exc_info = None
+        return True
 
 
 def _extract_qs_token(path: str) -> str:
@@ -219,6 +246,53 @@ class DesktopBridgeServer:
             tls_enabled=config.tls_enabled,
         )
         self._probe_active = debug or self.probe_report.steps == []
+        self._golden_trace_id = ""
+        self._golden_handshake_id = ""
+        self._golden_commit_sha = ""
+        self._golden_started_at = 0.0
+
+    def _emit_golden_event(
+        self,
+        event_type: str,
+        *,
+        status: str | None = None,
+        payload: dict[str, Any] | None = None,
+        parent_span_id: str = "",
+        authority_kind: str = "",
+        duration_ms: int | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        from rig_relay.tracing.models import TraceStatus
+
+        event = build_golden_path_event(
+            event_type=event_type,
+            trace_id=self._golden_trace_id or None,
+            handshake_id=self._golden_handshake_id,
+            commit_sha=self._golden_commit_sha,
+            parent_span_id=parent_span_id or None,
+            status=TraceStatus(status) if status else None,
+            authority={
+                "authority_kind": authority_kind
+                or TraceAuthorityKind.desktop_bridge.value,
+                "trusted": True,
+                "source_path": "rig_relay/desktop/bridge_server.py",
+            },
+            payload=payload,
+            duration_ms=duration_ms,
+            error_message=error_message,
+            host=self._config.host,
+            port=self._bound_port,
+            tls_enabled=self._config.tls_enabled,
+            transport_label=(
+                self._runtime_config.transport_label if self._runtime_config else ""
+            ),
+            token_present=bool(self._config.auth_token),
+            frontend_url=(
+                self._runtime_config.frontend_url if self._runtime_config else ""
+            ),
+            websocket_url=(self._runtime_config.ws_url if self._runtime_config else ""),
+        )
+        self._trace_recorder.store.write(event)
 
     @property
     def bound_port(self) -> int:
@@ -242,10 +316,22 @@ class DesktopBridgeServer:
         except (InvalidBridgeTransitionError, TerminalBridgeStateError):
             return
 
-    async def start(self) -> None:  # noqa: PLR0915,PLR0914
+    async def start(self) -> None:  # noqa: PLR0915,PLR0914,PLR0912
         """Start the bridge server with probe ladder."""
         if self._started:
             return
+
+        import time as _time
+
+        from rig_relay.tracing.models import new_trace_id
+
+        self._golden_started_at = _time.time()
+        self._golden_trace_id = new_trace_id()
+
+        self._emit_golden_event(
+            "desktop.bridge.launch_requested",
+            payload={"host": self._config.host, "port": self._config.port or 0},
+        )
 
         self._trace_recorder.event(
             "desktop.bridge.start_begin",
@@ -295,6 +381,9 @@ class DesktopBridgeServer:
             details={"path": str(frontend_dir)},
             message=str(frontend_dir),
         )
+        self._emit_golden_event(
+            "desktop.bridge.frontend_resolved", payload={"frontend_dir_ok": True}
+        )
         self._transition_state(
             DesktopBridgeEvent.ASSETS_VERIFIED,
             reason="verify asset files",
@@ -318,6 +407,9 @@ class DesktopBridgeServer:
             "resolve index.html",
             details={"path": str(index_path), "size_bytes": index_size},
             message=f"{index_size / 1024:.1f} KB",
+        )
+        self._emit_golden_event(
+            "desktop.bridge.index_resolved", payload={"index_size_bytes": index_size}
         )
 
         # ── bridge:03 verify asset files ────────────────────────────
@@ -354,6 +446,7 @@ class DesktopBridgeServer:
                 details=asset_details,
                 message=f"js/main.js={main_js.stat().st_size / 1024:.1f}KB, css dir ok",
             )
+            self._emit_golden_event("desktop.bridge.asset_probe_passed")
 
         # ── bridge:04 build runtime_config ──────────────────────────
         self._runtime_config = DesktopBridgeRuntimeConfig(
@@ -366,6 +459,7 @@ class DesktopBridgeServer:
             tls_trust_state=_tls_trust_state(self._config),
             handshake_id=getattr(self._config, "handshake_id", None),
         )
+        self._golden_handshake_id = self._runtime_config.handshake_id
         report.frontend_url = self._runtime_config.frontend_url
         report.ws_url = self._runtime_config.ws_url
         report.add_ok(
@@ -385,6 +479,13 @@ class DesktopBridgeServer:
                 f"token_present={bool(self._config.auth_token)}"
             ),
         )
+        self._emit_golden_event(
+            "desktop.bridge.runtime_config_built",
+            payload={
+                "frontend_url": self._runtime_config.frontend_url,
+                "websocket_url": self._runtime_config.ws_url,
+            },
+        )
         self._transition_state(
             DesktopBridgeEvent.CONFIG_BUILT,
             reason="build runtime_config",
@@ -392,6 +493,8 @@ class DesktopBridgeServer:
         )
 
         # ── bridge:05 create WS server ───────────────────────────────
+        logging.getLogger("websockets.server").addFilter(_WebSocketNoiseFilter())
+
         def _on_ws_probe(step_id: str, label: str, details: dict[str, Any]) -> None:
             report.add_ok(step_id, label, details=details, message=label)
             self._apply_probe_transition(step_id, details)
@@ -406,10 +509,13 @@ class DesktopBridgeServer:
             chat_message_handler=self._config.chat_message_handler,
             probe_callback=_on_ws_probe,
             trace_recorder=self._trace_recorder,
+            golden_trace_id=self._golden_trace_id,
+            golden_handshake_id=self._golden_handshake_id,
         )
         report.add_ok(
             "bridge:05", "create WS server", message="ProjectionWebSocketServer ready"
         )
+        self._emit_golden_event("desktop.bridge.websocket_server_created")
         self._transition_state(
             DesktopBridgeEvent.SERVER_CREATED,
             reason="create WS server",
@@ -463,6 +569,11 @@ class DesktopBridgeServer:
             message=f"http://{host}:{self._bound_port}",
             duration_ms=bind_ms,
         )
+        self._emit_golden_event(
+            "desktop.bridge.server_bound",
+            payload={"bound_port": self._bound_port},
+            duration_ms=bind_ms,
+        )
         self._transition_state(
             DesktopBridgeEvent.SERVER_BOUND,
             reason="bind host/port",
@@ -476,8 +587,18 @@ class DesktopBridgeServer:
         report.frontend_url = self._runtime_config.frontend_url
         report.ws_url = self._runtime_config.ws_url
 
+        self._emit_golden_event(
+            "desktop.bridge.frontend_url_announced",
+            payload={"frontend_url": self._runtime_config.frontend_url},
+        )
+        self._emit_golden_event(
+            "desktop.bridge.websocket_url_announced",
+            payload={"websocket_url": self._runtime_config.ws_url},
+        )
+
         # ── bridge:07 probe /healthz ─────────────────────────────────
         await self._probe_healthz(report)
+        self._emit_golden_event("desktop.bridge.health_probe_passed")
         self._transition_state(
             DesktopBridgeEvent.SELF_PROBED,
             reason="probe ladder complete",
@@ -488,11 +609,32 @@ class DesktopBridgeServer:
         await self._probe_path(
             report, "/index.html", "bridge:08", "probe /index.html", "text/html"
         )
+        self._emit_golden_event("desktop.bridge.index_probe_passed")
 
-        # ── bridge:09 probe /js/main.js ──────────────────────────────
+        # ── bridge:09 probe /js/main.js (compat module) ─────────
         await self._probe_path(
             report, "/js/main.js", "bridge:09", "probe /js/main.js", "javascript"
         )
+
+        # ── bridge:09a probe active entrypoint ──────────────────────
+        orchestrator_js = frontend_dir / "js" / "boot" / "orchestrator.js"
+        if orchestrator_js.is_file():
+            await self._probe_path(
+                report,
+                "/js/boot/orchestrator.js",
+                "bridge:09a",
+                "probe active entrypoint",
+                "javascript",
+            )
+            asset_details["active_entrypoint"] = "/js/boot/orchestrator.js"
+            asset_details["compat_module"] = "/js/main.js"
+        else:
+            report.add_warn(
+                "bridge:09a",
+                "probe active entrypoint",
+                message="orchestrator.js not found — index.html may fail to load",
+                remediation=f"Ensure {orchestrator_js} exists.",
+            )
 
         # ── bridge:10 probe CSS ──────────────────────────────────────
         css_files = sorted(css_dir.glob("*.css")) if css_dir.is_dir() else []
@@ -510,11 +652,13 @@ class DesktopBridgeServer:
             )
 
         self._started = True
+        self._emit_golden_event("desktop.bridge.window_created")
         self._transition_state(
             DesktopBridgeEvent.WEBVIEW_CREATED,
             reason="webview created",
             attributes={"step_id": "bridge:11"},
         )
+        self._emit_golden_event("desktop.bridge.window_start_called")
         self._transition_state(
             DesktopBridgeEvent.WEBVIEW_STARTED,
             reason="webview started",
@@ -533,6 +677,7 @@ class DesktopBridgeServer:
 
     async def stop(self) -> None:
         """Stop the bridge server cleanly."""
+        self._emit_golden_event("desktop.bridge.shutdown")
         if self._server is not None:
             self._server.close()
             await self._server.wait_closed()
@@ -540,12 +685,20 @@ class DesktopBridgeServer:
         self._print_handshake_trace()
         self._started = False
 
-    def _handle_http(self, request: Request, frontend_dir: Path) -> Response | None:
+    def _handle_http(self, request: Request, frontend_dir: Path) -> Response | None:  # noqa: PLR0911
         raw_path = request.path or "/"
         path = raw_path.split("?", 1)[0] if "?" in raw_path else raw_path
 
-        # WebSocket upgrade — allow, auth handled in-band by ProjectionWebSocketServer
+        # WebSocket upgrade — only GET is valid; reject POST/PUT/etc.
         if path == "/ws":
+            if getattr(request, "method", "GET") != "GET":
+                logger.warning(
+                    "Rejecting non-WebSocket %s to /ws from frontend trace",
+                    getattr(request, "method", "GET"),
+                )
+                return _empty_response(
+                    405, "Method Not Allowed — use GET for WebSocket upgrade"
+                )
             logger.debug("WebSocket upgrade request from %s", raw_path)
             return None
 
@@ -553,8 +706,11 @@ class DesktopBridgeServer:
         if path == "/healthz":
             return self._build_healthz()
 
-        # /runtime-config.json (token stripped from HTTP response for safety)
-        if path == "/runtime-config.json" and self._runtime_config is not None:
+        # /runtime-config.json or /runtime-config (token stripped from HTTP response for safety)
+        if (
+            path in {"/runtime-config.json", "/runtime-config"}
+            and self._runtime_config is not None
+        ):
             config_dict = self._runtime_config.to_dict()
             config_dict.pop("auth_token", None)
             config_dict.pop("token", None)
@@ -577,16 +733,40 @@ class DesktopBridgeServer:
             return _json_response(config_dict)
 
         if path == "/frontend-event":
-            event_type = _extract_qs_value(raw_path, "type")
-            handshake_id = _extract_qs_value(raw_path, "handshake_id")
-            detail = _extract_qs_value(raw_path, "detail")
+            # Accept both GET query-param (from emitBreadcrumb) and POST JSON (from frontendTrace)
+            event_type = ""
+            handshake_id = ""
+            detail = ""
+            if getattr(request, "method", "") == "POST" and getattr(
+                request, "body", None
+            ):
+                try:
+                    body_data = json.loads(
+                        getattr(request, "body", b"").decode("utf-8")
+                    )
+                    if isinstance(body_data, dict):
+                        event_type = body_data.get("type", "")
+                        handshake_id = body_data.get("handshake_id", "")
+                        detail = (
+                            json.dumps(body_data, default=str)
+                            if body_data.get("detail")
+                            else ""
+                        )
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass
+            else:
+                event_type = _extract_qs_value(raw_path, "type")
+                handshake_id = _extract_qs_value(raw_path, "handshake_id")
+                detail = _extract_qs_value(raw_path, "detail")
             if event_type:
                 self._trace_recorder.event(
                     event_type,
-                    attributes={
-                        "handshake_id": handshake_id,
-                        "detail": detail,
-                    },
+                    attributes={"handshake_id": handshake_id, "detail": detail},
+                )
+                self._emit_golden_event(
+                    event_type,
+                    payload={"detail": detail} if detail else None,
+                    authority_kind=TraceAuthorityKind.frontend_runtime.value,
                 )
             return _empty_response(HTTP_OK, "OK")
 
@@ -626,7 +806,11 @@ class DesktopBridgeServer:
 
     def _serve_index_html(self, file_path: Path) -> Response | None:
         response = self._serve_file(file_path)
-        if response is None or self._runtime_config is None or not isinstance(response.body, bytes):
+        if (
+            response is None
+            or self._runtime_config is None
+            or not isinstance(response.body, bytes)
+        ):
             return response
         try:
             html = response.body.decode("utf-8")
@@ -894,7 +1078,9 @@ class DesktopBridgeServer:
         if not trace_path.exists():
             return
         events = _load_events(trace_path)
-        handshake_id = self._runtime_config.handshake_id if self._runtime_config else None
+        handshake_id = (
+            self._runtime_config.handshake_id if self._runtime_config else None
+        )
         selected = _select_handshake_id(events, handshake_id)
         if selected is None:
             print()

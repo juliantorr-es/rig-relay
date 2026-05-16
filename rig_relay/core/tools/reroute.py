@@ -138,7 +138,9 @@ def _reroute_git(command: str, tokens: list[str]) -> dict[str, Any] | None:
     return None
 
 
-def _reroute_read_file_by_python(command: str, tokens: list[str]) -> dict[str, Any] | None:
+def _reroute_read_file_by_python(
+    command: str, tokens: list[str]
+) -> dict[str, Any] | None:
     """Reroute 'python3 -c \"open(...).read()\"' to read_file."""
     if not tokens:
         return None
@@ -181,8 +183,7 @@ def detect_and_advertise_reroute(command: str) -> str | None:
 
 
 async def try_reroute(
-    command: str,
-    ctx: Any | None,
+    command: str, ctx: Any | None
 ) -> tuple[bool, Any | None, list[ToolStreamEvent | Any]]:
     """Attempt to reroute a bash command to its dedicated builtin tool.
 
@@ -207,11 +208,13 @@ async def try_reroute(
         events: list[ToolStreamEvent | Any] = []
 
         # Emit reroute advisory
-        events.append(ToolStreamEvent(
-            tool_name="bash",
-            message=f"\u21aa Rerouting to {tool_name}. ({description})",
-            tool_call_id=ctx.tool_call_id if ctx else "",
-        ))
+        events.append(
+            ToolStreamEvent(
+                tool_name="bash",
+                message=f"\u21aa Rerouting to {tool_name}. ({description})",
+                tool_call_id=ctx.tool_call_id if ctx else "",
+            )
+        )
 
         # Allow builder to override the target tool name via _tool_name key
         actual_tool = args_dict.pop("_tool_name", tool_name)
@@ -232,8 +235,7 @@ async def try_reroute(
             _cfg_cls = tool_cls._get_tool_config_class()
             _st_cls = tool_cls._get_tool_state_class()
             tool_instance = tool_cls(
-                config_getter=lambda c=_cfg_cls: c(),
-                state=_st_cls(),
+                config_getter=lambda c=_cfg_cls: c(), state=_st_cls()
             )
 
             # ── Permission check ────────────────────────────────
@@ -241,12 +243,14 @@ async def try_reroute(
             # same as if the agent had called it directly.
             perm_ctx = tool_instance.resolve_permission(args)
             if perm_ctx is not None and not perm_ctx.is_allowed():
-                events.append(ToolStreamEvent(
-                    tool_name="bash",
-                    message=f"\u26a0 Reroute to {actual_tool} refused: {perm_ctx.reason}. "
-                    f"Reroute requires permission from the target tool.",
-                    tool_call_id=ctx.tool_call_id if ctx else "",
-                ))
+                events.append(
+                    ToolStreamEvent(
+                        tool_name="bash",
+                        message=f"\u26a0 Reroute to {actual_tool} refused: {perm_ctx.reason}. "
+                        f"Reroute requires permission from the target tool.",
+                        tool_call_id=ctx.tool_call_id if ctx else "",
+                    )
+                )
                 return False, None, events
 
             async for event in tool_instance.run(args, ctx):
@@ -255,17 +259,16 @@ async def try_reroute(
             return True, events[-1] if events else None, events
 
         except Exception as e:
-            events.append(ToolStreamEvent(
-                tool_name="bash",
-                message=f"\u26a0 Reroute to {actual_tool} failed: {e}. Falling back to bash.",
-                tool_call_id=ctx.tool_call_id if ctx else "",
-            ))
+            events.append(
+                ToolStreamEvent(
+                    tool_name="bash",
+                    message=f"\u26a0 Reroute to {actual_tool} failed: {e}. Falling back to bash.",
+                    tool_call_id=ctx.tool_call_id if ctx else "",
+                )
+            )
             return False, None, events
 
     return False, None, []
 
 
-__all__ = [
-    "detect_and_advertise_reroute",
-    "try_reroute",
-]
+__all__ = ["detect_and_advertise_reroute", "try_reroute"]

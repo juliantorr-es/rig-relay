@@ -17,11 +17,7 @@ def _make_request(paths=None) -> ContextRequest:
     resolved_paths = paths if paths is not None else ["rig_relay/core/agent_loop.py"]
     return ContextRequest(
         mode=ContextMode.MAP,
-        scope=ContextScope(
-            paths=resolved_paths,
-            include_tests=True,
-            include_docs=True,
-        ),
+        scope=ContextScope(paths=resolved_paths, include_tests=True, include_docs=True),
         budget=ContextBudget(max_tokens=100000),
     )
 

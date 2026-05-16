@@ -38,11 +38,7 @@ class CodebaseSymbolDigest:
         """Append raw text to the digest corpus."""
         self._corpus += "\n" + text
 
-    def build(
-        self,
-        min_occurrences: int = 3,
-        min_chars: int = 16,
-    ) -> SymbolManifest:
+    def build(self, min_occurrences: int = 3, min_chars: int = 16) -> SymbolManifest:
         """Build a measured SymbolManifest from the accumulated corpus.
 
         Returns an empty manifest (no entries) if no candidates found.
@@ -100,15 +96,11 @@ def build_digest_from_repo(
     return digest.build(min_occurrences, min_chars)
 
 
-def _build_manifest_from_candidates(
-    candidates: dict[str, int],
-) -> SymbolManifest:
+def _build_manifest_from_candidates(candidates: dict[str, int]) -> SymbolManifest:
     """Build a measured, typed SymbolManifest from raw candidates."""
     from rig_relay.context.symbol_codec import _build_manifest
+
     return _build_manifest(candidates)
 
 
-__all__ = [
-    "CodebaseSymbolDigest",
-    "build_digest_from_repo",
-]
+__all__ = ["CodebaseSymbolDigest", "build_digest_from_repo"]

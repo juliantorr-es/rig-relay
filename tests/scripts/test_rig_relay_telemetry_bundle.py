@@ -44,8 +44,8 @@ UPLOAD_RECEIPT_SCHEMA = (
 TELEMETRY_SETTINGS_SCHEMA = SCHEMAS_DIR / "rig.relay.telemetry_settings.v1.schema.json"
 
 
-
 pytestmark = [pytest.mark.migration]
+
 
 def _try_validate(instance: dict, schema_path: Path) -> list[str]:
     """Validate instance against schema, return errors."""

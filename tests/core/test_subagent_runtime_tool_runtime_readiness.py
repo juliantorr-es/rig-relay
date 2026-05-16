@@ -15,7 +15,7 @@ class TestTaskProductionWiring:
     def test_task_py_passes_tool_runtime_to_subagent_runtime(self) -> None:
         task_path = _REPO_ROOT / "rig_relay" / "core" / "tools" / "builtins" / "task.py"
         source = task_path.read_text()
-        assert "tool_runtime=getattr(ctx, \"tool_runtime\", None)" in source, (
+        assert 'tool_runtime=getattr(ctx, "tool_runtime", None)' in source, (
             "task.py must pass ctx.tool_runtime to SubagentRuntime constructor"
         )
 
@@ -36,8 +36,10 @@ class TestTaskProductionWiring:
     def test_tool_execution_mode_set_to_tool_runtime_when_provided(self) -> None:
         runtime_path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "runtime.py"
         source = runtime_path.read_text()
-        assert '"tool_runtime" if tool_runtime is None else "tool_runtime"' not in source
-        assert 'self._tool_execution_mode' in source, (
+        assert (
+            '"tool_runtime" if tool_runtime is None else "tool_runtime"' not in source
+        )
+        assert "self._tool_execution_mode" in source, (
             "SubagentRuntime must track tool_execution_mode for evidence metadata"
         )
 
@@ -52,7 +54,9 @@ class TestTaskProductionWiring:
 
 class TestToolAdapterEnvelopePassthrough:
     def test_subagent_tool_result_carries_envelope_fields(self) -> None:
-        adapter_path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "tool_adapter.py"
+        adapter_path = (
+            _REPO_ROOT / "rig_relay" / "core" / "subagents" / "tool_adapter.py"
+        )
         source = adapter_path.read_text()
         assert "supervisor_result_envelope_id" in source, (
             "SubagentToolResult must carry supervisor envelope id"
@@ -64,8 +68,12 @@ class TestToolAdapterEnvelopePassthrough:
             "SubagentToolResult must carry supervisor classification"
         )
 
-    def test_execute_and_format_extracts_envelope_from_tool_runtime_result(self) -> None:
-        adapter_path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "tool_adapter.py"
+    def test_execute_and_format_extracts_envelope_from_tool_runtime_result(
+        self,
+    ) -> None:
+        adapter_path = (
+            _REPO_ROOT / "rig_relay" / "core" / "subagents" / "tool_adapter.py"
+        )
         source = adapter_path.read_text()
         assert "result.supervisor_result_envelope_id" in source
         assert "result.supervisor_result_envelope_sha256" in source

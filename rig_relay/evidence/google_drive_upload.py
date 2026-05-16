@@ -13,7 +13,9 @@ from typing import Any
 
 import httpx
 
-DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+DRIVE_UPLOAD_URL = (
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+)
 DRIVE_FOLDER_URL = "https://www.googleapis.com/drive/v3/files"
 GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 GOOGLE_USERINFO_SCOPE = "https://www.googleapis.com/auth/userinfo.email"
@@ -90,9 +92,7 @@ def _get_drive_folder_id() -> str:
     return "root"
 
 
-def _make_upload_metadata(
-    bundle_path: Path, parent_folder_id: str
-) -> dict[str, Any]:
+def _make_upload_metadata(bundle_path: Path, parent_folder_id: str) -> dict[str, Any]:
     """Build Drive API metadata for the upload."""
     return {
         "name": bundle_path.name,
@@ -144,9 +144,7 @@ async def upload_bundle(
 
     # Metadata part
     body_parts.append(f"--{boundary}\r\n".encode())
-    body_parts.append(
-        b'Content-Type: application/json; charset=UTF-8\r\n\r\n'
-    )
+    body_parts.append(b"Content-Type: application/json; charset=UTF-8\r\n\r\n")
     body_parts.append(json_mod.dumps(metadata).encode())
     body_parts.append(b"\r\n")
 
@@ -208,15 +206,14 @@ async def upload_bundle(
         "size_bytes": len(bundle_bytes),
         "mime_type": result.get("mimeType", "application/zip"),
         "web_view_link": web_link,
-        "uploaded_at": __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        ).isoformat(),
+        "uploaded_at": __import__("datetime")
+        .datetime.now(__import__("datetime").timezone.utc)
+        .isoformat(),
     }
 
 
 async def create_telemetry_folder(
-    folder_name: str = "Rig Relay Telemetry",
-    access_token: str | None = None,
+    folder_name: str = "Rig Relay Telemetry", access_token: str | None = None
 ) -> dict[str, Any]:
     """Create a Google Drive folder for telemetry bundles.
 
@@ -254,8 +251,4 @@ async def create_telemetry_folder(
     }
 
 
-__all__ = [
-    "GoogleDriveUploadError",
-    "create_telemetry_folder",
-    "upload_bundle",
-]
+__all__ = ["GoogleDriveUploadError", "create_telemetry_folder", "upload_bundle"]

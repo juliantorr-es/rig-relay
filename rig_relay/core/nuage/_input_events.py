@@ -1,4 +1,5 @@
 """Remote workflow event translator mixin — input events."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -32,7 +33,6 @@ class InputEventsMixin:
         self._pending_question_prompt = None
         self._merge_message(LLMMessage(role=Role.user, content=textual_input))
 
-
     def _extract_user_text(self, value: Any) -> str | None:
         if isinstance(value, str):
             return value
@@ -47,7 +47,6 @@ class InputEventsMixin:
         if not parts:
             return None
         return "".join(parts)
-
 
     def _extract_predefined_answers(self, value: Any) -> list[str] | None:
         if not isinstance(value, dict):
@@ -68,7 +67,6 @@ class InputEventsMixin:
 
         return answers or None
 
-
     def _ask_user_question_events(
         self, tool_name: str, tool_args: dict[str, Any]
     ) -> list[BaseEvent]:
@@ -86,7 +84,6 @@ class InputEventsMixin:
 
         return self._assistant_question_events(prompt)
 
-
     def _assistant_question_events(self, prompt: str) -> list[BaseEvent]:
         if self._pending_question_prompt == prompt:
             return []
@@ -97,4 +94,3 @@ class InputEventsMixin:
             LLMMessage(role=Role.assistant, content=prompt, message_id=message_id)
         )
         return [AssistantEvent(content=prompt, message_id=message_id)]
-

@@ -11,6 +11,7 @@ from rig_relay.core.guard import get_guard, reset_guard
 
 pytestmark = [pytest.mark.integration]
 
+
 @pytest.fixture(autouse=True)
 def _reset_guard() -> None:
     reset_guard()

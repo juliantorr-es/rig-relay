@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from rig_relay.context.renderer import ContextRenderer, TrustTier
 from rig_relay.context.warnings import (
     ContextWarningCode,
@@ -21,13 +19,17 @@ class TestRendererCompressionWarnings:
 
         # Force an import error by removing a required attribute
         import rig_relay.context.symbol_codec
-        original = getattr(rig_relay.context.symbol_codec, "compress_with_manifest", None)
+
+        original = getattr(
+            rig_relay.context.symbol_codec, "compress_with_manifest", None
+        )
         del rig_relay.context.symbol_codec.compress_with_manifest
         try:
             applied = renderer.apply_compression()
             if not applied:
                 assert any(
-                    isinstance(w, dict) and w.get("code") == ContextWarningCode.COMPRESSION_FAILED
+                    isinstance(w, dict)
+                    and w.get("code") == ContextWarningCode.COMPRESSION_FAILED
                     for w in renderer.warnings
                 ), f"Expected COMPRESSION_FAILED warning, got: {renderer.warnings}"
         finally:
@@ -59,10 +61,7 @@ class TestWarningModel:
         assert "/home/user" not in name
 
     def test_build_warning_truncates_long_detail(self):
-        w = build_warning(
-            ContextWarningCode.REPO_SCAN_FAILED,
-            detail="x" * 500,
-        )
+        w = build_warning(ContextWarningCode.REPO_SCAN_FAILED, detail="x" * 500)
         assert len(w["detail"]) <= 200
 
 

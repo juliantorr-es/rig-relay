@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from rig_relay.context.models import ContextPacket, ContextMode
+from rig_relay.context.models import ContextMode, ContextPacket
 from rig_relay.context.warnings import ContextWarningCode, build_warning
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -17,7 +15,9 @@ class TestContextPacketWarnings:
         packet = ContextPacket(
             mode=ContextMode.MAP,
             repo=RepoInfo(root="", head="abc", branch="main"),
-            warnings=[build_warning(ContextWarningCode.REPO_SCAN_FAILED, detail="test")],
+            warnings=[
+                build_warning(ContextWarningCode.REPO_SCAN_FAILED, detail="test")
+            ],
         )
         assert len(packet.warnings) == 1
         assert packet.warnings[0]["code"] == ContextWarningCode.REPO_SCAN_FAILED
@@ -25,7 +25,9 @@ class TestContextPacketWarnings:
     def test_packet_defaults_to_empty_warnings(self):
         from rig_relay.context.models import RepoInfo
 
-        packet = ContextPacket(mode=ContextMode.MAP, repo=RepoInfo(root="", head="abc", branch="main"))
+        packet = ContextPacket(
+            mode=ContextMode.MAP, repo=RepoInfo(root="", head="abc", branch="main")
+        )
         assert packet.warnings == []
 
     def test_packet_warnings_are_json_safe(self):
@@ -70,7 +72,9 @@ class TestBuildReceiptNoBareExcept:
                 in_except = True
                 for j in range(i - 5, i):
                     if "except Exception:" in lines[j]:
-                        violations.append(f"Line {j + 1}: bare except:pass in build_receipt")
+                        violations.append(
+                            f"Line {j + 1}: bare except:pass in build_receipt"
+                        )
         assert not violations, "\n".join(violations)
 
     def test_no_context_except_exception_pass(self):

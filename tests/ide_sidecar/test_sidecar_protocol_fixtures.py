@@ -18,7 +18,9 @@ import pytest
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "ide_sidecar"
 SCHEMAS_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "schemas"
 MANIFEST_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "etc" / "rig.ide.capability_manifest.v1.json"
+    Path(__file__).resolve().parent.parent.parent
+    / "etc"
+    / "rig.ide.capability_manifest.v1.json"
 )
 
 # ── Schema loading ────────────────────────────────────────────────
@@ -57,17 +59,23 @@ def _fixtures(pattern: str) -> list[Path]:
 class TestSidecarMessageSchemas:
     """Every sidecar IPC fixture validates against the message schema."""
 
-    @pytest.mark.parametrize("path", _fixtures("workspace_snapshot*.json"), ids=lambda p: p.name)
+    @pytest.mark.parametrize(
+        "path", _fixtures("workspace_snapshot*.json"), ids=lambda p: p.name
+    )
     def test_workspace_snapshot(self, path: Path) -> None:
         errors = _validate_fixture(path, SIDECAR_MESSAGE_SCHEMA)
         assert not errors, f"Schema errors for {path.name}: {errors}"
 
-    @pytest.mark.parametrize("path", _fixtures("approval_response*.json"), ids=lambda p: p.name)
+    @pytest.mark.parametrize(
+        "path", _fixtures("approval_response*.json"), ids=lambda p: p.name
+    )
     def test_approval_response(self, path: Path) -> None:
         errors = _validate_fixture(path, SIDECAR_MESSAGE_SCHEMA)
         assert not errors, f"Schema errors for {path.name}: {errors}"
 
-    @pytest.mark.parametrize("path", _fixtures("capability_response*.json"), ids=lambda p: p.name)
+    @pytest.mark.parametrize(
+        "path", _fixtures("capability_response*.json"), ids=lambda p: p.name
+    )
     def test_capability_response(self, path: Path) -> None:
         errors = _validate_fixture(path, SIDECAR_MESSAGE_SCHEMA)
         assert not errors, f"Schema errors for {path.name}: {errors}"
@@ -77,9 +85,7 @@ class TestCapabilityReceiptSchemas:
     """Every receipt fixture validates against the receipt schema."""
 
     @pytest.mark.parametrize(
-        "path",
-        _fixtures("receipt.*.valid.json"),
-        ids=lambda p: p.name,
+        "path", _fixtures("receipt.*.valid.json"), ids=lambda p: p.name
     )
     def test_receipt(self, path: Path) -> None:
         errors = _validate_fixture(path, CAPABILITY_RECEIPT_SCHEMA)

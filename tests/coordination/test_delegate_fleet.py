@@ -1,6 +1,7 @@
 """Tests for the delegate/fleet orchestration schemas and queue planner."""
 
 from __future__ import annotations
+
 import pytest
 
 pytestmark = [pytest.mark.integration]

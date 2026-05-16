@@ -1,0 +1,56 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "storage-retention-policy",
+  "document_type": "governance",
+  "title": "Storage Retention Policy",
+  "summary": "Retention policy for local Rig Relay storage including sessions, artifacts, telemetry, and traces.",
+  "status": "active",
+  "created_at": "2026-05-18",
+  "updated_at": "2026-05-18",
+  "source_commit": "aaef6b5b",
+  "owners": ["maintainer"],
+  "tags": ["storage", "retention", "policy", "gc", "privacy"],
+  "audience": ["contributor", "user", "maintainer"],
+  "canonical_path": "docs/json/governance/storage_retention_policy.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {"block_id": "title", "type": "heading", "level": 1, "content": "Storage Retention Policy"},
+    {"block_id": "status-callout", "type": "callout", "severity": "info", "content": "This policy is active for local Rig Relay storage. Review required before enabling remote telemetry or cloud sync."},
+    {"block_id": "scope", "type": "heading", "level": 2, "content": "Scope"},
+    {"block_id": "scope-list", "type": "list", "items": [
+      "Session interaction logs (.rig/relay/sessions/)",
+      "Artifact storage (.build/rig-relay/)",
+      "Telemetry events (observability.jsonl)",
+      "Trace events (trace_events.jsonl)",
+      "Coordination store (.build/rig-relay/coordination/)",
+      "Desktop cockpit state (chat_state.json, chat_events.jsonl)"
+    ]},
+    {"block_id": "defaults", "type": "heading", "level": 2, "content": "Default Retention Periods"},
+    {"block_id": "defaults-table", "type": "table", "columns": ["Artifact Type", "Default Retention", "GC Trigger"], "rows": [
+      ["Session logs", "30 days", "Storage budget exceeded"],
+      ["Artifacts (build)", "Until next clean build", "Manual or GC sweep"],
+      ["Telemetry events", "90 days", "Storage budget exceeded"],
+      ["Trace events", "30 days", "Storage budget exceeded"],
+      ["Coordination store", "7 days after lease expiry", "Lease cleanup sweep"],
+      ["Desktop cockpit state", "Indefinite (single file)", "Manual or clear_chat"]
+    ]},
+    {"block_id": "gc", "type": "heading", "level": 2, "content": "Garbage Collection"},
+    {"block_id": "gc-content", "type": "paragraph", "content": "Passive GC runs after tool execution when the storage budget is exceeded. Active GC can be triggered via scripts/rig_relay_gc_artifacts.py. The GC policy prunes stale leases, expired artifacts, and old session data. Evidence and receipts are preserved unless they exceed the retention window."},
+    {"block_id": "env", "type": "heading", "level": 2, "content": "Configuration"},
+    {"block_id": "env-table", "type": "table", "columns": ["Variable", "Effect"], "rows": [
+      ["RIG_RELAY_LOCAL_MODE=1", "Disable remote telemetry and cloud sync"],
+      ["RIG_RELAY_ENABLE_MERGE=0", "Disable merge operations"],
+      ["RIG_RELAY_ENABLE_PUSH=0", "Disable push operations"],
+      ["LOG_LEVEL", "Control log verbosity (default WARNING)"]
+    ]},
+    {"block_id": "privacy", "type": "heading", "level": 2, "content": "Privacy"},
+    {"block_id": "privacy-content", "type": "paragraph", "content": "All storage is local-first by default. No data leaves the machine without explicit opt-in. Telemetry and trace exports are opt-in only. Artifact GC never transmits data externally. The packaged app stores data under ~/Library/Application Support/Rig Relay/."},
+    {"block_id": "budget", "type": "heading", "level": 2, "content": "Storage Budget"},
+    {"block_id": "budget-content", "type": "paragraph", "content": "compute_storage_summary() checks total artifact size against a configurable budget. Status values: ok (under budget), warn (approaching limit), over_budget (GC triggered), fleet_blocked (no new sessions until GC completes)."}
+  ],
+  "references": [],
+  "related_documents": [],
+  "provenance": {
+    "source_files": ["docs/governance/storage-retention-policy.md"]
+  }
+}

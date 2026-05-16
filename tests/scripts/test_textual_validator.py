@@ -20,6 +20,7 @@ from scripts.rig_relay_textual_validator import (
 
 pytestmark = [pytest.mark.migration]
 
+
 def _check(tmp_path: Path, content: str, code: str) -> list:
     f = tmp_path / "test_file.py"
     f.write_text(content)

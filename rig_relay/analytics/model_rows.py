@@ -91,11 +91,15 @@ def build_model_behavior_summary(records: list[dict[str, Any]]) -> dict[str, Any
         if p not in by_provider:
             by_provider[p] = {"turns": 0, "tokens": 0}
         by_provider[p]["turns"] += 1
-        by_provider[p]["tokens"] += r.get("input_token_count", 0) + r.get("output_token_count", 0)
+        by_provider[p]["tokens"] += r.get("input_token_count", 0) + r.get(
+            "output_token_count", 0
+        )
         if m not in by_model:
             by_model[m] = {"turns": 0, "tokens": 0, "avg_latency": 0.0}
         by_model[m]["turns"] += 1
-        by_model[m]["tokens"] += r.get("input_token_count", 0) + r.get("output_token_count", 0)
+        by_model[m]["tokens"] += r.get("input_token_count", 0) + r.get(
+            "output_token_count", 0
+        )
 
     for m in by_model:
         by_model[m]["avg_latency"] = sum(

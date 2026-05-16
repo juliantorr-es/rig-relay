@@ -32,9 +32,7 @@ class AcpWriteFileState(BaseToolState, AcpToolState):
 
 class WriteFile(CoreWriteFileTool, BaseAcpTool[AcpWriteFileState]):
     state: AcpWriteFileState
-    prompt_path = (
-        RIG_ROOT / "core" / "tools" / "builtins" / "prompts" / "write_file.md"
-    )
+    prompt_path = RIG_ROOT / "core" / "tools" / "builtins" / "prompts" / "write_file.md"
 
     @classmethod
     def _get_tool_state_class(cls) -> type[AcpWriteFileState]:

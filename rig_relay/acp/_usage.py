@@ -1,4 +1,5 @@
 """ACP mixin — usage."""
+
 from __future__ import annotations
 
 from acp.schema import Cost, Usage, UsageUpdate
@@ -25,7 +26,6 @@ class UsageMixin:
             total_tokens=stats.session_total_llm_tokens,
         )
 
-
     def _build_usage_update(self, session: AcpSessionLoop) -> UsageUpdate:
         stats = session.agent_loop.stats
         active_model = session.agent_loop.config.get_active_model()
@@ -41,7 +41,6 @@ class UsageMixin:
             cost=cost,
         )
 
-
     def _send_usage_update(self, session: AcpSessionLoop) -> None:
         async def _send() -> None:
             try:
@@ -52,7 +51,6 @@ class UsageMixin:
 
         session.spawn(_send())
 
-
     async def _replay_tool_calls(self, session_id: str, msg: LLMMessage) -> None:
         if not msg.tool_calls:
             return
@@ -62,7 +60,6 @@ class UsageMixin:
                     tool_call.id, tool_call.function.name, tool_call.function.arguments
                 )
                 await self.client.session_update(session_id=session_id, update=update)
-
 
     async def _replay_conversation_history(
         self, session_id: str, messages: list[LLMMessage]
@@ -88,4 +85,3 @@ class UsageMixin:
                     await self.client.session_update(
                         session_id=session_id, update=result_update
                     )
-

@@ -391,7 +391,9 @@ class AgentLoop(
                     scratchpad_dir=self.scratchpad_dir,
                     tool_manager=self.tool_manager,
                     subprocess_runner=subprocess_runner,
-                    trace_recorder=getattr(self._tool_runtime, "_trace_recorder", None) if self._tool_runtime else None,
+                    trace_recorder=getattr(self._tool_runtime, "_trace_recorder", None)
+                    if self._tool_runtime
+                    else None,
                     tool_runtime=self._tool_runtime,
                 ),
                 **args_dict,
@@ -758,6 +760,7 @@ class AgentLoop(
 
         cr = self._get_conversation_runtime()
         self._conversation_runtime = cr
+        self._pending_tool_resolved: object | None = None
         cr._session_id = self.session_id
         cr._start_time = time.monotonic()
         cr.set_turn_id(turn.turn_id)
@@ -803,7 +806,10 @@ class AgentLoop(
                 turn.assistant_content_length = len(last_message.content)
 
         if not resolved.tool_calls and not resolved.failed_calls:
+            self._pending_tool_resolved = None
             return
+
+        self._pending_tool_resolved = resolved
 
         if (turn := getattr(self, "_current_turn", None)) is not None:
             turn.tool_call_count = len(resolved.tool_calls) + len(resolved.failed_calls)
@@ -811,6 +817,12 @@ class AgentLoop(
             if (cr := self._conversation_runtime) is not None:
                 cr.set_tool_call_count(turn.tool_call_count)
 
+    async def _execute_pending_tool_batch(self) -> AsyncGenerator[BaseEvent, None]:
+        """Execute stored tool calls. Called from adapter.execute_tool_batch()."""
+        resolved = self._pending_tool_resolved
+        if resolved is None:
+            return
+        self._pending_tool_resolved = None
         profile_before = self.agent_profile.name
         async for event in self._handle_tool_calls(resolved):
             yield event
@@ -1544,6 +1556,7 @@ class _ConversationLoopAdapter:
 
     def is_user_cancellation_event(self, event) -> bool:
         from rig_relay.core._llm_call import is_user_cancellation_event
+
         return is_user_cancellation_event(event)
 
     async def stream_hooks_post_turn(self):
@@ -1573,14 +1586,14 @@ class _ConversationLoopAdapter:
         return last.role != Role.tool  # type: ignore[name-defined]
 
     async def execute_tool_batch(self):
-        """Tool execution already happened inside stream_llm_turn().
+        """Execute tool calls stored from stream_llm_turn().
 
-        _perform_llm_turn() handles tool execution internally via
-        _handle_tool_calls(). The run_tools decision exists solely
-        to continue the while-loop after tools were executed.
+        _perform_llm_turn() stores resolved tool calls in
+        _pending_tool_resolved instead of executing them.
+        This method executes those pending calls via _handle_tool_calls().
         """
-        if False:
-            yield
+        async for event in self._loop._execute_pending_tool_batch():
+            yield event
 
     def check_max_turns(self) -> int | None:
         return self._loop._max_turns

@@ -31,31 +31,21 @@ def _make_envelope(
         receipt_kind=receipt_kind,
         schema_version="rig.receipt_envelope.v1",
         created_at=now,
-        actor=ReceiptActor(
-            actor_id="tool-read_file",
-            actor_kind=ReceiptActorKind.TOOL,
-        ),
+        actor=ReceiptActor(actor_id="tool-read_file", actor_kind=ReceiptActorKind.TOOL),
         subject=ReceiptSubject(
             subject_id="call-001",
             subject_kind=ReceiptSubjectKind.TOOL_INVOCATION,
             session_id=session_id,
         ),
-        input=ReceiptInput(
-            input_kind="tool_args",
-            input_sha256="abc123",
-        ),
+        input=ReceiptInput(input_kind="tool_args", input_sha256="abc123"),
         output=ReceiptOutput(
-            output_kind="tool_result",
-            output_sha256="def456",
-            status="completed",
+            output_kind="tool_result", output_sha256="def456", status="completed"
         ),
         decision=ReceiptDecision(decision="approved"),
         evidence=[
             ReceiptEvidence(
-                evidence_id="ev-001",
-                evidence_kind="sha256",
-                evidence_sha256="abc123",
-            ),
+                evidence_id="ev-001", evidence_kind="sha256", evidence_sha256="abc123"
+            )
         ],
     )
 
@@ -153,15 +143,11 @@ class TestIntegrityAssessment:
         store.append(_make_envelope("integ-001"))
         store.append(_make_envelope("integ-002"))
         records, _ = _build_index(store)
-        assessment = build_projection_integrity_assessment(
-            receipt_records=records
-        )
+        assessment = build_projection_integrity_assessment(receipt_records=records)
         assert assessment.receipt_count == 2
 
     def test_empty_assessment(self):
-        assessment = build_projection_integrity_assessment(
-            receipt_records=[]
-        )
+        assessment = build_projection_integrity_assessment(receipt_records=[])
         assert assessment.receipt_count == 0
 
 

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation Policy — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Canonical JSON documentation policy for Rig Relay. New docs must be JSON. Old Markdown must be migrated before deletion.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>Documentation Policy</h1>
+  <p class="meta">Status: active | Updated: 2026-05-18</p>
+</header>
+<main>
+<h1 id="heading-1">Documentation Policy</h1>
+
+<div class="callout callout-info" id="policy-statement">
+  
+  <p>New project documentation must be written as canonical JSON artifacts using the rig.documentation.page.v1 schema. Markdown is only permitted for explicitly allowed exceptions. Old Markdown docs must be migrated to JSON before deletion.</p>
+</div>
+
+<h2 id="heading-allowed">Allowed Markdown Exceptions</h2>
+
+<ul id="allowed-list">
+  <li>AGENTS.md — agent instructions</li>
+  <li>README.md — GitHub landing page</li>
+  <li>CONTRIBUTING.md — contribution UI</li>
+  <li>CONTRIBUTOR_LICENSE_AGREEMENT.md — legal</li>
+  <li>LICENSE — plain license text</li>
+  <li>ATTRIBUTION.md — human-readable attribution</li>
+  <li>CHANGELOG.md — if release tooling requires it</li>
+</ul>
+
+<h2 id="heading-rules">Migration Rules</h2>
+
+<ol id="migration-rules">
+  <li>JSON replacement must exist and validate against a schema</li>
+  <li>Static renderer must render it</li>
+  <li>Migration manifest must map old_path to new_path</li>
+  <li>References must be updated</li>
+  <li>Tests must pass</li>
+  <li>Deletion must be listed in the final report</li>
+</ol>
+
+<h2 id="heading-schemas">Required Schema Validation</h2>
+
+<ul id="schemas-list">
+  <li>rig.documentation.page.v1 — individual documentation pages</li>
+  <li>rig.documentation.collection.v1 — named document collections</li>
+  <li>rig.documentation.migration_manifest.v1 — migration tracking</li>
+  <li>rig.documentation.site_manifest.v1 — site navigation structure</li>
+</ul>
+
+<h2 id="heading-render">Static Site Rendering</h2>
+
+<p id="render-info">Documentation is rendered to static HTML by scripts/render_static_docs.py. The generated site is committed under docs/ and published via GitHub Pages from the main branch /docs folder. No custom GitHub Actions workflow is required.</p>
+
+<h2 id="heading-actions">Actions Policy</h2>
+
+<table id="actions-policy">
+<thead><tr><th>Setting</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Custom GitHub Actions required</td><td>false</td></tr>
+<tr><td>Default publish model</td><td>local_render_committed_static_site</td></tr>
+<tr><td>Reason</td><td>Avoid unnecessary GitHub Actions quota and artifact storage use</td></tr>
+</tbody>
+</table>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/documentation_policy.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

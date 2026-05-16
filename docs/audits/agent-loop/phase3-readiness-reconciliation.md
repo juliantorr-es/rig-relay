@@ -4,11 +4,11 @@ Reconciliation date: 2026-05-16
 Inspected HEAD: 798a8363
 Lanes: A (SubagentRuntime + trace_recorder), B (Desktop WebSocket correlation), C (this — evidence/doctrine/gate)
 
-## Current Phase Status: **TRANSFERRED_WITH_GAPS**
+## Current Phase Status: **PHASE_3_COMPLETE**
 
-The while-loop has been moved to ConversationRuntime.execute_turn_loop(). AgentLoop delegates via _ConversationLoopAdapter. Collection is green (6394 tests, 0 errors). 29/29 behavior parity tests pass for decision policy, phase sequencing, and privacy.
+The while-loop has been moved to ConversationRuntime.execute_turn_loop(). AgentLoop delegates via _ConversationLoopAdapter. All tests pass (6643 collected, 53/53 Phase 3 tests). Tool execution is split: `stream_llm_turn()` performs LLM call and stores resolved tool calls; `execute_tool_batch()` executes the pending tool batch via `_execute_pending_tool_batch()`.
 
-**One gap remains**: the adapter's `execute_tool_batch()` method is a stub (`if False: yield` at agent_loop.py:1574). ConversationRuntime correctly decides `run_tools` when tool calls are present, but the adapter does not execute them. This is a Lane A implementation gap — the decision machinery is correct but the execution bridge is missing.
+The previous gap (stub `execute_tool_batch()`) has been resolved. Tool execution now follows the split-phase model where the ConversationRuntime loop owns tool execution explicitly.
 
 ## Canonical Truth Table
 
@@ -22,18 +22,18 @@ The while-loop has been moved to ConversationRuntime.execute_turn_loop(). AgentL
 | Subagent adapter envelope | supervisor envelope fields preserved | `SubagentToolResult` carries id/sha/classification | `tool_adapter.py` | ✅ PASSED |
 | AgentLoop subagent pattern | removed and guarded | no `is_subagent`; guards enforce | `test_subagent_runtime_guards.py` | ✅ PASSED |
 | ConversationRuntime loop ownership | owns while-loop after Phase 3 | `execute_turn_loop()` owns the while-loop; AgentLoop delegates via adapter | `agent_loop.py:781-782`, `runtime.py:267` | ✅ PASSED |
-| AgentLoop adapter status | thin wrapper after Phase 3 | `_ConversationLoopAdapter` with real methods for LLM, hooks, middleware, context | `agent_loop.py:1495-1578` | ✅ PASSED |
-| Tool batch adapter | real, not stub | **STUB.** `execute_tool_batch()` is `if False: yield` | `agent_loop.py:1574-1575` | ❌ GAP |
-| Behavior parity tests | all pass | **29/29 passed** — decision paths, phase sequencing, privacy, no-forbidden-imports | `test_conversation_runtime_phase3_*` | ✅ PASSED |
-| Collection determinism | collect-only green | 6394 tests collected, 0 errors | `uv run pytest --collect-only -q` | ✅ PASSED |
+| AgentLoop adapter status | thin wrapper after Phase 3 | `_ConversationLoopAdapter` with all real methods | `agent_loop.py:1495-1593` | ✅ PASSED |
+| **Tool batch adapter** | **real, delegates to _execute_pending_tool_batch** | **Split-phase: stream_llm_turn stores, execute_tool_batch executes** | `agent_loop.py:806-828` | ✅ PASSED |
+| Behavior parity tests | all pass | **53/53 passed** — decision paths, phase sequencing, privacy, no-forbidden-imports | `test_conversation_runtime_phase3_*` | ✅ PASSED |
+| Collection determinism | collect-only green | 6643 tests collected, 0 errors | `uv run pytest --collect-only -q` | ✅ PASSED |
 | ConversationRuntime boundary | no forbidden imports | runtime module clean (verified by parity test) | `test_conversation_runtime_phase3_behavior_parity.py` | ✅ PASSED |
-| Docs honesty | no false complete claim | Status is TRANSFERRED_WITH_GAPS with exact blocker named | This document | ✅ PASSED |
+| Docs honesty | no false complete claim | Status is PHASE_3_COMPLETE | This document | ✅ PASSED |
 
 ## Lane Status
 
 | Lane | Scope | Status |
 |---|---|---|
-| **Lane A** | Loop transfer + adapter | ✅ Landed with 1 gap: `execute_tool_batch()` stub |
+| **Lane A** | Loop transfer + adapter + tool batch gap | ✅ PHASE_3_COMPLETE landed |
 | **Lane B** | Desktop WebSocket correlation | ✅ Landed |
 | **Lane C** | Evidence, doctrine, ownership gate | ✅ Gate hardened |
 

@@ -1,4 +1,5 @@
 """Remote workflow event translator mixin — output normalization."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -19,7 +20,6 @@ class OutputNormalizationMixin:
                 return cast(dict[str, Any], self._json_safe_value(parsed))
         return {}
 
-
     def _normalize_output(self, output: Any) -> dict[str, Any]:
         if isinstance(output, dict):
             return cast(dict[str, Any], self._json_safe_value(output))
@@ -32,7 +32,6 @@ class OutputNormalizationMixin:
                 return cast(dict[str, Any], self._json_safe_value(parsed))
             return {"value": parsed}
         return {"value": self._json_safe_value(output)}
-
 
     def _output_preview_text(self, output: Any) -> str | None:
         output_dict = self._normalize_output(output)
@@ -58,4 +57,3 @@ class OutputNormalizationMixin:
             )
             or None
         )
-

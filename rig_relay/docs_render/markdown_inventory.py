@@ -16,25 +16,43 @@ from typing import Any
 import yaml
 
 EXCLUDE_DIRS = frozenset({
-    ".git", ".venv", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    ".build", "node_modules", "dist", "build", "public", "site",
-    "htmlcov", "__pycache__", ".rig",
+    ".git",
+    ".venv",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".build",
+    "node_modules",
+    "dist",
+    "build",
+    "public",
+    "site",
+    "htmlcov",
+    "__pycache__",
+    ".rig",
 })
 
 ROOT_EXCLUDE = frozenset({
-    "README.md", "AGENTS.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md",
-    "SECURITY.md", "LICENSE", "UPSTREAM.md", "THIRD_PARTY_NOTICES.md",
-    "CHANGELOG.md", "analysis_results.md",
+    "README.md",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md",
+    "LICENSE",
+    "UPSTREAM.md",
+    "THIRD_PARTY_NOTICES.md",
+    "CHANGELOG.md",
+    "analysis_results.md",
 })
 
-FRONT_MATTER_RE = re.compile(r'^---\s*\n(.*?)\n---\s*\n', re.DOTALL)
-HEADING_RE = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
-LINK_RE = re.compile(r'\[([^\]]*)\]\(([^)]+)\)')
-IMAGE_RE = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
-CODE_FENCE_RE = re.compile(r'^```(\w*)$', re.MULTILINE)
-MERMAID_RE = re.compile(r'^```mermaid', re.MULTILINE)
-SCHEMA_REF_RE = re.compile(r'schemas?/([^\s\)]+\.schema\.json)')
-JSON_REF_RE = re.compile(r'\.json[\s\)\],;]')
+FRONT_MATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
+LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
+IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+CODE_FENCE_RE = re.compile(r"^```(\w*)$", re.MULTILINE)
+MERMAID_RE = re.compile(r"^```mermaid", re.MULTILINE)
+SCHEMA_REF_RE = re.compile(r"schemas?/([^\s\)]+\.schema\.json)")
+JSON_REF_RE = re.compile(r"\.json[\s\)\],;]")
 
 
 def classify_link(href: str) -> str:
@@ -116,7 +134,7 @@ def parse_front_matter(text: str) -> tuple[dict[str, Any], str]:
     if m:
         try:
             fm = yaml.safe_load(m.group(1)) or {}
-            body = text[m.end():]
+            body = text[m.end() :]
             return fm, body
         except yaml.YAMLError:
             pass
@@ -135,20 +153,14 @@ def extract_headings(text: str) -> list[tuple[int, str]]:
 def extract_links(text: str) -> list[dict[str, str]]:
     links: list[dict[str, str]] = []
     for m in LINK_RE.finditer(text):
-        links.append({
-            "text": m.group(1).strip(),
-            "href": m.group(2).strip(),
-        })
+        links.append({"text": m.group(1).strip(), "href": m.group(2).strip()})
     return links
 
 
 def extract_images(text: str) -> list[dict[str, str]]:
     images: list[dict[str, str]] = []
     for m in IMAGE_RE.finditer(text):
-        images.append({
-            "alt": m.group(1).strip(),
-            "src": m.group(2).strip(),
-        })
+        images.append({"alt": m.group(1).strip(), "src": m.group(2).strip()})
     return images
 
 
@@ -182,8 +194,10 @@ def extract_code_fences(text: str) -> list[dict[str, Any]]:
                     "code_sha256": content_sha,
                     "is_mermaid": language.lower() == "mermaid",
                     "is_json": language.lower() in ("json", "jsonc"),
-                    "is_schema": "schema" in language.lower() or "schema" in content[:200].lower(),
-                    "is_shell": language.lower() in ("bash", "sh", "shell", "console", "zsh"),
+                    "is_schema": "schema" in language.lower()
+                    or "schema" in content[:200].lower(),
+                    "is_shell": language.lower()
+                    in ("bash", "sh", "shell", "console", "zsh"),
                 })
                 fence_index += 1
         elif in_fence:
@@ -191,7 +205,9 @@ def extract_code_fences(text: str) -> list[dict[str, Any]]:
     return fences
 
 
-def derive_title(front_matter: dict[str, Any], headings: list[tuple[int, str]], stem: str) -> str:
+def derive_title(
+    front_matter: dict[str, Any], headings: list[tuple[int, str]], stem: str
+) -> str:
     if fm_title := front_matter.get("title", "").strip():
         return fm_title
     for level, text in headings:

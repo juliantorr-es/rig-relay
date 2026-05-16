@@ -41,7 +41,9 @@ def test_valid_transition_chain() -> None:
 def test_invalid_transition_refused() -> None:
     sm = DesktopBridgeStateMachine()
     with pytest.raises(InvalidBridgeTransitionError):
-        sm.transition_to(DesktopBridgeState.SERVER_BOUND, DesktopBridgeEvent.SERVER_BOUND)
+        sm.transition_to(
+            DesktopBridgeState.SERVER_BOUND, DesktopBridgeEvent.SERVER_BOUND
+        )
 
 
 def test_terminal_failure_immutability() -> None:

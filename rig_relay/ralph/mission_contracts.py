@@ -84,7 +84,9 @@ class RalphReadOnlyMissionPlan(BaseModel):
     run_id: str = ""
     scan_id: str = ""
     allowed_capabilities: list[str] = Field(default_factory=list)
-    forbidden_capabilities: list[str] = Field(default_factory=lambda: list(FORBIDDEN_CAPABILITIES))
+    forbidden_capabilities: list[str] = Field(
+        default_factory=lambda: list(FORBIDDEN_CAPABILITIES)
+    )
     required_approvals: list[str] = Field(default_factory=list)
     execution_enabled: bool = False
     implementation_status: str = "contract_only"

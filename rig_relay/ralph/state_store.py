@@ -82,11 +82,9 @@ class InMemoryRalphRunStateStore:
         self._current_run_id = None
 
     def list_run_states(self, limit: int = 20) -> list[RalphRunStateRecord]:
-        return sorted(
-            self._records.values(),
-            key=lambda r: r.created_at,
-            reverse=True,
-        )[:limit]
+        return sorted(self._records.values(), key=lambda r: r.created_at, reverse=True)[
+            :limit
+        ]
 
     def expire_run_state(self, run_id: str, reason: str) -> None:
         if run_id in self._records:
@@ -129,10 +127,7 @@ class FilesystemRalphRunStateStore:
         return None
 
     def mark_current_run(self, run_id: str) -> None:
-        self._atomic_write(
-            self._current_path,
-            json.dumps({"run_id": run_id}, indent=2),
-        )
+        self._atomic_write(self._current_path, json.dumps({"run_id": run_id}, indent=2))
 
     def clear_current_run(self) -> None:
         if self._current_path.is_file():
@@ -142,12 +137,16 @@ class FilesystemRalphRunStateStore:
         records: list[RalphRunStateRecord] = []
         if not self._runs_dir.is_dir():
             return records
-        for p in sorted(self._runs_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        for p in sorted(
+            self._runs_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             if not p.is_file():
                 continue
             try:
                 records.append(
-                    RalphRunStateRecord.model_validate_json(p.read_text(encoding="utf-8"))
+                    RalphRunStateRecord.model_validate_json(
+                        p.read_text(encoding="utf-8")
+                    )
                 )
             except (json.JSONDecodeError, OSError):
                 continue

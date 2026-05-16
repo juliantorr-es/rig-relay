@@ -9,6 +9,7 @@ from scripts.rig_global_declutter_audit import inventory_rig, quarantine, write_
 
 pytestmark = [pytest.mark.migration]
 
+
 def _touch(path: Path, content: str = "x") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")

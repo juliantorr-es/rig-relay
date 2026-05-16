@@ -27,7 +27,6 @@ from scripts.rig_relay_dataset_export import (
 # ── Fixture helpers ──────────────────────────────────────────────────────
 
 
-
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
@@ -372,7 +371,6 @@ def test_export_all_missing_inputs_non_strict(tmp_path: Path) -> None:
 def test_export_all_strict_fails_on_missing(tmp_path: Path) -> None:
     """Strict mode fails when required inputs are missing."""
     import pytest
-
 
     with pytest.raises(FileNotFoundError):
         export_all(

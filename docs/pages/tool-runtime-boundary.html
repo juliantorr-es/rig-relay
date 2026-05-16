@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ToolRuntime Boundary — Rig Relay Docs</title>
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<meta name="description" content="Defines ToolRuntime as the governed tool execution authority. Ownership, capability boundaries, layered execution model, and separation from Ralph, desktop HITL, and analytics compiler.">
+</head>
+<body>
+<header>
+  <nav><a href="/rig-relay/">Home</a></nav>
+  <h1>ToolRuntime Boundary</h1>
+  <p class="meta">Status: active | Updated: 2026-05-18</p>
+</header>
+<main>
+<h1 id="title">ToolRuntime Boundary</h1>
+
+<h2 id="purpose">Purpose</h2>
+
+<p id="purpose-text">Rig Relay separates concerns between AgentLoop (turn conductor), ToolRuntime (governed execution authority), Ralph (observe-only scanner), the desktop HITL boundary, and the analytics compiler. ToolRuntime owns the governed tool execution path.</p>
+
+<h2 id="layers">Layered Execution Model</h2>
+
+<pre id="layers-code"><code class="language-text">Desktop UI       Renders projections, sends intents. Dumb renderer.
+Desktop Backend  Validates state, processes intents. Owns refusal codes.
+Ralph            Scans projections, ranks candidates. Not an executor.
+AgentLoop        Turn conductor — topology, middleware, session lifecycle.
+ToolRuntime      Governed execution authority. Normalization, permission,
+                 cache, gating, execution, receipt, refusal.
+Analytics        Reads ledgers, compiles facts/projections. Never executes.</code></pre>
+
+<h2 id="responsibilities">ToolRuntime Responsibilities</h2>
+
+<ul id="resp-list">
+  <li>Tool call normalization and validation</li>
+  <li>Permission checks (ToolPermission: ALWAYS / ASK / NEVER)</li>
+  <li>Deterministic result cache (pure / repo-state tools)</li>
+  <li>Patch proposal gating for mutation tools</li>
+  <li>Tool execution via tool_instance.invoke()</li>
+  <li>Result normalization (success / failure / skipped)</li>
+  <li>Tool receipt emission (build_receipt)</li>
+  <li>Tool analytics event emission</li>
+  <li>Refusal normalization (ToolPermissionError to refusal receipt)</li>
+</ul>
+
+<h2 id="ralph">Ralph Is Not ToolRuntime</h2>
+
+<p id="ralph-text">Ralph owns projection scanning, candidate ranking, mission candidate proposal, approval state and decision receipts. Ralph may submit bounded read-only missions to ToolRuntime through the desktop HITL boundary. Ralph must never execute tools directly, bypass permission gates, or mutate the workspace.</p>
+
+<h2 id="hitl">Desktop HITL Does Not Execute Tools</h2>
+
+<p id="hitl-text">The desktop HITL boundary approves or declines mission candidates. Approval is a state transition, not an action trigger. Execution requires a separate contract through ToolRuntime.</p>
+
+<h2 id="flow">Current Normal Flow</h2>
+
+<pre id="flow-code"><code class="language-text">RuntimeToolExecutionRunner → validate envelope → lease check →
+ToolRuntime.execute_one() → governed tool invocation →
+ToolRuntimeResult → runtime audit event</code></pre>
+
+<h2 id="capability">Capability Boundary</h2>
+
+<table id="capability-table">
+<thead><tr><th>Component</th><th>Allowed</th><th>Forbidden</th></tr></thead>
+<tbody>
+<tr><td>Ralph scan</td><td>Read projections, rank candidates</td><td>Execute tools, mutate state</td></tr>
+<tr><td>Ralph approve/decline</td><td>Validate state, emit events, persist state</td><td>Execute tools, mutate workspace</td></tr>
+<tr><td>ToolRuntime</td><td>Execute governed tools with permission</td><td>Execute without explicit approval</td></tr>
+<tr><td>Analytics compiler</td><td>Read ledgers, compile projections</td><td>Execute tools, mutate state</td></tr>
+<tr><td>Desktop UI</td><td>Render projections, send intents</td><td>Compute hashes, own policy</td></tr>
+</tbody>
+</table>
+
+<h2 id="seams">Remaining Seams</h2>
+
+<ul id="seams-list">
+  <li>RuntimeSupervisor integration remains separate for subprocess-oriented paths</li>
+  <li>A few concrete tool adapter helpers still exist behind RuntimeToolExecutionRunner</li>
+  <li>AgentLoop still owns its current closure and result adaptation boundary</li>
+</ul>
+
+<h2 id="validation">Validation Gates</h2>
+
+<ul id="validation-list">
+  <li>ToolRuntime execute_one() governs all execution paths</li>
+  <li>Span finalization verified on all 8 early-return paths</li>
+  <li>Supervisor result envelope propagated through ToolSubprocessResult</li>
+  <li>No silent except:pass in ToolRuntime critical paths</li>
+</ul>
+
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/tool_runtime_boundary.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -121,9 +121,7 @@ class TestToolExecutionDelegation:
         assert adapter.llm_turns == 2, (
             "Two LLM turns: tool request + tool result → final answer"
         )
-        assert len(adapter.turn_outcomes) >= 1, (
-            "Turn must complete with an outcome"
-        )
+        assert len(adapter.turn_outcomes) >= 1, "Turn must complete with an outcome"
 
     def test_run_tools_decision_continues_loop(self):
         """Proves the run_tools decision correctly continues the while-loop."""
@@ -135,9 +133,7 @@ class TestToolExecutionDelegation:
                 pass
 
         _run_async(_run())
-        assert adapter.llm_turns >= 2, (
-            "Loop must continue after run_tools decision"
-        )
+        assert adapter.llm_turns >= 2, "Loop must continue after run_tools decision"
 
     def test_adapter_execute_tool_batch_is_noop(self):
         """Proves execute_tool_batch yields nothing — tools run in stream_llm_turn."""
@@ -147,6 +143,7 @@ class TestToolExecutionDelegation:
             pytest.skip("Adapter not importable (pre-existing dependency issue)")
 
         import inspect
+
         source = inspect.getsource(_ConversationLoopAdapter.execute_tool_batch)
         assert "_perform_llm_turn" in source or "if False" in source, (
             "execute_tool_batch should document that tools run in stream_llm_turn"

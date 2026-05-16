@@ -112,9 +112,14 @@ class RuntimeSupervisorResultEnvelope(BaseModel):
 
 
 def _stable_result_id(payload: dict[str, Any]) -> str:
-    return "sha256:" + hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
-    ).hexdigest()
+    return (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), default=str
+            ).encode("utf-8")
+        ).hexdigest()
+    )
 
 
 def build_runtime_supervisor_result_envelope(

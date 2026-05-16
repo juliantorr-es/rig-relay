@@ -19,6 +19,7 @@ from rig_relay.core.utils.merge import MergeConflictError, MergeKeyError, MergeS
 
 pytestmark = [pytest.mark.slow]
 
+
 class TestMergeFieldMetadata:
     def test_frozen(self) -> None:
         info = WithReplaceMerge()

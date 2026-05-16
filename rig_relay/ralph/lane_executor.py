@@ -61,18 +61,22 @@ class LaneCommitResult(BaseModel):
 
 
 def execute_in_lane(
-    lane: RalphLane,
-    plan: LaneExecutionPlan,
-    policy: RalphBackgroundPolicy,
+    lane: RalphLane, plan: LaneExecutionPlan, policy: RalphBackgroundPolicy
 ) -> LaneExecutionResult:
     if not policy.can_execute_in_lane():
-        return LaneExecutionResult(status="refused", error="lane execution disabled by policy")
+        return LaneExecutionResult(
+            status="refused", error="lane execution disabled by policy"
+        )
 
     if not plan.execution_enabled:
-        return LaneExecutionResult(status="refused", error="execution not enabled for this plan")
+        return LaneExecutionResult(
+            status="refused", error="execution not enabled for this plan"
+        )
 
     if lane.status not in ("worktree_created", "active"):
-        return LaneExecutionResult(status="refused", error=f"lane not ready: {lane.status}")
+        return LaneExecutionResult(
+            status="refused", error=f"lane not ready: {lane.status}"
+        )
 
     wt = Path(plan.worktree_path or lane.worktree_path)
     if not wt.is_dir():
@@ -80,16 +84,20 @@ def execute_in_lane(
 
     for path in plan.forbidden_paths:
         if _path_in_worktree(wt, path):
-            return LaneExecutionResult(status="refused", error=f"forbidden path in plan: {path}")
+            return LaneExecutionResult(
+                status="refused", error=f"forbidden path in plan: {path}"
+            )
 
     changed: list[str] = []
     commits: list[str] = []
     validations: list[str] = []
 
     if plan.execution_mode in ("patch_in_lane", "read_only"):
-        for allowed in plan.allowed_paths[:plan.max_changed_files]:
+        for allowed in plan.allowed_paths[: plan.max_changed_files]:
             path = wt / allowed
-            if _is_allowed_path(wt, path) and not _is_forbidden_path(plan.forbidden_paths, wt, allowed):
+            if _is_allowed_path(wt, path) and not _is_forbidden_path(
+                plan.forbidden_paths, wt, allowed
+            ):
                 try:
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(f"# Ralph lane execution: {plan.objective}\n")
@@ -102,8 +110,10 @@ def execute_in_lane(
             try:
                 result = subprocess.run(
                     [v, "--version"],
-                    capture_output=True, text=True,
-                    cwd=str(wt), timeout=10,
+                    capture_output=True,
+                    text=True,
+                    cwd=str(wt),
+                    timeout=10,
                 )
                 validations.append(f"{v}: {result.returncode}")
             except Exception as e:
@@ -142,30 +152,48 @@ def commit_in_lane(
         return LaneCommitResult(status="refused", error="commits disabled by policy")
 
     if not lane.branch_name.startswith(policy.branch_prefix):
-        return LaneCommitResult(status="refused", error=f"not a Ralph branch: {lane.branch_name}")
+        return LaneCommitResult(
+            status="refused", error=f"not a Ralph branch: {lane.branch_name}"
+        )
 
     if not changed_files:
         return LaneCommitResult(status="refused", error="no changes to commit")
 
     for f in changed_files:
         if _is_forbidden_path(policy.forbidden_paths, worktree_path, f):
-            return LaneCommitResult(status="refused", error=f"forbidden file in commit: {f}")
+            return LaneCommitResult(
+                status="refused", error=f"forbidden file in commit: {f}"
+            )
 
     try:
         subprocess.run(
-            ["git", "-C", str(worktree_path), "add"] + [str(worktree_path / f) for f in changed_files],
-            capture_output=True, text=True, timeout=10,
+            ["git", "-C", str(worktree_path), "add"]
+            + [str(worktree_path / f) for f in changed_files],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         result = subprocess.run(
-            ["git", "-C", str(worktree_path), "commit", "-m", f"ralph: lane {lane.lane_id}"],
-            capture_output=True, text=True, timeout=10,
+            [
+                "git",
+                "-C",
+                str(worktree_path),
+                "commit",
+                "-m",
+                f"ralph: lane {lane.lane_id}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode != 0:
             return LaneCommitResult(status="failed", error=result.stderr[:200])
 
         sha_result = subprocess.run(
             ["git", "-C", str(worktree_path), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         sha = sha_result.stdout.strip()
         return LaneCommitResult(

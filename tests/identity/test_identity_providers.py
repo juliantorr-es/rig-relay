@@ -31,8 +31,8 @@ from rig_relay.identity.token_store import DevFileTokenStore
 # ── Helpers ──
 
 
-
 pytestmark = [pytest.mark.provider, pytest.mark.integration]
+
 
 def _valid_request(intent_name: str = "identity_status") -> dict[str, Any]:
     return {

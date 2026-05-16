@@ -95,10 +95,7 @@ READ_ONLY_TOOLS: list[MCPTool] = [
     MCPTool(
         name="rig.inspect_schema",
         description="Inspect a Rig schema (mission-envelope, receipt, patch-proposal, consultation).",
-        input_schema={
-            "type": "object",
-            "properties": {"schema": {"type": "string"}},
-        },
+        input_schema={"type": "object", "properties": {"schema": {"type": "string"}}},
         tier=MCPToolTier.READ_ONLY,
     ),
     MCPTool(
@@ -156,9 +153,7 @@ TIER_1_TOOLS: list[MCPTool] = [
         description="Compare council consultation findings across providers. Returns consensus and disagreements.",
         input_schema={
             "type": "object",
-            "properties": {
-                "providers": {"type": "array", "items": {"type": "string"}},
-            },
+            "properties": {"providers": {"type": "array", "items": {"type": "string"}}},
         },
         tier=MCPToolTier.ANALYSIS,
     ),
@@ -213,7 +208,7 @@ TIER_3_TOOLS: list[MCPTool] = [
         },
         tier=MCPToolTier.PATCH_PROPOSAL,
         requires_approval=True,
-    ),
+    )
 ]
 
 # ═══ Tier 4 — Mutation ══════════════════════════════════════════════════
@@ -231,7 +226,7 @@ TIER_4_TOOLS: list[MCPTool] = [
             "required": ["action"],
         },
         tier=MCPToolTier.MUTATION,
-    ),
+    )
 ]
 
 # ═══ Tier 5 — Git / release / publish ═══════════════════════════════════
@@ -250,7 +245,7 @@ TIER_5_TOOLS: list[MCPTool] = [
         },
         tier=MCPToolTier.GIT_RELEASE,
         requires_approval=True,
-    ),
+    )
 ]
 
 # ═══ Aggregates ═════════════════════════════════════════════════════════
@@ -262,12 +257,36 @@ GATED_TOOLS: list[MCPTool] = TIER_3_TOOLS + TIER_4_TOOLS + TIER_5_TOOLS
 # ═══ Resources ══════════════════════════════════════════════════════════
 
 READ_ONLY_RESOURCES: list[MCPResource] = [
-    MCPResource(uri="rig://mission/current", name="Current Mission", description="Active mission envelope."),
-    MCPResource(uri="rig://receipts/latest", name="Latest Receipts", description="Recent coordination receipts."),
-    MCPResource(uri="rig://worktree/status", name="Worktree Status", description="Git worktree state."),
-    MCPResource(uri="rig://schemas/mission-envelope", name="Mission Envelope Schema", description="JSON Schema."),
-    MCPResource(uri="rig://projection/current", name="Current Projection", description="Desktop projection."),
-    MCPResource(uri="rig://council/findings", name="Council Findings", description="Provider opinions."),
+    MCPResource(
+        uri="rig://mission/current",
+        name="Current Mission",
+        description="Active mission envelope.",
+    ),
+    MCPResource(
+        uri="rig://receipts/latest",
+        name="Latest Receipts",
+        description="Recent coordination receipts.",
+    ),
+    MCPResource(
+        uri="rig://worktree/status",
+        name="Worktree Status",
+        description="Git worktree state.",
+    ),
+    MCPResource(
+        uri="rig://schemas/mission-envelope",
+        name="Mission Envelope Schema",
+        description="JSON Schema.",
+    ),
+    MCPResource(
+        uri="rig://projection/current",
+        name="Current Projection",
+        description="Desktop projection.",
+    ),
+    MCPResource(
+        uri="rig://council/findings",
+        name="Council Findings",
+        description="Provider opinions.",
+    ),
 ]
 
 # ═══ Prompts ════════════════════════════════════════════════════════════
@@ -281,7 +300,10 @@ PROMPTS: list[MCPPrompt] = [
     MCPPrompt(
         name="rig.consultation_request",
         description="Create a structured consultation request.",
-        arguments=[{"name": "question", "required": True}, {"name": "providers", "required": False}],
+        arguments=[
+            {"name": "question", "required": True},
+            {"name": "providers", "required": False},
+        ],
     ),
     MCPPrompt(
         name="rig.adversarial_review",

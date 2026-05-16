@@ -20,8 +20,14 @@ def _init_git_repo(tmp_path: Path) -> Path:
     import subprocess
 
     subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True)
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=tmp_path,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True
+    )
 
     # Create some files
     (tmp_path / "README.md").write_text("# Test")
@@ -35,7 +41,9 @@ def _init_git_repo(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text("[project]\nname = 'test'")
 
     subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
-    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "initial"], cwd=tmp_path, capture_output=True
+    )
 
     # Create an untracked file
     (tmp_path / "untracked.txt").write_text("untracked")

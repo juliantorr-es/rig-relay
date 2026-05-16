@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pytest
 
 pytestmark = [pytest.mark.integration]
@@ -53,11 +54,15 @@ def test_current_run_pointer():
 def test_rescan_invalidates_old_current():
     store = InMemoryRalphRunStateStore()
 
-    r1 = RalphRunStateRecord(run_id="run-1", scan_id="scan-1", status="ready", approval_state="pending")
+    r1 = RalphRunStateRecord(
+        run_id="run-1", scan_id="scan-1", status="ready", approval_state="pending"
+    )
     store.save_run_state(r1)
     store.mark_current_run("run-1")
 
-    r2 = RalphRunStateRecord(run_id="run-2", scan_id="scan-2", status="ready", approval_state="pending")
+    r2 = RalphRunStateRecord(
+        run_id="run-2", scan_id="scan-2", status="ready", approval_state="pending"
+    )
     store.save_run_state(r2)
     store.mark_current_run("run-2")
 
@@ -72,7 +77,9 @@ def test_rescan_invalidates_old_current():
 
 def test_expire_run_state():
     store = InMemoryRalphRunStateStore()
-    record = RalphRunStateRecord(run_id="run-1", scan_id="scan-1", status="ready", approval_state="pending")
+    record = RalphRunStateRecord(
+        run_id="run-1", scan_id="scan-1", status="ready", approval_state="pending"
+    )
     store.save_run_state(record)
 
     store.expire_run_state("run-1", "test expiration")
@@ -86,9 +93,9 @@ def test_list_run_states():
     store = InMemoryRalphRunStateStore()
 
     for i in range(5):
-        store.save_run_state(RalphRunStateRecord(
-            run_id=f"run-{i}", scan_id=f"scan-{i}", status="ready",
-        ))
+        store.save_run_state(
+            RalphRunStateRecord(run_id=f"run-{i}", scan_id=f"scan-{i}", status="ready")
+        )
 
     listed = store.list_run_states(limit=3)
     assert len(listed) == 3
@@ -109,8 +116,11 @@ def test_filesystem_save_load_roundtrip(tmp_path):
     store = FilesystemRalphRunStateStore(root=root)
 
     record = RalphRunStateRecord(
-        run_id="fs-run-1", scan_id="scan-1", status="ready",
-        panel_sha256="c" * 64, mission_candidate_sha256="d" * 64,
+        run_id="fs-run-1",
+        scan_id="scan-1",
+        status="ready",
+        panel_sha256="c" * 64,
+        mission_candidate_sha256="d" * 64,
         execution_enabled=False,
     )
     store.save_run_state(record)
@@ -148,9 +158,7 @@ def test_store_protocol():
 def test_execution_always_disabled():
     """State store records: execution_enabled defaults to False."""
     store = InMemoryRalphRunStateStore()
-    record = RalphRunStateRecord(
-        run_id="run-1", scan_id="scan-1", status="ready",
-    )
+    record = RalphRunStateRecord(run_id="run-1", scan_id="scan-1", status="ready")
     assert record.execution_enabled is False
 
     store.save_run_state(record)

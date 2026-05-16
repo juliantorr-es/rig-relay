@@ -1,6 +1,67 @@
 {
-  "schema_version": "rig.documentation_migration_manifest.v1",
+  "schema_version": "rig.documentation.migration_manifest.v1",
   "generated_at": "2026-05-18",
   "policy": "New documentation must be created as canonical JSON artifacts. Old Markdown docs must be migrated to JSON before deletion.",
-  "migrations": []
+  "migrations": [
+    {
+      "old_path": "docs/governance/tracing-doctrine.md",
+      "new_path": "docs/json/governance/tracing_doctrine.v1.json",
+      "status": "migrated",
+      "reason": "Wave 1 governance migration — tracing doctrine",
+      "content_sha256_old": "",
+      "content_sha256_new": "",
+      "references_updated": true,
+      "review_notes": "Markdown preserved."
+    },
+    {
+      "old_path": "docs/governance/test-suite-doctrine.md",
+      "new_path": "docs/json/governance/test_suite_doctrine.v1.json",
+      "status": "migrated",
+      "reason": "Wave 1 governance migration — test suite doctrine",
+      "content_sha256_old": "",
+      "content_sha256_new": "",
+      "references_updated": true,
+      "review_notes": "Markdown preserved."
+    },
+    {
+      "old_path": "docs/governance/storage-retention-policy.md",
+      "new_path": "docs/json/governance/storage_retention_policy.v1.json",
+      "status": "migrated",
+      "reason": "Wave 1 governance migration — storage retention policy",
+      "content_sha256_old": "",
+      "content_sha256_new": "",
+      "references_updated": true,
+      "review_notes": "Markdown preserved."
+    },
+    {
+      "old_path": "docs/governance/agent-loop-boundary.md",
+      "new_path": "docs/json/governance/agent_loop_boundary.v1.json",
+      "status": "migrated",
+      "reason": "Wave 2 architecture migration — agent loop boundary",
+      "content_sha256_old": "",
+      "content_sha256_new": "",
+      "references_updated": true,
+      "review_notes": "Markdown preserved. Component tables, forbidden deps, smell tests preserved."
+    },
+    {
+      "old_path": "docs/governance/tool-runtime-boundary.md",
+      "new_path": "docs/json/governance/tool_runtime_boundary.v1.json",
+      "status": "migrated",
+      "reason": "Wave 2 architecture migration — tool runtime boundary",
+      "content_sha256_old": "",
+      "content_sha256_new": "",
+      "references_updated": true,
+      "review_notes": "Markdown preserved. Layered model, capability boundary, Ralph/HITL separation preserved."
+    },
+    {
+      "old_path": "docs/governance/orchestrator-loop-boundary.md",
+      "new_path": "docs/json/governance/orchestrator_loop_boundary.v1.json",
+      "status": "migrated",
+      "reason": "Wave 2 architecture migration — orchestrator loop boundary",
+      "content_sha256_old": "",
+      "content_sha256_new": "",
+      "references_updated": true,
+      "review_notes": "Markdown preserved. 7 principles, handoff receipt, Phase 3 readiness doctrine preserved."
+    }
+  ]
 }

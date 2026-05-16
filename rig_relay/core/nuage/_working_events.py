@@ -1,4 +1,5 @@
 """Remote workflow event translator mixin — working events."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -57,7 +58,6 @@ class WorkingEventsMixin:
             )
         return events
 
-
     def _working_thinking_events(
         self, task_id: str, working: WorkingState, previous_working: WorkingState
     ) -> list[BaseEvent]:
@@ -73,7 +73,6 @@ class WorkingEventsMixin:
             )
         )
         return [ReasoningEvent(content=delta, message_id=message_id)]
-
 
     def _working_events_with_tool_call(
         self,
@@ -118,7 +117,6 @@ class WorkingEventsMixin:
 
         return events
 
-
     def _working_stream_output(
         self, *, parsed_ui_state: AnyToolUIState | None, content: str
     ) -> Any:
@@ -131,4 +129,3 @@ class WorkingEventsMixin:
         if output is not None:
             return output
         return None
-

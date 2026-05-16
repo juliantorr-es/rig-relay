@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pytest
 
 pytestmark = [pytest.mark.integration]
@@ -61,9 +62,7 @@ def test_event_sha256_stable():
 def test_execution_always_disabled():
     """Desktop events: execution_enabled defaults to False."""
     event = DesktopEventRecord(
-        event_name="rig.desktop.ralph.approval.accepted",
-        ok=True,
-        status="completed",
+        event_name="rig.desktop.ralph.approval.accepted", ok=True, status="completed"
     )
     assert event.execution_enabled is False
 

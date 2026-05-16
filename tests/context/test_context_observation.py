@@ -53,7 +53,9 @@ class TestContextObservationModel:
     def test_extra_fields_rejected(self) -> None:
         with pytest.raises(ValidationError):
             ContextObservation.model_validate({
-                "tool_name": "t", "tool_status": "succeeded", "unknown": "x"
+                "tool_name": "t",
+                "tool_status": "succeeded",
+                "unknown": "x",
             })
 
     def test_constructs_with_defaults(self) -> None:
@@ -67,9 +69,7 @@ class TestContextObservationModel:
 
     def test_json_round_trip(self) -> None:
         obs = ContextObservation(
-            tool_name="grep",
-            target_paths=["src/"],
-            tool_status="succeeded",
+            tool_name="grep", target_paths=["src/"], tool_status="succeeded"
         )
         data = json.loads(obs.model_dump_json())
         restored = ContextObservation.model_validate(data)

@@ -91,11 +91,13 @@ def main() -> None:
     from rig_relay.acp.acp_agent_loop import run_acp_server
     from rig_relay.core.config import VibeConfig, load_dotenv_values
     from rig_relay.core.tracing import setup_tracing
+
     load_dotenv_values()
     bootstrap_config_files()
     args = parse_arguments()
     if args.setup:
         from rig_relay.setup.onboarding import run_onboarding
+
         run_onboarding(
             entrypoint_metadata=build_entrypoint_metadata(
                 agent_entrypoint="acp",

@@ -15,7 +15,15 @@ from typing import Any
 
 
 class ProbeCheck:
-    __slots__ = ("name", "condition", "expected", "actual", "hint", "attributes", "passed")
+    __slots__ = (
+        "name",
+        "condition",
+        "expected",
+        "actual",
+        "hint",
+        "attributes",
+        "passed",
+    )
 
     def __init__(
         self,
@@ -49,7 +57,9 @@ class ProbeReport:
         hint: str | None = None,
         attributes: dict[str, object] | None = None,
     ) -> None:
-        self.checks.append(ProbeCheck(name, condition, expected, actual, hint, attributes))
+        self.checks.append(
+            ProbeCheck(name, condition, expected, actual, hint, attributes)
+        )
 
     @property
     def passed(self) -> bool:
@@ -62,7 +72,9 @@ class ProbeReport:
     def assert_all_passed(self, message: str | None = None) -> None:
         if self.passed:
             return
-        lines = [message or f"probe checks failed ({self.failed_count}/{len(self.checks)}):"]
+        lines = [
+            message or f"probe checks failed ({self.failed_count}/{len(self.checks)}):"
+        ]
         for i, c in enumerate(self.checks):
             if c.passed:
                 lines.append(f"  {i}:{c.name} PASSED")

@@ -32,7 +32,9 @@ def ask_trust_folder(cwd: Path, detected_files: list[Path]) -> bool:
         )
     )
     rprint()
-    rprint("[bold]Trust this directory?[/] ([green]y[/]/[red]n[/], default: n): ", end="")
+    rprint(
+        "[bold]Trust this directory?[/] ([green]y[/]/[red]n[/], default: n): ", end=""
+    )
     try:
         choice = input().strip().lower()
     except (EOFError, KeyboardInterrupt):

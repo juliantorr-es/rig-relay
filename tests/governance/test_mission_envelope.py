@@ -17,8 +17,8 @@ SCHEMA_PATH = (
 )
 
 
-
 pytestmark = [pytest.mark.integration]
+
 
 def _schema() -> dict:
     return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))

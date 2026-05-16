@@ -32,7 +32,9 @@ class FleetMission(BaseModel):
     agent_profile: str  # cleaner, builder, bug-exterminator, explore
     priority: int = 0
     depends_on: list[str] = Field(default_factory=list)
-    status: Literal["planned", "queued", "running", "completed", "failed", "blocked"] = "planned"
+    status: Literal[
+        "planned", "queued", "running", "completed", "failed", "blocked"
+    ] = "planned"
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     completed_at: str | None = None
     output_sha256: str | None = None

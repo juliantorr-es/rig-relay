@@ -166,9 +166,7 @@ class RigACPAgent:
     async def create_session(self, mission_id: str | None = None) -> ACPSessionInfo:
         session_id = f"acp-{datetime.now(UTC).timestamp():.0f}"
         session = ACPSessionInfo(
-            session_id=session_id,
-            mission_id=mission_id,
-            status=ACPSessionStatus.IDLE,
+            session_id=session_id, mission_id=mission_id, status=ACPSessionStatus.IDLE
         )
         self._sessions[session_id] = session
         return session
@@ -180,7 +178,9 @@ class RigACPAgent:
         if session := self._sessions.get(session_id):
             session.status = status
 
-    async def create_plan(self, session_id: str, title: str, phases: list[dict[str, Any]]) -> ACPPlan:
+    async def create_plan(
+        self, session_id: str, title: str, phases: list[dict[str, Any]]
+    ) -> ACPPlan:
         return ACPPlan(
             plan_id=f"plan-{datetime.now(UTC).timestamp():.0f}",
             session_id=session_id,
@@ -190,11 +190,7 @@ class RigACPAgent:
         )
 
     async def propose_edit(
-        self,
-        session_id: str,
-        title: str,
-        summary: str,
-        touched_paths: list[str],
+        self, session_id: str, title: str, summary: str, touched_paths: list[str]
     ) -> ACPEditProposal:
         return ACPEditProposal(
             proposal_id=f"prop-{datetime.now(UTC).timestamp():.0f}",

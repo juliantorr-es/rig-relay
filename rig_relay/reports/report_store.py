@@ -32,13 +32,25 @@ REPORT_KINDS = frozenset({
 SEVERITY_LEVELS = frozenset({"low", "medium", "high", "critical"})
 CONFIDENCE_LEVELS = frozenset({"low", "medium", "high", "confirmed"})
 SCOPE_RELATIONS = frozenset({
-    "in_scope", "out_of_scope_for_current_mission",
-    "adjacent", "regression", "pre_existing",
+    "in_scope",
+    "out_of_scope_for_current_mission",
+    "adjacent",
+    "regression",
+    "pre_existing",
 })
 STATUSES = frozenset({
-    "open", "acknowledged", "triaged", "accepted", "deferred",
-    "blocked", "in_progress", "resolved", "wont_fix",
-    "superseded", "duplicate", "invalid",
+    "open",
+    "acknowledged",
+    "triaged",
+    "accepted",
+    "deferred",
+    "blocked",
+    "in_progress",
+    "resolved",
+    "wont_fix",
+    "superseded",
+    "duplicate",
+    "invalid",
 })
 
 
@@ -66,8 +78,7 @@ def compute_report_sha256(report: dict[str, Any]) -> str:
 
 
 def write_report_to_ledger(
-    report: dict[str, Any],
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
+    report: dict[str, Any], ledger_path: Path = DEFAULT_LEDGER_PATH
 ) -> Path:
     """Append a report to the JSONL ledger. Creates the directory if needed.
 
@@ -81,8 +92,7 @@ def write_report_to_ledger(
 
 
 def find_existing_report(
-    dedupe_key: str,
-    ledger_path: Path = DEFAULT_LEDGER_PATH,
+    dedupe_key: str, ledger_path: Path = DEFAULT_LEDGER_PATH
 ) -> dict[str, Any] | None:
     """Check if a report with the given dedupe_key already exists.
 

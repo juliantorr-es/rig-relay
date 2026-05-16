@@ -42,7 +42,9 @@ def scan_worktrees(workspace_root: Path | None = None) -> list[ActiveLane]:
 
         # Check for dirty files in the worktree
         dirty_paths = list(entry.rglob("*"))
-        lane.dirty_paths = [str(p.relative_to(root)) for p in dirty_paths if p.is_file()][:20]
+        lane.dirty_paths = [
+            str(p.relative_to(root)) for p in dirty_paths if p.is_file()
+        ][:20]
 
         lanes.append(lane)
 
@@ -82,8 +84,7 @@ def scan_work_ledger(workspace_root: Path | None = None) -> list[ActiveLane]:
 
 
 def compute_collision_warnings(
-    requested_paths: list[str],
-    active_lanes: list[ActiveLane],
+    requested_paths: list[str], active_lanes: list[ActiveLane]
 ) -> list[CollisionWarning]:
     """Check if any requested paths overlap with active lanes' claimed paths.
 
@@ -97,20 +98,21 @@ def compute_collision_warnings(
         for lane in active_lanes:
             for cp in lane.claimed_paths:
                 if cp in rp or rp in cp:
-                    warnings.append(CollisionWarning(
-                        path=rp,
-                        claimed_by=lane.agent_id or lane.mission_id or "unknown",
-                        reason=f"Path '{rp}' overlaps with claimed path '{cp}' "
-                        f"in {lane.status} lane. Read-only inspection recommended.",
-                    ))
+                    warnings.append(
+                        CollisionWarning(
+                            path=rp,
+                            claimed_by=lane.agent_id or lane.mission_id or "unknown",
+                            reason=f"Path '{rp}' overlaps with claimed path '{cp}' "
+                            f"in {lane.status} lane. Read-only inspection recommended.",
+                        )
+                    )
                     break
 
     return warnings
 
 
 def build_active_work(
-    workspace_root: Path | None = None,
-    requested_paths: list[str] | None = None,
+    workspace_root: Path | None = None, requested_paths: list[str] | None = None
 ) -> dict[str, Any]:
     """Build the active work section of a context packet.
 

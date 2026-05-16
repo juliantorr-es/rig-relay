@@ -64,8 +64,7 @@ async def fetch_openai_models(
     """
     async with httpx.AsyncClient(timeout=_MODEL_LIST_TIMEOUT) as client:
         resp = await client.get(
-            f"{base_url}/models",
-            headers={"Authorization": f"Bearer {api_key}"},
+            f"{base_url}/models", headers={"Authorization": f"Bearer {api_key}"}
         )
         resp.raise_for_status()
         data = resp.json()
@@ -175,8 +174,7 @@ async def fetch_openrouter_models(
     """
     async with httpx.AsyncClient(timeout=_MODEL_LIST_TIMEOUT) as client:
         resp = await client.get(
-            f"{base_url}/models",
-            headers={"Authorization": f"Bearer {api_key}"},
+            f"{base_url}/models", headers={"Authorization": f"Bearer {api_key}"}
         )
         resp.raise_for_status()
         data = resp.json()
@@ -191,17 +189,20 @@ async def fetch_openrouter_models(
         input_price = _parse_price(pricing.get("prompt", 0))
         output_price = _parse_price(pricing.get("completion", 0))
 
-        models.append(ModelCapabilities(
-            id=model_id,
-            provider="openrouter",
-            context_window=_openrouter_context_window(item),
-            supports_vision="vision" in model_id.lower() or "vl" in model_id.lower(),
-            supports_tools=True,
-            input_price_per_million=input_price,
-            output_price_per_million=output_price,
-            pricing_source="openrouter_api",
-            raw=item,
-        ))
+        models.append(
+            ModelCapabilities(
+                id=model_id,
+                provider="openrouter",
+                context_window=_openrouter_context_window(item),
+                supports_vision="vision" in model_id.lower()
+                or "vl" in model_id.lower(),
+                supports_tools=True,
+                input_price_per_million=input_price,
+                output_price_per_million=output_price,
+                pricing_source="openrouter_api",
+                raw=item,
+            )
+        )
     return models
 
 
@@ -240,10 +241,7 @@ async def fetch_anthropic_models(
     async with httpx.AsyncClient(timeout=_MODEL_LIST_TIMEOUT) as client:
         resp = await client.get(
             f"{base_url}/models",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
+            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
         )
         resp.raise_for_status()
         data = resp.json()
@@ -391,8 +389,7 @@ async def fetch_deepseek_models(
     """Fetch models from DeepSeek (OpenAI-compatible endpoint)."""
     async with httpx.AsyncClient(timeout=_MODEL_LIST_TIMEOUT) as client:
         resp = await client.get(
-            f"{base_url}/v1/models",
-            headers={"Authorization": f"Bearer {api_key}"},
+            f"{base_url}/v1/models", headers={"Authorization": f"Bearer {api_key}"}
         )
         resp.raise_for_status()
         data = resp.json()
@@ -453,8 +450,7 @@ async def fetch_mistral_models(
     """Fetch models from Mistral AI."""
     async with httpx.AsyncClient(timeout=_MODEL_LIST_TIMEOUT) as client:
         resp = await client.get(
-            f"{base_url}/models",
-            headers={"Authorization": f"Bearer {api_key}"},
+            f"{base_url}/models", headers={"Authorization": f"Bearer {api_key}"}
         )
         resp.raise_for_status()
         data = resp.json()
@@ -516,9 +512,7 @@ def _mistral_output_price(model_id: str) -> float:
 
 
 async def discover_models(
-    provider_name: str,
-    api_key: str,
-    base_url: str | None = None,
+    provider_name: str, api_key: str, base_url: str | None = None
 ) -> list[ModelCapabilities]:
     """Fetch models from a provider's API, returning normalized capabilities.
 

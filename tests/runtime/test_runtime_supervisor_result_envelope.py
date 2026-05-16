@@ -19,7 +19,9 @@ from rig_relay.tracing.recorder import TraceRecorder
 from rig_relay.tracing.store import InMemoryTraceStore
 
 
-def _invoker(*, trace_recorder: TraceRecorder | None = None) -> SupervisorCommandInvoker:
+def _invoker(
+    *, trace_recorder: TraceRecorder | None = None
+) -> SupervisorCommandInvoker:
     return SupervisorCommandInvoker(trace_recorder=trace_recorder)
 
 
@@ -72,13 +74,14 @@ def test_builder_is_pure_and_privacy_safe() -> None:
 @pytest.mark.asyncio
 async def test_success_envelope(tmp_path: Path) -> None:
     result = await _invoker().invoke(
-        ["python", "-c", "print('ok')"],
-        cwd=tmp_path,
-        timeout_seconds=5,
+        ["python", "-c", "print('ok')"], cwd=tmp_path, timeout_seconds=5
     )
     assert result.status == "completed"
     assert result.result_envelope is not None
-    assert result.result_envelope.classification == RuntimeSupervisorResultClassification.COMPLETED
+    assert (
+        result.result_envelope.classification
+        == RuntimeSupervisorResultClassification.COMPLETED
+    )
     assert result.result_envelope.state == "completed"
 
 
@@ -87,12 +90,13 @@ async def test_nonzero_timeout_and_spawn_failure_envelopes(tmp_path: Path) -> No
     invoker = _invoker()
 
     nonzero = await invoker.invoke(
-        ["python", "-c", "import sys; sys.exit(3)"],
-        cwd=tmp_path,
-        timeout_seconds=5,
+        ["python", "-c", "import sys; sys.exit(3)"], cwd=tmp_path, timeout_seconds=5
     )
     assert nonzero.result_envelope is not None
-    assert nonzero.result_envelope.classification == RuntimeSupervisorResultClassification.FAILED
+    assert (
+        nonzero.result_envelope.classification
+        == RuntimeSupervisorResultClassification.FAILED
+    )
 
     timed_out = await invoker.invoke(
         ["python", "-c", "import time; time.sleep(2)"],
@@ -100,16 +104,20 @@ async def test_nonzero_timeout_and_spawn_failure_envelopes(tmp_path: Path) -> No
         timeout_seconds=0.1,
     )
     assert timed_out.result_envelope is not None
-    assert timed_out.result_envelope.classification == RuntimeSupervisorResultClassification.TIMED_OUT
+    assert (
+        timed_out.result_envelope.classification
+        == RuntimeSupervisorResultClassification.TIMED_OUT
+    )
     assert timed_out.result_envelope.resource_usage.timed_out is True
 
     spawn_failed = await invoker.invoke(
-        ["definitely-not-a-real-binary-12345"],
-        cwd=tmp_path,
-        timeout_seconds=1,
+        ["definitely-not-a-real-binary-12345"], cwd=tmp_path, timeout_seconds=1
     )
     assert spawn_failed.result_envelope is not None
-    assert spawn_failed.result_envelope.classification == RuntimeSupervisorResultClassification.SPAWN_FAILED
+    assert (
+        spawn_failed.result_envelope.classification
+        == RuntimeSupervisorResultClassification.SPAWN_FAILED
+    )
 
 
 @pytest.mark.asyncio
@@ -130,7 +138,10 @@ async def test_cancelled_envelope_and_trace_alignment(tmp_path: Path) -> None:
     assert result.status == "failed"
     assert result.refusal_code == "cancelled"
     assert result.result_envelope is not None
-    assert result.result_envelope.classification == RuntimeSupervisorResultClassification.CANCELLED
+    assert (
+        result.result_envelope.classification
+        == RuntimeSupervisorResultClassification.CANCELLED
+    )
     span_ends = [event for event in store.events if event["event_kind"] == "span.end"]
     assert span_ends
     assert any(

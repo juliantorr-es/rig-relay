@@ -9,6 +9,7 @@ from rig_relay.core.telemetry.constants import EventName
 
 try:
     import duckdb
+
     HAS_DUCKDB = True
 except ImportError:
     HAS_DUCKDB = False
@@ -94,6 +95,7 @@ class DuckDBProjection:
         if not HAS_DUCKDB:
             return summary
         import duckdb
+
         file_paths = [str(p) for p in log_files]
         con = duckdb.connect(database=":memory:")
 

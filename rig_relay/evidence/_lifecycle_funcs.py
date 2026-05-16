@@ -68,8 +68,6 @@ _CATEGORY_RULES: tuple[tuple[SessionStorageCategory, tuple[str, ...], bool], ...
 )
 
 
-
-
 def _resolve_sessions_root(root: Path | None) -> Path:
     if root is not None:
         return root.expanduser()

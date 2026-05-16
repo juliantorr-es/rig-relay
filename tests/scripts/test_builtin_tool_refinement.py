@@ -16,6 +16,7 @@ from scripts.rig_relay_builtin_tool_refinement import (
 
 pytestmark = [pytest.mark.migration]
 
+
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:

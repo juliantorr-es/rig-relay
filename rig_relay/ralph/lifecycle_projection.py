@@ -15,9 +15,19 @@ from pydantic import BaseModel, ConfigDict, Field
 LIFECYCLE_VERSION = "rig.ui.ralph_background_lifecycle.v1"
 
 LANE_STATUSES = [
-    "proposed", "lane_start_pending", "lane_start_approved",
-    "worktree_created", "active", "committed", "sealed",
-    "review_pending", "adoption_proposed", "adopted", "rejected", "expired", "failed",
+    "proposed",
+    "lane_start_pending",
+    "lane_start_approved",
+    "worktree_created",
+    "active",
+    "committed",
+    "sealed",
+    "review_pending",
+    "adoption_proposed",
+    "adopted",
+    "rejected",
+    "expired",
+    "failed",
 ]
 
 
@@ -79,12 +89,30 @@ class RalphLifecycleProjection(BaseModel):
 
     generated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
-    available_actions: list[dict[str, str | bool]] = Field(default_factory=lambda: [
-        {"action": "ralph_background_toggle_on", "label": "Enable background lanes", "requires_confirmation": True},
-        {"action": "ralph_background_toggle_off", "label": "Disable background lanes", "requires_confirmation": True},
-        {"action": "ralph_lane_propose", "label": "Propose lane from candidate", "requires_confirmation": True},
-        {"action": "ralph_review_finished_lanes", "label": "Review finished lanes", "requires_confirmation": False},
-    ])
+    available_actions: list[dict[str, str | bool]] = Field(
+        default_factory=lambda: [
+            {
+                "action": "ralph_background_toggle_on",
+                "label": "Enable background lanes",
+                "requires_confirmation": True,
+            },
+            {
+                "action": "ralph_background_toggle_off",
+                "label": "Disable background lanes",
+                "requires_confirmation": True,
+            },
+            {
+                "action": "ralph_lane_propose",
+                "label": "Propose lane from candidate",
+                "requires_confirmation": True,
+            },
+            {
+                "action": "ralph_review_finished_lanes",
+                "label": "Review finished lanes",
+                "requires_confirmation": False,
+            },
+        ]
+    )
 
 
 def build_lifecycle_projection(
@@ -103,31 +131,47 @@ def build_lifecycle_projection(
     gates = [
         LifecycleGateStatus(
             name="Worktree creation",
-            allowed=p.allow_isolated_worktree_creation if hasattr(p, 'allow_isolated_worktree_creation') else False,
-            label="allowed" if getattr(p, 'allow_isolated_worktree_creation', False) else "blocked",
+            allowed=p.allow_isolated_worktree_creation
+            if hasattr(p, "allow_isolated_worktree_creation")
+            else False,
+            label="allowed"
+            if getattr(p, "allow_isolated_worktree_creation", False)
+            else "blocked",
             requires="background policy",
         ),
         LifecycleGateStatus(
             name="Lane execution",
-            allowed=p.allow_isolated_lane_execution if hasattr(p, 'allow_isolated_lane_execution') else False,
-            label="allowed" if getattr(p, 'allow_isolated_lane_execution', False) else "blocked",
+            allowed=p.allow_isolated_lane_execution
+            if hasattr(p, "allow_isolated_lane_execution")
+            else False,
+            label="allowed"
+            if getattr(p, "allow_isolated_lane_execution", False)
+            else "blocked",
             requires="lane_start_approved",
         ),
         LifecycleGateStatus(
             name="Ralph branch commits",
-            allowed=p.allow_ralph_branch_commits if hasattr(p, 'allow_ralph_branch_commits') else False,
-            label="allowed" if getattr(p, 'allow_ralph_branch_commits', False) else "blocked",
+            allowed=p.allow_ralph_branch_commits
+            if hasattr(p, "allow_ralph_branch_commits")
+            else False,
+            label="allowed"
+            if getattr(p, "allow_ralph_branch_commits", False)
+            else "blocked",
             requires="isolated lane + policy",
         ),
         LifecycleGateStatus(
             name="Adoption merge",
-            allowed=p.allow_adoption_merge if hasattr(p, 'allow_adoption_merge') else False,
+            allowed=p.allow_adoption_merge
+            if hasattr(p, "allow_adoption_merge")
+            else False,
             label="requires adoption approval",
             requires="human approval + SHA match",
         ),
         LifecycleGateStatus(
             name="Push to preproduction",
-            allowed=p.allow_push_to_preproduction if hasattr(p, 'allow_push_to_preproduction') else False,
+            allowed=p.allow_push_to_preproduction
+            if hasattr(p, "allow_push_to_preproduction")
+            else False,
             label="requires preproduction approval",
             requires="human approval + validations",
         ),
@@ -170,11 +214,11 @@ def build_lifecycle_projection(
     return RalphLifecycleProjection(
         background_enabled=p.enabled,
         isolated_lane_execution_enabled=(
-            getattr(p, 'allow_isolated_lane_execution', False)
+            getattr(p, "allow_isolated_lane_execution", False)
         ),
         live_runtime_mutation_enabled=False,
-        merge_enabled=getattr(p, 'allow_adoption_merge', False),
-        push_enabled=getattr(p, 'allow_push_to_preproduction', False),
+        merge_enabled=getattr(p, "allow_adoption_merge", False),
+        push_enabled=getattr(p, "allow_push_to_preproduction", False),
         active_lane_count=len(active),
         completed_lane_count=len(completed),
         pending_review_count=len(completed),

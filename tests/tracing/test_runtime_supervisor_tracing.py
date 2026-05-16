@@ -14,7 +14,9 @@ from rig_relay.tracing.recorder import TraceRecorder
 from rig_relay.tracing.store import InMemoryTraceStore
 
 
-def _request(*, argv: list[str], cwd: Path, timeout_ms: int = 10_000) -> ExecutionRequest:
+def _request(
+    *, argv: list[str], cwd: Path, timeout_ms: int = 10_000
+) -> ExecutionRequest:
     return ExecutionRequest(
         request_id="req-trace-001",
         argv=argv,
@@ -29,7 +31,9 @@ def tmp_dir(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _lease(request: ExecutionRequest, *, expires_delta: timedelta = timedelta(hours=1)) -> ExecutionLease:
+def _lease(
+    request: ExecutionRequest, *, expires_delta: timedelta = timedelta(hours=1)
+) -> ExecutionLease:
     now = datetime.now(UTC)
     return ExecutionLease(
         lease_id=request.request_id,
@@ -58,12 +62,18 @@ async def test_nonzero_exit_emits_failure_status(tmp_dir: Path) -> None:
     store = InMemoryTraceStore()
     recorder = TraceRecorder(store)
     supervisor = RuntimeSupervisor(trace_recorder=recorder)
-    lease = _lease(_request(argv=["python", "-c", "import sys; sys.exit(3)"], cwd=tmp_dir))
+    lease = _lease(
+        _request(argv=["python", "-c", "import sys; sys.exit(3)"], cwd=tmp_dir)
+    )
 
     events = [event async for event in supervisor.execute(lease)]
     assert isinstance(events[-1], RuntimeCompletionEvent)
     assert events[-1].status.value == "failed"
-    assert any(event["status"] == "error" for event in store.events if event["event_kind"] == "span.end")
+    assert any(
+        event["status"] == "error"
+        for event in store.events
+        if event["event_kind"] == "span.end"
+    )
 
 
 @pytest.mark.asyncio
@@ -72,13 +82,21 @@ async def test_timeout_emits_timed_out_status(tmp_dir: Path) -> None:
     recorder = TraceRecorder(store)
     supervisor = RuntimeSupervisor(trace_recorder=recorder)
     lease = _lease(
-        _request(argv=["python", "-c", "import time; time.sleep(2)"], cwd=tmp_dir, timeout_ms=100)
+        _request(
+            argv=["python", "-c", "import time; time.sleep(2)"],
+            cwd=tmp_dir,
+            timeout_ms=100,
+        )
     )
 
     events = [event async for event in supervisor.execute(lease)]
     assert isinstance(events[-1], RuntimeFailureEvent)
     assert events[-1].status.value == "timed_out"
-    assert any(event["status"] == "timed_out" for event in store.events if event["event_kind"] == "span.end")
+    assert any(
+        event["status"] == "timed_out"
+        for event in store.events
+        if event["event_kind"] == "span.end"
+    )
 
 
 @pytest.mark.asyncio
@@ -86,7 +104,9 @@ async def test_trace_has_no_raw_stdout_or_stderr(tmp_dir: Path) -> None:
     store = InMemoryTraceStore()
     recorder = TraceRecorder(store)
     supervisor = RuntimeSupervisor(trace_recorder=recorder)
-    lease = _lease(_request(argv=["python", "-c", "print('secret-output')"], cwd=tmp_dir))
+    lease = _lease(
+        _request(argv=["python", "-c", "print('secret-output')"], cwd=tmp_dir)
+    )
 
     await _collect(supervisor, lease)
     dumped = [str(event) for event in store.events]

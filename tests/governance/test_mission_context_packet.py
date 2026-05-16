@@ -28,8 +28,8 @@ RECEIPT_SCHEMA_PATH = (
 )
 
 
-
 pytestmark = [pytest.mark.integration]
+
 
 def _packet(**overrides: object) -> MissionContextPacket:
     base: dict[str, object] = dict(

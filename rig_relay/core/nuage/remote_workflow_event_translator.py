@@ -164,7 +164,13 @@ def _remote_tool_class(tool_name: str) -> type[_RemoteTool]:
     return tool_class
 
 
-class RemoteWorkflowEventTranslator(ToolEventsMixin, OutputNormalizationMixin, InputEventsMixin, WorkingEventsMixin, JsonHelpersMixin):
+class RemoteWorkflowEventTranslator(
+    ToolEventsMixin,
+    OutputNormalizationMixin,
+    InputEventsMixin,
+    WorkingEventsMixin,
+    JsonHelpersMixin,
+):
     def __init__(
         self,
         *,
@@ -198,22 +204,16 @@ class RemoteWorkflowEventTranslator(ToolEventsMixin, OutputNormalizationMixin, I
         return cls.remote_name
 
     @classmethod
-
-
     def get_status_text(cls) -> str:
         return f"Running {cls.remote_name}"
 
     @classmethod
-
-
     def format_call_display(cls, args: RemoteToolArgs) -> Any:
         from rig_relay.core.tools.ui import ToolCallDisplay
 
         return ToolCallDisplay(summary=args.summary or cls.remote_name)
 
     @classmethod
-
-
     def get_result_display(cls, event: ToolResultEvent) -> Any:
         from rig_relay.core.tools.ui import ToolResultDisplay
 
@@ -252,8 +252,6 @@ def _remote_tool_class(tool_name: str) -> type[_RemoteTool]:
 
 
 class RemoteWorkflowEventTranslator:
-
-
     def __init__(
         self,
         *,
@@ -280,30 +278,20 @@ class RemoteWorkflowEventTranslator:
         self._last_status: WorkflowExecutionStatus | None = None
 
     @property
-
-
     def pending_input_request(self) -> PendingInputRequest | None:
         return self._pending_input_request
 
     @pending_input_request.setter
-
-
     def pending_input_request(self, value: PendingInputRequest | None) -> None:
         self._pending_input_request = value
 
     @property
-
-
     def last_status(self) -> WorkflowExecutionStatus | None:
         return self._last_status
 
     @property
-
-
     def task_state(self) -> dict[str, dict[str, Any]]:
         return self._task_state
-
-
 
     def consume_workflow_event(self, event: WorkflowEvent) -> list[BaseEvent]:
         if self._consume_workflow_lifecycle_event(event):
@@ -327,8 +315,6 @@ class RemoteWorkflowEventTranslator:
             return []
 
         return self._consume_agent_task_event(event)
-
-
 
     def is_idle_boundary(self, event: WorkflowEvent) -> bool:
         if isinstance(
@@ -356,8 +342,6 @@ class RemoteWorkflowEventTranslator:
         state = self._task_state.get(event.attributes.custom_task_id, {})
         return state.get("input") is None
 
-
-
     def flush_open_tool_calls(self) -> list[BaseEvent]:
         events: list[BaseEvent] = []
         for tool_call_id, tool_name in list(self._open_tool_calls.items()):
@@ -371,8 +355,6 @@ class RemoteWorkflowEventTranslator:
             )
         self._open_tool_calls.clear()
         return events
-
-
 
     def _consume_workflow_lifecycle_event(self, event: WorkflowEvent) -> bool:
         if isinstance(event, WorkflowExecutionCompleted):
@@ -392,8 +374,6 @@ class RemoteWorkflowEventTranslator:
 
         return False
 
-
-
     def _consume_wait_for_input_event(
         self, event: WorkflowEvent
     ) -> list[BaseEvent] | None:
@@ -411,8 +391,6 @@ class RemoteWorkflowEventTranslator:
         ):
             return None
         return self._wait_for_input_terminal_events(event)
-
-
 
     def _consume_agent_task_event(
         self,
@@ -458,8 +436,6 @@ class RemoteWorkflowEventTranslator:
                 self._input_events(task_id, state)
         return events
 
-
-
     def _wait_for_input_started_events(
         self, event: CustomTaskStarted
     ) -> list[BaseEvent] | None:
@@ -490,8 +466,6 @@ class RemoteWorkflowEventTranslator:
         )
         return events
 
-
-
     def _steer_wait_for_input_started(
         self, event: CustomTaskStarted, payload_value: Any
     ) -> list[BaseEvent]:
@@ -504,8 +478,6 @@ class RemoteWorkflowEventTranslator:
                 self._invalid_steer_task_ids.add(task_id)
                 raise
         return []
-
-
 
     def _steer_wait_for_input_terminal(
         self,
@@ -528,8 +500,6 @@ class RemoteWorkflowEventTranslator:
             return self._completed_wait_for_input_events(payload_value)
         return []
 
-
-
     def _set_pending_input_request(
         self, task_id: str, payload_value: dict[str, Any]
     ) -> None:
@@ -538,22 +508,16 @@ class RemoteWorkflowEventTranslator:
             **payload_value,
         })
 
-
-
     def _wait_for_input_label(self, payload_value: Any) -> str | None:
         if not isinstance(payload_value, dict):
             return None
         label = payload_value.get("label")
         return label if isinstance(label, str) else None
 
-
-
     def _is_steer_wait_for_input(self, task_id: str, payload_value: Any) -> bool:
         if task_id in self._steer_task_ids:
             return True
         return self._wait_for_input_label(payload_value) == _STEER_INPUT_LABEL
-
-
 
     def _wait_for_input_terminal_events(
         self,
@@ -594,8 +558,6 @@ class RemoteWorkflowEventTranslator:
         )
         return events
 
-
-
     def _completed_wait_for_input_events(
         self, payload_value: Any, ask_user_question_call_id: str | None = None
     ) -> list[BaseEvent]:
@@ -630,8 +592,6 @@ class RemoteWorkflowEventTranslator:
         )
         return events
 
-
-
     def _get_current_state(
         self, event: CustomTaskStarted | CustomTaskInProgress | CustomTaskCompleted
     ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -646,8 +606,6 @@ class RemoteWorkflowEventTranslator:
         self._task_state[task_id] = new_state
         return previous_state, new_state
 
-
-
     def _agent_task_terminal_events(
         self, event: CustomTaskFailed | CustomTaskTimedOut | CustomTaskCanceled
     ) -> list[BaseEvent]:
@@ -658,14 +616,10 @@ class RemoteWorkflowEventTranslator:
         state = self._task_state.get(task_id, {})
         return self._tool_terminal_events(task_id, state, event)
 
-
-
     def _normalize_state(self, value: Any) -> dict[str, Any]:
         if isinstance(value, dict):
             return dict(value)
         return {}
-
-
 
     def _apply_json_patch(
         self, previous_state: dict[str, Any], payload: JSONPatchPayload
@@ -689,8 +643,6 @@ class RemoteWorkflowEventTranslator:
                     pass
 
         return new_state
-
-
 
     def _completion_events(
         self, task_id: str, previous_state: dict[str, Any], state: dict[str, Any]
@@ -740,8 +692,6 @@ class RemoteWorkflowEventTranslator:
             events.append(AssistantEvent(content=content_delta, message_id=message_id))
         return events
 
-
-
     def _assistant_message_events(
         self, task_id: str, previous_state: dict[str, Any], state: dict[str, Any]
     ) -> list[BaseEvent]:
@@ -764,15 +714,11 @@ class RemoteWorkflowEventTranslator:
         )
         return [AssistantEvent(content=delta, message_id=message_id)]
 
-
-
     def _extract_content_chunks_text(self, state: dict[str, Any]) -> str:
         msg = AssistantMessageState.model_validate(state)
         return "".join(
             chunk.text for chunk in msg.contentChunks if chunk.type == "text"
         )
-
-
 
     def _working_events(
         self,
@@ -801,5 +747,3 @@ class RemoteWorkflowEventTranslator:
         return self._working_events_with_tool_call(
             task_id, working, parsed_ui_state, tool_call_id, event
         )
-
-

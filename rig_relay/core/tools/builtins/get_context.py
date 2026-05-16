@@ -59,16 +59,13 @@ class GetContextArgs(BaseModel):
         "handoff (agent transfer), collision (path conflict check), symbols (symbol table).",
     )
     mission_id: str | None = Field(
-        default=None,
-        description="Optional mission identifier for scoping context.",
+        default=None, description="Optional mission identifier for scoping context."
     )
     agent_id: str | None = Field(
-        default=None,
-        description="Optional agent identifier for scoping context.",
+        default=None, description="Optional agent identifier for scoping context."
     )
     scope_paths: list[str] = Field(
-        default_factory=list,
-        description="Optional path prefixes to scope the context.",
+        default_factory=list, description="Optional path prefixes to scope the context."
     )
     scope_symbols: list[str] = Field(
         default_factory=list,
@@ -79,16 +76,14 @@ class GetContextArgs(BaseModel):
     include_receipts: bool = True
     include_other_agents: bool = True
     max_tokens: int = Field(
-        default=60000,
-        description="Maximum estimated tokens for the context output.",
+        default=60000, description="Maximum estimated tokens for the context output."
     )
     compression: str = Field(
         default="none",
         description="Compression mode: none, light, symbol_substitution, aggressive.",
     )
     detail: str = Field(
-        default="standard",
-        description="Detail level: summary, standard, deep.",
+        default="standard", description="Detail level: summary, standard, deep."
     )
 
     @field_validator("mode")
@@ -96,7 +91,9 @@ class GetContextArgs(BaseModel):
     def _validate_mode(cls, v: str) -> str:
         valid = {"map", "packet", "handoff", "collision", "symbols"}
         if v not in valid:
-            raise ValueError(f"Invalid mode '{v}'. Must be one of: {', '.join(sorted(valid))}")
+            raise ValueError(
+                f"Invalid mode '{v}'. Must be one of: {', '.join(sorted(valid))}"
+            )
         return v
 
     @field_validator("compression")
@@ -104,7 +101,9 @@ class GetContextArgs(BaseModel):
     def _validate_compression(cls, v: str) -> str:
         valid = {"none", "light", "symbol_substitution", "aggressive"}
         if v not in valid:
-            raise ValueError(f"Invalid compression '{v}'. Must be one of: {', '.join(sorted(valid))}")
+            raise ValueError(
+                f"Invalid compression '{v}'. Must be one of: {', '.join(sorted(valid))}"
+            )
         return v
 
     @field_validator("detail")
@@ -112,7 +111,9 @@ class GetContextArgs(BaseModel):
     def _validate_detail(cls, v: str) -> str:
         valid = {"summary", "standard", "deep"}
         if v not in valid:
-            raise ValueError(f"Invalid detail '{v}'. Must be one of: {', '.join(sorted(valid))}")
+            raise ValueError(
+                f"Invalid detail '{v}'. Must be one of: {', '.join(sorted(valid))}"
+            )
         return v
 
 
@@ -138,8 +139,12 @@ class GetContextResult(BaseModel):
 
 class GetContextToolConfig(BaseToolConfig):
     permission: ToolPermission = ToolPermission.ALWAYS
-    max_subsystems: int = Field(default=20, description="Maximum number of subsystems to return.")
-    max_recommendations: int = Field(default=10, description="Maximum recommended context entries.")
+    max_subsystems: int = Field(
+        default=20, description="Maximum number of subsystems to return."
+    )
+    max_recommendations: int = Field(
+        default=10, description="Maximum recommended context entries."
+    )
 
 
 class GetContextState(BaseToolState):
@@ -221,7 +226,9 @@ class GetContext(
                 repo=packet.repo.model_dump(mode="json"),
                 subsystems=[s.model_dump(mode="json") for s in packet.subsystems],
                 active_work=packet.active_work,
-                recommended_context=[r.model_dump(mode="json") for r in packet.recommended_context],
+                recommended_context=[
+                    r.model_dump(mode="json") for r in packet.recommended_context
+                ],
                 do_not_touch=[d.model_dump(mode="json") for d in packet.do_not_touch],
                 summary_text=packet.summary_text,
                 receipt=receipt.model_dump(mode="json"),

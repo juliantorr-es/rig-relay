@@ -137,8 +137,12 @@ def _summary_counts(ddir: Path) -> CurrentStateCounts:
         artifact_rows=_count_jsonl_rows(ddir / "artifact_reuse_dataset.jsonl"),
         conflict_rows=_count_jsonl_rows(ddir / "coordination_conflict_dataset.jsonl"),
         checkpoint_rows=_count_jsonl_rows(ddir / "checkpoint_eval_dataset.jsonl"),
-        tool_failure_rows=_count_jsonl_rows(ddir / "tool_failure_patterns_dataset.jsonl"),
-        provider_perf_rows=_count_jsonl_rows(ddir / "provider_task_performance_dataset.jsonl"),
+        tool_failure_rows=_count_jsonl_rows(
+            ddir / "tool_failure_patterns_dataset.jsonl"
+        ),
+        provider_perf_rows=_count_jsonl_rows(
+            ddir / "provider_task_performance_dataset.jsonl"
+        ),
         findings_rows=_count_jsonl_rows(ddir / "findings_dataset.jsonl"),
     )
 
@@ -153,7 +157,9 @@ def _classify_heartbeat_age(heartbeat_age: float | None) -> tuple[str, str]:
 
 def _collect_event_summaries(
     events: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], int, int, int, int]:
+) -> tuple[
+    list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], int, int, int, int
+]:
     recent_artifacts: list[dict[str, Any]] = []
     recent_conflicts: list[dict[str, Any]] = []
     stale_items: list[dict[str, Any]] = []
@@ -203,9 +209,7 @@ def _collect_event_summaries(
 
 
 def _build_child_projection(
-    session: dict[str, Any],
-    leases: list[dict[str, Any]],
-    now: datetime,
+    session: dict[str, Any], leases: list[dict[str, Any]], now: datetime
 ) -> dict[str, Any]:
     sid = session.get("session_id", "")
     profile = session.get("agent_profile", "unknown")
@@ -218,7 +222,9 @@ def _build_child_projection(
         except (ValueError, TypeError):
             pass
     reservation_count = sum(
-        1 for lease in leases if lease.get("session_id") == sid and lease.get("status") == "active"
+        1
+        for lease in leases
+        if lease.get("session_id") == sid and lease.get("status") == "active"
     )
     risk, recommended_action = _classify_heartbeat_age(heartbeat_age)
     return {
@@ -227,7 +233,9 @@ def _build_child_projection(
         "agent_profile_name": profile,
         "status": session.get("status", "unknown"),
         "current_step": session.get("current_step"),
-        "last_heartbeat_age_seconds": round(heartbeat_age, 1) if heartbeat_age is not None else None,
+        "last_heartbeat_age_seconds": round(heartbeat_age, 1)
+        if heartbeat_age is not None
+        else None,
         "reservation_count": reservation_count,
         "recent_artifact_hashes": [],
         "risk": risk,
@@ -249,11 +257,15 @@ def _recommendations_for_state(
 ) -> list[str]:
     recommendations: list[str] = []
     if active_children >= max_children:
-        recommendations.append(f"Active children ({active_children}) at or above max ({max_children}). Wait.")
+        recommendations.append(
+            f"Active children ({active_children}) at or above max ({max_children}). Wait."
+        )
     elif available_child_slots > 0:
         recommendations.append(f"{available_child_slots} child slot(s) available.")
     if writers > 0:
-        recommendations.append(f"Active writer(s): {writers}. Do not launch another writer in the same checkout.")
+        recommendations.append(
+            f"Active writer(s): {writers}. Do not launch another writer in the same checkout."
+        )
     if stale_leases_count > 0:
         recommendations.append(f"Inspect {stale_leases_count} stale lease(s).")
     if conflicts_count > 0:
@@ -265,8 +277,14 @@ def _recommendations_for_state(
         ):
             recommendations.append("Implementer completed. Consider launching tester.")
     if checkpoint_commits == 0 and writers > 0:
-        recommendations.append("No checkpoints committed yet. Consider checkpoint policy.")
-    recommendations.append("Continue monitoring." if not warnings else "Resolve warnings before launching new work.")
+        recommendations.append(
+            "No checkpoints committed yet. Consider checkpoint policy."
+        )
+    recommendations.append(
+        "Continue monitoring."
+        if not warnings
+        else "Resolve warnings before launching new work."
+    )
     return recommendations
 
 
@@ -302,12 +320,15 @@ def generate_current_state(
         if val > 0:
             dataset_completeness[key] = val
 
-    active_sessions = [s for s in sessions if s.get("status") in {"active", "running", "granted"}]
+    active_sessions = [
+        s for s in sessions if s.get("status") in {"active", "running", "granted"}
+    ]
     active_children = len(active_sessions)
     available_child_slots = max(0, max_children - active_children)
 
     writers = sum(
-        1 for s in active_sessions
+        1
+        for s in active_sessions
         if (s.get("agent_profile") or "").lower() in {"implementer", "documenter"}
     )
     readers = active_children - writers

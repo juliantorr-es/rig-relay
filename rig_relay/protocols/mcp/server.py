@@ -127,6 +127,7 @@ class RigMCPServer:
     async def _list_worktrees(self, args: dict) -> dict:
         try:
             from rig_relay.coordination.worktree_manager import WorktreeManager
+
             mgr = WorktreeManager(Path.cwd())
             records = mgr.list_worktrees()
             return {
@@ -158,28 +159,19 @@ class RigMCPServer:
 
     async def _read_receipt(self, args: dict) -> dict:
         receipt_id = args.get("receipt_id", "")
-        return {
-            "status": "ok",
-            "receipt_id": receipt_id,
-            "found": False,
-        }
+        return {"status": "ok", "receipt_id": receipt_id, "found": False}
 
     async def _read_council_findings(self, args: dict) -> dict:
-        return {
-            "status": "ok",
-            "receipt_id": args.get("receipt_id"),
-            "findings": [],
-        }
+        return {"status": "ok", "receipt_id": args.get("receipt_id"), "findings": []}
 
     # ═══ Tier 1 — Analysis / packet generation ══════════════════════════
 
     async def _build_context_packet(self, args: dict) -> dict:
         mission_id = args.get("mission_id", "")
         redaction = args.get("redaction_mode", "standard")
-        packet = json.dumps({
-            "mission_id": mission_id,
-            "redaction_mode": redaction,
-        }, sort_keys=True).encode()
+        packet = json.dumps(
+            {"mission_id": mission_id, "redaction_mode": redaction}, sort_keys=True
+        ).encode()
         return {
             "status": "ok",
             "mission_id": mission_id,
@@ -212,33 +204,44 @@ class RigMCPServer:
     async def _run_readonly_doctor(self, args: dict) -> dict:
         try:
             import subprocess
+
             cwd = Path.cwd()
-            is_git = subprocess.run(
-                ["git", "rev-parse", "--git-dir"],
-                capture_output=True, text=True, cwd=str(cwd),
-            ).returncode == 0
-            return {
-                "status": "ok",
-                "git_repo": is_git,
-                "cwd": str(cwd),
-            }
+            is_git = (
+                subprocess.run(
+                    ["git", "rev-parse", "--git-dir"],
+                    capture_output=True,
+                    text=True,
+                    cwd=str(cwd),
+                ).returncode
+                == 0
+            )
+            return {"status": "ok", "git_repo": is_git, "cwd": str(cwd)}
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
     async def _summarize_dirty_state(self, args: dict) -> dict:
         try:
             import subprocess
+
             result = subprocess.run(
                 ["git", "status", "--porcelain"],
-                capture_output=True, text=True, cwd=str(Path.cwd()),
+                capture_output=True,
+                text=True,
+                cwd=str(Path.cwd()),
             )
             dirty = result.stdout.strip()
             if not dirty:
-                return {"status": "ok", "dirty_files": 0, "path_hashes": [], "message": "Clean working tree"}
+                return {
+                    "status": "ok",
+                    "dirty_files": 0,
+                    "path_hashes": [],
+                    "message": "Clean working tree",
+                }
             lines = [l.strip() for l in dirty.split("\n") if l.strip()]
             path_hashes = [
                 hashlib.sha256(l.split(None, 1)[-1].encode()).hexdigest()[:12]
-                for l in lines if len(l.split(None, 1)) > 1
+                for l in lines
+                if len(l.split(None, 1)) > 1
             ]
             return {
                 "status": "ok",
@@ -264,16 +267,21 @@ class RigMCPServer:
     async def _check_merge_friendly(self, args: dict) -> dict:
         try:
             import subprocess
+
             result = subprocess.run(
                 ["git", "status", "--porcelain"],
-                capture_output=True, text=True, cwd=str(Path.cwd()),
+                capture_output=True,
+                text=True,
+                cwd=str(Path.cwd()),
             )
             dirty = bool(result.stdout.strip())
             return {
                 "status": "ok",
                 "merge_friendly": not dirty,
                 "dirty_files": len(result.stdout.strip().split("\n")) if dirty else 0,
-                "recommendation": "Clean working tree. Safe to proceed." if not dirty else "Dirty tree. Commit or stash before merging.",
+                "recommendation": "Clean working tree. Safe to proceed."
+                if not dirty
+                else "Dirty tree. Commit or stash before merging.",
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -282,7 +290,8 @@ class RigMCPServer:
         summary = await self._summarize_dirty_state(args)
         summary["audit_kind"] = "dirty_state_audit"
         summary["recommendation"] = (
-            "Clean tree. No action needed." if summary.get("dirty_files", 0) == 0
+            "Clean tree. No action needed."
+            if summary.get("dirty_files", 0) == 0
             else f"{summary['dirty_files']} files dirty. Consider checkpointing before proceeding."
         )
         return summary

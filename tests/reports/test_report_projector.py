@@ -22,6 +22,7 @@ from rig_relay.reports.report_store import write_report_to_ledger
 
 pytestmark = [pytest.mark.integration]
 
+
 def _add_report(ledger: Path, **fields: str | list[str]) -> None:
     """Helper: write a minimal report to the test ledger."""
     report = {
@@ -127,19 +128,33 @@ class TestDuplicateCandidates:
 class TestCandidateFindings:
     def test_candidate_with_evidence(self, tmp_path: Path) -> None:
         ledger = tmp_path / "reports.jsonl"
-        _add_report(ledger, kind="architecture_seam", severity="high",
-                    evidence=[{"kind": "code_reference", "path": "a.py", "summary": "Seam"}])
+        _add_report(
+            ledger,
+            kind="architecture_seam",
+            severity="high",
+            evidence=[{"kind": "code_reference", "path": "a.py", "summary": "Seam"}],
+        )
         candidates = build_candidate_findings(ledger)
         assert len(candidates) == 1
 
     def test_mission_report_excluded(self, tmp_path: Path) -> None:
         ledger = tmp_path / "reports.jsonl"
-        _add_report(ledger, kind="mission_report", severity="medium", evidence=[{"kind": "text", "path": "", "summary": "Done"}])
+        _add_report(
+            ledger,
+            kind="mission_report",
+            severity="medium",
+            evidence=[{"kind": "text", "path": "", "summary": "Done"}],
+        )
         assert len(build_candidate_findings(ledger)) == 0
 
     def test_low_severity_excluded(self, tmp_path: Path) -> None:
         ledger = tmp_path / "reports.jsonl"
-        _add_report(ledger, kind="architecture_seam", severity="low", evidence=[{"kind": "text", "path": "", "summary": "Minor"}])
+        _add_report(
+            ledger,
+            kind="architecture_seam",
+            severity="low",
+            evidence=[{"kind": "text", "path": "", "summary": "Minor"}],
+        )
         assert len(build_candidate_findings(ledger)) == 0
 
     def test_no_evidence_excluded(self, tmp_path: Path) -> None:
@@ -149,8 +164,13 @@ class TestCandidateFindings:
 
     def test_closed_report_excluded(self, tmp_path: Path) -> None:
         ledger = tmp_path / "reports.jsonl"
-        _add_report(ledger, kind="architecture_seam", severity="high", status="resolved",
-                    evidence=[{"kind": "text", "path": "", "summary": "Fixed"}])
+        _add_report(
+            ledger,
+            kind="architecture_seam",
+            severity="high",
+            status="resolved",
+            evidence=[{"kind": "text", "path": "", "summary": "Fixed"}],
+        )
         assert len(build_candidate_findings(ledger)) == 0
 
 
@@ -161,8 +181,13 @@ class TestWriteIndexes:
         indexes_dir = tmp_path / "indexes"
         written = write_indexes(indexes_dir, ledger)
         assert len(written) == 5
-        for name in ("report_summary", "report_snapshots", "open_raw_reports",
-                     "duplicate_candidates", "candidate_findings"):
+        for name in (
+            "report_summary",
+            "report_snapshots",
+            "open_raw_reports",
+            "duplicate_candidates",
+            "candidate_findings",
+        ):
             assert name in written
             assert written[name].is_file()
 
@@ -218,7 +243,7 @@ class TestMalformedLedger:
         ledger = tmp_path / "reports.jsonl"
         ledger.write_text(
             '{"report_id": "r1", "kind": "valid"}\n'
-            'not json\n'
+            "not json\n"
             '{"report_id": "r2", "kind": "valid"}\n'
         )
         summary = build_report_summary(ledger)
@@ -227,7 +252,7 @@ class TestMalformedLedger:
     def test_partial_malformed_still_counts_valid(self, tmp_path: Path) -> None:
         ledger = tmp_path / "reports.jsonl"
         ledger.write_text(
-            'garbage\n'
+            "garbage\n"
             '{"report_id": "r1", "kind": "bug", "status": "open", "created_at": "2026-05-15T00:00:00Z", "severity": "medium", "evidence": []}\n'
         )
         summary = build_report_summary(ledger)

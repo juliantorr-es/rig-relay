@@ -27,7 +27,11 @@ from typing import Any
 # Single source of truth for all IDE capabilities across all targets
 # (vscode, jetbrains, zed, sidecar). The sidecar derives its runtime
 # registry from this file; drift is a validation failure.
-_MANIFEST_PATH = Path(__file__).resolve().parent.parent.parent / "etc" / "rig.ide.capability_manifest.v1.json"
+_MANIFEST_PATH = (
+    Path(__file__).resolve().parent.parent.parent
+    / "etc"
+    / "rig.ide.capability_manifest.v1.json"
+)
 
 
 def _load_capability_manifest() -> dict[str, Any]:
@@ -35,7 +39,11 @@ def _load_capability_manifest() -> dict[str, Any]:
     try:
         return json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        return {"capabilities": {}, "_error": str(e), "_schema": "rig.ide.capability_manifest.v1"}
+        return {
+            "capabilities": {},
+            "_error": str(e),
+            "_schema": "rig.ide.capability_manifest.v1",
+        }
 
 
 def _sidecar_capabilities() -> dict[str, Any]:
@@ -47,7 +55,11 @@ def _sidecar_capabilities() -> dict[str, Any]:
     """
     manifest = _load_capability_manifest()
     caps = manifest.get("capabilities", {})
-    return {name: info for name, info in caps.items() if info.get("implemented_in", {}).get("sidecar", False)}
+    return {
+        name: info
+        for name, info in caps.items()
+        if info.get("implemented_in", {}).get("sidecar", False)
+    }
 
 
 # Runtime capability registry. Loaded from manifest at module scope.
@@ -60,7 +72,12 @@ _CAPABILITY_REGISTRY: dict[str, Any] = _sidecar_capabilities()
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Rig Relay IDE Sidecar")
-    parser.add_argument("--stdio", action="store_true", default=True, help="Use stdio transport for extension IPC")
+    parser.add_argument(
+        "--stdio",
+        action="store_true",
+        default=True,
+        help="Use stdio transport for extension IPC",
+    )
     args = parser.parse_args()
 
     sys.stdout.reconfigure(line_buffering=True)  # pyright: ignore
@@ -75,8 +92,7 @@ async def _run_sidecar(args: argparse.Namespace) -> None:
     stdin_task = asyncio.create_task(_process_stdin())
 
     done, pending = await asyncio.wait(
-        [acp_task, stdin_task],
-        return_when=asyncio.FIRST_COMPLETED,
+        [acp_task, stdin_task], return_when=asyncio.FIRST_COMPLETED
     )
 
     for task in pending:
@@ -102,7 +118,9 @@ async def _run_acp_agent() -> None:
     agent = VibeAcpAgentLoop()
 
     try:
-        await run_agent(agent=agent, use_unstable_protocol=True, observers=[acp_message_observer])
+        await run_agent(
+            agent=agent, use_unstable_protocol=True, observers=[acp_message_observer]
+        )
     except asyncio.CancelledError:
         pass
     except Exception as exc:
@@ -167,7 +185,10 @@ async def _handle_ipc_message(message: dict[str, Any]) -> None:
             })
 
         case _:
-            _write_ipc({"type": "error", "message": f"Unknown message type: {msg_type}"})
+            _write_ipc({
+                "type": "error",
+                "message": f"Unknown message type: {msg_type}",
+            })
 
 
 def _write_ipc(message: dict[str, Any]) -> None:
@@ -180,12 +201,18 @@ def _write_ipc(message: dict[str, Any]) -> None:
 def _capability_summary() -> dict[str, dict[str, Any]]:
     """Return a content-light capability summary for the extension."""
     return {
-        name: {"risk": info["risk"], "mutates": info["mutates"], "description": info.get("description", "")}
+        name: {
+            "risk": info["risk"],
+            "mutates": info["mutates"],
+            "description": info.get("description", ""),
+        }
         for name, info in _CAPABILITY_REGISTRY.items()
     }
 
 
-def _check_capability_permission(capability: str, args: dict[str, Any]) -> dict[str, Any]:
+def _check_capability_permission(
+    capability: str, args: dict[str, Any]
+) -> dict[str, Any]:
     """Check the permission table for a capability request.
 
     The permission table is derived from the canonical manifest —
@@ -194,7 +221,10 @@ def _check_capability_permission(capability: str, args: dict[str, Any]) -> dict[
     """
     entry = _CAPABILITY_REGISTRY.get(capability)
     if entry is None:
-        return {"status": "refused", "error": f"Unknown or unimplemented capability: {capability}"}
+        return {
+            "status": "refused",
+            "error": f"Unknown or unimplemented capability: {capability}",
+        }
 
     default_policy = entry.get("default_policy", "deny")
 
@@ -224,7 +254,10 @@ def _check_capability_permission(capability: str, args: dict[str, Any]) -> dict[
                 },
             }
         case "deny":
-            return {"status": "refused", "error": f"Capability {capability} denied by policy."}
+            return {
+                "status": "refused",
+                "error": f"Capability {capability} denied by policy.",
+            }
         case _:
             return {"status": "refused", "error": f"Unknown policy for {capability}."}
 

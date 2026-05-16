@@ -26,15 +26,11 @@ class FakeToolResult(BaseModel):
     count: int = 42
 
 
-async def _fake_invoke_success(
-    args_dict: dict[str, Any],
-) -> AsyncGenerator[Any, None]:
+async def _fake_invoke_success(args_dict: dict[str, Any]) -> AsyncGenerator[Any, None]:
     yield FakeToolResult(output="ok", count=1)
 
 
-async def _fake_invoke_failure(
-    args_dict: dict[str, Any],
-) -> AsyncGenerator[Any, None]:
+async def _fake_invoke_failure(args_dict: dict[str, Any]) -> AsyncGenerator[Any, None]:
     raise RuntimeError("tool crashed")
     yield
 
@@ -46,17 +42,13 @@ async def _fake_invoke_no_result(
         yield
 
 
-def _cache_hit(
-    tool_name: str, args_dict: dict[str, Any]
-) -> tuple[bool, Any]:
+def _cache_hit(tool_name: str, args_dict: dict[str, Any]) -> tuple[bool, Any]:
     if args_dict.get("cached") is True:
         return True, FakeToolResult(output="from_cache")
     return False, None
 
 
-def _cache_miss(
-    tool_name: str, args_dict: dict[str, Any]
-) -> tuple[bool, Any]:
+def _cache_miss(tool_name: str, args_dict: dict[str, Any]) -> tuple[bool, Any]:
     return False, None
 
 
@@ -141,9 +133,7 @@ class TestCacheBehavior:
     @pytest.mark.asyncio
     async def test_cache_hit_bypasses_invocation(self):
         runtime = _make_runtime(cache_check=_cache_hit)
-        result = await runtime.execute_one(
-            _request(tool_args={"cached": True})
-        )
+        result = await runtime.execute_one(_request(tool_args={"cached": True}))
         assert result.status == ToolRuntimeStatus.CACHED
         assert result.cache_status == ToolRuntimeCacheStatus.HIT
         assert result.cache_hit is True
@@ -161,24 +151,16 @@ class TestCacheBehavior:
 class TestPermissionDenied:
     @pytest.mark.asyncio
     async def test_permission_denied_returns_refused(self):
-        runtime = _make_runtime(
-            permission_decision=_permission_denied_async
-        )
+        runtime = _make_runtime(permission_decision=_permission_denied_async)
         result = await runtime.execute_one(_request())
         assert result.status == ToolRuntimeStatus.REFUSED
         assert result.refusal is not None
-        assert (
-            result.refusal.refusal_code == RefusalCode.TOOL_PERMISSION_DENIED
-        )
+        assert result.refusal.refusal_code == RefusalCode.TOOL_PERMISSION_DENIED
 
     @pytest.mark.asyncio
     async def test_bypass_overrides_permission_denied(self):
-        runtime = _make_runtime(
-            permission_decision=_permission_denied_async
-        )
-        result = await runtime.execute_one(
-            _request(bypass_permissions=True)
-        )
+        runtime = _make_runtime(permission_decision=_permission_denied_async)
+        result = await runtime.execute_one(_request(bypass_permissions=True))
         assert result.status == ToolRuntimeStatus.COMPLETED
 
 
@@ -197,9 +179,7 @@ class TestApprovalDenied:
         runtime = _make_runtime(approval_request=_approval_allowed)
         result = await runtime.execute_one(_request())
         assert result.status == ToolRuntimeStatus.COMPLETED
-        assert (
-            result.approval_status == ToolRuntimeApprovalStatus.APPROVED
-        )
+        assert result.approval_status == ToolRuntimeApprovalStatus.APPROVED
 
 
 class TestToolFailure:
@@ -216,9 +196,7 @@ class TestToolFailure:
         runtime = _make_runtime(invoke_tool=_fake_invoke_no_result)
         result = await runtime.execute_one(_request())
         assert result.status == ToolRuntimeStatus.FAILED
-        assert (
-            "did not yield" in (result.error_message or "")
-        )
+        assert "did not yield" in (result.error_message or "")
 
 
 class TestDebugSnapshot:
@@ -258,14 +236,14 @@ class TestArchitectureBoundaries:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     for f in forbidden:
-                        assert not alias.name.startswith(
-                            f
-                        ), f"tool_runtime imports {alias.name}"
+                        assert not alias.name.startswith(f), (
+                            f"tool_runtime imports {alias.name}"
+                        )
             elif isinstance(node, ast.ImportFrom) and node.module:
                 for f in forbidden:
-                    assert not node.module.startswith(
-                        f
-                    ), f"tool_runtime imports {node.module}"
+                    assert not node.module.startswith(f), (
+                        f"tool_runtime imports {node.module}"
+                    )
 
     def test_no_forbidden_imports_in_models(self):
         import ast
@@ -291,11 +269,11 @@ class TestArchitectureBoundaries:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     for f in forbidden:
-                        assert not alias.name.startswith(
-                            f
-                        ), f"models imports {alias.name}"
+                        assert not alias.name.startswith(f), (
+                            f"models imports {alias.name}"
+                        )
             elif isinstance(node, ast.ImportFrom) and node.module:
                 for f in forbidden:
-                    assert not node.module.startswith(
-                        f
-                    ), f"models imports {node.module}"
+                    assert not node.module.startswith(f), (
+                        f"models imports {node.module}"
+                    )

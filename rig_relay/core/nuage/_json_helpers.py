@@ -1,4 +1,5 @@
 """Remote workflow event translator mixin — json helpers."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -22,7 +23,5 @@ class JsonHelpersMixin:
             return [self._json_safe_value(item) for item in sorted(value, key=repr)]
         return value
 
-
     def _json_string(self, value: Any) -> str:
         return json.dumps(self._json_safe_value(value))
-

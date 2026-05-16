@@ -90,9 +90,7 @@ def _hash_text(text: str) -> str:
 
 
 def _hash_argv(argv: list[str]) -> str:
-    return "sha256:" + hashlib.sha256(
-        "|".join(argv).encode("utf-8")
-    ).hexdigest()
+    return "sha256:" + hashlib.sha256("|".join(argv).encode("utf-8")).hexdigest()
 
 
 class StreamDrainResult:
@@ -202,7 +200,9 @@ async def _drain_stream_collect(
     result.truncated = truncated
 
 
-async def _finalize_subprocess(proc: asyncio.subprocess.Process, *, timeout_seconds: float = 5.0) -> None:
+async def _finalize_subprocess(
+    proc: asyncio.subprocess.Process, *, timeout_seconds: float = 5.0
+) -> None:
     if proc.returncode is None:
         try:
             proc.terminate()
@@ -386,7 +386,9 @@ class RuntimeSupervisor:
         ) -> None:
             if recorder is None or trace_span is None:
                 return
-            recorder.end_span(trace_span, status=status, attributes=attributes, error=error)
+            recorder.end_span(
+                trace_span, status=status, attributes=attributes, error=error
+            )
 
         # ── Governance evaluation ───────────────────────────────────
         if self._governance_engine is not None:
@@ -777,13 +779,18 @@ class RuntimeSupervisor:
         yield terminal_event
         trace_event(
             "runtime.subprocess.exit",
-            attributes={"exit_code": exit_code, "timed_out": timed_out, "cancelled": cancelled},
+            attributes={
+                "exit_code": exit_code,
+                "timed_out": timed_out,
+                "cancelled": cancelled,
+            },
         )
         trace_event(
             "runtime.subprocess.result_classified",
             attributes={
                 "status": terminal_event.status.value
-                if hasattr(terminal_event, "status") and terminal_event.status is not None
+                if hasattr(terminal_event, "status")
+                and terminal_event.status is not None
                 else None,
                 "exit_code": exit_code,
                 "stdout_bytes": stdout_result.total_bytes,
@@ -808,7 +815,8 @@ class RuntimeSupervisor:
             attributes={
                 "exit_code": exit_code,
                 "status": terminal_event.status.value
-                if hasattr(terminal_event, "status") and terminal_event.status is not None
+                if hasattr(terminal_event, "status")
+                and terminal_event.status is not None
                 else None,
                 "duration_ms": elapsed_ms,
                 "stdout_bytes": stdout_result.total_bytes,

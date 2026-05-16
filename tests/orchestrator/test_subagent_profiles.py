@@ -109,10 +109,7 @@ def test_disabled_profile_not_in_assignable():
 def test_registry_singleton_persists():
     registry = get_profile_registry()
     registry.reset()
-    p = SubagentProfile(
-        profile_id="test-persist",
-        display_name="Persist Agent",
-    )
+    p = SubagentProfile(profile_id="test-persist", display_name="Persist Agent")
     registry.register(p)
     registry2 = get_profile_registry()
     assert registry2.get("test-persist") is not None

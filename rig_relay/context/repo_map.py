@@ -58,23 +58,33 @@ def build_subsystem_map(workspace_root: Path | None = None) -> list[SubsystemEnt
     subsystems: list[SubsystemEntry] = []
     for dir_name in sorted(dirs):
         dir_files = dirs[dir_name]
-        entry_points = [f for f in dir_files if f.endswith(("__init__.py", "__main__.py", "entrypoint.py", "main.py"))]
-        config_files = [f for f in dir_files if f.endswith(("pyproject.toml", "toml", "cfg", "ini"))]
-        schemas = [f for f in dir_files if "schema" in f.lower() and f.endswith(".json")]
+        entry_points = [
+            f
+            for f in dir_files
+            if f.endswith(("__init__.py", "__main__.py", "entrypoint.py", "main.py"))
+        ]
+        config_files = [
+            f for f in dir_files if f.endswith(("pyproject.toml", "toml", "cfg", "ini"))
+        ]
+        schemas = [
+            f for f in dir_files if "schema" in f.lower() and f.endswith(".json")
+        ]
         docs_list = [f for f in dir_files if f.startswith("docs/") or f.endswith(".md")]
         tests = [f for f in dir_files if "test_" in f or "_test" in f]
 
         # Only include non-empty subsystems
         if dir_files:
-            subsystems.append(SubsystemEntry(
-                name=dir_name,
-                paths=dir_files[:20],
-                entry_points=entry_points[:5],
-                config_files=config_files[:5],
-                schemas=schemas[:10],
-                docs=docs_list[:10],
-                tests=tests[:10],
-            ))
+            subsystems.append(
+                SubsystemEntry(
+                    name=dir_name,
+                    paths=dir_files[:20],
+                    entry_points=entry_points[:5],
+                    config_files=config_files[:5],
+                    schemas=schemas[:10],
+                    docs=docs_list[:10],
+                    tests=tests[:10],
+                )
+            )
 
     return subsystems
 

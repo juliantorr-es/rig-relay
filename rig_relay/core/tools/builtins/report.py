@@ -73,11 +73,15 @@ class ReportArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: str = Field(description="Kind of report. See rig.report.v1 schema for valid kinds.")
+    kind: str = Field(
+        description="Kind of report. See rig.report.v1 schema for valid kinds."
+    )
     title: str
     summary: str
     severity: str = Field(default="medium", description="low, medium, high, critical")
-    confidence: str = Field(default="medium", description="low, medium, high, confirmed")
+    confidence: str = Field(
+        default="medium", description="low, medium, high, confirmed"
+    )
     scope_relation: str = Field(
         default="out_of_scope_for_current_mission",
         description="in_scope, out_of_scope_for_current_mission, adjacent, regression, pre_existing",
@@ -98,8 +102,7 @@ class ReportArgs(BaseModel):
     parent_mission_id: str | None = None
     related_report_ids: list[str] = Field(default_factory=list)
     details: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Kind-specific detail payload.",
+        default_factory=dict, description="Kind-specific detail payload."
     )
 
     @field_validator("kind")
@@ -114,7 +117,9 @@ class ReportArgs(BaseModel):
     @classmethod
     def _validate_severity(cls, v: str) -> str:
         if v not in SEVERITY_LEVELS:
-            raise ValueError(f"Invalid severity '{v}'. Must be one of: {', '.join(sorted(SEVERITY_LEVELS))}")
+            raise ValueError(
+                f"Invalid severity '{v}'. Must be one of: {', '.join(sorted(SEVERITY_LEVELS))}"
+            )
         return v
 
     @field_validator("status")
@@ -208,7 +213,9 @@ class Report(
                 yield ReportResult(
                     ok=True,
                     report_id=existing.get("report_id", report_id),
-                    dedupe_status="duplicate_exact" if explicit_key else "duplicate_candidate",
+                    dedupe_status="duplicate_exact"
+                    if explicit_key
+                    else "duplicate_candidate",
                     report_sha256=compute_report_sha256(existing),
                     event_sha256=compute_report_sha256(existing),
                     ledger_path=str(existing.get("_ledger_path", "")),
@@ -246,7 +253,11 @@ class Report(
 
             # Persist
             report_sha256 = compute_report_sha256(report)
-            event_envelope = {**report, "_write_event": "report.created", "_report_sha256": report_sha256}
+            event_envelope = {
+                **report,
+                "_write_event": "report.created",
+                "_report_sha256": report_sha256,
+            }
             event_sha256 = compute_report_sha256(event_envelope)
             ledger_path = write_report_to_ledger(report)
 

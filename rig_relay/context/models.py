@@ -92,7 +92,9 @@ class RepoInfo(BaseModel):
     root: str
     head: str
     branch: str
-    dirty_summary: dict[str, int] = Field(default_factory=lambda: {"modified": 0, "untracked": 0, "staged": 0})
+    dirty_summary: dict[str, int] = Field(
+        default_factory=lambda: {"modified": 0, "untracked": 0, "staged": 0}
+    )
 
 
 class SubsystemEntry(BaseModel):
@@ -162,8 +164,12 @@ class ContextPacket(BaseModel):
     generated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     repo: RepoInfo = Field(default_factory=RepoInfo)
     subsystems: list[SubsystemEntry] = Field(default_factory=list)
-    active_work: dict[str, Any] = Field(default_factory=lambda: {"lanes": [], "collision_warnings": []})
-    symbol_map: dict[str, Any] = Field(default_factory=lambda: {"aliases": {}, "symbols": []})
+    active_work: dict[str, Any] = Field(
+        default_factory=lambda: {"lanes": [], "collision_warnings": []}
+    )
+    symbol_map: dict[str, Any] = Field(
+        default_factory=lambda: {"aliases": {}, "symbols": []}
+    )
     receipts: list[ReceiptEntry] = Field(default_factory=list)
     recommended_context: list[PathRecommendation] = Field(default_factory=list)
     do_not_touch: list[PathRecommendation] = Field(default_factory=list)

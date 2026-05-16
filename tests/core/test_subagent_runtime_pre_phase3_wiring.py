@@ -77,12 +77,12 @@ class TestTaskProductionWiring:
     def test_task_py_passes_tool_runtime(self) -> None:
         task_path = _REPO_ROOT / "rig_relay" / "core" / "tools" / "builtins" / "task.py"
         source = task_path.read_text()
-        assert "tool_runtime=getattr(ctx, \"tool_runtime\", None)" in source
+        assert 'tool_runtime=getattr(ctx, "tool_runtime", None)' in source
 
     def test_task_py_passes_trace_recorder(self) -> None:
         task_path = _REPO_ROOT / "rig_relay" / "core" / "tools" / "builtins" / "task.py"
         source = task_path.read_text()
-        assert "trace_recorder=getattr(ctx, \"trace_recorder\", None)" in source
+        assert 'trace_recorder=getattr(ctx, "trace_recorder", None)' in source
 
     def test_task_py_sets_allow_legacy_direct_false(self) -> None:
         task_path = _REPO_ROOT / "rig_relay" / "core" / "tools" / "builtins" / "task.py"
@@ -91,7 +91,9 @@ class TestTaskProductionWiring:
 
 
 class TestLifecycleEvidence:
-    def test_trace_recorder_writes_events(self, trace_store: InMemoryTraceStore) -> None:
+    def test_trace_recorder_writes_events(
+        self, trace_store: InMemoryTraceStore
+    ) -> None:
         recorder = TraceRecorder(trace_store)
         with recorder.span("subagent.test", {"mission_id": "m1"}):
             pass
@@ -112,6 +114,7 @@ class TestLifecycleEvidence:
 
     def test_null_store_is_noop(self) -> None:
         from rig_relay.tracing.store import NullTraceStore
+
         recorder = TraceRecorder(NullTraceStore())
         with recorder.span("subagent.noop"):
             pass
@@ -132,8 +135,10 @@ class TestGuards:
     def test_no_legacy_direct_as_default(self) -> None:
         path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "runtime.py"
         source = path.read_text()
-        assert "Legacy direct path (explicit opt-in only)" in source or \
-            "Legacy direct path (fallback only when no ToolRuntime)" in source
+        assert (
+            "Legacy direct path (explicit opt-in only)" in source
+            or "Legacy direct path (fallback only when no ToolRuntime)" in source
+        )
 
 
 @pytest.fixture

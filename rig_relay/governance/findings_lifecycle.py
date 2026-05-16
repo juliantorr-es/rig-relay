@@ -73,7 +73,8 @@ def compute_findings_summary() -> dict[str, Any]:
         blocked_by = f.get("blocked_by", [])
         if blocked_by:
             resolved_blockers = [
-                b for b in blocked_by
+                b
+                for b in blocked_by
                 if not any(
                     other.get("finding_id") == b
                     for other in findings
@@ -119,7 +120,9 @@ def print_findings_status() -> None:
     if stale:
         print(f"Stale (no activity >{STALE_DAYS} days, still open):")
         for s in stale:
-            print(f"  {s['finding_id']}: {s['title']} ({s['age_days']} days, {s['severity']})")
+            print(
+                f"  {s['finding_id']}: {s['title']} ({s['age_days']} days, {s['severity']})"
+            )
     else:
         print("No stale findings.")
 
@@ -151,7 +154,9 @@ def make_finding(
     """
     import uuid
 
-    finding_id = f"finding_{datetime.now(UTC).strftime('%Y%m%d')}_{uuid.uuid4().hex[:12]}"
+    finding_id = (
+        f"finding_{datetime.now(UTC).strftime('%Y%m%d')}_{uuid.uuid4().hex[:12]}"
+    )
     return finding_id
 
 

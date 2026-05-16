@@ -7,6 +7,7 @@ from rig_relay.ralph.lane_contracts import RalphLane
 
 pytestmark = [pytest.mark.integration]
 
+
 def test_adoption_proposal_to_orchestrator():
     lane = RalphLane(
         lane_id="lane-1",

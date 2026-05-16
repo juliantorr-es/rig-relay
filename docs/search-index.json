@@ -1,0 +1,92 @@
+[
+  {
+    "document_id": "documentation-policy",
+    "title": "Documentation Policy",
+    "summary": "Canonical JSON documentation policy for Rig Relay. New docs must be JSON. Old Markdown must be migrated before deletion.",
+    "tags": [
+      "documentation",
+      "policy",
+      "json"
+    ],
+    "path": "pages/documentation-policy.html"
+  },
+  {
+    "document_id": "agent-loop-boundary",
+    "title": "Agent Loop Boundary",
+    "summary": "Defines the AgentLoop turn/session conductor boundary: what it owns, what it delegates, allowed and forbidden dependencies, and how new runtime components are added.",
+    "tags": [
+      "architecture",
+      "agent-loop",
+      "boundary",
+      "runtime",
+      "mixin"
+    ],
+    "path": "pages/agent-loop-boundary.html"
+  },
+  {
+    "document_id": "orchestrator-loop-boundary",
+    "title": "Orchestrator Loop Boundary",
+    "summary": "Ownership doctrine for Rig Relay runtimes: who may run a full turn loop, 7 principles governing OrchestratorLoop, ConversationRuntime, SubagentRuntime, RalphRuntime, ToolRuntime, and handoff receipts.",
+    "tags": [
+      "architecture",
+      "orchestrator",
+      "loop",
+      "ownership",
+      "runtime",
+      "doctrine"
+    ],
+    "path": "pages/orchestrator-loop-boundary.html"
+  },
+  {
+    "document_id": "storage-retention-policy",
+    "title": "Storage Retention Policy",
+    "summary": "Retention policy for local Rig Relay storage including sessions, artifacts, telemetry, and traces.",
+    "tags": [
+      "storage",
+      "retention",
+      "policy",
+      "gc",
+      "privacy"
+    ],
+    "path": "pages/storage-retention-policy.html"
+  },
+  {
+    "document_id": "test-suite-doctrine",
+    "title": "Test Suite Doctrine",
+    "summary": "Governance doctrine for Rig Relay's 6,500+ test suite covering layout, parametrization, test quality taxonomy, and lifecycle management.",
+    "tags": [
+      "testing",
+      "doctrine",
+      "quality",
+      "layout",
+      "parametrization"
+    ],
+    "path": "pages/test-suite-doctrine.html"
+  },
+  {
+    "document_id": "tool-runtime-boundary",
+    "title": "ToolRuntime Boundary",
+    "summary": "Defines ToolRuntime as the governed tool execution authority. Ownership, capability boundaries, layered execution model, and separation from Ralph, desktop HITL, and analytics compiler.",
+    "tags": [
+      "architecture",
+      "tool-runtime",
+      "boundary",
+      "execution",
+      "governance"
+    ],
+    "path": "pages/tool-runtime-boundary.html"
+  },
+  {
+    "document_id": "tracing-doctrine",
+    "title": "Tracing Doctrine",
+    "summary": "Rig Relay tracing is structured runtime evidence using spans, events, and redacted attributes. Not random logging.",
+    "tags": [
+      "tracing",
+      "doctrine",
+      "evidence",
+      "redaction",
+      "runtime"
+    ],
+    "path": "pages/tracing-doctrine.html"
+  }
+]

@@ -137,9 +137,7 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
     "workspace_init": {
         "description": "Bootstrap an uninitialized workspace: check repo state, suggest worktree name, validate git.",
         "affects_projection": False,
-        "parameters": {
-            "workspace_id": {"type": "string", "default": ""},
-        },
+        "parameters": {"workspace_id": {"type": "string", "default": ""}},
     },
     "fleet_orchestrate": {
         "description": "Run one fleet orchestrator cycle: pick next queue item, execute, auto-resolve patches.",
@@ -547,14 +545,26 @@ def execute_desktop_intent(
                 request.get("authorization_receipt"),
             )
             status = result.get("status", "failed")
-            event = EVENT_OPERATION_COMPLETED if status == "completed" else (
-                EVENT_OPERATION_REFUSED if status == "refused" else EVENT_OPERATION_FAILED
+            event = (
+                EVENT_OPERATION_COMPLETED
+                if status == "completed"
+                else (
+                    EVENT_OPERATION_REFUSED
+                    if status == "refused"
+                    else EVENT_OPERATION_FAILED
+                )
             )
             _emit_progress(
-                event, phase="phase_1_protected", status=status,
-                message=result.get("summary", f"Protected intent '{intent_name}': {status}"),
+                event,
+                phase="phase_1_protected",
+                status=status,
+                message=result.get(
+                    "summary", f"Protected intent '{intent_name}': {status}"
+                ),
                 result_kind=result.get("result_kind", ""),
-                projection_refresh_recommended=result.get("projection_refresh_recommended", False),
+                projection_refresh_recommended=result.get(
+                    "projection_refresh_recommended", False
+                ),
                 warnings=result.get("warnings", []),
             )
             emit_result(result)
@@ -562,32 +572,52 @@ def execute_desktop_intent(
 
         case "protected":
             result = _build_result(
-                intent_name, intent_id, "refused",
+                intent_name,
+                intent_id,
+                "refused",
                 authorization_required=True,
                 error_code=PROTECTED_INTENTS.get(intent_name, "unknown"),
                 summary=f"Protected intent '{intent_name}' refused. Not enabled for receipt-gated execution.",
             )
-            _emit_progress(EVENT_OPERATION_REFUSED, phase="protected_check", status="refused",
-                           message=f"Protected intent '{intent_name}' refused")
+            _emit_progress(
+                EVENT_OPERATION_REFUSED,
+                phase="protected_check",
+                status="refused",
+                message=f"Protected intent '{intent_name}' refused",
+            )
             emit_result(result)
             return result
 
         case "allowed":
             _emit_progress(
-                EVENT_OPERATION_STARTED, phase=intent_name, status="running",
+                EVENT_OPERATION_STARTED,
+                phase=intent_name,
+                status="running",
                 message=f"Starting intent '{intent_name}'",
-                result_kind=ALLOWED_INTENTS[intent_name].get("description", "").split(".")[0],
+                result_kind=ALLOWED_INTENTS[intent_name]
+                .get("description", "")
+                .split(".")[0],
             )
             result = _execute_allowed_intent(
-                intent_name, intent_id, request.get("parameters", {}), chat_state_provider
+                intent_name,
+                intent_id,
+                request.get("parameters", {}),
+                chat_state_provider,
             )
             result_status = result.get("status", "failed")
             _emit_progress(
-                EVENT_OPERATION_COMPLETED if result_status == "completed" else EVENT_OPERATION_FAILED,
-                phase=intent_name, status=result_status,
-                message=result.get("summary", f"Intent '{intent_name}': {result_status}"),
+                EVENT_OPERATION_COMPLETED
+                if result_status == "completed"
+                else EVENT_OPERATION_FAILED,
+                phase=intent_name,
+                status=result_status,
+                message=result.get(
+                    "summary", f"Intent '{intent_name}': {result_status}"
+                ),
                 result_kind=result.get("result_kind", ""),
-                projection_refresh_recommended=result.get("projection_refresh_recommended", False),
+                projection_refresh_recommended=result.get(
+                    "projection_refresh_recommended", False
+                ),
                 warnings=result.get("warnings", []),
             )
             emit_result(result)
@@ -595,12 +625,18 @@ def execute_desktop_intent(
 
         case _:  # unsupported
             result = _build_result(
-                intent_name, intent_id, "refused",
+                intent_name,
+                intent_id,
+                "refused",
                 error_code="unsupported_intent",
                 summary=f"Unknown intent '{intent_name}'.",
             )
-            _emit_progress(EVENT_OPERATION_REFUSED, phase="intent_check", status="refused",
-                           message=f"Unknown intent '{intent_name}'")
+            _emit_progress(
+                EVENT_OPERATION_REFUSED,
+                phase="intent_check",
+                status="refused",
+                message=f"Unknown intent '{intent_name}'",
+            )
             emit_result(result)
             return result
 
@@ -816,8 +852,7 @@ def _execute_allowed_intent(
         # ── Fleet / Workspace Handlers ──
         "fleet_queue_snapshot": lambda: _execute_fleet_queue_snapshot(intent_id),
         "workspace_init": lambda: _execute_workspace_init(
-            intent_id,
-            workspace_id=str(params.get("workspace_id", "")),
+            intent_id, workspace_id=str(params.get("workspace_id", ""))
         ),
         # ── Fleet Orchestrator ──
         "council_consult": _execute_council_consult(intent_id, params),
@@ -2139,9 +2174,7 @@ def _execute_telemetry_upload_google(
                     summary="No telemetry bundles found. Create one first.",
                 )
             bundles = sorted(
-                bundle_dir.iterdir(),
-                key=lambda p: p.stat().st_mtime,
-                reverse=True,
+                bundle_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True
             )
             if not bundles:
                 return _build_result(
@@ -2369,29 +2402,39 @@ def _execute_worktree_list(intent_id: str) -> dict[str, Any]:
 
         if not records:
             return _build_result(
-                "worktree_list", intent_id, "completed",
+                "worktree_list",
+                intent_id,
+                "completed",
                 result_kind="summary",
                 summary="No worktrees found.",
             )
 
         lines = [f"{r.workspace_id}: {r.status} @ {r.path}" for r in records]
         return _build_result(
-            "worktree_list", intent_id, "completed",
+            "worktree_list",
+            intent_id,
+            "completed",
             result_kind="summary",
             summary="\n".join(lines),
         )
     except Exception as e:
         return _build_result(
-            "worktree_list", intent_id, "failed",
+            "worktree_list",
+            intent_id,
+            "failed",
             error_code="execution_error",
             summary=f"Worktree list failed: {e}",
         )
 
 
-def _execute_worktree_create(intent_id: str, workspace_id: str = "", branch_name: str = "") -> dict[str, Any]:
+def _execute_worktree_create(
+    intent_id: str, workspace_id: str = "", branch_name: str = ""
+) -> dict[str, Any]:
     if not workspace_id or not branch_name:
         return _build_result(
-            "worktree_create", intent_id, "refused",
+            "worktree_create",
+            intent_id,
+            "refused",
             error_code="missing_parameters",
             summary="workspace_id and branch_name are required.",
         )
@@ -2403,12 +2446,16 @@ def _execute_worktree_create(intent_id: str, workspace_id: str = "", branch_name
         # Pre-flight check: refuse if working tree is dirty
         status = subprocess.run(
             ["git", "status", "--porcelain"],
-            capture_output=True, text=True, cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
         )
         if status.stdout.strip():
             dirty_count = len(status.stdout.strip().split("\n"))
             return _build_result(
-                "worktree_create", intent_id, "refused",
+                "worktree_create",
+                intent_id,
+                "refused",
                 error_code="dirty_working_tree",
                 summary=f"Working tree has {dirty_count} dirty files. Commit or stash before creating a worktree.",
             )
@@ -2420,27 +2467,37 @@ def _execute_worktree_create(intent_id: str, workspace_id: str = "", branch_name
 
         if result.status == "created":
             return _build_result(
-                "worktree_create", intent_id, "completed",
+                "worktree_create",
+                intent_id,
+                "completed",
                 result_kind="summary",
                 summary=f"Created worktree '{workspace_id}' at {result.record.path if result.record else '—'}.",
             )
         return _build_result(
-            "worktree_create", intent_id, "failed",
+            "worktree_create",
+            intent_id,
+            "failed",
             error_code="creation_failed",
             summary=f"Failed to create worktree: {result.refusal_reason or result.status}.",
         )
     except Exception as e:
         return _build_result(
-            "worktree_create", intent_id, "failed",
+            "worktree_create",
+            intent_id,
+            "failed",
             error_code="execution_error",
             summary=f"Worktree create failed: {e}",
         )
 
 
-def _execute_worktree_remove(intent_id: str, workspace_id: str = "", force: bool = False) -> dict[str, Any]:
+def _execute_worktree_remove(
+    intent_id: str, workspace_id: str = "", force: bool = False
+) -> dict[str, Any]:
     if not workspace_id:
         return _build_result(
-            "worktree_remove", intent_id, "refused",
+            "worktree_remove",
+            intent_id,
+            "refused",
             error_code="missing_parameters",
             summary="workspace_id is required.",
         )
@@ -2453,17 +2510,23 @@ def _execute_worktree_remove(intent_id: str, workspace_id: str = "", force: bool
 
         if result.status == "removed":
             return _build_result(
-                "worktree_remove", intent_id, "completed",
+                "worktree_remove",
+                intent_id,
+                "completed",
                 summary=f"Removed worktree '{workspace_id}'.",
             )
         return _build_result(
-            "worktree_remove", intent_id, "failed",
+            "worktree_remove",
+            intent_id,
+            "failed",
             error_code="removal_failed",
             summary=f"Failed to remove worktree: {result.refusal_reason or result.status}.",
         )
     except Exception as e:
         return _build_result(
-            "worktree_remove", intent_id, "failed",
+            "worktree_remove",
+            intent_id,
+            "failed",
             error_code="execution_error",
             summary=f"Worktree remove failed: {e}",
         )
@@ -2481,7 +2544,9 @@ def _execute_fleet_queue_snapshot(intent_id: str) -> dict[str, Any]:
 
         if not queue_path.exists():
             return _build_result(
-                "fleet_queue_snapshot", intent_id, "completed",
+                "fleet_queue_snapshot",
+                intent_id,
+                "completed",
                 result_kind="summary",
                 summary="No fleet queue events file found. Queue is empty.",
             )
@@ -2492,13 +2557,17 @@ def _execute_fleet_queue_snapshot(intent_id: str) -> dict[str, Any]:
             f"{k}: {v}" for k, v in sorted(snapshot.status_counts.items())
         )
         return _build_result(
-            "fleet_queue_snapshot", intent_id, "completed",
+            "fleet_queue_snapshot",
+            intent_id,
+            "completed",
             result_kind="summary",
             summary=f"Fleet queue: {snapshot.total_count} items ({status_str}).",
         )
     except Exception as e:
         return _build_result(
-            "fleet_queue_snapshot", intent_id, "failed",
+            "fleet_queue_snapshot",
+            intent_id,
+            "failed",
             error_code="execution_error",
             summary=f"Fleet queue snapshot failed: {e}",
         )
@@ -2519,11 +2588,16 @@ def _execute_workspace_init(intent_id: str, workspace_id: str = "") -> dict[str,
         try:
             subprocess.run(
                 ["git", "rev-parse", "--git-dir"],
-                capture_output=True, text=True, check=True, cwd=str(cwd),
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=str(cwd),
             )
         except subprocess.CalledProcessError:
             return _build_result(
-                "workspace_init", intent_id, "failed",
+                "workspace_init",
+                intent_id,
+                "failed",
                 error_code="not_a_git_repo",
                 summary="Current directory is not a git repository.",
             )
@@ -2531,7 +2605,9 @@ def _execute_workspace_init(intent_id: str, workspace_id: str = "") -> dict[str,
         # Check for uncommitted changes
         status = subprocess.run(
             ["git", "status", "--porcelain"],
-            capture_output=True, text=True, cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            cwd=str(cwd),
         )
         dirty_files = status.stdout.strip()
 
@@ -2539,7 +2615,9 @@ def _execute_workspace_init(intent_id: str, workspace_id: str = "") -> dict[str,
         if not workspace_id:
             branch = subprocess.run(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                capture_output=True, text=True, cwd=str(cwd),
+                capture_output=True,
+                text=True,
+                cwd=str(cwd),
             ).stdout.strip()
             workspace_id = f"workspace-{branch or 'main'}"
 
@@ -2550,7 +2628,9 @@ def _execute_workspace_init(intent_id: str, workspace_id: str = "") -> dict[str,
         lines = [f"Repo root: {cwd}"]
         if dirty_files:
             dirty_count = len(dirty_files.split("\n"))
-            lines.append(f"Dirty files: {dirty_count} (commit or stash before creating worktrees)")
+            lines.append(
+                f"Dirty files: {dirty_count} (commit or stash before creating worktrees)"
+            )
         else:
             lines.append("Working tree: clean")
         lines.append(f"Suggested workspace ID: {workspace_id}")
@@ -2561,13 +2641,17 @@ def _execute_workspace_init(intent_id: str, workspace_id: str = "") -> dict[str,
         lines.append(f"Next: /worktree create {workspace_id}")
 
         return _build_result(
-            "workspace_init", intent_id, "completed",
+            "workspace_init",
+            intent_id,
+            "completed",
             result_kind="summary",
             summary="\n".join(lines),
         )
     except Exception as e:
         return _build_result(
-            "workspace_init", intent_id, "failed",
+            "workspace_init",
+            intent_id,
+            "failed",
             error_code="execution_error",
             summary=f"Workspace init failed: {e}",
         )
@@ -2580,7 +2664,9 @@ def _execute_council_consult(intent_id: str, params: dict) -> dict[str, Any]:
 
     if not question:
         return _build_result(
-            "council_consult", intent_id, "failed",
+            "council_consult",
+            intent_id,
+            "failed",
             error_code="missing_parameter",
             summary="Parameter 'question' is required",
         )
@@ -2597,14 +2683,18 @@ def _execute_council_consult(intent_id: str, params: dict) -> dict[str, Any]:
         )
 
         return _build_result(
-            "council_consult", intent_id, "completed",
+            "council_consult",
+            intent_id,
+            "completed",
             summary=f"Council request created: {request.request_id} for {len(providers)} providers",
             request_id=request.request_id,
             providers=providers,
         )
     except Exception as e:
         return _build_result(
-            "council_consult", intent_id, "failed",
+            "council_consult",
+            intent_id,
+            "failed",
             summary=f"Council consultation failed: {e}",
         )
 
@@ -2641,13 +2731,17 @@ def _execute_fleet_orchestrate(intent_id: str) -> dict[str, Any]:
             lines.append(f"Tool: {result.tool_name}")
 
         return _build_result(
-            "fleet_orchestrate", intent_id, "completed",
+            "fleet_orchestrate",
+            intent_id,
+            "completed",
             result_kind="summary",
             summary="\n".join(lines),
         )
     except Exception as e:
         return _build_result(
-            "fleet_orchestrate", intent_id, "failed",
+            "fleet_orchestrate",
+            intent_id,
+            "failed",
             error_code="execution_error",
             summary=f"Fleet orchestration failed: {e}",
         )

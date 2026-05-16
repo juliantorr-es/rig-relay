@@ -18,6 +18,13 @@ from rig_relay.tracing.context import (
     get_current_trace_context,
     set_trace_context,
 )
+from rig_relay.tracing.golden_path import (
+    TraceAuthorityKind,
+    build_authority,
+    build_correlation,
+    build_golden_path_event,
+    build_redaction,
+)
 from rig_relay.tracing.models import (
     TRACE_EVENT_SCHEMA,
     RigTraceEvent,
@@ -41,10 +48,15 @@ __all__ = [
     "JSONLTraceStore",
     "NullTraceStore",
     "RigTraceEvent",
+    "TraceAuthorityKind",
     "TraceContext",
     "TraceEventKind",
     "TraceRecorder",
     "TraceStatus",
+    "build_authority",
+    "build_correlation",
+    "build_golden_path_event",
+    "build_redaction",
     "clear_trace_context",
     "get_current_trace_context",
     "get_default_trace_store",

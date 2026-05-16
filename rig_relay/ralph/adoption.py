@@ -69,8 +69,4 @@ def build_adoption_proposal(
     )
 
 
-__all__ = [
-    "ADOPTION_VERSION",
-    "RalphAdoptionProposal",
-    "build_adoption_proposal",
-]
+__all__ = ["ADOPTION_VERSION", "RalphAdoptionProposal", "build_adoption_proposal"]

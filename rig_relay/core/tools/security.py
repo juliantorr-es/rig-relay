@@ -42,15 +42,58 @@ ENV_BLOCKLIST = frozenset({
 
 # Common binary file extensions to skip
 BINARY_EXTENSIONS = frozenset({
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
-    ".ttf", ".otf", ".woff", ".woff2", ".eot",
-    ".mp3", ".mp4", ".avi", ".mov", ".mkv", ".flv", ".wav", ".ogg", ".flac",
-    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-    ".pyc", ".pyo", ".pyd", ".so", ".dll", ".dylib", ".exe",
-    ".o", ".a", ".lib", ".obj",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".ico",
+    ".webp",
+    ".svg",
+    ".ttf",
+    ".otf",
+    ".woff",
+    ".woff2",
+    ".eot",
+    ".mp3",
+    ".mp4",
+    ".avi",
+    ".mov",
+    ".mkv",
+    ".flv",
+    ".wav",
+    ".ogg",
+    ".flac",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".bz2",
+    ".xz",
+    ".7z",
+    ".rar",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".pyc",
+    ".pyo",
+    ".pyd",
+    ".so",
+    ".dll",
+    ".dylib",
+    ".exe",
+    ".o",
+    ".a",
+    ".lib",
+    ".obj",
     ".DS_Store",
-    ".parquet", ".db", ".sqlite", ".sqlite3",
+    ".parquet",
+    ".db",
+    ".sqlite",
+    ".sqlite3",
 })
 
 # Maximum bytes for a readable text file
@@ -106,7 +149,11 @@ def is_likely_binary(content: bytes, sample_size: int = 8192) -> bool:
     # Check for high ratio of non-ASCII, non-printable bytes
     _MAX_ASCII = 127
     _MIN_PRINTABLE = 32
-    non_ascii = sum(1 for b in sample if b > _MAX_ASCII or (b < _MIN_PRINTABLE and b not in {9, 10, 13}))
+    non_ascii = sum(
+        1
+        for b in sample
+        if b > _MAX_ASCII or (b < _MIN_PRINTABLE and b not in {9, 10, 13})
+    )
     return non_ascii > len(sample) * 0.3
 
 

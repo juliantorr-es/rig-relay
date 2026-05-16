@@ -50,8 +50,4 @@ def exception_class_name(exc: Exception) -> str:
     return type(exc).__name__
 
 
-__all__ = [
-    "ContextWarningCode",
-    "build_warning",
-    "exception_class_name",
-]
+__all__ = ["ContextWarningCode", "build_warning", "exception_class_name"]

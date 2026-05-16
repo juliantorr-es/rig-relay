@@ -20,6 +20,7 @@ from typing import Any
 
 try:
     import duckdb as _duckdb
+
     HAS_DUCKD = True
 except ImportError:
     _duckdb = None
@@ -39,17 +40,13 @@ class LedgerLoadResult:
     """
 
     def __init__(
-        self,
-        valid_records: list[dict[str, Any]],
-        diagnostics: dict[str, Any],
+        self, valid_records: list[dict[str, Any]], diagnostics: dict[str, Any]
     ) -> None:
         self.valid_records = valid_records
         self.diagnostics = diagnostics
 
 
-def load_jsonl(
-    path: Path,
-) -> LedgerLoadResult:
+def load_jsonl(path: Path) -> LedgerLoadResult:
     """Read a JSONL ledger, parse valid records, collect malformed-line diagnostics.
 
     Returns:
@@ -104,9 +101,7 @@ def connect_in_memory() -> Any:
     not available.
     """
     if not HAS_DUCKD:
-        raise RuntimeError(
-            "DuckDB is not available. Install with: uv add duckdb"
-        )
+        raise RuntimeError("DuckDB is not available. Install with: uv add duckdb")
     return _duckdb.connect(":memory:")
 
 
@@ -173,6 +168,7 @@ def rows_to_dicts(con: Any, query: str, params: tuple = ()) -> list[dict[str, An
 
 _PROJECTOR_VERSION = "1.0.0"
 
+
 def build_projection_metadata(
     projection_kind: str,
     source_ledger_path: Path,
@@ -203,9 +199,7 @@ def build_projection_metadata(
 
 
 def write_projection(
-    path: Path,
-    data: dict[str, Any] | list[Any],
-    metadata: dict[str, Any] | None = None,
+    path: Path, data: dict[str, Any] | list[Any], metadata: dict[str, Any] | None = None
 ) -> Path:
     """Write a deterministic projection JSON file.
 

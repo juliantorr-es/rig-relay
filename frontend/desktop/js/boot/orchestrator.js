@@ -1,12 +1,15 @@
 // Rig Relay — Boot Orchestrator
 
-import { generateHandshakeId, setFrontendHandshakeId } from '../telemetry/correlation.js';
-import { recordFrontendEvent, setFrontendHandshakeId as traceSetHandshakeId } from '../telemetry/frontendTrace.js';
+import { generateHandshakeId } from '../telemetry/correlation.js';
+import { recordFrontendEvent, setFrontendHandshakeId } from '../telemetry/frontendTrace.js';
 import { fetchRuntimeConfig } from './runtimeConfig.js';
 import { createDebugPanel, updateDebugPanel } from './debugPanel.js';
 import { createTransportStateAuthority } from '../transportState.js';
 import { ProjectionWebSocketClient } from '../transport.js';
 import { renderStatusFromState } from '../status.js';
+import { handleProjection, handleChatState, handleIntentResult,
+         handleProgressEvent, handleProgressEvents } from '../projection.js';
+import { wireUI } from '../main.js';
 
 let debugPanel = null;
 const urlParams = new URLSearchParams(window.location.search);
@@ -15,7 +18,6 @@ const isDebug = urlParams.get('boot_debug') === '1';
 async function boot() {
   const handshakeId = generateHandshakeId();
   setFrontendHandshakeId(handshakeId);
-  traceSetHandshakeId(handshakeId);
 
   if (isDebug) {
     debugPanel = createDebugPanel();
@@ -27,7 +29,7 @@ async function boot() {
   
   // Create transport authority
   const authority = createTransportStateAuthority({
-    onStateChange: (state) => {
+    onTransition: (state) => {
       renderStatusFromState(state);
       if (isDebug) updateDebugPanel(debugPanel, state);
       recordFrontendEvent('frontend_transport_state', { 
@@ -42,28 +44,57 @@ async function boot() {
 
   if (wsUrl) {
     recordFrontendEvent('frontend_websocket_connecting');
-    const client = new ProjectionWebSocketClient(
+    new ProjectionWebSocketClient({
       wsUrl,
       token,
-      {
-        onOpen: () => {
-          authority.handleEvent('TRANSPORT_OPEN');
-          recordFrontendEvent('frontend_websocket_open');
-        },
-        onClose: () => {
-          authority.handleEvent('TRANSPORT_CLOSED');
-        },
-        onError: (e) => {
-          authority.handleEvent('TRANSPORT_ERROR', e);
-        },
-        onMessage: (msg) => {
-          // Handled elsewhere
+      transportMachine: authority,
+      onProjection(data) {
+        handleProjection(data);
+        recordFrontendEvent('frontend_projection_received');
+        recordFrontendEvent('frontend_projection_rendered');
+      },
+      onStatusChange(status, detail, attempts) {
+        switch (status) {
+          case 'connected':
+            recordFrontendEvent('frontend_auth_ok');
+            break;
+          case 'auth_failed':
+            recordFrontendEvent('frontend_auth_failed', { reason: detail });
+            break;
+          case 'disconnected':
+          case 'closed':
+            recordFrontendEvent('frontend_degraded');
+            break;
         }
-      }
-    );
-    client.connect();
+        if (isDebug) updateDebugPanel(debugPanel, authority.snapshot());
+      },
+      onMessage(msg) {
+        switch (msg.type) {
+          case 'chat_state':
+          case 'chat_state_updated':
+            handleChatState(msg);
+            break;
+          case 'desktop_intent_result':
+            handleIntentResult(msg);
+            break;
+          case 'progress_event':
+            handleProgressEvent(msg);
+            break;
+          case 'progress_events':
+            handleProgressEvents(msg.events || msg);
+            break;
+        }
+      },
+      onError(msg) {
+        console.warn('[orchestrator] ws error:', msg);
+      },
+      onAuthFailed(msg) {
+        console.warn('[orchestrator] auth failed:', msg);
+      },
+    });
   }
 
+  wireUI();
   recordFrontendEvent('frontend_ready');
 }
 

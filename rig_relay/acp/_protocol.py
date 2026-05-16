@@ -1,4 +1,5 @@
 """ACP mixin — protocol."""
+
 from __future__ import annotations
 
 from typing import Any, override
@@ -29,7 +30,6 @@ class ProtocolMixin:
     ) -> AuthenticateResponse | None:
         raise NotImplementedMethodError("authenticate")
 
-
     async def _emit_session_info_update(
         self, session_id: str, *, title: str, updated_at: str | None
     ) -> None:
@@ -43,7 +43,6 @@ class ProtocolMixin:
         await self.client.session_update(
             session_id=session_id, update=SessionInfoUpdate(**update_kwargs)
         )
-
 
     async def _persist_live_session_title(
         self, session: AcpSessionLoop, title: str
@@ -61,7 +60,6 @@ class ProtocolMixin:
                 f"Failed to persist title update for session {logger.session_id}: {exc}"
             ) from exc
 
-
     def _set_live_session_title(self, session: AcpSessionLoop, title: str) -> None:
         try:
             session.agent_loop.session_logger.set_title(title)
@@ -69,7 +67,6 @@ class ProtocolMixin:
             raise InvalidRequestError(
                 f"Invalid ACP session title request: {exc}"
             ) from exc
-
 
     async def _handle_session_set_title(self, params: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -118,7 +115,6 @@ class ProtocolMixin:
         )
         return {}
 
-
     @override
     async def ext_method(self, method: str, params: dict) -> dict:
         if method == "session/set_title":
@@ -126,17 +122,14 @@ class ProtocolMixin:
 
         raise NotImplementedMethodError(method)
 
-
     @override
     async def ext_notification(self, method: str, params: dict) -> None:
         # ACP strips the leading "_" before delegating extension notifications here.
         if method == "telemetry/send":
             self._handle_telemetry_notification(params)
 
-
     @override
     def on_connect(self, conn: Client) -> None:
         self.client = conn
 
     # -- Command handlers ------------------------------------------------------
-

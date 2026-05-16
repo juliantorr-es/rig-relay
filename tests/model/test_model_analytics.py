@@ -42,9 +42,39 @@ def test_model_behavior_summary_empty():
 
 def test_model_behavior_summary_with_data():
     records = [
-        {"provider": "openai", "model": "gpt-4", "input_token_count": 100, "output_token_count": 50, "latency_ms": 100, "tool_call_count": 2, "malformed_tool_call_count": 0, "retry_count": 0, "error_kind": ""},
-        {"provider": "openai", "model": "gpt-4", "input_token_count": 200, "output_token_count": 100, "latency_ms": 200, "tool_call_count": 3, "malformed_tool_call_count": 1, "retry_count": 0, "error_kind": ""},
-        {"provider": "anthropic", "model": "claude-3", "input_token_count": 300, "output_token_count": 150, "latency_ms": 300, "tool_call_count": 1, "malformed_tool_call_count": 0, "retry_count": 0, "error_kind": ""},
+        {
+            "provider": "openai",
+            "model": "gpt-4",
+            "input_token_count": 100,
+            "output_token_count": 50,
+            "latency_ms": 100,
+            "tool_call_count": 2,
+            "malformed_tool_call_count": 0,
+            "retry_count": 0,
+            "error_kind": "",
+        },
+        {
+            "provider": "openai",
+            "model": "gpt-4",
+            "input_token_count": 200,
+            "output_token_count": 100,
+            "latency_ms": 200,
+            "tool_call_count": 3,
+            "malformed_tool_call_count": 1,
+            "retry_count": 0,
+            "error_kind": "",
+        },
+        {
+            "provider": "anthropic",
+            "model": "claude-3",
+            "input_token_count": 300,
+            "output_token_count": 150,
+            "latency_ms": 300,
+            "tool_call_count": 1,
+            "malformed_tool_call_count": 0,
+            "retry_count": 0,
+            "error_kind": "",
+        },
     ]
     summary = build_model_behavior_summary(records)
 
@@ -57,8 +87,28 @@ def test_model_behavior_summary_with_data():
 
 def test_context_limit_events_counted():
     records = [
-        {"provider": "openai", "model": "gpt-4", "error_kind": "context_limit", "input_token_count": 100, "output_token_count": 50, "latency_ms": 100, "tool_call_count": 0, "malformed_tool_call_count": 0, "retry_count": 0},
-        {"provider": "openai", "model": "gpt-4", "error_kind": "", "input_token_count": 100, "output_token_count": 50, "latency_ms": 100, "tool_call_count": 0, "malformed_tool_call_count": 0, "retry_count": 0},
+        {
+            "provider": "openai",
+            "model": "gpt-4",
+            "error_kind": "context_limit",
+            "input_token_count": 100,
+            "output_token_count": 50,
+            "latency_ms": 100,
+            "tool_call_count": 0,
+            "malformed_tool_call_count": 0,
+            "retry_count": 0,
+        },
+        {
+            "provider": "openai",
+            "model": "gpt-4",
+            "error_kind": "",
+            "input_token_count": 100,
+            "output_token_count": 50,
+            "latency_ms": 100,
+            "tool_call_count": 0,
+            "malformed_tool_call_count": 0,
+            "retry_count": 0,
+        },
     ]
     summary = build_model_behavior_summary(records)
     assert summary["context_limit_events"] == 1
@@ -66,6 +116,7 @@ def test_context_limit_events_counted():
 
 def test_no_pandas_numpy():
     import rig_relay.analytics.model_rows as mr
+
     source = open(mr.__file__).read()
     assert "import pandas" not in source
     assert "import numpy" not in source

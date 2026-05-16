@@ -14,6 +14,7 @@ from typing import Any, cast
 
 try:
     import duckdb
+
     HAS_DUCKDB = True
 except ImportError:
     HAS_DUCKDB = False
@@ -143,15 +144,14 @@ class RepoContextIndex:
             for f in files:
                 ext = Path(f).suffix
                 insert.append((
-                    f, ext,
+                    f,
+                    ext,
                     _is_test_file(f),
                     _is_doc_file(f),
                     _is_schema_file(f),
                 ))
 
-            con.executemany(
-                "INSERT INTO files VALUES (?, ?, ?, ?, ?)", insert
-            )
+            con.executemany("INSERT INTO files VALUES (?, ?, ?, ?, ?)", insert)
 
             self._build_relations(con, files)
             self._populated = True
@@ -273,11 +273,21 @@ class RepoContextIndex:
 
     def summary(self) -> dict[str, Any]:
         if not self._populated or self._con is None:
-            return {"available": False, "error": self._error, "file_count": 0, "relation_count": 0}
+            return {
+                "available": False,
+                "error": self._error,
+                "file_count": 0,
+                "relation_count": 0,
+            }
         try:
             fc = self._con.execute("SELECT count(*) FROM files").fetchone()[0]
             rc = self._con.execute("SELECT count(*) FROM relations").fetchone()[0]
-            return {"available": True, "fingerprint": self._fingerprint, "file_count": fc, "relation_count": rc}
+            return {
+                "available": True,
+                "fingerprint": self._fingerprint,
+                "file_count": fc,
+                "relation_count": rc,
+            }
         except Exception:
             return {"available": False, "error": "query failed"}
 
