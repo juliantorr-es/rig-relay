@@ -48,6 +48,9 @@ class RuntimeToolInvocationReceipt(BaseModel):
     tool_receipt_kind: str | None = None
     tool_receipt_schema_version: str | None = None
     receipt_sha256: str | None = None
+    supervisor_result_envelope_id: str | None = None
+    supervisor_result_envelope_sha256: str | None = None
+    supervisor_result_classification: str | None = None
     envelope_id: str | None = None
     audit_event_id: str | None = None
     changed_paths: list[str] = Field(default_factory=list)
@@ -87,6 +90,15 @@ def build_runtime_tool_invocation_receipt(
         tool_receipt_kind=result.tool_receipt_kind,
         tool_receipt_schema_version=result.tool_receipt_schema_version,
         receipt_sha256=result.receipt_sha256,
+        supervisor_result_envelope_id=getattr(
+            result, "supervisor_result_envelope_id", None
+        ),
+        supervisor_result_envelope_sha256=getattr(
+            result, "supervisor_result_envelope_sha256", None
+        ),
+        supervisor_result_classification=getattr(
+            result, "supervisor_result_classification", None
+        ),
         envelope_id=result.receipt_envelope_id,
         audit_event_id=result.audit_event_id,
         changed_paths=list(result.changed_paths),

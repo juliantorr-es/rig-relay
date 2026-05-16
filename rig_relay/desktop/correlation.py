@@ -32,7 +32,9 @@ def hash_dict_payload(data: dict[str, Any]) -> str:
     """Content-safe hash of a dict payload."""
     import json
 
-    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    canonical = json.dumps(
+        data, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
 
@@ -55,10 +57,7 @@ class DesktopCorrelation:
     __slots__ = ("correlation_id", "_recorder", "_started_at")
 
     def __init__(
-        self,
-        *,
-        correlation_id: str | None = None,
-        trace_recorder: Any | None = None,
+        self, *, correlation_id: str | None = None, trace_recorder: Any | None = None
     ) -> None:
         self.correlation_id = correlation_id or new_correlation_id()
         self._recorder = trace_recorder
@@ -69,39 +68,33 @@ class DesktopCorrelation:
         return self._recorder is not None
 
     def emit_event(
-        self,
-        name: str,
-        attributes: dict[str, object] | None = None,
+        self, name: str, attributes: dict[str, object] | None = None
     ) -> None:
-        if not self.is_active:
+        if self._recorder is None:
             return
         attrs = dict(attributes or {})
         attrs["correlation_id"] = self.correlation_id
-        getattr(self._recorder, "event")(name, attributes=attrs)
+        self._recorder.event(name, attributes=attrs)
 
-    def emit_span(
-        self,
-        name: str,
-        attributes: dict[str, object] | None = None,
-    ) -> Any:
-        if not self.is_active:
+    def emit_span(self, name: str, attributes: dict[str, object] | None = None) -> Any:
+        if self._recorder is None:
             return None
         attrs = dict(attributes or {})
         attrs["correlation_id"] = self.correlation_id
         return self._recorder.start_span(name, attributes=attrs)
 
     def end_span(
-        self,
-        span: Any,
-        status: str = "ok",
-        attributes: dict[str, object] | None = None,
+        self, span: Any, status: str = "ok", attributes: dict[str, object] | None = None
     ) -> None:
-        if not self.is_active:
+        if self._recorder is None:
             return
         attrs = dict(attributes or {})
         attrs["correlation_id"] = self.correlation_id
         from rig_relay.tracing.models import TraceStatus
-        getattr(self._recorder, "end_span")(span, status=getattr(TraceStatus, status, TraceStatus.ok), attributes=attrs)
+
+        self._recorder.end_span(
+            span, status=getattr(TraceStatus, status, TraceStatus.ok), attributes=attrs
+        )
 
     def emit_bridge_step(
         self,
@@ -175,9 +168,6 @@ def _safe_details(details: dict[str, Any] | None) -> dict[str, object]:
     if not details:
         return {}
     safe_keys = {
-        "ws_url",
-        "frontend_url",
-        "frontend_dir",
         "port",
         "host",
         "tls_enabled",
@@ -188,14 +178,44 @@ def _safe_details(details: dict[str, Any] | None) -> dict[str, object]:
         "cert_fingerprint",
         "projection_digest",
         "widget_count",
+        "frontend_dir_hash",
+        "frontend_dir_kind",
+        "ws_scheme",
+        "frontend_scheme",
     }
-    return {k: v for k, v in details.items() if k in safe_keys}
+    result: dict[str, object] = {}
+    for k, v in details.items():
+        if k in safe_keys:
+            result[k] = v
+        elif k == "frontend_dir" and isinstance(v, str):
+            import hashlib
+
+            result["frontend_dir_hash"] = hashlib.sha256(v.encode()).hexdigest()[:16]
+            result["frontend_dir_kind"] = _classify_path_kind(v)
+        elif k == "ws_url" and isinstance(v, str):
+            result["ws_scheme"] = "wss" if v.startswith("wss") else "ws"
+        elif k == "frontend_url" and isinstance(v, str):
+            result["frontend_scheme"] = "https" if v.startswith("https") else "http"
+    return result
+
+
+def _classify_path_kind(path: str) -> str:
+    """Classify a path for trace safety."""
+    p = str(path).lower()
+    if "/tmp" in p or "/var/folders" in p:
+        return "temp"
+    if "worktree" in p:
+        return "worktree"
+    if "application support" in p:
+        return "app_support"
+    return "repo"
 
 
 __all__ = [
     "DesktopCorrelation",
+    "_classify_path_kind",
+    "hash_dict_payload",
+    "hash_message_payload",
     "new_correlation_id",
     "new_transport_session_id",
-    "hash_message_payload",
-    "hash_dict_payload",
 ]

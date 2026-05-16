@@ -79,10 +79,10 @@ These tests prove:
 
 ## Remaining Gaps
 
-The envelope is wired at the supervisor invocation boundary. Downstream
+The envelope is wired at the supervisor invocation boundary, and ToolRuntime
+now preserves it through subprocess-backed tool calls. Remaining downstream
 consumers still need to adopt it directly:
 
-- `ToolRuntime`
 - `validate`
 - desktop diagnostics
 - future `SubagentRuntime`

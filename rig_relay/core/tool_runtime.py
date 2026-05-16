@@ -32,6 +32,7 @@ from rig_relay.core.tool_runtime_models import (
 )
 from rig_relay.core.tool_subprocess import ToolSubprocessRunner
 from rig_relay.core.tools.base import ToolPermissionError
+from rig_relay.runtime.supervisor_result import RuntimeSupervisorResultClassification
 
 # ── Callback signatures for dependency injection ──────────────────────
 
@@ -149,6 +150,16 @@ class ToolRuntime:
                 degraded_capabilities=["tool_runtime_internal_error"],
             )
 
+    # ── Internal helpers ─────────────────────────────────────────
+
+    @staticmethod
+    def _finish_span(
+        recorder: Any, span: Any, ts: Any, status: Any, attrs: dict[str, Any]
+    ) -> None:
+        """Close a trace span. No-op if recorder or span is None."""
+        if recorder is not None and span is not None:
+            recorder.end_span(span, status=status, attributes=attrs)
+
     # ── Internal sequence ───────────────────────────────────────────
 
     async def _execute_governed(self, request: ToolRuntimeRequest) -> ToolRuntimeResult:
@@ -188,18 +199,37 @@ class ToolRuntime:
                 },
             )
 
+        # ── Span finalizer helper ──────────────────────────────
+        def _finalize_span(
+            status_str: str = "error",
+            attrs: dict[str, Any] | None = None,
+            error: str | None = None,
+        ) -> None:
+            if trace_span is None or recorder is None or trace_status is None:
+                return
+            status_map = {
+                "ok": trace_status.ok,
+                "error": trace_status.error,
+                "refused": trace_status.refused,
+                "cancelled": trace_status.cancelled,
+                "timed_out": trace_status.timed_out,
+                "degraded": trace_status.degraded,
+            }
+            end_attrs = dict(attrs or {})
+            end_status = status_map.get(status_str, trace_status.error)
+            recorder.end_span(
+                trace_span, status=end_status, attributes=end_attrs, error=error
+            )
+
         # ── 1. Cache check ──────────────────────────────────────
         hit, cached = self._cache_check(tn, request.tool_args)
         if trace_span is not None:
             trace_span.event("tool_runtime.cache_check", attributes={"cache.hit": hit})
         if hit and cached is not None:
             self._stats_delta("tool_calls_succeeded", 1)
-            if trace_span is not None:
-                getattr(recorder, "end_span")(
-                    trace_span,
-                    status=trace_status.ok,
-                    attributes={"tool.status": "cached", "cache.hit": True},
-                )
+            _finalize_span(
+                status_str="ok", attrs={"tool.status": "cached", "cache.hit": True}
+            )
             return ToolRuntimeResult.cached_result(
                 tool_name=tn, tool_call_id=cid, provider_tool_response=cached
             ).model_copy(
@@ -217,6 +247,13 @@ class ToolRuntime:
             )
             if not permitted:
                 self._stats_delta("tool_calls_rejected", 1)
+                _finalize_span(
+                    status_str="refused",
+                    attrs={
+                        "tool.status": "refused",
+                        "tool.refusal_code": "permission_denied",
+                    },
+                )
                 return ToolRuntimeResult.refused(
                     tool_name=tn,
                     tool_call_id=cid,
@@ -239,6 +276,13 @@ class ToolRuntime:
         approved, reason = await self._approval_request(tn, request.tool_args, cid)
         if not approved:
             self._stats_delta("tool_calls_rejected", 1)
+            _finalize_span(
+                status_str="refused",
+                attrs={
+                    "tool.status": "refused",
+                    "tool.refusal_code": "approval_denied",
+                },
+            )
             return ToolRuntimeResult.refused(
                 tool_name=tn,
                 tool_call_id=cid,
@@ -261,6 +305,10 @@ class ToolRuntime:
         gating = self._patch_gate_check(request, None)
         if gating is not None:
             self._stats_delta("tool_calls_rejected", 1)
+            _finalize_span(
+                status_str="refused",
+                attrs={"tool.status": "refused", "tool.refusal_code": "patch_gate"},
+            )
             return ToolRuntimeResult.refused(
                 tool_name=tn,
                 tool_call_id=cid,
@@ -301,6 +349,13 @@ class ToolRuntime:
         except ToolPermissionError:
             self._stats_delta("tool_calls_agreed", -1)
             self._stats_delta("tool_calls_rejected", 1)
+            _finalize_span(
+                status_str="refused",
+                attrs={
+                    "tool.status": "refused",
+                    "tool.refusal_code": "tool_permission_error",
+                },
+            )
             return ToolRuntimeResult.refused(
                 tool_name=tn,
                 tool_call_id=cid,
@@ -319,6 +374,14 @@ class ToolRuntime:
             )
         except Exception as exc:
             self._stats_delta("tool_calls_failed", 1)
+            _finalize_span(
+                status_str="error",
+                attrs={
+                    "tool.status": "failed",
+                    "tool.error_kind": "tool_invocation_failed",
+                },
+                error=f"{tn} failed: {exc}"[:500],
+            )
             return ToolRuntimeResult.failed(
                 tool_name=tn,
                 tool_call_id=cid,
@@ -341,6 +404,11 @@ class ToolRuntime:
 
         if result_model is None:
             self._stats_delta("tool_calls_failed", 1)
+            _finalize_span(
+                status_str="error",
+                attrs={"tool.status": "failed", "tool.error_kind": "no_result"},
+                error="Tool did not yield a result",
+            )
             return ToolRuntimeResult.failed(
                 tool_name=tn,
                 tool_call_id=cid,
@@ -395,10 +463,36 @@ class ToolRuntime:
             degraded.append("context_observation_failed")
 
         status = ToolRuntimeStatus.DEGRADED if degraded else ToolRuntimeStatus.COMPLETED
+        supervisor_result = getattr(result_model, "supervisor_result_envelope", None)
+        supervisor_result_sha256 = getattr(
+            result_model, "supervisor_result_envelope_sha256", None
+        )
+        supervisor_result_classification = getattr(
+            result_model, "supervisor_result_classification", None
+        )
+        if supervisor_result_classification is None and supervisor_result is not None:
+            supervisor_result_classification = supervisor_result.get("classification")
+        if supervisor_result_sha256 is None and supervisor_result is not None:
+            supervisor_result_sha256 = supervisor_result.get("result_id")
 
         if trace_span is not None:
+            trace_end_status = trace_status.ok
+            if supervisor_result_classification is not None:
+                match RuntimeSupervisorResultClassification(
+                    str(supervisor_result_classification)
+                ):
+                    case RuntimeSupervisorResultClassification.COMPLETED:
+                        trace_end_status = trace_status.ok
+                    case RuntimeSupervisorResultClassification.CANCELLED:
+                        trace_end_status = trace_status.cancelled
+                    case RuntimeSupervisorResultClassification.TIMED_OUT:
+                        trace_end_status = trace_status.timed_out
+                    case RuntimeSupervisorResultClassification.REFUSED:
+                        trace_end_status = trace_status.refused
+                    case _:
+                        trace_end_status = trace_status.error
             end_status = (
-                trace_status.ok
+                trace_end_status
                 if status == ToolRuntimeStatus.COMPLETED
                 else trace_status.degraded
             )
@@ -406,9 +500,19 @@ class ToolRuntime:
                 "tool.status": status,
                 "tool.degraded": bool(degraded),
             }
-            getattr(recorder, "end_span")(
-                trace_span, status=end_status, attributes=end_attrs
-            )
+            if supervisor_result_classification is not None:
+                end_attrs["tool.supervisor_result_classification"] = str(
+                    supervisor_result_classification
+                )
+            if supervisor_result_sha256 is not None:
+                end_attrs["tool.supervisor_result_envelope_sha256"] = (
+                    supervisor_result_sha256
+                )
+            if supervisor_result is not None and supervisor_result.get("result_id"):
+                end_attrs["tool.supervisor_result_envelope_id"] = supervisor_result[
+                    "result_id"
+                ]
+            recorder.end_span(trace_span, status=end_status, attributes=end_attrs)
 
         return ToolRuntimeResult(
             status=status,
@@ -427,6 +531,11 @@ class ToolRuntime:
             degraded_capabilities=degraded,
             duration_ms=duration * 1000,
             receipt_refs=[],
+            supervisor_result_envelope_id=(
+                supervisor_result.get("result_id") if supervisor_result else None
+            ),
+            supervisor_result_envelope_sha256=supervisor_result_sha256,
+            supervisor_result_classification=supervisor_result_classification,
         )
 
     @staticmethod

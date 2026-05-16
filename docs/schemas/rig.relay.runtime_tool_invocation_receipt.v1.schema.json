@@ -47,6 +47,27 @@
       ],
       "description": "Structured error kind from tool or adapter"
     },
+    "supervisor_result_envelope_id": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Canonical RuntimeSupervisor result envelope ID"
+    },
+    "supervisor_result_envelope_sha256": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "SHA-256 of the canonical RuntimeSupervisor result envelope"
+    },
+    "supervisor_result_classification": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Normalized RuntimeSupervisor terminal classification"
+    },
     "tool_receipt_kind": {
       "oneOf": [
         { "type": "string" },

@@ -33,6 +33,12 @@ tool_runtime.execute_one (trace_id=t1, span_id=s1)
 - Raw argv secrets never appear
 - Raw stdout/stderr content never appears
 
+## Supervisor Envelope Adoption
+Subprocess-backed tool calls now preserve `RuntimeSupervisorResultEnvelope`
+through the ToolRuntime and adapter receipt path. Downstream consumers should
+read the envelope or the copied envelope fields rather than reconstructing
+terminal meaning from raw process handles or ad hoc status strings.
+
 ## Validate Tracing v0 (deferred)
 Validate profile execution tracing deferred to next pass. Current check execution goes through `validate_runner._run_check()` which uses `create_subprocess_exec`. Instrumentation will be added when validate state machine transitions are stable.
 

@@ -141,6 +141,9 @@ class ToolRuntimeResult(BaseModel):
     source_kind: str | None = None
     source_id: str | None = None
     runtime_envelope_sha256: str | None = None
+    supervisor_result_envelope_id: str | None = None
+    supervisor_result_envelope_sha256: str | None = None
+    supervisor_result_classification: str | None = None
 
     # ── Provider-facing ───────────────────────────────────────────
     provider_tool_response: Any = None
@@ -188,6 +191,8 @@ class ToolRuntimeResult(BaseModel):
             result["error"] = self.error_kind
         if self.receipt_refs:
             result["receipts"] = len(self.receipt_refs)
+        if self.supervisor_result_classification:
+            result["supervisor_result"] = self.supervisor_result_classification
         return result
 
     @classmethod

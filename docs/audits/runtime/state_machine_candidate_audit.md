@@ -185,7 +185,8 @@ To provide complete observability across asynchronous state machines and event t
 * `runtime.subprocess.transition`: Legacy label from the pre-state-machine audit.
 * `runtime.subprocess.execute`: Emitted by `RuntimeSupervisor`.
 * `RuntimeSupervisorResultEnvelope`: Canonical terminal evidence built from
-  the state machine projection and terminal event classification.
+  the state machine projection and terminal event classification, preserved
+  through ToolRuntime-adjacent receipts for subprocess-backed tool calls.
 * `validate.profile.transition`: Emitted by `Validate` tool.
 * `ralph.lane.transition`: Emitted by `Ralph` scanner.
 * `conversation.turn.transition`: Emitted by `AgentLoop` / `ConversationTurnRuntime`.

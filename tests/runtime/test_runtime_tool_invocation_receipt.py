@@ -145,6 +145,9 @@ class TestBuildRuntimeToolInvocationReceipt:
             duration_ms=150.0,
             tool_receipt_kind="validate",
             tool_receipt_schema_version="rig.relay.validate_receipt.v1",
+            supervisor_result_envelope_id="sup-env-001",
+            supervisor_result_envelope_sha256="sha256:sup-env",
+            supervisor_result_classification="completed",
         )
 
         receipt = build_runtime_tool_invocation_receipt(
@@ -158,6 +161,9 @@ class TestBuildRuntimeToolInvocationReceipt:
         assert receipt.tool_status == "passed"
         assert receipt.receipt_sha256 == "abc123"
         assert receipt.tool_receipt_kind == "validate"
+        assert receipt.supervisor_result_envelope_id == "sup-env-001"
+        assert receipt.supervisor_result_envelope_sha256 == "sha256:sup-env"
+        assert receipt.supervisor_result_classification == "completed"
         assert receipt.created_at == "2026-05-17T00:00:00Z"
 
     def test_build_copies_changed_paths(self) -> None:
@@ -173,12 +179,21 @@ class TestBuildRuntimeToolInvocationReceipt:
         assert receipt.created_at != ""
 
     def test_build_copies_envelope_and_audit_ids(self) -> None:
-        result = _make_result(receipt_envelope_id="env-001", audit_event_id="audit-001")
+        result = _make_result(
+            receipt_envelope_id="env-001",
+            audit_event_id="audit-001",
+            supervisor_result_envelope_id="sup-env-001",
+            supervisor_result_envelope_sha256="sha256:sup-env",
+            supervisor_result_classification="completed",
+        )
         receipt = build_runtime_tool_invocation_receipt(
             result, created_at="2026-05-17T00:00:00Z"
         )
         assert receipt.envelope_id == "env-001"
         assert receipt.audit_event_id == "audit-001"
+        assert receipt.supervisor_result_envelope_id == "sup-env-001"
+        assert receipt.supervisor_result_envelope_sha256 == "sha256:sup-env"
+        assert receipt.supervisor_result_classification == "completed"
 
     def test_build_invocation_id_falls_back_to_intent_id(self) -> None:
         result = _make_result(invocation_id=None)
@@ -212,6 +227,9 @@ class TestReceiptSchema:
             intent_id="intent-001",
             tool_name="validate",
             adapter_status="completed",
+            supervisor_result_envelope_id="sup-env-001",
+            supervisor_result_envelope_sha256="sha256:sup-env",
+            supervisor_result_classification="completed",
         )
         validator = jsonschema.Draft7Validator(receipt_schema_dict)
         errors = list(validator.iter_errors(receipt.model_dump(mode="json")))

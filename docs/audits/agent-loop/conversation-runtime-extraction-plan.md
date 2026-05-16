@@ -85,9 +85,10 @@ but with an important distinction:
    turn loop. Only the desktop cockpit, ACP server, and IDE sidecar should
    instantiate it.
 
-2. **SubagentRuntime** should be designed separately as bounded mission
-   execution, NOT as a full AgentLoop. Current `task.py` spawns a full
-   AgentLoop with `is_subagent=True` — this is a high-risk pattern.
+2. **SubagentRuntime v1** is built and now owns lifecycle evidence,
+   trace propagation, and explicit tool execution mode markers.
+   `task.py` delegates to `SubagentRuntime`, NOT `AgentLoop`.
+   The `is_subagent=True` pattern is dead and blocked by guard tests.
 
 3. **RalphRuntime** should use SubagentRuntime with
    `profile_kind=AUTONOMOUS_BACKGROUND` — it must never own a full turn loop.

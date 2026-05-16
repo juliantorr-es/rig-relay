@@ -456,7 +456,10 @@ class Task(
             prompt_text=prompt_text,
             plan=plan,
         )
-        runtime = SubagentRuntime(mission)
+        runtime = SubagentRuntime(
+            mission,
+            tool_runtime=getattr(ctx, "tool_runtime", None) if ctx else None,
+        )
 
         try:
             result = await runtime.execute()

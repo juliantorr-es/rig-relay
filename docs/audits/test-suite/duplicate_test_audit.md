@@ -1,9 +1,9 @@
 # Duplicate Test Audit
 
-**Scanned**: 5970 tests
+**Scanned**: 5975 tests
 **Exact body duplicates**: 1 groups (2 tests)
 **Normalized AST duplicates**: 35 groups (91 tests)
-**Assert shape duplicates**: 618 groups (3307 tests)
+**Assert shape duplicates**: 607 groups (3289 tests)
 
 ## Top Exact Duplicate Groups
 

@@ -107,6 +107,9 @@ class RuntimeToolExecutionResult(BaseModel):
     receipt_envelope_id: str | None = None
     audit_event_id: str | None = None
     changed_paths: list[str] = Field(default_factory=list)
+    supervisor_result_envelope_id: str | None = None
+    supervisor_result_envelope_sha256: str | None = None
+    supervisor_result_classification: str | None = None
     # ── Receipt model (produced alongside result) ─────────────────
     receipt: RuntimeToolInvocationReceipt | None = None
 
@@ -770,17 +773,27 @@ class RuntimeToolExecutionRunner:
         status_value = getattr(runtime_result.status, "value", runtime_result.status)
         provider = getattr(runtime_result, "provider_tool_response", None)
         provider_status = getattr(provider, "status", None)
-        tool_status = getattr(provider_status, "value", provider_status) or status_value
+        provider_status_value = getattr(provider_status, "value", provider_status)
+        status_source = provider_status_value or status_value
+        tool_status = provider_status_value or status_source
         provider_error_kind = getattr(provider, "error_kind", None)
         provider_refusal = getattr(provider, "refusal_reason", None)
-        if status_value == "cached":
+        if status_source == "cached":
             execution_status = RuntimeToolExecutionStatus.COMPLETED
-        elif status_value == "refused":
+        elif status_source == "completed":
+            execution_status = RuntimeToolExecutionStatus.COMPLETED
+        elif status_source == "passed":
+            execution_status = RuntimeToolExecutionStatus.COMPLETED
+        elif status_source == "success":
+            execution_status = RuntimeToolExecutionStatus.COMPLETED
+        elif status_source == "refused":
             execution_status = RuntimeToolExecutionStatus.REFUSED
-        elif status_value == "failed":
-            execution_status = RuntimeToolExecutionStatus.FAILED
-        elif status_value == "blocked":
+        elif status_source == "blocked":
             execution_status = RuntimeToolExecutionStatus.BLOCKED
+        elif status_source == "failed":
+            execution_status = RuntimeToolExecutionStatus.FAILED
+        elif status_source == "timed_out":
+            execution_status = RuntimeToolExecutionStatus.FAILED
         else:
             execution_status = RuntimeToolExecutionStatus.COMPLETED
         if (
@@ -788,6 +801,15 @@ class RuntimeToolExecutionRunner:
             and execution_status == RuntimeToolExecutionStatus.FAILED
         ):
             tool_status = None
+
+        provider_supervisor_envelope = getattr(
+            getattr(runtime_result, "provider_tool_response", None),
+            "supervisor_result_envelope",
+            None,
+        )
+        supervisor_result_envelope_id = None
+        if isinstance(provider_supervisor_envelope, dict):
+            supervisor_result_envelope_id = provider_supervisor_envelope.get("result_id")
 
         result = RuntimeToolExecutionResult(
             status=execution_status,
@@ -807,6 +829,13 @@ class RuntimeToolExecutionRunner:
                 f"rig.relay.{(tool_receipt_kind or intent.tool_name.value)}_receipt.v1"
             ),
             changed_paths=changed_paths or [],
+            supervisor_result_envelope_id=supervisor_result_envelope_id,
+            supervisor_result_envelope_sha256=getattr(
+                runtime_result, "supervisor_result_envelope_sha256", None
+            ),
+            supervisor_result_classification=getattr(
+                runtime_result, "supervisor_result_classification", None
+            ),
         )
         result = result.model_copy(
             update={

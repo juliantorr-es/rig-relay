@@ -151,7 +151,10 @@ class ValidateProfileStateMachine:
         if self.is_terminal and state != self._state:
             raise TerminalValidateProfileStateError(f"{self._state} is terminal")
         if event == ValidateProfileEvent.PROFILE_COMPLETED:
-            if self._state == ValidateProfileState.RUNNING_CHECKS and state in {
+            if self._state in {
+                ValidateProfileState.SELECTING_CHECKS,
+                ValidateProfileState.RUNNING_CHECKS,
+            } and state in {
                 ValidateProfileState.SUMMARIZING,
                 ValidateProfileState.PASSED,
                 ValidateProfileState.FAILED,

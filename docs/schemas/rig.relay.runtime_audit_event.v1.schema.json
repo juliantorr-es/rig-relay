@@ -42,6 +42,18 @@
       "oneOf": [{ "type": "string" }, { "type": "null" }],
       "description": "SHA-256 hash of the runtime tool invocation envelope"
     },
+    "supervisor_result_envelope_id": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Canonical RuntimeSupervisor result envelope ID"
+    },
+    "supervisor_result_envelope_sha256": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "SHA-256 of the canonical RuntimeSupervisor result envelope"
+    },
+    "supervisor_result_classification": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Normalized RuntimeSupervisor terminal classification"
+    },
     "source_kind": {
       "oneOf": [{ "type": "string" }, { "type": "null" }],
       "description": "Source kind for the execution, e.g. runtime_intent"

@@ -66,6 +66,9 @@ class ToolSubprocessResult(BaseModel):
     refusal_code: str | None = None
     error_message: str | None = None
     supervisor_metadata: dict[str, object] = {}
+    supervisor_result_envelope: dict[str, object] | None = None
+    supervisor_result_envelope_sha256: str | None = None
+    supervisor_result_classification: str | None = None
 
 
 class ToolSubprocessRunner(Protocol):

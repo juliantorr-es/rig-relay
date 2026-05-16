@@ -162,10 +162,15 @@ class SupervisorCommandInvoker:
 
     @staticmethod
     def _sha256_hex_prefixed(text: str) -> str:
-        return "sha256:" + hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+        return (
+            "sha256:"
+            + hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+        )
 
     @staticmethod
-    def _command_digest(argv: list[str], cwd_str: str) -> RuntimeSupervisorCommandDigest:
+    def _command_digest(
+        argv: list[str], cwd_str: str
+    ) -> RuntimeSupervisorCommandDigest:
         return RuntimeSupervisorCommandDigest(
             executable=argv[0],
             argv_hash=SupervisorCommandInvoker._sha256_hex_prefixed(" ".join(argv)),
@@ -194,12 +199,13 @@ class SupervisorCommandInvoker:
 
     @staticmethod
     def _timing_digest(
-        *, started_at: str | None = None, completed_at: str | None = None, duration_ms: float | None = None
+        *,
+        started_at: str | None = None,
+        completed_at: str | None = None,
+        duration_ms: float | None = None,
     ) -> RuntimeSupervisorTiming:
         return RuntimeSupervisorTiming(
-            started_at=started_at,
-            completed_at=completed_at,
-            duration_ms=duration_ms,
+            started_at=started_at, completed_at=completed_at, duration_ms=duration_ms
         )
 
     @staticmethod
@@ -209,9 +215,11 @@ class SupervisorCommandInvoker:
         return RuntimeSupervisorResourceUsage(
             exit_code=getattr(event, "exit_code", None),
             signal=None,
-            timed_out=getattr(event, "status", None) == RuntimeInvocationStatus.TIMED_OUT,
+            timed_out=getattr(event, "status", None)
+            == RuntimeInvocationStatus.TIMED_OUT,
             killed=False,
-            cancelled=getattr(event, "status", None) == RuntimeInvocationStatus.CANCELLED,
+            cancelled=getattr(event, "status", None)
+            == RuntimeInvocationStatus.CANCELLED,
             pid=None,
         )
 
@@ -270,10 +278,7 @@ class SupervisorCommandInvoker:
         )
         classification = self._classify_terminal(terminal_event)
         resource_usage = self._resource_usage(terminal_event)
-        cleanup = RuntimeSupervisorCleanup(
-            status="completed",
-            reason=None,
-        )
+        cleanup = RuntimeSupervisorCleanup(status="completed", reason=None)
         error = None
         if isinstance(terminal_event, RuntimeFailureEvent):
             error = RuntimeSupervisorFailure(
@@ -297,7 +302,8 @@ class SupervisorCommandInvoker:
                 "exit_code": getattr(terminal_event, "exit_code", None),
                 "timed_out": classification
                 == RuntimeSupervisorResultClassification.TIMED_OUT,
-                "killed": classification == RuntimeSupervisorResultClassification.KILLED,
+                "killed": classification
+                == RuntimeSupervisorResultClassification.KILLED,
                 "stdout_bytes": output.stdout_bytes,
                 "stderr_bytes": output.stderr_bytes,
             },
@@ -305,14 +311,14 @@ class SupervisorCommandInvoker:
             resource_usage=resource_usage,
             output=output,
             timing=timing,
-                context=RuntimeSupervisorEnvelopeContext(
-                    trace_id=evidence["trace_id"],
-                    parent_span_id=evidence["parent_span_id"],
-                    span_id=evidence["span_id"],
-                    error=error,
-                    cleanup=cleanup,
-                ),
-            )
+            context=RuntimeSupervisorEnvelopeContext(
+                trace_id=evidence["trace_id"],
+                parent_span_id=evidence["parent_span_id"],
+                span_id=evidence["span_id"],
+                error=error,
+                cleanup=cleanup,
+            ),
+        )
 
     @staticmethod
     def _end_trace_span(
@@ -391,7 +397,10 @@ class SupervisorCommandInvoker:
                     cwd_hash=SupervisorCommandInvoker._sha256_hex_prefixed(""),
                     cwd_kind="unknown",
                 ),
-                cwd={"cwd_hash": SupervisorCommandInvoker._sha256_hex_prefixed(""), "cwd_kind": "unknown"},
+                cwd={
+                    "cwd_hash": SupervisorCommandInvoker._sha256_hex_prefixed(""),
+                    "cwd_kind": "unknown",
+                },
                 state_projection={
                     "current_state": "refused",
                     "previous_state": None,
@@ -414,8 +423,7 @@ class SupervisorCommandInvoker:
                 timing=RuntimeSupervisorTiming(),
                 context=RuntimeSupervisorEnvelopeContext(
                     cleanup=RuntimeSupervisorCleanup(
-                        status="not_started",
-                        reason="empty_argv",
+                        status="not_started", reason="empty_argv"
                     ),
                     error=RuntimeSupervisorFailure(
                         error_kind="empty_argv",
@@ -436,7 +444,9 @@ class SupervisorCommandInvoker:
             envelope = build_runtime_supervisor_result_envelope(
                 command=RuntimeSupervisorCommandDigest(
                     executable=argv[0],
-                    argv_hash=SupervisorCommandInvoker._sha256_hex_prefixed(" ".join(argv)),
+                    argv_hash=SupervisorCommandInvoker._sha256_hex_prefixed(
+                        " ".join(argv)
+                    ),
                     argc=len(argv),
                     cwd_hash=SupervisorCommandInvoker._sha256_hex_prefixed(cwd_str),
                     cwd_kind=_classify_cwd_kind(cwd_str),
@@ -467,8 +477,7 @@ class SupervisorCommandInvoker:
                 timing=RuntimeSupervisorTiming(),
                 context=RuntimeSupervisorEnvelopeContext(
                     cleanup=RuntimeSupervisorCleanup(
-                        status="not_started",
-                        reason="cwd_not_found",
+                        status="not_started", reason="cwd_not_found"
                     ),
                     error=RuntimeSupervisorFailure(
                         error_kind="cwd_not_found",
@@ -789,6 +798,7 @@ class RuntimeSupervisorToolSubprocessRunner:
             "supervisor_backend": "RuntimeSupervisor",
             "command_family": result.command_family,
         }
+        supervisor_envelope = result.result_envelope
 
         return ToolSubprocessResult(
             status=result.status,
@@ -806,7 +816,32 @@ class RuntimeSupervisorToolSubprocessRunner:
             refusal_code=result.refusal_code,
             error_message=result.error_message,
             supervisor_metadata=supervisor_metadata,
+            supervisor_result_envelope=(
+                supervisor_envelope.model_dump(mode="json")
+                if supervisor_envelope is not None
+                else None
+            ),
+            supervisor_result_envelope_sha256=(
+                _envelope_sha256(supervisor_envelope)
+                if supervisor_envelope is not None
+                else None
+            ),
+            supervisor_result_classification=(
+                supervisor_envelope.classification.value
+                if supervisor_envelope is not None
+                else None
+            ),
         )
+
+
+def _envelope_sha256(envelope: Any) -> str:
+    """SHA256 of the canonical JSON serialization of a result envelope."""
+    import json as _json
+
+    payload = _json.dumps(
+        envelope.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+    )
+    return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 __all__ = [

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, ClassVar
 
 from pydantic import ValidationError
 import pytest
@@ -161,16 +162,189 @@ class TestGateDecision:
 
 
 class TestGovernanceEngine:
-    """GovernanceEngine.evaluate_action_legality behavior."""
+    """GovernanceEngine.evaluate_action_legality behavior — contract matrix."""
 
-    def test_allowed_for_safe_read_only_intent(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.read_file",
-            intent_kind="read_only",
-            requested_capabilities=[RuntimeCapabilityKind.FILE_READ],
+    # ── Decision outcome matrix ───────────────────────────────────
+
+    _DECISION_CASES: ClassVar[list[Any]] = [
+        pytest.param(
+            {
+                "intent_id": "intent.read_file",
+                "intent_kind": "read_only",
+                "requested_capabilities": [RuntimeCapabilityKind.FILE_READ],
+            },
+            GovernanceDecisionKind.ALLOWED,
+            id="allowed_read_only_intent",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.execute",
+                "intent_kind": "execution",
+                "requested_capabilities": [RuntimeCapabilityKind.SHELL_PROPOSAL],
+                "provider_trust_tier": RuntimeProviderTrustTier.BLOCKED,
+            },
+            GovernanceDecisionKind.BLOCKED,
+            id="blocked_provider_trust_tier",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.execute",
+                "intent_kind": "execution",
+                "requested_capabilities": [RuntimeCapabilityKind.SHELL_PROPOSAL],
+                "provider_status": RuntimeProviderStatus.UNAVAILABLE,
+            },
+            GovernanceDecisionKind.BLOCKED,
+            id="blocked_provider_unavailable",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.execute",
+                "intent_kind": "execution",
+                "requested_capabilities": [RuntimeCapabilityKind.SHELL_PROPOSAL],
+                "provider_status": RuntimeProviderStatus.ERROR,
+            },
+            GovernanceDecisionKind.BLOCKED,
+            id="blocked_provider_error",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.read",
+                "intent_kind": "read_only",
+                "requested_capabilities": [RuntimeCapabilityKind.FILE_READ],
+                "provider_status": RuntimeProviderStatus.UNAVAILABLE,
+            },
+            GovernanceDecisionKind.ALLOWED,
+            id="not_blocked_unavailable_read_only",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.write",
+                "intent_kind": "mutation",
+                "requested_capabilities": [RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
+            },
+            GovernanceDecisionKind.REQUIRES_REVIEW,
+            id="requires_review_mutation",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.write",
+                "intent_kind": "mutation",
+                "requested_capabilities": [RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
+                "allow_mutation": True,
+            },
+            GovernanceDecisionKind.ALLOWED,
+            id="allows_mutation_when_allow_mutation",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.fetch",
+                "intent_kind": "network",
+                "requested_capabilities": [
+                    RuntimeCapabilityKind.NETWORK_FETCH_PROPOSAL
+                ],
+            },
+            GovernanceDecisionKind.REQUIRES_REVIEW,
+            id="requires_review_network",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.fetch",
+                "intent_kind": "network",
+                "requested_capabilities": [
+                    RuntimeCapabilityKind.NETWORK_FETCH_PROPOSAL
+                ],
+                "allow_network": True,
+            },
+            GovernanceDecisionKind.ALLOWED,
+            id="allows_network_when_allow_network",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.write",
+                "intent_kind": "mutation",
+                "requested_capabilities": [RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
+                "dirty_policy_satisfied": False,
+            },
+            GovernanceDecisionKind.BLOCKED,
+            id="blocked_dirty_policy",
+        ),
+        pytest.param(
+            {"intent_id": "intent.unknown"},
+            GovernanceDecisionKind.NOT_APPLICABLE,
+            id="not_applicable_no_capabilities",
+        ),
+    ]
+
+    @pytest.mark.parametrize("kwargs, expected_decision", _DECISION_CASES)
+    def test_evaluate_action_legality_decision(
+        self, kwargs: dict, expected_decision: GovernanceDecisionKind
+    ) -> None:
+        result = GovernanceEngine.evaluate_action_legality(workspace_id="ws1", **kwargs)
+        assert result.decision == expected_decision, (
+            f"Expected {expected_decision}, got {result.decision}"
         )
-        assert result.decision == GovernanceDecisionKind.ALLOWED
+
+    # ── Reason code matrix ────────────────────────────────────────
+
+    _REASON_CASES: ClassVar[list[Any]] = [
+        pytest.param(
+            {
+                "intent_id": "intent.execute",
+                "intent_kind": "execution",
+                "requested_capabilities": [RuntimeCapabilityKind.SHELL_PROPOSAL],
+                "provider_trust_tier": RuntimeProviderTrustTier.BLOCKED,
+            },
+            "provider_trust_tier_blocked",
+            id="reason_provider_trust_tier_blocked",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.write",
+                "intent_kind": "mutation",
+                "requested_capabilities": [RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
+            },
+            "mutation_requires_review",
+            id="reason_mutation_requires_review",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.fetch",
+                "intent_kind": "network",
+                "requested_capabilities": [
+                    RuntimeCapabilityKind.NETWORK_FETCH_PROPOSAL
+                ],
+            },
+            "network_requires_review",
+            id="reason_network_requires_review",
+        ),
+        pytest.param(
+            {
+                "intent_id": "intent.write",
+                "intent_kind": "mutation",
+                "requested_capabilities": [RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
+                "dirty_policy_satisfied": False,
+            },
+            "dirty_policy_violated",
+            id="reason_dirty_policy_violated",
+        ),
+        pytest.param(
+            {"intent_id": "intent.unknown"},
+            "no_requested_capabilities",
+            id="reason_no_requested_capabilities",
+        ),
+    ]
+
+    @pytest.mark.parametrize("kwargs, expected_reason_code", _REASON_CASES)
+    def test_evaluate_action_legality_has_reason_code(
+        self, kwargs: dict, expected_reason_code: str
+    ) -> None:
+        result = GovernanceEngine.evaluate_action_legality(workspace_id="ws1", **kwargs)
+        matching = [r for r in result.reasons if r.code == expected_reason_code]
+        assert len(matching) >= 1, (
+            f"Expected reason '{expected_reason_code}' in {[r.code for r in result.reasons]}"
+        )
+
+    # ── Remaining distinct behaviors ──────────────────────────────
 
     def test_allowed_read_only_includes_allowed_intent(self) -> None:
         result = GovernanceEngine.evaluate_action_legality(
@@ -182,113 +356,7 @@ class TestGovernanceEngine:
         assert len(result.allowed_intents) == 1
         assert result.allowed_intents[0].intent_id == "intent.read_file"
 
-    def test_blocked_for_blocked_provider_trust_tier(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.execute",
-            intent_kind="execution",
-            requested_capabilities=[RuntimeCapabilityKind.SHELL_PROPOSAL],
-            provider_trust_tier=RuntimeProviderTrustTier.BLOCKED,
-        )
-        assert result.decision == GovernanceDecisionKind.BLOCKED
-
-    def test_blocked_includes_reason_for_blocked_tier(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.execute",
-            intent_kind="execution",
-            requested_capabilities=[RuntimeCapabilityKind.SHELL_PROPOSAL],
-            provider_trust_tier=RuntimeProviderTrustTier.BLOCKED,
-        )
-        assert any(r.code == "provider_trust_tier_blocked" for r in result.reasons)
-
-    def test_blocked_for_unavailable_provider_status_with_execution_cap(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.execute",
-            intent_kind="execution",
-            requested_capabilities=[RuntimeCapabilityKind.SHELL_PROPOSAL],
-            provider_status=RuntimeProviderStatus.UNAVAILABLE,
-        )
-        assert result.decision == GovernanceDecisionKind.BLOCKED
-
-    def test_blocked_for_error_provider_status_with_execution_cap(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.execute",
-            intent_kind="execution",
-            requested_capabilities=[RuntimeCapabilityKind.SHELL_PROPOSAL],
-            provider_status=RuntimeProviderStatus.ERROR,
-        )
-        assert result.decision == GovernanceDecisionKind.BLOCKED
-
-    def test_not_blocked_for_unavailable_provider_with_read_cap(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.read",
-            intent_kind="read_only",
-            requested_capabilities=[RuntimeCapabilityKind.FILE_READ],
-            provider_status=RuntimeProviderStatus.UNAVAILABLE,
-        )
-        assert result.decision != GovernanceDecisionKind.BLOCKED
-
-    def test_requires_review_for_mutation_without_allow_mutation(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.write",
-            intent_kind="mutation",
-            requested_capabilities=[RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
-        )
-        assert result.decision == GovernanceDecisionKind.REQUIRES_REVIEW
-
-    def test_requires_review_includes_reason_for_mutation(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.write",
-            intent_kind="mutation",
-            requested_capabilities=[RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
-        )
-        assert any(r.code == "mutation_requires_review" for r in result.reasons)
-
-    def test_allows_mutation_when_allow_mutation_true(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.write",
-            intent_kind="mutation",
-            requested_capabilities=[RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
-            allow_mutation=True,
-        )
-        assert result.decision == GovernanceDecisionKind.ALLOWED
-
-    def test_requires_review_for_network_without_allow_network(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.fetch",
-            intent_kind="network",
-            requested_capabilities=[RuntimeCapabilityKind.NETWORK_FETCH_PROPOSAL],
-        )
-        assert result.decision == GovernanceDecisionKind.REQUIRES_REVIEW
-
-    def test_requires_review_includes_reason_for_network(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.fetch",
-            intent_kind="network",
-            requested_capabilities=[RuntimeCapabilityKind.NETWORK_FETCH_PROPOSAL],
-        )
-        assert any(r.code == "network_requires_review" for r in result.reasons)
-
-    def test_allows_network_when_allow_network_true(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.fetch",
-            intent_kind="network",
-            requested_capabilities=[RuntimeCapabilityKind.NETWORK_FETCH_PROPOSAL],
-            allow_network=True,
-        )
-        assert result.decision == GovernanceDecisionKind.ALLOWED
-
-    def test_blocked_when_dirty_policy_not_satisfied(self) -> None:
+    def test_blocked_intent_includes_reason_code(self) -> None:
         result = GovernanceEngine.evaluate_action_legality(
             workspace_id="ws1",
             intent_id="intent.write",
@@ -296,29 +364,8 @@ class TestGovernanceEngine:
             requested_capabilities=[RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
             dirty_policy_satisfied=False,
         )
-        assert result.decision == GovernanceDecisionKind.BLOCKED
-
-    def test_blocked_dirty_policy_includes_reason(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.write",
-            intent_kind="mutation",
-            requested_capabilities=[RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
-            dirty_policy_satisfied=False,
-        )
-        assert any(r.code == "dirty_policy_violated" for r in result.reasons)
-
-    def test_not_applicable_for_no_capabilities_no_intent_kind(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1", intent_id="intent.unknown"
-        )
-        assert result.decision == GovernanceDecisionKind.NOT_APPLICABLE
-
-    def test_not_applicable_includes_reason(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1", intent_id="intent.unknown"
-        )
-        assert any(r.code == "no_requested_capabilities" for r in result.reasons)
+        assert len(result.blocked_intents) >= 1
+        assert result.blocked_intents[0].code is not None
 
     def test_blocked_when_multiple_checks_fail(self) -> None:
         result = GovernanceEngine.evaluate_action_legality(
@@ -346,17 +393,6 @@ class TestGovernanceEngine:
         )
         after_files = set(os.listdir(tempfile.gettempdir()))
         assert before_files == after_files
-
-    def test_blocked_intent_includes_reason_code(self) -> None:
-        result = GovernanceEngine.evaluate_action_legality(
-            workspace_id="ws1",
-            intent_id="intent.write",
-            intent_kind="mutation",
-            requested_capabilities=[RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
-            dirty_policy_satisfied=False,
-        )
-        assert len(result.blocked_intents) >= 1
-        assert result.blocked_intents[0].code is not None
 
 
 class TestGovernanceEngineSchema:

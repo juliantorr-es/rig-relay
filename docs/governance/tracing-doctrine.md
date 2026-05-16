@@ -138,7 +138,9 @@ Canonical terminal evidence for supervised subprocess execution is carried by
 classification vocabulary as the `runtime.subprocess.execute` span summary.
 
 Downstream consumers should read the envelope rather than reconstructing
-subprocess state from raw process handles or ad hoc status strings.
+subprocess state from raw process handles or ad hoc status strings. ToolRuntime
+and adapter receipts preserve the envelope fields for subprocess-backed tool
+calls so trace summaries, receipts, and audit events stay aligned.
 
 ## OpenTelemetry Compatibility
 

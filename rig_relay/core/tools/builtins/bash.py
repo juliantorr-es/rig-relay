@@ -276,6 +276,9 @@ class BashResult(BaseModel):
     stderr_truncated: bool = False
     error_kind: str | None = None
     refusal_reason: str | None = None
+    supervisor_result_envelope: dict[str, object] | None = None
+    supervisor_result_envelope_sha256: str | None = None
+    supervisor_result_classification: str | None = None
 
 
 class BashReceipt(BaseModel):
@@ -300,6 +303,9 @@ class BashReceipt(BaseModel):
     stderr_sha256: str | None = None
     error_kind: str | None = None
     refusal_reason: str | None = None
+    supervisor_result_envelope_sha256: str | None = None
+    supervisor_result_envelope_id: str | None = None
+    supervisor_result_classification: str | None = None
 
 
 class Bash(
@@ -619,6 +625,13 @@ class Bash(
             stderr_sha256=stderr_sha256,
             error_kind=result.error_kind,
             refusal_reason=result.refusal_reason,
+            supervisor_result_envelope_sha256=result.supervisor_result_envelope_sha256,
+            supervisor_result_envelope_id=(
+                str(result.supervisor_result_envelope.get("result_id"))
+                if result.supervisor_result_envelope
+                else None
+            ),
+            supervisor_result_classification=result.supervisor_result_classification,
         )
 
     @final
@@ -748,6 +761,9 @@ class Bash(
                 result.refusal_code if status in {"refused", "failure"} else None
             ),
             refusal_reason=result.error_message,
+            supervisor_result_envelope=result.supervisor_result_envelope,
+            supervisor_result_envelope_sha256=result.supervisor_result_envelope_sha256,
+            supervisor_result_classification=result.supervisor_result_classification,
         )
 
     @staticmethod

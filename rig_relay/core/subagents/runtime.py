@@ -1,5 +1,9 @@
 """SubagentRuntime — bounded mission execution without full AgentLoop.
 
+v1 — adds lifecycle evidence emission via TraceRecorder and tool
+execution mode tracking. Still uses direct ToolManager for tool
+execution until ToolRuntime adapter is complete (follow-up slice).
+
 Architecture boundary: must NOT import desktop, ralph, scripts, duckdb, or analytics.
 Does NOT construct AgentLoop.
 """
@@ -19,6 +23,7 @@ from rig_relay.core.subagents.models import SubagentMission, SubagentResult
 from rig_relay.core.tools.manager import ToolManager
 from rig_relay.core.types import LLMMessage, Role
 from rig_relay.core.utils import TOOL_ERROR_TAG
+from rig_relay.tracing.models import TraceStatus
 
 try:
     from opentelemetry import trace as _otel_trace
@@ -30,25 +35,44 @@ except ImportError:
 
 
 class SubagentRuntime:
-    """Execute one bounded mission and return one bounded result."""
+    """Execute one bounded mission and return one bounded result.
 
-    def __init__(self, mission: SubagentMission) -> None:
+    Emits lifecycle evidence via optional TraceRecorder.
+    Tool execution is via direct ToolManager (future: ToolRuntime adapter).
+    """
+
+    def __init__(
+        self,
+        mission: SubagentMission,
+        *,
+        trace_recorder: Any | None = None,
+        tool_runtime: Any | None = None,
+    ) -> None:
         self._mission = mission
         self._messages: list[LLMMessage] = []
         self._backend: BackendLike | None = None
         self._tool_manager: ToolManager | None = None
+        self._tool_runtime = tool_runtime
         self._config: VibeConfig | None = None
         self._format_handler = APIToolFormatHandler()
-        self._start_time: float = 0.0
+        self._mono_start: float = 0.0
+        self._wall_started_at: str = ""
         self._turns: int = 0
         self._tool_calls_attempted: int = 0
         self._tool_calls_succeeded: int = 0
         self._tool_calls_failed: int = 0
         self._trace_id: str | None = None
+        self._trace_recorder = trace_recorder
+        self._trace_span: Any = None
+        self._tool_execution_mode: str = (
+            "legacy_direct" if tool_runtime is None else "tool_runtime"
+        )
 
     async def execute(self) -> SubagentResult:
-        self._start_time = time.monotonic()
+        self._mono_start = time.monotonic()
+        self._wall_started_at = datetime.now(UTC).isoformat()
         self._trace_id = self._capture_trace_id()
+        self._emit_start()
 
         try:
             self._setup_config()
@@ -57,10 +81,14 @@ class SubagentRuntime:
             self._setup_messages()
             await self._run_loop()
         except asyncio.CancelledError:
+            self._emit_end(status="cancelled", reason="cancelled by parent")
             return self._build_result(status="cancelled", reason="cancelled")
         except Exception as exc:
-            return self._build_result(status="error", reason=str(exc)[:500])
+            reason = str(exc)[:500]
+            self._emit_end(status="error", reason=reason)
+            return self._build_result(status="error", reason=reason)
 
+        self._emit_end(status="completed")
         return self._build_result(status="completed")
 
     def _build_result(self, *, status: str, reason: str = "") -> SubagentResult:
@@ -83,10 +111,82 @@ class SubagentRuntime:
             tool_calls_failed=self._tool_calls_failed,
             provider=self._mission.provider,
             model=self._mission.model,
-            started_at=datetime.fromtimestamp(self._start_time, tz=UTC).isoformat(),
+            started_at=self._wall_started_at,
             completed_at=datetime.now(UTC).isoformat(),
             trace_id=self._trace_id,
+            metadata={
+                "tool_execution_mode": self._tool_execution_mode,
+                "duration_ms": int((time.monotonic() - self._mono_start) * 1000),
+            },
         )
+
+    # ── Evidence emission ────────────────────────────────────────
+
+    def _emit_start(self) -> None:
+        if self._trace_recorder is None:
+            return
+        try:
+            self._trace_span = self._trace_recorder.start_span(
+                "subagent.runtime",
+                attributes={
+                    "mission_id": self._mission.mission_id,
+                    "parent_session_id": self._mission.parent_session_id,
+                    "parent_turn_id": self._mission.parent_turn_id or "",
+                    "parent_trace_id": self._mission.parent_trace_id or "",
+                    "agent_profile": self._mission.agent_profile,
+                    "profile_kind": self._mission.profile_kind,
+                    "trust_tier": self._mission.trust_tier,
+                    "budget_max_turns": self._mission.budget_max_turns,
+                    "budget_max_tool_calls": self._mission.budget_max_tool_calls,
+                },
+                context=({"trace_id": self._trace_id} if self._trace_id else None),
+            )
+        except Exception:
+            self._trace_span = None
+
+    def _emit_end(self, *, status: str, reason: str = "") -> None:
+        if self._trace_recorder is None or self._trace_span is None:
+            return
+        try:
+            trace_status = {
+                "completed": TraceStatus.ok,
+                "cancelled": TraceStatus.cancelled,
+                "error": TraceStatus.error,
+            }.get(status, TraceStatus.error)
+
+            self._trace_recorder.end_span(
+                self._trace_span,
+                status=trace_status,
+                attributes={
+                    "turns_used": self._turns,
+                    "tool_calls_attempted": self._tool_calls_attempted,
+                    "tool_calls_succeeded": self._tool_calls_succeeded,
+                    "tool_calls_failed": self._tool_calls_failed,
+                    "tool_execution_mode": self._tool_execution_mode,
+                    "status": status,
+                },
+                error=reason if status == "error" else None,
+            )
+        except Exception:
+            pass
+
+    def _emit_budget_exhausted(self) -> None:
+        if self._trace_recorder is None or self._trace_span is None:
+            return
+        try:
+            self._trace_span.event(
+                "subagent.runtime.budget.exhausted",
+                attributes={
+                    "turns_used": self._turns,
+                    "max_turns": self._mission.budget_max_turns,
+                    "tool_calls_attempted": self._tool_calls_attempted,
+                    "max_tool_calls": self._mission.budget_max_tool_calls,
+                },
+            )
+        except Exception:
+            pass
+
+    # ── Setup ───────────────────────────────────────────────────
 
     def _setup_config(self) -> None:
         self._config = VibeConfig.load(
@@ -113,7 +213,7 @@ class SubagentRuntime:
 
     def _setup_tools(self) -> None:
         assert self._config is not None
-        cfg = self._config  # narrow type
+        cfg = self._config
         self._tool_manager = ToolManager(lambda: cfg)
 
     def _setup_messages(self) -> None:
@@ -134,6 +234,8 @@ class SubagentRuntime:
         self._messages = [LLMMessage(role=Role.system, content=system)]
         self._messages.append(LLMMessage(role=Role.user, content=self._mission.task))
 
+    # ── Turn loop ───────────────────────────────────────────────
+
     async def _run_loop(self) -> None:
         assert self._tool_manager is not None
         max_turns = self._mission.budget_max_turns
@@ -150,6 +252,7 @@ class SubagentRuntime:
                 break
             await self._execute_tool_calls(resolved)
             if self._tool_calls_attempted >= self._mission.budget_max_tool_calls:
+                self._emit_budget_exhausted()
                 break
 
     async def _call_llm(self) -> LLMMessage | None:
@@ -181,49 +284,98 @@ class SubagentRuntime:
                 self._messages.append(
                     LLMMessage(
                         role=Role.tool,
-                        content=f"<{TOOL_ERROR_TAG}>Tool '{tc.tool_name}' not available</{TOOL_ERROR_TAG}>",
+                        content=(
+                            f"<{TOOL_ERROR_TAG}>Tool '{tc.tool_name}'"
+                            " not available</{TOOL_ERROR_TAG}>"
+                        ),
                     )
                 )
                 self._tool_calls_failed += 1
                 continue
 
-            try:
-                from rig_relay.core.tools.base import InvokeContext
+            # ── Governed path: route through ToolRuntime ────────────
+            if self._tool_runtime is not None:
+                await self._execute_tool_call_governed(tc)
+                continue
 
-                ctx = InvokeContext(tool_call_id=tc.call_id)
-                tool_inst = self._tool_manager.get(tc.tool_name)
-                result_model: Any = None
-                text_output = ""
+            # ── Legacy direct path (fallback only when no ToolRuntime) ─
+            await self._execute_tool_call_legacy(tc)
 
-                async for event in tool_inst.run(tc.validated_args, ctx):
-                    ev: Any = event
-                    if hasattr(ev, "result"):
-                        result_model = ev.result
-                    if hasattr(ev, "content"):
-                        text_output += str(ev.content)
+    async def _execute_tool_call_governed(self, tc: Any) -> None:
+        assert self._tool_runtime is not None
+        from rig_relay.core.subagents.tool_adapter import (
+            SubagentToolCall,
+            execute_and_format,
+        )
 
-                response: dict[str, Any]
-                if result_model is not None and hasattr(result_model, "model_dump"):
-                    response = result_model.model_dump()
-                elif text_output:
-                    response = {"output": text_output}
-                else:
-                    response = {"output": "ok"}
-
-                text = "\n".join(f"{k}: {v}" for k, v in response.items())
-                self._messages.append(LLMMessage(role=Role.tool, content=text))
-                self._tool_calls_succeeded += 1
-
-            except asyncio.CancelledError:
-                raise
-            except Exception as exc:
-                self._messages.append(
-                    LLMMessage(
-                        role=Role.tool,
-                        content=f"<{TOOL_ERROR_TAG}>{tc.tool_name} failed: {exc}</{TOOL_ERROR_TAG}>",
-                    )
+        call = SubagentToolCall(
+            tool_name=tc.tool_name, call_id=tc.call_id, validated_args=tc.validated_args
+        )
+        result = await execute_and_format(
+            self._tool_runtime,
+            call,
+            source_kind="subagent_runtime",
+            source_id=self._mission.mission_id,
+            session_id=self._mission.parent_session_id or "",
+            agent_id=self._mission.agent_profile or "",
+        )
+        if result.success:
+            self._messages.append(
+                LLMMessage(role=Role.tool, content=result.output_text)
+            )
+            self._tool_calls_succeeded += 1
+        else:
+            error_text = result.error_message or result.refusal_code or "failed"
+            self._messages.append(
+                LLMMessage(
+                    role=Role.tool,
+                    content=f"<{TOOL_ERROR_TAG}>{tc.tool_name}: {error_text}</{TOOL_ERROR_TAG}>",
                 )
-                self._tool_calls_failed += 1
+            )
+            self._tool_calls_failed += 1
+
+    async def _execute_tool_call_legacy(self, tc: Any) -> None:
+        assert self._tool_manager is not None
+        try:
+            from rig_relay.core.tools.base import InvokeContext
+
+            ctx = InvokeContext(tool_call_id=tc.call_id)
+            tool_inst = self._tool_manager.get(tc.tool_name)
+            result_model: Any = None
+            text_output = ""
+
+            async for event in tool_inst.run(tc.validated_args, ctx):
+                ev: Any = event
+                if hasattr(ev, "result"):
+                    result_model = ev.result
+                if hasattr(ev, "content"):
+                    text_output += str(ev.content)
+
+            response: dict[str, Any]
+            if result_model is not None and hasattr(result_model, "model_dump"):
+                response = result_model.model_dump()
+            elif text_output:
+                response = {"output": text_output}
+            else:
+                response = {"output": "ok"}
+
+            text = "\n".join(f"{k}: {v}" for k, v in response.items())
+            self._messages.append(LLMMessage(role=Role.tool, content=text))
+            self._tool_calls_succeeded += 1
+
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._messages.append(
+                LLMMessage(
+                    role=Role.tool,
+                    content=(
+                        f"<{TOOL_ERROR_TAG}>{tc.tool_name} failed:"
+                        f" {exc}</{TOOL_ERROR_TAG}>"
+                    ),
+                )
+            )
+            self._tool_calls_failed += 1
 
     def _capture_trace_id(self) -> str | None:
         if not _OTEL or _otel_trace is None:

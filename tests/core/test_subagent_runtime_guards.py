@@ -129,3 +129,44 @@ class TestSubagentRuntimeGuards:
             for v in violations:
                 print(f"  • {v}")
             print("  Only task.py is enforced strictly.\n")
+
+
+class TestSubagentRuntimeDirectExecutionGuards:
+    """Ensure SubagentRuntime never directly calls tool_inst.run()."""
+
+    def test_subagent_runtime_has_no_direct_tool_run(self) -> None:
+        runtime_path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "runtime.py"
+        source = runtime_path.read_text()
+        # tool_inst.run is only allowed inside _execute_tool_call_legacy
+        lines = source.split("\n")
+        in_legacy = False
+        violations: list[str] = []
+        for lineno, line in enumerate(lines, start=1):
+            if "def _execute_tool_call_legacy" in line:
+                in_legacy = True
+            elif line.startswith("    async def ") or line.startswith("    def "):
+                in_legacy = False
+            if "tool_inst.run(" in line and not in_legacy:
+                violations.append(f"Line {lineno}: {line.strip()}")
+        assert not violations, (
+            "tool_inst.run() outside _execute_tool_call_legacy:\n"
+            + "\n".join(violations)
+        )
+
+    def test_legacy_path_is_marked_not_default(self) -> None:
+        runtime_path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "runtime.py"
+        source = runtime_path.read_text()
+        assert "_execute_tool_call_legacy" in source, (
+            "Legacy path removed entirely — restore as fallback until ToolRuntime is always provided"
+        )
+        assert (
+            """# ── Legacy direct path (fallback only when no ToolRuntime) ─"""
+            in source
+        ), "Legacy path must be clearly marked as fallback-only"
+
+    def test_governed_path_is_primary(self) -> None:
+        runtime_path = _REPO_ROOT / "rig_relay" / "core" / "subagents" / "runtime.py"
+        source = runtime_path.read_text()
+        assert (
+            """# ── Governed path: route through ToolRuntime ────────────""" in source
+        ), "Governed path comment missing — ensure ToolRuntime routing is primary"

@@ -41,13 +41,16 @@ The `OrchestratorLoop` (currently AgentLoop) owns:
 | Trace/phase evidence | `PhaseTraceHook`, `PhaseTraceAttributes` |
 | JSON-safe result | `build_result()` |
 
-## Principle 4 — SubagentRuntime (IMPLEMENTED v0)
+## Principle 4 — SubagentRuntime (IMPLEMENTED v1)
 
 `SubagentRuntime` (`rig_relay/core/subagents/runtime.py`) owns:
 
 | Domain |
 |---|
 | Bounded mission execution |
+| Lifecycle evidence emission via `TraceRecorder` |
+| Explicit `tool_execution_mode` marker (currently `"legacy_direct"`) |
+| Structured `SubagentResult` with metadata |
 | Assigned lane/worktree |
 | Allowed tools/profile/model binding |
 | Budget (turns, price, time) |

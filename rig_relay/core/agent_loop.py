@@ -392,6 +392,8 @@ class AgentLoop(
                     scratchpad_dir=self.scratchpad_dir,
                     tool_manager=self.tool_manager,
                     subprocess_runner=subprocess_runner,
+                    trace_recorder=getattr(self._tool_runtime, "_trace_recorder", None) if self._tool_runtime else None,
+                    tool_runtime=self._tool_runtime,
                 ),
                 **args_dict,
             ):
