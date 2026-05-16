@@ -1,8 +1,22 @@
 // Rig Relay Cockpit Frontend Logic
+import { state } from './js/state.js';
+import { TransportState, createTransportStateAuthority, STATUS_LABELS } from './js/transportState.js';
+import { renderStatusBar } from './js/status.js';
 let wsClient = null;
-let wsConnected = false;
 let wsAuthFailed = false;
 let currentMode = 'operate';
+
+const _appAuthority = createTransportStateAuthority({
+  onTransition(snap) {
+    state.wsConnected = snap.wsConnected;
+    state.transport.status = snap.transport.status;
+    state.transport.phase = snap.transport.phase;
+    state.transport.lastEvent = snap.transport.lastEvent;
+    state.transport.lastError = snap.transport.lastError;
+    state.transport.handshakeId = snap.transport.handshakeId;
+    state.transport.updatedAt = snap.transport.updatedAt;
+  },
+});
 
 let chatState = {
   messages: [],
@@ -345,11 +359,11 @@ function renderConnectionStatus(data) {
 
   var hasWs = typeof wsClient !== 'undefined' && wsClient !== null;
   setText(transport, hasWs ? 'WebSocket / Bridge' : 'Bridge only');
-  setText(wsStatus, wsConnected ? 'Connected' : 'Disconnected');
+  setText(wsStatus, _appAuthority.isConnected() ? 'Connected' : 'Disconnected');
   setText(bridgeStatus, window.pywebview && window.pywebview.api ? 'Available' : 'Unavailable');
 
   if (wsPill) {
-    if (wsConnected) {
+    if (_appAuthority.isConnected()) {
       wsPill.className = 'safety-indicator ok';
       var textNode = wsPill.querySelector('.dot + *') || wsPill.lastChild;
       setText(wsPill.querySelector('.dot').nextSibling ? wsPill.querySelector('.dot').nextSibling : wsPill.lastChild, 'Connected');
@@ -646,7 +660,7 @@ function sendMessage() {
   input.value = '';
   updateCharCount();
 
-  if (wsClient && wsConnected) {
+  if (wsClient && _appAuthority.isConnected()) {
     wsClient.sendMessage({ type: 'chat_message', content: text });
   } else if (window.pywebview && window.pywebview.api) {
     window.pywebview.api.send_chat_message(text);
@@ -664,7 +678,7 @@ function sendMessage() {
 }
 
 function clearChat() {
-  if (wsClient && wsConnected) {
+  if (wsClient && _appAuthority.isConnected()) {
     wsClient.sendMessage({ type: 'clear_chat' });
   } else if (window.pywebview && window.pywebview.api) {
     window.pywebview.api.clear_chat();
@@ -680,7 +694,7 @@ function clearChat() {
 function runIntent(name) {
   var resultEl = document.getElementById('operate-intent-result');
 
-  if (wsClient && wsConnected) {
+  if (wsClient && _appAuthority.isConnected()) {
     wsClient.sendMessage({
       type: 'desktop_intent_request',
       intent_name: name,
@@ -741,7 +755,7 @@ function runAuthReceipt(intentName, params) {
   var resultEl = document.getElementById('receipt-result');
   if (!resultEl) return;
 
-  if (wsClient && wsConnected) {
+  if (wsClient && _appAuthority.isConnected()) {
     wsClient.sendMessage({
       type: 'desktop_intent_request',
       intent_name: intentName,
@@ -1118,13 +1132,25 @@ async function initWebSocket() {
   const wsConfig = window.pywebview && window.pywebview.api && window.pywebview.api.get_runtime_config
     ? await window.pywebview.api.get_runtime_config()
     : {
-        ws_url: `ws://127.0.0.1:${parseInt(urlParams.get('ws_port')) || 9876}`,
-        token: urlParams.get('ws_token') || ''
+        ws_url: deriveWebSocketUrl({
+          pageProtocol: window.location.protocol,
+          host: window.location.hostname || '127.0.0.1',
+          port: parseInt(urlParams.get('ws_port')) || 9876,
+        }),
+        token: urlParams.get('ws_token') || '',
+        handshake_id: window.__RIG_RELAY_RUNTIME_CONFIG__ && window.__RIG_RELAY_RUNTIME_CONFIG__.handshake_id
+          ? window.__RIG_RELAY_RUNTIME_CONFIG__.handshake_id
+          : ''
       };
 
   wsClient = new ProjectionWebSocketClient({
-    wsUrl: wsConfig.ws_url || `ws://127.0.0.1:${parseInt(urlParams.get('ws_port')) || 9876}`,
+    wsUrl: wsConfig.ws_url || deriveWebSocketUrl({
+      pageProtocol: window.location.protocol,
+      host: window.location.hostname || '127.0.0.1',
+      port: parseInt(urlParams.get('ws_port')) || 9876,
+    }),
     token: wsConfig.token,
+    handshakeId: wsConfig.handshake_id || wsConfig.handshakeId || '',
     onProjection: function(data) {
       renderProjection(data);
     },
@@ -1137,10 +1163,18 @@ async function initWebSocket() {
       connEl.textContent = status === 'connected' ? 'WS' : 'WS ' + status;
 
       if (status === 'connected') {
-        wsConnected = true;
+        _appAuthority.dispatch('auth_ok', {
+          reason: 'websocket authenticated',
+          ws_url: wsConfig.ws_url,
+        });
+        renderStatusBar();
         wsClient.sendMessage({ type: 'get_chat_state' });
       } else if (status === 'offline' || status === 'auth_failed') {
-        wsConnected = false;
+        _appAuthority.dispatch(
+          status === 'auth_failed' ? 'auth_failed' : 'websocket_close',
+          { reason: detail || status, ws_url: wsConfig.ws_url }
+        );
+        renderStatusBar();
         loadFromBridge();
       }
     }
@@ -1161,6 +1195,14 @@ async function loadFromBridge() {
   } catch (e) {
     console.warn('Bridge fallback failed:', e);
   }
+}
+
+function deriveWebSocketUrl({ pageProtocol, host, port, explicitUrl } = {}) {
+  if (explicitUrl) return explicitUrl;
+  const scheme = pageProtocol === 'https:' ? 'wss' : 'ws';
+  const resolvedHost = host || '127.0.0.1';
+  const resolvedPort = port || 9876;
+  return `${scheme}://${resolvedHost}:${resolvedPort}`;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1187,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const wsConfig = window.pywebview && window.pywebview.api && window.pywebview.api.get_runtime_config
       ? await window.pywebview.api.get_runtime_config()
       : null;
-    if (!wsConnected && window.pywebview && window.pywebview.api) {
+    if (!_appAuthority.isConnected() && window.pywebview && window.pywebview.api) {
       loadFromBridge();
     }
   }, 10000);

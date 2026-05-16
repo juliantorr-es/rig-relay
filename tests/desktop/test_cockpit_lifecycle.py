@@ -68,16 +68,17 @@ def test_cockpit_api_cross_thread_scheduling(api):
 def test_cockpit_api_runtime_config_round_trip(api):
     runtime_config = {
         "schema_version": "rig.desktop.runtime_config.v1",
-        "frontend_origin": "https://127.0.0.1",
-        "ws_url": "wss://127.0.0.1:9876",
-        "ws_protocol": "wss",
-        "static_protocol": "https",
-        "tls_enabled": True,
-        "cert_mode": "self_signed",
+        "frontend_origin": "http://127.0.0.1",
+        "ws_url": "ws://127.0.0.1:9876",
+        "ws_protocol": "ws",
+        "static_protocol": "http",
+        "tls_enabled": False,
+        "cert_mode": "disabled",
         "local_mode": True,
         "merge_enabled": False,
         "push_enabled": False,
         "packaged": True,
+        "token_present": True,
     }
     api.set_runtime_config(runtime_config)
     assert api.get_runtime_config() == runtime_config

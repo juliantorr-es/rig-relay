@@ -5,9 +5,17 @@ export const state = {
   // Current layout mode
   mode: 'operator',
 
-  // Transport connection
+  // Transport connection — canonical authority writes these.
+  // wsConnected is derived from the transport authority; do not write directly.
   wsConnected: false,
-  transport: 'idle',
+  transport: {
+    status: 'idle',
+    phase: 'boot',
+    lastEvent: null,
+    lastError: null,
+    handshakeId: '',
+    updatedAt: '',
+  },
   _transportStatus: '',
 
   // Projection data (last received)

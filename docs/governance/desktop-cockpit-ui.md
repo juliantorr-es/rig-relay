@@ -614,3 +614,10 @@ The cockpit follows the [Frontend Rendering Safety Doctrine](frontend-rendering-
 - No eval, no dynamic code execution
 - No raw session tokens in storage
 - No frontend mutation authority — all mutations go through backend intent API
+
+### Local Transport Troubleshooting
+
+- Chrome `net::ERR_CERT_AUTHORITY_INVALID` on `127.0.0.1` means the local TLS certificate is not trusted by the OS.
+- Default desktop mode uses loopback HTTP/WebSocket intentionally.
+- Security comes from loopback binding, bridge-token auth, backend intent validation, and origin checks.
+- TLS mode is opt-in for development or future trusted-cert deployments via `RIG_RELAY_LOCAL_TLS=1`.

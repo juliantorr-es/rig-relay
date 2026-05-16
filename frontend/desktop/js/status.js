@@ -1,10 +1,11 @@
 // Rig Relay — Status
 // Top bar: connection indicator, session info, safety summary
 // All DOM construction — no innerHTML
+// Renders ONLY from the canonical transport state authority.
 
 import { state } from './state.js';
-import { TransportState } from './transportState.js';
-import { el } from './utils.js';
+import { TransportStatus, STATUS_LABELS, STATUS_CHIP_CLASS } from './transportState.js';
+import { el, recordFrontendEvent } from './utils.js';
 
 function setChip(chip, className, text) {
   while (chip.firstChild) chip.removeChild(chip.firstChild);
@@ -24,21 +25,20 @@ export function renderStatusBar() {
 export function renderConnection() {
   const chip = el('status-connection');
   if (!chip) return;
-  if (state.wsConnected) {
-    setChip(chip, 'ok', 'Connected');
-  } else if (state.transport === TransportState.AUTHENTICATING) {
-    setChip(chip, '', 'Authenticating…');
-  } else if (state.transport === TransportState.TOKEN_MISSING || state._transportStatus === 'token_missing') {
-    setChip(chip, 'warn', 'Token Missing');
-  } else if (state.transport === TransportState.BACKEND_UNAVAILABLE || state._transportStatus === 'offline') {
-    setChip(chip, 'warn', 'Backend Unavailable');
-  } else if (state.transport === TransportState.PROJECTION_READY) {
-    setChip(chip, 'ok', 'Projection Ready');
-  } else if (state.transport === TransportState.AUTH_FAILED) {
-    setChip(chip, 'warn', 'Auth Failed');
-  } else {
-    setChip(chip, 'warn', 'Offline');
-  }
+
+  const status = state.transport.status || TransportStatus.IDLE;
+  const label = STATUS_LABELS[status] || 'Unknown';
+  const chipClass = STATUS_CHIP_CLASS[status] || 'warn';
+
+  recordFrontendEvent('frontend_status_rendered', {
+    connection_state: status,
+    ws_connected: state.wsConnected,
+    label: label,
+    phase: state.transport.phase || 'unknown',
+    last_event: state.transport.lastEvent || '',
+  });
+
+  setChip(chip, chipClass, label);
 }
 
 export function renderSession() {

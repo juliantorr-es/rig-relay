@@ -36,12 +36,9 @@ class LocalTlsConfig:
 
 
 def resolve_tls_config(
-    app_support_dir: Path,
-    *,
-    packaged: bool,
-    allow_insecure: bool = False,
+    app_support_dir: Path, *, packaged: bool, allow_insecure: bool = False
 ) -> LocalTlsConfig:
-    if allow_insecure or os.getenv("RIG_RELAY_DESKTOP_TLS") == "0":
+    if allow_insecure or not _local_tls_requested():
         return LocalTlsConfig(
             enabled=False,
             cert_mode="disabled",
@@ -55,44 +52,49 @@ def resolve_tls_config(
         cert_path = Path(cert_file).expanduser()
         key_path = Path(key_file).expanduser()
         material = _describe_material(cert_path, key_path, cert_mode="mkcert")
-        return LocalTlsConfig(enabled=True, cert_mode=material.cert_mode, material=material)
+        return LocalTlsConfig(
+            enabled=True, cert_mode=material.cert_mode, material=material
+        )
 
     cert_dir = app_support_dir / "certs"
     material = ensure_local_tls_material(cert_dir, packaged=packaged)
     return LocalTlsConfig(enabled=True, cert_mode=material.cert_mode, material=material)
 
 
-def ensure_local_tls_material(
-    cert_dir: Path,
-    *,
-    packaged: bool,
-) -> LocalTlsMaterial:
+def _local_tls_requested() -> bool:
+    value = os.getenv("RIG_RELAY_LOCAL_TLS")
+    if value is not None:
+        return value.lower() in {"1", "true", "yes", "on"}
+    legacy = os.getenv("RIG_RELAY_DESKTOP_TLS")
+    if legacy is not None:
+        return legacy.lower() in {"1", "true", "yes", "on"}
+    return False
+
+
+def ensure_local_tls_material(cert_dir: Path, *, packaged: bool) -> LocalTlsMaterial:
     cert_dir.mkdir(parents=True, exist_ok=True)
     cert_path = cert_dir / "desktop-local.crt"
     key_path = cert_dir / "desktop-local.key"
     if cert_path.is_file() and key_path.is_file():
         return _describe_material(
-            cert_path,
-            key_path,
-            cert_mode="self_signed" if packaged else "adhoc_local",
+            cert_path, key_path, cert_mode="self_signed" if packaged else "adhoc_local"
         )
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = issuer = x509.Name(
-        [x509.NameAttribute(NameOID.COMMON_NAME, "Rig Relay Local Desktop Bridge")]
-    )
+    subject = issuer = x509.Name([
+        x509.NameAttribute(NameOID.COMMON_NAME, "Rig Relay Local Desktop Bridge")
+    ])
     now = datetime.now(UTC)
-    san = x509.SubjectAlternativeName(
-        [
-            x509.DNSName("localhost"),
-            x509.DNSName("127.0.0.1"),
-            x509.DNSName("::1"),
-            x509.IPAddress(ipaddress.ip_address("127.0.0.1")),
-            x509.IPAddress(ipaddress.ip_address("::1")),
-        ]
-    )
+    san = x509.SubjectAlternativeName([
+        x509.DNSName("localhost"),
+        x509.DNSName("127.0.0.1"),
+        x509.DNSName("::1"),
+        x509.IPAddress(ipaddress.ip_address("127.0.0.1")),
+        x509.IPAddress(ipaddress.ip_address("::1")),
+    ])
     cert = (
-        x509.CertificateBuilder()
+        x509
+        .CertificateBuilder()
         .subject_name(subject)
         .issuer_name(issuer)
         .public_key(key.public_key())
@@ -125,17 +127,11 @@ def load_ssl_context(cert_path: Path, key_path: Path) -> ssl.SSLContext:
 
 
 def _describe_material(
-    cert_path: Path,
-    key_path: Path,
-    *,
-    cert_mode: str,
-    created: bool = False,
+    cert_path: Path, key_path: Path, *, cert_mode: str, created: bool = False
 ) -> LocalTlsMaterial:
     cert_bytes = cert_path.read_bytes()
     cert = x509.load_pem_x509_certificate(cert_bytes)
-    san = cert.extensions.get_extension_for_class(
-        x509.SubjectAlternativeName
-    ).value
+    san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
     subject_alt_names = tuple(
         sorted(
             str(name.value)
@@ -146,7 +142,9 @@ def _describe_material(
     expires_at = (
         cert.not_valid_after_utc if hasattr(cert, "not_valid_after_utc") else None
     )
-    fingerprint = hashlib.sha256(cert.public_bytes(serialization.Encoding.DER)).hexdigest()
+    fingerprint = hashlib.sha256(
+        cert.public_bytes(serialization.Encoding.DER)
+    ).hexdigest()
     return LocalTlsMaterial(
         cert_path=cert_path,
         key_path=key_path,

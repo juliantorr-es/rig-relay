@@ -165,6 +165,70 @@ class TestStartupProbesWithFixtures:
         assert "bridge:03" in step_ids
         assert report.ok
 
+    def test_stop_prints_latest_handshake_trace_without_runtime_id(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        frontend = tmp_path / "frontend"
+        (frontend / "js").mkdir(parents=True)
+        (frontend / "css").mkdir()
+        (frontend / "index.html").write_text("<html><head></head><body></body></html>")
+        (frontend / "js" / "main.js").write_text("console.log('ok')")
+        (frontend / "css" / "styles.css").write_text("body{}")
+        trace_dir = tmp_path / "Library" / "Application Support" / "Rig Relay" / "traces"
+        trace_dir.mkdir(parents=True)
+        trace_path = trace_dir / "trace_events.jsonl"
+        trace_path.write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "timestamp": "2026-05-16T10:00:00.000Z",
+                            "name": "desktop.transport.connection_begin",
+                            "event_kind": "span.event",
+                            "attributes": {"handshake_id": "corr_1"},
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "timestamp": "2026-05-16T10:00:01.000Z",
+                            "name": "desktop.transport.handshake_succeeded",
+                            "event_kind": "span.event",
+                            "attributes": {"handshake_id": "corr_2"},
+                        }
+                    ),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        from rig_relay.desktop.bridge_server import (
+            DesktopBridgeConfig,
+            DesktopBridgeServer,
+        )
+
+        monkeypatch.setattr("rig_relay.desktop.bridge_server.Path.home", lambda: tmp_path)
+        config = DesktopBridgeConfig(
+            host="127.0.0.1",
+            port=0,
+            frontend_dir=frontend,
+            auth_token="test-token-32-chars-long-12345",
+        )
+        report = BridgeProbeReport(mode="source")
+        bridge = DesktopBridgeServer(config, probe_report=report)
+
+        import asyncio
+
+        async def _start_and_stop() -> None:
+            await bridge.start()
+            bridge._runtime_config = None
+            await bridge.stop()
+
+        asyncio.run(_start_and_stop())
+
+        out = capsys.readouterr().out
+        assert "Handshake trace: corr_2" in out
+
     def test_probe_fails_missing_frontend_dir(self) -> None:
         from rig_relay.desktop.bridge_server import (
             DesktopBridgeConfig,

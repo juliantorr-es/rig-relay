@@ -32,6 +32,7 @@ from rig_relay.desktop.websocket_server import (
     DEFAULT_PORT as DEFAULT_WS_PORT,
     ProjectionWebSocketServer,
 )
+from rig_relay.tracing import TraceRecorder, get_default_trace_store
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
@@ -86,6 +87,7 @@ def _run_ws_server(
     ssl_context: Any | None = None,
 ) -> None:
     """Run the WebSocket projection stream in a background thread."""
+    trace_recorder = TraceRecorder(get_default_trace_store())
 
     async def _start() -> None:
         loop = asyncio.get_running_loop()
@@ -100,6 +102,7 @@ def _run_ws_server(
             chat_state_provider=chat_state_provider,
             chat_message_handler=chat_message_handler,
             ssl_context=ssl_context,
+            trace_recorder=trace_recorder,
         )
         if server_holder is not None:
             server_holder[0] = server
@@ -127,6 +130,12 @@ def _frontend_event_to_step(event_type: str) -> str | None:
     match event_type:
         case "frontend_runtime_config_requested" | "frontend_runtime_config_loaded":
             return "bridge:13"
+        case "frontend_status_rendered":
+            return "bridge:16"
+        case "frontend_transport_state":
+            return "bridge:16"
+        case "frontend_ws_open" | "frontend_auth_ok" | "frontend_handshake_succeeded":
+            return "bridge:16"
         case "frontend_first_projection_rendered":
             return "bridge:18"
         case "frontend_boot_error":
@@ -288,16 +297,19 @@ class CockpitAPI:
             return self._runtime_config
         return {
             "schema_version": "rig.desktop.runtime_config.v1",
+            "frontend_url": f"http://127.0.0.1:{self._ws_port or DEFAULT_WS_PORT}/index.html",
             "frontend_origin": "http://127.0.0.1",
-            "ws_url": f"ws://127.0.0.1:{self._ws_port or DEFAULT_WS_PORT}",
+            "ws_url": f"ws://127.0.0.1:{self._ws_port or DEFAULT_WS_PORT}/ws",
             "ws_protocol": "ws",
             "static_protocol": "http",
             "tls_enabled": False,
             "cert_mode": "disabled",
+            "transport_label": "Loopback Token Bridge",
             "local_mode": True,
             "merge_enabled": False,
             "push_enabled": False,
             "packaged": False,
+            "token_present": bool(self._ws_token),
             "token": self._ws_token or "",
         }
 
@@ -318,8 +330,11 @@ class CockpitAPI:
             "frontend_boot_started",
             "frontend_runtime_config_requested",
             "frontend_runtime_config_loaded",
+            "frontend_status_rendered",
+            "frontend_transport_state",
             "frontend_ws_open",
             "frontend_auth_ok",
+            "frontend_handshake_succeeded",
             "frontend_first_projection_received",
             "frontend_first_projection_rendered",
             "frontend_boot_error",
@@ -328,7 +343,9 @@ class CockpitAPI:
             return {"status": "ignored", "reason": f"unknown event type: {event_type}"}
 
         # Strip token if accidentally included
-        safe_event = {k: v for k, v in event.items() if k not in ("token", "auth_token")}
+        safe_event = {
+            k: v for k, v in event.items() if k not in ("token", "auth_token")
+        }
 
         probe = getattr(self, "_bridge_probe", None)
         if probe is not None:
@@ -944,7 +961,7 @@ def _open_window(
     tls_config = resolve_tls_config(
         resources.app_support_dir() if packaged else BUILD_ROOT,
         packaged=packaged,
-        allow_insecure=os.getenv("RIG_RELAY_DESKTOP_TLS") == "0",
+        allow_insecure=False,
     )
     ssl_context = (
         load_ssl_context(tls_config.material.cert_path, tls_config.material.key_path)
@@ -965,6 +982,14 @@ def _open_window(
     if bridge_verbose:
         bridge_probe.enable_echo()
 
+    tls_trust_state = "unknown"
+    if tls_config.enabled:
+        tls_trust_state = (
+            "self_signed"
+            if tls_config.cert_mode in {"adhoc_local", "self_signed"}
+            else "unknown"
+        )
+
     bridge_config = DesktopBridgeConfig(
         host="127.0.0.1",
         port=bridge_port,
@@ -980,7 +1005,9 @@ def _open_window(
         build_root=BUILD_ROOT,
     )
 
-    bridge = DesktopBridgeServer(bridge_config, probe_report=bridge_probe, debug=bridge_verbose)
+    bridge = DesktopBridgeServer(
+        bridge_config, probe_report=bridge_probe, debug=bridge_verbose
+    )
 
     # Start bridge in a background thread with its own event loop
     bridge_loop: asyncio.AbstractEventLoop | None = None
@@ -1021,10 +1048,21 @@ def _open_window(
         print("=== Desktop Bridge Startup ===")
         bridge_probe.print_terminal(verbose=bridge_verbose)
         print()
+        print("   host: 127.0.0.1")
+        print(f"   port: {bridge.runtime_config.bridge_port}")
+        print(f"   frontend_url: {bridge.runtime_config.frontend_url}")
+        print(f"   websocket_url: {bridge.runtime_config.ws_url}")
+        print(f"   tls_enabled: {bridge.runtime_config.tls_enabled}")
+        print(f"   token_present: {bool(bridge.runtime_config.auth_token)}")
+        print(f"   transport_label: {bridge.runtime_config.transport_label}")
+        print(f"   tls_trust_state: {tls_trust_state}")
+        print()
         print(f"   Frontend: {bridge_probe.frontend_url}")
         print(f"   WebSocket: {bridge_probe.ws_url}")
         if not bridge_probe.ok:
-            print(f"   ⚠️  {len(bridge_probe.failed_step_ids)} probe(s) failed: {', '.join(bridge_probe.failed_step_ids)}")
+            print(
+                f"   ⚠️  {len(bridge_probe.failed_step_ids)} probe(s) failed: {', '.join(bridge_probe.failed_step_ids)}"
+            )
         print()
 
     # ── Write probe report to app support logs ───────────────────────
@@ -1084,7 +1122,8 @@ def _open_window(
         import webview  # type: ignore[import-untyped]
     except ImportError:
         bridge_probe.add_fail(
-            "bridge:11", "create pywebview window",
+            "bridge:11",
+            "create pywebview window",
             message="pywebview not available",
             remediation="Install with: uv add pywebview",
         )
@@ -1097,7 +1136,8 @@ def _open_window(
 
     frontend_url = runtime_config["frontend_url"]
     bridge_probe.add_ok(
-        "bridge:11", "create pywebview window",
+        "bridge:11",
+        "create pywebview window",
         details={
             "url": frontend_url,
             "title": "Rig Relay",
@@ -1118,7 +1158,8 @@ def _open_window(
     )
 
     bridge_probe.add_ok(
-        "bridge:12", "pywebview start called",
+        "bridge:12",
+        "pywebview start called",
         details={
             "gui": "cocoa",
             "mode": "packaged" if packaged else "source",
@@ -1128,7 +1169,11 @@ def _open_window(
     )
     # Do NOT use http_server=True — the bridge server handles all HTTP
     webview.start(gui="cocoa")
-    bridge_probe.add_ok("bridge:12", "pywebview window closed", message="user closed window — bridge shutting down")
+    bridge_probe.add_ok(
+        "bridge:12",
+        "pywebview window closed",
+        message="user closed window — bridge shutting down",
+    )
 
     # Clean up bridge on window close
     if bridge_loop is not None:

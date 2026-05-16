@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,8 @@ import websockets
 
 from rig_relay.cli.desktop_cockpit import CockpitAPI
 from rig_relay.desktop.bridge_server import DesktopBridgeConfig, DesktopBridgeServer
+from rig_relay.tracing.recorder import TraceRecorder
+from rig_relay.tracing.store import InMemoryTraceStore
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "desktop"
 
@@ -35,7 +38,7 @@ class TestRuntimeConfigHasToken:
             "auth_token": "test-token-32chars-abcdefgh",
             "ws_url": "ws://127.0.0.1:9876/ws",
             "frontend_url": "http://127.0.0.1:9876/index.html",
-            "transport_label": "Local Loopback Bridge",
+            "transport_label": "Loopback Token Bridge",
             "tls_enabled": False,
             "local_mode": True,
         }
@@ -44,6 +47,116 @@ class TestRuntimeConfigHasToken:
         assert result.get("token"), "Token missing — frontend will show token_missing"
         assert len(result["token"]) > 0
         assert result.get("ws_url", "").startswith("ws://")
+
+    def test_runtime_config_default_uses_loopback_http(self) -> None:
+        api = CockpitAPI(ws_token=None, ws_port=9876, mode="fixture")
+        result = api.get_runtime_config()
+        assert result["frontend_origin"] == "http://127.0.0.1"
+        assert result["ws_url"].startswith("ws://")
+        assert result["static_protocol"] == "http"
+        assert result["ws_protocol"] == "ws"
+        assert result["token_present"] is False
+
+
+class TestTransportLabels:
+    def test_default_label_is_loopback_token_bridge(self) -> None:
+        api = CockpitAPI(ws_token="token", ws_port=9876, mode="fixture")
+        result = api.get_runtime_config()
+        assert result["transport_label"] == "Loopback Token Bridge"
+        assert "Secure Local Bridge" not in result["transport_label"]
+
+
+def test_desktop_bridge_config_defaults_to_loopback_host() -> None:
+    config = DesktopBridgeConfig(frontend_dir=FRONTEND_DIR)
+    assert config.host == "127.0.0.1"
+
+
+@pytest.mark.asyncio
+async def test_index_html_injects_runtime_config(tmp_path: Path) -> None:
+    frontend = tmp_path / "frontend"
+    frontend.mkdir()
+    (frontend / "index.html").write_text("<html><head></head><body></body></html>")
+    (frontend / "js").mkdir()
+    (frontend / "js" / "main.js").write_text("console.log(1)")
+    (frontend / "css").mkdir()
+    (frontend / "css" / "styles.css").write_text("body{}")
+
+    config = DesktopBridgeConfig(
+        host="127.0.0.1",
+        port=0,
+        frontend_dir=frontend,
+        auth_token="test-token",
+    )
+    bridge = DesktopBridgeServer(config)
+    await bridge.start()
+    try:
+        response = bridge._handle_http(type("Req", (), {"path": "/index.html"})(), frontend)
+        assert response is not None
+        body = response.body.decode("utf-8")
+        assert "window.__RIG_RELAY_RUNTIME_CONFIG__" in body
+        assert '"token_present": true' in body
+        assert '"token": "test-token"' in body
+        assert '"handshake_id":' in body
+    finally:
+        await bridge.stop()
+
+
+@pytest.mark.asyncio
+async def test_runtime_config_and_index_emit_frontend_breadcrumbs(tmp_path: Path) -> None:
+    frontend = tmp_path / "frontend"
+    frontend.mkdir()
+    (frontend / "index.html").write_text("<html><head></head><body></body></html>")
+    (frontend / "js").mkdir()
+    (frontend / "js" / "main.js").write_text("console.log(1)")
+    (frontend / "css").mkdir()
+    (frontend / "css" / "styles.css").write_text("body{}")
+
+    config = DesktopBridgeConfig(
+        host="127.0.0.1",
+        port=0,
+        frontend_dir=frontend,
+        auth_token="test-token",
+    )
+    bridge = DesktopBridgeServer(config)
+    await bridge.start()
+    try:
+        bridge._trace_recorder = TraceRecorder(InMemoryTraceStore())
+        bridge._handle_http(type("Req", (), {"path": "/index.html"})(), frontend)
+        bridge._handle_http(type("Req", (), {"path": "/runtime-config.json"})(), frontend)
+        names = [event["name"] for event in bridge._trace_recorder.store.events]
+        assert "desktop.frontend.bootstrap_loaded" in names
+        assert "desktop.frontend.runtime_config_served" in names
+    finally:
+        await bridge.stop()
+
+
+@pytest.mark.asyncio
+async def test_frontend_event_beacon_records_trace(tmp_path: Path) -> None:
+    frontend = tmp_path / "frontend"
+    frontend.mkdir()
+    (frontend / "index.html").write_text("<html><head></head><body></body></html>")
+    (frontend / "js").mkdir()
+    (frontend / "js" / "main.js").write_text("console.log(1)")
+    (frontend / "css").mkdir()
+    (frontend / "css" / "styles.css").write_text("body{}")
+
+    config = DesktopBridgeConfig(
+        host="127.0.0.1",
+        port=0,
+        frontend_dir=frontend,
+        auth_token="test-token",
+    )
+    bridge = DesktopBridgeServer(config)
+    await bridge.start()
+    try:
+        response = bridge._handle_http(
+            SimpleNamespace(path="/frontend-event?type=frontend_status_rendered&handshake_id=corr_test&detail=%7B%22x%22%3A1%7D"),
+            frontend,
+        )
+        assert response is not None
+        assert response.status_code == 200
+    finally:
+        await bridge.stop()
 
     def test_runtime_config_default_has_no_token(self) -> None:
         """Fallback config (no set_runtime_config) has no token — produces token_missing."""

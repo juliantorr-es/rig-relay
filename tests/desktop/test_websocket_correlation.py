@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
+from rig_relay.desktop.correlation import DesktopCorrelation
 from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
 
 
@@ -51,3 +52,28 @@ class TestWebSocketServerCorrelation:
             ProjectionWebSocketServer()
         )
         assert c1.correlation_id != c2.correlation_id
+
+    def test_auth_success_emits_handshake_trace(self) -> None:
+        recorder = MagicMock()
+        recorder.event = MagicMock()
+        server = ProjectionWebSocketServer(token="secret", trace_recorder=recorder)
+
+        class FakeWS:
+            send = AsyncMock()
+            close = AsyncMock()
+
+        # Direct auth handler exercise.
+        import asyncio
+
+        async def _run() -> None:
+            await server._handle_auth(
+                FakeWS(),
+                {"type": "auth", "token": "secret", "handshake_id": "corr_test"},
+                DesktopCorrelation(trace_recorder=recorder),
+                "ts_test",
+            )
+
+        asyncio.run(_run())
+        names = [call.args[0] for call in recorder.event.call_args_list]
+        assert "desktop.transport.auth_received" in names
+        assert "desktop.transport.handshake_succeeded" in names

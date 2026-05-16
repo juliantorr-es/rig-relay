@@ -483,7 +483,9 @@ class ProjectionWebSocketServer:
                     continue
 
                 if not authenticated:
-                    authenticated = await self._handle_auth(websocket, message)
+                    authenticated = await self._handle_auth(
+                        websocket, message, corr, transport_id
+                    )
                     if authenticated:
                         timeout_task.cancel()
                         message_count = 0
@@ -596,14 +598,33 @@ class ProjectionWebSocketServer:
         )
         await websocket.close()
 
-    async def _handle_auth(self, websocket: Any, message: dict[str, Any]) -> bool:
+    async def _handle_auth(
+        self,
+        websocket: Any,
+        message: dict[str, Any],
+        corr: DesktopCorrelation,
+        transport_id: str,
+    ) -> bool:
         msg_type = message.get("type")
         if msg_type == "auth":
             provided = message.get("token", "")
+            handshake_id = message.get("handshake_id", "")
+            corr.emit_transport_event(
+                "desktop.transport.auth_received",
+                transport_session_id=transport_id,
+                attributes={
+                    "transport.session_id": transport_id,
+                    "handshake_id": handshake_id,
+                    "token_present": bool(provided),
+                },
+            )
             self._emit_probe(
                 "bridge:15",
                 "websocket auth message received",
-                {"token_present": bool(provided)},
+                {
+                    "token_present": bool(provided),
+                    "handshake_id": handshake_id,
+                },
             )
             if provided == self._token:
                 async with self._lock:
@@ -614,8 +635,19 @@ class ProjectionWebSocketServer:
                 await _send_json(websocket, {"type": "auth_ok"})
                 async with self._lock:
                     self._connections.add(websocket)
+                corr.emit_transport_event(
+                    "desktop.transport.handshake_succeeded",
+                    transport_session_id=transport_id,
+                    attributes={
+                        "transport.session_id": transport_id,
+                        "handshake_id": handshake_id,
+                        "token_present": True,
+                    },
+                )
                 self._emit_probe(
-                    "bridge:16", "websocket auth accepted", {"token_present": True}
+                    "bridge:16",
+                    "websocket auth accepted",
+                    {"token_present": True, "handshake_id": handshake_id},
                 )
                 return True
             async with self._lock:
@@ -625,7 +657,11 @@ class ProjectionWebSocketServer:
             self._emit_probe(
                 "bridge:16",
                 "websocket auth refused",
-                {"reason": "invalid_token", "token_present": bool(provided)},
+                {
+                    "reason": "invalid_token",
+                    "token_present": bool(provided),
+                    "handshake_id": handshake_id,
+                },
             )
             await _send_json(
                 websocket, {"type": "auth_error", "message": "Invalid token"}

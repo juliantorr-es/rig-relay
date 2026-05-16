@@ -7,7 +7,7 @@ The first reproducible source-mode and packaged-mode golden path for Rig Relay d
 ### Command
 
 ```bash
-RIG_RELAY_DESKTOP_TLS=0 RIG_RELAY_BRIDGE_DEBUG=1 uv run rig-relay
+RIG_RELAY_BRIDGE_DEBUG=1 uv run rig-relay
 ```
 
 ### Expected Probe Ladder (18 steps)
@@ -16,7 +16,7 @@ RIG_RELAY_DESKTOP_TLS=0 RIG_RELAY_BRIDGE_DEBUG=1 uv run rig-relay
   ✅ [bridge:01] resolve frontend_dir: frontend/desktop
   ✅ [bridge:02] resolve index.html: 3.7 KB
   ✅ [bridge:03] verify asset files: js/main.js=11KB, css dir ok
-  ✅ [bridge:04] build runtime_config: Local Loopback Bridge, token=yes
+  ✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True
   ✅ [bridge:05] create WS server: ProjectionWebSocketServer ready
   ✅ [bridge:06] bind host/port: http://127.0.0.1:{port}
   ✅ [bridge:07] probe /healthz: HTTP 200, ok=True
@@ -37,7 +37,7 @@ RIG_RELAY_DESKTOP_TLS=0 RIG_RELAY_BRIDGE_DEBUG=1 uv run rig-relay
 
 | Widget | Status |
 |---|---|
-| Transport chip | **Connected** (green) or **Local Loopback Bridge** |
+| Transport chip | **Connected** (green) or **Loopback Token Bridge** |
 | Mission Board | Visible with active missions |
 | Ralph Lifecycle | Visible with completed lanes |
 | ToolRuntime Summary | Visible with demo entries |
@@ -53,7 +53,7 @@ RIG_RELAY_DESKTOP_TLS=0 RIG_RELAY_BRIDGE_DEBUG=1 uv run rig-relay
 3. Click **Start Demo** → wait for status update
 4. Click **Run Doctor** → see 22/22 checks
 5. Click **Launch Cockpit** → rich frontend opens
-6. Verify **Local Loopback Bridge** connects
+6. Verify **Loopback Token Bridge** connects
 7. Verify projections update
 
 ### Requirements
@@ -80,7 +80,7 @@ RIG_RELAY_DESKTOP_TLS=0 RIG_RELAY_BRIDGE_DEBUG=1 uv run rig-relay
 ```
 DesktopBridgeServer.start()
   → DesktopBridgeRuntimeConfig.to_dict()
-    → includes "token" and "auth_token" (31 chars)
+  → includes `token_present` plus token fields for backend-only use
   → CockpitAPI.set_runtime_config(config)
   → pywebview.js_api = CockpitAPI instance
   → frontend calls window.pywebview.api.get_runtime_config()

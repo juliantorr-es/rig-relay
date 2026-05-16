@@ -31,8 +31,17 @@ def test_resolve_tls_config_uses_env_override(monkeypatch, tmp_path):
     material = ensure_local_tls_material(tmp_path, packaged=False)
     monkeypatch.setenv("RIG_RELAY_TLS_CERT", str(material.cert_path))
     monkeypatch.setenv("RIG_RELAY_TLS_KEY", str(material.key_path))
+    monkeypatch.setenv("RIG_RELAY_LOCAL_TLS", "1")
     config = resolve_tls_config(tmp_path, packaged=False)
     assert config.enabled is True
     assert config.cert_mode == "mkcert"
     assert config.material is not None
     assert config.material.cert_path == material.cert_path
+
+
+def test_resolve_tls_config_defaults_to_disabled(monkeypatch, tmp_path):
+    monkeypatch.delenv("RIG_RELAY_LOCAL_TLS", raising=False)
+    monkeypatch.delenv("RIG_RELAY_DESKTOP_TLS", raising=False)
+    config = resolve_tls_config(tmp_path, packaged=False)
+    assert config.enabled is False
+    assert config.cert_mode == "disabled"

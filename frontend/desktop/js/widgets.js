@@ -2,7 +2,7 @@
 // Registry, render coordination, disclosure levels
 
 import { state, getDisclosure, setDisclosure } from './state.js';
-import { TransportState } from './transportState.js';
+import { TransportStatus, STATUS_LABELS, STATUS_CHIP_CLASS } from './transportState.js';
 import { escapeHtml, el, row, monoRow, formatBytes, formatTimestamp } from './utils.js';
 
 // Widget renderers keyed by widget ID
@@ -292,21 +292,17 @@ registerWidget('progressTimeline', (container, level) => {
 
 registerWidget('connectionStatus', (container, level) => {
   if (level !== 'standard') return;
-  const transportLabel =
-    state.transport === TransportState.CONNECTED && state.wsConnected
-      ? 'Secure local bridge'
-      : state.transport === TransportState.AUTHENTICATING
-        ? 'Authenticating'
-        : state.transport === TransportState.TOKEN_MISSING
-          ? 'Token missing'
-          : state.transport === TransportState.BACKEND_UNAVAILABLE
-            ? 'Backend unavailable'
-            : 'Offline';
+  const status = (state.transport && state.transport.status) || TransportStatus.IDLE;
+  const transportLabel = STATUS_LABELS[status] || 'Unknown';
+  const chipCls = STATUS_CHIP_CLASS[status] || 'warn';
   const html = '<table class="kv-table">' +
     row('Transport', transportLabel) +
-    row('WS Status', state.wsConnected ? 'Connected' : 'Disconnected') +
+    row('Status', status) +
+    row('Phase', (state.transport && state.transport.phase) || '—') +
+    row('WS Connected', state.wsConnected ? 'Yes' : 'No') +
+    row('Handshake', ((state.transport && state.transport.handshakeId) || '—').substring(0, 20)) +
     '</table>';
-  renderStandardCard(container, 'Connection', html, 'connectionStatus', state.wsConnected ? 'ok' : 'warn');
+  renderStandardCard(container, 'Connection', html, 'connectionStatus', chipCls);
 });
 
 // ── Review mode widgets ──
@@ -647,7 +643,7 @@ registerWidget('storageDiagnostics', (container, level) => {
     row('Stale leases', String(st.stale_lease_count || 0)) +
     '</table>';
   renderStandardCard(container, 'Storage Diagnostics', html, 'storageDiagnostics');
-};
+});
 
 // ── Expanded widget content builders ────────────────────────────────
 

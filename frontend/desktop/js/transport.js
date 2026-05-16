@@ -2,31 +2,47 @@
 // WebSocket + pywebview bridge abstraction.
 // Uses ProjectionWebSocketClient for the WebSocket connection (reconnect,
 // auth, subscription handling). Falls back to pywebview JS bridge.
+// All transport state mutations route through the canonical authority.
 
 import { state } from './state.js';
 import { ProjectionWebSocketClient } from '../websocket.js';
 import { auditLog, audit } from './audit.js';
-import { TransportState } from './transportState.js';
+import { renderStatusBar } from './status.js';
 
 let _wsClient = null;
-let _transportMachine = null;
+let _transportAuthority = null;
 
-function _recordFrontendEvent(type, message) {
-  if (window.pywebview && window.pywebview.api && window.pywebview.api.record_frontend_event) {
-    window.pywebview.api.record_frontend_event({type: type, message: message || ''}).catch(function() {});
-  }
+function _applySnapshot(snap) {
+  state.wsConnected = snap.wsConnected;
+  state.transport.status = snap.transport.status;
+  state.transport.phase = snap.transport.phase;
+  state.transport.lastEvent = snap.transport.lastEvent;
+  state.transport.lastError = snap.transport.lastError;
+  state.transport.handshakeId = snap.transport.handshakeId;
+  state.transport.updatedAt = snap.transport.updatedAt;
 }
 
-export function initTransport(wsUrl, token, onMessage, transportMachine) {
-  _transportMachine = transportMachine || null;
+function _dispatch(event, detail) {
+  if (!_transportAuthority) return;
+  const snap = _transportAuthority.dispatch(event, detail);
+  _applySnapshot(snap);
+  return snap;
+}
+
+export function initTransport(wsUrl, token, onMessage, transportAuthority, handshakeId) {
+  _transportAuthority = transportAuthority || null;
+  if (_transportAuthority && handshakeId) {
+    _transportAuthority.setHandshakeId(handshakeId);
+  }
+
   if (typeof WebSocket === 'undefined') {
-    state.transport = TransportState.BACKEND_UNAVAILABLE;
+    _dispatch('websocket_error', { reason: 'WebSocket API unavailable' });
     if (onMessage) onMessage({ type: '_transport', status: 'offline' });
     return;
   }
 
   if (!token) {
-    state.transport = TransportState.TOKEN_MISSING;
+    _dispatch('runtime_config_invalid', { reason: 'Pywebview runtime token was not provided.' });
     if (onMessage) onMessage({ type: '_transport', status: 'token_missing', detail: 'Pywebview runtime token was not provided.' });
     return;
   }
@@ -35,59 +51,61 @@ export function initTransport(wsUrl, token, onMessage, transportMachine) {
   _wsClient = new ProjectionWebSocketClient({
     wsUrl,
     token,
+    handshakeId: handshakeId || null,
+    transportMachine: transportAuthority,
     onProjection(data) {
       if (onMessage) onMessage({ type: 'projection', data });
     },
     onStatusChange(status, detail, attempts) {
       if (status === 'authenticating') {
-        state.transport = TransportState.AUTHENTICATING;
-        _transportMachine?.transition('websocket_open', {
+        _dispatch('websocket_open', {
           reason: detail || 'websocket opened',
           ws_url: wsUrl,
         });
       } else if (status === 'connected') {
-        _recordFrontendEvent("frontend_auth_ok");
         console.log("[bridge:frontend] WebSocket connected + authenticated");
-        state.wsConnected = true;
-        state.transport = TransportState.CONNECTED;
-        _transportMachine?.transition('auth_ok', {
+        _dispatch('auth_ok', {
           reason: 'websocket authenticated',
           ws_url: wsUrl,
           transport: secureTransport ? 'wss' : 'ws',
+          handshake_id: handshakeId || '',
         });
+        renderStatusBar();
         if (onMessage) onMessage({ type: '_transport', status: 'connected' });
-        // Request chat state — already get_projection in ProjectionWebSocketClient
         _wsClient.send({ type: 'get_chat_state' });
       } else if (status === 'auth_failed') {
         console.error("[bridge:frontend] WebSocket auth failed:", detail);
-        state.wsConnected = false;
-        state.transport = TransportState.AUTH_FAILED;
-        audit.auth.failed(detail || 'unknown');
-        _transportMachine?.transition('auth_failed', {
+        _dispatch('auth_failed', {
           reason: detail || 'unknown',
           ws_url: wsUrl,
         });
+        audit.auth.failed(detail || 'unknown');
+        renderStatusBar();
         if (onMessage) onMessage({ type: '_transport', status: 'auth_failed', detail });
       } else if (status === 'disconnected' || status === 'closed') {
         console.warn("[bridge:frontend] WebSocket disconnected");
-        state.wsConnected = false;
-        state.transport = TransportState.BACKEND_UNAVAILABLE;
-        audit.transport.disconnected();
-        _transportMachine?.transition('websocket_closed', {
+        _dispatch('websocket_close', {
           reason: detail || 'websocket closed',
           ws_url: wsUrl,
         });
+        audit.transport.disconnected();
+        renderStatusBar();
         if (onMessage) onMessage({ type: '_transport', status: 'offline' });
       } else if (status === 'reconnecting') {
         console.log("[bridge:frontend] WebSocket reconnecting (attempt " + (attempts || '?') + ")");
-        state.wsConnected = false;
-        state.transport = TransportState.CONNECTING;
+        _dispatch('websocket_connecting', {
+          reason: detail || 'reconnecting',
+          ws_url: wsUrl,
+        });
         audit.transport.reconnecting(detail, attempts);
         if (onMessage) onMessage({ type: '_transport', status: 'reconnecting', delay: detail, attempts });
       } else if (status === 'offline') {
         console.warn("[bridge:frontend] WebSocket offline");
-        state.wsConnected = false;
-        state.transport = TransportState.BACKEND_UNAVAILABLE;
+        _dispatch('websocket_error', {
+          reason: detail || 'websocket offline',
+          ws_url: wsUrl,
+        });
+        renderStatusBar();
         if (onMessage) onMessage({ type: '_transport', status: 'offline' });
       }
     },
@@ -112,5 +130,6 @@ export function sendMessage(msg) {
 }
 
 export function isConnected() {
-  return state.transport === TransportState.CONNECTED && state.wsConnected;
+  if (_transportAuthority) return _transportAuthority.isConnected();
+  return state.wsConnected;
 }

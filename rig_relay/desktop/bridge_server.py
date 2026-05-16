@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 from pathlib import Path
 import ssl
 import time
@@ -36,9 +37,15 @@ from rig_relay.desktop.bridge_state_machine import (
     InvalidBridgeTransitionError,
     TerminalBridgeStateError,
 )
+from rig_relay.desktop.correlation import DesktopCorrelation, new_correlation_id
 from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
 from rig_relay.tracing.recorder import TraceRecorder
 from rig_relay.tracing.store import get_default_trace_store
+from scripts.rig_relay_trace_handshake import (
+    _load_events,
+    _select_handshake_id,
+    format_handshake_trace,
+)
 
 mimetypes.init()
 
@@ -55,6 +62,15 @@ def _extract_qs_token(path: str) -> str:
         return ""
     qs = path.split("?", 1)[1]
     return urllib.parse.parse_qs(qs).get("token", [""])[0]
+
+
+def _extract_qs_value(path: str, key: str) -> str:
+    import urllib.parse
+
+    if "?" not in path:
+        return ""
+    qs = path.split("?", 1)[1]
+    return urllib.parse.parse_qs(qs).get(key, [""])[0]
 
 
 def _json_response(data: dict[str, Any], status_code: int = 200) -> Response:
@@ -127,6 +143,8 @@ class DesktopBridgeRuntimeConfig:
         auth_token: str,
         cert_fingerprint_sha256: str | None = None,
         app_version: str = "dev",
+        tls_trust_state: str = "disabled",
+        handshake_id: str | None = None,
     ) -> None:
         scheme = "https" if tls_enabled else "http"
         ws_scheme = "wss" if tls_enabled else "ws"
@@ -138,9 +156,9 @@ class DesktopBridgeRuntimeConfig:
         self.tls_enabled = tls_enabled
         self.tls_mode = tls_mode
         self.cert_fingerprint_sha256 = cert_fingerprint_sha256
-        self.transport_label = (
-            "Secure Local Bridge" if tls_enabled else "Local Loopback Bridge"
-        )
+        self.tls_trust_state = tls_trust_state
+        self.transport_label = _transport_label(tls_enabled, tls_trust_state)
+        self.handshake_id = handshake_id or new_correlation_id()
         self.local_mode = True
         self.merge_enabled = False
         self.push_enabled = False
@@ -158,12 +176,15 @@ class DesktopBridgeRuntimeConfig:
             "bridge_port": self.bridge_port,
             "tls_enabled": self.tls_enabled,
             "tls_mode": self.tls_mode,
+            "tls_trust_state": self.tls_trust_state,
             "cert_fingerprint_sha256": self.cert_fingerprint_sha256,
             "transport_label": self.transport_label,
+            "handshake_id": self.handshake_id,
             "local_mode": self.local_mode,
             "merge_enabled": self.merge_enabled,
             "push_enabled": self.push_enabled,
             "auth_required": self.auth_required,
+            "token_present": bool(self.auth_token),
             "auth_token": self.auth_token,
             "token": self.auth_token,
             "app_version": self.app_version,
@@ -190,6 +211,7 @@ class DesktopBridgeServer:
         self._bound_port: int = 0
         self._started: bool = False
         self._runtime_config: DesktopBridgeRuntimeConfig | None = None
+        self._trace_recorder = TraceRecorder(get_default_trace_store())
         self._state_machine = DesktopBridgeStateMachine()
         self._debug = debug
         self.probe_report = probe_report or BridgeProbeReport(
@@ -225,12 +247,14 @@ class DesktopBridgeServer:
         if self._started:
             return
 
-        _trace = TraceRecorder(get_default_trace_store())
-        _trace.event("desktop.bridge.start_begin", {
-            "host": self._config.host,
-            "port": self._config.port or 0,
-            "tls_enabled": self._config.tls_enabled,
-        })
+        self._trace_recorder.event(
+            "desktop.bridge.start_begin",
+            {
+                "host": self._config.host,
+                "port": self._config.port or 0,
+                "tls_enabled": self._config.tls_enabled,
+            },
+        )
 
         host = self._config.host
         port = self._config.port or 0
@@ -238,6 +262,9 @@ class DesktopBridgeServer:
         report = self.probe_report
         report.frontend_url = ""
         report.ws_url = ""
+
+        if not _is_loopback_host(host) and not _unsafe_non_loopback_allowed():
+            raise ValueError(f"Non-loopback host rejected: {host}")
 
         # ── bridge:01 resolve frontend_dir ──────────────────────────
         self._state_machine.transition(
@@ -336,6 +363,8 @@ class DesktopBridgeServer:
             tls_mode=self._config.tls_mode,
             auth_token=self._config.auth_token,
             cert_fingerprint_sha256=self._config.cert_fingerprint_sha256,
+            tls_trust_state=_tls_trust_state(self._config),
+            handshake_id=getattr(self._config, "handshake_id", None),
         )
         report.frontend_url = self._runtime_config.frontend_url
         report.ws_url = self._runtime_config.ws_url
@@ -346,10 +375,15 @@ class DesktopBridgeServer:
                 "host": host,
                 "port": port,
                 "tls_enabled": self._config.tls_enabled,
+                "tls_trust_state": self._runtime_config.tls_trust_state,
                 "transport_label": self._runtime_config.transport_label,
                 "token_present": bool(self._config.auth_token),
+                "handshake_id": self._runtime_config.handshake_id,
             },
-            message=f"{self._runtime_config.transport_label}, token={'yes' if self._config.auth_token else 'no'}",
+            message=(
+                f"{self._runtime_config.transport_label}, "
+                f"token_present={bool(self._config.auth_token)}"
+            ),
         )
         self._transition_state(
             DesktopBridgeEvent.CONFIG_BUILT,
@@ -371,6 +405,7 @@ class DesktopBridgeServer:
             chat_state_provider=self._config.chat_state_provider,
             chat_message_handler=self._config.chat_message_handler,
             probe_callback=_on_ws_probe,
+            trace_recorder=self._trace_recorder,
         )
         report.add_ok(
             "bridge:05", "create WS server", message="ProjectionWebSocketServer ready"
@@ -406,7 +441,7 @@ class DesktopBridgeServer:
                 "bind host/port",
                 details={"host": host, "port": port, "error": str(exc)},
                 message=f"Failed to bind {host}:{port}: {exc}",
-                remediation="Check if port is already in use. Try RIG_RELAY_DESKTOP_TLS=0 or a different port.",
+                remediation="Check if port is already in use. Use RIG_RELAY_LOCAL_TLS=1 only when TLS is intended.",
             )
             raise
         bind_ms = int((time.time() - t0) * 1000)
@@ -486,12 +521,14 @@ class DesktopBridgeServer:
             attributes={"step_id": "bridge:12"},
         )
         logger.info(
-            "DesktopBridgeServer started on %s:%s (TLS=%s) frontend=%s ws=%s",
+            "DesktopBridgeServer started host=%s port=%s frontend_url=%s websocket_url=%s tls_enabled=%s token_present=%s transport_label=%s",
             host,
             self._bound_port,
-            self._config.tls_enabled,
             self._runtime_config.frontend_url,
             self._runtime_config.ws_url,
+            self._config.tls_enabled,
+            bool(self._config.auth_token),
+            self._runtime_config.transport_label,
         )
 
     async def stop(self) -> None:
@@ -500,6 +537,7 @@ class DesktopBridgeServer:
             self._server.close()
             await self._server.wait_closed()
             self._server = None
+        self._print_handshake_trace()
         self._started = False
 
     def _handle_http(self, request: Request, frontend_dir: Path) -> Response | None:
@@ -520,6 +558,17 @@ class DesktopBridgeServer:
             config_dict = self._runtime_config.to_dict()
             config_dict.pop("auth_token", None)
             config_dict.pop("token", None)
+            self._trace_recorder.event(
+                "desktop.frontend.runtime_config_served",
+                attributes={
+                    "handshake_id": self._runtime_config.handshake_id,
+                    "frontend_url": self._runtime_config.frontend_url,
+                    "ws_url": self._runtime_config.ws_url,
+                    "transport_label": self._runtime_config.transport_label,
+                    "tls_enabled": self._runtime_config.tls_enabled,
+                    "token_present": bool(self._runtime_config.auth_token),
+                },
+            )
             self._transition_state(
                 DesktopBridgeEvent.FRONTEND_CONFIG_LOADED,
                 reason="runtime-config.json served",
@@ -527,9 +576,37 @@ class DesktopBridgeServer:
             )
             return _json_response(config_dict)
 
+        if path == "/frontend-event":
+            event_type = _extract_qs_value(raw_path, "type")
+            handshake_id = _extract_qs_value(raw_path, "handshake_id")
+            detail = _extract_qs_value(raw_path, "detail")
+            if event_type:
+                self._trace_recorder.event(
+                    event_type,
+                    attributes={
+                        "handshake_id": handshake_id,
+                        "detail": detail,
+                    },
+                )
+            return _empty_response(HTTP_OK, "OK")
+
         # /index.html or /
         if path in {"/", "/index.html"}:
-            return self._serve_file(frontend_dir / "index.html")
+            if self._runtime_config is not None:
+                DesktopCorrelation(
+                    correlation_id=self._runtime_config.handshake_id,
+                    trace_recorder=self._trace_recorder,
+                ).emit_event(
+                    "desktop.frontend.bootstrap_loaded",
+                    attributes={
+                        "handshake_id": self._runtime_config.handshake_id,
+                        "frontend_url": self._runtime_config.frontend_url,
+                        "transport_label": self._runtime_config.transport_label,
+                        "tls_enabled": self._runtime_config.tls_enabled,
+                        "token_present": bool(self._runtime_config.auth_token),
+                    },
+                )
+            return self._serve_index_html(frontend_dir / "index.html")
 
         # static assets
         return self._serve_static(path, frontend_dir)
@@ -546,6 +623,40 @@ class DesktopBridgeServer:
             return _bytes_response(body, content_type)
         except OSError:
             return _empty_response(500, "Internal Server Error")
+
+    def _serve_index_html(self, file_path: Path) -> Response | None:
+        response = self._serve_file(file_path)
+        if response is None or self._runtime_config is None or not isinstance(response.body, bytes):
+            return response
+        try:
+            html = response.body.decode("utf-8")
+        except UnicodeDecodeError:
+            return response
+        bootstrap = {
+            "schema_version": "rig.desktop.runtime_config.v1",
+            "frontend_url": self._runtime_config.frontend_url,
+            "ws_url": self._runtime_config.ws_url,
+            "ws_protocol": "wss" if self._runtime_config.tls_enabled else "ws",
+            "static_protocol": "https" if self._runtime_config.tls_enabled else "http",
+            "tls_enabled": self._runtime_config.tls_enabled,
+            "tls_mode": self._runtime_config.tls_mode,
+            "tls_trust_state": self._runtime_config.tls_trust_state,
+            "transport_label": self._runtime_config.transport_label,
+            "handshake_id": self._runtime_config.handshake_id,
+            "local_mode": True,
+            "token_present": bool(self._runtime_config.auth_token),
+            "token": self._runtime_config.auth_token,
+        }
+        script = (
+            "<script>window.__RIG_RELAY_RUNTIME_CONFIG__ = "
+            + json.dumps(bootstrap)
+            + ";</script>"
+        )
+        if "</head>" in html:
+            html = html.replace("</head>", f"{script}</head>", 1)
+        else:
+            html = script + html
+        return _bytes_response(html.encode("utf-8"), "text/html")
 
     def _serve_static(self, path: str, frontend_dir: Path) -> Response | None:
         """Serve static assets from frontend_dir. Prevents path traversal."""
@@ -568,6 +679,17 @@ class DesktopBridgeServer:
         """Handle WebSocket connections — delegates to ProjectionWebSocketServer."""
         report = self.probe_report
         remote = conn.remote_address[0] if conn.remote_address else "unknown"
+        if self._runtime_config is not None:
+            self._trace_recorder.event(
+                "desktop.transport.websocket_connected",
+                attributes={
+                    "handshake_id": self._runtime_config.handshake_id,
+                    "transport.session_id": self._runtime_config.handshake_id,
+                    "ws_url": self._runtime_config.ws_url,
+                    "transport_label": self._runtime_config.transport_label,
+                    "token_present": bool(self._runtime_config.auth_token),
+                },
+            )
         report.add_ok(
             "bridge:14",
             "websocket upgrade accepted",
@@ -730,7 +852,9 @@ class DesktopBridgeServer:
                 self._state_machine.export_projection()["previous_state"]
             ),
             "bridge_last_event": self._state_machine.export_projection()["last_event"],
-            "bridge_failed_step": self._state_machine.export_projection()["failed_step"],
+            "bridge_failed_step": self._state_machine.export_projection()[
+                "failed_step"
+            ],
             "bridge_transition_count": self._state_machine.export_projection()[
                 "transition_count"
             ],
@@ -758,5 +882,59 @@ class DesktopBridgeServer:
             "last_ws_error": None,
         })
 
+    def _print_handshake_trace(self) -> None:
+        trace_path = (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / "Rig Relay"
+            / "traces"
+            / "trace_events.jsonl"
+        )
+        if not trace_path.exists():
+            return
+        events = _load_events(trace_path)
+        handshake_id = self._runtime_config.handshake_id if self._runtime_config else None
+        selected = _select_handshake_id(events, handshake_id)
+        if selected is None:
+            print()
+            print("Handshake trace: none found")
+            return
+        print()
+        print(format_handshake_trace(events, selected))
+
 
 __all__ = ["DesktopBridgeConfig", "DesktopBridgeRuntimeConfig", "DesktopBridgeServer"]
+
+
+def _is_loopback_host(host: str) -> bool:
+    return host in {"127.0.0.1", "localhost", "::1"}
+
+
+def _unsafe_non_loopback_allowed() -> bool:
+    return os.getenv("RIG_RELAY_ALLOW_NON_LOOPBACK_LOCAL_BRIDGE", "").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _tls_trust_state(config: DesktopBridgeConfig) -> str:
+    if not config.tls_enabled:
+        return "disabled"
+    if config.tls_mode == "mkcert":
+        return "unknown"
+    if config.tls_mode in {"adhoc_local", "self_signed"}:
+        return "self_signed"
+    return "unknown"
+
+
+def _transport_label(tls_enabled: bool, tls_trust_state: str) -> str:
+    if not tls_enabled:
+        return "Loopback Token Bridge"
+    if tls_trust_state == "trusted":
+        return "TLS Loopback Bridge"
+    if tls_trust_state in {"self_signed", "untrusted", "development"}:
+        return "Untrusted Development TLS Bridge"
+    return "TLS Loopback Bridge"

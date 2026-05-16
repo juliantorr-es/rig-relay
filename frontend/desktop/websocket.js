@@ -5,7 +5,11 @@
 
 class ProjectionWebSocketClient {
   constructor(options = {}) {
-    this.wsUrl = options.wsUrl || 'wss://127.0.0.1:9876';
+    this.wsUrl = options.wsUrl || deriveWebSocketUrl({
+      pageProtocol: window.location && window.location.protocol ? window.location.protocol : 'http:',
+      host: window.location && window.location.hostname ? window.location.hostname : '127.0.0.1',
+      port: window.location && window.location.port ? Number(window.location.port) : 9876,
+    });
     this.token = options.token || null;
     this.reconnectDelay = options.reconnectDelay || 2000;
     this.maxReconnectDelay = options.maxReconnectDelay || 30000;
@@ -15,6 +19,7 @@ class ProjectionWebSocketClient {
     this.onAuthFailed = options.onAuthFailed || (() => {});
     this.onMessage = options.onMessage || (() => {});
     this.transportMachine = options.transportMachine || null;
+    this.handshakeId = options.handshakeId || null;
 
     this.ws = null;
     this.connected = false;
@@ -65,7 +70,11 @@ class ProjectionWebSocketClient {
       this.onStatusChange('authenticating');
 
       // Send auth as first message
-      this.send({ type: 'auth', token: this.token });
+      this.send({
+        type: 'auth',
+        token: this.token,
+        handshake_id: this.handshakeId || undefined,
+      });
       this.transportMachine && this.transportMachine.transition('auth_sent', {
         ws_url: this.wsUrl,
       });
@@ -85,6 +94,13 @@ class ProjectionWebSocketClient {
           this.authenticated = true;
           this.reconnectAttempts = 0;
           this.currentDelay = this.reconnectDelay;
+          if (window.pywebview && window.pywebview.api && window.pywebview.api.record_frontend_event) {
+            window.pywebview.api.record_frontend_event({
+              type: "frontend_handshake_succeeded",
+              token_present: true,
+              message: "WebSocket auth_ok",
+            }).catch(function() {});
+          }
           this.transportMachine && this.transportMachine.transition('auth_ok', {
             ws_url: this.wsUrl,
           });
@@ -283,4 +299,12 @@ class ProjectionWebSocketClient {
   }
 }
 
-export { ProjectionWebSocketClient };
+function deriveWebSocketUrl({ pageProtocol, host, port, explicitUrl } = {}) {
+  if (explicitUrl) return explicitUrl;
+  const scheme = pageProtocol === 'https:' ? 'wss' : 'ws';
+  const resolvedHost = host || '127.0.0.1';
+  const resolvedPort = port || 9876;
+  return `${scheme}://${resolvedHost}:${resolvedPort}/ws`;
+}
+
+export { ProjectionWebSocketClient, deriveWebSocketUrl };

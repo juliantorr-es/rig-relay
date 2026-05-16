@@ -14,7 +14,7 @@ All 10 backend startup probes pass with live echo:
 ✅ [bridge:01] resolve frontend_dir: frontend/desktop
 ✅ [bridge:02] resolve index.html: 3.7 KB
 ✅ [bridge:03] verify asset files: js/main.js=11.3KB, css dir ok
-✅ [bridge:04] build runtime_config: Local Loopback Bridge, token=yes
+✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True
 ✅ [bridge:05] create WS server: ProjectionWebSocketServer ready
 ✅ [bridge:06] bind host/port: http://127.0.0.1:64060
 ✅ [bridge:07] probe /healthz: HTTP 200, ok=True
@@ -34,6 +34,7 @@ runtime_config.to_dict():
 CockpitAPI.get_runtime_config():
   token present: YES (30 chars) ✓
   ws_url: ws://127.0.0.1:9876/ws ✓
+  transport_label: Loopback Token Bridge ✓
 ```
 
 ### WebSocket E2E
@@ -118,7 +119,7 @@ dist/Rig Relay.app.zip — 45 MB
 | `rig_relay/desktop/bridge_diagnostics.py` | Added `enable_echo()` + `_echo` flag for live step printing |
 | `rig_relay/cli/desktop_cockpit.py` | Wire `bridge_probe.enable_echo()` |
 | `rig_relay/desktop/bridge_state_machine.py` | Explicit bridge lifecycle state machine for startup and probe transitions |
-| `rig_relay/desktop/bridge_server.py` | Bridge lifecycle now emits state transitions and exposes state in `/healthz` |
+| `rig_relay/desktop/bridge_server.py` | Loopback HTTP default, explicit TLS opt-in, honest transport labels, startup diagnostics |
 | `frontend/desktop/js/main.js` | pywebviewready wait, config diagnostics, duplicate call fix |
 | `frontend/desktop/js/transport.js` | `token_missing` state, `authenticating` state |
 | `frontend/desktop/js/status.js` | Connection chip labels for all states |
