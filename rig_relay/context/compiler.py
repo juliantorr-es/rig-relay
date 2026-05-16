@@ -202,7 +202,7 @@ def execute(  # noqa: PLR0914
     # Build receipt entries if requested
     receipts: list[ReceiptEntry] = []
     if request.scope.include_receipts:
-        receipts = _scan_receipts(root)
+        receipts = _scan_receipts(root, warnings=_context_warnings)
 
     # Build summary text (existing + plan metadata)
     summary = _build_summary(repo, subsystems, active_work, plan)
@@ -397,8 +397,13 @@ def _find_candidate(
     return None
 
 
-def _scan_receipts(root: Path) -> list[ReceiptEntry]:
-    """Scan for recent receipt files in the build directory."""
+def _scan_receipts(
+    root: Path, warnings: list[dict[str, Any]] | None = None
+) -> list[ReceiptEntry]:
+    """Scan for recent receipt files in the build directory.
+
+    On read/hash failure, emits a content-light warning and continues.
+    """
     receipts_dir = root / ".build" / "rig-relay" / "coordination" / "receipts"
     if not receipts_dir.is_dir():
         return []
@@ -411,6 +416,14 @@ def _scan_receipts(root: Path) -> list[ReceiptEntry]:
                 data = f.read_bytes()
                 sha = _hl.sha256(data).hexdigest()
             except Exception:
+                if warnings is not None:
+                    warnings.append(
+                        build_warning(
+                            ContextWarningCode.RECEIPT_SCAN_FAILED,
+                            detail="read/hash failed for receipt",
+                            source="compiler._scan_receipts",
+                        )
+                    )
                 sha = ""
             entries.append(
                 ReceiptEntry(

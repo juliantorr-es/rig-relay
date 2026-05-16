@@ -4,7 +4,7 @@ Date: 2026-05-18 (updated by closer lane)
 Inspected HEAD: 26f2288a
 Lanes: A (compiler/renderer), B (planner/budget/warnings), C (security/failure/warnings — this lane)
 
-## Status: CONTEXT_ASSEMBLER_V1_COMPLETE
+## Status: CONTEXT_ASSEMBLER_STABLE_V1
 
 All three lanes have converged. Final closer audit confirms source truth.
 
