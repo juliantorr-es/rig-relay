@@ -22,6 +22,7 @@ from rig_relay.context.models import (
     PathRecommendation,
     ReceiptEntry,
 )
+from rig_relay.context.renderer import ContextRenderer
 from rig_relay.context.repo_index import RepoContextIndex
 from rig_relay.context.repo_map import build_repo_info, build_subsystem_map
 from rig_relay.context.work_map import build_active_work
@@ -54,13 +55,8 @@ class ContextCompiler:
         snapshot: Any | None = None,
         messages: list[Any] | None = None,
     ) -> ContextEnvelopeReceipt:
-        """Build a context envelope for injection into the message list.
-
-        Returns a ContextEnvelopeReceipt with rendered_prompt populated
-        from workspace scans. Best-effort: failures return an empty
-        envelope rather than raising.
-        """
-        sections: list[str] = []
+        """Build a context envelope using the cache-aware renderer."""
+        renderer = ContextRenderer(workspace_root=self._workspace_root)
         dirty_count = 0
         collision_count = 0
 
@@ -71,55 +67,37 @@ class ContextCompiler:
             dirty_summary = getattr(repo, "dirty_summary", {}) or {}
             dirty_count = dirty_summary.get("modified", 0)
 
-            sections.append(
-                f"## Repository\n"
-                f"- Root: {self._workspace_root}\n"
-                f"- Branch: {branch} @ {head[:12] if len(head) > 12 else head}\n"
-                f"- Dirty files: {dirty_summary.get('modified', 0)} modified, "
-                f"{dirty_summary.get('untracked', 0)} untracked, "
-                f"{dirty_summary.get('staged', 0)} staged"
+            renderer.add_repo_section(
+                root=str(self._workspace_root),
+                branch=branch,
+                head=head,
+                modified=dirty_summary.get("modified", 0),
+                untracked=dirty_summary.get("untracked", 0),
+                staged=dirty_summary.get("staged", 0),
             )
 
             if snapshot is not None:
-                sections.append(f"## Snapshot\n{snapshot}")
+                renderer.add_snapshot_section(str(snapshot))
 
             active = build_active_work(self._workspace_root, [])
             lanes = active.get("lanes", [])
-            if lanes:
-                sections.append(
-                    f"## Active Work\n"
-                    f"{len(lanes)} lane(s) active"
-                )
-
             collisions = active.get("collision_warnings", [])
             collision_count = len(collisions)
-            if collisions:
-                sections.append(
-                    "## Collision Warnings\n"
-                    + "\n".join(
-                        f"- {c.get('path', '?')}: {c.get('reason', '')[:120]}"
-                        for c in collisions[:10]
-                    )
-                )
 
-            if messages:
-                tail = [
-                    m for m in messages
-                    if hasattr(m, "role") and getattr(m, "role", None) not in ("system",)
-                ][-6:]
-                if tail:
-                    sections.append(
-                        "## Recent Messages\n"
-                        + "\n".join(
-                            f"- [{getattr(m, 'role', '?')}]: {str(getattr(m, 'content', ''))[:120]}"
-                            for m in tail
-                        )
-                    )
+            renderer.add_active_work_section(
+                lane_count=len(lanes) if lanes else 0,
+                collision_count=collision_count,
+                collision_paths=[c.get("path", "") for c in collisions]
+                if collisions
+                else None,
+            )
+
+            renderer.add_recent_messages_section(messages)
 
         except Exception:
             pass
 
-        rendered = "\n\n".join(sections) if sections else ""
+        rendered = renderer.rendered_content
         receipt_sha256 = ""
         if rendered:
             receipt_sha256 = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
@@ -127,7 +105,7 @@ class ContextCompiler:
         return ContextEnvelopeReceipt(
             session_id=self._session_id,
             rendered_prompt=rendered,
-            section_count=len(sections),
+            section_count=len(renderer._sections),
             estimated_tokens=max(1, len(rendered) // 4),
             dirty_file_count=dirty_count,
             collision_warnings=collision_count,
