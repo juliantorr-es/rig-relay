@@ -13,10 +13,10 @@ class TestPhase3DocsTruth:
     def test_reconciliation_doc_is_canonical_all_lanes(self) -> None:
         doc = _REPO_ROOT / "docs" / "audits" / "agent-loop" / "phase3-readiness-reconciliation.md"
         text = doc.read_text()
-        assert "All-Lanes Truth Table" in text, (
+        assert "Canonical All-Lanes Truth Table" in text or "All-Lanes Truth Table" in text, (
             "Reconciliation doc must contain canonical all-lanes truth table"
         )
-        assert "READY_NOT_TRANSFERRED" in text, (
+        assert "TRANSFERRED_WITH_GAPS" in text or "PHASE_3_COMPLETE" in text, (
             "Reconciliation doc must state current Phase 3 status"
         )
 
@@ -50,27 +50,38 @@ class TestPhase3DocsTruth:
 
         agent_loop = _REPO_ROOT / "rig_relay" / "core" / "agent_loop.py"
         al_text = agent_loop.read_text()
-        loop_moved = "execute_turn" in al_text and "_conversation_loop" not in al_text
+        cr_text = (
+            _REPO_ROOT / "rig_relay" / "core" / "conversation_runtime" / "runtime.py"
+        ).read_text()
+        loop_transferred = "execute_turn_loop" in al_text and "while True" in cr_text
 
-        if not loop_moved:
+        if not loop_transferred:
             assert "NOT YET TRANSFERRED" in text or "NOT_TRANSFERRED" in text, (
                 "Reconciliation doc must honestly state loop ownership not yet transferred"
             )
+        else:
+            assert "TRANSFERRED_WITH_GAPS" in text or "PHASE_3_COMPLETE" in text, (
+                "Reconciliation doc must state transferred status when loop is moved"
+            )
 
     def test_no_false_phase3_complete_before_loop_transfer(self) -> None:
-        agent_loop = _REPO_ROOT / "rig_relay" / "core" / "agent_loop.py"
-        al_text = agent_loop.read_text()
-        loop_moved = "execute_turn" in al_text and "_conversation_loop" not in al_text
-
+        cr_text = (
+            _REPO_ROOT / "rig_relay" / "core" / "conversation_runtime" / "runtime.py"
+        ).read_text()
         doc = _REPO_ROOT / "docs" / "audits" / "agent-loop" / "phase3-readiness-reconciliation.md"
         doc_text = doc.read_text()
 
-        if not loop_moved:
-            # The status line itself must not claim COMPLETE
+        loop_complete = "execute_turn_loop" in cr_text and "while True" in cr_text
+        adapter_stub_exists = "if False:" in (
+            _REPO_ROOT / "rig_relay" / "core" / "agent_loop.py"
+        ).read_text()
+
+        if adapter_stub_exists or not loop_complete:
+            # Status line must not claim COMPLETE
             for line in doc_text.split("\n"):
                 if "Current Phase Status" in line:
                     assert "COMPLETE" not in line, (
-                        f"Docs must NOT claim PHASE_3_COMPLETE in status line. Found: {line.strip()}"
+                        f"Docs must NOT claim COMPLETE when gaps exist. Found: {line.strip()}"
                     )
                     return
 

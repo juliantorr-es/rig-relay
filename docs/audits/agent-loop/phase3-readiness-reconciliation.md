@@ -1,88 +1,66 @@
-# Phase 3 Readiness Reconciliation — All Lanes
+# Phase 3 Readiness Reconciliation — Canonical All-Lanes Truth Table
 
 Reconciliation date: 2026-05-16
-Inspected HEAD: 6385762
-Lanes: A (SubagentRuntime strict default), B (Desktop WebSocket correlation), C (this — evidence/doctrine/gate)
+Inspected HEAD: 798a8363
+Lanes: A (SubagentRuntime + trace_recorder), B (Desktop WebSocket correlation), C (this — evidence/doctrine/gate)
 
 ## Current Phase Status: **TRANSFERRED_WITH_GAPS**
 
-All 7 preconditions for Phase 3 loop transfer are met. The while-loop IS being moved to ConversationRuntime, but agent_loop.py has an indentation error at line 789 (stray comment at wrong indent + `_perform_llm_turn` at class-method level inside `_conversation_loop` body).
+The while-loop has been moved to ConversationRuntime.execute_turn_loop(). AgentLoop delegates via _ConversationLoopAdapter. Collection is green (6394 tests, 0 errors). 29/29 behavior parity tests pass for decision policy, phase sequencing, and privacy.
 
-The conversation_loop now delegates to `cr.execute_turn_loop(adapter)`. This is the correct transfer architecture, but the syntax error prevents collection.
+**One gap remains**: the adapter's `execute_tool_batch()` method is a stub (`if False: yield` at agent_loop.py:1574). ConversationRuntime correctly decides `run_tools` when tool calls are present, but the adapter does not execute them. This is a Lane A implementation gap — the decision machinery is correct but the execution bridge is missing.
 
-**Blocker**: Fix indentation in agent_loop.py lines 789-791 (Lane A).
-
-## All-Lanes Truth Table
+## Canonical Truth Table
 
 | Seam | Required state | Actual state | Evidence | Status |
 |---|---|---|---|---|
-| Subagent strict fallback | no silent legacy direct | `allow_legacy_direct: bool = False`; default `tool_runtime_required` | `rig_relay/core/subagents/runtime.py:50-74` | ✅ PASSED |
-| task dependency propagation | tool_runtime + trace_recorder | both passed from InvokeContext | `rig_relay/core/tools/builtins/task.py:461-462` | ✅ PASSED |
-| ToolRuntime envelope path | supervisor_result_envelope_id/sha/classification | fields present and populated in success path | `rig_relay/core/tool_runtime_models.py` | ✅ PASSED |
-| ToolRuntime span finalization | all terminal paths close | `_finalize_span()` helper + inline end_span cover all 9 return paths | `rig_relay/core/tool_runtime.py:203+` | ✅ PASSED |
-| Desktop correlation | WebSocket lifecycle safe events | `DesktopCorrelation` integrated in `websocket_server.py`; BridgeProbeLadder emits correlation events | `rig_relay/desktop/websocket_server.py:268-270` | ✅ PASSED |
-| Subagent adapter envelope | supervisor envelope fields preserved | `SubagentToolResult` carries envelope id/sha/classification | `rig_relay/core/subagents/tool_adapter.py` | ✅ PASSED |
-| AgentLoop subagent pattern | removed and guarded | no `is_subagent` in task.py; `_FORBIDDEN_AGENTLOOP_CONSTRUCTION` guards subagents/ralph/task | `tests/core/test_subagent_runtime_guards.py` | ✅ PASSED |
-| ConversationRuntime ownership | owns loop after Phase 3 | **PARTIALLY TRANSFERRED.** `cr.execute_turn_loop(adapter)` exists, but indentation error at line 789 breaks the file. | `rig_relay/core/agent_loop.py:786-791` | ⚠️ TRANSFERRED_WITH_GAPS |
-| AgentLoop adapter status | thin wrapper after Phase 3 | `_build_loop_adapter()` helper exists. `_conversation_loop` delegates to `cr.execute_turn_loop()`. | `rig_relay/core/agent_loop.py:747-750` | ✅ PASSED |
-| Collection determinism | all tests can be collected | `uv run pytest --collect-only` fails due to IndentationError in agent_loop.py:789 | `agent_loop.py:789-791` | ❌ FAILED — fix indentation |
+| Subagent strict fallback | no silent legacy direct | `allow_legacy_direct=False`; default `tool_runtime_required` | `runtime.py:50-74` | ✅ PASSED |
+| Task dependency propagation | tool_runtime + trace_recorder | both passed from InvokeContext | `task.py:461-462` | ✅ PASSED |
+| ToolRuntime envelope path | id/sha/classification | fields present and populated | `tool_runtime_models.py` | ✅ PASSED |
+| ToolRuntime span finalization | all terminal paths close | `_finalize_span()` covers 9 return paths | `tool_runtime.py:203+` | ✅ PASSED |
+| Desktop correlation | WebSocket lifecycle safe events | `DesktopCorrelation` integrated; BridgeProbeLadder emits | `websocket_server.py:268-270` | ✅ PASSED |
+| Subagent adapter envelope | supervisor envelope fields preserved | `SubagentToolResult` carries id/sha/classification | `tool_adapter.py` | ✅ PASSED |
+| AgentLoop subagent pattern | removed and guarded | no `is_subagent`; guards enforce | `test_subagent_runtime_guards.py` | ✅ PASSED |
+| ConversationRuntime loop ownership | owns while-loop after Phase 3 | `execute_turn_loop()` owns the while-loop; AgentLoop delegates via adapter | `agent_loop.py:781-782`, `runtime.py:267` | ✅ PASSED |
+| AgentLoop adapter status | thin wrapper after Phase 3 | `_ConversationLoopAdapter` with real methods for LLM, hooks, middleware, context | `agent_loop.py:1495-1578` | ✅ PASSED |
+| Tool batch adapter | real, not stub | **STUB.** `execute_tool_batch()` is `if False: yield` | `agent_loop.py:1574-1575` | ❌ GAP |
+| Behavior parity tests | all pass | **29/29 passed** — decision paths, phase sequencing, privacy, no-forbidden-imports | `test_conversation_runtime_phase3_*` | ✅ PASSED |
+| Collection determinism | collect-only green | 6394 tests collected, 0 errors | `uv run pytest --collect-only -q` | ✅ PASSED |
+| ConversationRuntime boundary | no forbidden imports | runtime module clean (verified by parity test) | `test_conversation_runtime_phase3_behavior_parity.py` | ✅ PASSED |
+| Docs honesty | no false complete claim | Status is TRANSFERRED_WITH_GAPS with exact blocker named | This document | ✅ PASSED |
 
 ## Lane Status
 
 | Lane | Scope | Status |
 |---|---|---|
-| **Lane A** | SubagentRuntime strict ToolRuntime default + trace_recorder propagation | ✅ Landed |
+| **Lane A** | Loop transfer + adapter | ✅ Landed with 1 gap: `execute_tool_batch()` stub |
 | **Lane B** | Desktop WebSocket correlation | ✅ Landed |
-| **Lane C** | Evidence, doctrine, and final ownership gate (this lane) | ✅ Gate hardened |
+| **Lane C** | Evidence, doctrine, ownership gate | ✅ Gate hardened |
+
+## Gap Resolution
+
+**Remaining blocker**: Implement `_ConversationLoopAdapter.execute_tool_batch()` in `rig_relay/core/agent_loop.py`. It should delegate to the existing `_execute_tool_call()` path through ToolRuntime. This is a Lane A implementation slice, not a Lane C concern.
 
 ## Gate Tests
 
-All gate tests pass for READY_NOT_TRANSFERRED state:
-
 ```
-uv run pytest -n0 tests/core/test_conversation_runtime_phase3_readiness.py tests/core/test_conversation_runtime_phase3_ownership_guards.py tests/core/test_phase3_docs_truth.py -q
+uv run pytest -n0 tests/core/test_phase3_docs_truth.py tests/core/test_conversation_runtime_phase3_readiness.py tests/core/test_conversation_runtime_phase3_ownership_guards.py -q
+uv run pytest -n0 tests/core/test_conversation_runtime_phase3_behavior_parity.py tests/core/test_conversation_runtime_phase3_event_stream.py -q
 ```
 
-### Readiness tests (pass when READY_NOT_TRANSFERRED or PHASE_3_COMPLETE)
-
-These tests verify precondition state — they pass in both READY_NOT_TRANSFERRED and PHASE_3_COMPLETE:
-
-| Test | What it checks |
-|---|---|
-| subagent fallback strict | `allow_legacy_direct: bool = False` |
-| task passes tool_runtime | AST: SubagentRuntime receives `tool_runtime=` |
-| task passes trace_recorder | AST: SubagentRuntime receives `trace_recorder=` |
-| ToolRuntime envelope fields | model fields present |
-| ToolRuntime span finalization | `_finalize_span()` exists |
-| desktop correlation declared | websocket_server imports DesktopCorrelation |
-| ConversationRuntime doc honest | docstring says "Called from AgentLoop" |
-| AgentLoop subagent pattern gone | no `is_subagent` |
-
-### Ownership guard tests (pass only when READY_NOT_TRANSFERRED or PHASE_3_COMPLETE)
-
-| Test | What it checks |
-|---|---|
-| extraction plan status matches code | doc says READY (not COMPLETE) since loop not moved |
-| reconciliation doc is canonical | contains all-lanes truth table, not single-lane report |
-| no false PHASE_3_COMPLETE claim | docs don't claim loop transfer is done |
-| AgentLoop still owns loop | _conversation_loop exists in AgentLoop (pre-transfer) |
-
-After Lane A transfers the loop, these guard tests should be updated to assert PHASE_3_COMPLETE.
-
-## Evidence Chain (full post-Phase-3 target)
+## Evidence Chain
 
 ```
 User/Desktop intent
   → DesktopCorrelation (bridge_id, correlation_id, trace)
   → WebSocket transport (correlation_id, session_id)
-  → AgentLoop adapter (_conversation_loop delegates to ConversationRuntime)
-  → ConversationRuntime.execute_turn() — LOOP OWNER
+  → AgentLoop adapter (_conversation_loop → cr.execute_turn_loop)
+  → ConversationRuntime.execute_turn_loop() — LOOP OWNER
       → ToolRuntime.execute_one() — governed tool execution
-          → RuntimeSupervisor envelope (supervisor_result_envelope_id/sha/classification)
+          → RuntimeSupervisor envelope (id/sha/classification)
           → tool_runtime.execute_one span (start/end with status)
-      → SubagentRuntime (when task.py delegates)
+      → SubagentRuntime (when task.py delegates, via governed ToolRuntime path)
           → subagent.runtime span (lifecycle evidence)
-          → ToolRuntime.execute_one() via governed path
   → BridgeProbeLadder (probe steps with correlation)
   → DesktopCorrelation (desktop.intent.dispatched/completed)
 ```

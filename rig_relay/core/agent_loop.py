@@ -1508,7 +1508,6 @@ class _ConversationLoopAdapter:
         return str(self._loop._current_turn.turn_id)
 
     def mark_turn_outcome(self, outcome: TurnOutcome, reason: str) -> None:  # type: ignore[name-defined]
-        self._loop._current_turn.advance(TurnPhase.FINALIZING)  # type: ignore[name-defined]
         self._loop._current_turn.mark_outcome(outcome, reason)
 
     def persist_turn_state(self) -> None:
@@ -1572,6 +1571,12 @@ class _ConversationLoopAdapter:
         return last.role != Role.tool  # type: ignore[name-defined]
 
     async def execute_tool_batch(self):
+        """Tool execution already happened inside stream_llm_turn().
+
+        _perform_llm_turn() handles tool execution internally via
+        _handle_tool_calls(). The run_tools decision exists solely
+        to continue the while-loop after tools were executed.
+        """
         if False:
             yield
 

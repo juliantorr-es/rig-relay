@@ -275,7 +275,23 @@ class ConversationRuntime:
         """
         try:
             first_llm_turn = True
+            turn_count = 0
             while True:
+                turn_count += 1
+
+                # ── Budget check (before each iteration) ───
+                max_turns = adapter.check_max_turns()
+                if max_turns is not None:
+                    budget_decision = self.decide_after_budget_check(
+                        turn_count - 1, max_turns
+                    )
+                    if budget_decision.kind == "fail_budget_exceeded":
+                        self._finish(TurnOutcome.LLM_ERROR)
+                        adapter.mark_turn_outcome(
+                            TurnOutcome.LLM_ERROR, budget_decision.reason
+                        )
+                        return
+
                 # ── Middleware ──────────────────────────────
                 result, mw_events = adapter.middleware_before_turn({})
                 for event in mw_events:
@@ -283,8 +299,11 @@ class ConversationRuntime:
 
                 mw_action = getattr(result, "action", None)
                 mw_action_str = str(mw_action) if mw_action else ""
-                self.decide_after_middleware(mw_action_str)
-                if self._finish_outcome == TurnOutcome.MIDDLEWARE_STOP:
+                decision = self.decide_after_middleware(mw_action_str)
+                if decision.kind == "stop_middleware":
+                    adapter.mark_turn_outcome(
+                        TurnOutcome.MIDDLEWARE_STOP, "middleware action STOP"
+                    )
                     return
 
                 # ── Context building (first turn only) ───────
@@ -316,10 +335,12 @@ class ConversationRuntime:
                 )
 
                 if decision.kind == "stop_cancelled":
+                    self._finish(TurnOutcome.USER_CANCELLED, "user cancelled")
                     adapter.mark_turn_outcome(TurnOutcome.USER_CANCELLED, "user cancelled")
                     return
 
                 if decision.kind == "fail_error":
+                    self._finish(TurnOutcome.LLM_ERROR, decision.reason)
                     adapter.mark_turn_outcome(TurnOutcome.LLM_ERROR, decision.reason)
                     return
 
@@ -351,20 +372,11 @@ class ConversationRuntime:
 
                 break
 
-            # ── Budget check ────────────────────────────────
-            max_turns = adapter.check_max_turns()
-            if max_turns is not None:
-                budget_decision = self.decide_after_budget_check(0, max_turns)
-                if budget_decision.kind == "fail_budget_exceeded":
-                    self._finish(TurnOutcome.LLM_ERROR)
-                    adapter.mark_turn_outcome(TurnOutcome.LLM_ERROR, budget_decision.reason)
-                    return
-
             self._finish(TurnOutcome.SUCCESS)
             adapter.mark_turn_outcome(TurnOutcome.SUCCESS, "completed")
 
         except Exception as exc:
-            self.decide_on_exception(exc)
+            self._finish(TurnOutcome.LLM_ERROR, str(exc)[:500])
             adapter.mark_turn_outcome(TurnOutcome.LLM_ERROR, str(exc)[:500])
             raise
 

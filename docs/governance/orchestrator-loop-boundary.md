@@ -114,12 +114,14 @@ Phase 3 should:
 4. AgentLoop should be renamed to `OrchestratorLoop` only after
    SubagentRuntime exists to prevent confusion.
 
-## Phase 3 readiness doctrine (effective 2026-05-16)
+## Phase 3 readiness doctrine (effective 2026-05-16 — TRANSFERRED_WITH_GAPS)
 
 | Doctrine | Meaning |
 |---|---|
-| no silent legacy direct | SubagentRuntime defaults to `tool_runtime_required` when no ToolRuntime provided; `allow_legacy_direct=True` required for legacy path |
-| production subagents use ToolRuntime | task.py passes `tool_runtime=` from InvokeContext; governed path (`_execute_tool_call_governed`) is primary |
-| trace recorder propagation | task.py passes `trace_recorder=` from InvokeContext; lifecycle evidence (`_emit_start()`/`_emit_end()`) emitted in production |
-| desktop correlation | Declared non-blocking for Phase 3 loop transfer; correlation primitives exist in `rig_relay/desktop/correlation.py`; WebSocket integration deferred |
-| loop ownership | AgentLoop currently owns `_conversation_loop()` while-loop; ConversationRuntime observes; Phase 3 transfers loop ownership |
+| no silent legacy direct | SubagentRuntime defaults to `tool_runtime_required`; `allow_legacy_direct=True` required for legacy path |
+| production subagents use ToolRuntime | task.py passes `tool_runtime=` from InvokeContext; governed path is primary |
+| trace recorder propagation | task.py passes `trace_recorder=`; lifecycle evidence emitted in production |
+| desktop correlation | Integrated in `websocket_server.py` via `DesktopCorrelation`; `BridgeProbeLadder` emits correlation events |
+| loop ownership transferred | `ConversationRuntime.execute_turn_loop()` owns the while-loop; AgentLoop delegates via `_ConversationLoopAdapter` |
+| tool batch adapter gap | `execute_tool_batch()` is a stub; Lane A follow-up required |
+| AgentLoop rename deferred | `OrchestratorLoop` rename waits until tool batch adapter is real and all tests green |
