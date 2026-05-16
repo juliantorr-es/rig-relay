@@ -102,7 +102,7 @@ class ContextCompiler:
             renderer.add_recent_messages_section(messages)
 
         except Exception as e:
-            renderer.warnings.append(
+            renderer.add_warning(
                 build_warning(
                     ContextWarningCode.REPO_SCAN_FAILED,
                     detail=f"{exception_class_name(e)}: context build partial",
@@ -118,13 +118,12 @@ class ContextCompiler:
         return ContextEnvelopeReceipt(
             session_id=self._session_id,
             rendered_prompt=rendered,
-            section_count=len(renderer._sections),
+            section_count=renderer.section_count,
             estimated_tokens=max(1, len(rendered) // 4),
             dirty_file_count=dirty_count,
             collision_warnings=collision_count,
             receipt_sha256=receipt_sha256,
         )
-
 
 
 def execute(  # noqa: PLR0914
@@ -172,13 +171,26 @@ def execute(  # noqa: PLR0914
     # Build active work map
     active_work = build_active_work(root, request.scope.paths)
 
+    # Build repo context index for planner
+    repo_index: RepoContextIndex | None = None
+    try:
+        repo_index = RepoContextIndex(root)
+    except Exception as e:
+        _context_warnings.append(
+            build_warning(
+                ContextWarningCode.REPO_SCAN_FAILED,
+                detail=f"{exception_class_name(e)}",
+                source="compiler.execute.repo_index",
+            )
+        )
+
     # ── Plan context via ContextAssemblyPlan ────────────────────
     plan = plan_context(
         request,
         workspace_root=root,
         subsystems=subsystems,
         active_work=active_work,
-        repo_index=None,
+        repo_index=repo_index,
     )
 
     # Build recommended context from plan selections
@@ -195,6 +207,15 @@ def execute(  # noqa: PLR0914
     # Build summary text (existing + plan metadata)
     summary = _build_summary(repo, subsystems, active_work, plan)
 
+    # Collect warnings from planner
+    planner_warnings_list: list[dict[str, Any]] = []
+    if hasattr(plan, "warnings"):
+        for pw in getattr(plan, "warnings", []):
+            if isinstance(pw, dict):
+                planner_warnings_list.append(pw)
+
+    _context_warnings.extend(planner_warnings_list)
+
     # Compute packet hash (canonical: excludes volatile fields)
     packet = ContextPacket(
         mode=request.mode,
@@ -209,6 +230,16 @@ def execute(  # noqa: PLR0914
         canonical_packet_sha256=None,
         optimized_packet_sha256=None,
         substitution_table_sha256=None,
+        warnings=_context_warnings,
+        assembly_plan_summary={
+            "plan_id": plan.plan_id,
+            "plan_sha256": plan.plan_sha256,
+            "selection_sha256": plan.selection_sha256,
+            "candidate_count": len(plan.candidates),
+            "selection_count": len(plan.selections),
+            "omission_count": len(plan.omissions),
+            "warning_count": len(plan.warnings),
+        },
     )
 
     # Canonical hash: excludes volatile fields
@@ -222,6 +253,7 @@ def execute(  # noqa: PLR0914
         "canonical_packet_sha256",
         "optimized_packet_sha256",
         "substitution_table_sha256",
+        "warnings",
     }
     stable_dict = {k: v for k, v in packet_dict.items() if k not in volatile}
     stable_json = json.dumps(stable_dict, sort_keys=True, separators=(",", ":"))
@@ -246,8 +278,20 @@ def build_receipt(packet: ContextPacket) -> ContextReceipt:
         _fs = compute_findings_summary()
         open_count = _fs.get("by_status", {}).get("open", 0)
         stale_count = len(_fs.get("stale_findings", []))
-    except Exception:
-        pass
+    except Exception as e:
+        from rig_relay.context.warnings import (
+            ContextWarningCode,
+            build_warning,
+            exception_class_name,
+        )
+
+        # ContextReceipt has no warnings field; record safe zero counts only.
+        # The warning is emitted through the packet warnings path instead.
+        _receipt_findings_warning = build_warning(
+            ContextWarningCode.FINDINGS_SUMMARY_FAILED,
+            detail=f"{exception_class_name(e)}",
+            source="compiler.build_receipt",
+        )
 
     return ContextReceipt(
         context_id=packet.context_id,
@@ -276,15 +320,18 @@ def _build_recommended_context(subsystems: list) -> list[PathRecommendation]:
 
     for sub in subsystems[:5]:
         if sub.config_files:
-            recommendations.append(PathRecommendation(
-                path=sub.config_files[0],
-                reason=f"Core configuration for {sub.name} subsystem",
-            ))
+            recommendations.append(
+                PathRecommendation(
+                    path=sub.config_files[0],
+                    reason=f"Core configuration for {sub.name} subsystem",
+                )
+            )
         if sub.docs:
-            recommendations.append(PathRecommendation(
-                path=sub.docs[0],
-                reason=f"Documentation for {sub.name} subsystem",
-            ))
+            recommendations.append(
+                PathRecommendation(
+                    path=sub.docs[0], reason=f"Documentation for {sub.name} subsystem"
+                )
+            )
 
     return recommendations[:10]
 
@@ -313,10 +360,11 @@ def _map_selections_to_recommendations(
         if cand.path in seen:
             continue
         seen.add(cand.path)
-        result.append(PathRecommendation(
-            path=cand.path,
-            reason=sel.selection_reason or cand.reason,
-        ))
+        result.append(
+            PathRecommendation(
+                path=cand.path, reason=sel.selection_reason or cand.reason
+            )
+        )
     return result
 
 
@@ -332,10 +380,11 @@ def _map_omissions_to_do_not_touch(
         cand = _find_candidate(plan, om.candidate_id)
         if cand is None:
             continue
-        result.append(PathRecommendation(
-            path=cand.path,
-            reason=om.detail or f"omitted: {om.omission_reason}",
-        ))
+        result.append(
+            PathRecommendation(
+                path=cand.path, reason=om.detail or f"omitted: {om.omission_reason}"
+            )
+        )
     return result
 
 
@@ -363,11 +412,13 @@ def _scan_receipts(root: Path) -> list[ReceiptEntry]:
                 sha = _hl.sha256(data).hexdigest()
             except Exception:
                 sha = ""
-            entries.append(ReceiptEntry(
-                kind=f.suffix.lstrip(".") or "receipt",
-                path=str(f.relative_to(root)) if f.is_relative_to(root) else str(f),
-                sha256=f"sha256:{sha[:16]}" if sha else "",
-            ))
+            entries.append(
+                ReceiptEntry(
+                    kind=f.suffix.lstrip(".") or "receipt",
+                    path=str(f.relative_to(root)) if f.is_relative_to(root) else str(f),
+                    sha256=f"sha256:{sha[:16]}" if sha else "",
+                )
+            )
     return entries
 
 
@@ -381,9 +432,11 @@ def _build_summary(
     lines: list[str] = []
     lines.append(f"Repository: {repo.root}")
     lines.append(f"Branch: {repo.branch} @ {repo.head}")
-    lines.append(f"Dirty files: {repo.dirty_summary.get('modified', 0)} modified, "
-                 f"{repo.dirty_summary.get('untracked', 0)} untracked, "
-                 f"{repo.dirty_summary.get('staged', 0)} staged")
+    lines.append(
+        f"Dirty files: {repo.dirty_summary.get('modified', 0)} modified, "
+        f"{repo.dirty_summary.get('untracked', 0)} untracked, "
+        f"{repo.dirty_summary.get('staged', 0)} staged"
+    )
     lines.append("")
 
     if subsystems:
@@ -400,8 +453,10 @@ def _build_summary(
     if lanes:
         lines.append(f"Active work ({len(lanes)} lanes):")
         for lane in lanes:
-            lines.append(f"  {lane.get('agent_id', '?')}: {lane.get('status', '?')} "
-                         f"({len(lane.get('claimed_paths', []))} claimed paths)")
+            lines.append(
+                f"  {lane.get('agent_id', '?')}: {lane.get('status', '?')} "
+                f"({len(lane.get('claimed_paths', []))} claimed paths)"
+            )
         lines.append("")
 
     collisions = active_work.get("collision_warnings", [])
@@ -412,13 +467,17 @@ def _build_summary(
 
     if plan is not None:
         lines.append("")
-        lines.append(f"Assembly plan: {len(plan.candidates)} candidates, "
-                     f"{len(plan.selections)} selected, "
-                     f"{len(plan.omissions)} omitted, "
-                     f"{len(plan.warnings)} warnings")
+        lines.append(
+            f"Assembly plan: {len(plan.candidates)} candidates, "
+            f"{len(plan.selections)} selected, "
+            f"{len(plan.omissions)} omitted, "
+            f"{len(plan.warnings)} warnings"
+        )
         lines.append(f"  plan_id: {plan.plan_id}")
         if plan.budget.used_tokens > 0:
-            lines.append(f"  budget: {plan.budget.used_tokens}/{plan.budget.requested_tokens} tokens")
+            lines.append(
+                f"  budget: {plan.budget.used_tokens}/{plan.budget.requested_tokens} tokens"
+            )
 
     return "\n".join(lines)
 

@@ -159,54 +159,50 @@ def plan_context(  # noqa: PLR0912, PLR0915, PLR0914
 
     # ── 3. Expand RepoIndex relations ──────────────────────────
     if request.scope.paths and repo_index is not None:
-        try:
-            requested_paths = [str(p) for p in request.scope.paths]
+        requested_paths = [str(p) for p in request.scope.paths]
 
-            if request.scope.include_tests:
-                for related in _safe_find(repo_index, "find_tests", requested_paths):
-                    cand = ContextCandidate(
-                        path=related,
-                        kind=CandidateKind.test,
-                        source=CandidateSource.repo_index,
-                        relation=CandidateRelation.test,
-                        estimated_tokens=estimate_tokens(related),
-                        priority=350,
-                        reason="Related test from RepoIndex",
-                        trust_tier=TrustTier.repo_content,
-                        cache_tier=CacheTier.dynamic,
+        if request.scope.include_tests:
+            related, test_err = _safe_find(repo_index, "find_tests", requested_paths)
+            if test_err:
+                warnings.append(
+                    ContextAssemblyWarning(
+                        code="repo_index_query_failed", detail=f"find_tests: {test_err}"
                     )
-                    if cand.candidate_id in candidate_ids:
-                        continue
-                    candidate_ids.add(cand.candidate_id)
-                    candidates.append(cand)
-
-            if request.scope.include_docs:
-                for related in _safe_find(repo_index, "find_docs", requested_paths):
-                    cand = ContextCandidate(
-                        path=related,
-                        kind=CandidateKind.doc,
-                        source=CandidateSource.repo_index,
-                        relation=CandidateRelation.doc,
-                        estimated_tokens=estimate_tokens(related),
-                        priority=300,
-                        reason="Related doc from RepoIndex",
-                        trust_tier=TrustTier.repo_content,
-                        cache_tier=CacheTier.stable,
-                    )
-                    if cand.candidate_id in candidate_ids:
-                        continue
-                    candidate_ids.add(cand.candidate_id)
-                    candidates.append(cand)
-
-            for related in _safe_find(repo_index, "find_schemas", requested_paths):
+                )
+            for related_path in related:
                 cand = ContextCandidate(
-                    path=related,
-                    kind=CandidateKind.schema,
+                    path=related_path,
+                    kind=CandidateKind.test,
                     source=CandidateSource.repo_index,
-                    relation=CandidateRelation.schema,
-                    estimated_tokens=estimate_tokens(related),
-                    priority=450,
-                    reason="Related schema from RepoIndex",
+                    relation=CandidateRelation.test,
+                    estimated_tokens=estimate_tokens(related_path),
+                    priority=350,
+                    reason="Related test from RepoIndex",
+                    trust_tier=TrustTier.repo_content,
+                    cache_tier=CacheTier.dynamic,
+                )
+                if cand.candidate_id in candidate_ids:
+                    continue
+                candidate_ids.add(cand.candidate_id)
+                candidates.append(cand)
+
+        if request.scope.include_docs:
+            related, doc_err = _safe_find(repo_index, "find_docs", requested_paths)
+            if doc_err:
+                warnings.append(
+                    ContextAssemblyWarning(
+                        code="repo_index_query_failed", detail=f"find_docs: {doc_err}"
+                    )
+                )
+            for related_path in related:
+                cand = ContextCandidate(
+                    path=related_path,
+                    kind=CandidateKind.doc,
+                    source=CandidateSource.repo_index,
+                    relation=CandidateRelation.doc,
+                    estimated_tokens=estimate_tokens(related_path),
+                    priority=300,
+                    reason="Related doc from RepoIndex",
                     trust_tier=TrustTier.repo_content,
                     cache_tier=CacheTier.stable,
                 )
@@ -215,33 +211,57 @@ def plan_context(  # noqa: PLR0912, PLR0915, PLR0914
                 candidate_ids.add(cand.candidate_id)
                 candidates.append(cand)
 
-            related_map = _safe_find_dict(repo_index, "find_related", requested_paths)
-            for rel_type, paths in related_map.items():
-                for path in paths:
-                    relation = _map_relation(rel_type)
-                    cand = ContextCandidate(
-                        path=path,
-                        kind=CandidateKind.source,
-                        source=CandidateSource.repo_index,
-                        relation=relation,
-                        estimated_tokens=estimate_tokens(path),
-                        priority=150,
-                        reason=f"Related {rel_type} from RepoIndex",
-                        trust_tier=TrustTier.repo_content,
-                        cache_tier=CacheTier.semi_stable,
-                    )
-                    if cand.candidate_id in candidate_ids:
-                        continue
-                    candidate_ids.add(cand.candidate_id)
-                    candidates.append(cand)
-
-        except Exception:
+        related, schema_err = _safe_find(repo_index, "find_schemas", requested_paths)
+        if schema_err:
             warnings.append(
                 ContextAssemblyWarning(
-                    code="repo_index_unavailable",
-                    detail="RepoIndex relation expansion failed",
+                    code="repo_index_query_failed", detail=f"find_schemas: {schema_err}"
                 )
             )
+        for related_path in related:
+            cand = ContextCandidate(
+                path=related_path,
+                kind=CandidateKind.schema,
+                source=CandidateSource.repo_index,
+                relation=CandidateRelation.schema,
+                estimated_tokens=estimate_tokens(related_path),
+                priority=450,
+                reason="Related schema from RepoIndex",
+                trust_tier=TrustTier.repo_content,
+                cache_tier=CacheTier.stable,
+            )
+            if cand.candidate_id in candidate_ids:
+                continue
+            candidate_ids.add(cand.candidate_id)
+            candidates.append(cand)
+
+        related_map, rel_err = _safe_find_dict(
+            repo_index, "find_related", requested_paths
+        )
+        if rel_err:
+            warnings.append(
+                ContextAssemblyWarning(
+                    code="repo_index_query_failed", detail=f"find_related: {rel_err}"
+                )
+            )
+        for rel_type, paths in related_map.items():
+            for path in paths:
+                relation = _map_relation(rel_type)
+                cand = ContextCandidate(
+                    path=path,
+                    kind=CandidateKind.source,
+                    source=CandidateSource.repo_index,
+                    relation=relation,
+                    estimated_tokens=estimate_tokens(path),
+                    priority=150,
+                    reason=f"Related {rel_type} from RepoIndex",
+                    trust_tier=TrustTier.repo_content,
+                    cache_tier=CacheTier.semi_stable,
+                )
+                if cand.candidate_id in candidate_ids:
+                    continue
+                candidate_ids.add(cand.candidate_id)
+                candidates.append(cand)
 
     elif request.scope.paths and repo_index is None:
         warnings.append(
@@ -281,7 +301,7 @@ def plan_context(  # noqa: PLR0912, PLR0915, PLR0914
     selections: list[ContextSelection] = []
     omissions: list[ContextOmission] = []
     used_tokens = 0
-    max_tokens = request.budget.max_tokens
+    max_tokens = max(0, request.budget.max_tokens)
     sel_idx = 0
 
     for cand in candidates:
@@ -380,27 +400,37 @@ def plan_context(  # noqa: PLR0912, PLR0915, PLR0914
 # ── Helpers ─────────────────────────────────────────────────────
 
 
-def _safe_find(obj: Any, method: str, paths: list[str]) -> list[str]:
+def _safe_find(obj: Any, method: str, paths: list[str]) -> tuple[list[str], str | None]:
+    """Call method on obj, return (results, error_string).
+
+    Never raises. Returns empty list + error string on failure.
+    """
     try:
         fn = getattr(obj, method, None)
         if fn is None:
-            return []
-        return list(fn(paths))
-    except Exception:
-        return []
+            return [], f"method '{method}' not found"
+        return list(fn(paths)), None
+    except Exception as exc:
+        return [], f"{type(exc).__name__}: {exc}"[:200]
 
 
-def _safe_find_dict(obj: Any, method: str, paths: list[str]) -> dict[str, list[str]]:
+def _safe_find_dict(
+    obj: Any, method: str, paths: list[str]
+) -> tuple[dict[str, list[str]], str | None]:
+    """Call method on obj, return (results_dict, error_string).
+
+    Never raises. Returns empty dict + error string on failure.
+    """
     try:
         fn = getattr(obj, method, None)
         if fn is None:
-            return {}
+            return {}, f"method '{method}' not found"
         result = fn(paths)
         if isinstance(result, dict):
-            return {str(k): list(v) for k, v in result.items()}
-        return {}
-    except Exception:
-        return {}
+            return {str(k): list(v) for k, v in result.items()}, None
+        return {}, f"method '{method}' returned non-dict: {type(result).__name__}"
+    except Exception as exc:
+        return {}, f"{type(exc).__name__}: {exc}"[:200]
 
 
 def _map_relation(rel_type: str) -> CandidateRelation:

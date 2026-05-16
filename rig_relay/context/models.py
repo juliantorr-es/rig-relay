@@ -168,10 +168,12 @@ class ContextPacket(BaseModel):
     recommended_context: list[PathRecommendation] = Field(default_factory=list)
     do_not_touch: list[PathRecommendation] = Field(default_factory=list)
     summary_text: str = ""
+    assembly_plan_summary: dict[str, Any] = Field(default_factory=dict)
     canonical_packet_sha256: str | None = None
     optimized_packet_sha256: str | None = None
     substitution_table_sha256: str | None = None
     duration_ms: float = 0.0
+    warnings: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ContextEnvelopeReceipt(BaseModel):

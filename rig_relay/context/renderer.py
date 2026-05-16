@@ -136,6 +136,9 @@ class ContextRenderer:
     def section_count(self) -> int:
         return len(self._sections)
 
+    def add_warning(self, warning: dict[str, Any]) -> None:
+        self._warnings.append(warning)
+
     @property
     def estimated_tokens(self) -> int:
         return sum(s.token_estimate for s in self._sections)
