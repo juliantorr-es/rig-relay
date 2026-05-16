@@ -22,7 +22,7 @@ from rig_relay.core.llm.backend.factory import BACKEND_FACTORY
 from rig_relay.core.llm.format import FailedToolCall, ResolvedMessage, ResolvedToolCall
 from rig_relay.core.llm.types import BackendLike
 from rig_relay.core.logger import logger
-from rig_relay.core.middleware import MiddlewareAction, ResetReason
+from rig_relay.core.middleware import ResetReason
 from rig_relay.core.prompts import UtilityPrompt
 from rig_relay.core.session.session_id import extract_suffix, generate_session_id
 from rig_relay.core.session.session_migration import migrate_sessions_entrypoint
@@ -65,7 +65,6 @@ from rig_relay.core.utils import (
     CancellationReason,
     get_server_url_from_api_base,
     get_user_cancellation_message,
-    is_user_cancellation_event,
 )
 
 try:
@@ -744,6 +743,9 @@ class AgentLoop(
             telemetry_tracker.send_failure_if_needed()
             self._teleport_service = None
 
+    def _build_loop_adapter(self, user_msg: str) -> _ConversationLoopAdapter:
+        return _ConversationLoopAdapter(self, user_msg)
+
     async def _conversation_loop(
         self, user_msg: str, client_message_id: str | None = None
     ) -> AsyncGenerator[BaseEvent]:
@@ -754,7 +756,6 @@ class AgentLoop(
         )
         self._current_turn = turn
 
-        # ── ConversationRuntime observes the turn ────────────
         cr = self._get_conversation_runtime()
         self._conversation_runtime = cr
         cr._session_id = self.session_id
@@ -777,116 +778,9 @@ class AgentLoop(
         if self._hooks_manager:
             self._hooks_manager.reset_retry_count()
 
-        try:
-            should_break_loop = False
-            first_llm_turn = True
-            while not should_break_loop:
-                self._is_user_prompt_call = False
-                result = await self.middleware_pipeline.run_before_turn(
-                    self._get_context()
-                )
-                async for event in self._handle_middleware_result(result):
-                    yield event
-
-                if result.action == MiddlewareAction.STOP:
-                    decision = cr.decide_after_middleware(str(result.action))
-                    cr._finish(TurnOutcome.MIDDLEWARE_STOP)
-                    return
-
-                self.stats.steps += 1
-                user_cancelled = False
-                if first_llm_turn:
-                    self._is_user_prompt_call = True
-                    first_llm_turn = False
-
-                    cr._phase(TurnPhase.CONTEXT_BUILDING)
-                    turn.advance(TurnPhase.CONTEXT_BUILDING)
-                    await self._build_context_envelope(user_msg)
-                    if self._current_context_envelope:
-                        turn.context_envelope_id = (
-                            self._current_context_envelope.envelope_id
-                        )
-                        turn.context_section_count = (
-                            self._current_context_envelope.section_count
-                        )
-                    cr._phase(TurnPhase.CONTEXT_READY)
-                    turn.advance(TurnPhase.CONTEXT_READY)
-
-                cr._phase(TurnPhase.MODEL_CALLING)
-                turn.advance(TurnPhase.MODEL_CALLING)
-
-                async for event in self._perform_llm_turn():
-                    if is_user_cancellation_event(event):
-                        user_cancelled = True
-                    yield event
-                    await self._save_messages()
-                self._is_user_prompt_call = False
-
-                last_message = self.messages[-1]
-                should_break_loop = last_message.role != Role.tool
-
-                decision = cr.decide_after_model_turn(
-                    user_cancelled=user_cancelled, assistant_final=should_break_loop
-                )
-
-                if decision.kind == "stop_cancelled":
-                    turn.advance(TurnPhase.FINALIZING)
-                    turn.mark_outcome(TurnOutcome.USER_CANCELLED, "user cancelled")
-                    return
-
-                if decision.kind == "stop_completed":
-                    # Hook processing — execution stays in AgentLoop,
-                    # decision policy moves to ConversationRuntime.
-                    if self._hooks_manager:
-                        hook_retry: HookUserMessage | None = None
-                        async for hook_event in self._hooks_manager.run(
-                            HookType.POST_AGENT_TURN,
-                            self.session_id,
-                            self.session_logger,
-                        ):
-                            if isinstance(hook_event, HookUserMessage):
-                                hook_retry = hook_event
-                            else:
-                                yield hook_event
-                        hook_decision = cr.decide_after_hook_processing(
-                            hook_returned_user_message=hook_retry is not None
-                        )
-                        if hook_decision.kind == "retry_hooks":
-                            self.messages.append(
-                                LLMMessage(
-                                    role=Role.user,
-                                    content=hook_retry.content,
-                                    injected=True,
-                                )
-                            )
-                            should_break_loop = False
-
-                if decision.kind == "run_tools":
-                    # Tool batch completion → continue
-                    cr.decide_after_tool_batch()
-
-            # Budget check at end of loop iteration
-            budget_decision = cr.decide_after_budget_check(
-                current_turn=0,  # placeholder — turn count tracked externally
-                max_turns=self._max_turns,
-            )
-            if budget_decision.kind == "fail_budget_exceeded":
-                cr._finish(TurnOutcome.LLM_ERROR)
-                turn.advance(TurnPhase.FINALIZING)
-                turn.mark_outcome(TurnOutcome.LLM_ERROR, budget_decision.reason)
-                return
-
-            cr._finish(TurnOutcome.SUCCESS)
-            turn.advance(TurnPhase.FINALIZING)
-            turn.mark_outcome(TurnOutcome.SUCCESS)
-
-        except Exception as exc:
-            decision = cr.decide_on_exception(exc)
-            turn.advance(TurnPhase.FINALIZING)
-            turn.mark_outcome(TurnOutcome.LLM_ERROR, str(exc)[:500])
-            raise
-
-        finally:
+        adapter = self._build_loop_adapter(user_msg)
+        async for event in cr.execute_turn_loop(adapter):
+            yield event
             await self._save_messages()
 
     async def _perform_llm_turn(self) -> AsyncGenerator[BaseEvent, None]:
@@ -1596,3 +1490,90 @@ class AgentLoop(
 
 
 # ── ConversationRuntime adapter ──────────────────────────────────
+
+
+class _ConversationLoopAdapter:
+    """Adapter implementing ConversationRuntimeCallbacks for AgentLoop."""
+
+    __slots__ = ("_loop", "_user_msg")
+
+    def __init__(self, loop: AgentLoop, user_msg: str) -> None:  # type: ignore[name-defined]
+        self._loop = loop
+        self._user_msg = user_msg
+
+    def get_turn(self):
+        return self._loop._current_turn
+
+    def get_turn_id(self) -> str:
+        return str(self._loop._current_turn.turn_id)
+
+    def mark_turn_outcome(self, outcome: TurnOutcome, reason: str) -> None:  # type: ignore[name-defined]
+        self._loop._current_turn.advance(TurnPhase.FINALIZING)  # type: ignore[name-defined]
+        self._loop._current_turn.mark_outcome(outcome, reason)
+
+    def persist_turn_state(self) -> None:
+        pass
+
+    def middleware_before_turn(self, ctx: dict[str, str]):
+        raise NotImplementedError("use async version")
+
+    def reset_hooks(self) -> None:
+        if self._loop._hooks_manager:
+            self._loop._hooks_manager.reset_retry_count()
+
+    def build_context_envelope(self, request):
+        import asyncio
+        loop = asyncio.get_event_loop()
+
+        async def _build():
+            await self._loop._build_context_envelope(self._user_msg)
+            return self._loop._current_context_envelope
+
+        return loop.run_until_complete(_build())
+
+    def set_context_envelope(self, receipt) -> None:
+        if receipt is not None:
+            turn = self._loop._current_turn
+            turn.context_envelope_id = receipt.envelope_id
+            turn.context_section_count = receipt.section_count
+
+    async def stream_llm_turn(self):
+        async for event in self._loop._perform_llm_turn():
+            yield event
+
+    def is_user_cancellation_event(self, event) -> bool:
+        from rig_relay.core._llm_call import is_user_cancellation_event
+        return is_user_cancellation_event(event)
+
+    async def stream_hooks_post_turn(self):
+        if not self._loop._hooks_manager:
+            return
+        async for hook_event in self._loop._hooks_manager.run(
+            HookType.POST_AGENT_TURN,  # type: ignore[name-defined]
+            self._loop.session_id,
+            self._loop.session_logger,
+        ):
+            yield hook_event
+
+    def is_hook_user_message(self, event) -> bool:
+        return isinstance(event, HookUserMessage)  # type: ignore[name-defined]
+
+    def inject_hook_message(self, hook_message) -> None:
+        self._loop.messages.append(
+            LLMMessage(  # type: ignore[name-defined]
+                role=Role.user,  # type: ignore[name-defined]
+                content=hook_message.content,
+                injected=True,
+            )
+        )
+
+    def last_message_has_no_tool_calls(self) -> bool:
+        last = self._loop.messages[-1]
+        return last.role != Role.tool  # type: ignore[name-defined]
+
+    async def execute_tool_batch(self):
+        if False:
+            yield
+
+    def check_max_turns(self) -> int | None:
+        return self._loop._max_turns

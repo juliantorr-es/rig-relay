@@ -16,11 +16,13 @@ duckdb, or analytics.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 import time
 from typing import Any
 
 from rig_relay.core.conversation_runtime.models import (
     ConversationLoopDecision,
+    ConversationRuntimeCallbacks,
     ConversationRuntimePhaseEvent,
     ConversationRuntimeResult,
     ConversationRuntimeStatus,
@@ -29,6 +31,7 @@ from rig_relay.core.conversation_runtime.models import (
 )
 from rig_relay.core.conversation_turn import TurnOutcome, TurnPhase
 from rig_relay.core.logger import logger
+from rig_relay.core.types import BaseEvent
 
 
 class ConversationRuntime:
@@ -258,3 +261,112 @@ class ConversationRuntime:
         """Record terminal decision outcome without emitting extra phase."""
         self._finish_outcome = outcome
         self._finish_reason = str(outcome.value)
+
+    # ── Core loop ownership (Phase 3) ──────────────────────────
+
+    async def execute_turn_loop(  # noqa: PLR0912, PLR0915
+        self, adapter: ConversationRuntimeCallbacks
+    ) -> AsyncGenerator[BaseEvent, None]:
+        """Execute the conversation turn loop.
+
+        Owns the while-loop, phase sequencing, decision policy, and
+        outcome classification. Delegates execution mechanics to
+        the adapter.
+        """
+        try:
+            first_llm_turn = True
+            while True:
+                # ── Middleware ──────────────────────────────
+                result, mw_events = adapter.middleware_before_turn({})
+                for event in mw_events:
+                    yield event
+
+                mw_action = getattr(result, "action", None)
+                mw_action_str = str(mw_action) if mw_action else ""
+                self.decide_after_middleware(mw_action_str)
+                if self._finish_outcome == TurnOutcome.MIDDLEWARE_STOP:
+                    return
+
+                # ── Context building (first turn only) ───────
+                if first_llm_turn:
+                    first_llm_turn = False
+                    self._phase(TurnPhase.CONTEXT_BUILDING)
+                    adapter.get_turn().advance(TurnPhase.CONTEXT_BUILDING)
+                    envelope = adapter.build_context_envelope(None)
+                    if envelope is not None:
+                        adapter.set_context_envelope(envelope)
+                    self._phase(TurnPhase.CONTEXT_READY)
+                    adapter.get_turn().advance(TurnPhase.CONTEXT_READY)
+
+                # ── LLM turn ────────────────────────────────
+                self._phase(TurnPhase.MODEL_CALLING)
+                adapter.get_turn().advance(TurnPhase.MODEL_CALLING)
+
+                user_cancelled = False
+                async for event in adapter.stream_llm_turn():
+                    if adapter.is_user_cancellation_event(event):
+                        user_cancelled = True
+                    yield event
+
+                # ── Decision after model turn ───────────────
+                should_break = adapter.last_message_has_no_tool_calls()
+                decision = self.decide_after_model_turn(
+                    user_cancelled=user_cancelled,
+                    assistant_final=should_break,
+                )
+
+                if decision.kind == "stop_cancelled":
+                    adapter.mark_turn_outcome(TurnOutcome.USER_CANCELLED, "user cancelled")
+                    return
+
+                if decision.kind == "fail_error":
+                    adapter.mark_turn_outcome(TurnOutcome.LLM_ERROR, decision.reason)
+                    return
+
+                if decision.kind == "run_tools":
+                    async for event in adapter.execute_tool_batch():
+                        yield event
+                    self.decide_after_tool_batch()
+                    continue
+
+                if decision.kind == "stop_completed":
+                    # ── Hook processing ──────────────────
+                    hook_retry = None
+                    async for hook_event in adapter.stream_hooks_post_turn():
+                        if adapter.is_hook_user_message(hook_event):
+                            hook_retry = hook_event
+                        else:
+                            yield hook_event
+                    hook_decision = self.decide_after_hook_processing(
+                        hook_returned_user_message=hook_retry is not None
+                    )
+                    if hook_decision.kind == "retry_hooks":
+                        adapter.inject_hook_message(hook_retry)
+                        continue
+                    break
+
+                if decision.kind == "fail_budget_exceeded":
+                    adapter.mark_turn_outcome(TurnOutcome.LLM_ERROR, decision.reason)
+                    return
+
+                break
+
+            # ── Budget check ────────────────────────────────
+            max_turns = adapter.check_max_turns()
+            if max_turns is not None:
+                budget_decision = self.decide_after_budget_check(0, max_turns)
+                if budget_decision.kind == "fail_budget_exceeded":
+                    self._finish(TurnOutcome.LLM_ERROR)
+                    adapter.mark_turn_outcome(TurnOutcome.LLM_ERROR, budget_decision.reason)
+                    return
+
+            self._finish(TurnOutcome.SUCCESS)
+            adapter.mark_turn_outcome(TurnOutcome.SUCCESS, "completed")
+
+        except Exception as exc:
+            self.decide_on_exception(exc)
+            adapter.mark_turn_outcome(TurnOutcome.LLM_ERROR, str(exc)[:500])
+            raise
+
+        finally:
+            adapter.persist_turn_state()

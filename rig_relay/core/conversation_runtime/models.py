@@ -220,10 +220,32 @@ class ConversationRuntimeCallbacks(Protocol):
         """Check if event is a HookUserMessage (triggers retry)."""
         ...
 
+    def inject_hook_message(self, hook_message: Any) -> None:
+        """Inject a hook user message into the conversation for retry."""
+        ...
+
     # ── Loop control ─────────────────────────────────────────────
 
     def last_message_has_no_tool_calls(self) -> bool:
         """Check if last message indicates loop should break."""
+        ...
+
+    # ── Tool execution ─────────────────────────────────────────
+
+    def execute_tool_batch(self) -> AsyncGenerator[BaseEvent, None]:
+        """Execute pending tool calls. Yields tool events."""
+        ...
+
+    # ── Budget ──────────────────────────────────────────────────
+
+    def check_max_turns(self) -> int | None:
+        """Return max_turns limit or None."""
+        ...
+
+    # ── Event emission ─────────────────────────────────────────
+
+    def yield_user_message_event(self) -> AsyncGenerator[BaseEvent, None]:
+        """Yield UserMessageEvent for the current user message."""
         ...
 
 
