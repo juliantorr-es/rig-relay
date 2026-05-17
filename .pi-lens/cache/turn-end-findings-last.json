@@ -1,4 +1,4 @@
 {
-  "signature": "scripts/rig_relay_select_code_schemas.py::Unresolved from this turn — scripts/rig_relay_select_code_schemas.py:\n🔴 STOP — 1 issue(s) must be fixed:\n  L165: Too many local variables (17/15)",
-  "sessionId": "lens-mp91g4dh-13f42e95"
+  "signature": "tests/repository/test_release_candidate_coherence_audit.py::Unresolved from this turn — tests/repository/test_release_candidate_coherence_audit.py:\n🔴 STOP — 7 issue(s) must be fixed:\n  \"_run_support_script\" is not defined\n  L142: Undefined name `_run_support_script`\n  L148: Undefined name `_run_support_script`\n  L156: Undefined name `_run_support_script`\n  L161: Undefined name `_run_support_script`\n  L166: Undefined name `_run_support_script`\n  L171: Undefined name `_run_support_script`",
+  "sessionId": "lens-mp90yi3s-37d27ed3"
 }

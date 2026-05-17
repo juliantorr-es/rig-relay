@@ -234,6 +234,36 @@
         "level": "standard",
         "initially_visible": true
       }
+    },
+    {
+      "block_id": "websocket-hardening-status",
+      "type": "heading",
+      "title": "WebSocket Security Hardening Status",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "hardening-detail",
+      "type": "list",
+      "items": [
+        "Origin validation: loopback HTTP/HTTPS origins accepted; foreign, file://, and null origins rejected by default.",
+        "Missing origin policy: explicit missing_origin_allowed flag for pywebview/non-browser clients.",
+        "Message schema validation: non-JSON, JSON arrays, scalars, and token-on-non-auth messages rejected.",
+        "Invalid message guard: connection closed after MAX_INVALID_WEBSOCKET_MESSAGES (3).",
+        "Auth-before-subscribe: projections and subscriptions gated on successful authentication.",
+        "Message size limit: MAX_MESSAGE_BYTES = 64 KiB.",
+        "Content-light security trace events: desktop.websocket.origin_rejected, message_rejected, connection_closed.",
+        "No token values in any security rejection logs or trace payloads.",
+        "All hardened behaviors tested in tests/desktop/test_websocket_server.py."
+      ],
+      "ordered": false,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
     }
   ],
   "references": [

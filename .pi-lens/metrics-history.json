@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "files": {
+    "frontend/desktop/js/telemetry/frontendTrace.js": {
+      "latest": {
+        "commit": "8f1d83aa",
+        "timestamp": "2026-05-17T02:09:16.564Z",
+        "mi": 56.9,
+        "cognitive": 13,
+        "nesting": 4,
+        "lines": 34,
+        "maxCyclomatic": 9,
+        "entropy": 5.17
+      },
+      "history": [
+        {
+          "commit": "8f1d83aa",
+          "timestamp": "2026-05-17T02:09:16.564Z",
+          "mi": 56.9,
+          "cognitive": 13,
+          "nesting": 4,
+          "lines": 34,
+          "maxCyclomatic": 9,
+          "entropy": 5.17
+        }
+      ],
+      "trend": "stable"
+    }
+  },
+  "capturedAt": "2026-05-17T02:09:21.570Z"
+}

@@ -1,0 +1,307 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.audit.release_candidate_coherence.v1.schema.json",
+  "title": "Rig Audit Release Candidate Coherence",
+  "description": "Schema for a holistic release candidate coherence audit evaluating product, architecture, security, observability, docs, runtime, supply chain, and public-presentation readiness.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "audit_id",
+    "title",
+    "summary",
+    "status",
+    "created_at",
+    "source_commit",
+    "scope",
+    "lenses",
+    "findings",
+    "release_blockers",
+    "action_map",
+    "deferred_items",
+    "metrics",
+    "references",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.audit.release_candidate_coherence.v1"
+    },
+    "audit_id": {
+      "type": "string",
+      "description": "Unique stable identifier for this audit instance."
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "superseded", "archived"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "source_commit": {
+      "type": "string",
+      "description": "Git commit SHA at time of audit generation."
+    },
+    "scope": {
+      "type": "object",
+      "required": ["description", "in_scope", "out_of_scope"],
+      "properties": {
+        "description": {"type": "string"},
+        "in_scope": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "out_of_scope": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "lenses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["lens_id", "name", "description", "questions", "owner_area"],
+        "properties": {
+          "lens_id": {
+            "type": "string",
+            "description": "Unique identifier for this audit lens (e.g., 'security_posture')."
+          },
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "questions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string"}
+          },
+          "owner_area": {"type": "string"},
+          "external_anchors": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Named external frameworks or standards used as reasoning anchors."
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "finding_id",
+          "lens_id",
+          "title",
+          "severity",
+          "confidence",
+          "description",
+          "evidence",
+          "impact",
+          "release_blocker",
+          "recommended_fix",
+          "owner_area",
+          "affected_files",
+          "status"
+        ],
+        "properties": {
+          "finding_id": {"type": "string"},
+          "lens_id": {
+            "type": "string",
+            "description": "References a lens_id in the lenses array."
+          },
+          "title": {"type": "string"},
+          "severity": {
+            "type": "string",
+            "enum": ["info", "low", "medium", "high", "critical"]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "description": {"type": "string"},
+          "evidence": {"type": "string"},
+          "impact": {"type": "string"},
+          "release_blocker": {"type": "boolean"},
+          "recommended_fix": {"type": "string"},
+          "owner_area": {"type": "string"},
+          "affected_files": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "related_threats": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "related_tests": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "validation_command": {"type": "string"},
+          "deferred_reason": {"type": "string"},
+          "status": {
+            "type": "string",
+            "enum": ["open", "accepted", "fixed", "deferred"]
+          }
+        }
+      }
+    },
+    "release_blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["blocker_id", "title", "severity", "finding_ids", "owner_area", "status"],
+        "properties": {
+          "blocker_id": {"type": "string"},
+          "title": {"type": "string"},
+          "severity": {
+            "type": "string",
+            "enum": ["high", "critical"]
+          },
+          "description": {"type": "string"},
+          "finding_ids": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "owner_area": {"type": "string"},
+          "validation_proof": {"type": "string"},
+          "deferred_to_version": {"type": "string"},
+          "status": {
+            "type": "string",
+            "enum": ["open", "in_progress", "resolved", "deferred"]
+          }
+        }
+      }
+    },
+    "action_map": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "action_id",
+          "title",
+          "priority",
+          "findings",
+          "phase",
+          "owner_area",
+          "estimated_scope",
+          "definition_of_done"
+        ],
+        "properties": {
+          "action_id": {"type": "string"},
+          "title": {"type": "string"},
+          "priority": {
+            "type": "string",
+            "enum": ["P0", "P1", "P2", "P3"]
+          },
+          "findings": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "phase": {"type": "string"},
+          "owner_area": {"type": "string"},
+          "estimated_scope": {
+            "type": "string",
+            "enum": ["tiny", "small", "medium", "large"]
+          },
+          "blocked_by": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "validation_commands": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "definition_of_done": {"type": "string"}
+        }
+      }
+    },
+    "deferred_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["item_id", "title", "target_version", "reason"],
+        "properties": {
+          "item_id": {"type": "string"},
+          "title": {"type": "string"},
+          "target_version": {"type": "string"},
+          "reason": {"type": "string"},
+          "related_finding_ids": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "doc_page_count",
+        "collection_page_count",
+        "search_index_count",
+        "code_schema_count",
+        "security_threat_count",
+        "test_count_collected",
+        "generated_site_public_ready"
+      ],
+      "properties": {
+        "doc_page_count": {"type": "integer"},
+        "collection_page_count": {"type": "integer"},
+        "orphan_doc_count": {"type": "integer"},
+        "search_index_count": {"type": "integer"},
+        "code_schema_count": {"type": "integer"},
+        "security_threat_count": {"type": "integer"},
+        "security_release_blocker_count": {"type": "integer"},
+        "test_count_collected": {"type": "integer"},
+        "known_test_failures": {"type": "integer"},
+        "generated_site_public_ready": {"type": "boolean"},
+        "desktop_golden_path_status": {"type": "string"},
+        "context_schema_routing_status": {"type": "string"},
+        "renderer_modularization_status": {"type": "string"},
+        "homepage_link_dump": {"type": "boolean"},
+        "has_security_collection": {"type": "boolean"},
+        "has_code_schemas_collection": {"type": "boolean"},
+        "generated_html_in_context_excluded": {"type": "boolean"},
+        "local_paths_in_generated_docs": {"type": "integer"},
+        "todo_count": {"type": "integer"},
+        "out_of_scope_findings_count": {"type": "integer"},
+        "migration_manifest_migrations": {"type": "integer"}
+      }
+    },
+    "references": {
+      "type": "object",
+      "properties": {
+        "external_frameworks": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "internal_artifacts": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["generated_by", "generation_method"],
+      "properties": {
+        "generated_by": {"type": "string"},
+        "generation_method": {"type": "string"},
+        "input_commit": {"type": "string"},
+        "audit_script_version": {"type": "string"},
+        "human_reviewed": {"type": "boolean"},
+        "reviewer": {"type": "string"}
+      }
+    }
+  }
+}

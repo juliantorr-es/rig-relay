@@ -102,6 +102,20 @@
 
 <p id="reporting-detail" class="disclosure-standard" data-disclosure-level="standard">Security concerns should be raised via GitHub issues on the rig-relay repository. For sensitive findings, contact the maintainers directly. This is a local-first runtime; the primary threat surface is local agent behavior, not network-facing services.</p>
 
+<h2 id="websocket-hardening-status" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<ul id="hardening-detail" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Origin validation: loopback HTTP/HTTPS origins accepted; foreign, file://, and null origins rejected by default.</li>
+  <li>Missing origin policy: explicit missing_origin_allowed flag for pywebview/non-browser clients.</li>
+  <li>Message schema validation: non-JSON, JSON arrays, scalars, and token-on-non-auth messages rejected.</li>
+  <li>Invalid message guard: connection closed after MAX_INVALID_WEBSOCKET_MESSAGES (3).</li>
+  <li>Auth-before-subscribe: projections and subscriptions gated on successful authentication.</li>
+  <li>Message size limit: MAX_MESSAGE_BYTES = 64 KiB.</li>
+  <li>Content-light security trace events: desktop.websocket.origin_rejected, message_rejected, connection_closed.</li>
+  <li>No token values in any security rejection logs or trace payloads.</li>
+  <li>All hardened behaviors tested in tests/desktop/test_websocket_server.py.</li>
+</ul>
+
   </article>
 </main>
 <footer>

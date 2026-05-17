@@ -1112,3 +1112,348 @@ class TestConstants:
         assert "spawn_session" not in ALLOWED_MESSAGE_TYPES
         assert "execute" not in ALLOWED_MESSAGE_TYPES
         assert "write_file" not in ALLOWED_MESSAGE_TYPES
+
+
+class TestOriginValidation:
+    """Origin header validation and rejection security tests."""
+
+    @pytest.mark.asyncio
+    async def test_valid_loopback_origin_accepted(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="secret",
+            auth_timeout=100,
+            missing_origin_allowed=False,
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}",
+                additional_headers={
+                    "Origin": f"http://{DEFAULT_HOST}:{unused_tcp_port}"
+                },
+            ) as ws:
+                await authenticate(ws, "secret")
+                await ws.send(json.dumps({"type": "ping"}))
+                response = json.loads(await ws.recv())
+                assert response["type"] == "pong"
+        finally:
+            await server.close()
+
+    @pytest.mark.asyncio
+    async def test_foreign_origin_rejected(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="secret",
+            auth_timeout=100,
+            missing_origin_allowed=False,
+        )
+        await server.start()
+        try:
+            with pytest.raises(websockets.exceptions.InvalidStatus):
+                async with websockets.connect(
+                    f"ws://{DEFAULT_HOST}:{unused_tcp_port}",
+                    additional_headers={"Origin": "http://evil.com"},
+                ):
+                    pass
+        finally:
+            await server.close()
+        meta = await server.get_connection_metadata()
+        assert meta["origin_rejected_count"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_file_origin_rejected(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="secret",
+            auth_timeout=100,
+            missing_origin_allowed=False,
+        )
+        await server.start()
+        try:
+            with pytest.raises(websockets.exceptions.InvalidStatus):
+                async with websockets.connect(
+                    f"ws://{DEFAULT_HOST}:{unused_tcp_port}",
+                    additional_headers={"Origin": "file://"},
+                ):
+                    pass
+        finally:
+            await server.close()
+        meta = await server.get_connection_metadata()
+        assert meta["origin_rejected_count"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_null_origin_rejected_by_default(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="secret",
+            auth_timeout=100,
+            missing_origin_allowed=False,
+        )
+        await server.start()
+        try:
+            with pytest.raises(websockets.exceptions.InvalidStatus):
+                async with websockets.connect(
+                    f"ws://{DEFAULT_HOST}:{unused_tcp_port}",
+                    additional_headers={"Origin": "null"},
+                ):
+                    pass
+        finally:
+            await server.close()
+        meta = await server.get_connection_metadata()
+        assert meta["origin_rejected_count"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_null_origin_allowed_when_explicit(
+        self, unused_tcp_port: int
+    ) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="secret",
+            auth_timeout=100,
+            allow_null_origin=True,
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}",
+                additional_headers={"Origin": "null"},
+            ) as ws:
+                await authenticate(ws, "secret")
+                await ws.send(json.dumps({"type": "ping"}))
+                response = json.loads(await ws.recv())
+                assert response["type"] == "pong"
+        finally:
+            await server.close()
+
+    @pytest.mark.asyncio
+    async def test_missing_origin_rejected_when_strict(
+        self, unused_tcp_port: int
+    ) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="secret",
+            auth_timeout=100,
+            missing_origin_allowed=False,
+        )
+        await server.start()
+        try:
+            with pytest.raises(websockets.exceptions.InvalidStatus):
+                async with websockets.connect(f"ws://{DEFAULT_HOST}:{unused_tcp_port}"):
+                    pass
+        finally:
+            await server.close()
+        meta = await server.get_connection_metadata()
+        assert meta["origin_rejected_count"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_missing_origin_allowed_by_default(
+        self, unused_tcp_port: int
+    ) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port, token="secret", auth_timeout=100
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "secret")
+                await ws.send(json.dumps({"type": "ping"}))
+                response = json.loads(await ws.recv())
+                assert response["type"] == "pong"
+        finally:
+            await server.close()
+
+
+class TestMessageValidation:
+    """Message schema and validity enforcement."""
+
+    @pytest.mark.asyncio
+    async def test_non_json_rejected(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port, token="secret", auth_timeout=100
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "secret")
+                await ws.send("not json at all")
+                response = json.loads(await ws.recv())
+                assert (
+                    response["type"] == "error"
+                    or response.get("code") == "invalid_json"
+                )
+        finally:
+            await server.close()
+
+    @pytest.mark.asyncio
+    async def test_json_array_rejected(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port, token="secret", auth_timeout=100
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "secret")
+                await ws.send(json.dumps([1, 2, 3]))
+                response = json.loads(await ws.recv())
+                assert (
+                    response["type"] == "error"
+                    or response.get("code") == "invalid_json"
+                )
+        finally:
+            await server.close()
+
+    @pytest.mark.asyncio
+    async def test_token_on_non_auth_rejected(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port, token="secret", auth_timeout=100
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "secret")
+                await ws.send(json.dumps({"type": "ping", "token": "leaked"}))
+                response = json.loads(await ws.recv())
+                assert response["type"] == "error"
+        finally:
+            await server.close()
+
+
+class TestAuthBeforeSubscribe:
+    """Auth must complete before subscriptions or projections."""
+
+    @pytest.mark.asyncio
+    async def test_subscribe_before_auth_rejected(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port, token="secret", auth_timeout=100
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await ws.send(json.dumps({"type": "subscribe", "interval": 10}))
+                response = json.loads(await ws.recv())
+                assert response["type"] == "auth_required"
+        finally:
+            await server.close()
+
+    @pytest.mark.asyncio
+    async def test_auth_token_never_in_trace_event_payloads(
+        self, unused_tcp_port: int
+    ) -> None:
+        import websockets
+
+        from rig_relay.tracing.recorder import TraceRecorder
+        from rig_relay.tracing.store import InMemoryTraceStore
+
+        store = InMemoryTraceStore()
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="secret",
+            auth_timeout=100,
+            trace_recorder=TraceRecorder(store),
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "secret")
+        finally:
+            await server.close()
+        for event in store.events:
+            payload_str = json.dumps(event.get("payload") or {})
+            assert "secret" not in payload_str
+
+
+class TestMessageSizeAndGuard:
+    """Message size limits and invalid message guard."""
+
+    @pytest.mark.asyncio
+    async def test_oversized_message_rejected(self, unused_tcp_port: int) -> None:
+        import websockets
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port,
+            token="secret",
+            max_message_bytes=100,
+            auth_timeout=100,
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "secret")
+                await ws.send("x" * 200)
+                response = json.loads(await ws.recv())
+                assert response.get("type") in ("message_too_large", "error")
+        finally:
+            await server.close()
+        meta = await server.get_connection_metadata()
+        assert meta["oversized_message_count"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_too_many_invalid_messages_closes_connection(
+        self, unused_tcp_port: int
+    ) -> None:
+        import asyncio
+
+        import websockets
+
+        from rig_relay.desktop.websocket_server import MAX_INVALID_WEBSOCKET_MESSAGES
+
+        server = ProjectionWebSocketServer(
+            port=unused_tcp_port, token="secret", auth_timeout=100
+        )
+        await server.start()
+        try:
+            async with websockets.connect(
+                f"ws://{DEFAULT_HOST}:{unused_tcp_port}"
+            ) as ws:
+                await authenticate(ws, "secret")
+                for _ in range(MAX_INVALID_WEBSOCKET_MESSAGES):
+                    await ws.send("not json")
+                    try:
+                        await asyncio.wait_for(ws.recv(), timeout=2)
+                    except TimeoutError:
+                        break
+                try:
+                    await asyncio.wait_for(ws.recv(), timeout=2)
+                except (TimeoutError, websockets.exceptions.ConnectionClosed):
+                    pass
+        finally:
+            await server.close()
+        meta = await server.get_connection_metadata()
+        assert meta["invalid_message_closed_count"] >= 1

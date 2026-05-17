@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.tracing.correlation_vocabulary.v1.schema.json",
+  "title": "Rig Tracing Correlation Vocabulary",
+  "description": "Canonical correlation field vocabulary for Rig Relay trace events. Defines field identity, ownership, propagation rules, and safety classification for every correlation ID used across traces.",
+  "type": "object",
+  "required": ["schema_version", "vocabulary_id", "title", "fields"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.tracing.correlation_vocabulary.v1"
+    },
+    "vocabulary_id": {
+      "type": "string",
+      "description": "Stable identifier for this vocabulary revision."
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "source_commit": {
+      "type": "string"
+    },
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "field_name",
+          "semantic_description",
+          "owner_component",
+          "required_optional",
+          "propagation_rules",
+          "safe_to_log_classification",
+          "current_implementation_status"
+        ],
+        "properties": {
+          "field_name": {
+            "type": "string",
+            "description": "Canonical field name as used in trace event correlation dict."
+          },
+          "semantic_description": {
+            "type": "string",
+            "description": "What this field identifies and its scope."
+          },
+          "owner_component": {
+            "type": "string",
+            "description": "Component that generates and owns this ID."
+          },
+          "required_optional": {
+            "type": "string",
+            "enum": ["required", "optional", "conditional"],
+            "description": "Whether this field must appear, may appear, or appears conditionally."
+          },
+          "propagation_rules": {
+            "type": "string",
+            "description": "How this field propagates across component boundaries."
+          },
+          "safe_to_log_classification": {
+            "type": "string",
+            "enum": ["safe", "safe_hashed_only", "restricted", "never"],
+            "description": "Safety classification for logging this value."
+          },
+          "forbidden_values": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Values that must never appear."
+          },
+          "redaction_notes": {
+            "type": "string",
+            "description": "Specific redaction guidance."
+          },
+          "current_implementation_status": {
+            "type": "string",
+            "enum": ["implemented", "partial", "missing", "planned"],
+            "description": "Current state of implementation."
+          },
+          "tests_proofs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Test files or proof artifacts validating this field."
+          },
+          "format_pattern": {
+            "type": "string",
+            "description": "Expected format pattern for validation."
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["source", "description"],
+              "properties": {
+                "source": {"type": "string"},
+                "description": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "propagation_diagram_references": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Future: references to propagation diagram artifacts."
+    }
+  }
+}

@@ -1,0 +1,494 @@
+{
+  "schema_version": "rig.tracing.correlated_visibility_matrix.v1",
+  "matrix_id": "correlated-visibility-matrix-v1",
+  "title": "Rig Relay Correlated Visibility Matrix",
+  "summary": "Critical path coverage matrix for all Rig Relay subsystems. Maps each critical path to required trace events, correlation fields, artifacts, visibility status, and release-blocker classification. Based on Phase 0 codebase inventory from commit 5b9fa20e.",
+  "generated_at": "2026-05-16",
+  "source_commit": "5b9fa20e",
+  "critical_paths": [
+    {
+      "path_id": "desktop_bridge_startup",
+      "description": "Desktop bridge server startup: frontend resolution, runtime config build, server bind, health probes, browser window creation, and shutdown.",
+      "owner_area": "rig_relay/desktop/bridge_server.py",
+      "required_start_event": "desktop.bridge.launch_requested",
+      "required_success_event": "desktop.bridge.server_bound",
+      "required_failure_events": ["desktop.bridge.startup_failed"],
+      "required_refusal_events": [],
+      "required_correlation_fields": ["trace_id", "handshake_id", "commit_sha", "wall_time"],
+      "required_artifacts": ["bridge_probe.json", "trace_events.jsonl"],
+      "current_events_found": [
+        "desktop.bridge.launch_requested",
+        "desktop.bridge.frontend_resolved",
+        "desktop.bridge.runtime_config_built",
+        "desktop.bridge.server_bound",
+        "desktop.bridge.health_probe_passed",
+        "desktop.bridge.bootstrap_loaded",
+        "desktop.bridge.shutdown"
+      ],
+      "missing_events": [],
+      "missing_fields": ["monotonic_ns"],
+      "current_tests": [
+        "tests/desktop/test_golden_path.py",
+        "tests/desktop/test_golden_path_browser_integration.py",
+        "tests/desktop/test_bridge_diagnostics.py",
+        "tests/desktop/test_cockpit_lifecycle.py"
+      ],
+      "missing_tests": [],
+      "sensitivity_requirements": [
+        "frontend_dir must be hashed, not logged as raw path",
+        "token_present only — token_value_included must be false",
+        "no raw auth token in any payload"
+      ],
+      "visibility_status": "complete",
+      "release_blocker": false,
+      "recommended_fix": "None. Add monotonic_ns to span timing for precision if desired."
+    },
+    {
+      "path_id": "websocket_auth_projection",
+      "description": "WebSocket upgrade, auth handshake, subscription, projection push, and frontend receipt/rendering.",
+      "owner_area": "rig_relay/desktop/websocket_server.py",
+      "required_start_event": "desktop.websocket.accepted",
+      "required_success_event": "desktop.websocket.auth_ok",
+      "required_failure_events": ["desktop.websocket.auth_failed"],
+      "required_refusal_events": ["desktop.websocket.auth_rejected", "desktop.websocket.origin_rejected", "desktop.websocket.rate_limited"],
+      "required_correlation_fields": ["trace_id", "handshake_id", "connection_id", "wall_time"],
+      "required_artifacts": ["projection JSON (via trace payload)", "trace_events.jsonl"],
+      "current_events_found": [
+        "desktop.websocket.accepted",
+        "desktop.websocket.auth_received",
+        "desktop.websocket.auth_ok",
+        "desktop.websocket.auth_failed",
+        "desktop.projection.sent"
+      ],
+      "missing_events": [
+        "desktop.websocket.origin_rejected",
+        "desktop.websocket.invalid_json_received",
+        "desktop.websocket.unknown_type_received",
+        "desktop.websocket.unauthenticated_subscribe",
+        "desktop.websocket.oversize_message",
+        "desktop.websocket.rate_limited"
+      ],
+      "missing_fields": ["connection_id"],
+      "current_tests": [
+        "tests/desktop/test_websocket_correlation.py",
+        "tests/desktop/test_websocket_server.py",
+        "tests/desktop/test_projection.py",
+        "tests/desktop/test_authorization_receipts.py"
+      ],
+      "missing_tests": [
+        "tests/desktop/test_websocket_security_rejections.py"
+      ],
+      "sensitivity_requirements": [
+        "auth token value must never appear in trace payload",
+        "rejection reasons must not leak token format details",
+        "rate_limited events must not leak client identity beyond connection"
+      ],
+      "visibility_status": "partial",
+      "release_blocker": true,
+      "recommended_fix": "Add content-light rejection trace events for origin_rejected, invalid_json, unknown_type, unauthenticated_subscribe, oversize_message, rate_limited. Add per-connection connection_id generation and include in websocket lifecycle events."
+    },
+    {
+      "path_id": "frontend_breadcrumbs",
+      "description": "Frontend lifecycle breadcrumbs: boot, runtime config, WebSocket connecting, auth, transport state transitions, projection render, status render, degraded/disconnected.",
+      "owner_area": "frontend/desktop/js/",
+      "required_start_event": "frontend_boot_started",
+      "required_success_event": "frontend_ready",
+      "required_failure_events": ["frontend_auth_failed", "frontend_degraded"],
+      "required_refusal_events": [],
+      "required_correlation_fields": ["handshake_id", "frontend_session_id", "frontend_sequence", "wall_time"],
+      "required_artifacts": ["frontend trace events via /frontend-event or pywebview bridge"],
+      "current_events_found": [
+        "frontend_boot_started",
+        "frontend_runtime_config_requested",
+        "frontend_runtime_config_loaded",
+        "frontend_runtime_config_invalid",
+        "frontend_websocket_connecting",
+        "frontend_transport_state",
+        "frontend_auth_ok",
+        "frontend_auth_failed",
+        "frontend_projection_received",
+        "frontend_projection_rendered",
+        "frontend_status_rendered",
+        "frontend_degraded",
+        "frontend_ready"
+      ],
+      "missing_events": [
+        "frontend_disconnected"
+      ],
+      "missing_fields": ["frontend_session_id", "frontend_sequence", "performance_now_ms"],
+      "current_tests": [
+        "tests/frontend/test_frontend_trace_endpoint.py",
+        "tests/desktop/test_golden_path_browser_integration.py"
+      ],
+      "missing_tests": [],
+      "sensitivity_requirements": [
+        "no auth token in query string or body",
+        "handshake_id only — never token value",
+        "trace endpoint never derived from ws_url",
+        "no POST to /ws"
+      ],
+      "visibility_status": "partial",
+      "release_blocker": false,
+      "recommended_fix": "Add frontend_session_id generation in frontendTrace.js (distinct from handshake_id). Add frontend_sequence monotonic counter. Add performance_now_ms for high-resolution frontend timing. Add frontend_disconnected event."
+    },
+    {
+      "path_id": "websocket_security_rejections",
+      "description": "WebSocket security rejection events: origin rejected, invalid JSON, unknown type, unauthenticated subscribe, oversize message, rate limiting, token redaction proof.",
+      "owner_area": "rig_relay/desktop/websocket_server.py",
+      "required_start_event": "desktop.websocket.accepted",
+      "required_success_event": "desktop.websocket.auth_ok",
+      "required_failure_events": [],
+      "required_refusal_events": [
+        "desktop.websocket.origin_rejected",
+        "desktop.websocket.invalid_json_received",
+        "desktop.websocket.unknown_type_received",
+        "desktop.websocket.unauthenticated_subscribe",
+        "desktop.websocket.oversize_message",
+        "desktop.websocket.rate_limited"
+      ],
+      "required_correlation_fields": ["handshake_id", "connection_id", "wall_time"],
+      "required_artifacts": ["trace_events.jsonl"],
+      "current_events_found": [
+        "desktop.websocket.auth_failed"
+      ],
+      "missing_events": [
+        "desktop.websocket.origin_rejected",
+        "desktop.websocket.invalid_json_received",
+        "desktop.websocket.unknown_type_received",
+        "desktop.websocket.unauthenticated_subscribe",
+        "desktop.websocket.oversize_message",
+        "desktop.websocket.rate_limited"
+      ],
+      "missing_fields": ["connection_id"],
+      "current_tests": [
+        "tests/desktop/test_websocket_server.py",
+        "tests/desktop/test_authorization_receipts.py"
+      ],
+      "missing_tests": [
+        "tests/desktop/test_websocket_security_rejections.py"
+      ],
+      "sensitivity_requirements": [
+        "rejection reasons must be content-light (no token format, no stack traces)",
+        "origin_rejected must not log full untrusted origin if it contains secrets",
+        "rate_limited must not expose client fingerprinting data"
+      ],
+      "visibility_status": "missing",
+      "release_blocker": true,
+      "recommended_fix": "Add content-light rejection trace events for all six rejection types. Ensure rejection payloads follow redaction rules. Add dedicated security rejection test file."
+    },
+    {
+      "path_id": "context_assembly",
+      "description": "Context assembly pipeline: request received, repo/context sources selected, code schema router invoked, context envelope built, generated HTML excluded, prompt emitted.",
+      "owner_area": "rig_relay/context/",
+      "required_start_event": "context.assembly.started",
+      "required_success_event": "context.envelope.built",
+      "required_failure_events": ["context.assembly.failed"],
+      "required_refusal_events": [],
+      "required_correlation_fields": ["trace_id", "session_id", "schema_id", "wall_time"],
+      "required_artifacts": ["trace_events.jsonl"],
+      "current_events_found": [],
+      "missing_events": [
+        "context.assembly.started",
+        "context.sources.selected",
+        "context.schema_router.invoked",
+        "context.schemas.selected",
+        "context.envelope.built",
+        "context.generated_html_excluded",
+        "context.prompt.emitted",
+        "context.assembly.failed"
+      ],
+      "missing_fields": ["schema_id"],
+      "current_tests": [
+        "tests/context/test_context_assembly_plan.py",
+        "tests/context/test_context_compiler_planner_integration.py",
+        "tests/context/test_context_compiler_renderer_integration.py",
+        "tests/context/test_context_security_boundaries.py"
+      ],
+      "missing_tests": [
+        "tests/context/test_context_trace_visibility.py"
+      ],
+      "sensitivity_requirements": [
+        "no raw prompt content in trace payload",
+        "no generated HTML content in trace",
+        "source file paths must be repo-relative only",
+        "no agent conversation history in trace attributes"
+      ],
+      "visibility_status": "missing",
+      "release_blocker": true,
+      "recommended_fix": "Add TraceRecorder or golden-path events to context assembly pipeline. Emit start/success/failure events with content-light payloads (source counts, budget used, schemas selected). Add schema_id correlation field."
+    },
+    {
+      "path_id": "code_schema_routing",
+      "description": "Code schema router: registry loaded, authority checked, source hash matched/mismatched, scoring signals, schemas selected, validation commands exposed, untrusted schema warnings.",
+      "owner_area": "rig_relay/context/ (code schema router)",
+      "required_start_event": "context.schema_router.invoked",
+      "required_success_event": "context.schemas.selected",
+      "required_failure_events": ["context.schema_router.failed"],
+      "required_refusal_events": ["context.schema_router.untrusted_schema_warning"],
+      "required_correlation_fields": ["trace_id", "session_id", "schema_id", "wall_time"],
+      "required_artifacts": ["trace_events.jsonl"],
+      "current_events_found": [],
+      "missing_events": [
+        "context.schema_router.invoked",
+        "context.schema_registry.loaded",
+        "context.schema_authority.checked",
+        "context.schema_source_hash.matched",
+        "context.schema_source_hash.mismatched",
+        "context.schemas.selected",
+        "context.schema_router.untrusted_schema_warning",
+        "context.schema_router.failed"
+      ],
+      "missing_fields": ["schema_id"],
+      "current_tests": [
+        "tests/context/test_code_schema_router.py"
+      ],
+      "missing_tests": [
+        "tests/context/test_code_schema_router_tracing.py"
+      ],
+      "sensitivity_requirements": [
+        "no raw schema content in trace",
+        "source_hash only — no file contents",
+        "untrusted schema warnings must be content-light"
+      ],
+      "visibility_status": "missing",
+      "release_blocker": true,
+      "recommended_fix": "Add trace events to code schema router: registry load, authority check, source hash match/mismatch, schema selection, untrusted warnings. Emit schema_id in correlation for selected schemas."
+    },
+    {
+      "path_id": "agent_loop_turn",
+      "description": "Single agent loop turn: user message accepted, context assembled, model request sent, model response received, tool calls resolved, pending tool batch created, batch executed, batch completed/refused/failed.",
+      "owner_area": "rig_relay/core/agent_loop.py",
+      "required_start_event": "agent.turn.started",
+      "required_success_event": "agent.turn.completed",
+      "required_failure_events": ["agent.turn.failed", "agent.turn.refused"],
+      "required_refusal_events": [],
+      "required_correlation_fields": ["trace_id", "session_id", "tool_batch_id", "wall_time"],
+      "required_artifacts": ["trace_events.jsonl", "reports.jsonl (receipts)"],
+      "current_events_found": [],
+      "missing_events": [
+        "agent.turn.started",
+        "agent.turn.context_assembled",
+        "agent.turn.model_request_sent",
+        "agent.turn.model_response_received",
+        "agent.turn.tool_calls_resolved",
+        "agent.turn.tool_batch_created",
+        "agent.turn.tool_batch_completed",
+        "agent.turn.tool_batch_refused",
+        "agent.turn.tool_batch_failed",
+        "agent.turn.completed",
+        "agent.turn.failed",
+        "agent.turn.refused"
+      ],
+      "missing_fields": ["tool_batch_id"],
+      "current_tests": [
+        "tests/tracing/test_runtime_supervisor_tracing.py",
+        "tests/tracing/test_tool_runtime_tracing.py"
+      ],
+      "missing_tests": [
+        "tests/tracing/test_agent_loop_tracing.py"
+      ],
+      "sensitivity_requirements": [
+        "no raw user message or model response content in trace",
+        "message hashes only — no prompt/response text",
+        "tool call arguments must be redacted per redaction rules",
+        "failure reasons must not leak model internals"
+      ],
+      "visibility_status": "missing",
+      "release_blocker": true,
+      "recommended_fix": "Add light span-based trace events around agent loop turn phases. Generate tool_batch_id at batch creation and propagate to tool execution spans. Content-light payloads only (message hashes, token counts, tool names)."
+    },
+    {
+      "path_id": "tool_execution",
+      "description": "Tool execution lifecycle: tool call planned, authorized/refused, input validated, execution started, completed/failed/timed out, receipt emitted, trace linked to receipt.",
+      "owner_area": "rig_relay/runtime/",
+      "required_start_event": "tool.execution.started",
+      "required_success_event": "tool.execution.completed",
+      "required_failure_events": ["tool.execution.failed", "tool.execution.timed_out"],
+      "required_refusal_events": ["tool.execution.refused"],
+      "required_correlation_fields": ["trace_id", "session_id", "tool_batch_id", "tool_call_id", "wall_time"],
+      "required_artifacts": ["trace_events.jsonl", "reports.jsonl (receipts)"],
+      "current_events_found": [
+        "tool.execution.started",
+        "tool.execution.completed",
+        "tool.execution.failed"
+      ],
+      "missing_events": [
+        "tool.execution.authorized",
+        "tool.execution.refused",
+        "tool.execution.timed_out",
+        "tool.execution.input_validated",
+        "tool.execution.receipt_emitted"
+      ],
+      "missing_fields": ["tool_batch_id"],
+      "current_tests": [
+        "tests/tracing/test_tool_runtime_tracing.py",
+        "tests/tracing/test_runtime_supervisor_tracing.py",
+        "tests/tracing/test_tool_runtime_supervisor_envelope.py"
+      ],
+      "missing_tests": [],
+      "sensitivity_requirements": [
+        "tool input arguments must be redacted per redaction rules",
+        "tool output must not contain secrets",
+        "receipt SHA256 only — no receipt content in trace",
+        "failure reasons must not expose filesystem paths outside repo"
+      ],
+      "visibility_status": "partial",
+      "release_blocker": false,
+      "recommended_fix": "Add tool_batch_id generation and propagation. Add refused/timed_out trace events. Add input_validated and receipt_emitted events."
+    },
+    {
+      "path_id": "worktree_mutation",
+      "description": "Worktree mutation lifecycle: branch/head/status captured, dirty files detected, protected dirty files preserved, mutation started, file changed, validation run, checkpoint/commit readiness recorded.",
+      "owner_area": "rig_relay/coordination/",
+      "required_start_event": "worktree.mutation.started",
+      "required_success_event": "worktree.mutation.completed",
+      "required_failure_events": ["worktree.mutation.failed"],
+      "required_refusal_events": ["worktree.mutation.refused_protected_file"],
+      "required_correlation_fields": ["trace_id", "lane_id", "worktree_id", "commit_sha", "wall_time"],
+      "required_artifacts": ["trace_events.jsonl", "coordination state"],
+      "current_events_found": [],
+      "missing_events": [
+        "worktree.mutation.started",
+        "worktree.branch_captured",
+        "worktree.dirty_files_detected",
+        "worktree.protected_files_preserved",
+        "worktree.file_changed",
+        "worktree.validation_run",
+        "worktree.checkpoint_ready",
+        "worktree.mutation.completed",
+        "worktree.mutation.failed",
+        "worktree.mutation.refused_protected_file"
+      ],
+      "missing_fields": ["lane_id", "worktree_id"],
+      "current_tests": [],
+      "missing_tests": [
+        "tests/coordination/test_worktree_tracing.py"
+      ],
+      "sensitivity_requirements": [
+        "dirty file paths must be repo-relative only",
+        "no file contents in trace payload",
+        "protected file refusals must not expose file contents"
+      ],
+      "visibility_status": "missing",
+      "release_blocker": false,
+      "recommended_fix": "Add trace events to worktree_manager and coordination mutation paths. Emit start/success/failure/refusal events with content-light payloads (file counts, branch names, SHA hashes)."
+    },
+    {
+      "path_id": "static_docs_render",
+      "description": "Static documentation site render: JSON docs loaded, schemas loaded, site manifest loaded, homepage rendered, archive rendered, pages rendered, search index written, render manifest written, safety scan, output counts.",
+      "owner_area": "scripts/render_static_docs.py",
+      "required_start_event": "docs.render.started",
+      "required_success_event": "docs.render.completed",
+      "required_failure_events": ["docs.render.failed"],
+      "required_refusal_events": [],
+      "required_correlation_fields": ["trace_id", "document_id", "wall_time"],
+      "required_artifacts": ["render-manifest.json", "trace_events.jsonl"],
+      "current_events_found": [],
+      "missing_events": [
+        "docs.render.started",
+        "docs.json_loaded",
+        "docs.schemas_loaded",
+        "docs.manifest_loaded",
+        "docs.homepage_rendered",
+        "docs.archive_rendered",
+        "docs.pages_rendered",
+        "docs.search_index_written",
+        "docs.render_manifest_written",
+        "docs.safety_scan_performed",
+        "docs.render.completed",
+        "docs.render.failed"
+      ],
+      "missing_fields": ["document_id"],
+      "current_tests": [
+        "tests/repository/test_static_docs_render.py"
+      ],
+      "missing_tests": [
+        "tests/repository/test_static_docs_render_tracing.py"
+      ],
+      "sensitivity_requirements": [
+        "no generated HTML content in trace",
+        "output counts only — no file contents",
+        "document_id only — no document content",
+        "safety scan results must be content-light (pass/fail counts)"
+      ],
+      "visibility_status": "missing",
+      "release_blocker": false,
+      "recommended_fix": "Add optional trace events to render_static_docs.py. Emit start/success/failure with output counts, document counts, safety scan pass/fail. Use get_default_trace_store() and build_golden_path_event()."
+    },
+    {
+      "path_id": "security_threat_model_release_gates",
+      "description": "Security release gates: threat model loaded, release blockers counted, mitigations tested, unresolved blockers emitted.",
+      "owner_area": "docs/json/security/",
+      "required_start_event": "security.release_gates.checked",
+      "required_success_event": "security.release_gates.passed",
+      "required_failure_events": ["security.release_gates.blocked"],
+      "required_refusal_events": [],
+      "required_correlation_fields": ["trace_id", "commit_sha", "wall_time"],
+      "required_artifacts": ["trace_events.jsonl", "release gate report"],
+      "current_events_found": [],
+      "missing_events": [
+        "security.release_gates.checked",
+        "security.threat_model_loaded",
+        "security.blockers_counted",
+        "security.mitigations_tested",
+        "security.release_gates.passed",
+        "security.release_gates.blocked"
+      ],
+      "missing_fields": [],
+      "current_tests": [],
+      "missing_tests": [
+        "tests/security/test_release_gates_tracing.py"
+      ],
+      "sensitivity_requirements": [
+        "blocker descriptions must be content-light",
+        "no full threat model content in trace",
+        "mitigation test results must be pass/fail only"
+      ],
+      "visibility_status": "missing",
+      "release_blocker": false,
+      "recommended_fix": "Future: add trace events to release gate validation script. Not yet implemented — threat model is draft status."
+    },
+    {
+      "path_id": "session_lifecycle",
+      "description": "Agent session lifecycle: session created/opened, trace/evidence paths initialized, compaction/finalization, shutdown/cleanup.",
+      "owner_area": "rig_relay/evidence/session_lifecycle.py",
+      "required_start_event": "session.created",
+      "required_success_event": "session.shutdown_clean",
+      "required_failure_events": ["session.shutdown_error"],
+      "required_refusal_events": [],
+      "required_correlation_fields": ["trace_id", "session_id", "wall_time"],
+      "required_artifacts": ["trace_events.jsonl", "session state"],
+      "current_events_found": [],
+      "missing_events": [
+        "session.created",
+        "session.trace_paths_initialized",
+        "session.evidence_paths_initialized",
+        "session.compacted",
+        "session.finalized",
+        "session.shutdown_clean",
+        "session.shutdown_error"
+      ],
+      "missing_fields": [],
+      "current_tests": [
+        "tests/evidence/test_session_lifecycle.py"
+      ],
+      "missing_tests": [
+        "tests/evidence/test_session_lifecycle_tracing.py"
+      ],
+      "sensitivity_requirements": [
+        "session paths must be repo-relative or hashed",
+        "no session token or secrets in trace",
+        "shutdown error must not leak filesystem details"
+      ],
+      "visibility_status": "missing",
+      "release_blocker": false,
+      "recommended_fix": "Add trace events to session lifecycle. Emit session.created, trace_paths_initialized, evidence_paths_initialized, compaction, finalization, and shutdown events."
+    }
+  ],
+  "summary": {
+    "complete": 1,
+    "partial": 3,
+    "missing": 8,
+    "release_blockers": 5
+  }
+}

@@ -99,11 +99,12 @@ DEFAULT_MAX_MESSAGE_BYTES = 65536
 DEFAULT_RATE_LIMIT_PER_MINUTE = 60
 DEFAULT_MAX_CONNECTIONS = 10
 DEFAULT_WS_ORIGINS: frozenset[str] = frozenset({
-    "127.0.0.1",
-    "localhost",
-    "file://",
-    "null",
+    "http://127.0.0.1",
+    "https://127.0.0.1",
+    "http://localhost",
+    "https://localhost",
 })
+MAX_INVALID_WEBSOCKET_MESSAGES = 3
 _RATE_WINDOW_SECONDS = 60
 
 # Per-message-type rate limit multipliers.
@@ -226,6 +227,8 @@ class ProjectionWebSocketServer:
         trace_recorder: Any | None = None,
         golden_trace_id: str = "",
         golden_handshake_id: str = "",
+        missing_origin_allowed: bool = True,
+        allow_null_origin: bool = False,
     ) -> None:
         self._build_root = build_root
         self._host = host
@@ -246,6 +249,8 @@ class ProjectionWebSocketServer:
         self._trace_recorder = trace_recorder
         self._golden_trace_id = golden_trace_id
         self._golden_handshake_id = golden_handshake_id
+        self._missing_origin_allowed = missing_origin_allowed
+        self._allow_null_origin = allow_null_origin
         self._first_projection_sent = False
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
@@ -260,6 +265,8 @@ class ProjectionWebSocketServer:
         self._auth_timeout_count = 0
         self._oversized_message_count = 0
         self._rate_limited_count = 0
+        self._origin_rejected_count = 0
+        self._invalid_message_closed_count = 0
         self._lock = asyncio.Lock()
 
     def _emit_probe(self, step_id: str, label: str, details: dict[str, Any]) -> None:
@@ -388,6 +395,8 @@ class ProjectionWebSocketServer:
                 "auth_timeout_count": self._auth_timeout_count,
                 "oversized_message_count": self._oversized_message_count,
                 "rate_limited_count": self._rate_limited_count,
+                "origin_rejected_count": self._origin_rejected_count,
+                "invalid_message_closed_count": self._invalid_message_closed_count,
                 "max_connections": self._max_connections,
             }
 
@@ -398,17 +407,39 @@ class ProjectionWebSocketServer:
         from websockets.http11 import Response
 
         async def _inspect_origin(conn: Any, request: Any) -> Any | None:
-            origin = request.headers.get("Origin", "(none)")
-            if not self._allow_non_localhost and origin not in {"(none)", "null", None}:
-                if origin not in self._allowed_origins and not any(
-                    loopback in origin for loopback in {"127.0.0.1", "localhost", "::1"}
-                ):
-                    return Response(
-                        status_code=403,
-                        reason_phrase="Forbidden",
-                        headers=Headers([("Content-Type", "text/plain")]),
-                        body=f"Origin '{origin}' not allowed\n".encode(),
-                    )
+            origin = request.headers.get("Origin", "")
+            if not origin:
+                if self._missing_origin_allowed:
+                    return None
+                return await self._reject_origin(
+                    origin="(missing)",
+                    reason="missing_origin",
+                    detail="Origin header missing and missing_origin_allowed is False",
+                )
+            if origin.lower() == "null":
+                if self._allow_null_origin:
+                    return None
+                return await self._reject_origin(
+                    origin=origin,
+                    reason="null_origin_rejected",
+                    detail="null origin not allowed",
+                )
+            if origin.lower().startswith("file://"):
+                return await self._reject_origin(
+                    origin=origin,
+                    reason="file_origin_rejected",
+                    detail="file:// origins are never allowed",
+                )
+            if self._allow_non_localhost:
+                return None
+            if origin not in self._allowed_origins and not any(
+                loopback in origin for loopback in {"127.0.0.1", "localhost", "::1"}
+            ):
+                return await self._reject_origin(
+                    origin=origin,
+                    reason="foreign_origin_rejected",
+                    detail=f"Origin '{origin}' not in allowed set",
+                )
             return None
 
         self._server = await websockets.serve(
@@ -450,6 +481,40 @@ class ProjectionWebSocketServer:
     @staticmethod
     def _make_error(code: str, message: str) -> dict[str, Any]:
         return {"type": "error", "code": code, "message": message}
+
+    async def _reject_origin(
+        self,
+        *,
+        origin: str,
+        reason: str,
+        detail: str,
+    ) -> Any:
+        from websockets.datastructures import Headers
+        from websockets.http11 import Response
+
+        async with self._lock:
+            self._origin_rejected_count += 1
+        logger.warning(
+            "audit.origin.rejected reason=%s detail=%s origin_present=%s",
+            reason,
+            detail,
+            bool(origin),
+        )
+        self._emit_golden_event(
+            "desktop.websocket.origin_rejected",
+            handshake_id=self._golden_handshake_id,
+            payload={
+                "reason": reason,
+                "origin_present": bool(origin and origin != "(missing)"),
+                "detail": detail,
+            },
+        )
+        return Response(
+            status_code=403,
+            reason_phrase="Forbidden",
+            headers=Headers([("Content-Type", "text/plain")]),
+            body=f"Origin rejected: {detail}\n".encode(),
+        )
 
     async def _auth_timeout_guard(self, websocket: Any) -> None:
         """Background task: close connection if auth not received in time."""
@@ -506,6 +571,7 @@ class ProjectionWebSocketServer:
         subscribe_task: asyncio.Task[None] | None = None
         authenticated = False
         message_count = 0
+        invalid_count = 0
         rate_window_start = 0.0
 
         timeout_task = asyncio.create_task(self._auth_timeout_guard(websocket))
@@ -519,10 +585,19 @@ class ProjectionWebSocketServer:
 
                 message = _parse_message(raw_message)
                 if message is None:
+                    invalid_count += 1
+                    self._emit_golden_event(
+                        "desktop.websocket.message_rejected",
+                        handshake_id=self._golden_handshake_id,
+                        payload={"reason": "invalid_json"},
+                    )
                     await _send_json(
                         websocket,
                         self._make_error(self.ERR_INVALID_JSON, "Invalid JSON message"),
                     )
+                    if invalid_count >= MAX_INVALID_WEBSOCKET_MESSAGES:
+                        await self._reject_too_many_invalid(websocket)
+                        break
                     continue
 
                 if not authenticated:
@@ -544,6 +619,7 @@ class ProjectionWebSocketServer:
                 msg_type = message.get("type", "")
                 shape_errors = _validate_message_shape(msg_type, message)
                 if shape_errors:
+                    invalid_count += 1
                     logger.warning(
                         "audit.message.invalid_shape msg_type=%s errors=%s",
                         msg_type,
@@ -555,6 +631,32 @@ class ProjectionWebSocketServer:
                             "invalid_message_shape", "; ".join(shape_errors)
                         ),
                     )
+                    if invalid_count >= MAX_INVALID_WEBSOCKET_MESSAGES:
+                        await self._reject_too_many_invalid(websocket)
+                        break
+                    continue
+
+                if msg_type != "auth" and "token" in message:
+                    invalid_count += 1
+                    logger.warning("audit.message.unexpected_token_field msg_type=%s", msg_type)
+                    self._emit_golden_event(
+                        "desktop.websocket.message_rejected",
+                        handshake_id=self._golden_handshake_id,
+                        payload={
+                            "reason": "unexpected_token_field",
+                            "msg_type": msg_type,
+                        },
+                    )
+                    await _send_json(
+                        websocket,
+                        self._make_error(
+                            "unexpected_token_field",
+                            "token field not allowed on non-auth messages",
+                        ),
+                    )
+                    if invalid_count >= MAX_INVALID_WEBSOCKET_MESSAGES:
+                        await self._reject_too_many_invalid(websocket)
+                        break
                     continue
 
                 import time
@@ -639,6 +741,29 @@ class ProjectionWebSocketServer:
         await _send_json(
             websocket,
             {"type": "rate_limited", "message": "Message rate limit exceeded"},
+        )
+        await websocket.close()
+
+    async def _reject_too_many_invalid(self, websocket: Any) -> None:
+        async with self._lock:
+            self._invalid_message_closed_count += 1
+        logger.warning(
+            "audit.connection.too_many_invalid max=%s", MAX_INVALID_WEBSOCKET_MESSAGES
+        )
+        self._emit_golden_event(
+            "desktop.websocket.connection_closed",
+            handshake_id=self._golden_handshake_id,
+            payload={
+                "reason": "too_many_invalid_messages",
+                "threshold": MAX_INVALID_WEBSOCKET_MESSAGES,
+            },
+        )
+        await _send_json(
+            websocket,
+            {
+                "type": "connection_closed",
+                "message": f"Too many invalid messages ({MAX_INVALID_WEBSOCKET_MESSAGES} limit)",
+            },
         )
         await websocket.close()
 
@@ -1117,12 +1242,20 @@ def _raw_bytes(raw: Any) -> bytes:
 
 
 def _parse_message(raw: Any) -> dict[str, Any] | None:
+    """Parse a raw WebSocket message into a dict, or return None for invalid.
+
+    Rejects: non-JSON, JSON arrays, JSON scalars (non-dict).
+    Returns None for invalid messages.
+    """
     if isinstance(raw, bytes):
         raw = raw.decode("utf-8")
     try:
-        return json.loads(str(raw))
+        parsed = json.loads(str(raw))
     except (json.JSONDecodeError, ValueError):
         return None
+    if not isinstance(parsed, dict):
+        return None
+    return parsed
 
 
 async def _send_json(websocket: Any, data: dict[str, Any]) -> None:
@@ -1148,6 +1281,7 @@ __all__ = [
     "DEFAULT_RATE_LIMIT_PER_MINUTE",
     "DEFAULT_TOKEN_LENGTH",
     "DEFAULT_WS_ORIGINS",
+    "MAX_INVALID_WEBSOCKET_MESSAGES",
     "MAX_SUBSCRIBE_INTERVAL",
     "MIN_SUBSCRIBE_INTERVAL",
     "ProjectionWebSocketError",

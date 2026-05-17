@@ -274,7 +274,7 @@
   <td>Cross-Site WebSocket Hijacking (CSWSH)</td>
   <td>WebSocket Security</td>
   <td><span class="badge" style="background:#fd7e14">high</span></td>
-  <td><span class="badge" style="background:#6c757d">open</span></td>
+  <td><span class="badge" style="background:#6c757d">mitigated</span></td>
   <td>⚠ Release Blocker</td>
 </tr>
 <tr>
@@ -282,7 +282,7 @@
   <td>WebSocket Message Injection</td>
   <td>WebSocket Security</td>
   <td><span class="badge" style="background:#ffc107">medium</span></td>
-  <td><span class="badge" style="background:#6c757d">open</span></td>
+  <td><span class="badge" style="background:#6c757d">mitigated</span></td>
   <td></td>
 </tr>
 <tr>
@@ -290,7 +290,7 @@
   <td>Unauthenticated Subscription/Projection Access</td>
   <td>Authorization Failure</td>
   <td><span class="badge" style="background:#fd7e14">high</span></td>
-  <td><span class="badge" style="background:#6c757d">open</span></td>
+  <td><span class="badge" style="background:#6c757d">mitigated</span></td>
   <td>⚠ Release Blocker</td>
 </tr>
 <tr>
@@ -392,13 +392,17 @@
 <li>Token in frontend console output</li></ul><h4>T05: Frontend Trace Payload Token Leakage</h4><p>Frontend trace breadcrumbs sent via /frontend-event could accidentally include token values, WebSocket URLs with tokens, or sensitive config.</p><p><strong>Attack scenario:</strong> Frontend code logs the auth token value to console or includes it in a trace breadcrumb sent to /frontend-event.</p><p><strong>Existing mitigations:</strong></p><ul><li>Frontend trace endpoint uses field type, not event</li>
 <li>No token values in URL, body, console, trace, or debug panel (invariant)</li>
 <li>Token redaction in frontend traces tested</li></ul><p><strong>Missing mitigations:</strong></p><ul><li>Automated frontend trace content validation in CI</li></ul><p><strong>Detection signals:</strong></p><ul><li>Token-like strings in /frontend-event payloads</li></ul><h4>T06: Cross-Site WebSocket Hijacking (CSWSH)</h4><p>A malicious website could open a WebSocket connection to the local bridge server if origin validation is missing, hijacking the control channel.</p><p><strong>Attack scenario:</strong> Malicious page on attacker.com opens WebSocket to ws://localhost:PORT/ws; if no origin check, attacker receives projection streams.</p><p><strong>Existing mitigations:</strong></p><ul><li>Loopback-only binding reduces attack surface</li>
-<li>Auth token required for WebSocket subscription</li></ul><p><strong>Missing mitigations:</strong></p><ul><li>Strict origin validation on WebSocket upgrade handshake</li>
+<li>Auth token required for WebSocket subscription</li>
+<li>Explicit origin validation on WebSocket upgrade (allow loopback HTTP/HTTPS origins, reject foreign/file/null/missing by default)</li>
+<li>Origin policy flags: missing_origin_allowed and allow_null_origin for pywebview/non-browser clients</li></ul><p><strong>Missing mitigations:</strong></p><ul><li>Strict origin validation on WebSocket upgrade handshake</li>
 <li>CSWSH prevention: validate Origin header against expected localhost origins</li></ul><p><strong>Detection signals:</strong></p><ul><li>WebSocket connections from unexpected origins</li></ul><h4>T07: WebSocket Message Injection</h4><p>Malformed or malicious WebSocket messages could cause unexpected behavior in the projection stream, state machine, or auth handler.</p><p><strong>Attack scenario:</strong> Attacker sends crafted JSON messages before or after auth to trigger exceptions, bypass auth, or inject false projection data.</p><p><strong>Existing mitigations:</strong></p><ul><li>Auth message validated before subscription</li>
-<li>Handshake_id gating on projection stream</li></ul><p><strong>Missing mitigations:</strong></p><ul><li>Message schema validation on all inbound WebSocket messages</li>
-<li>Message size limits</li>
+<li>Handshake_id gating on projection stream</li>
+<li>Message schema validation: rejects non-JSON, JSON arrays, scalars, missing type, token-on-non-auth messages</li>
+<li>Invalid message guard: connection closed after MAX_INVALID_WEBSOCKET_MESSAGES (3)</li></ul><p><strong>Missing mitigations:</strong></p><ul><li>Message size limits</li>
 <li>Rate limiting on WebSocket messages</li></ul><p><strong>Detection signals:</strong></p><ul><li>Unparseable WebSocket messages</li>
 <li>Messages before auth handshake</li></ul><h4>T08: Unauthenticated Subscription/Projection Access</h4><p>WebSocket subscriptions or projection streams could be accessed without valid authentication, leaking session data.</p><p><strong>Attack scenario:</strong> Attacker connects to WebSocket and sends subscription message without valid auth token; projection data is streamed anyway.</p><p><strong>Existing mitigations:</strong></p><ul><li>Auth token validated before subscription starts</li>
-<li>Handshake_id required for projection stream</li></ul><p><strong>Missing mitigations:</strong></p><ul><li>Per-subscription scope enforcement</li>
+<li>Handshake_id required for projection stream</li>
+<li>Auth-before-subscribe: all non-auth messages rejected before authentication completes; projection streams gated on auth_ok</li></ul><p><strong>Missing mitigations:</strong></p><ul><li>Per-subscription scope enforcement</li>
 <li>Session binding for subscriptions</li></ul><p><strong>Detection signals:</strong></p><ul><li>Subscription attempts without valid handshake_id</li></ul><h4>T09: Excessive Agency / Tool Overreach</h4><p>Agent is granted or acquires excessive tool permissions, enabling destructive operations (file deletion, force push, arbitrary code execution) beyond mission scope.</p><p><strong>Attack scenario:</strong> Agent uses write_file or bash to delete files outside mission scope, amend git history, or execute arbitrary binaries.</p><p><strong>Existing mitigations:</strong></p><ul><li>Tool permission gating (ALWAYS/ASK/NEVER)</li>
 <li>Patch gating for mutation tools</li>
 <li>Bash pattern detection blocks dangerous patterns</li>

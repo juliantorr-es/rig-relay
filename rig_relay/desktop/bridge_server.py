@@ -511,6 +511,7 @@ class DesktopBridgeServer:
             trace_recorder=self._trace_recorder,
             golden_trace_id=self._golden_trace_id,
             golden_handshake_id=self._golden_handshake_id,
+            missing_origin_allowed=False,
         )
         report.add_ok(
             "bridge:05", "create WS server", message="ProjectionWebSocketServer ready"
