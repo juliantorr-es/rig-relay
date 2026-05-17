@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.github.io/schemas/rig.release_gate.blocker.v1.schema.json",
+  "title": "Release Gate Blocker v1",
+  "description": "A single release-candidate blocker entry. Stored as JSONL entries in the blocker ledger. Each blocker references a phase and must be resolved, deferred, or superseded before the phase can pass.",
+  "type": "object",
+  "required": [
+    "blocker_id",
+    "phase_id",
+    "severity",
+    "title",
+    "description",
+    "status",
+    "discovered_by",
+    "source_commit",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "blocker_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable blocker identifier."
+    },
+    "phase_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Phase identifier this blocker belongs to."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["blocker", "high", "medium", "low"],
+      "description": "Blocker severity."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable blocker title."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Detailed blocker description."
+    },
+    "affected_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths affected by this blocker."
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to evidence supporting this blocker."
+    },
+    "required_resolution": {
+      "type": "string",
+      "description": "Description of what constitutes resolution."
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Commands that validate resolution."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "resolved", "deferred", "superseded"],
+      "description": "Current blocker status."
+    },
+    "discovered_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Person, lane, or system that discovered this blocker."
+    },
+    "source_commit": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Git commit SHA when this blocker was first recorded."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when blocker was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when blocker was last updated."
+    }
+  },
+  "additionalProperties": false
+}

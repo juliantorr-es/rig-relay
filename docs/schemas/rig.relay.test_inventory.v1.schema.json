@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.test_inventory.v1.schema.json",
+  "title": "Rig Relay Test Inventory v1",
+  "description": "Canonical inventory of every test file in the Rig Relay test suite, including per-file test function counts, classification summaries, stress-surface mappings, and seam coverage assessments.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.relay.test_inventory.v1"]
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when this inventory was generated"
+    },
+    "head_sha": {
+      "type": "string",
+      "description": "Git HEAD commit SHA at generation time"
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch at generation time"
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_test_files": { "type": "integer" },
+        "total_test_functions": { "type": "integer" },
+        "classified_keep": { "type": "integer" },
+        "classified_harden": { "type": "integer" },
+        "classified_replace": { "type": "integer" },
+        "classified_delete": { "type": "integer" }
+      },
+      "required": ["total_test_files", "total_test_functions", "classified_keep", "classified_harden", "classified_replace", "classified_delete"]
+    },
+    "stress_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "surface_name": { "type": "string" },
+          "file_count": { "type": "integer" },
+          "test_function_count": { "type": "integer" },
+          "seam_coverage_assessment": { "type": "string" },
+          "critical_gaps": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["surface_name", "file_count", "test_function_count", "seam_coverage_assessment"]
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "directory": { "type": "string" },
+          "file_classification": { "enum": ["keep", "harden", "replace", "delete"] },
+          "file_reason": { "type": "string" },
+          "stress_surface": { "type": "string" },
+          "test_function_count": { "type": "integer" },
+          "keep_count": { "type": "integer" },
+          "harden_count": { "type": "integer" },
+          "replace_count": { "type": "integer" },
+          "delete_count": { "type": "integer" },
+          "test_kinds": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["path", "file_classification", "file_reason"]
+      }
+    }
+  },
+  "required": ["schema_version", "generated_at", "head_sha", "branch", "summary", "stress_surfaces", "files"]
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.github.io/schemas/rig.release_gate.phase.v1.schema.json",
+  "title": "Release Gate Phase v1",
+  "description": "A single phase within the release-candidate readiness gate. Each phase groups blockers, validation runs, schemas, tests, and evidence for one governance surface.",
+  "type": "object",
+  "required": [
+    "phase_id",
+    "title",
+    "status",
+    "owner_surface"
+  ],
+  "properties": {
+    "phase_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable phase identifier (e.g., 'phase_1_governance_coordination')."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable phase title."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["blocked", "ready", "passing", "deferred", "unknown"],
+      "description": "Current phase readiness status."
+    },
+    "owner_surface": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Owning governance surface (e.g., 'coordination', 'telemetry', 'runtime')."
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to required evidence artifacts for this phase."
+    },
+    "blocker_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Blocker IDs associated with this phase."
+    },
+    "validation_run_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Validation run IDs associated with this phase."
+    },
+    "schema_artifact_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Schema artifact paths governed by this phase."
+    },
+    "test_artifact_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Test artifact paths governed by this phase."
+    },
+    "telemetry_or_redaction_implications": {
+      "type": "string",
+      "description": "Telemetry or redaction implications for this phase."
+    },
+    "dependency_implications": {
+      "type": "string",
+      "description": "Dependency implications for this phase."
+    },
+    "allowed_deferrals": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Deferral reasons allowed for this phase."
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Remaining seams identified in this phase."
+    },
+    "source_commit": {
+      "type": "string",
+      "description": "Source commit SHA when phase was last updated."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when phase was last updated."
+    }
+  },
+  "additionalProperties": false
+}

@@ -159,5 +159,5 @@ uv run ruff format .           # format
 
 ## License
 
-Apache 2.0. Derivative of [mistralai/mistral-vibe](https://github.com/mistralai/mistral-vibe).
+AGPL-3.0-or-later. Derivative of [mistralai/mistral-vibe](https://github.com/mistralai/mistral-vibe).
 See [LICENSE](LICENSE) and [UPSTREAM.md](UPSTREAM.md).

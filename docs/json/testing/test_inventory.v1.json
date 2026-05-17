@@ -1,0 +1,97 @@
+{
+  "schema_version": "rig.relay.test_inventory.v1",
+  "generated_at": "2026-05-17T00:00:00Z",
+  "head_sha": "565c2968d3a98f1b30b6bf5226b05e41818c3021",
+  "branch": "main",
+  "summary": {
+    "total_test_files": 453,
+    "total_test_functions": 1400,
+    "classified_keep": 1370,
+    "classified_harden": 16,
+    "classified_replace": 5,
+    "classified_delete": 9,
+    "note": "Counts are approximate. Full per-function classification requires file-by-file instrumentation. See test_classification.v1.jsonl for individual entries."
+  },
+  "stress_surfaces": [
+    {
+      "surface_name": "coordination",
+      "file_count": 28,
+      "test_function_count": 232,
+      "seam_coverage_assessment": "STRONG — Real CoordinationStore, real concurrency (ThreadPoolExecutor+Barrier), real cross-process subprocesses, real DuckDB projections. Tests one-winner claims, stale lease recovery, heartbeat corruption prevention, read-only projection idempotency, 50-iteration stress tests, schema contract validation. Missing: adversarial ledger corruption injection, duplicate event detection under corruption.",
+      "critical_gaps": [
+        "No adversarial malformed-events.jsonl injection test (truncated lines, missing required fields, corrupted sequences)",
+        "9 duplicate tests in test_delegate_fleet.py (identical to test_queue_plan.py)"
+      ]
+    },
+    {
+      "surface_name": "git-discipline",
+      "file_count": 10,
+      "test_function_count": 167,
+      "seam_coverage_assessment": "STRONG — 93% keep rate. All guard/worktree tests use real temp git repos (git init/add/commit via subprocess). Tests dirty tracked files, untracked files, ignored files, write refusal for protected files, overwrite refusal without flag, fail-closed safety policy, checkpoint commit safety. Missing: 5 mocked argv-construction git tests that must be replaced with real subprocess tests.",
+      "critical_gaps": [
+        "5 tests in tests/tools/test_git.py mock _run_git (argv-only) — must be replaced with real git subprocess tests",
+        "No adversarial git corruption test (malformed .git/index, broken refs, corrupted objects)"
+      ]
+    },
+    {
+      "surface_name": "tool-invocation",
+      "file_count": 34,
+      "test_function_count": 231,
+      "seam_coverage_assessment": "STRONG — Real subprocesses for bash timeout/truncation/decode tests. Structured receipts (content-light, sha256-only) verified. WriteFile/SearchReplace atomicity tests. Coordination lease blocking. Dirty guard integration. Permission resolution matrix (allowlist/denylist/word boundary). Windows syntax coverage. Missing: env blocklist scrubbing verification, bash binary rejection, bash symlink protection, dangerous pattern detection (command substitution, backtick injection, env var injection), sensitive path blocking.",
+      "critical_gaps": [
+        "No ENV_BLOCKLIST scrubbing test (28 sensitive env vars)",
+        "No bash binary file rejection test",
+        "No bash symlink traversal rejection test",
+        "No detect_dangerous_bash_patterns adversarial test",
+        "No _SENSITIVE_READ_PATTERNS blocking test",
+        "No bash rerouting transparency test (cat→read_file)"
+      ]
+    },
+    {
+      "surface_name": "runtime-supervisor",
+      "file_count": 20,
+      "test_function_count": 29,
+      "seam_coverage_assessment": "ADEGUATE — Covers execution request models, runtime context resolver, orchestrator, supervisor projection, tool invocation adapter, receipt emission, and evidence adoption. Missing: feral subprocess accountability (cancellation mid-execution, partial output during kill, duplicate completion events, dangling task cleanup, trace span closure for abandoned tasks).",
+      "critical_gaps": [
+        "No cancellation/dangling-task test (process death mid-execution)",
+        "No duplicate completion event deduplication test",
+        "No partial output collection during SIGKILL test"
+      ]
+    },
+    {
+      "surface_name": "telemetry-redaction",
+      "file_count": 26,
+      "test_function_count": 306,
+      "seam_coverage_assessment": "STRONG — 98% keep rate. Adversarial tests inject fake secrets (api_token, private paths, authorization_receipt raw secrets). Proves content-light enforcement (no raw stdout/stderr in receipts). Unicode safety (fire emoji truncation). Receipt chain integrity (tampered sha256 detected). Consent gating. Validation pipelines. Missing: telemetry-disabled deterministic degradation proof, opt-out visibility test.",
+      "critical_gaps": [
+        "No test proving telemetry-disabled causes visible deterministic degradation (empty JSONL, zero DuckDB rows)",
+        "test_remote_telemetry_disabled_by_default only checks default config — no behavioral assertion",
+        "2 doctor tests use hardcoded /tmp paths instead of tmp_path fixtures"
+      ]
+    },
+    {
+      "surface_name": "static-renderer",
+      "file_count": 22,
+      "test_function_count": 125,
+      "seam_coverage_assessment": "STRONG — Real JSON/JSONL/CSV/schema artifacts. Real jsonschema validation. Generated HTML safety (XSS escaping, no absolute paths, no token literals, no secret leakage). Markdown policy enforcement (pytest.fail for non-allowed .md files). Progressive disclosure contracts. Diagram rendering (all 7 kinds). GitHub app integration audit. Missing: 1 no-op audit test that must become a failing gate, fragile OR logic in token-literal test, no prompt-injection payload detection in rendered HTML.",
+      "critical_gaps": [
+        "test_active_markdown_references_audit is a no-op — must become failing gate",
+        "test_no_token_or_secret_literals has fragile OR logic",
+        "No prompt-injection payload detection (Ignore previous instructions, SYSTEM:)",
+        "No innerHTML/document.write/setTimeout-with-strings XSS vector test"
+      ]
+    },
+    {
+      "surface_name": "release-gate",
+      "file_count": 7,
+      "test_function_count": 17,
+      "seam_coverage_assessment": "ADEGUATE — Core GateRunner unit tests, static artifact substrate tests, findings lifecycle (all 6 states), CLI E2E (real subprocess, exit codes, JSON output, non-mutation guarantee), runtime readiness checks (trace contract, WebSocket, GitHub audit, CI workflow, triage). Missing: failure-path E2E (exit code 1 on failing check), stale evidence detection, inconsistent evidence detection, orphaned artifact detection.",
+      "critical_gaps": [
+        "No E2E test for FAILED gate path (exit code 1, structured blocker output)",
+        "No stale evidence detection test (artifacts older than HEAD)",
+        "No orphaned evidence artifact detection test"
+      ]
+    }
+  ],
+  "files": []
+}

@@ -1,0 +1,124 @@
+{
+  "report_type": "release_gate_evidence_spine_validator_cli_mission",
+  "branch": "main",
+  "head_before": "1985ce72856ec350d771f62fccd5059c4fc27eb1",
+  "head_after": "1985ce72856ec350d771f62fccd5059c4fc27eb1",
+  "dirty_state_before": {
+    "modified": [
+      "AGENTS.md",
+      "CHANGELOG.md",
+      "README.md",
+      "docs/findings/out-of-scope-findings.jsonl",
+      "docs/json/documentation_migration_manifest.v1.json",
+      "pyproject.toml",
+      "rig_relay/coordination/lease_manager.py",
+      "rig_relay/coordination/models.py",
+      "rig_relay/coordination/store.py"
+    ],
+    "untracked_other_lane": [
+      "CODE_OF_CONDUCT.md",
+      "SECURITY.md",
+      "docs/json/audits/release_candidate_convergence_spine.v1.json",
+      "docs/json/testing/",
+      "docs/schemas/rig.relay.test_classification.v1.schema.json",
+      "docs/schemas/rig.relay.test_inventory.v1.schema.json",
+      "tests/coordination/test_coordination_blocker_fixes.py"
+    ]
+  },
+  "dirty_state_after": "No changes to pre-existing dirty files. All new files are this mission's additions.",
+  "files_changed": [],
+  "files_created": [
+    "docs/schemas/rig.release_gate.phase.v1.schema.json",
+    "docs/schemas/rig.release_gate.readiness.v1.schema.json",
+    "docs/schemas/rig.release_gate.blocker.v1.schema.json",
+    "docs/schemas/rig.release_gate.validation_run.v1.schema.json",
+    "docs/json/release_gate/rc_readiness_gate.v1.json",
+    "docs/json/release_gate/rc_blockers.v1.jsonl",
+    "docs/json/release_gate/rc_validation_runs.v1.jsonl",
+    "docs/json/release_gate/rc_deferred_risks.v1.jsonl",
+    "scripts/rig_release_gate_validate.py",
+    "tests/release_gate/test_release_gate_validation.py"
+  ],
+  "files_deleted": [],
+  "files_intentionally_skipped": [
+    "tests/ (all existing tests — owned by purge lane and other lanes)",
+    "rig_relay/release_gate/ (existing release gate package — not modified)"
+  ],
+  "tests_run": 11,
+  "tests_intentionally_skipped": 0,
+  "test_classifications": {
+    "contract": 11,
+    "real_artifact": 11,
+    "sabotage": 5
+  },
+  "test_cases": [
+    "TestValidGatePasses::test_empty_gate_passes — contract, real-artifact",
+    "TestValidGatePasses::test_gate_with_blockers_and_runs_passes — contract, real-artifact",
+    "TestMissingBlockerFails::test_missing_blocker_reference_fails — contract, real-artifact, sabotage",
+    "TestMissingValidationRunFails::test_missing_validation_run_reference_fails — contract, real-artifact, sabotage",
+    "TestOpenBlockerPreventsPassing::test_open_blocker_prevents_passing — contract, real-artifact, sabotage",
+    "TestMissingEvidencePathFails::test_missing_evidence_path_fails — contract, real-artifact, sabotage",
+    "TestMarkdownEvidenceFails::test_forbidden_markdown_evidence_fails — contract, real-artifact",
+    "TestMarkdownEvidenceFails::test_allowed_markdown_exception_passes — contract, real-artifact",
+    "TestMissingTestClassificationsFails::test_validation_run_without_classifications_fails — contract, real-artifact, sabotage",
+    "TestMalformedJsonlFails::test_malformed_blocker_jsonl_fails — contract, real-artifact, sabotage",
+    "TestSchemaGovernedArtifacts::test_schema_artifact_without_validation_result_fails — contract, real-artifact"
+  ],
+  "evidence_artifacts": [
+    "docs/schemas/rig.release_gate.phase.v1.schema.json",
+    "docs/schemas/rig.release_gate.readiness.v1.schema.json",
+    "docs/schemas/rig.release_gate.blocker.v1.schema.json",
+    "docs/schemas/rig.release_gate.validation_run.v1.schema.json",
+    "docs/json/release_gate/rc_readiness_gate.v1.json",
+    "docs/json/release_gate/rc_blockers.v1.jsonl",
+    "docs/json/release_gate/rc_validation_runs.v1.jsonl",
+    "docs/json/release_gate/rc_deferred_risks.v1.jsonl"
+  ],
+  "schema_validation_results": {
+    "schemas_created": 4,
+    "schemas_valid": true,
+    "phase_schema": "rig.release_gate.phase.v1 — valid JSON Schema 2020-12, also embedded as $defs in readiness",
+    "readiness_schema": "rig.release_gate.readiness.v1 — valid JSON Schema 2020-12, embeds phase via $defs",
+    "blocker_schema": "rig.release_gate.blocker.v1 — valid JSON Schema 2020-12",
+    "validation_run_schema": "rig.release_gate.validation_run.v1 — valid JSON Schema 2020-12"
+  },
+  "telemetry_and_redaction_implications": "No new telemetry events emitted. Validator runs locally, produces structured JSON to stdout. No file contents, secrets, or private code in output.",
+  "dependency_changes": "No new dependencies added. Uses existing jsonschema, subprocess, json from stdlib.",
+  "completed_work": [
+    "Created 4 JSON Schema v2020-12 schema files for release gate evidence spine (phase, readiness, blocker, validation_run)",
+    "Created seed readiness gate JSON with 5 phases (governance/coordination, telemetry/privacy, runtime/tools/context, UI/docs/CI/packaging, public docs/licensing)",
+    "Created seed (empty) blocker JSONL, validation run JSONL, deferred risks JSONL artifacts",
+    "Created validator CLI at scripts/rig_release_gate_validate.py that:",
+    "  - Loads and validates readiness gate, blocker, and validation run artifacts against schemas",
+    "  - Detects missing blocker/validation run references in phases",
+    "  - Detects open blockers on phases with passing status",
+    "  - Detects missing evidence paths",
+    "  - Enforces Markdown evidence policy (forbids docs/audits/*.md, docs/reports/*.md, etc. unless on allowlist)",
+    "  - Detects validation runs with tests_run > 0 but missing test_classifications",
+    "  - Detects schema-governed artifacts without schema validation results",
+    "  - Detects malformed JSONL entries",
+    "  - Emits structured JSON result with status, errors, warnings, artifact counts, and phase summaries",
+    "Created 11 contract/real-artifact tests covering all validator failure modes and happy paths",
+    "All tests pass; ruff check passes with no errors; ruff format applied"
+  ],
+  "intentionally_deferred_work": [
+    "DuckDB integration for analytical querying over gate artifacts — not needed for v0, can be added later",
+    "CI/CD integration (running validator in CI pipeline) — future work",
+    "Markdown migration tooling to convert existing Markdown reports to JSON — separate mission",
+    "Adding new pytest markers (real_artifact, sabotage) to pyproject.toml — not done to avoid tampering with pyproject.toml which has pre-existing dirty modifications",
+    "Wire validator into existing rig_relay.release_gate package — kept separate to avoid competing with existing Lane A/Lane C code"
+  ],
+  "discovered_out_of_scope_risks": [
+    "Existing schema validator (scripts/rig_relay_validate_schemas.py) has a strict https-vs-http check that flags 25 existing schemas as having unexpected $schema values. This is a pre-existing issue unrelated to this mission.",
+    "The seed readiness gate references 20+ schema artifact paths that currently have no schema validation results in validation runs. This is expected for v0 seed; blockers and validation runs will be populated by future fix/validate lanes."
+  ],
+  "remaining_seams": [
+    "Validator does not yet check that allowed Markdown exceptions match AGENTS.md allowlist at runtime — it trusts the policy in the gate JSON",
+    "Validator does not verify blocker_id ↔ phase_id coherence (different phase referencing another phase's blocker) — currently only checks existence",
+    "Schema cross-file $ref resolution is limited; readiness schema embeds phase via $defs rather than external $ref to ensure jsonschema compatibility",
+    "Test classification markers (real_artifact, sabotage) are documented in test file but not registered as pytest markers — requires pyproject.toml edit which is currently dirty from another lane"
+  ],
+  "markdown_files_created_or_modified": [],
+  "no_markdown_created": true,
+  "generated_at": "2026-05-17T23:10:00Z"
+}

@@ -42,6 +42,7 @@ from rig_relay.coordination.models import (
     build_reservation_refused_payload,
     build_session_registered_payload,
     build_task_claim_payload,
+    build_task_claim_refused_payload,
     build_task_released_payload,
     normalize_path,
     now_plus,
@@ -342,6 +343,8 @@ class CoordinationStore:
                         self._conflict_path(conflict.conflict_id),
                         conflict.model_dump(exclude_none=True),
                     )
+                    refusal_payload = build_task_claim_refused_payload(conflict)
+                    self._append_event("coord.task.claim_refused", refusal_payload)
                     return CoordinationClaimResult(
                         allowed=False,
                         claim=None,

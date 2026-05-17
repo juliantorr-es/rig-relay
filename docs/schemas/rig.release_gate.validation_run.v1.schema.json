@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.github.io/schemas/rig.release_gate.validation_run.v1.schema.json",
+  "title": "Release Gate Validation Run v1",
+  "description": "A single validation run entry. Stored as JSONL entries in the validation run ledger. Each run references one or more phases and captures command, result, test classifications, and evidence.",
+  "type": "object",
+  "required": [
+    "validation_run_id",
+    "phase_ids",
+    "command",
+    "result",
+    "source_commit",
+    "created_at"
+  ],
+  "properties": {
+    "validation_run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable validation run identifier."
+    },
+    "phase_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Phase identifiers this run validates."
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The command that was executed for this validation run."
+    },
+    "result": {
+      "type": "string",
+      "enum": ["passed", "failed", "skipped", "blocked"],
+      "description": "Validation run result."
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Duration of the validation run in seconds, if known."
+    },
+    "tests_run": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of tests executed in this run."
+    },
+    "tests_intentionally_skipped": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of tests intentionally skipped."
+    },
+    "test_classifications": {
+      "type": "object",
+      "description": "Test classification counts keyed by classification label (e.g., unit, contract, integration, e2e, real_artifact, adversarial, sabotage, concurrency, substrate).",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "schema_validation_results": {
+      "type": "object",
+      "description": "Schema validation results keyed by schema path, with pass/fail/skip status.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["passed", "failed", "skipped"]
+          },
+          "errors": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to evidence artifacts produced by this run."
+    },
+    "source_commit": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Git commit SHA when this validation run was executed."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when validation run was created."
+    }
+  },
+  "additionalProperties": false
+}

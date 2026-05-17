@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.github.io/schemas/rig.release_gate.readiness.v1.schema.json",
+  "title": "Release Gate Readiness v1",
+  "description": "Machine-readable release-candidate readiness gate. Defines phases, their status, and the evidence spine that the validator checks. The canonical source of truth for whether Rig Relay is eligible for RC promotion.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "gate_id",
+    "repository",
+    "head_sha",
+    "branch",
+    "generated_at",
+    "overall_status",
+    "phases",
+    "policy"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON Schema reference."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.release_gate.readiness.v1",
+      "description": "Schema version identifier."
+    },
+    "gate_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this readiness gate (e.g., 'rc_readiness_v0')."
+    },
+    "repository": {
+      "type": "string",
+      "description": "Absolute path to the repository root."
+    },
+    "head_sha": {
+      "type": "string",
+      "description": "Git HEAD SHA at time of readiness gate generation."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch at time of readiness gate generation."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the readiness gate was generated."
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["blocked", "ready", "passing", "deferred", "unknown"],
+      "description": "Derived overall gate verdict. Computed from phase statuses — never user-supplied."
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/phase" }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["allowed_markdown_exceptions"],
+      "properties": {
+        "allowed_markdown_exceptions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Markdown paths explicitly allowed as non-evidence references (e.g., AGENTS.md, README.md, LICENSE)."
+        },
+        "blocker_reference_enforcement": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, referenced blocker_ids must exist in blocker JSONL."
+        },
+        "validation_run_reference_enforcement": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, referenced validation_run_ids must exist in validation run JSONL."
+        },
+        "markdown_evidence_enforcement": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, Markdown paths in required_evidence fail validation unless explicitly allowed."
+        },
+        "passing_phase_blocker_check": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, a phase with status 'passing' that references unresolved blockers triggers failure."
+        },
+        "missing_evidence_enforcement": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, missing required evidence paths fail validation."
+        },
+        "test_classification_enforcement": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, validation runs that report tests_run > 0 but omit test_classifications fail."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "phase": {
+      "type": "object",
+      "required": [
+        "phase_id",
+        "title",
+        "status",
+        "owner_surface"
+      ],
+      "properties": {
+        "phase_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable phase identifier (e.g., 'phase_1_governance_coordination')."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable phase title."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["blocked", "ready", "passing", "deferred", "unknown"],
+          "description": "Current phase readiness status."
+        },
+        "owner_surface": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Owning governance surface (e.g., 'coordination', 'telemetry', 'runtime')."
+        },
+        "required_evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Paths to required evidence artifacts for this phase."
+        },
+        "blocker_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Blocker IDs associated with this phase."
+        },
+        "validation_run_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Validation run IDs associated with this phase."
+        },
+        "schema_artifact_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Schema artifact paths governed by this phase."
+        },
+        "test_artifact_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Test artifact paths governed by this phase."
+        },
+        "telemetry_or_redaction_implications": {
+          "type": "string",
+          "description": "Telemetry or redaction implications for this phase."
+        },
+        "dependency_implications": {
+          "type": "string",
+          "description": "Dependency implications for this phase."
+        },
+        "allowed_deferrals": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Deferral reasons allowed for this phase."
+        },
+        "remaining_seams": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Remaining seams identified in this phase."
+        },
+        "source_commit": {
+          "type": "string",
+          "description": "Source commit SHA when phase was last updated."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when phase was last updated."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

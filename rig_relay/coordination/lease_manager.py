@@ -188,6 +188,7 @@ class PathLeaseManager:
         """Release a path lease.
 
         Requires matching session_id and task_id (owner identity).
+        Delegates entirely to the store for digester-guarded writes.
         """
         if not paths:
             return LeaseClaimResult(
@@ -196,59 +197,13 @@ class PathLeaseManager:
                 refusal_reason="At least one path required for lease release",
             )
 
-        lease_dir = self._store.root / "leases" / "paths"
-
-        found = False
-        for entry in lease_dir.glob("*.json"):
-            try:
-                raw = entry.read_text(encoding="utf-8")
-                data = json.loads(raw)
-            except (OSError, json.JSONDecodeError):
-                continue
-
-            if data.get("session_id") != session_id:
-                continue
-
-            # Check if any of our paths overlap
-            entry_paths = data.get("paths", [])
-            if not any(p in entry_paths for p in paths):
-                continue
-
-            found = True
-            if data.get("status") in {"stale", "expired"}:
-                return LeaseClaimResult(
-                    status="stale",
-                    error_kind="lease_already_stale",
-                    refusal_reason=f"Lease for {paths!r} is already stale/expired",
-                )
-
-            # Owner check
-            if data.get("session_id") != session_id or data.get("task_id") != task_id:
-                return LeaseClaimResult(
-                    status="not_owner",
-                    error_kind="release_refused_not_owner",
-                    refusal_reason=(
-                        f"Lease for {paths!r} is owned by "
-                        f"session={data.get('session_id')!r}, "
-                        f"task={data.get('task_id')!r}"
-                    ),
-                )
-
-            data["status"] = "released"
-            entry.write_text(
-                json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True),
-                encoding="utf-8",
-            )
+        try:
             self._store.release_paths(
                 session_id=session_id, task_id=task_id, paths=paths
             )
-            return LeaseClaimResult(status="granted")
-
-        if not found:
+        except Exception as e:
             return LeaseClaimResult(
-                status="not_found",
-                error_kind="lease_not_found",
-                refusal_reason=f"No lease found for paths={paths!r}",
+                status="error", error_kind="release_failed", refusal_reason=str(e)
             )
 
         return LeaseClaimResult(status="granted")
@@ -258,47 +213,32 @@ class PathLeaseManager:
     ) -> LeaseClaimResult:
         """Renew an existing lease by extending its TTL.
 
-        Returns the existing lease state if renewal succeeds.
+        Delegates to the store, which treats same-owner reservation as renewal.
         """
-        lease_dir = self._store.root / "leases" / "paths"
-        matching: list[Path] = []
-
-        for entry in lease_dir.glob("*.json"):
-            try:
-                raw = entry.read_text(encoding="utf-8")
-                data = json.loads(raw)
-            except (OSError, json.JSONDecodeError):
-                continue
-
-            if data.get("session_id") == session_id and data.get("task_id") == task_id:
-                entry_paths = data.get("paths", [])
-                if any(p in entry_paths for p in paths):
-                    matching.append(entry)
-
-        if not matching:
+        if not paths:
             return LeaseClaimResult(
                 status="not_found",
-                error_kind="lease_not_found",
-                refusal_reason=f"No active lease found for {paths!r}",
+                error_kind="no_paths",
+                refusal_reason="At least one path required for lease renewal",
             )
 
-        for entry in matching:
-            try:
-                data = json.loads(entry.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                continue
+        result = self._store.reserve_paths(
+            session_id=session_id,
+            task_id=task_id,
+            mode="read",
+            paths=paths,
+            ttl_seconds=ttl_seconds,
+        )
 
-            status = data.get("status", "")
-            if status in {"stale", "expired"}:
-                continue
-
-            new_expires = datetime.now(UTC).isoformat()
-            data["expires_at"] = new_expires
-            data["ttl_seconds"] = ttl_seconds
-            data = dict(data)  # copy for mypy
-            entry.write_text(
-                json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True),
-                encoding="utf-8",
+        if not result.allowed:
+            return LeaseClaimResult(
+                status="conflict",
+                error_kind=result.conflict.kind if result.conflict else "conflict",
+                refusal_reason=(
+                    result.conflict.recommended_resolution
+                    if result.conflict
+                    else "Path lease conflict during renewal"
+                ),
             )
 
         return LeaseClaimResult(status="granted")

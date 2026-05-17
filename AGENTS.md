@@ -282,9 +282,77 @@ Rules:
 - Do not store conversation summaries in `docs/dogfood/` unless they are converted into a dogfood proof.
 - Validate filenames with the test in `tests/docs/test_conversation_summary_names.py`.
 
+## Reports, audits, roadmaps, and evidence artifacts
+
+Agents must not write mission reports, audit reports, roadmaps, release-candidate reports, final reports, evidence inventories, test inventories, blocker lists, validation ledgers, handoff reports, or phase-convergence reports as new Markdown files.
+
+Markdown is allowed only for explicitly canonical human-facing files listed in this document's allowed Markdown exceptions. `AGENTS.md` may remain Markdown because it is an instruction file. `README.md`, legal notices, security policy, changelog, and code-of-conduct files may remain Markdown or plain text where GitHub or legal conventions require them. Markdown is not an evidence container.
+
+When a mission needs to persist a report, create or update a structured artifact instead:
+
+- Use `.json` for a single report object, roadmap object, audit object, validation summary, inventory, or manifest.
+- Use `.jsonl` for append-only event streams, findings ledgers, blocker ledgers, deleted-test ledgers, hardened-test ledgers, coordination ledgers, telemetry/redaction ledgers, and repeated observations.
+- Use `.csv` only for tabular exports intended for analysis or release-gate review.
+
+Canonical locations:
+
+- `docs/json/` — durable documentation objects, roadmaps, audit summaries, phase plans, doctrine companions, inventories, and migration manifests.
+- `docs/findings/*.jsonl` — append-only out-of-scope findings and debt registries.
+- `.build/rig-relay/` or `.build/rig/` — ephemeral local run evidence, validation outputs, generated projections, and non-committed work products.
+- `docs/schemas/` — JSON Schema authority for any durable structured artifact kind.
+
+If no schema exists for the report kind, add or extend a schema first. Do not fall back to Markdown because a schema is missing. The absence of a schema means the mission includes schema creation or the report must remain ephemeral and clearly identified as non-canonical.
+
+Final responses in chat may use Markdown for readability, but any persisted final report must also be written as JSON, JSONL, or CSV. A chat-formatted Markdown summary is not a substitute for the canonical artifact.
+
+Required persisted final report shape:
+
+- branch
+- head_before
+- head_after
+- dirty_state_before
+- dirty_state_after
+- files_changed
+- files_created
+- files_deleted
+- tests_run
+- tests_intentionally_skipped
+- test_classifications
+- evidence_artifacts
+- schema_validation_results
+- telemetry_and_redaction_implications
+- dependency_changes
+- completed_work
+- intentionally_deferred_work
+- discovered_out_of_scope_risks
+- remaining_seams
+
+When an agent finds an existing Markdown report in a directory where structured artifacts are required, it must not add more Markdown beside it. It must either migrate that content into the canonical structured format as part of the mission, or record a structured out-of-scope finding explaining the migration slice needed. Do not delete old Markdown reports until the migration rules below are satisfied.
+
+Forbidden examples:
+
+- `docs/audits/some-audit.md`
+- `docs/audits/release-candidate-convergence-spine.md`
+- `docs/reports/final-report.md`
+- `docs/roadmaps/phase-1-plan.md`
+- `docs/proofs/validation-proof.md`
+- `mission-report.md`
+- `handoff.md`
+
+Preferred examples:
+
+- `docs/json/audits/release_candidate_convergence_spine.v1.json`
+- `docs/json/roadmaps/release_candidate_5_phase_roadmap.v1.json`
+- `docs/json/testing/test_inventory.v1.json`
+- `docs/json/testing/test_classification.v1.jsonl`
+- `docs/findings/out-of-scope-findings.jsonl`
+- `.build/rig-relay/evidence/validation_run.v1.json`
+
+Every final mission report must explicitly list any Markdown file it created or modified. For each Markdown file, the report must state which allowed exception authorizes it. If there is no allowed exception, the mission is incomplete.
+
 ## Documentation Policy — Canonical JSON Artifacts
 
-New project documentation must be written as **canonical JSON artifacts** using the `rig.documentation.page.v1` schema, unless the file is an explicitly allowed Markdown/legal/interface exception.
+New project documentation and persisted mission outputs must be written as **canonical JSON artifacts** using the `rig.documentation.page.v1` schema or another repo-local schema for that artifact kind, unless the file is an explicitly allowed Markdown/legal/interface exception.
 
 ### Allowed Markdown exceptions
 - `AGENTS.md` — agent instructions are conventionally Markdown

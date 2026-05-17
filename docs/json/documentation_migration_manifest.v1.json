@@ -62,6 +62,16 @@
       "content_sha256_new": "sha256:78ce1591624e9bc0f306168ec365c7ddae47c6937568409c8139034461968275",
       "references_updated": true,
       "review_notes": "Markdown preserved. 7 principles, handoff receipt, Phase 3 readiness doctrine preserved."
+    },
+    {
+      "old_path": "docs/audits/release-candidate-convergence-spine.md",
+      "new_path": "docs/json/audits/release_candidate_convergence_spine.v1.json",
+      "status": "migrated",
+      "reason": "RC convergence spine roadmap — Phase 1-5 blocker resolution audit",
+      "content_sha256_old": "sha256:9bbabf4cab4131fe8c357a57d14ccd743aa2a454931ab424473f5c46eda8190e",
+      "content_sha256_new": "sha256:d2ef53767853b8755f6e8610bbc0eb0b860351db217961685104db98f0c92563",
+      "references_updated": false,
+      "review_notes": "Markdown preserved. 5-phase roadmap, 14 sections, 14 tables, paste-ready prompts migrated to structured JSON."
     }
   ]
 }

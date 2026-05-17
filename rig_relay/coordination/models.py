@@ -382,6 +382,18 @@ def build_projection_read_payload(
     }
 
 
+def build_task_claim_refused_payload(conflict: CoordinationConflict) -> dict[str, Any]:
+    return {
+        "session_id": conflict.session_id,
+        "task_id": conflict.task_id,
+        "event_kind": "task_claim_refused",
+        "conflict_kind": conflict.kind,
+        "conflict_id": conflict.conflict_id,
+        "other_session_id": conflict.other_session_id,
+        "resolution_kind": conflict.recommended_resolution,
+    }
+
+
 def build_lease_expired_payload(
     session_id: str, task_id: str, path_hashes: list[str]
 ) -> dict[str, Any]:
@@ -526,6 +538,7 @@ __all__ = [
     "build_reservation_refused_payload",
     "build_session_registered_payload",
     "build_task_claim_payload",
+    "build_task_claim_refused_payload",
     "build_task_released_payload",
     "compute_proposal_fingerprint",
     "normalize_path",
