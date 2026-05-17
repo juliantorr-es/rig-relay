@@ -65,24 +65,7 @@ class CoordinationStore:
         lockfile.touch(exist_ok=True)
         self._digester_fd = open(lockfile, "r+b")
         self._digester_thread_lock = threading.Lock()
-        self._sequence_counter = 0
-        events_path = self._events_path()
-        if not events_path.is_file():
-            return
-        try:
-            with events_path.open("r", encoding="utf-8") as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    try:
-                        last = json.loads(line)
-                        self._sequence_counter = max(
-                            self._sequence_counter, last.get("sequence", 0) or 0
-                        )
-                    except json.JSONDecodeError:
-                        pass
-        except OSError:
-            pass
+        # Sequence numbers are derived from events.jsonl at append time under digester lock.
 
     def _acquire_digester_lock(self) -> None:
         self._digester_thread_lock.acquire()
@@ -202,10 +185,39 @@ class CoordinationStore:
             os.fsync(f.fileno())
 
     def _next_sequence(self) -> int:
-        self._sequence_counter += 1
-        return self._sequence_counter
+        """Return the next sequence number by reading the latest max from events.jsonl.
+
+        Must be called while holding the digester lock to ensure cross-process safety.
+        """
+        events_path = self._events_path()
+        if not events_path.is_file():
+            return 1
+        max_seq = 0
+        try:
+            with events_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        event = json.loads(line)
+                        seq = event.get("sequence", 0) or 0
+                        max_seq = max(max_seq, seq)
+                    except json.JSONDecodeError:
+                        pass
+        except OSError:
+            return 1
+        return max_seq + 1
 
     def register_session(self, session: CoordinationSession) -> CoordinationSession:
+        self._acquire_digester_lock()
+        try:
+            return self._register_session_locked(session)
+        finally:
+            self._release_digester_lock()
+
+    def _register_session_locked(
+        self, session: CoordinationSession
+    ) -> CoordinationSession:
         session_path = self._session_path(session.session_id)
         self._write_json(session_path, session.model_dump(exclude_none=True))
         reg_payload = build_session_registered_payload(session)
@@ -497,6 +509,29 @@ class CoordinationStore:
         artifact_sha256: str,
         schema_id: str | None = None,
     ) -> CoordinationArtifactRef:
+        self._acquire_digester_lock()
+        try:
+            return self._publish_artifact_locked(
+                session_id=session_id,
+                task_id=task_id,
+                artifact_kind=artifact_kind,
+                artifact_uri=artifact_uri,
+                artifact_sha256=artifact_sha256,
+                schema_id=schema_id,
+            )
+        finally:
+            self._release_digester_lock()
+
+    def _publish_artifact_locked(
+        self,
+        *,
+        session_id: str,
+        task_id: str | None = None,
+        artifact_kind: str,
+        artifact_uri: str,
+        artifact_sha256: str,
+        schema_id: str | None = None,
+    ) -> CoordinationArtifactRef:
         artifact = CoordinationArtifactRef(
             session_id=session_id,
             task_id=task_id,
@@ -513,6 +548,15 @@ class CoordinationStore:
         return artifact
 
     def report_conflict(self, conflict: CoordinationConflict) -> CoordinationConflict:
+        self._acquire_digester_lock()
+        try:
+            return self._report_conflict_locked(conflict)
+        finally:
+            self._release_digester_lock()
+
+    def _report_conflict_locked(
+        self, conflict: CoordinationConflict
+    ) -> CoordinationConflict:
         self._write_json(
             self._conflict_path(conflict.conflict_id),
             conflict.model_dump(exclude_none=True),
@@ -659,6 +703,25 @@ class CoordinationStore:
         self._append_event("coord.task.released", released_payload)
 
     def request_handoff(
+        self,
+        *,
+        session_id: str,
+        target_session_id: str,
+        task_id: str | None = None,
+        scope: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        self._acquire_digester_lock()
+        try:
+            return self._request_handoff_locked(
+                session_id=session_id,
+                target_session_id=target_session_id,
+                task_id=task_id,
+                scope=scope,
+            )
+        finally:
+            self._release_digester_lock()
+
+    def _request_handoff_locked(
         self,
         *,
         session_id: str,
