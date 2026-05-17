@@ -1,17 +1,57 @@
 {
   "files": {
-    "docs/audits/test-suite-reality-pressure-audit.md": {
+    "tests/release_gate/test_release_gate_cli.py": {
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 604
+          "end": 277
         }
       ],
-      "importsChanged": false,
-      "lastEdit": "2026-05-17T19:05:34.725Z"
+      "importsChanged": true,
+      "lastEdit": "2026-05-17T20:14:46.296Z"
+    },
+    "tests/coordination/test_concurrent_lease_conflict.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 488
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-17T20:14:46.679Z"
+    },
+    "tests/tracing/test_contract_real_source.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 315
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-17T20:14:46.794Z"
+    },
+    "tests/guard/test_escape_hatches.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 319
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-17T20:14:47.025Z"
+    },
+    "tests/core/test_telemetry_content_light.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 319
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-17T20:14:47.186Z"
     }
   },
   "turnCycles": 0,
   "maxCycles": 3,
-  "lastUpdated": "2026-05-17T19:05:34.725Z"
+  "lastUpdated": "2026-05-17T20:14:47.186Z"
 }

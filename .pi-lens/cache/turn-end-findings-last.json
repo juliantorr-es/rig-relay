@@ -1,4 +1,4 @@
 {
-  "signature": "tests/core/test_telemetry_consent_gate.py::Unresolved from this turn — tests/core/test_telemetry_consent_gate.py:\n🔴 STOP — 1 issue(s) must be fixed:\n  L303: Local variable `original_log` is assigned to but never used",
-  "sessionId": "lens-mpa0bk11-b5b74e00"
+  "signature": "tests/tracing/test_contract_real_source.py::Unresolved from this turn — tests/tracing/test_contract_real_source.py:\n🔴 STOP — 1 issue(s) must be fixed:\n  L131: Local variable `subagent_violations` is assigned to but never used",
+  "sessionId": "lens-mpa46ncm-42a45c61"
 }

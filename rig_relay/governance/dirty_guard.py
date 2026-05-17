@@ -84,6 +84,14 @@ class DirtyFileGuard:
     refused_writes: list[dict[str, str]] = field(default_factory=list)
 
     _STATUS_LINE_PATH_OFFSET: ClassVar[int] = 3
+    _OPTIONS_CONSUMING_ARG: ClassVar[frozenset[str]] = frozenset({
+        "-c",
+        "-C",
+        "--git-dir",
+        "--work-tree",
+        "--namespace",
+        "--exec-path",
+    })
     _idempotent_key: str = ""
 
     # ── public API ──────────────────────────────────────────────
@@ -310,13 +318,57 @@ class DirtyFileGuard:
             "git reset",
             "git clean",
             "git stash",
+            "git commit --amend",
+            "git push --force",
+            "git push --force-with-lease",
         })
+
+    def _parse_git_subcommand(self, command: str) -> str | None:
+        """Extract effective git subcommand and args, skipping global options.
+
+        Handles ``-c key=value``, ``-C <path>``, ``--git-dir=<path>``,
+        ``--git-dir <path>``, ``--work-tree=<path>``, and other options
+        that can appear before the git subcommand.
+        """
+        tokens = command.strip().split()
+        if not tokens or tokens[0] != "git":
+            return None
+
+        i = 1
+        while i < len(tokens):
+            token = tokens[i]
+
+            if token in self._OPTIONS_CONSUMING_ARG:
+                i += 2
+                continue
+
+            if token.startswith("--") and "=" in token:
+                i += 1
+                continue
+
+            if token.startswith("-"):
+                i += 1
+                continue
+
+            break
+
+        if i >= len(tokens):
+            return None
+
+        return "git " + " ".join(tokens[i:])
 
     def is_destructive_git_command(self, command: str) -> tuple[bool, str | None]:
         """Check if *command* is a blocked destructive git operation."""
-        stripped = command.strip()
+        effective = self._parse_git_subcommand(command)
+        if effective is None:
+            return False, None
+
         for blocked in self.blocked_git_commands():
-            if stripped == blocked or stripped.startswith(blocked + " "):
+            if (
+                effective == blocked
+                or effective.startswith(blocked + " ")
+                or effective.startswith(blocked + "=")
+            ):
                 return True, (
                     f"'{blocked}' is a destructive git command that would discard "
                     "changes to protected files. Use built-in git tools or ask the "
