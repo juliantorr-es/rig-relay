@@ -7,6 +7,7 @@ or any non-deterministic source except the explicit generated_at timestamp.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import UTC, datetime
 import traceback
@@ -29,7 +30,7 @@ from rig_relay.release_gate.models import (
 
 class GateRunner:
     def __init__(
-        self, checks: dict[str, ReleaseGateCheck], policy: GatePolicy | None = None
+        self, checks: Mapping[str, ReleaseGateCheck], policy: GatePolicy | None = None
     ) -> None:
         self._checks = checks
         self._policy = policy or GatePolicy()

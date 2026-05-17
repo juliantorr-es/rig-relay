@@ -1,0 +1,22 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "pi-harness-extension-health",
+  "document_type": "audit",
+  "title": "Pi Harness Extension Health Audit",
+  "summary": "Audit of extension entry points, loading model, crash containment, and session finalization boundary.",
+  "status": "active",
+  "created_at": "2026-05-17",
+  "updated_at": "2026-05-17",
+  "source_commit": "9c77bfa2",
+  "owners": ["maintainer"],
+  "tags": ["pi", "extensions", "coordination"],
+  "audience": ["contributor", "maintainer"],
+  "canonical_path": "docs/json/audits/pi-harness-extension-health.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {"block_id": "h1-1", "type": "heading", "level": 1, "content": "Pi Harness Extension Health Audit", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "p-2", "type": "paragraph", "content": "Audit scope: local harness-controlled extension loading, crash containment, and session finalization. Evidence came from `extensions/vscodium-rig-relay/src/extension.ts`, `rig_relay/cli/ide_sidecar.py`, `rig_relay/acp/_session_lifecycle.py`, `rig_relay/evidence/session_lifecycle_tool.py`, and coordination/session tooling.", "disclosure": {"level": "standard"}},
+    {"block_id": "h2-3", "type": "heading", "level": 2, "content": "Findings", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "table-4", "type": "table", "columns": ["Question", "Finding"], "rows": [["Extension lifecycle entry points", "VS Code extension `activate()` spawns the sidecar and registers a webview; ACP and desktop entrypoints bootstrap agent loops and config."], ["Discovery/loading", "Current extension host loads one local extension and then spawns the sidecar eagerly; no discovery registry or lazy activation gate was found in repo-controlled code."], ["Crash containment", "Existing code logs sidecar exit/spawn errors, but extension failures can still terminate the sidecar path and leave no explicit quarantine state."], ["Persistence across sessions", "No extension crash history or quarantine manifest was found."], ["Finalization path", "Session lifecycle finalizer exists and is content-light; it is independent of the extension host path."], ["File ownership metadata", "Coordination ownership exists in path/task/lease tools and docs; no visible file-marker protocol existed before this slice."]], "disclosure": {"level": "standard"}}
+  ]
+}

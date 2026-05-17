@@ -1,0 +1,24 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "pi-harness-extension-health",
+  "document_type": "governance",
+  "title": "Pi Harness Extension Health",
+  "summary": "Crash containment, quarantine, and safe-mode guidance for Pi harness extensions.",
+  "status": "active",
+  "created_at": "2026-05-17",
+  "updated_at": "2026-05-17",
+  "source_commit": "9c77bfa2",
+  "owners": ["maintainer"],
+  "tags": ["pi", "extensions", "safe-mode"],
+  "audience": ["contributor", "maintainer"],
+  "canonical_path": "docs/json/governance/pi-harness-extension-health.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {"block_id": "h1-1", "type": "heading", "level": 1, "content": "Pi Harness Extension Health", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "p-2", "type": "paragraph", "content": "Extension crashes are isolated at the extension boundary. The harness records crash metadata, keeps session finalization available, and quarantines repeat offenders.", "disclosure": {"level": "standard"}},
+    {"block_id": "h2-3", "type": "heading", "level": 2, "content": "Rules", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "list-4", "type": "list", "style": "bullet", "items": ["Wrap activation and event handling in per-extension try/except boundaries.", "Record extension id, phase, redacted message, traceback hash, timestamp, session id, and crash count.", "Quarantine repeat offenders after the policy threshold.", "Use safe mode to start with nonessential extensions disabled.", "Expose a health status command and a quarantine-clear command."], "disclosure": {"level": "standard"}},
+    {"block_id": "h2-5", "type": "heading", "level": 2, "content": "Operational meaning", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "paragraph-6", "type": "paragraph", "content": "A quarantined extension stays disabled on future startup until cleared intentionally. Failures remain visible in structured health state instead of being hidden.", "disclosure": {"level": "standard"}}
+  ]
+}

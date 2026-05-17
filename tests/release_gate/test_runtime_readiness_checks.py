@@ -615,3 +615,109 @@ class TestPublicApiIntegration:
             result = runner(ctx)
             assert isinstance(result, CheckResult)
             assert result.check_id == check_id
+
+
+class TestRegistryIntegration:
+    """Regression tests for the seam-closure patch."""
+
+    def test_runtime_checks_are_ctx_wrappers_not_raw_functions(self) -> None:
+        from rig_relay.release_gate._checks_registry import build_default_registry
+        from rig_relay.release_gate.models import CheckContext
+
+        registry = build_default_registry()
+        ctx = CheckContext(repo_root=Path.cwd(), output_dir=Path(".build"))
+
+        for check_id in [
+            "runtime.trace_contract.clean_or_triaged",
+            "runtime.visibility_matrix.release_paths",
+            "runtime.websocket.security_invariants",
+            "runtime.github_app.audit_readiness",
+            "runtime.ci.workflow_coverage",
+        ]:
+            fn = registry[check_id]
+            result = fn(ctx)
+            assert isinstance(result, CheckResult), (
+                f"{check_id} should return CheckResult, got {type(result)}"
+            )
+            assert result.check_id == check_id
+
+    def test_static_checks_are_real_not_placeholder(self) -> None:
+        from rig_relay.release_gate._checks_registry import build_default_registry
+        from rig_relay.release_gate.models import CheckContext
+
+        registry = build_default_registry()
+        ctx = CheckContext(repo_root=Path.cwd(), output_dir=Path(".build"))
+
+        real_static_ids = [
+            "static.schemas.valid_json_documents",
+            "static.schemas.schema_registry_coverage",
+            "static.renderer.generated_site_present",
+            "static.renderer.no_secret_leakage",
+            "static.diagrams.safe_sources",
+            "static.generated_artifacts.cache_policy",
+        ]
+        for check_id in real_static_ids:
+            assert check_id in registry, f"{check_id} should be in default registry"
+            fn = registry[check_id]
+            result = fn(ctx)
+            assert isinstance(result, CheckResult)
+            assert result.check_id == check_id
+
+    def test_placeholder_static_ids_not_in_registry(self) -> None:
+        from rig_relay.release_gate._checks_registry import build_default_registry
+
+        registry = build_default_registry()
+        for deprecated_id in [
+            "static.docs.json_schema_validation",
+            "static.docs.static_render_integrity",
+            "static.security.vulnerability_scan",
+        ]:
+            assert deprecated_id not in registry, (
+                f"Deprecated placeholder {deprecated_id} should not be in default registry"
+            )
+
+    def test_gate_runner_no_typeerror_on_runtime_checks(self) -> None:
+        from rig_relay.release_gate._checks_registry import build_default_registry
+        from rig_relay.release_gate.models import CheckContext
+        from rig_relay.release_gate.runner import GateRunner
+
+        registry = build_default_registry()
+        ctx = CheckContext(repo_root=Path.cwd(), output_dir=Path(".build"))
+        runner = GateRunner(checks=registry)
+
+        result = runner.run(
+            ctx,
+            include_checks={
+                "runtime.trace_contract.clean_or_triaged",
+                "runtime.visibility_matrix.release_paths",
+            },
+        )
+        assert result.overall_status is not None
+        assert len(result.checks) == 2
+
+    def test_gate_runner_no_typeerror_on_static_checks(self) -> None:
+        from rig_relay.release_gate._checks_registry import build_default_registry
+        from rig_relay.release_gate.models import CheckContext
+        from rig_relay.release_gate.runner import GateRunner
+
+        registry = build_default_registry()
+        ctx = CheckContext(repo_root=Path.cwd(), output_dir=Path(".build"))
+        runner = GateRunner(checks=registry)
+
+        result = runner.run(
+            ctx,
+            include_checks={
+                "static.renderer.generated_site_present",
+                "static.schemas.valid_json_documents",
+            },
+        )
+        assert result.overall_status is not None
+        assert len(result.checks) == 2
+
+    def test_full_registry_count(self) -> None:
+        from rig_relay.release_gate._checks_registry import build_default_registry
+
+        registry = build_default_registry()
+        assert len(registry) == 11, (
+            f"Expected 11 checks (5 runtime + 6 static), got {len(registry)}"
+        )

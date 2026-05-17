@@ -1,0 +1,24 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "file-coordination-markers",
+  "document_type": "governance",
+  "title": "File Coordination Markers",
+  "summary": "Inline and sidecar coordination markers for safe multi-agent file edits.",
+  "status": "active",
+  "created_at": "2026-05-17",
+  "updated_at": "2026-05-17",
+  "source_commit": "9c77bfa2",
+  "owners": ["maintainer"],
+  "tags": ["coordination", "markers", "multi-agent"],
+  "audience": ["contributor", "maintainer"],
+  "canonical_path": "docs/json/governance/file-coordination-markers.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {"block_id": "h1-1", "type": "heading", "level": 1, "content": "File Coordination Markers", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "p-2", "type": "paragraph", "content": "Agents claim files before edits, release them after edits, and scan markers before touching shared work. JSON and generated outputs use the sidecar ledger only.", "disclosure": {"level": "standard"}},
+    {"block_id": "h2-3", "type": "heading", "level": 2, "content": "States", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "list-4", "type": "list", "style": "bullet", "items": ["active: file is currently owned by a session.", "released_modified: file changed and may accept additive follow-up work.", "released_readonly: file was inspected or tagged but not modified."], "disclosure": {"level": "standard"}},
+    {"block_id": "h2-5", "type": "heading", "level": 2, "content": "Safety boundary", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "paragraph-6", "type": "paragraph", "content": "Inline markers are only inserted where comments are safe. The sidecar ledger records every claim and release event append-only.", "disclosure": {"level": "standard"}}
+  ]
+}

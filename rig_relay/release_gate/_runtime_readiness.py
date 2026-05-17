@@ -18,6 +18,7 @@ from pathlib import Path
 import re
 
 from rig_relay.release_gate.models import (
+    CheckContext,
     CheckResult,
     CheckSeverity,
     CheckStatus,
@@ -864,7 +865,7 @@ def _sha256(text: str) -> str:
 # because GateRunner.run() calls check_fn(ctx).
 
 
-def _get_triage(ctx: object) -> TriagePolicy | None:
+def _get_triage(ctx: CheckContext) -> TriagePolicy | None:
     if hasattr(ctx, "triage"):
         return ctx.triage  # type: ignore[no-any-return]
     if hasattr(ctx, "policy") and hasattr(ctx.policy, "triage"):  # type: ignore[union-attr]
@@ -872,21 +873,21 @@ def _get_triage(ctx: object) -> TriagePolicy | None:
     return None
 
 
-def check_trace_contract_ctx(ctx: object) -> CheckResult:
+def check_trace_contract_ctx(ctx: CheckContext) -> CheckResult:
     return check_trace_contract(triage=_get_triage(ctx))
 
 
-def check_visibility_matrix_ctx(_ctx: object) -> CheckResult:
+def check_visibility_matrix_ctx(ctx: CheckContext) -> CheckResult:
     return check_visibility_matrix()
 
 
-def check_websocket_security_ctx(_ctx: object) -> CheckResult:
+def check_websocket_security_ctx(ctx: CheckContext) -> CheckResult:
     return check_websocket_security()
 
 
-def check_github_app_audit_ctx(_ctx: object) -> CheckResult:
+def check_github_app_audit_ctx(ctx: CheckContext) -> CheckResult:
     return check_github_app_audit()
 
 
-def check_ci_coverage_ctx(_ctx: object) -> CheckResult:
+def check_ci_coverage_ctx(ctx: CheckContext) -> CheckResult:
     return check_ci_coverage()
