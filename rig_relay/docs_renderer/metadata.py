@@ -32,23 +32,39 @@ def make_og_tags(canonical_url: str, title: str, description: str, og_type: str)
 """
 
 
-def make_head_tags(sm: SiteMeta, canonical_url: str, og_tags: str) -> str:
+def make_head_tags(
+    sm: SiteMeta, canonical_url: str, og_tags: str, relative_root: str = "."
+) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     canonical_link = (
         f'<link rel="canonical" href="{canonical_url}">' if canonical_url else ""
     )
-    favicon_link = (
-        f'<link rel="icon" href="{sm.favicon}" type="image/svg+xml">'
+    fav = (
+        make_relative_link(sm.favicon, relative_root, sm.base_path)
         if sm.favicon
         else ""
+    )
+    favicon_link = (
+        f'<link rel="icon" href="{fav}" type="image/svg+xml">' if fav else ""
     )
     og_image_tags = ""
     if sm.og_image:
         og_image_tags = f'<meta property="og:image" content="{sm.og_image}">\n<meta name="twitter:image" content="{sm.og_image}">'
+
+    css_href = make_relative_link(
+        f"{sm.base_path}/assets/site.css", relative_root, sm.base_path
+    )
+    js_href = make_relative_link(
+        f"{sm.base_path}/assets/site.js", relative_root, sm.base_path
+    )
+
     return f"""{canonical_link}
 {og_tags}{og_image_tags}
 <meta name="theme-color" content="{sm.theme_color}">
 <meta name="base-path" content="{sm.base_path}">
+<meta name="relative-root" content="{relative_root}">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
 {favicon_link}
-<link rel="stylesheet" href="{sm.base_path}/assets/site.css">
-<script src="{sm.base_path}/assets/site.js" defer></script>"""
+<link rel="stylesheet" href="{css_href}">
+<script src="{js_href}" defer></script>"""

@@ -94,9 +94,19 @@ def render_evidence(
 
 
 def render_link(
-    block: dict, content: str, title: str, bid: str, css_cls: str, data_attrs: str
+    block: dict,
+    content: str,
+    title: str,
+    bid: str,
+    css_cls: str,
+    data_attrs: str,
+    relative_root: str = "..",
+    base_path: str = "/rig-relay",
 ) -> str:
-    href = _html.escape(str(block.get("href", "")), quote=True)
+    from rig_relay.docs_renderer.paths import make_relative_link
+
+    href = make_relative_link(str(block.get("href", "")), relative_root, base_path)
+    href = _html.escape(href, quote=True)
     return f'<p id="{bid}" class="{css_cls}"{data_attrs}><a href="{href}">{content}</a></p>'
 
 
@@ -125,7 +135,12 @@ BLOCK_RENDERERS: dict[str, object] = {
 }
 
 
-def render_block(block: dict, doc_disc: dict | None = None) -> str:
+def render_block(
+    block: dict,
+    doc_disc: dict | None = None,
+    relative_root: str = "..",
+    base_path: str = "/rig-relay",
+) -> str:
     btype = block.get("type", "paragraph")
 
     if btype == "diagram_ref":
@@ -153,7 +168,19 @@ def render_block(block: dict, doc_disc: dict | None = None) -> str:
     if renderer is None:
         body = f'<p id="{bid}" class="{css_cls}"{data_attrs}>{content}</p>'
     else:
-        body = renderer(block, content, title, bid, css_cls, data_attrs)  # type: ignore[operator]
+        if btype == "link":
+            body = renderer(  # type: ignore[operator]
+                block,
+                content,
+                title,
+                bid,
+                css_cls,
+                data_attrs,
+                relative_root=relative_root,
+                base_path=base_path,
+            )
+        else:
+            body = renderer(block, content, title, bid, css_cls, data_attrs)  # type: ignore[operator]
 
     if btype in {"code", "json"}:
         return body

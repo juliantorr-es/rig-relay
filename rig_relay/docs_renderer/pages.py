@@ -16,6 +16,8 @@ from rig_relay.docs_renderer.models import SiteMeta
 def make_breadcrumb(
     sm: SiteMeta, site_manifest: dict | None, collection_title: str, did: str
 ) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     if not collection_title:
         return ""
     site_title_html = _html.escape(sm.site_title)
@@ -25,9 +27,13 @@ def make_breadcrumb(
             if col.get("title") == collection_title:
                 cid = col.get("collection_id", "")
                 break
+    home_href = make_relative_link(f"{sm.base_path}/", "..", sm.base_path)
     if cid:
-        return f'<p class="eyebrow"><a href="{sm.base_path}/">{site_title_html}</a> / <a href="{sm.base_path}/collections/{cid}.html">{_html.escape(collection_title)}</a></p>\n'
-    return f'<p class="eyebrow"><a href="{sm.base_path}/">{site_title_html}</a> / {_html.escape(collection_title)}</p>\n'
+        col_href = make_relative_link(
+            f"{sm.base_path}/collections/{cid}.html", "..", sm.base_path
+        )
+        return f'<p class="eyebrow"><a href="{home_href}">{site_title_html}</a> / <a href="{col_href}">{_html.escape(collection_title)}</a></p>\n'
+    return f'<p class="eyebrow"><a href="{home_href}">{site_title_html}</a> / {_html.escape(collection_title)}</p>\n'
 
 
 def build_toc(data: dict) -> str:
@@ -67,6 +73,8 @@ def find_collection_title(site_manifest: dict | None, did: str) -> str:
 
 
 def render_document_page(data: dict, site_manifest: dict | None = None) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     title = _html.escape(str(data.get("title", "Untitled")))
     summary = _html.escape(str(data.get("summary", "")))
     did = str(data.get("document_id", ""))
@@ -83,10 +91,13 @@ def render_document_page(data: dict, site_manifest: dict | None = None) -> str:
     toc_html = build_toc(data)
 
     sections_html = "\n".join(
-        render_block(s, doc_disc) for s in data.get("sections", [])
+        render_block(s, doc_disc, relative_root="..", base_path=sm.base_path)
+        for s in data.get("sections", [])
     )
     og_tags = make_og_tags(canonical_url, title, summary, "article")
-    head_tags = make_head_tags(sm, canonical_url, og_tags)
+    head_tags = make_head_tags(sm, canonical_url, og_tags, relative_root="..")
+
+    home_href = make_relative_link(f"{sm.base_path}/", "..", sm.base_path)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -101,7 +112,7 @@ def render_document_page(data: dict, site_manifest: dict | None = None) -> str:
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <nav aria-label="Primary">
-    <a href="{sm.base_path}/">{_html.escape(sm.site_title)}</a>
+    <a href="{home_href}">{_html.escape(sm.site_title)}</a>
   </nav>
   {breadcrumb}  <h1>{title}</h1>
   <p class="doc-summary">{summary}</p>
@@ -137,6 +148,8 @@ def render_document_page(data: dict, site_manifest: dict | None = None) -> str:
 def render_code_schema(
     data: dict, source_path: str, site_manifest: dict | None = None
 ) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     title = _html.escape(str(data.get("title", "Untitled")))
     summary = _html.escape(str(data.get("summary", "")))
     status = _html.escape(str(data.get("status", "draft")))
@@ -156,7 +169,10 @@ def render_code_schema(
             summary,
             "article",
         ),
+        relative_root="..",
     )
+
+    home_href = make_relative_link(f"{sm.base_path}/", "..", sm.base_path)
 
     def _list(items: object) -> str:
         if not isinstance(items, list) or not items:
@@ -179,7 +195,7 @@ def render_code_schema(
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <nav aria-label="Primary">
-    <a href="{sm.base_path}/">{_html.escape(sm.site_title)}</a>
+    <a href="{home_href}">{_html.escape(sm.site_title)}</a>
   </nav>
   <h1>{title}</h1>
   <p class="doc-summary">{summary}</p>
@@ -261,6 +277,8 @@ def render_code_schema(
 def render_threat_model(
     data: dict, source_path: str, site_manifest: dict | None = None
 ) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     title = _html.escape(str(data.get("title", "Untitled")))
     summary = _html.escape(str(data.get("summary", "")))
     status = _html.escape(str(data.get("status", "draft")))
@@ -277,7 +295,10 @@ def render_threat_model(
             summary,
             "article",
         ),
+        relative_root="..",
     )
+
+    home_href = make_relative_link(f"{sm.base_path}/", "..", sm.base_path)
 
     def _esc(v: object) -> str:
         return _html.escape(str(v)) if v else ""
@@ -351,7 +372,7 @@ def render_threat_model(
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <nav aria-label="Primary">
-    <a href="{sm.base_path}/">{_html.escape(sm.site_title)}</a>
+    <a href="{home_href}">{_html.escape(sm.site_title)}</a>
   </nav>
   <h1>{title}</h1>
   <p class="doc-summary">{summary}</p>
@@ -697,6 +718,8 @@ def _build_audit_body(data: dict) -> str:
 def render_integration_audit(
     data: dict, source_path: str, site_manifest: dict | None = None
 ) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     title = _html.escape(str(data.get("title", "Untitled")))
     summary = _html.escape(str(data.get("summary", "")))
     status = _html.escape(str(data.get("status", "draft")))
@@ -716,8 +739,10 @@ def render_integration_audit(
             summary,
             "article",
         ),
+        relative_root="..",
     )
 
+    home_href = make_relative_link(f"{sm.base_path}/", "..", sm.base_path)
     body = _build_audit_body(data)
 
     return f"""<!DOCTYPE html>
@@ -733,7 +758,7 @@ def render_integration_audit(
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <nav aria-label="Primary">
-    <a href="{sm.base_path}/">{_html.escape(sm.site_title)}</a>
+    <a href="{home_href}">{_html.escape(sm.site_title)}</a>
   </nav>
   {breadcrumb}
   <h1>{title}</h1>

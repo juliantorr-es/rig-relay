@@ -16,16 +16,20 @@ def render_index(manifest: dict) -> str:
 
 
 def _render_archive(manifest: dict, is_archive: bool = False) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     sm = extract_site_meta(manifest)
     if is_archive:
         title = "Evidence Archive"
         desc = "Full generated documentation archive for architecture, governance, audits, release proofs, security, and code schemas."
+        relative_root = ".."
     else:
         title = _html.escape(sm.site_title)
         desc = _html.escape(str(manifest.get("site_description", "")))
+        relative_root = "."
     canonical_url = f"{sm.base_url}/" if sm.base_url else ""
     og_tags = make_og_tags(canonical_url, title, desc, "website")
-    head_tags = make_head_tags(sm, canonical_url, og_tags)
+    head_tags = make_head_tags(sm, canonical_url, og_tags, relative_root=relative_root)
 
     collections_html = ""
     for col in manifest.get("collections", []):
@@ -38,10 +42,17 @@ def _render_archive(manifest: dict, is_archive: bool = False) -> str:
         for doc in col.get("documents", []):
             did = _html.escape(str(doc.get("document_id", "")))
             dtitle = _html.escape(str(doc.get("title_override", did)))
-            docs_html += f'<li><a href="{sm.base_path}/pages/{did}.html">{dtitle}</a></li>\n'
+            page_href = make_relative_link(
+                f"{sm.base_path}/pages/{did}.html", relative_root, sm.base_path
+            )
+            docs_html += f'<li><a href="{page_href}">{dtitle}</a></li>\n'
+
+        col_href = make_relative_link(
+            f"{sm.base_path}/collections/{col_id}.html", relative_root, sm.base_path
+        )
         collections_html += (
             f'<section class="collection-card">'
-            f'<h2><a href="{sm.base_path}/collections/{col_id}.html">{col_title}</a></h2>'
+            f'<h2><a href="{col_href}">{col_title}</a></h2>'
             f"{'<p>' + col_desc + '</p>' if col_desc else ''}"
             f'<p class="meta">{count_label}</p>'
             f"<ul>{docs_html}</ul></section>\n"
@@ -75,6 +86,8 @@ def _render_archive(manifest: dict, is_archive: bool = False) -> str:
 
 
 def render_collection_page(collection: dict, site_manifest: dict) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     col_id = str(collection.get("collection_id", ""))
     col_title = _html.escape(str(collection.get("title", "")))
     col_desc = _html.escape(str(collection.get("description", "")))
@@ -83,14 +96,19 @@ def render_collection_page(collection: dict, site_manifest: dict) -> str:
     sm = extract_site_meta(site_manifest)
     canonical_url = f"{sm.base_url}/collections/{col_id}.html" if sm.base_url else ""
     og_tags = make_og_tags(canonical_url, col_title, col_desc, "website")
-    head_tags = make_head_tags(sm, canonical_url, og_tags)
+    head_tags = make_head_tags(sm, canonical_url, og_tags, relative_root="..")
     count_label = f"{doc_count} document{'s' if doc_count != 1 else ''}"
 
     docs_html = ""
     for doc in documents:
         did = _html.escape(str(doc.get("document_id", "")))
         dtitle = _html.escape(str(doc.get("title_override", did)))
-        docs_html += f'<li><a href="{sm.base_path}/pages/{did}.html">{dtitle}</a></li>\n'
+        page_href = make_relative_link(
+            f"{sm.base_path}/pages/{did}.html", "..", sm.base_path
+        )
+        docs_html += f'<li><a href="{page_href}">{dtitle}</a></li>\n'
+
+    home_href = make_relative_link(f"{sm.base_path}/", "..", sm.base_path)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -105,9 +123,9 @@ def render_collection_page(collection: dict, site_manifest: dict) -> str:
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <nav aria-label="Primary">
-    <a href="{sm.base_path}/">{_html.escape(sm.site_title)}</a>
+    <a href="{home_href}">{_html.escape(sm.site_title)}</a>
   </nav>
-  <p class="eyebrow"><a href="{sm.base_path}/">{_html.escape(sm.site_title)}</a> / Collection</p>
+  <p class="eyebrow"><a href="{home_href}">{_html.escape(sm.site_title)}</a> / Collection</p>
   <h1>{col_title}</h1>
   <p class="doc-summary">{col_desc}</p>
   <p class="meta">{count_label}</p>

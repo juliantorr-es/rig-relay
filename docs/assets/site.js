@@ -15,7 +15,10 @@
 	var BASE_PATH = document.querySelector('meta[name="base-path"]')
 		? document.querySelector('meta[name="base-path"]').content
 		: "/rig-relay";
-	var SEARCH_INDEX_URL = BASE_PATH + "/search-index.json";
+	var RELATIVE_ROOT = document.querySelector('meta[name="relative-root"]')
+		? document.querySelector('meta[name="relative-root"]').content
+		: ".";
+	var SEARCH_INDEX_URL = RELATIVE_ROOT + "/search-index.json";
 	var searchData = null;
 	var searchLoading = false;
 
@@ -126,7 +129,7 @@
 			var html = '<ul class="search-list">';
 			for (var k = 0; k < top.length; k++) {
 				var m = top[k];
-				var href = BASE_PATH + "/pages/" + m.doc.document_id + ".html";
+				var href = RELATIVE_ROOT + "/pages/" + m.doc.document_id + ".html";
 				html +=
 					'<li><a href="' +
 					href +

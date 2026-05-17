@@ -1,4 +1,4 @@
 {
-  "signature": "rig_relay/tracing/_contract.py::Unresolved from this turn — rig_relay/tracing/_contract.py:\n🔴 STOP — 1 issue(s) must be fixed:\n  Cannot access attribute \"get\" for class \"FunctionType\"\n    Attribute \"get\" is unknown",
-  "sessionId": "lens-mp91fw7f-b384d232"
+  "signature": "rig_relay/release_gate/__main__.py|rig_relay/release_gate/_static_artifacts.py|tests/release_gate/test_release_evidence_gate.py::Unresolved from this turn — rig_relay/release_gate/__main__.py:\n🔴 STOP — 1 issue(s) must be fixed:\n  Cannot access attribute \"FAILED\" for class \"type[CheckStatus]\"\n    Attribute \"FAILED\" is unknown",
+  "sessionId": "lens-mpa0be3b-0038f116"
 }

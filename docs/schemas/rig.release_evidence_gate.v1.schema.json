@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.github.io/schemas/rig.release_evidence_gate.v1.schema.json",
+  "title": "Release Evidence Gate v1 Receipt",
+  "description": "Deterministic release readiness verdict from the Release Evidence Gate. Produced by scripts/rig_relay_release_evidence_gate.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "gate_id",
+    "repository",
+    "head_sha",
+    "branch",
+    "generated_at",
+    "overall_status",
+    "summary",
+    "checks",
+    "findings",
+    "artifacts",
+    "policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.release_evidence_gate.v1",
+      "description": "Schema version identifier for this receipt format."
+    },
+    "gate_id": {
+      "type": "string",
+      "description": "Stable identifier for the gate run (e.g., 'release_evidence_v1')."
+    },
+    "repository": {
+      "type": "string",
+      "description": "Absolute path to the repository root at time of gate execution."
+    },
+    "head_sha": {
+      "type": "string",
+      "description": "Git HEAD SHA at time of gate execution."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch at time of gate execution."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the gate receipt was generated."
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["passed", "failed", "warning", "skipped"],
+      "description": "Derived overall gate verdict. Computed from check results and policy — never user-supplied."
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_checks", "passed", "failed", "warning", "skipped", "total_findings", "findings_by_severity"],
+      "properties": {
+        "total_checks": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "warning": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "total_findings": { "type": "integer", "minimum": 0 },
+        "findings_by_severity": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 },
+          "description": "Count of findings keyed by severity (blocker, high, medium, low, info)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array",
+      "description": "Check results sorted deterministically by check_id.",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "title", "status", "severity", "summary", "evidence"],
+        "properties": {
+          "check_id": { "type": "string" },
+          "title": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "deferred", "warn"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["blocker", "high", "medium", "low", "info"]
+          },
+          "summary": { "type": "string" },
+          "evidence": {
+            "type": "object",
+            "description": "Arbitrary evidence collected by the check."
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "Findings flattened from all checks, sorted deterministically by severity rank then finding_id.",
+      "items": {
+        "type": "object",
+        "required": ["finding_id", "check_id", "category", "description", "severity", "source", "recommendation"],
+        "properties": {
+          "finding_id": { "type": "string" },
+          "check_id": { "type": "string" },
+          "category": { "type": "string" },
+          "description": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["blocker", "high", "medium", "low", "info"]
+          },
+          "source": { "type": "string" },
+          "recommendation": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to artifacts generated during gate execution."
+    },
+    "policy": {
+      "type": "object",
+      "required": ["required_checks", "overrides", "artifact_allowlist", "cache_policy"],
+      "properties": {
+        "required_checks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Check IDs that must not be skipped silently."
+        },
+        "overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["check_id"],
+            "properties": {
+              "check_id": { "type": "string" },
+              "severity": {
+                "type": "string",
+                "enum": ["blocker", "high", "medium", "low", "info"]
+              },
+              "release_blocking": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "artifact_allowlist": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "cache_policy": {
+          "type": "string",
+          "enum": ["default", "no_cache", "force_refresh"]
+        },
+        "strict_warnings_exit_nonzero": {
+          "type": "boolean",
+          "description": "If true, --strict mode exits non-zero on warnings."
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

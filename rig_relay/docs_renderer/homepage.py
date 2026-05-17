@@ -20,11 +20,14 @@ def _load_home_json() -> dict:
     return {}
 
 
-def _home_actions(data: dict) -> str:
+def _home_actions(data: dict, sm: SiteMeta) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     parts = []
     for a in data.get("primary_actions", []):
+        href = make_relative_link(str(a.get("href", "")), ".", sm.base_path)
         parts.append(
-            f'<a class="action-card" href="{_html.escape(a.get("href", ""))}">'
+            f'<a class="action-card" href="{_html.escape(href)}">'
             f"<strong>{_html.escape(a.get('label', ''))}</strong>"
             f"<span>{_html.escape(a.get('description', ''))}</span></a>"
         )
@@ -58,22 +61,28 @@ def _home_metrics(data: dict) -> str:
     return "\n".join(parts)
 
 
-def _home_audience(data: dict) -> str:
+def _home_audience(data: dict, sm: SiteMeta) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     parts = []
     for p in data.get("audience_paths", []):
+        href = make_relative_link(str(p.get("href", "")), ".", sm.base_path)
         parts.append(
-            f'<a class="audience-card" href="{_html.escape(p.get("href", ""))}">'
+            f'<a class="audience-card" href="{_html.escape(href)}">'
             f"<strong>{_html.escape(p.get('label', ''))}</strong>"
             f"<span>{_html.escape(p.get('description', ''))}</span></a>"
         )
     return "\n".join(parts)
 
 
-def _home_featured(data: dict) -> str:
+def _home_featured(data: dict, sm: SiteMeta) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     parts = []
     for f in data.get("featured_links", [])[:5]:
+        href = make_relative_link(str(f.get("href", "")), ".", sm.base_path)
         parts.append(
-            f'<li><a href="{_html.escape(f.get("href", ""))}">'
+            f'<li><a href="{_html.escape(href)}">'
             f"{_html.escape(f.get('title', ''))}</a>"
             f'<span class="search-snippet">{_html.escape(f.get("summary", ""))}</span></li>'
         )
@@ -97,6 +106,8 @@ def _home_diagram(data: dict) -> str:
 
 
 def render_homepage(manifest: dict) -> str:
+    from rig_relay.docs_renderer.paths import make_relative_link
+
     data = _load_home_json()
     sm = extract_site_meta(manifest)
     title = _html.escape(data.get("title", sm.site_title))
@@ -105,17 +116,21 @@ def render_homepage(manifest: dict) -> str:
     partner = _html.escape(data.get("partner_friendly_explanation", ""))
     canonical_url = f"{sm.base_url}/" if sm.base_url else ""
     og_tags = make_og_tags(canonical_url, title, desc, "website")
-    head_tags = make_head_tags(sm, canonical_url, og_tags)
+    head_tags = make_head_tags(sm, canonical_url, og_tags, relative_root=".")
 
     archive = data.get("archive_link", {})
     archive_html = ""
     if archive:
+        arch_href = make_relative_link(str(archive.get("href", "")), ".", sm.base_path)
         archive_html = (
-            f'<a class="archive-callout" href="{_html.escape(archive.get("href", ""))}">'
+            f'<a class="archive-callout" href="{_html.escape(arch_href)}">'
             f"{_html.escape(archive.get('label', ''))}</a>"
         )
 
     diagram_html = _home_diagram(data)
+    footer_href = make_relative_link(
+        f"{sm.base_path}/collections/index.html", ".", sm.base_path
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -133,7 +148,7 @@ def render_homepage(manifest: dict) -> str:
   <p class="tagline">{tagline}</p>
   <p class="hero-summary">{desc}</p>
   <p class="hero-partner">{partner}</p>
-  <div class="hero-actions">{_home_actions(data)}</div>
+  <div class="hero-actions">{_home_actions(data, sm)}</div>
 </header>
 <main id="main" class="homepage">
   <div id="site-search"></div>
@@ -141,12 +156,12 @@ def render_homepage(manifest: dict) -> str:
   <section id="metrics"><h2>Proof Metrics</h2><div class="metrics-grid">{_home_metrics(data)}</div></section>
   <section><h2>Features</h2><div class="features-grid">{_home_features(data)}</div></section>
   {f"<section><h2>How It Works</h2>{diagram_html}</section>" if diagram_html else ""}
-  <section id="audience"><h2>Who Are You?</h2><div class="audience-grid">{_home_audience(data)}</div></section>
-  <section><h2>Featured Docs</h2><ul class="featured-list">{_home_featured(data)}</ul></section>
+  <section id="audience"><h2>Who Are You?</h2><div class="audience-grid">{_home_audience(data, sm)}</div></section>
+  <section><h2>Featured Docs</h2><ul class="featured-list">{_home_featured(data, sm)}</ul></section>
   <section>{archive_html}</section>
 </main>
 <footer>
-  <p><a href="{sm.base_path}/collections/index.html">Evidence Archive</a> &middot; Rig Relay &mdash; AGPL-3.0-or-later</p>
+  <p><a href="{footer_href}">Evidence Archive</a> &middot; Rig Relay &mdash; AGPL-3.0-or-later</p>
 </footer>
 </body>
 </html>
