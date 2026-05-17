@@ -579,6 +579,197 @@ def _render_code_schema(
 """
 
 
+def _render_threat_model(
+    data: dict, source_path: str, site_manifest: dict | None = None
+) -> str:
+    title = html.escape(str(data.get("title", "Untitled")))
+    summary = html.escape(str(data.get("summary", "")))
+    status = html.escape(str(data.get("status", "draft")))
+    updated = html.escape(str(data.get("updated_at", data.get("created_at", ""))))
+
+    sm = _extract_site_meta(site_manifest)
+    did = str(data.get("document_id", data.get("threat_model_id", "")))
+    head_tags = _make_head_tags(
+        sm,
+        f"{sm.base_url}/pages/{did}.html" if sm.base_url else "",
+        _make_og_tags(
+            f"{sm.base_url}/pages/{did}.html" if sm.base_url else "",
+            title,
+            summary,
+            "article",
+        ),
+    )
+
+    def _esc(v: object) -> str:
+        return html.escape(str(v)) if v else ""
+
+    def _li(items: object) -> str:
+        if not isinstance(items, list) or not items:
+            return "<li>None</li>"
+        return "\n".join(f"<li>{html.escape(str(i))}</li>" for i in items)
+
+    def _badge(color: str, text: str) -> str:
+        return (
+            f'<span class="badge" style="background:{color}">{html.escape(text)}</span>'
+        )
+
+    assets_html = ""
+    for a in data.get("assets", []):
+        obj_list = ", ".join(a.get("security_objectives", []))
+        assets_html += f"""<tr>
+  <td>{_esc(a.get("asset_id"))}</td>
+  <td>{_esc(a.get("name"))}</td>
+  <td>{_esc(a.get("classification"))}</td>
+  <td>{_esc(a.get("owner_area"))}</td>
+  <td>{obj_list}</td>
+</tr>\n"""
+
+    boundaries_html = ""
+    for b in data.get("trust_boundaries", []):
+        boundaries_html += f"""<tr>
+  <td>{_esc(b.get("boundary_id"))}</td>
+  <td>{_esc(b.get("name"))}</td>
+  <td>{_esc(b.get("source_zone"))} → {_esc(b.get("target_zone"))}</td>
+  <td>{_esc(b.get("data_crossing"))}</td>
+</tr>\n"""
+
+    threats_html = ""
+    _pc = {
+        "critical": "#dc3545",
+        "high": "#fd7e14",
+        "medium": "#ffc107",
+        "low": "#28a745",
+    }
+    for t in data.get("threats", []):
+        rb = "⚠ Release Blocker" if t.get("release_blocker") else ""
+        threats_html += f"""<tr>
+  <td>{_esc(t.get("threat_id"))}</td>
+  <td>{_esc(t.get("name"))}</td>
+  <td>{_esc(t.get("category"))}</td>
+  <td>{_badge(_pc.get(t.get("priority", "low"), "#6c757d"), t.get("priority", "low"))}</td>
+  <td>{_badge("#6c757d", t.get("status", "open"))}</td>
+  <td>{_esc(rb)}</td>
+</tr>\n"""
+
+    gates_html = ""
+    for g in data.get("release_gates", []):
+        rb = "⚠ Release Blocker" if g.get("release_blocker") else ""
+        gates_html += f"""<tr>
+  <td>{_esc(g.get("gate_id"))}</td>
+  <td>{_esc(g.get("name"))}</td>
+  <td>{_esc(rb)}</td>
+  <td>{_esc(g.get("pass_condition"))}</td>
+</tr>\n"""
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title} — Rig Relay Docs</title>
+<meta name="description" content="{summary}">
+{head_tags}
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="{sm.base_path}/">{html.escape(sm.site_title)}</a>
+  </nav>
+  <h1>{title}</h1>
+  <p class="doc-summary">{summary}</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>{status}</dd>
+    {"<dt>Updated</dt><dd>" + updated + "</dd>" if updated else ""}
+    <dt>Source</dt><dd><code>{html.escape(source_path)}</code></dd>
+  </dl>
+</header>
+<main id="main" class="doc-page">
+  <article>
+    <section>
+      <h2>Scope</h2>
+      <p>{_esc(data.get("scope", {}).get("description", ""))}</p>
+    </section>
+    <section>
+      <h2>Assets ({len(data.get("assets", []))})</h2>
+      <table>
+        <tr><th>Asset ID</th><th>Name</th><th>Classification</th><th>Owner</th><th>Security Objectives</th></tr>
+        {assets_html}
+      </table>
+    </section>
+    <section>
+      <h2>Trust Boundaries ({len(data.get("trust_boundaries", []))})</h2>
+      <table>
+        <tr><th>ID</th><th>Name</th><th>Zone Flow</th><th>Data Crossing</th></tr>
+        {boundaries_html}
+      </table>
+    </section>
+    <section>
+      <h2>Entry Points</h2>
+      <ul>{
+        _li([
+            f"{e.get('name', '')} ({e.get('protocol', '')})"
+            for e in data.get("entry_points", [])
+        ])
+    }</ul>
+    </section>
+    <section>
+      <h2>Threats ({len(data.get("threats", []))})</h2>
+      <table>
+        <tr><th>ID</th><th>Name</th><th>Category</th><th>Priority</th><th>Status</th><th>Blocker</th></tr>
+        {threats_html}
+      </table>
+      <details>
+        <summary>Threat Details</summary>
+        {
+        "".join(
+            f"<h4>{_esc(t.get('threat_id'))}: {_esc(t.get('name'))}</h4>"
+            f"<p>{_esc(t.get('description'))}</p>"
+            f"<p><strong>Attack scenario:</strong> {_esc(t.get('attack_scenario', ''))}</p>"
+            f"<p><strong>Existing mitigations:</strong></p><ul>{_li(t.get('existing_mitigations', []))}</ul>"
+            f"<p><strong>Missing mitigations:</strong></p><ul>{_li(t.get('missing_mitigations', []))}</ul>"
+            f"<p><strong>Detection signals:</strong></p><ul>{_li(t.get('detection_signals', []))}</ul>"
+            for t in data.get("threats", [])
+        )
+    }
+      </details>
+    </section>
+    <section>
+      <h2>Release Gates ({len(data.get("release_gates", []))})</h2>
+      <table>
+        <tr><th>ID</th><th>Name</th><th>Blocker</th><th>Pass Condition</th></tr>
+        {gates_html}
+      </table>
+    </section>
+    <section>
+      <h2>References</h2>
+      <ul>{
+        _li([
+            f"{r.get('anchor_name', '')}: {r.get('relevance', '')}"
+            for r in data.get("references", [])
+        ])
+    }</ul>
+    </section>
+    <section>
+      <h2>Deferred Items</h2>
+      <ul>{
+        _li([
+            f"{d.get('name', '')} — {d.get('reason', '')}"
+            for d in data.get("deferred_items", [])
+        ])
+    }</ul>
+    </section>
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>{html.escape(source_path)}</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>
+"""
+
+
 def _load_site_manifest() -> dict:
     if SITE_MANIFEST.is_file():
         return _load_json(SITE_MANIFEST)
@@ -844,6 +1035,27 @@ def _process_json_files(
             })
 
             html_content = _render_code_schema(
+                data, str(jf.relative_to(REPO_ROOT)), manifest
+            )
+            (PAGES_OUT / f"{did}.html").write_text(html_content, encoding="utf-8")
+        elif sv.startswith("rig.security.threat_model.v"):
+            did = data.get("threat_model_id") or jf.stem
+            if did in seen_ids:
+                errors.append(f"{jf.name}: duplicate document_id '{did}'")
+                continue
+            seen_ids.add(did)
+
+            data.setdefault("document_id", did)
+            data["_source_path"] = str(jf.relative_to(REPO_ROOT))
+            pages.append({
+                "document_id": did,
+                "title": data.get("title", did),
+                "summary": data.get("summary", ""),
+                "tags": data.get("tags", []),
+                "_source_path": str(jf.relative_to(REPO_ROOT)),
+            })
+
+            html_content = _render_threat_model(
                 data, str(jf.relative_to(REPO_ROOT)), manifest
             )
             (PAGES_OUT / f"{did}.html").write_text(html_content, encoding="utf-8")

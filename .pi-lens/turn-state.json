@@ -1,0 +1,17 @@
+{
+  "files": {
+    "scripts/render_static_docs.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1131
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-17T01:25:57.370Z"
+    }
+  },
+  "turnCycles": 0,
+  "maxCycles": 3,
+  "lastUpdated": "2026-05-17T01:25:57.370Z"
+}

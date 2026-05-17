@@ -1368,6 +1368,24 @@
           "title_override": "Tool Batch Execution Contract"
         }
       ]
+    },
+    {
+      "collection_id": "security",
+      "title": "Security",
+      "description": "Security threat model, policy, and governance for Rig Relay.",
+      "order": 34,
+      "documents": [
+        {
+          "document_id": "security-policy",
+          "path": "docs/json/security/security_policy_v0.v1.json",
+          "title_override": "Security Policy v0"
+        },
+        {
+          "document_id": "rig-relay-threat-model-v0",
+          "path": "docs/json/security/threat_model_v0.v1.json",
+          "title_override": "Security Threat Model v0"
+        }
+      ]
     }
   ],
   "disclosure_policy": {

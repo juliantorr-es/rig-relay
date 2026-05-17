@@ -1,0 +1,260 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "security-policy",
+  "title": "Rig Relay Security Policy v0",
+  "document_type": "policy",
+  "summary": "Security posture and expectations for the Rig Relay local governed runtime: local-only default, loopback bridge, token redaction, prompt-injection awareness, WebSocket validation, code schema trust, and mutation safety.",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "updated_at": "2026-05-16",
+  "source_commit": "5b9fa20e",
+  "owners": [
+    "rig-relay-core"
+  ],
+  "tags": [
+    "security",
+    "policy",
+    "governance"
+  ],
+  "audience": [
+    "contributor",
+    "agent",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/security/security_policy_v0.v1.json",
+  "sections": [
+    {
+      "block_id": "posture",
+      "type": "heading",
+      "title": "Security Posture",
+      "level": 1,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "local-only",
+      "type": "paragraph",
+      "content": "Rig Relay operates as a local-first governed runtime. All agent work, tool execution, trace storage, and identity management default to local-only. No data leaves the machine without explicit opt-in. Remote telemetry, cloud uploads, and external coordination are future, opt-in features.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "loopback-bridge",
+      "type": "heading",
+      "title": "Loopback Bridge Expectation",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "loopback-detail",
+      "type": "paragraph",
+      "content": "The desktop bridge server binds to loopback (127.0.0.1) only. It serves the desktop cockpit frontend over HTTP and maintains a WebSocket control channel on the same loopback interface. No external network exposure is intended or supported.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "token-redaction",
+      "type": "heading",
+      "title": "Token Redaction Expectation",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "token-detail",
+      "type": "paragraph",
+      "content": "Local auth tokens must never appear in raw form in trace events, documentation, static site output, frontend console logs, URL query strings, or report content. Token presence may be noted (present/absent) but the token value itself must be redacted at all emission boundaries. The trace endpoint must never derive from websocket_url or include token values.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "no-token-in-output",
+      "type": "heading",
+      "title": "No Token in Traces, Docs, or Static Output",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "no-token-detail",
+      "type": "list",
+      "items": [
+        "Trace events use content-light doctrine: SHA256 hashes, no raw secrets.",
+        "Frontend trace breadcrumbs use field type, not event; never include token values.",
+        "Static documentation renderer escapes all content and redacts absolute local paths.",
+        "Generated HTML must not contain token-like strings or local machine paths."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-schema-trust",
+      "type": "heading",
+      "title": "Code Schema Trust Rules",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-schema-detail",
+      "type": "list",
+      "items": [
+        "Only active, trusted code schemas with verified authority hashes may be used as implementation contracts.",
+        "Source path must exist and source_hash must match the current file content.",
+        "Untrusted, deprecated, or archive-status schemas must not be selected as authoritative context.",
+        "Context packs must exclude generated HTML (docs/pages/**, **/*.html) unless a future schema explicitly authorizes static-site inspection.",
+        "Schema content is reviewed; stale or tampered schemas are detected via hash mismatch."
+      ],
+      "ordered": true,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "prompt-injection",
+      "type": "heading",
+      "title": "Prompt Injection Awareness",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "prompt-injection-detail",
+      "type": "paragraph",
+      "content": "Rig Relay acknowledges the risk of direct and indirect prompt injection through user input, repository content, web-fetched data, and tool output. Current mitigations include trust tier labeling in the context renderer, content-light trace doctrine, and tool permission gating. Formal prompt injection classifiers and content sanitization are identified as missing mitigations and deferred to a dedicated defense slice.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "websocket-security",
+      "type": "heading",
+      "title": "WebSocket Origin, Auth, and Message Validation",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "websocket-detail",
+      "type": "list",
+      "items": [
+        "WebSocket upgrade at /ws must require authentication before any subscription or projection stream is delivered.",
+        "Origin validation on WebSocket upgrade handshake is expected to reduce CSWSH risk.",
+        "Message validation (schema enforcement, size limits, rate limiting) is identified as a missing mitigation.",
+        "POST /ws returns 405 Method Not Allowed. /ws is WebSocket-only."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "dirty-files",
+      "type": "heading",
+      "title": "User-Owned Dirty Files and Mutation Safety",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "dirty-files-detail",
+      "type": "list",
+      "items": [
+        "Pre-existing modified, staged, or untracked files are protected. Agents must not discard or overwrite them.",
+        "Parallel agent lane changes are preserved; edits are additive.",
+        "Direct git commit and git add are blocked; agents use the checkpoint tool.",
+        "No git amend, force push, reset, or clean operations are permitted."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "threat-model",
+      "type": "heading",
+      "title": "Threat Model",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "threat-model-ref",
+      "type": "paragraph",
+      "content": "See the Rig Relay Security Threat Model v0 for a structured, machine-readable assessment of assets, trust boundaries, threats, mitigations, and release gates.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "reporting",
+      "type": "heading",
+      "title": "Reporting",
+      "level": 2,
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "reporting-detail",
+      "type": "paragraph",
+      "content": "Security concerns should be raised via GitHub issues on the rig-relay repository. For sensitive findings, contact the maintainers directly. This is a local-first runtime; the primary threat surface is local agent behavior, not network-facing services.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    }
+  ],
+  "references": [
+    {
+      "document_id": "threat-model-v0",
+      "title": "Rig Relay Security Threat Model v0"
+    }
+  ],
+  "provenance": {
+    "author": "Rig Relay Security Slice",
+    "session_id": "threat-model-v0"
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true,
+    "progressive_summary": "Security posture and expectations for the Rig Relay local governed runtime: local-only default, loopback bridge, token redaction, prompt-injection awareness, WebSocket validation, code schema trust, and mutation safety."
+  }
+}

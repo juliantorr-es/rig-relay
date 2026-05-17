@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Relay Security Policy v0 — Rig Relay Docs</title>
+<meta name="description" content="Security posture and expectations for the Rig Relay local governed runtime: local-only default, loopback bridge, token redaction, prompt-injection awareness, WebSocket validation, code schema trust, and mutation safety.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/security-policy.html">
+<meta property="og:title" content="Rig Relay Security Policy v0">
+<meta property="og:description" content="Security posture and expectations for the Rig Relay local governed runtime: local-only default, loopback bridge, token redaction, prompt-injection awareness, WebSocket validation, code schema trust, and mutation safety.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/security-policy.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay Security Policy v0">
+<meta name="twitter:description" content="Security posture and expectations for the Rig Relay local governed runtime: local-only default, loopback bridge, token redaction, prompt-injection awareness, WebSocket validation, code schema trust, and mutation safety.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="icon" href="/rig-relay/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / <a href="/rig-relay/collections/security.html">Security</a></p>
+  <h1>Rig Relay Security Policy v0</h1>
+  <p class="doc-summary">Security posture and expectations for the Rig Relay local governed runtime: local-only default, loopback bridge, token redaction, prompt-injection awareness, WebSocket validation, code schema trust, and mutation safety.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/security/security_policy_v0.v1.json</code></dd>
+  </dl>
+</header>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="posture" class="disclosure-standard" data-disclosure-level="standard"></h1>
+
+<p id="local-only" class="disclosure-standard" data-disclosure-level="standard">Rig Relay operates as a local-first governed runtime. All agent work, tool execution, trace storage, and identity management default to local-only. No data leaves the machine without explicit opt-in. Remote telemetry, cloud uploads, and external coordination are future, opt-in features.</p>
+
+<h2 id="loopback-bridge" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<p id="loopback-detail" class="disclosure-standard" data-disclosure-level="standard">The desktop bridge server binds to loopback (127.0.0.1) only. It serves the desktop cockpit frontend over HTTP and maintains a WebSocket control channel on the same loopback interface. No external network exposure is intended or supported.</p>
+
+<h2 id="token-redaction" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<p id="token-detail" class="disclosure-standard" data-disclosure-level="standard">Local auth tokens must never appear in raw form in trace events, documentation, static site output, frontend console logs, URL query strings, or report content. Token presence may be noted (present/absent) but the token value itself must be redacted at all emission boundaries. The trace endpoint must never derive from websocket_url or include token values.</p>
+
+<h2 id="no-token-in-output" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<ul id="no-token-detail" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Trace events use content-light doctrine: SHA256 hashes, no raw secrets.</li>
+  <li>Frontend trace breadcrumbs use field type, not event; never include token values.</li>
+  <li>Static documentation renderer escapes all content and redacts absolute local paths.</li>
+  <li>Generated HTML must not contain token-like strings or local machine paths.</li>
+</ul>
+
+<h2 id="code-schema-trust" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<ol id="code-schema-detail" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Only active, trusted code schemas with verified authority hashes may be used as implementation contracts.</li>
+  <li>Source path must exist and source_hash must match the current file content.</li>
+  <li>Untrusted, deprecated, or archive-status schemas must not be selected as authoritative context.</li>
+  <li>Context packs must exclude generated HTML (docs/pages/**, **/*.html) unless a future schema explicitly authorizes static-site inspection.</li>
+  <li>Schema content is reviewed; stale or tampered schemas are detected via hash mismatch.</li>
+</ol>
+
+<h2 id="prompt-injection" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<p id="prompt-injection-detail" class="disclosure-standard" data-disclosure-level="standard">Rig Relay acknowledges the risk of direct and indirect prompt injection through user input, repository content, web-fetched data, and tool output. Current mitigations include trust tier labeling in the context renderer, content-light trace doctrine, and tool permission gating. Formal prompt injection classifiers and content sanitization are identified as missing mitigations and deferred to a dedicated defense slice.</p>
+
+<h2 id="websocket-security" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<ul id="websocket-detail" class="disclosure-standard" data-disclosure-level="standard">
+  <li>WebSocket upgrade at /ws must require authentication before any subscription or projection stream is delivered.</li>
+  <li>Origin validation on WebSocket upgrade handshake is expected to reduce CSWSH risk.</li>
+  <li>Message validation (schema enforcement, size limits, rate limiting) is identified as a missing mitigation.</li>
+  <li>POST /ws returns 405 Method Not Allowed. /ws is WebSocket-only.</li>
+</ul>
+
+<h2 id="dirty-files" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<ul id="dirty-files-detail" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Pre-existing modified, staged, or untracked files are protected. Agents must not discard or overwrite them.</li>
+  <li>Parallel agent lane changes are preserved; edits are additive.</li>
+  <li>Direct git commit and git add are blocked; agents use the checkpoint tool.</li>
+  <li>No git amend, force push, reset, or clean operations are permitted.</li>
+</ul>
+
+<h2 id="threat-model" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<p id="threat-model-ref" class="disclosure-standard" data-disclosure-level="standard">See the Rig Relay Security Threat Model v0 for a structured, machine-readable assessment of assets, trust boundaries, threats, mitigations, and release gates.</p>
+
+<h2 id="reporting" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<p id="reporting-detail" class="disclosure-standard" data-disclosure-level="standard">Security concerns should be raised via GitHub issues on the rig-relay repository. For sensitive findings, contact the maintainers directly. This is a local-first runtime; the primary threat surface is local agent behavior, not network-facing services.</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/security/security_policy_v0.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

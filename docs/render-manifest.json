@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-05-17T00:17:50.845498+00:00",
-  "git_commit": "a1243b594170",
-  "page_count": 220,
-  "collection_page_count": 33,
+  "generated_at": "2026-05-17T01:23:00.670241+00:00",
+  "git_commit": "5b9fa20ebb0e",
+  "page_count": 222,
+  "collection_page_count": 34,
   "pages": [
     {
       "document_id": "rig-integration-contract",
@@ -1055,6 +1055,16 @@
       "source_json_path": "docs/json/release/versioning-policy.v1.json"
     },
     {
+      "document_id": "security-policy",
+      "title": "Rig Relay Security Policy v0",
+      "source_json_path": "docs/json/security/security_policy_v0.v1.json"
+    },
+    {
+      "document_id": "rig-relay-threat-model-v0",
+      "title": "Rig Relay Security Threat Model v0",
+      "source_json_path": "docs/json/security/threat_model_v0.v1.json"
+    },
+    {
       "document_id": "runtime-provenance",
       "title": "Runtime Provenance",
       "source_json_path": "docs/json/troubleshooting/runtime-provenance.v1.json"
@@ -1138,6 +1148,7 @@
     "release",
     "troubleshooting",
     "ui",
-    "code-schemas"
+    "code-schemas",
+    "security"
   ]
 }

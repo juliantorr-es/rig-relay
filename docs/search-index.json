@@ -1511,6 +1511,24 @@
     "path": "pages/versioning-policy.html"
   },
   {
+    "document_id": "security-policy",
+    "title": "Rig Relay Security Policy v0",
+    "summary": "Security posture and expectations for the Rig Relay local governed runtime: local-only default, loopback bridge, token redaction, prompt-injection awareness, WebSocket validation, code schema trust, and mutation safety.",
+    "tags": [
+      "security",
+      "policy",
+      "governance"
+    ],
+    "path": "pages/security-policy.html"
+  },
+  {
+    "document_id": "rig-relay-threat-model-v0",
+    "title": "Rig Relay Security Threat Model v0",
+    "summary": "Initial threat model covering the local governed runtime, static documentation site, desktop bridge, WebSocket control channel, frontend runtime config, trace/evidence store, agent tool execution path, code schema context assembly, and generated docs site.",
+    "tags": [],
+    "path": "pages/rig-relay-threat-model-v0.html"
+  },
+  {
     "document_id": "runtime-provenance",
     "title": "Runtime Provenance",
     "summary": "How to verify what code Rig Relay is actually running and diagnose stale-install problems.",

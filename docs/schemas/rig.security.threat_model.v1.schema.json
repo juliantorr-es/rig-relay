@@ -1,0 +1,315 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.security.threat_model.v1.schema.json",
+  "title": "Rig Security Threat Model",
+  "description": "Machine-readable security threat model for Rig Relay runtime, desktop bridge, WebSocket channel, frontend, trace store, agent tool execution, code schema assembly, and generated docs.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "threat_model_id",
+    "title",
+    "summary",
+    "status",
+    "created_at",
+    "scope",
+    "assets",
+    "trust_boundaries",
+    "threats",
+    "release_gates"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.security.threat_model.v1"
+    },
+    "threat_model_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "archived"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "source_commit": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "in_scope": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "out_of_scope": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "asset_id",
+          "name",
+          "classification",
+          "security_objectives"
+        ],
+        "properties": {
+          "asset_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "classification": {
+            "type": "string",
+            "enum": ["public", "internal", "sensitive", "secret"]
+          },
+          "owner_area": { "type": "string" },
+          "storage_location": { "type": "string" },
+          "exposure_surfaces": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "security_objectives": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "confidentiality",
+                "integrity",
+                "availability",
+                "accountability",
+                "privacy"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "trust_boundaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "boundary_id",
+          "name",
+          "source_zone",
+          "target_zone",
+          "data_crossing",
+          "authority_change"
+        ],
+        "properties": {
+          "boundary_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "source_zone": { "type": "string" },
+          "target_zone": { "type": "string" },
+          "data_crossing": { "type": "string" },
+          "authority_change": { "type": "boolean" },
+          "existing_controls": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "missing_controls": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "entry_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "entry_id": { "type": "string" },
+          "name": { "type": "string" },
+          "protocol": { "type": "string" },
+          "auth_required": { "type": "boolean" },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "threats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "threat_id",
+          "name",
+          "category",
+          "description",
+          "affected_assets",
+          "priority",
+          "status"
+        ],
+        "properties": {
+          "threat_id": { "type": "string" },
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "description": { "type": "string" },
+          "affected_assets": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "entry_points": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "trust_boundaries": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "attack_scenario": { "type": "string" },
+          "existing_mitigations": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "missing_mitigations": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "detection_signals": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "tests_or_proofs": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "release_blocker": {
+            "type": "boolean"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "owner_area": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["open", "mitigated", "accepted", "deferred"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "mitigations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mitigation_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "controls": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "tests_or_proofs": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "release_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "gate_id",
+          "name",
+          "description",
+          "pass_condition"
+        ],
+        "properties": {
+          "gate_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "required_tests": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "required_artifacts": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "pass_condition": { "type": "string" },
+          "release_blocker": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "test_id": { "type": "string" },
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+          "threats_covered": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "deferred_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": { "type": "string" },
+          "name": { "type": "string" },
+          "reason": { "type": "string" },
+          "deferred_until": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "anchor_name": { "type": "string" },
+          "url": { "type": "string" },
+          "relevance": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "author": { "type": "string" },
+        "session_id": { "type": "string" },
+        "review_status": { "type": "string" },
+        "last_reviewed_at": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
