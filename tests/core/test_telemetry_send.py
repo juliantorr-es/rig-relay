@@ -50,7 +50,52 @@ def _run_telemetry_tasks() -> None:
         loop.close()
 
 
+def _make_granted_consent():
+    from rig_relay.identity.telemetry_consent import (
+        TelemetryConsentScope,
+        grant_consent,
+    )
+
+    return grant_consent(
+        subject_hash="test-hash",
+        provider="test",
+        scopes=[
+            TelemetryConsentScope.USAGE_METRICS,
+            TelemetryConsentScope.CONTENT_LIGHT_BUNDLES,
+            TelemetryConsentScope.CRASH_REPORTS,
+            TelemetryConsentScope.COORDINATION_METRICS,
+            TelemetryConsentScope.TOOL_REFINEMENT_METRICS,
+        ],
+    )
+
+
 class TestTelemetryClient:
+    @pytest.fixture(autouse=True)
+    def _bypass_consent_gate(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from datetime import UTC, datetime
+
+        from rig_relay.core.telemetry.send import TelemetryUploadDecision
+
+        def _fake_evaluate(self: Any, event_name: str) -> TelemetryUploadDecision:
+            if not self._is_remote_telemetry_enabled():
+                return TelemetryUploadDecision(
+                    allowed=False,
+                    reason="remote_disabled",
+                    remote_enabled=False,
+                    decided_at=datetime.now(UTC).isoformat(),
+                )
+            return TelemetryUploadDecision(
+                allowed=True,
+                reason="test_bypass",
+                consent_status="granted",
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        monkeypatch.setattr(
+            TelemetryClient, "_evaluate_consent_gate", _fake_evaluate
+        )
+
     def test_send_telemetry_event_swallows_config_getter_value_error(self) -> None:
         def _raise_config_error() -> Any:
             raise ValueError("config not ready")

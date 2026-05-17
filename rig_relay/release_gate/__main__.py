@@ -42,6 +42,12 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="exclude_check",
         help="Exclude these check IDs (repeatable)",
     )
+    p.add_argument(
+        "--lifecycle",
+        type=Path,
+        default=None,
+        help="Path to findings lifecycle policy JSON file",
+    )
     return p
 
 
@@ -59,7 +65,14 @@ def _main() -> int:
         return 2
 
     ctx = CheckContext(repo_root=repo_root, output_dir=output_dir)
-    runner = GateRunner(checks=registry)
+
+    lifecycle = None
+    if args.lifecycle:
+        from rig_relay.release_gate.findings_lifecycle import load_lifecycle_policy
+
+        lifecycle = load_lifecycle_policy(args.lifecycle)
+
+    runner = GateRunner(checks=registry, lifecycle=lifecycle)
 
     try:
         result = runner.run(
@@ -83,6 +96,7 @@ def _main() -> int:
             "summary": asdict(result.summary),
             "checks": result.checks,
             "findings": result.findings,
+            "lifecycle": result.lifecycle,
         }
         output_path.write_text(
             json.dumps(output, indent=2, sort_keys=True), encoding="utf-8"

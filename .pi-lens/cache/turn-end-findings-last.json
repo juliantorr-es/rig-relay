@@ -1,4 +1,4 @@
 {
-  "signature": "rig_relay/release_gate/_runtime_readiness.py::Unresolved from this turn — rig_relay/release_gate/_runtime_readiness.py:\n🔴 STOP — 7 issue(s) must be fixed:\n  \"CheckContext\" is not defined\n  L867: Undefined name `CheckContext`\n  L875: Undefined name `CheckContext`\n  L879: Undefined name `CheckContext`\n  L883: Undefined name `CheckContext`\n  L887: Undefined name `CheckContext`\n  L891: Undefined name `CheckContext`",
-  "sessionId": "lens-mpa0be3b-0038f116"
+  "signature": "tests/core/test_telemetry_consent_gate.py::Unresolved from this turn — tests/core/test_telemetry_consent_gate.py:\n🔴 STOP — 1 issue(s) must be fixed:\n  L303: Local variable `original_log` is assigned to but never used",
+  "sessionId": "lens-mpa0bk11-b5b74e00"
 }

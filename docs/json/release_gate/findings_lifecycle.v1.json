@@ -1,0 +1,49 @@
+{
+  "$schema": "https://rig-relay.github.io/schemas/rig.release_gate.findings_lifecycle.v1.schema.json",
+  "schema_version": "rig.release_gate.findings_lifecycle.v1",
+  "policy_id": "release_gate_findings_lifecycle_v0",
+  "description": "Initial findings lifecycle policy for Rig Relay release gate. Conservative seed: only classifies clear false positives where runtime readiness check IDs appear as trace event string literals. All other failures remain untriaged and blocking until addressed.",
+  "updated_at": "2026-05-17T00:00:00Z",
+  "entries": [
+    {
+      "finding_id": "trace.violation.TC-0021",
+      "check_id": "runtime.trace_contract.clean_or_triaged",
+      "lifecycle_state": "accepted_false_positive",
+      "reason": "String literal 'runtime.trace_contract.clean_or_triaged' in _runtime_readiness.py is a check_id constant, not a trace event emission. The trace contract scanner treats string literals as event names, including check IDs.",
+      "owner": "lane-c",
+      "evidence_refs": ["rig_relay/release_gate/_runtime_readiness.py"]
+    },
+    {
+      "finding_id": "trace.violation.TC-0022",
+      "check_id": "runtime.trace_contract.clean_or_triaged",
+      "lifecycle_state": "accepted_false_positive",
+      "reason": "String literal 'runtime.visibility_matrix.release_paths' in _runtime_readiness.py is a check_id constant, not a trace event emission.",
+      "owner": "lane-c",
+      "evidence_refs": ["rig_relay/release_gate/_runtime_readiness.py"]
+    },
+    {
+      "finding_id": "trace.violation.TC-0023",
+      "check_id": "runtime.trace_contract.clean_or_triaged",
+      "lifecycle_state": "accepted_false_positive",
+      "reason": "String literal 'runtime.websocket.security_invariants' in _runtime_readiness.py is a check_id constant, not a trace event emission.",
+      "owner": "lane-c",
+      "evidence_refs": ["rig_relay/release_gate/_runtime_readiness.py"]
+    },
+    {
+      "finding_id": "trace.violation.TC-0024",
+      "check_id": "runtime.trace_contract.clean_or_triaged",
+      "lifecycle_state": "accepted_false_positive",
+      "reason": "String literal 'runtime.github_app.audit_readiness' in _runtime_readiness.py is a check_id constant, not a trace event emission.",
+      "owner": "lane-c",
+      "evidence_refs": ["rig_relay/release_gate/_runtime_readiness.py"]
+    },
+    {
+      "finding_id": "trace.violation.TC-0025",
+      "check_id": "runtime.trace_contract.clean_or_triaged",
+      "lifecycle_state": "accepted_false_positive",
+      "reason": "String literal 'runtime.ci.workflow_coverage' in _runtime_readiness.py is a check_id constant, not a trace event emission.",
+      "owner": "lane-c",
+      "evidence_refs": ["rig_relay/release_gate/_runtime_readiness.py"]
+    }
+  ]
+}

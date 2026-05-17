@@ -128,6 +128,7 @@ class InitHelpersMixin:
             session_id_getter=lambda: self.session_id,
             parent_session_id_getter=lambda: self.parent_session_id,
             entrypoint_metadata_getter=lambda: self.entrypoint_metadata,
+            consent_record_getter=self._load_consent_record,
         )
         self.session_logger = SessionLogger(config.session_logging, self.session_id)
 
@@ -167,6 +168,22 @@ class InitHelpersMixin:
             self._context_packet = _ctx_build(ContextRequest(mode="map"))
         except Exception:
             pass
+
+    def _load_consent_record(self) -> object | None:
+        try:
+            from pathlib import Path
+
+            consent_path = Path.cwd() / ".rig" / "relay" / "telemetry_consent.json"
+            if not consent_path.is_file():
+                return None
+            import json
+
+            data = json.loads(consent_path.read_text(encoding="utf-8"))
+            from rig_relay.identity.telemetry_consent import TelemetryConsentRecord
+
+            return TelemetryConsentRecord.model_validate(data)
+        except Exception:
+            return None
 
     @staticmethod
     def _make_receipt_store() -> Any:

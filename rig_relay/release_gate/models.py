@@ -206,3 +206,89 @@ class GateResult:
     findings: list[dict[str, Any]] = field(default_factory=list)
     artifacts: list[str] = field(default_factory=list)
     policy: dict[str, Any] = field(default_factory=dict)
+    lifecycle: dict[str, Any] = field(default_factory=dict)
+
+
+# ── Findings lifecycle ───────────────────────────────────────────────
+
+
+class LifecycleState(StrEnum):
+    ACCEPTED_FALSE_POSITIVE = "accepted_false_positive"
+    INTENTIONAL_DEFERRED = "intentional_deferred"
+    KNOWN_DEBT = "known_debt"
+    NEEDS_FIX = "needs_fix"
+    NOT_APPLICABLE = "not_applicable"
+    WATCH = "watch"
+
+
+@dataclass
+class LifecycleEntry:
+    finding_id: str
+    check_id: str
+    lifecycle_state: LifecycleState
+    reason: str
+    owner: str
+    severity_override: CheckSeverity | None = None
+    release_blocking_override: bool | None = None
+    expires: str = ""
+    evidence_refs: list[str] = field(default_factory=list)
+
+    def is_expired(self, today: str = "") -> bool:
+        if not self.expires:
+            return False
+        ref = today or _today_str()
+        return self.expires < ref
+
+
+@dataclass
+class LifecyclePolicy:
+    schema_version: str = "rig.release_gate.findings_lifecycle.v1"
+    policy_id: str = ""
+    description: str = ""
+    updated_at: str = ""
+    entries: list[LifecycleEntry] = field(default_factory=list)
+    _index: dict[tuple[str, str], LifecycleEntry] = field(
+        default_factory=dict, repr=False
+    )
+
+    def build_index(self) -> None:
+        self._index = {(e.finding_id, e.check_id): e for e in self.entries}
+
+    def lookup(self, finding_id: str, check_id: str) -> LifecycleEntry | None:
+        return self._index.get((finding_id, check_id))
+
+
+@dataclass
+class LifecycleApplication:
+    finding_id: str
+    check_id: str
+    matched: bool
+    entry: LifecycleEntry | None = None
+    expired: bool = False
+    original_severity: CheckSeverity = CheckSeverity.MEDIUM
+    effective_severity: CheckSeverity = CheckSeverity.MEDIUM
+    release_blocking: bool = True
+    lifecycle_state: str = ""
+    triage_reason: str = ""
+    triage_owner: str = ""
+    triage_expires: str = ""
+    triage_evidence_refs: list[str] = field(default_factory=list)
+
+
+@dataclass
+class LifecycleReport:
+    policy_path: str = ""
+    policy_id: str = ""
+    schema_version: str = ""
+    entries_loaded: int = 0
+    entries_applied: int = 0
+    entries_expired: int = 0
+    entries_unmatched: int = 0
+    invalid_entries: int = 0
+    policy_findings: list[dict[str, Any]] = field(default_factory=list)
+
+
+def _today_str() -> str:
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC).strftime("%Y-%m-%d")

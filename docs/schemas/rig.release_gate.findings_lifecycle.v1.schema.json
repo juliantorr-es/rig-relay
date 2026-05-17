@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.github.io/schemas/rig.release_gate.findings_lifecycle.v1.schema.json",
+  "title": "Release Gate Findings Lifecycle Policy v1",
+  "description": "Governed lifecycle policy for release gate findings. Each entry classifies a finding by exact finding_id + check_id match and specifies lifecycle state, severity override, release-blocking override, owner, rationale, and optional expiration.",
+  "type": "object",
+  "required": ["schema_version", "policy_id", "entries"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.release_gate.findings_lifecycle.v1",
+      "description": "Schema version identifier."
+    },
+    "policy_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this policy instance (e.g., 'release_gate_findings_lifecycle_v0')."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this policy instance."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this policy was last updated."
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 0,
+      "items": { "$ref": "#/$defs/lifecycle_entry" }
+    }
+  },
+  "$defs": {
+    "lifecycle_entry": {
+      "type": "object",
+      "required": ["finding_id", "check_id", "lifecycle_state", "reason", "owner"],
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact finding_id to match. Wildcards not supported in v1."
+        },
+        "check_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact check_id to match. Combined with finding_id for deterministic lookup."
+        },
+        "lifecycle_state": {
+          "type": "string",
+          "enum": [
+            "accepted_false_positive",
+            "intentional_deferred",
+            "known_debt",
+            "needs_fix",
+            "not_applicable",
+            "watch"
+          ],
+          "description": "Lifecycle classification for this finding."
+        },
+        "severity_override": {
+          "type": "string",
+          "enum": ["blocker", "high", "medium", "low", "info"],
+          "description": "Optional effective severity override. When set, replaces the original severity for gate status derivation."
+        },
+        "release_blocking_override": {
+          "type": "boolean",
+          "description": "Optional override for release-blocking behavior. When false, a blocker/high finding will not cause gate failure regardless of lifecycle_state."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Justification for this lifecycle classification. Required for auditability."
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Person or team accountable for this classification."
+        },
+        "expires": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "Optional expiration date in YYYY-MM-DD format. After this date the entry is expired and no longer suppresses or downgrades findings."
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 0,
+          "description": "Optional references to evidence supporting this classification (e.g., issue URLs, commit SHAs, audit reports)."
+        }
+      }
+    }
+  }
+}

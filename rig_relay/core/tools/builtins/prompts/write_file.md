@@ -17,7 +17,7 @@ Use `write_file` to write content to a file.
 - **ALWAYS** use the `read_file` tool first before overwriting an existing file to understand its current contents
 - **ALWAYS** prefer using `search_replace` to edit existing files rather than overwriting them completely
 - **NEVER** write new files unless explicitly required - prefer modifying existing files
-- **NEVER** proactively create documentation files (*.md) or README files unless explicitly requested
+- **NEVER** proactively create documentation files unless explicitly requested; prefer `.json`, `.jsonl`, or `.csv` for new docs and make them conform to the repo-local schema or tabular convention for that doc kind
 - **AVOID** using emojis in file content unless the user explicitly requests them
 
 **Usage Examples:**

@@ -46,3 +46,6 @@ class EventName(StrEnum):
     MODEL_OBSERVATION_CAPTURED = "rig.relay.model_observation.captured"
     # Tool receipt events
     TOOL_RECEIPT_CAPTURED = "rig.relay.tool_receipt.captured"
+    # Telemetry consent enforcement events
+    TELEMETRY_REMOTE_UPLOAD_ALLOWED = "telemetry.remote_upload.allowed"
+    TELEMETRY_REMOTE_UPLOAD_DENIED = "telemetry.remote_upload.denied"

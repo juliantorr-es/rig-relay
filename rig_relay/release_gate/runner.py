@@ -1,7 +1,8 @@
 """Release Evidence Gate — deterministic top-level runner.
 
 Sorts checks and findings by stable identifiers. Derives overall_status from
-check results and policy. Never depends on wall-clock order, random seeds,
+check results and policy, applying findings lifecycle overlays when a
+LifecyclePolicy is provided. Never depends on wall-clock order, random seeds,
 or any non-deterministic source except the explicit generated_at timestamp.
 """
 
@@ -11,6 +12,7 @@ from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import UTC, datetime
 import traceback
+from typing import Any
 
 from rig_relay.release_gate.models import (
     SEVERITY_DESCENDING,
@@ -20,9 +22,9 @@ from rig_relay.release_gate.models import (
     CheckStatus,
     GatePolicy,
     GateResult,
-    GateSeverity,
     GateStatus,
     GateSummary,
+    LifecyclePolicy,
     ReleaseGateCheck,
     _severity_sort_key,
 )
@@ -30,10 +32,14 @@ from rig_relay.release_gate.models import (
 
 class GateRunner:
     def __init__(
-        self, checks: Mapping[str, ReleaseGateCheck], policy: GatePolicy | None = None
+        self,
+        checks: Mapping[str, ReleaseGateCheck],
+        policy: GatePolicy | None = None,
+        lifecycle: LifecyclePolicy | None = None,
     ) -> None:
         self._checks = checks
         self._policy = policy or GatePolicy()
+        self._lifecycle = lifecycle
 
     def run(
         self,
@@ -91,7 +97,19 @@ class GateRunner:
             results.append(cr)
 
         findings = self._flatten_findings(results)
-        overall_status = self._derive_status(results)
+
+        lifecycle_report: dict[str, Any] = {}
+        if self._lifecycle is not None and self._lifecycle.entries:
+            from rig_relay.release_gate.findings_lifecycle import (
+                apply_lifecycle,
+                build_lifecycle_report_dict,
+            )
+
+            findings, lc_report = apply_lifecycle(findings, self._lifecycle)
+            lifecycle_report = build_lifecycle_report_dict(lc_report)
+            findings.extend(lc_report.policy_findings)
+
+        overall_status = self._derive_status(results, findings)
         summary = self._build_summary(results, findings)
 
         return GateResult(
@@ -111,6 +129,7 @@ class GateRunner:
                 "artifact_allowlist": self._policy.artifact_allowlist,
                 "cache_policy": self._policy.cache_policy,
             },
+            lifecycle=lifecycle_report,
         )
 
     def _resolve_check_ids(
@@ -144,16 +163,22 @@ class GateRunner:
         )
         return flat
 
-    def _derive_status(self, results: list[CheckResult]) -> GateStatus:
+    def _derive_status(
+        self, results: list[CheckResult], findings: list[dict[str, Any]]
+    ) -> GateStatus:
         if not results:
             return GateStatus.SKIPPED
+
+        by_check: dict[str, list[dict[str, Any]]] = {}
+        for f in findings:
+            by_check.setdefault(str(f.get("check_id", "")), []).append(f)
 
         worst = GateStatus.PASSED
         for cr in results:
             match cr.status:
                 case CheckStatus.FAIL:
-                    gs = GateSeverity(cr.severity)
-                    if gs in {GateSeverity.BLOCKER, GateSeverity.HIGH}:
+                    remaining = self._untriaged_blockers(cr.check_id, by_check)
+                    if remaining:
                         return GateStatus.FAILED
                     if self._policy.is_release_blocking(cr.check_id):
                         return GateStatus.FAILED
@@ -171,8 +196,21 @@ class GateRunner:
                     pass
         return worst
 
+    @staticmethod
+    def _untriaged_blockers(
+        check_id: str, by_check: dict[str, list[dict[str, Any]]]
+    ) -> list[dict[str, Any]]:
+        check_findings = by_check.get(check_id, [])
+        blockers: list[dict[str, Any]] = []
+        for f in check_findings:
+            effective_sev = f.get("effective_severity", f.get("severity", ""))
+            release_blocking = f.get("release_blocking", True)
+            if effective_sev in {"blocker", "high"} and release_blocking:
+                blockers.append(f)
+        return blockers
+
     def _build_summary(
-        self, results: list[CheckResult], findings: list[dict[str, object]]
+        self, results: list[CheckResult], findings: list[dict[str, Any]]
     ) -> GateSummary:
         total_checks = len(results)
         passed = sum(1 for cr in results if cr.status == CheckStatus.PASS)
@@ -182,7 +220,7 @@ class GateRunner:
 
         by_sev: dict[str, int] = {str(s): 0 for s in SEVERITY_DESCENDING}
         for f in findings:
-            sev = str(f["severity"])
+            sev = str(f.get("effective_severity", f.get("severity", "info")))
             by_sev[sev] = by_sev.get(sev, 0) + 1
         by_sev = {k: v for k, v in by_sev.items() if v > 0}
 

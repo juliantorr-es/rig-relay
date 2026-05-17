@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 import os
 from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urljoin
@@ -37,6 +39,44 @@ _DEFAULT_TELEMETRY_BASE_URL = "https://api.deepseek.com"
 _DATALAKE_EVENTS_PATH = "/v1/datalake/events"
 
 
+@dataclass
+class TelemetryUploadDecision:
+    allowed: bool
+    reason: str
+    consent_status: str | None = None
+    matched_scopes: list[str] = field(default_factory=list)
+    missing_scopes: list[str] = field(default_factory=list)
+    policy_version: str | None = None
+    remote_enabled: bool = False
+    decided_at: str = ""
+
+
+_EVENT_SCOPE_PREFIX_MAP: dict[str, str] = {
+    "rig.relay.tool.": "tool_refinement_metrics",
+    "rig.relay.session.": "usage_metrics",
+    "rig.relay.context.": "usage_metrics",
+    "rig.relay.checkpoint.": "coordination_metrics",
+    "coord.": "coordination_metrics",
+    "rig.relay.model_observation.": "provider_model_benchmarking",
+}
+
+
+def _required_scopes_for_event(event_name: str) -> set:
+    from rig_relay.identity.telemetry_consent import TelemetryConsentScope
+
+    for prefix, scope_name in _EVENT_SCOPE_PREFIX_MAP.items():
+        if event_name.startswith(prefix):
+            if scope_name == "tool_refinement_metrics":
+                return {TelemetryConsentScope.TOOL_REFINEMENT_METRICS}
+            if scope_name == "usage_metrics":
+                return {TelemetryConsentScope.USAGE_METRICS}
+            if scope_name == "coordination_metrics":
+                return {TelemetryConsentScope.COORDINATION_METRICS}
+            if scope_name == "provider_model_benchmarking":
+                return {TelemetryConsentScope.PROVIDER_MODEL_BENCHMARKING}
+    return {TelemetryConsentScope.USAGE_METRICS}
+
+
 class TelemetryClient:
     def __init__(
         self,
@@ -45,11 +85,13 @@ class TelemetryClient:
         parent_session_id_getter: Callable[[], str | None] | None = None,
         entrypoint_metadata_getter: Callable[[], EntrypointMetadata | None]
         | None = None,
+        consent_record_getter: Callable[[], object | None] | None = None,
     ) -> None:
         self._config_getter = config_getter
         self._session_id_getter = session_id_getter
         self._parent_session_id_getter = parent_session_id_getter
         self._entrypoint_metadata_getter = entrypoint_metadata_getter
+        self._consent_record_getter = consent_record_getter
         self._client: httpx.AsyncClient | None = None
         self._pending_tasks: set[asyncio.Task[Any]] = set()
         self.last_correlation_id: str | None = None
@@ -159,9 +201,13 @@ class TelemetryClient:
                     receipt_candidate=receipt_candidate,
                 )
 
-        # Remote Telemetry Sink
-        if not self._is_remote_telemetry_enabled():
+        # Remote Telemetry Sink — gated by settings AND consent
+        decision = self._evaluate_consent_gate(event_name)
+
+        if not decision.allowed:
+            self._log_consent_decision(event_name, decision)
             return
+
         provider_and_api_key = self._get_mistral_provider_and_api_key()
         if provider_and_api_key is None:
             return
@@ -173,6 +219,8 @@ class TelemetryClient:
         payload: dict[str, Any] = {"event": event_name, "properties": properties}
         if correlation_id:
             payload["correlation_id"] = correlation_id
+
+        self._log_consent_decision(event_name, decision)
 
         async def _send() -> None:
             try:
@@ -198,6 +246,153 @@ class TelemetryClient:
         if self._client is not None:
             await self._client.aclose()
             self._client = None
+
+    # ── Consent enforcement ───────────────────────────────────────────
+
+    def _evaluate_consent_gate(  # noqa: PLR0911
+        self, event_name: str
+    ) -> TelemetryUploadDecision:
+        if not self._is_remote_telemetry_enabled():
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="remote_disabled",
+                remote_enabled=False,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        try:
+            consent = (
+                self._consent_record_getter() if self._consent_record_getter else None
+            )
+        except Exception:
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="consent_not_found",
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        if consent is None:
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="consent_not_found",
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        from rig_relay.identity.telemetry_consent import (
+            TelemetryConsentRecord,
+            TelemetryConsentStatus,
+            active_consent_scopes,
+        )
+
+        if not isinstance(consent, TelemetryConsentRecord):
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="consent_policy_invalid",
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        if consent.status == TelemetryConsentStatus.NOT_REQUESTED:
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="consent_not_requested",
+                consent_status=consent.status.value,
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        if consent.status == TelemetryConsentStatus.DENIED:
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="consent_denied",
+                consent_status=consent.status.value,
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        if consent.status == TelemetryConsentStatus.REVOKED:
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="consent_revoked",
+                consent_status=consent.status.value,
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        if consent.status != TelemetryConsentStatus.GRANTED:
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="consent_policy_invalid",
+                consent_status=consent.status.value,
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        required_scopes = _required_scopes_for_event(event_name)
+        active = set(active_consent_scopes(consent))
+        matched = required_scopes & active
+        missing = required_scopes - active
+
+        if missing:
+            return TelemetryUploadDecision(
+                allowed=False,
+                reason="scope_missing",
+                consent_status=consent.status.value,
+                matched_scopes=sorted(s.value for s in matched),
+                missing_scopes=sorted(s.value for s in missing),
+                remote_enabled=True,
+                decided_at=datetime.now(UTC).isoformat(),
+            )
+
+        return TelemetryUploadDecision(
+            allowed=True,
+            reason="consent_granted",
+            consent_status=consent.status.value,
+            matched_scopes=sorted(s.value for s in required_scopes),
+            policy_version=getattr(consent, "policy_version", None),
+            remote_enabled=True,
+            decided_at=datetime.now(UTC).isoformat(),
+        )
+
+    def _log_consent_decision(
+        self, event_name: str, decision: TelemetryUploadDecision
+    ) -> None:
+        if not self._is_local_observability_enabled():
+            return
+        if not self.session_id:
+            return
+        from rig_relay.core.telemetry.local import log_local_event
+
+        decision_event = (
+            EventName.TELEMETRY_REMOTE_UPLOAD_ALLOWED
+            if decision.allowed
+            else EventName.TELEMETRY_REMOTE_UPLOAD_DENIED
+        )
+        denial_properties: dict[str, Any] = {
+            "original_event": event_name,
+            "reason": decision.reason,
+            "remote_enabled": decision.remote_enabled,
+            "decided_at": decision.decided_at,
+        }
+        if decision.consent_status:
+            denial_properties["consent_status"] = decision.consent_status
+        if decision.matched_scopes:
+            denial_properties["matched_scopes"] = decision.matched_scopes
+        if decision.missing_scopes:
+            denial_properties["missing_scopes"] = decision.missing_scopes
+        if decision.policy_version:
+            denial_properties["policy_version"] = decision.policy_version
+
+        log_local_event(
+            self.session_id,
+            decision_event,
+            denial_properties,
+            parent_session_id=self.parent_session_id,
+        )
+
+    # ── File metrics ──────────────────────────────────────────────────
 
     def _calculate_file_metrics(
         self,

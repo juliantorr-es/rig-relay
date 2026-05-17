@@ -309,7 +309,7 @@ Old Markdown docs must not be deleted until:
 - tests pass,
 - the deletion is listed in the final report.
 
-Agents must not create new Markdown docs for plans, audits, architecture notes, proofs, reports, roadmaps, or task records. Create JSON docs using the appropriate schema. If no schema exists, add or extend a schema first.
+Agents must not create new Markdown docs for plans, audits, architecture notes, proofs, reports, roadmaps, or task records. Create new documentation as `.json`, `.jsonl`, or `.csv` artifacts that follow the repo-local schema or tabular convention for the document kind. If no schema exists, add or extend a schema first before writing the doc.
 
 ### Static site rendering
 The documentation site is rendered locally by `scripts/render_static_docs.py`. The generated static site is committed under `docs/` and published via GitHub Pages from the main branch `/docs` folder. No custom GitHub Actions workflow is required.
