@@ -13,7 +13,10 @@ import concurrent.futures
 from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
+import subprocess
+import textwrap
 import threading
+import time
 
 import pytest
 
@@ -485,3 +488,68 @@ def test_many_iteration_race_stress(tmp_path: Path) -> None:
             "The store's reserve_paths lacks a mutex — "
             "two sessions both claimed the same path."
         )
+
+
+def test_subprocess_path_claims_produce_exactly_one_winner(tmp_path: Path) -> None:
+    reset_path_salt_for_testing()
+    coord_root = tmp_path / ".build" / "rig-relay" / "coordination"
+    coord_root_str = str(coord_root)
+    ready_file = tmp_path / "ready.txt"
+    ready_file_str = str(ready_file)
+
+    script = textwrap.dedent(f"""\
+        import sys, time
+        from pathlib import Path
+        from rig_relay.coordination.store import CoordinationStore
+
+        store = CoordinationStore(Path("{coord_root_str}"))
+        ready = Path("{ready_file_str}")
+        while not ready.exists():
+            time.sleep(0.001)
+
+        result = store.reserve_paths(
+            session_id=f"subprocess-{{sys.argv[1]}}",
+            task_id=f"task-subprocess-{{sys.argv[1]}}",
+            mode="write",
+            paths=["src/subprocess_race.py"],
+            ttl_seconds=300,
+        )
+        print(result.allowed)
+    """)
+
+    script_path = tmp_path / "claim_script.py"
+    script_path.write_text(script)
+
+    procs: list[subprocess.Popen[str]] = []
+    for name in ("a", "b"):
+        p = subprocess.Popen(
+            ["uv", "run", "python", str(script_path), name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=str(tmp_path),
+        )
+        procs.append(p)
+
+    time.sleep(0.2)
+    ready_file.touch()
+
+    results: list[bool] = []
+    for p in procs:
+        stdout, stderr = p.communicate(timeout=15)
+        if stderr:
+            print(f"Subprocess stderr: {stderr}")
+        line = stdout.strip()
+        if line == "True":
+            results.append(True)
+        elif line == "False":
+            results.append(False)
+        else:
+            results.append(False)
+
+    assert len(results) == 2, f"Expected 2 results, got {len(results)}: {results}"
+    granted = sum(1 for r in results if r)
+    assert granted == 1, f"Expected exactly 1 granted, got {granted}: {results}"
+
+    lease_count = _count_lease_files(tmp_path)
+    assert lease_count == 1, f"Expected 1 lease file, got {lease_count}"

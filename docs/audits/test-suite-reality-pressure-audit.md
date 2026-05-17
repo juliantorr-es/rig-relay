@@ -601,3 +601,21 @@ These areas are lower risk for false confidence because they test self-contained
 ---
 
 _End of audit. For questions or to begin implementing the recommended slices, start with Slice C (Telemetry/Consent E2E) as it closes the most critical open seam._
+
+---
+
+## Serialized Digestion Pipeline v0 Follow-up (May 2026)
+
+### Findings closed
+
+- **Seam 1**: `send_telemetry_event` leaking forbidden fields — `redact_for_remote` wired into upload path
+- **Seam 2**: `_evaluate_consent_gate` ignoring `expires_at` — expiry enforcement added
+- **Seam 3**: `EventEmissionScanner` regex missing `subagent.*`, `validate.*`, `tool_*` prefixes — expanded
+- **Seam 4**: `CoordinationStore.reserve_paths` TOCTOU double-win — digestion pipeline with advisory digester lock (see `docs/governance/serialized-digestion-pipeline.md`)
+
+### Findings remaining
+
+- Context assembler digestion pipeline (future slice)
+- Hardened built-in tool digestion pipeline (future slice)
+- Full lease request envelope schema formalization (future)
+- `subagent.runtime` vocabulary registration (current slice if done by Subagent B)

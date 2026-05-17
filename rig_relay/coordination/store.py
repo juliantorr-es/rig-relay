@@ -13,9 +13,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import fcntl
 import hashlib
 import json
 from pathlib import Path
+import threading
 from typing import Any, Literal
 
 from rig_relay.coordination._canonical_json import dump_canonical_json
@@ -57,6 +59,10 @@ class CoordinationStore:
         (self.root / "artifacts").mkdir(exist_ok=True)
         (self.root / "conflicts").mkdir(exist_ok=True)
         self._events_path().parent.mkdir(parents=True, exist_ok=True)
+        lockfile = self.root / ".digester.lock"
+        lockfile.touch(exist_ok=True)
+        self._digester_fd = open(lockfile, "r+b")
+        self._digester_thread_lock = threading.Lock()
 
     def _events_path(self) -> Path:
         return self.root / "events.jsonl"
@@ -252,10 +258,31 @@ class CoordinationStore:
         paths: list[str],
         ttl_seconds: int,
     ) -> CoordinationReservationResult:
+        with self._digester_thread_lock:
+            fcntl.flock(self._digester_fd, fcntl.LOCK_EX)
+            try:
+                return self._reserve_paths_locked(
+                    session_id=session_id,
+                    task_id=task_id,
+                    mode=mode,
+                    paths=paths,
+                    ttl_seconds=ttl_seconds,
+                )
+            finally:
+                fcntl.flock(self._digester_fd, fcntl.LOCK_UN)
+
+    def _reserve_paths_locked(
+        self,
+        *,
+        session_id: str,
+        task_id: str,
+        mode: Literal["read", "write"],
+        paths: list[str],
+        ttl_seconds: int,
+    ) -> CoordinationReservationResult:
         expires = now_plus(ttl_seconds)
         normalized = [normalize_path(path) for path in paths]
 
-        # ── Conflict detection ────────────────────────────────────
         # exclusive_write (mode="write") conflicts with both read and write.
         # shared_read (mode="read") conflicts only with existing write.
         for existing in self._iter_reservations():

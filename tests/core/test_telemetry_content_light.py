@@ -86,13 +86,6 @@ class TestGrantedUploadRedactionLeak:
     OPEN SEAM: redact_for_remote is never called in send_telemetry_event.
     """
 
-    @pytest.mark.xfail(
-        reason=(
-            "redact_for_remote is never called in send_telemetry_event "
-            "(send.py:216-233). Forbidden scalar values leak into HTTP POST."
-        ),
-        strict=True,
-    )
     @pytest.mark.asyncio
     async def test_granted_upload_redacts_forbidden_payload_fields(
         self, monkeypatch: pytest.MonkeyPatch
@@ -291,13 +284,6 @@ class TestConsentExpiryEnforcement:
     OPEN SEAM: expires_at is never checked by _evaluate_consent_gate.
     """
 
-    @pytest.mark.xfail(
-        reason=(
-            "expires_at is never checked by _evaluate_consent_gate "
-            "(send.py:252-356). Expired consent with granted status passes."
-        ),
-        strict=True,
-    )
     def test_expired_consent_blocks_upload(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -316,3 +302,95 @@ class TestConsentExpiryEnforcement:
         _run_tasks()
 
         mock_post.assert_not_called()
+
+
+# ── Content-light: redaction preserves safe scalars ────────────────
+
+
+class TestRedactionPreservesSafeScalars:
+    def test_preserves_numeric_and_status_values(self) -> None:
+        from rig_relay.evidence.redaction import redact_for_remote
+
+        payload = {
+            "count": 42,
+            "status": "ok",
+            "token": "sk-abc123secret",
+            "api_key": "deadbeef",
+        }
+        result = redact_for_remote(payload)
+        rp = result.payload
+
+        assert rp["count"] == 42
+        assert rp["status"] == "ok"
+        assert rp["token"] == "[REDACTED]" or (
+            isinstance(rp["token"], str) and rp["token"].startswith("sha256:")
+        )
+        assert rp["api_key"] == "[REDACTED]"
+
+    def test_redacts_nested_sensitive_fields(self) -> None:
+        from rig_relay.evidence.redaction import redact_for_remote
+
+        payload = {
+            "nested": {"token": "secret-value", "safe_key": 123},
+            "outer_secret": "should-be-hashed",
+        }
+        result = redact_for_remote(payload)
+        rp = result.payload
+
+        assert rp["nested"]["token"] == "[REDACTED]" or (
+            isinstance(rp["nested"]["token"], str)
+            and rp["nested"]["token"].startswith("sha256:")
+        )
+        assert rp["nested"]["safe_key"] == 123
+        assert isinstance(rp["outer_secret"], str)
+        assert rp["outer_secret"] == "[REDACTED]" or rp["outer_secret"].startswith(
+            "sha256:"
+        )
+
+
+# ── Content-light: consent_expired in denial events ────────────────
+
+
+class TestConsentExpiredLocalEvent:
+    def test_expired_consent_emits_local_denial_event(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            TelemetryClient, "send_telemetry_event", _original_send_telemetry_event
+        )
+        expired_consent = _make_granted_consent()
+        expired_consent.expires_at = "2020-01-01T00:00:00Z"
+        client = _make_client(monkeypatch, enable_remote=True, consent=expired_consent)
+        local_events: list[dict[str, Any]] = []
+
+        import rig_relay.core.telemetry.local as local_mod
+
+        def _fake_log(
+            session_id: str,
+            event_name: str,
+            payload: dict[str, Any],
+            parent_session_id: str | None = None,
+            receipt_candidate: bool = False,
+        ) -> None:
+            local_events.append({
+                "session_id": session_id,
+                "event_name": event_name,
+                "payload": payload,
+            })
+
+        monkeypatch.setattr(local_mod, "log_local_event", _fake_log)
+
+        client.send_telemetry_event("vibe.test_event", {"key": "value"})
+        _run_tasks()
+
+        denials = [
+            e
+            for e in local_events
+            if e["event_name"] == str(EventName.TELEMETRY_REMOTE_UPLOAD_DENIED)
+        ]
+        assert len(denials) == 1, "Must emit one denial event"
+        dp = denials[0]["payload"]
+        assert dp["reason"] == "consent_expired"
+        assert dp["original_event"] == "vibe.test_event"
+        assert dp["remote_enabled"] is True
+        assert dp["consent_status"] == "granted"

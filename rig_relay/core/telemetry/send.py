@@ -30,6 +30,7 @@ from rig_relay.core.telemetry.types import (
 )
 from rig_relay.core.utils import get_server_url_from_api_base, get_user_agent
 from rig_relay.core.utils.http import build_ssl_context
+from rig_relay.evidence.redaction import redact_for_remote
 
 if TYPE_CHECKING:
     from rig_relay.core.agent_loop import ToolDecision
@@ -215,6 +216,7 @@ class TelemetryClient:
         telemetry_url = self._get_telemetry_url(provider.api_base)
         user_agent = get_user_agent(provider.backend)
         properties = self.build_client_event_metadata() | properties
+        properties = redact_for_remote(properties).payload
 
         payload: dict[str, Any] = {"event": event_name, "properties": properties}
         if correlation_id:
@@ -329,6 +331,20 @@ class TelemetryClient:
                 remote_enabled=True,
                 decided_at=datetime.now(UTC).isoformat(),
             )
+
+        if consent.expires_at:
+            try:
+                expires = datetime.fromisoformat(consent.expires_at)
+                if expires <= datetime.now(UTC):
+                    return TelemetryUploadDecision(
+                        allowed=False,
+                        reason="consent_expired",
+                        consent_status=consent.status.value,
+                        remote_enabled=True,
+                        decided_at=datetime.now(UTC).isoformat(),
+                    )
+            except ValueError:
+                pass
 
         required_scopes = _required_scopes_for_event(event_name)
         active = set(active_consent_scopes(consent))

@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 # ── Models ────────────────────────────────────────────────────────────
 
@@ -242,9 +242,28 @@ class TraceContractRegistry:
 
 # Matches emitted trace event names: string literals that look like domain.event_name
 _EVENT_EMISSION_REGEX = re.compile(
-    r"""["']((?:desktop\.|frontend[_.]|agent\.|tool\.|context\.|"""
+    r"""["']((?:desktop\.|frontend[_.]|agent\.|tool[_.]|context\.|"""
     r"""worktree\.|docs\.|session\.|security\.|coordination\.|"""
-    r"""runtime\.)[a-z_.]{3,80})["']"""
+    r"""runtime\.|subagent\.|validate\.)[a-z_.]{3,80})["']"""
+)
+
+# Prefix fragments for quick pre-filter (skip files with no event prefixes)
+_SCAN_PREFIXES = (
+    "desktop.",
+    "frontend_",
+    "frontend.",
+    "agent.",
+    "tool.",
+    "tool_",
+    "context.",
+    "worktree.",
+    "docs.",
+    "session.",
+    "security.",
+    "coordination.",
+    "runtime.",
+    "subagent.",
+    "validate.",
 )
 
 # Frontend event names use underscores or dots
@@ -315,10 +334,14 @@ _CORRELATION_FIELD_EXCLUSIONS: frozenset[str] = frozenset({
 class EventEmissionScanner:
     """Scans Python and JavaScript source files for trace event emissions."""
 
+    _scan_cache: ClassVar[dict[Path, list[EmittedEvent]]] = {}
+
     def __init__(self, repo_root: Path | None = None) -> None:
         self._repo_root = repo_root or Path(__file__).resolve().parents[2]
 
     def scan(self) -> list[EmittedEvent]:
+        if self._repo_root in self._scan_cache:
+            return list(self._scan_cache[self._repo_root])
         events: list[EmittedEvent] = []
         for py_file in self._repo_root.rglob("*.py"):
             if self._is_excluded(py_file):
@@ -328,7 +351,8 @@ class EventEmissionScanner:
             if self._is_excluded(js_file):
                 continue
             events.extend(self._scan_javascript(js_file))
-        return events
+        self._scan_cache[self._repo_root] = events
+        return list(events)
 
     def _is_excluded(self, path: Path) -> bool:
         parts = set(path.parts)
@@ -363,6 +387,9 @@ class EventEmissionScanner:
         try:
             content = path.read_text(encoding="utf-8")
         except Exception:
+            return events
+
+        if not any(p in content for p in _SCAN_PREFIXES):
             return events
 
         try:

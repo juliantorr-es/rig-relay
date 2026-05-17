@@ -21,6 +21,8 @@ from rig_relay.tracing._contract import (
 )
 from rig_relay.tracing.store import InMemoryTraceStore
 
+pytestmark = pytest.mark.timeout(30)
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 _SUBAGENT_AWARE_REGEX = re.compile(
@@ -61,12 +63,12 @@ class TestScannerDetectsSubagentRuntimeEmission:
             "String 'subagent.runtime' should exist in runtime.py"
         )
 
-    def test_default_scanner_regex_misses_subagent_runtime(self) -> None:
+    def test_default_scanner_regex_finds_subagent_runtime(self) -> None:
         scanner = EventEmissionScanner(repo_root=REPO_ROOT)
         events = scanner.scan()
         names = {e.event_name for e in events}
-        assert "subagent.runtime" not in names, (
-            "Default scanner regex misses subagent.runtime (no subagent. prefix in regex)"
+        assert "subagent.runtime" in names, (
+            f"subagent.runtime should be in emitted events, got {sorted(names)}"
         )
 
     def test_patched_regex_finds_subagent_runtime(self) -> None:
@@ -97,14 +99,6 @@ class TestScannerDetectsSubagentRuntimeEmission:
 
 
 class TestValidatorDetectsSubagentRuntimeAsUnregistered:
-    @pytest.mark.xfail(
-        reason=(
-            "subagent.runtime is genuinely unregistered in the visibility matrix and "
-            "correlation vocabulary. This test will XPASS (unexpectedly pass) if/when "
-            "someone registers it."
-        ),
-        strict=True,
-    )
     def test_subagent_runtime_is_registered_in_vocabulary(self) -> None:
         registry = TraceContractRegistry()
         ev = registry.get_event("subagent.runtime")
@@ -263,29 +257,31 @@ class TestRegisteredEventsTruthTable:
 
 
 class TestScannerRegexGapAudit:
-    def test_validate_profile_missed_by_default_regex(self) -> None:
+    def test_validate_profile_found_by_scanner(self) -> None:
         scanner = EventEmissionScanner(repo_root=REPO_ROOT)
         events = scanner.scan()
         names = {e.event_name for e in events}
-        assert "validate.profile" not in names, (
-            "Default regex misses validate.profile (validate. not in prefix list)"
+        assert "validate.profile" in names, (
+            f"validate.profile should be found by scanner, got {sorted(names)}"
         )
 
-    def test_tool_runtime_execute_one_missed_by_default_regex(self) -> None:
+    def test_tool_runtime_execute_one_found_by_scanner(self) -> None:
         scanner = EventEmissionScanner(repo_root=REPO_ROOT)
         events = scanner.scan()
         names = {e.event_name for e in events}
-        assert "tool_runtime.execute_one" not in names, (
-            "Default regex misses tool_runtime.execute_one (underscore vs dot)"
+        assert "tool_runtime.execute_one" in names, (
+            f"tool_runtime.execute_one should be found by scanner, got {sorted(names)}"
         )
 
-    def test_subagent_events_missed_by_default_regex(self) -> None:
+    def test_subagent_events_found_by_scanner(self) -> None:
         scanner = EventEmissionScanner(repo_root=REPO_ROOT)
         events = scanner.scan()
         names = {e.event_name for e in events}
-        assert "subagent.runtime" not in names, "Default regex misses subagent.runtime"
-        assert "subagent.runtime.budget.exhausted" not in names, (
-            "Default regex misses subagent.runtime.budget.exhausted"
+        assert "subagent.runtime" in names, (
+            "subagent.runtime should be found by scanner"
+        )
+        assert "subagent.runtime.budget.exhausted" in names, (
+            "subagent.runtime.budget.exhausted should be found by scanner"
         )
 
 

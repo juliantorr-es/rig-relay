@@ -53,6 +53,8 @@ _SENSITIVE_NAME_PATTERNS = (
     "api_key",
     "client_secret",
     "private_key",
+    "credential",
+    "cookie",
     "receipt",
     "prompt",
     "output",

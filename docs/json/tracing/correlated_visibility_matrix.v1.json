@@ -3,7 +3,7 @@
   "matrix_id": "correlated-visibility-matrix-v1",
   "title": "Rig Relay Correlated Visibility Matrix",
   "summary": {
-    "complete": 11,
+    "complete": 12,
     "partial": 0,
     "missing": 1,
     "release_blockers": 0
@@ -581,6 +581,45 @@
       "visibility_status": "missing",
       "release_blocker": false,
       "recommended_fix": "Future: add trace events to release gate validation script. Not yet implemented \u2014 threat model is draft status."
+    },
+    {
+      "path_id": "subagent_runtime",
+      "description": "Subagent runtime lifecycle: subagent spawned, task dispatched, budget tracked, budget exhausted, subagent terminated.",
+      "owner_area": "rig_relay/core/subagents/runtime.py",
+      "required_start_event": "subagent.runtime",
+      "required_success_event": "",
+      "required_failure_events": [
+        "subagent.runtime.budget.exhausted"
+      ],
+      "required_refusal_events": [],
+      "required_correlation_fields": [
+        "trace_id",
+        "session_id",
+        "agent_id",
+        "wall_time"
+      ],
+      "required_artifacts": [
+        "trace_events.jsonl"
+      ],
+      "current_events_found": [
+        "subagent.runtime",
+        "subagent.runtime.budget.exhausted"
+      ],
+      "missing_events": [],
+      "missing_fields": [],
+      "current_tests": [
+        "tests/core/test_subagent_runtime_tracing.py",
+        "tests/core/test_subagent_runtime_guards.py",
+        "tests/core/test_subagent_runtime_pre_phase3_wiring.py"
+      ],
+      "missing_tests": [],
+      "sensitivity_requirements": [
+        "no raw subagent output in trace payload",
+        "budget tracking must be content-light (counts only)"
+      ],
+      "visibility_status": "complete",
+      "release_blocker": false,
+      "recommended_fix": "None."
     },
     {
       "path_id": "session_lifecycle",
