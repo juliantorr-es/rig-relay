@@ -1497,6 +1497,13 @@
     "path": "pages/known-limitations-alpha.html"
   },
   {
+    "document_id": "static-site-v1-readiness",
+    "title": "Static Site v1 Readiness",
+    "summary": "Readiness assessment for the Rig Relay static documentation site v1 release candidate.",
+    "tags": [],
+    "path": "pages/static-site-v1-readiness.html"
+  },
+  {
     "document_id": "versioning-policy",
     "title": "Rig Relay Versioning Policy",
     "summary": "Rig Relay has an **independent version line** derived from Mistral Vibe CLI",

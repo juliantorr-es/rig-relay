@@ -221,6 +221,193 @@ class TestSiteSafetyAudit:
 # ── Site readability smoke ────────────────────────────────────────
 
 
+# ── Migration hash integrity ─────────────────────────────────────
+
+
+class TestMigrationHashIntegrity:
+    def test_migrated_entries_have_old_hash_when_source_exists(self) -> None:
+        manifest = _load_json(_MANIFEST_PATH)
+        for m in manifest["migrations"]:
+            if m["status"] != "migrated":
+                continue
+            old_path = _REPO_ROOT / m["old_path"]
+            if old_path.is_file():
+                old_hash = m.get("content_sha256_old", "")
+                assert old_hash, (
+                    f"Missing content_sha256_old for {m['old_path']} (file exists)"
+                )
+                assert old_hash.startswith("sha256:"), (
+                    f"content_sha256_old not sha256-prefixed: {m['old_path']}"
+                )
+
+    def test_migrated_entries_have_new_hash_when_target_exists(self) -> None:
+        manifest = _load_json(_MANIFEST_PATH)
+        for m in manifest["migrations"]:
+            if m["status"] != "migrated":
+                continue
+            new_path = _REPO_ROOT / m["new_path"]
+            if new_path.is_file():
+                new_hash = m.get("content_sha256_new", "")
+                assert new_hash, (
+                    f"Missing content_sha256_new for {m['new_path']} (file exists)"
+                )
+                assert new_hash.startswith("sha256:"), (
+                    f"content_sha256_new not sha256-prefixed: {m['new_path']}"
+                )
+
+    def test_migration_hashes_match_actual_files(self) -> None:
+        manifest = _load_json(_MANIFEST_PATH)
+        for m in manifest["migrations"]:
+            if m["status"] != "migrated":
+                continue
+            old_path = _REPO_ROOT / m["old_path"]
+            if old_path.is_file() and m.get("content_sha256_old"):
+                expected = m["content_sha256_old"].removeprefix("sha256:")
+                actual = _sha256(old_path.read_text())
+                assert actual == expected, (
+                    f"content_sha256_old mismatch for {m['old_path']}: "
+                    f"expected {expected}, got {actual}"
+                )
+            new_path = _REPO_ROOT / m["new_path"]
+            if new_path.is_file() and m.get("content_sha256_new"):
+                expected = m["content_sha256_new"].removeprefix("sha256:")
+                actual = _sha256(new_path.read_text())
+                assert actual == expected, (
+                    f"content_sha256_new mismatch for {m['new_path']}: "
+                    f"expected {expected}, got {actual}"
+                )
+
+
+# ── Asset presence and favicon ───────────────────────────────────
+
+
+class TestAssetPresence:
+    def test_favicon_svg_exists(self) -> None:
+        favicon = _DOCS_OUT / "assets" / "favicon.svg"
+        assert favicon.is_file(), "favicon.svg missing"
+
+    def test_og_image_exists(self) -> None:
+        og_img = _DOCS_OUT / "assets" / "og" / "rig-relay-card.svg"
+        assert og_img.is_file(), "og/rig-relay-card.svg missing"
+
+    def test_index_has_favicon_link(self) -> None:
+        index = _DOCS_OUT / "index.html"
+        content = index.read_text()
+        assert 'rel="icon"' in content, "index.html missing favicon link"
+
+    def test_pages_have_favicon_link(self) -> None:
+        for html_file in _PAGES_OUT.glob("*.html"):
+            content = html_file.read_text()
+            assert 'rel="icon"' in content, f"{html_file.name}: missing favicon link"
+
+    def test_pages_emit_og_image_when_configured(self) -> None:
+        sm = _load_json(_SITE_MANIFEST)
+        og_image = sm.get("metadata", {}).get("og_image", "")
+        if og_image:
+            for html_file in _PAGES_OUT.glob("*.html"):
+                content = html_file.read_text()
+                assert "og:image" in content, (
+                    f"{html_file.name}: missing og:image when configured"
+                )
+
+    def test_no_broken_asset_paths(self) -> None:
+        sm = _load_json(_SITE_MANIFEST)
+        metadata = sm.get("metadata", {})
+        favicon = metadata.get("favicon", "")
+        og_image = metadata.get("og_image", "")
+        base_path = sm.get("base_path", "/rig-relay")
+        if favicon:
+            rel = favicon.removeprefix(base_path + "/")
+            assert (_DOCS_OUT / rel).is_file(), (
+                f"Favicon path broken: {favicon} -> {rel}"
+            )
+        if og_image:
+            rel = og_image.removeprefix(base_path + "/")
+            assert (_DOCS_OUT / rel).is_file(), (
+                f"OG image path broken: {og_image} -> {rel}"
+            )
+
+
+# ── Collection landing pages ─────────────────────────────────────
+
+_COLLECTIONS_OUT = _DOCS_OUT / "collections"
+
+
+class TestCollectionLandingPages:
+    def test_collection_pages_dir_exists(self) -> None:
+        assert _COLLECTIONS_OUT.is_dir(), "docs/collections/ missing"
+
+    def test_collection_page_for_every_collection(self) -> None:
+        sm = _load_json(_SITE_MANIFEST)
+        for col in sm.get("collections", []):
+            cid = col.get("collection_id", "")
+            if not cid:
+                continue
+            page = _COLLECTIONS_OUT / f"{cid}.html"
+            assert page.is_file(), f"Missing collection page: {cid}.html"
+
+    def test_collection_page_links_to_all_documents(self) -> None:
+        sm = _load_json(_SITE_MANIFEST)
+        for col in sm.get("collections", []):
+            cid = col.get("collection_id", "")
+            if not cid:
+                continue
+            page = _COLLECTIONS_OUT / f"{cid}.html"
+            content = page.read_text()
+            for doc in col.get("documents", []):
+                did = doc.get("document_id", "")
+                if did:
+                    assert f"pages/{did}.html" in content, (
+                        f"{cid}.html missing link to {did}"
+                    )
+
+    def test_index_links_to_all_collection_pages(self) -> None:
+        index = _DOCS_OUT / "index.html"
+        content = index.read_text()
+        sm = _load_json(_SITE_MANIFEST)
+        for col in sm.get("collections", []):
+            cid = col.get("collection_id", "")
+            if not cid:
+                continue
+            assert f"collections/{cid}.html" in content, (
+                f"index.html missing link to collection {cid}"
+            )
+
+    def test_collection_pages_respect_base_path(self) -> None:
+        sm = _load_json(_SITE_MANIFEST)
+        base_path = sm.get("base_path", "/rig-relay")
+        for col in sm.get("collections", []):
+            cid = col.get("collection_id", "")
+            if not cid:
+                continue
+            page = _COLLECTIONS_OUT / f"{cid}.html"
+            content = page.read_text()
+            assert f'href="{base_path}/' in content, (
+                f"{cid}.html: base_path {base_path} not respected in hrefs"
+            )
+
+
+# ── Readiness artifact ───────────────────────────────────────────
+
+_READINESS_PATH = _DOCS_JSON / "release" / "static_site_v1_readiness.v1.json"
+
+
+class TestReadinessArtifact:
+    def test_readiness_artifact_exists(self) -> None:
+        assert _READINESS_PATH.is_file(), "static_site_v1_readiness.v1.json missing"
+
+    def test_readiness_artifact_parses(self) -> None:
+        data = _load_json(_READINESS_PATH)
+        assert data.get("document_id") == "static-site-v1-readiness"
+
+    def test_readiness_artifact_in_render_manifest(self) -> None:
+        rm = _load_json(_RENDER_MANIFEST)
+        page_ids = {p["document_id"] for p in rm.get("pages", [])}
+        assert "static-site-v1-readiness" in page_ids, (
+            "readiness artifact not in render manifest"
+        )
+
+
 class TestSiteReadabilitySmoke:
     def test_index_html_exists(self) -> None:
         index = _DOCS_OUT / "index.html"

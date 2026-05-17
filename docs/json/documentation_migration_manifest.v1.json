@@ -8,8 +8,8 @@
       "new_path": "docs/json/governance/tracing_doctrine.v1.json",
       "status": "migrated",
       "reason": "Wave 1 governance migration — tracing doctrine",
-      "content_sha256_old": "",
-      "content_sha256_new": "",
+      "content_sha256_old": "sha256:44c4c8cb4074f6c0d4c8f4aa537fee69ebd036e777ef345c591098fc0030092f",
+      "content_sha256_new": "sha256:829546181d90c508c88117694af8ed6ef38e516f9d49725c314f93be6e4afb12",
       "references_updated": true,
       "review_notes": "Markdown preserved."
     },
@@ -18,8 +18,8 @@
       "new_path": "docs/json/governance/test_suite_doctrine.v1.json",
       "status": "migrated",
       "reason": "Wave 1 governance migration — test suite doctrine",
-      "content_sha256_old": "",
-      "content_sha256_new": "",
+      "content_sha256_old": "sha256:5d08c57a688fbab7424777c4831f1e364dd276db015248145a3e8b4842c64e9c",
+      "content_sha256_new": "sha256:8ebbd47ff9d091bfee29d3a85366add72baea6491002adee12367db4cbf06ecc",
       "references_updated": true,
       "review_notes": "Markdown preserved."
     },
@@ -28,8 +28,8 @@
       "new_path": "docs/json/governance/storage_retention_policy.v1.json",
       "status": "migrated",
       "reason": "Wave 1 governance migration — storage retention policy",
-      "content_sha256_old": "",
-      "content_sha256_new": "",
+      "content_sha256_old": "sha256:a47b7c04aeb563edd3e799637603967c20496d2142907cf61625d2c8a1417865",
+      "content_sha256_new": "sha256:4102cfe9588c53661ed3148bf04a4071bf4fb58bc43fca80f3ec977e671bd26c",
       "references_updated": true,
       "review_notes": "Markdown preserved."
     },
@@ -38,8 +38,8 @@
       "new_path": "docs/json/governance/agent_loop_boundary.v1.json",
       "status": "migrated",
       "reason": "Wave 2 architecture migration — agent loop boundary",
-      "content_sha256_old": "",
-      "content_sha256_new": "",
+      "content_sha256_old": "sha256:4ea7c62cd7fecd60db40b43906c3336c2dd5b1c8ba341f4bb9257b386395f970",
+      "content_sha256_new": "sha256:c78bedd6eeaed1b113f9bbb7469be8957ec509a256e37e4331148e1a6880f058",
       "references_updated": true,
       "review_notes": "Markdown preserved. Component tables, forbidden deps, smell tests preserved."
     },
@@ -48,8 +48,8 @@
       "new_path": "docs/json/governance/tool_runtime_boundary.v1.json",
       "status": "migrated",
       "reason": "Wave 2 architecture migration — tool runtime boundary",
-      "content_sha256_old": "",
-      "content_sha256_new": "",
+      "content_sha256_old": "sha256:ef99521f23dd763c9e08e5e9678aee0fb781fe224812d69c4b805d371f1c07d3",
+      "content_sha256_new": "sha256:6285db988096452adb766f57c2a275a5b31c97560b7c851ae6b2847bc76d692a",
       "references_updated": true,
       "review_notes": "Markdown preserved. Layered model, capability boundary, Ralph/HITL separation preserved."
     },
@@ -58,8 +58,8 @@
       "new_path": "docs/json/governance/orchestrator_loop_boundary.v1.json",
       "status": "migrated",
       "reason": "Wave 2 architecture migration — orchestrator loop boundary",
-      "content_sha256_old": "",
-      "content_sha256_new": "",
+      "content_sha256_old": "sha256:1c0c0205dd72edbd5f8ee01e64dc3e165cbf8b4fa03a1efde1aa23886c431929",
+      "content_sha256_new": "sha256:78ce1591624e9bc0f306168ec365c7ddae47c6937568409c8139034461968275",
       "references_updated": true,
       "review_notes": "Markdown preserved. 7 principles, handoff receipt, Phase 3 readiness doctrine preserved."
     }

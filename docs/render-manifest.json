@@ -1,7 +1,8 @@
 {
-  "generated_at": "2026-05-16T23:23:36.167940+00:00",
-  "git_commit": "e707eb2678d0",
-  "page_count": 219,
+  "generated_at": "2026-05-17T00:17:50.845498+00:00",
+  "git_commit": "a1243b594170",
+  "page_count": 220,
+  "collection_page_count": 33,
   "pages": [
     {
       "document_id": "rig-integration-contract",
@@ -1044,6 +1045,11 @@
       "source_json_path": "docs/json/release/known-limitations-alpha.v1.json"
     },
     {
+      "document_id": "static-site-v1-readiness",
+      "title": "Static Site v1 Readiness",
+      "source_json_path": "docs/json/release/static_site_v1_readiness.v1.json"
+    },
+    {
       "document_id": "versioning-policy",
       "title": "Rig Relay Versioning Policy",
       "source_json_path": "docs/json/release/versioning-policy.v1.json"
@@ -1098,5 +1104,40 @@
       "title": "Textual Streaming Smoothness \u2014 Provider Delta Coalescing",
       "source_json_path": "docs/json/ui/textual-streaming-smoothness.v1.json"
     }
+  ],
+  "collections": [
+    "architecture",
+    "audits",
+    "audits-agent-loop",
+    "audits-backend",
+    "audits-ci",
+    "audits-context",
+    "audits-context-gap-reports",
+    "audits-desktop",
+    "audits-global-rig-declutter",
+    "audits-rig-runtime-port",
+    "audits-runtime",
+    "audits-test-suite",
+    "audits-tests",
+    "audits-tool-hardening",
+    "audits-tool-usage-analysis",
+    "audits-ui",
+    "audits-validate-tool",
+    "audits-vscodium-shell-lane",
+    "conversations",
+    "demo",
+    "dogfood",
+    "evidence",
+    "findings",
+    "findings-language-practices",
+    "general",
+    "governance",
+    "legal",
+    "protocols",
+    "publishing",
+    "release",
+    "troubleshooting",
+    "ui",
+    "code-schemas"
   ]
 }

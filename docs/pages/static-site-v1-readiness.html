@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Static Site v1 Readiness — Rig Relay Docs</title>
+<meta name="description" content="Readiness assessment for the Rig Relay static documentation site v1 release candidate.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/static-site-v1-readiness.html">
+<meta property="og:title" content="Static Site v1 Readiness">
+<meta property="og:description" content="Readiness assessment for the Rig Relay static documentation site v1 release candidate.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/static-site-v1-readiness.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Static Site v1 Readiness">
+<meta name="twitter:description" content="Readiness assessment for the Rig Relay static documentation site v1 release candidate.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="icon" href="/rig-relay/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / <a href="/rig-relay/collections/release.html">Release</a></p>
+  <h1>Static Site v1 Readiness</h1>
+  <p class="doc-summary">Readiness assessment for the Rig Relay static documentation site v1 release candidate.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Source</dt><dd><code>docs/json/release/static_site_v1_readiness.v1.json</code></dd>
+  </dl>
+</header>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#metrics">Metrics</a></li>
+<li><a href="#coverage">Coverage</a></li>
+<li><a href="#accessibility">Accessibility Smoke</a></li>
+<li><a href="#schema-faithfulness">Schema Faithfulness</a></li>
+<li><a href="#deferred">Deferred Items</a></li>
+<li><a href="#verdict">Verdict</a></li>
+  </ol>
+</nav>
+<h2 id="metrics" class="disclosure-standard" data-disclosure-level="standard">Metrics</h2>
+
+<table id="metrics-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Rendered document page count</td><td>219</td></tr>
+<tr><td>Collection page count</td><td>33</td></tr>
+<tr><td>Site manifest document count</td><td>219</td></tr>
+<tr><td>Orphan document count</td><td>0</td></tr>
+<tr><td>Search index entries</td><td>219</td></tr>
+</tbody>
+</table>
+
+<h2 id="coverage" class="disclosure-standard" data-disclosure-level="standard">Coverage</h2>
+
+<table id="coverage-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Coverage Domain</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Migration hash coverage (old)</td><td>100% (6/6)</td></tr>
+<tr><td>Migration hash coverage (new)</td><td>100% (6/6)</td></tr>
+<tr><td>Metadata coverage (favicon)</td><td>Configured</td></tr>
+<tr><td>Metadata coverage (og:image)</td><td>Configured</td></tr>
+<tr><td>Metadata coverage (theme_color)</td><td>Configured</td></tr>
+</tbody>
+</table>
+
+<h2 id="accessibility" class="disclosure-standard" data-disclosure-level="standard">Accessibility Smoke</h2>
+
+<table id="accessibility-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Check</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Skip link present</td><td>Pass</td></tr>
+<tr><td>Semantic landmarks (header, main, footer)</td><td>Pass</td></tr>
+<tr><td>One H1 per page</td><td>Pass</td></tr>
+<tr><td>focus-visible styles</td><td>Pass</td></tr>
+<tr><td>Native disclosure (details/summary)</td><td>Pass</td></tr>
+<tr><td>Content escaping</td><td>Pass</td></tr>
+<tr><td>No JavaScript</td><td>Pass</td></tr>
+</tbody>
+</table>
+
+<h2 id="schema-faithfulness" class="disclosure-standard" data-disclosure-level="standard">Schema Faithfulness</h2>
+
+<table id="schema-faithfulness-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Check</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>source_json_path in render manifest</td><td>Pass</td></tr>
+<tr><td>Progressive disclosure data attributes</td><td>Pass</td></tr>
+<tr><td>Schema-driven disclosure classes</td><td>Pass</td></tr>
+<tr><td>Canonical URLs</td><td>Pass</td></tr>
+<tr><td>OG/Twitter metadata</td><td>Pass</td></tr>
+<tr><td>Breadcrumbs with collection links</td><td>Pass</td></tr>
+<tr><td>Collection landing pages</td><td>Pass</td></tr>
+<tr><td>Favicon links on all pages</td><td>Pass</td></tr>
+<tr><td>OG image tags</td><td>Pass</td></tr>
+</tbody>
+</table>
+
+<h2 id="deferred" class="disclosure-standard" data-disclosure-level="standard">Deferred Items</h2>
+
+<ul id="deferred-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Audience filtering (v1.1)</li>
+  <li>JS-free audience toggle (v1.1)</li>
+  <li>Per-page OG images (v1.1)</li>
+  <li>PNG OG image for non-SVG renderers (v1.1)</li>
+  <li>Search UI (v1.1)</li>
+  <li>Markdown document deletion (post-migration confirmation)</li>
+  <li>Renderer refactor into modules (post-v1)</li>
+</ul>
+
+<h2 id="verdict" class="disclosure-standard" data-disclosure-level="standard">Verdict</h2>
+
+<div class="callout callout-info disclosure-standard" id="verdict-callout" data-disclosure-level="standard">
+  <strong>Ready for v1</strong>
+  <p>Static site v1 release candidate is ready. All blockers resolved: migration hashes present, favicon/OG image configured, collection landing pages generated, render manifest complete. Deferred items are non-blocking enhancements.</p>
+</div>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/release/static_site_v1_readiness.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

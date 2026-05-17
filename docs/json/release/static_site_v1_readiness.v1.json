@@ -1,0 +1,139 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "static-site-v1-readiness",
+  "title": "Static Site v1 Readiness",
+  "status": "active",
+  "created_at": "2026-05-16",
+  "summary": "Readiness assessment for the Rig Relay static documentation site v1 release candidate.",
+  "disclosure": {
+    "render_strategy": "linear",
+    "default_level": "standard",
+    "initial_mode": "reviewer",
+    "show_table_of_contents": true
+  },
+  "sections": [
+    {
+      "type": "heading",
+      "level": 2,
+      "content": "Metrics",
+      "block_id": "metrics",
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "table",
+      "block_id": "metrics-table",
+      "columns": ["Metric", "Value"],
+      "rows": [
+        ["Rendered document page count", "219"],
+        ["Collection page count", "33"],
+        ["Site manifest document count", "219"],
+        ["Orphan document count", "0"],
+        ["Search index entries", "219"]
+      ],
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "content": "Coverage",
+      "block_id": "coverage",
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "table",
+      "block_id": "coverage-table",
+      "columns": ["Coverage Domain", "Status"],
+      "rows": [
+        ["Migration hash coverage (old)", "100% (6/6)"],
+        ["Migration hash coverage (new)", "100% (6/6)"],
+        ["Metadata coverage (favicon)", "Configured"],
+        ["Metadata coverage (og:image)", "Configured"],
+        ["Metadata coverage (theme_color)", "Configured"]
+      ],
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "content": "Accessibility Smoke",
+      "block_id": "accessibility",
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "table",
+      "block_id": "accessibility-table",
+      "columns": ["Check", "Status"],
+      "rows": [
+        ["Skip link present", "Pass"],
+        ["Semantic landmarks (header, main, footer)", "Pass"],
+        ["One H1 per page", "Pass"],
+        ["focus-visible styles", "Pass"],
+        ["Native disclosure (details/summary)", "Pass"],
+        ["Content escaping", "Pass"],
+        ["No JavaScript", "Pass"]
+      ],
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "content": "Schema Faithfulness",
+      "block_id": "schema-faithfulness",
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "table",
+      "block_id": "schema-faithfulness-table",
+      "columns": ["Check", "Status"],
+      "rows": [
+        ["source_json_path in render manifest", "Pass"],
+        ["Progressive disclosure data attributes", "Pass"],
+        ["Schema-driven disclosure classes", "Pass"],
+        ["Canonical URLs", "Pass"],
+        ["OG/Twitter metadata", "Pass"],
+        ["Breadcrumbs with collection links", "Pass"],
+        ["Collection landing pages", "Pass"],
+        ["Favicon links on all pages", "Pass"],
+        ["OG image tags", "Pass"]
+      ],
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "content": "Deferred Items",
+      "block_id": "deferred",
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "list",
+      "block_id": "deferred-list",
+      "ordered": false,
+      "items": [
+        "Audience filtering (v1.1)",
+        "JS-free audience toggle (v1.1)",
+        "Per-page OG images (v1.1)",
+        "PNG OG image for non-SVG renderers (v1.1)",
+        "Search UI (v1.1)",
+        "Markdown document deletion (post-migration confirmation)",
+        "Renderer refactor into modules (post-v1)"
+      ],
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "content": "Verdict",
+      "block_id": "verdict",
+      "disclosure": {"level": "standard", "collapsible": false}
+    },
+    {
+      "type": "callout",
+      "block_id": "verdict-callout",
+      "severity": "info",
+      "title": "Ready for v1",
+      "content": "Static site v1 release candidate is ready. All blockers resolved: migration hashes present, favicon/OG image configured, collection landing pages generated, render manifest complete. Deferred items are non-blocking enhancements.",
+      "disclosure": {"level": "standard", "collapsible": false}
+    }
+  ]
+}

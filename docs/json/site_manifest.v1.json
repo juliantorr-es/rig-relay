@@ -1254,6 +1254,11 @@
           "title_override": "Known Limitations for Alpha"
         },
         {
+          "document_id": "static-site-v1-readiness",
+          "path": "docs/json/release/static_site_v1_readiness.v1.json",
+          "title_override": "Static Site v1 Readiness"
+        },
+        {
           "document_id": "versioning-policy",
           "path": "docs/json/release/versioning-policy.v1.json",
           "title_override": "Rig Relay Versioning Policy"
@@ -1378,8 +1383,8 @@
     "enable_audience_filter": false
   },
   "metadata": {
-    "og_image": "",
+    "og_image": "/rig-relay/assets/og/rig-relay-card.svg",
     "theme_color": "#1e3a5f",
-    "favicon": ""
+    "favicon": "/rig-relay/assets/favicon.svg"
   }
 }
