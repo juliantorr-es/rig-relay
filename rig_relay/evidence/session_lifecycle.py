@@ -16,6 +16,18 @@ from pathlib import Path
 from typing import Any
 
 from rig_relay.governance.mission_envelope import MissionEnvelope
+from rig_relay.tracing.golden_path import build_golden_path_event
+from rig_relay.tracing.store import get_default_trace_store
+
+
+def _emit_session_trace(event_type: str, *, payload: dict | None = None) -> None:
+    """Emit a content-light session lifecycle trace event. Non-fatal on error."""
+    try:
+        store = get_default_trace_store()
+        event = build_golden_path_event(event_type=event_type, payload=payload or {})
+        store.write(event)
+    except Exception:
+        pass
 
 
 class SessionStorageCategory(StrEnum):
@@ -53,6 +65,14 @@ class SessionCompactionCandidate:
 
 @dataclass(frozen=True, slots=True)
 class SessionStorageSummary:
+    """Snapshot of session storage state. Creation triggers a trace event."""
+
+    def __post_init__(self) -> None:
+        _emit_session_trace(
+            "session.trace_paths_initialized",
+            payload={"total_bytes": self.total_bytes, "file_count": self.file_count},
+        )
+
     sessions_root: Path
     total_bytes: int
     file_count: int
@@ -271,6 +291,9 @@ def _largest_files(files: list[Path], limit: int = 20) -> list[dict[str, Any]]:
 def find_session_prune_candidates(
     sessions_root: Path | None = None, *, older_than_days: int = 30
 ) -> list[SessionPruneCandidate]:
+    _emit_session_trace(
+        "session.created", payload={"operation": "audit_sessions_storage"}
+    )
     root = _resolve_sessions_root(sessions_root)
     cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
     candidates: list[SessionPruneCandidate] = []
@@ -315,6 +338,9 @@ def find_session_prune_candidates(
 def find_session_compaction_candidates(
     sessions_root: Path | None = None,
 ) -> list[SessionCompactionCandidate]:
+    _emit_session_trace(
+        "session.created", payload={"operation": "audit_sessions_storage"}
+    )
     root = _resolve_sessions_root(sessions_root)
     candidates: list[SessionCompactionCandidate] = []
     for path in _iter_session_files(root):
@@ -347,6 +373,9 @@ def find_session_compaction_candidates(
 def audit_sessions_storage(
     sessions_root: Path | None = None, *, top_n: int = 20
 ) -> SessionStorageSummary:
+    _emit_session_trace(
+        "session.created", payload={"operation": "audit_sessions_storage"}
+    )
     root = _resolve_sessions_root(sessions_root)
     files = _iter_session_files(root)
     category_bytes: dict[SessionStorageCategory, int] = {
@@ -597,6 +626,10 @@ def _apply_session_finalize_compaction(
                 status="compacted",
                 reason="session finalize compaction",
             )
+        )
+        _emit_session_trace(
+            "session.compacted",
+            payload={"path": str(path), "output_path": str(output_path)},
         )
     except OSError as err:
         state.warnings.append(f"compaction failed for {path}: {err}")

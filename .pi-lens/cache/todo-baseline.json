@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "type": "TODO",
+      "message": "Vince): doing the assumption that \".\" is the root directory... Reliable?",
+      "file": "rig_relay/core/autocompletion/completers.py",
+      "line": 330,
+      "column": 14
+    },
+    {
+      "type": "TODO",
+      "message": "otel): remove exclude=True once the feature is publicly available",
+      "file": "rig_relay/core/config/_settings.py",
+      "line": 623,
+      "column": 6
+    }
+  ]
+}

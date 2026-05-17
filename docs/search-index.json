@@ -1441,6 +1441,13 @@
     "path": "pages/worktree-manager.html"
   },
   {
+    "document_id": "github-app-integration-audit-v0",
+    "title": "GitHub App Integration Audit v0",
+    "summary": "Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.",
+    "tags": [],
+    "path": "pages/github-app-integration-audit-v0.html"
+  },
+  {
     "document_id": "privacy-notice-alpha",
     "title": "Privacy Notice \u2014 Alpha",
     "summary": "> **\u26a0 Attorney review required before public release.**",

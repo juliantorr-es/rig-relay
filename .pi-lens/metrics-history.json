@@ -25,7 +25,57 @@
         }
       ],
       "trend": "stable"
+    },
+    "frontend/desktop/js/boot/orchestrator.js": {
+      "latest": {
+        "commit": "0517a0e0",
+        "timestamp": "2026-05-17T08:34:32.221Z",
+        "mi": 38,
+        "cognitive": 67,
+        "nesting": 4,
+        "lines": 93,
+        "maxCyclomatic": 18,
+        "entropy": 5.32
+      },
+      "history": [
+        {
+          "commit": "0517a0e0",
+          "timestamp": "2026-05-17T08:34:32.221Z",
+          "mi": 38,
+          "cognitive": 67,
+          "nesting": 4,
+          "lines": 93,
+          "maxCyclomatic": 18,
+          "entropy": 5.32
+        }
+      ],
+      "trend": "stable"
+    },
+    "docs/assets/site.js": {
+      "latest": {
+        "commit": "0517a0e0",
+        "timestamp": "2026-05-17T09:09:34.420Z",
+        "mi": 22.7,
+        "cognitive": 126,
+        "nesting": 7,
+        "lines": 274,
+        "maxCyclomatic": 114,
+        "entropy": 6.25
+      },
+      "history": [
+        {
+          "commit": "0517a0e0",
+          "timestamp": "2026-05-17T09:09:34.420Z",
+          "mi": 22.7,
+          "cognitive": 126,
+          "nesting": 7,
+          "lines": 274,
+          "maxCyclomatic": 114,
+          "entropy": 6.25
+        }
+      ],
+      "trend": "stable"
     }
   },
-  "capturedAt": "2026-05-17T02:09:21.570Z"
+  "capturedAt": "2026-05-17T09:09:39.491Z"
 }

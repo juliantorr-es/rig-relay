@@ -79,7 +79,7 @@
               "heading", "paragraph", "callout", "table",
               "code", "json", "schema_ref", "mermaid",
               "list", "decision", "risk", "test_evidence",
-              "link", "file_reference"
+              "link", "file_reference", "diagram_ref"
             ]
           },
           "title": {"type": "string"},
@@ -108,6 +108,9 @@
           "ordered": {"type": "boolean"},
           "href": {"type": "string"},
           "path": {"type": "string"},
+          "diagram_id": {"type": "string"},
+          "caption": {"type": "string"},
+          "fallback_text": {"type": "string"},
           "schema_ref": {"type": "string"},
           "decision_id": {"type": "string"},
           "outcome": {"type": "string"},

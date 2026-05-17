@@ -268,6 +268,7 @@ class ProjectionWebSocketServer:
         self._origin_rejected_count = 0
         self._invalid_message_closed_count = 0
         self._lock = asyncio.Lock()
+        self._current_connection_id = ""
 
     def _emit_probe(self, step_id: str, label: str, details: dict[str, Any]) -> None:
         if self._probe_callback is not None:
@@ -287,22 +288,29 @@ class ProjectionWebSocketServer:
         status: str | None = None,
         payload: dict[str, Any] | None = None,
         handshake_id: str = "",
+        connection_id: str = "",
         duration_ms: int | None = None,
         error_message: str | None = None,
     ) -> None:
         from rig_relay.tracing.golden_path import (
             TraceAuthorityKind,
+            build_correlation,
             build_golden_path_event,
         )
         from rig_relay.tracing.models import TraceStatus
 
         if self._trace_recorder is None:
             return
+        corr_payload = build_correlation(
+            handshake_id=handshake_id or self._golden_handshake_id,
+            connection_id=connection_id,
+        )
         event = build_golden_path_event(
             event_type=event_type,
             trace_id=self._golden_trace_id or None,
             handshake_id=handshake_id or self._golden_handshake_id,
             parent_span_id=None,
+            correlation=corr_payload,
             status=TraceStatus(status) if status else None,
             authority={
                 "authority_kind": TraceAuthorityKind.websocket_server.value,
@@ -403,8 +411,6 @@ class ProjectionWebSocketServer:
     async def start(self) -> None:
         """Start the WebSocket server. Runs until cancelled."""
         import websockets
-        from websockets.datastructures import Headers
-        from websockets.http11 import Response
 
         async def _inspect_origin(conn: Any, request: Any) -> Any | None:
             origin = request.headers.get("Origin", "")
@@ -482,13 +488,7 @@ class ProjectionWebSocketServer:
     def _make_error(code: str, message: str) -> dict[str, Any]:
         return {"type": "error", "code": code, "message": message}
 
-    async def _reject_origin(
-        self,
-        *,
-        origin: str,
-        reason: str,
-        detail: str,
-    ) -> Any:
+    async def _reject_origin(self, *, origin: str, reason: str, detail: str) -> Any:
         from websockets.datastructures import Headers
         from websockets.http11 import Response
 
@@ -536,7 +536,11 @@ class ProjectionWebSocketServer:
 
         corr = self._new_connection_correlation()
         transport_id = new_transport_session_id()
-        self._emit_golden_event("desktop.websocket.accepted")
+        connection_id = f"conn_{secrets.token_hex(6)}"
+        self._current_connection_id = connection_id
+        self._emit_golden_event(
+            "desktop.websocket.accepted", payload={"connection_id": connection_id}
+        )
         corr.emit_transport_event(
             "desktop.transport.connection_begin",
             transport_session_id=transport_id,
@@ -589,6 +593,7 @@ class ProjectionWebSocketServer:
                     self._emit_golden_event(
                         "desktop.websocket.message_rejected",
                         handshake_id=self._golden_handshake_id,
+                        connection_id=connection_id,
                         payload={"reason": "invalid_json"},
                     )
                     await _send_json(
@@ -625,6 +630,15 @@ class ProjectionWebSocketServer:
                         msg_type,
                         shape_errors,
                     )
+                    self._emit_golden_event(
+                        "desktop.websocket.message_rejected",
+                        handshake_id=self._golden_handshake_id,
+                        connection_id=connection_id,
+                        payload={
+                            "reason": "invalid_message_shape",
+                            "msg_type": msg_type,
+                        },
+                    )
                     await _send_json(
                         websocket,
                         self._make_error(
@@ -638,10 +652,13 @@ class ProjectionWebSocketServer:
 
                 if msg_type != "auth" and "token" in message:
                     invalid_count += 1
-                    logger.warning("audit.message.unexpected_token_field msg_type=%s", msg_type)
+                    logger.warning(
+                        "audit.message.unexpected_token_field msg_type=%s", msg_type
+                    )
                     self._emit_golden_event(
                         "desktop.websocket.message_rejected",
                         handshake_id=self._golden_handshake_id,
+                        connection_id=connection_id,
                         payload={
                             "reason": "unexpected_token_field",
                             "msg_type": msg_type,
@@ -725,6 +742,15 @@ class ProjectionWebSocketServer:
         async with self._lock:
             self._oversized_message_count += 1
         logger.warning("audit.rate.oversized max_bytes=%s", self._max_message_bytes)
+        self._emit_golden_event(
+            "desktop.websocket.oversize_message",
+            handshake_id=self._golden_handshake_id,
+            connection_id=self._current_connection_id,
+            payload={
+                "reason": "oversize_message",
+                "message_bytes": self._max_message_bytes,
+            },
+        )
         await _send_json(
             websocket,
             {
@@ -738,6 +764,12 @@ class ProjectionWebSocketServer:
         async with self._lock:
             self._rate_limited_count += 1
         logger.warning("audit.rate.limited")
+        self._emit_golden_event(
+            "desktop.websocket.rate_limited",
+            handshake_id=self._golden_handshake_id,
+            connection_id=self._current_connection_id,
+            payload={"reason": "rate_limited"},
+        )
         await _send_json(
             websocket,
             {"type": "rate_limited", "message": "Message rate limit exceeded"},
@@ -753,6 +785,7 @@ class ProjectionWebSocketServer:
         self._emit_golden_event(
             "desktop.websocket.connection_closed",
             handshake_id=self._golden_handshake_id,
+            connection_id=self._current_connection_id,
             payload={
                 "reason": "too_many_invalid_messages",
                 "threshold": MAX_INVALID_WEBSOCKET_MESSAGES,
@@ -850,7 +883,14 @@ class ProjectionWebSocketServer:
         async with self._lock:
             self._rejected_count += 1
             self._last_rejection_reason = "auth_required"
-        logger.warning("audit.auth.required")
+        msg_type = message.get("type", "")
+        logger.warning("audit.auth.required attempted_type=%s", msg_type)
+        self._emit_golden_event(
+            "desktop.websocket.message_rejected",
+            handshake_id=self._golden_handshake_id,
+            connection_id=self._current_connection_id,
+            payload={"reason": "unauthenticated", "msg_type": msg_type or "missing"},
+        )
         await _send_json(websocket, {"type": "auth_required"})
         return False
 
@@ -1001,6 +1041,12 @@ class ProjectionWebSocketServer:
                 )
 
             case _:
+                self._emit_golden_event(
+                    "desktop.websocket.message_rejected",
+                    handshake_id=self._golden_handshake_id,
+                    connection_id=self._current_connection_id,
+                    payload={"reason": "unknown_type", "msg_type": msg_type},
+                )
                 await _send_json(
                     websocket,
                     self._make_error(

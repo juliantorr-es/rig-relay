@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.documentation.home.v1.schema.json",
+  "title": "Rig Documentation Home Page",
+  "description": "Curated homepage for the Rig Relay documentation site.",
+  "type": "object",
+  "required": ["schema_version", "document_id", "title", "sections"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.documentation.home.v1"},
+    "document_id": {"type": "string"},
+    "title": {"type": "string"},
+    "tagline": {"type": "string"},
+    "plain_language_summary": {"type": "string"},
+    "partner_friendly_explanation": {"type": "string"},
+    "primary_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {"type": "string"},
+          "href": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      }
+    },
+    "what_works_today": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "feature_cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "icon": {"type": "string"}
+        }
+      }
+    },
+    "proof_metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {"type": "string"},
+          "value": {"type": "string"}
+        }
+      }
+    },
+    "audience_paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {"type": "string"},
+          "description": {"type": "string"},
+          "href": {"type": "string"}
+        }
+      }
+    },
+    "featured_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string"},
+          "href": {"type": "string"},
+          "summary": {"type": "string"}
+        }
+      }
+    },
+    "archive_link": {"type": "object", "properties": {"label": {"type": "string"}, "href": {"type": "string"}}},
+    "hero_diagram": {"type": "object", "properties": {"diagram_id": {"type": "string"}, "path": {"type": "string"}}},
+    "metadata": {"type": "object"},
+    "disclosure": {"type": "object"},
+    "provenance": {"type": "object"},
+    "sections": {
+      "type": "array",
+      "items": {"type": "object"}
+    }
+  }
+}

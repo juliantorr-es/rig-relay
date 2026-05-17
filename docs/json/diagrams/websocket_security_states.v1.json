@@ -1,0 +1,39 @@
+{
+  "schema_version": "rig.diagram.v1",
+  "diagram_id": "websocket-security-states",
+  "title": "WebSocket Connection States",
+  "summary": "State machine for WebSocket connection lifecycle including security hardening states.",
+  "status": "active",
+  "kind": "state_machine",
+  "layout": {
+    "orientation": "vertical"
+  },
+  "nodes": [
+    {"id": "disconnected", "label": "Disconnected", "status": "inactive"},
+    {"id": "connecting", "label": "Connecting", "status": "active"},
+    {"id": "origin-check", "label": "Origin Check", "status": "pending"},
+    {"id": "auth-required", "label": "Auth Required", "status": "pending"},
+    {"id": "authenticated", "label": "Authenticated", "status": "active"},
+    {"id": "subscribed", "label": "Subscribed", "status": "completed"}
+  ],
+  "edges": [
+    {"from": "disconnected", "to": "connecting", "label": "connect"},
+    {"from": "connecting", "to": "origin-check", "label": "upgrade"},
+    {"from": "origin-check", "to": "auth-required", "label": "origin ok"},
+    {"from": "origin-check", "to": "disconnected", "label": "origin rejected"},
+    {"from": "auth-required", "to": "authenticated", "label": "auth ok"},
+    {"from": "auth-required", "to": "disconnected", "label": "auth failed"},
+    {"from": "authenticated", "to": "subscribed", "label": "subscribe"},
+    {"from": "subscribed", "to": "disconnected", "label": "close"}
+  ],
+  "accessibility": {
+    "alt": "State machine showing WebSocket connection lifecycle with origin validation and auth gating.",
+    "summary": "Six-state machine with security checkpoints at origin validation and authentication"
+  },
+  "provenance": {
+    "source_files": ["rig_relay/desktop/websocket_server.py"],
+    "generated_from": "Phase 3 diagram hardening"
+  },
+  "created_at": "2026-05-18",
+  "updated_at": "2026-05-18"
+}

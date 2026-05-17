@@ -1,0 +1,67 @@
+{
+  "schema_version": "rig.documentation.home.v1",
+  "document_id": "site-home",
+  "title": "Rig Relay",
+  "tagline": "Governed local runtime for agent work.",
+  "plain_language_summary": "AI agents can change code faster than people can inspect what happened. Rig Relay makes agent work observable, controlled, and reviewable.",
+  "partner_friendly_explanation": "Rig Relay is like a controlled workstation for AI agents. Instead of letting agents mutate code invisibly, it gives the work a station, a mirror, a checklist, and receipts.",
+  "primary_actions": [
+    {"label": "See what works today", "href": "#what-works", "description": "Current capabilities of the governed runtime"},
+    {"label": "View the evidence archive", "href": "/rig-relay/collections/index.html", "description": "Full documentation archive for architecture, governance, audits, and proofs"},
+    {"label": "Read the security model", "href": "/rig-relay/pages/security-policy.html", "description": "Security threat model v0 and hardening status"}
+  ],
+  "what_works_today": [
+    "Local desktop bridge launches and serves the cockpit UI",
+    "Frontend connects via WebSocket and receives live projections",
+    "Static evidence site is live on GitHub Pages",
+    "220+ canonical JSON documentation pages rendered to HTML",
+    "Code schemas define implementation contracts with authority hashes",
+    "Security threat model v0 with 17 threats and 5 release gates",
+    "WebSocket hardened with origin validation, message schema checks, and auth gating",
+    "Deterministic code schema router selects contracts before agents edit code",
+    "Static diagrams render from JSON specs (flow, state machine, timeline, matrix)",
+    "All 22 demo-doctor checks pass"
+  ],
+  "feature_cards": [
+    {"title": "Governed Execution", "description": "Agent tools are permission-gated. Destructive operations require approval. Stale batch reuse is prevented."},
+    {"title": "Correlated Tracing", "description": "Trace events carry correlation IDs and handshake IDs. Content-light doctrine keeps secrets out of traces."},
+    {"title": "Evidence Receipts", "description": "Every agent action produces verifiable receipts. Reports are append-only JSONL. Ralph scans for regressions."},
+    {"title": "Code Schemas", "description": "Implementation contracts encoded as JSON. Authority hashes prevent tampering. Context assembler routes tasks to schemas."},
+    {"title": "Static Evidence Site", "description": "All documentation is canonical JSON rendered to static HTML. No backend, no database, no tracking."},
+    {"title": "Security-Aware Bridge", "description": "Desktop bridge validates WebSocket origins and messages. Auth-before-subscribe. Invalid message guard closes abusive connections."}
+  ],
+  "proof_metrics": [
+    {"label": "Document Pages", "value": "220+"},
+    {"label": "Collections", "value": "34"},
+    {"label": "Code Schemas", "value": "5 active"},
+    {"label": "Security Threats", "value": "17 modeled"},
+    {"label": "Release Gates", "value": "5 defined"},
+    {"label": "Demo Doctor", "value": "22/22"}
+  ],
+  "audience_paths": [
+    {"label": "Non-technical overview", "description": "Plain-language explanation of what Rig Relay does and why it matters", "href": "#overview"},
+    {"label": "Technical reviewer", "description": "Architecture, governance, and security audits", "href": "/rig-relay/collections/audits.html"},
+    {"label": "Security reviewer", "description": "Threat model, security policy, and hardening status", "href": "/rig-relay/collections/security.html"},
+    {"label": "Contributor", "description": "Code schemas, development practices, and contribution guide", "href": "/rig-relay/pages/rig-integration-contract.html"}
+  ],
+  "featured_links": [
+    {"title": "Static Site v1 Readiness", "href": "/rig-relay/pages/static-site-v1-readiness.html", "summary": "Proof that the documentation site is live, rendered, and validated"},
+    {"title": "Security Threat Model v0", "href": "/rig-relay/pages/rig-relay-threat-model-v0.html", "summary": "Machine-readable threat model with 17 threats, 14 assets, and 11 trust boundaries"},
+    {"title": "Desktop Golden Path", "href": "/rig-relay/pages/desktop-golden-path-trace.html", "summary": "Canonical bridge startup and handshake trace for the local golden path"},
+    {"title": "Code Schemas", "href": "/rig-relay/collections/code-schemas.html", "summary": "Governed implementation contracts with authority hashes and invariants"},
+    {"title": "Documentation Policy", "href": "/rig-relay/pages/documentation-policy.html", "summary": "JSON-first documentation policy and migration manifest"}
+  ],
+  "archive_link": {"label": "Browse the full evidence archive →", "href": "/rig-relay/collections/index.html"},
+  "hero_diagram": {
+    "diagram_id": "desktop-golden-path-flow",
+    "path": "docs/json/diagrams/desktop_golden_path_flow.v1.json"
+  },
+  "metadata": {
+    "og_type": "website",
+    "theme_color": "#1e3a5f"
+  },
+  "provenance": {
+    "author": "Rig Relay Phase 5 UX Restructure",
+    "session_id": "phase-5-homepage"
+  }
+}

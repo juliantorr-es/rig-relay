@@ -1,1118 +1,1123 @@
 {
-  "generated_at": "2026-05-17T02:17:01.422533+00:00",
-  "git_commit": "8f1d83aa6714",
-  "page_count": 222,
-  "collection_page_count": 34,
+  "generated_at": "2026-05-17T09:57:59.738180+00:00",
+  "git_commit": "0517a0e0abb3",
+  "page_count": 223,
+  "collection_page_count": 35,
   "pages": [
     {
       "document_id": "rig-integration-contract",
       "title": "Rig Integration Contract",
-      "source_json_path": "docs/json/architecture/rig-integration-contract.v1.json"
+      "source_json_path": "json/architecture/rig-integration-contract.v1.json"
     },
     {
       "document_id": "agent-loop-ownership-audit",
       "title": "AgentLoop Ownership Audit",
-      "source_json_path": "docs/json/audits/agent-loop/agent-loop-ownership-audit.v1.json"
+      "source_json_path": "json/audits/agent-loop/agent-loop-ownership-audit.v1.json"
     },
     {
       "document_id": "architecture-guards-proposal",
       "title": "Architecture guard tests \u2014 proposed (not implemented)",
-      "source_json_path": "docs/json/audits/agent-loop/architecture-guards-proposal.v1.json"
+      "source_json_path": "json/audits/agent-loop/architecture-guards-proposal.v1.json"
     },
     {
       "document_id": "conversation-runtime-extraction-plan",
       "title": "ConversationRuntime extraction plan",
-      "source_json_path": "docs/json/audits/agent-loop/conversation-runtime-extraction-plan.v1.json"
+      "source_json_path": "json/audits/agent-loop/conversation-runtime-extraction-plan.v1.json"
     },
     {
       "document_id": "conversation-runtime-phase-2a-decision-policy",
       "title": "ConversationRuntime Phase 2A \u2014 Decision Policy Inventory",
-      "source_json_path": "docs/json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json"
+      "source_json_path": "json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json"
     },
     {
       "document_id": "conversation-runtime-phase-2b-decision-policy",
       "title": "ConversationRuntime Phase 2B \u2014 Hook/Tool/Budget Decision Policy",
-      "source_json_path": "docs/json/audits/agent-loop/conversation-runtime-phase-2b-decision-policy.v1.json"
+      "source_json_path": "json/audits/agent-loop/conversation-runtime-phase-2b-decision-policy.v1.json"
     },
     {
       "document_id": "phase3-readiness-reconciliation",
       "title": "Phase 3 Readiness Reconciliation \u2014 Canonical All-Lanes Truth Table",
-      "source_json_path": "docs/json/audits/agent-loop/phase3-readiness-reconciliation.v1.json"
+      "source_json_path": "json/audits/agent-loop/phase3-readiness-reconciliation.v1.json"
     },
     {
       "document_id": "phase4-architecture-map",
       "title": "Phase 4 Architecture Map \u2014 Orchestrator Shell Hardening and Turn Evidence Envelope v1",
-      "source_json_path": "docs/json/audits/agent-loop/phase4-architecture-map.v1.json"
+      "source_json_path": "json/audits/agent-loop/phase4-architecture-map.v1.json"
     },
     {
       "document_id": "subagent-runtime-toolruntime-v2",
       "title": "SubagentRuntime Governed Tool Path \u2014 Verification",
-      "source_json_path": "docs/json/audits/agent-loop/subagent-runtime-toolruntime-v2.v1.json"
+      "source_json_path": "json/audits/agent-loop/subagent-runtime-toolruntime-v2.v1.json"
     },
     {
       "document_id": "subagent-runtime-v1",
       "title": "SubagentRuntime v1 \u2014 Evidence and Tool Execution Mode",
-      "source_json_path": "docs/json/audits/agent-loop/subagent-runtime-v1.v1.json"
+      "source_json_path": "json/audits/agent-loop/subagent-runtime-v1.v1.json"
     },
     {
       "document_id": "artifact-schema-doctrine",
       "title": "Artifact Schema Doctrine",
-      "source_json_path": "docs/json/audits/artifact-schema-doctrine.v1.json"
+      "source_json_path": "json/audits/artifact-schema-doctrine.v1.json"
     },
     {
       "document_id": "backend-adapter-overlap-dedup-v1",
       "title": "Backend Adapter Overlap Dedup v1 \u2014 Audit",
-      "source_json_path": "docs/json/audits/backend/backend-adapter-overlap-dedup-v1.v1.json"
+      "source_json_path": "json/audits/backend/backend-adapter-overlap-dedup-v1.v1.json"
     },
     {
       "document_id": "brand-refresh-bauhaus-phosphor",
       "title": "Rig Relay Brand Refresh Audit",
-      "source_json_path": "docs/json/audits/brand-refresh-bauhaus-phosphor.v1.json"
+      "source_json_path": "json/audits/brand-refresh-bauhaus-phosphor.v1.json"
     },
     {
       "document_id": "ci-gate-architecture",
       "title": "CI Gate Architecture",
-      "source_json_path": "docs/json/audits/ci/ci-gate-architecture.v1.json"
+      "source_json_path": "json/audits/ci/ci-gate-architecture.v1.json"
     },
     {
       "document_id": "ci-implementation-roadmap",
       "title": "CI Implementation Roadmap",
-      "source_json_path": "docs/json/audits/ci/ci-implementation-roadmap.v1.json"
+      "source_json_path": "json/audits/ci/ci-implementation-roadmap.v1.json"
     },
     {
       "document_id": "ci-path-trigger-map",
       "title": "CI Path Trigger Map",
-      "source_json_path": "docs/json/audits/ci/ci-path-trigger-map.v1.json"
+      "source_json_path": "json/audits/ci/ci-path-trigger-map.v1.json"
     },
     {
       "document_id": "ci-surface-audit",
       "title": "CI Surface Audit",
-      "source_json_path": "docs/json/audits/ci/ci-surface-audit.v1.json"
+      "source_json_path": "json/audits/ci/ci-surface-audit.v1.json"
     },
     {
       "document_id": "ci-validate-alignment",
       "title": "CI\u2013Validate Alignment",
-      "source_json_path": "docs/json/audits/ci/ci-validate-alignment.v1.json"
+      "source_json_path": "json/audits/ci/ci-validate-alignment.v1.json"
     },
     {
       "document_id": "config-root-resolution-policy",
       "title": "Audit: Config Root Resolution Policy",
-      "source_json_path": "docs/json/audits/config-root-resolution-policy.v1.json"
+      "source_json_path": "json/audits/config-root-resolution-policy.v1.json"
     },
     {
       "document_id": "context-assembler-completion-plan",
       "title": "Context Assembler \u2014 Completion Plan",
-      "source_json_path": "docs/json/audits/context/context-assembler-completion-plan.v1.json"
+      "source_json_path": "json/audits/context/context-assembler-completion-plan.v1.json"
     },
     {
       "document_id": "context-assembler-final-reconciliation",
       "title": "Context Assembler Final Reconciliation",
-      "source_json_path": "docs/json/audits/context/context-assembler-final-reconciliation.v1.json"
+      "source_json_path": "json/audits/context/context-assembler-final-reconciliation.v1.json"
     },
     {
       "document_id": "context-assembler-gap-inventory",
       "title": "Context Assembler \u2014 Gap Inventory",
-      "source_json_path": "docs/json/audits/context/context-assembler-gap-inventory.v1.json"
+      "source_json_path": "json/audits/context/context-assembler-gap-inventory.v1.json"
     },
     {
       "document_id": "context-assembler-stable-v1",
       "title": "Context Assembler Stable v1",
-      "source_json_path": "docs/json/audits/context/context-assembler-stable-v1.v1.json"
+      "source_json_path": "json/audits/context/context-assembler-stable-v1.v1.json"
     },
     {
       "document_id": "context-assembly-plan-v1",
       "title": "ContextAssemblyPlan Contract Spine v1",
-      "source_json_path": "docs/json/audits/context/context-assembly-plan-v1.v1.json"
+      "source_json_path": "json/audits/context/context-assembly-plan-v1.v1.json"
     },
     {
       "document_id": "lane-a-compiler-renderer-gaps",
       "title": "Lane A \u2014 Compiler-Renderer Reconciliation Gaps",
-      "source_json_path": "docs/json/audits/context/gap-reports/lane-a-compiler-renderer-gaps.v1.json"
+      "source_json_path": "json/audits/context/gap-reports/lane-a-compiler-renderer-gaps.v1.json"
     },
     {
       "document_id": "lane-b-planner-gaps",
       "title": "Lane B \u2014 Planner Failure Warnings, RepoIndex Reality, Budget Semantics",
-      "source_json_path": "docs/json/audits/context/gap-reports/lane-b-planner-gaps.v1.json"
+      "source_json_path": "json/audits/context/gap-reports/lane-b-planner-gaps.v1.json"
     },
     {
       "document_id": "coordination-guard-availability",
       "title": "Coordination Guard Availability Audit",
-      "source_json_path": "docs/json/audits/coordination-guard-availability.v1.json"
+      "source_json_path": "json/audits/coordination-guard-availability.v1.json"
     },
     {
       "document_id": "coordination-migration-inventory",
       "title": "Coordination Migration Inventory",
-      "source_json_path": "docs/json/audits/coordination-migration-inventory.v1.json"
+      "source_json_path": "json/audits/coordination-migration-inventory.v1.json"
     },
     {
       "document_id": "current-built-in-tools",
       "title": "Current Built-In Tool Inventory",
-      "source_json_path": "docs/json/audits/current-built-in-tools.v1.json"
+      "source_json_path": "json/audits/current-built-in-tools.v1.json"
     },
     {
       "document_id": "deep-research-report1",
       "title": "Agent Harness Determinism: Industry Trends and Rig Relay\u2019s Strategy",
-      "source_json_path": "docs/json/audits/deep-research-report1.v1.json"
+      "source_json_path": "json/audits/deep-research-report1.v1.json"
     },
     {
       "document_id": "deep-research-report2",
       "title": "Rig Relay audit of the context-caching assessment",
-      "source_json_path": "docs/json/audits/deep-research-report2.v1.json"
+      "source_json_path": "json/audits/deep-research-report2.v1.json"
     },
     {
       "document_id": "deep-research-report3",
       "title": "Context Engineering and Context Caching",
-      "source_json_path": "docs/json/audits/deep-research-report3.v1.json"
+      "source_json_path": "json/audits/deep-research-report3.v1.json"
     },
     {
       "document_id": "desktop-golden-path-proof",
       "title": "Desktop Golden Path \u2014 Audit Proof",
-      "source_json_path": "docs/json/audits/desktop/desktop-golden-path-proof.v1.json"
+      "source_json_path": "json/audits/desktop/desktop-golden-path-proof.v1.json"
     },
     {
       "document_id": "single-bridge-before-state",
       "title": "Desktop Transport \u2014 Before State (Split Pywebview + WebSocket)",
-      "source_json_path": "docs/json/audits/desktop/single-bridge-before-state.v1.json"
+      "source_json_path": "json/audits/desktop/single-bridge-before-state.v1.json"
     },
     {
       "document_id": "determinism-maturity-matrix",
       "title": "Audit: Determinism Maturity Matrix",
-      "source_json_path": "docs/json/audits/determinism-maturity-matrix.v1.json"
+      "source_json_path": "json/audits/determinism-maturity-matrix.v1.json"
     },
     {
       "document_id": "evidence-contract-inventory",
       "title": "Audit: Evidence Contract Inventory",
-      "source_json_path": "docs/json/audits/evidence-contract-inventory.v1.json"
+      "source_json_path": "json/audits/evidence-contract-inventory.v1.json"
     },
     {
       "document_id": "evidence-manifest-receipt-chain-design",
       "title": "Audit: Evidence Manifest and Receipt Chain Design",
-      "source_json_path": "docs/json/audits/evidence-manifest-receipt-chain-design.v1.json"
+      "source_json_path": "json/audits/evidence-manifest-receipt-chain-design.v1.json"
     },
     {
       "document_id": "evidence-root-policy-doctrine",
       "title": "Audit: Evidence Root Product Semantics and Policy Doctrine",
-      "source_json_path": "docs/json/audits/evidence-root-policy-doctrine.v1.json"
+      "source_json_path": "json/audits/evidence-root-policy-doctrine.v1.json"
     },
     {
       "document_id": "evidence-security-privacy-boundary",
       "title": "Audit: Evidence Security and Privacy Boundary",
-      "source_json_path": "docs/json/audits/evidence-security-privacy-boundary.v1.json"
+      "source_json_path": "json/audits/evidence-security-privacy-boundary.v1.json"
     },
     {
       "document_id": "frontend-security-audit-2026-05-14",
       "title": "Frontend Security Audit \u2014 Rig Relay Desktop",
-      "source_json_path": "docs/json/audits/frontend-security-audit-2026-05-14.v1.json"
+      "source_json_path": "json/audits/frontend-security-audit-2026-05-14.v1.json"
     },
     {
       "document_id": "declutter-plan",
       "title": "Declutter Plan",
-      "source_json_path": "docs/json/audits/global-rig-declutter/declutter-plan.v1.json"
+      "source_json_path": "json/audits/global-rig-declutter/declutter-plan.v1.json"
     },
     {
       "document_id": "inventory",
       "title": "Global Rig Declutter Inventory",
-      "source_json_path": "docs/json/audits/global-rig-declutter/inventory.v1.json"
+      "source_json_path": "json/audits/global-rig-declutter/inventory.v1.json"
     },
     {
       "document_id": "provider-adapter-contract-design",
       "title": "Audit: Provider Adapter Contract Design",
-      "source_json_path": "docs/json/audits/provider-adapter-contract-design.v1.json"
+      "source_json_path": "json/audits/provider-adapter-contract-design.v1.json"
     },
     {
       "document_id": "provider-boundary-adapter-contract-map",
       "title": "Audit: Provider Boundary and Adapter Contract Map",
-      "source_json_path": "docs/json/audits/provider-boundary-adapter-contract-map.v1.json"
+      "source_json_path": "json/audits/provider-boundary-adapter-contract-map.v1.json"
     },
     {
       "document_id": "relay-entry-point-authority",
       "title": "Relay Entry Point Authority Audit",
-      "source_json_path": "docs/json/audits/relay-entry-point-authority.v1.json"
+      "source_json_path": "json/audits/relay-entry-point-authority.v1.json"
     },
     {
       "document_id": "relay-smoke-validation-doctrine",
       "title": "Audit: Relay Smoke and Validation Doctrine",
-      "source_json_path": "docs/json/audits/relay-smoke-validation-doctrine.v1.json"
+      "source_json_path": "json/audits/relay-smoke-validation-doctrine.v1.json"
     },
     {
       "document_id": "relay-validation-gates-roadmap",
       "title": "Audit: Relay Validation Gates and Doctor Roadmap",
-      "source_json_path": "docs/json/audits/relay-validation-gates-roadmap.v1.json"
+      "source_json_path": "json/audits/relay-validation-gates-roadmap.v1.json"
     },
     {
       "document_id": "rig-intake-cannibalization-plan",
       "title": "Rig + Intake Cannibalization Plan for Rig Relay",
-      "source_json_path": "docs/json/audits/rig-intake-cannibalization-plan.v1.json"
+      "source_json_path": "json/audits/rig-intake-cannibalization-plan.v1.json"
     },
     {
       "document_id": "audit-trail-tamper-evidence-design",
       "title": "Audit Trail Tamper-Evidence Design Audit",
-      "source_json_path": "docs/json/audits/rig-runtime-port/audit-trail-tamper-evidence-design.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/audit-trail-tamper-evidence-design.v1.json"
     },
     {
       "document_id": "concept-map",
       "title": "Rig-to-Relay Runtime Concept Map",
-      "source_json_path": "docs/json/audits/rig-runtime-port/concept-map.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/concept-map.v1.json"
     },
     {
       "document_id": "execution-progress-projection-design",
       "title": "ExecutionProgress Projection Design \u2014 Audit Record",
-      "source_json_path": "docs/json/audits/rig-runtime-port/execution-progress-projection-design.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/execution-progress-projection-design.v1.json"
     },
     {
       "document_id": "fleet-coordination-design",
       "title": "Fleet Coordination Plane \u2014 Design Audit",
-      "source_json_path": "docs/json/audits/rig-runtime-port/fleet-coordination-design.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/fleet-coordination-design.v1.json"
     },
     {
       "document_id": "mission-context-duckdb-design",
       "title": "Mission Context DuckDB Design",
-      "source_json_path": "docs/json/audits/rig-runtime-port/mission-context-duckdb-design.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/mission-context-duckdb-design.v1.json"
     },
     {
       "document_id": "mission-envelope-spine-design",
       "title": "Mission Envelope Spine Design",
-      "source_json_path": "docs/json/audits/rig-runtime-port/mission-envelope-spine-design.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/mission-envelope-spine-design.v1.json"
     },
     {
       "document_id": "port-roadmap",
       "title": "Rig Runtime Port Roadmap",
-      "source_json_path": "docs/json/audits/rig-runtime-port/port-roadmap.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/port-roadmap.v1.json"
     },
     {
       "document_id": "rig-to-relay-runtime-audit",
       "title": "Rig Runtime Port Audit \u2014 Rig to Rig Relay",
-      "source_json_path": "docs/json/audits/rig-runtime-port/rig-to-relay-runtime-audit.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/rig-to-relay-runtime-audit.v1.json"
     },
     {
       "document_id": "runtime-tool-convergence-followup",
       "title": "Runtime Tool Convergence Follow-up",
-      "source_json_path": "docs/json/audits/rig-runtime-port/runtime-tool-convergence-followup.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/runtime-tool-convergence-followup.v1.json"
     },
     {
       "document_id": "runtime-tool-invocation-adapter-design",
       "title": "Runtime Tool Invocation Adapter Design",
-      "source_json_path": "docs/json/audits/rig-runtime-port/runtime-tool-invocation-adapter-design.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/runtime-tool-invocation-adapter-design.v1.json"
     },
     {
       "document_id": "runtime-tool-invocation-result-contract-audit",
       "title": "Runtime Tool Invocation Result Contract Audit",
-      "source_json_path": "docs/json/audits/rig-runtime-port/runtime-tool-invocation-result-contract-audit.v1.json"
+      "source_json_path": "json/audits/rig-runtime-port/runtime-tool-invocation-result-contract-audit.v1.json"
     },
     {
       "document_id": "runtime-evidence-spine-v1",
       "title": "Runtime Evidence Spine v1",
-      "source_json_path": "docs/json/audits/runtime/runtime-evidence-spine-v1.v1.json"
+      "source_json_path": "json/audits/runtime/runtime-evidence-spine-v1.v1.json"
     },
     {
       "document_id": "runtime-supervisor-result-envelope-v1",
       "title": "RuntimeSupervisor Result Envelope v1",
-      "source_json_path": "docs/json/audits/runtime/runtime-supervisor-result-envelope-v1.v1.json"
+      "source_json_path": "json/audits/runtime/runtime-supervisor-result-envelope-v1.v1.json"
     },
     {
       "document_id": "state-machine-candidate-audit",
       "title": "Rig Relay Runtime Architecture Audit: State Machines & Event Triggers",
-      "source_json_path": "docs/json/audits/runtime/state_machine_candidate_audit.v1.json"
+      "source_json_path": "json/audits/runtime/state_machine_candidate_audit.v1.json"
     },
     {
       "document_id": "tool-runtime-evidence-adoption-v1",
       "title": "ToolRuntime Direct Path Envelope Population v1 \u2014 Audit",
-      "source_json_path": "docs/json/audits/runtime/tool-runtime-evidence-adoption-v1.v1.json"
+      "source_json_path": "json/audits/runtime/tool-runtime-evidence-adoption-v1.v1.json"
     },
     {
       "document_id": "tracing-v0",
       "title": "Tracing v0 \u2014 Audit",
-      "source_json_path": "docs/json/audits/runtime/tracing-v0.v1.json"
+      "source_json_path": "json/audits/runtime/tracing-v0.v1.json"
     },
     {
       "document_id": "session-lifecycle-state-machine",
       "title": "Audit: Session Lifecycle State Machine",
-      "source_json_path": "docs/json/audits/session-lifecycle-state-machine.v1.json"
+      "source_json_path": "json/audits/session-lifecycle-state-machine.v1.json"
     },
     {
       "document_id": "default-suite-tiering-report",
       "title": "Test Suite Tiering Report",
-      "source_json_path": "docs/json/audits/test-suite/default_suite_tiering_report.v1.json"
+      "source_json_path": "json/audits/test-suite/default_suite_tiering_report.v1.json"
     },
     {
       "document_id": "deleted-module-collection-errors",
       "title": "Deleted Module Collection Errors \u2014 Audit",
-      "source_json_path": "docs/json/audits/test-suite/deleted_module_collection_errors.v1.json"
+      "source_json_path": "json/audits/test-suite/deleted_module_collection_errors.v1.json"
     },
     {
       "document_id": "duplicate-test-audit",
       "title": "Duplicate Test Audit",
-      "source_json_path": "docs/json/audits/test-suite/duplicate_test_audit.v1.json"
+      "source_json_path": "json/audits/test-suite/duplicate_test_audit.v1.json"
     },
     {
       "document_id": "test-dedup-phase1-note",
       "title": "Test Deduplication Phase 1 \u2014 Doctrine Note",
-      "source_json_path": "docs/json/audits/test-suite/test_dedup_phase1_note.v1.json"
+      "source_json_path": "json/audits/test-suite/test_dedup_phase1_note.v1.json"
     },
     {
       "document_id": "test-dedup-phase2-note",
       "title": "Test Deduplication Phase 2 \u2014 normalize high-value AST duplicate clusters",
-      "source_json_path": "docs/json/audits/test-suite/test_dedup_phase2_note.v1.json"
+      "source_json_path": "json/audits/test-suite/test_dedup_phase2_note.v1.json"
     },
     {
       "document_id": "test-layout-canonicalization-report",
       "title": "Test Layout Canonicalization Report",
-      "source_json_path": "docs/json/audits/test-suite/test_layout_canonicalization_report.v1.json"
+      "source_json_path": "json/audits/test-suite/test_layout_canonicalization_report.v1.json"
     },
     {
       "document_id": "test-purge-acceptance-gate",
       "title": "Test Purge Pass 1 \u2014 Acceptance Gate",
-      "source_json_path": "docs/json/audits/test-suite/test_purge_acceptance_gate.v1.json"
+      "source_json_path": "json/audits/test-suite/test_purge_acceptance_gate.v1.json"
     },
     {
       "document_id": "test-purge-pass-1-report",
       "title": "Test Purge Pass 1 Report",
-      "source_json_path": "docs/json/audits/test-suite/test_purge_pass_1_report.v1.json"
+      "source_json_path": "json/audits/test-suite/test_purge_pass_1_report.v1.json"
     },
     {
       "document_id": "test-quality-summary",
       "title": "Test Quality Audit Summary",
-      "source_json_path": "docs/json/audits/test-suite/test_quality_summary.v1.json"
+      "source_json_path": "json/audits/test-suite/test_quality_summary.v1.json"
     },
     {
       "document_id": "test-cleanup-roadmap",
       "title": "Test Cleanup Roadmap",
-      "source_json_path": "docs/json/audits/tests/test-cleanup-roadmap.v1.json"
+      "source_json_path": "json/audits/tests/test-cleanup-roadmap.v1.json"
     },
     {
       "document_id": "test-quality-taxonomy",
       "title": "Test Quality Taxonomy",
-      "source_json_path": "docs/json/audits/tests/test-quality-taxonomy.v1.json"
+      "source_json_path": "json/audits/tests/test-quality-taxonomy.v1.json"
     },
     {
       "document_id": "test-suite-quality-audit",
       "title": "Test Suite Quality Audit",
-      "source_json_path": "docs/json/audits/tests/test-suite-quality-audit.v1.json"
+      "source_json_path": "json/audits/tests/test-suite-quality-audit.v1.json"
     },
     {
       "document_id": "tool-determinism-inventory",
       "title": "Tool Determinism Inventory",
-      "source_json_path": "docs/json/audits/tool-determinism-inventory.v1.json"
+      "source_json_path": "json/audits/tool-determinism-inventory.v1.json"
     },
     {
       "document_id": "tool-execution-artifact-safety-boundary",
       "title": "Audit: Tool Execution and Artifact Safety Boundary",
-      "source_json_path": "docs/json/audits/tool-execution-artifact-safety-boundary.v1.json"
+      "source_json_path": "json/audits/tool-execution-artifact-safety-boundary.v1.json"
     },
     {
       "document_id": "bash-deterministic-envelope",
       "title": "Bash Deterministic Tool Envelope",
-      "source_json_path": "docs/json/audits/tool-hardening/bash-deterministic-envelope.v1.json"
+      "source_json_path": "json/audits/tool-hardening/bash-deterministic-envelope.v1.json"
     },
     {
       "document_id": "mutation-tool-contract-matrix",
       "title": "Mutation Tool Contract Matrix",
-      "source_json_path": "docs/json/audits/tool-hardening/mutation-tool-contract-matrix.v1.json"
+      "source_json_path": "json/audits/tool-hardening/mutation-tool-contract-matrix.v1.json"
     },
     {
       "document_id": "orchestration-tool-hardening-gaps",
       "title": "Orchestration Tool Hardening Gaps",
-      "source_json_path": "docs/json/audits/tool-hardening/orchestration-tool-hardening-gaps.v1.json"
+      "source_json_path": "json/audits/tool-hardening/orchestration-tool-hardening-gaps.v1.json"
     },
     {
       "document_id": "read-only-inspection-tool-gaps",
       "title": "Read-Only Inspection Tool Gaps",
-      "source_json_path": "docs/json/audits/tool-hardening/read-only-inspection-tool-gaps.v1.json"
+      "source_json_path": "json/audits/tool-hardening/read-only-inspection-tool-gaps.v1.json"
     },
     {
       "document_id": "search-replace-final-gaps",
       "title": "SearchReplace Final Gaps",
-      "source_json_path": "docs/json/audits/tool-hardening/search-replace-final-gaps.v1.json"
+      "source_json_path": "json/audits/tool-hardening/search-replace-final-gaps.v1.json"
     },
     {
       "document_id": "search-replace-patch-contract",
       "title": "SearchReplace Patch Contract",
-      "source_json_path": "docs/json/audits/tool-hardening/search-replace-patch-contract.v1.json"
+      "source_json_path": "json/audits/tool-hardening/search-replace-patch-contract.v1.json"
     },
     {
       "document_id": "tool-hardening-implementation-roadmap",
       "title": "Tool Hardening Implementation Roadmap",
-      "source_json_path": "docs/json/audits/tool-hardening/tool-hardening-implementation-roadmap.v1.json"
+      "source_json_path": "json/audits/tool-hardening/tool-hardening-implementation-roadmap.v1.json"
     },
     {
       "document_id": "tool-hardening-roadmap-audit",
       "title": "Tool Hardening Roadmap Audit",
-      "source_json_path": "docs/json/audits/tool-hardening/tool-hardening-roadmap-audit.v1.json"
+      "source_json_path": "json/audits/tool-hardening/tool-hardening-roadmap-audit.v1.json"
     },
     {
       "document_id": "write-file-final-gaps",
       "title": "WriteFile Hardening State",
-      "source_json_path": "docs/json/audits/tool-hardening/write-file-final-gaps.v1.json"
+      "source_json_path": "json/audits/tool-hardening/write-file-final-gaps.v1.json"
     },
     {
       "document_id": "write-file-legacy-result-content-audit",
       "title": "WriteFile Legacy Result Content Audit",
-      "source_json_path": "docs/json/audits/tool-hardening/write-file-legacy-result-content-audit.v1.json"
+      "source_json_path": "json/audits/tool-hardening/write-file-legacy-result-content-audit.v1.json"
     },
     {
       "document_id": "write-file-receipt-gap-closure",
       "title": "WriteFile Receipt Gap Closure",
-      "source_json_path": "docs/json/audits/tool-hardening/write-file-receipt-gap-closure.v1.json"
+      "source_json_path": "json/audits/tool-hardening/write-file-receipt-gap-closure.v1.json"
     },
     {
       "document_id": "schema-gaps",
       "title": "Schema Gaps",
-      "source_json_path": "docs/json/audits/tool-usage-analysis/schema-gaps.v1.json"
+      "source_json_path": "json/audits/tool-usage-analysis/schema-gaps.v1.json"
     },
     {
       "document_id": "tool-hardening-priority",
       "title": "Tool Hardening Priority",
-      "source_json_path": "docs/json/audits/tool-usage-analysis/tool-hardening-priority.v1.json"
+      "source_json_path": "json/audits/tool-usage-analysis/tool-hardening-priority.v1.json"
     },
     {
       "document_id": "tool-usage-summary",
       "title": "Local Relay Tool Usage Summary",
-      "source_json_path": "docs/json/audits/tool-usage-analysis/tool-usage-summary.v1.json"
+      "source_json_path": "json/audits/tool-usage-analysis/tool-usage-summary.v1.json"
     },
     {
       "document_id": "textual-rig-console-maturity-audit",
       "title": "Textual Rig Console Maturity Audit",
-      "source_json_path": "docs/json/audits/ui/textual-rig-console-maturity-audit.v1.json"
+      "source_json_path": "json/audits/ui/textual-rig-console-maturity-audit.v1.json"
     },
     {
       "document_id": "bash-usage-audit",
       "title": "Bash Usage Audit for Validate Design",
-      "source_json_path": "docs/json/audits/validate-tool/bash-usage-audit.v1.json"
+      "source_json_path": "json/audits/validate-tool/bash-usage-audit.v1.json"
     },
     {
       "document_id": "validate-blocker-taxonomy",
       "title": "Validate Blocker Taxonomy",
-      "source_json_path": "docs/json/audits/validate-tool/validate-blocker-taxonomy.v1.json"
+      "source_json_path": "json/audits/validate-tool/validate-blocker-taxonomy.v1.json"
     },
     {
       "document_id": "validate-convergence-audit",
       "title": "Validate Workstream Convergence Audit",
-      "source_json_path": "docs/json/audits/validate-tool/validate-convergence-audit.v1.json"
+      "source_json_path": "json/audits/validate-tool/validate-convergence-audit.v1.json"
     },
     {
       "document_id": "validate-implementation-roadmap",
       "title": "Validate Implementation Roadmap",
-      "source_json_path": "docs/json/audits/validate-tool/validate-implementation-roadmap.v1.json"
+      "source_json_path": "json/audits/validate-tool/validate-implementation-roadmap.v1.json"
     },
     {
       "document_id": "validate-profile-taxonomy",
       "title": "Validate Profile Taxonomy",
-      "source_json_path": "docs/json/audits/validate-tool/validate-profile-taxonomy.v1.json"
+      "source_json_path": "json/audits/validate-tool/validate-profile-taxonomy.v1.json"
     },
     {
       "document_id": "validate-tool-contract",
       "title": "Validate Tool Contract",
-      "source_json_path": "docs/json/audits/validate-tool/validate-tool-contract.v1.json"
+      "source_json_path": "json/audits/validate-tool/validate-tool-contract.v1.json"
     },
     {
       "document_id": "vibe-cli-purge-inventory",
       "title": "Vibe CLI Purge Inventory",
-      "source_json_path": "docs/json/audits/vibe-cli-purge-inventory.v1.json"
+      "source_json_path": "json/audits/vibe-cli-purge-inventory.v1.json"
     },
     {
       "document_id": "vibe-legacy-boundary-inventory",
       "title": "Vibe Legacy Boundary Inventory",
-      "source_json_path": "docs/json/audits/vibe-legacy-boundary-inventory.v1.json"
+      "source_json_path": "json/audits/vibe-legacy-boundary-inventory.v1.json"
     },
     {
       "document_id": "architecture-options",
       "title": "Architecture Options: VSCodium Shell Lane",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/architecture-options.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/architecture-options.v1.json"
     },
     {
       "document_id": "compatibility-with-chatgpt-macos",
       "title": "ChatGPT macOS Compatibility Audit",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/compatibility-with-chatgpt-macos.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/compatibility-with-chatgpt-macos.v1.json"
     },
     {
       "document_id": "current-rig-reuse-map",
       "title": "Current Rig Reuse Map",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/current-rig-reuse-map.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/current-rig-reuse-map.v1.json"
     },
     {
       "document_id": "effort-estimate",
       "title": "Effort Estimate: VSCodium Shell Lane",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/effort-estimate.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/effort-estimate.v1.json"
     },
     {
       "document_id": "executive-summary",
       "title": "Executive Summary: VSCodium Shell Lane for Rig Relay",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/executive-summary.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/executive-summary.v1.json"
     },
     {
       "document_id": "extension-api-study",
       "title": "VSCodium Extension API Study",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/extension-api-study.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/extension-api-study.v1.json"
     },
     {
       "document_id": "extension-spike-results",
       "title": "Audit: VSCodium Extension Feasibility Spike Results",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/extension-spike-results.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/extension-spike-results.v1.json"
     },
     {
       "document_id": "final-recommendation",
       "title": "Final Recommendation: VSCodium Shell Lane",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/final-recommendation.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/final-recommendation.v1.json"
     },
     {
       "document_id": "product-surface",
       "title": "Product Surface: Rig MVP for VSCodium",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/product-surface.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/product-surface.v1.json"
     },
     {
       "document_id": "protocol-design",
       "title": "Protocol Design: Extension \u2194 Rig Daemon",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/protocol-design.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/protocol-design.v1.json"
     },
     {
       "document_id": "risk-register",
       "title": "Risk Register: VSCodium Shell Lane",
-      "source_json_path": "docs/json/audits/vscodium-shell-lane/risk-register.v1.json"
+      "source_json_path": "json/audits/vscodium-shell-lane/risk-register.v1.json"
     },
     {
       "document_id": "context-assembler-integration-plan",
       "title": "Context Assembler Integration Plan",
-      "source_json_path": "docs/json/code_schemas/context_assembler_integration_plan.v1.json"
+      "source_json_path": "json/code_schemas/context_assembler_integration_plan.v1.json"
     },
     {
       "document_id": "desktop-golden-path-trace",
       "title": "Desktop Golden Path Trace",
-      "source_json_path": "docs/json/code_schemas/desktop_golden_path_trace.v1.json"
+      "source_json_path": "json/code_schemas/desktop_golden_path_trace.v1.json"
     },
     {
       "document_id": "frontend-trace-endpoint",
       "title": "Frontend Trace Endpoint",
-      "source_json_path": "docs/json/code_schemas/frontend_trace_endpoint.v1.json"
+      "source_json_path": "json/code_schemas/frontend_trace_endpoint.v1.json"
     },
     {
       "document_id": "frontend-transport-state-reducer",
       "title": "Frontend Transport State Reducer",
-      "source_json_path": "docs/json/code_schemas/frontend_transport_state_reducer.v1.json"
+      "source_json_path": "json/code_schemas/frontend_transport_state_reducer.v1.json"
     },
     {
       "document_id": "json-documentation-migration",
       "title": "JSON Documentation Migration",
-      "source_json_path": "docs/json/code_schemas/json_documentation_migration.v1.json"
+      "source_json_path": "json/code_schemas/json_documentation_migration.v1.json"
     },
     {
       "document_id": "tool-batch-execution",
       "title": "Tool Batch Execution",
-      "source_json_path": "docs/json/code_schemas/tool_batch_execution.v1.json"
+      "source_json_path": "json/code_schemas/tool_batch_execution.v1.json"
     },
     {
       "document_id": "2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary",
       "title": "Conversation Summary: Test Suite Quality Audit",
-      "source_json_path": "docs/json/conversations/2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.v1.json"
+      "source_json_path": "json/conversations/2025-06-13--rig-relay--no-phase--test-suite-quality-audit--summary.v1.json"
     },
     {
       "document_id": "2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary",
       "title": "2026-05-13 \u2014 Phase 1: Receipt-Gated Protected Intents",
-      "source_json_path": "docs/json/conversations/2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.v1.json"
+      "source_json_path": "json/conversations/2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.v1.json"
     },
     {
       "document_id": "2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port",
       "title": "Desktop Projection Shell Pattern Port",
-      "source_json_path": "docs/json/conversations/2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.v1.json"
+      "source_json_path": "json/conversations/2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port.v1.json"
     },
     {
       "document_id": "2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary",
       "title": "Rig Relay \u2014 Phase 3: Facade Extraction & Tool Hardening (search_replace)",
-      "source_json_path": "docs/json/conversations/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.v1.json"
+      "source_json_path": "json/conversations/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.v1.json"
     },
     {
       "document_id": "2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary",
       "title": "Rig Relay \u2014 Complete Conversation Summary",
-      "source_json_path": "docs/json/conversations/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.v1.json"
+      "source_json_path": "json/conversations/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.v1.json"
     },
     {
       "document_id": "2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary",
       "title": "Comprehensive Conversation Summary",
-      "source_json_path": "docs/json/conversations/2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.v1.json"
+      "source_json_path": "json/conversations/2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary.v1.json"
     },
     {
       "document_id": "2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary",
       "title": "Untitled",
-      "source_json_path": "docs/json/conversations/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.v1.json"
+      "source_json_path": "json/conversations/2026-05-13--rig-relay--phase-p3--audit-trail-adapter-coordination--summary.v1.json"
     },
     {
       "document_id": "2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary",
       "title": "Fleet Coordination Completion \u2014 Phases 3\u20135",
-      "source_json_path": "docs/json/conversations/2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.v1.json"
+      "source_json_path": "json/conversations/2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.v1.json"
     },
     {
       "document_id": "2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary",
       "title": "Phase 3: RepoContextIndex \u2014 DuckDB-backed constrained retrieval",
-      "source_json_path": "docs/json/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.v1.json"
+      "source_json_path": "json/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.v1.json"
     },
     {
       "document_id": "2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff",
       "title": "Rig Relay \u2014 Conversation Summary",
-      "source_json_path": "docs/json/conversations/2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.v1.json"
+      "source_json_path": "json/conversations/2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.v1.json"
     },
     {
       "document_id": "conversations-readme",
       "title": "Conversation Summaries",
-      "source_json_path": "docs/json/conversations/README.v1.json"
+      "source_json_path": "json/conversations/README.v1.json"
     },
     {
       "document_id": "desktop-golden-path",
       "title": "Desktop Golden Path",
-      "source_json_path": "docs/json/demo/desktop-golden-path.v1.json"
+      "source_json_path": "json/demo/desktop-golden-path.v1.json"
     },
     {
       "document_id": "mcp-night-demo",
       "title": "MCP Night Demo \u2014 Fresh-Clone Walkthrough",
-      "source_json_path": "docs/json/demo/mcp-night-demo.v1.json"
+      "source_json_path": "json/demo/mcp-night-demo.v1.json"
     },
     {
       "document_id": "mcp-night-development-harness-demo",
       "title": "MCP Night \u2014 Rig Relay Development Harness Demo",
-      "source_json_path": "docs/json/demo/mcp-night-development-harness-demo.v1.json"
+      "source_json_path": "json/demo/mcp-night-development-harness-demo.v1.json"
     },
     {
       "document_id": "documentation-policy",
       "title": "Documentation Policy",
-      "source_json_path": "docs/json/documentation_policy.v1.json"
+      "source_json_path": "json/documentation_policy.v1.json"
     },
     {
       "document_id": "rig-relay-self-dogfood",
       "title": "Rig Relay Self-Dogfood Workflow",
-      "source_json_path": "docs/json/dogfood/rig-relay-self-dogfood.v1.json"
+      "source_json_path": "json/dogfood/rig-relay-self-dogfood.v1.json"
     },
     {
       "document_id": "evidence-readme",
       "title": "Rig Relay Evidence",
-      "source_json_path": "docs/json/evidence/README.v1.json"
+      "source_json_path": "json/evidence/README.v1.json"
     },
     {
       "document_id": "validation",
       "title": "Evidence Validation",
-      "source_json_path": "docs/json/evidence/validation.v1.json"
+      "source_json_path": "json/evidence/validation.v1.json"
     },
     {
       "document_id": "python",
       "title": "Python Language Practices",
-      "source_json_path": "docs/json/findings/language-practices/python.v1.json"
+      "source_json_path": "json/findings/language-practices/python.v1.json"
     },
     {
       "document_id": "out-of-scope-findings",
       "title": "Out-of-Scope Findings Registry",
-      "source_json_path": "docs/json/findings/out-of-scope-findings.v1.json"
+      "source_json_path": "json/findings/out-of-scope-findings.v1.json"
     },
     {
       "document_id": "agent-loop-boundary",
       "title": "Agent Loop Boundary",
-      "source_json_path": "docs/json/governance/agent_loop_boundary.v1.json"
+      "source_json_path": "json/governance/agent_loop_boundary.v1.json"
     },
     {
       "document_id": "artifact-tracking-policy",
       "title": "Artifact Tracking Policy",
-      "source_json_path": "docs/json/governance/artifact-tracking-policy.v1.json"
+      "source_json_path": "json/governance/artifact-tracking-policy.v1.json"
     },
     {
       "document_id": "audit-trail-tamper-evidence",
       "title": "Audit Trail Tamper-Evidence Design",
-      "source_json_path": "docs/json/governance/audit-trail-tamper-evidence.v1.json"
+      "source_json_path": "json/governance/audit-trail-tamper-evidence.v1.json"
     },
     {
       "document_id": "audit-trail",
       "title": "Audit Trail Store",
-      "source_json_path": "docs/json/governance/audit-trail.v1.json"
+      "source_json_path": "json/governance/audit-trail.v1.json"
     },
     {
       "document_id": "beta-telemetry-onboarding",
       "title": "Beta Telemetry Onboarding",
-      "source_json_path": "docs/json/governance/beta-telemetry-onboarding.v1.json"
+      "source_json_path": "json/governance/beta-telemetry-onboarding.v1.json"
     },
     {
       "document_id": "context-compiler",
       "title": "Context Compiler Doctrine",
-      "source_json_path": "docs/json/governance/context-compiler.v1.json"
+      "source_json_path": "json/governance/context-compiler.v1.json"
     },
     {
       "document_id": "context-observability",
       "title": "Context Observability Doctrine",
-      "source_json_path": "docs/json/governance/context-observability.v1.json"
+      "source_json_path": "json/governance/context-observability.v1.json"
     },
     {
       "document_id": "context-optimization-codecs",
       "title": "Context Optimization Codecs",
-      "source_json_path": "docs/json/governance/context-optimization-codecs.v1.json"
+      "source_json_path": "json/governance/context-optimization-codecs.v1.json"
     },
     {
       "document_id": "coordination-ownership-policy",
       "title": "Coordination Ownership Policy",
-      "source_json_path": "docs/json/governance/coordination-ownership-policy.v1.json"
+      "source_json_path": "json/governance/coordination-ownership-policy.v1.json"
     },
     {
       "document_id": "cross-session-coordination",
       "title": "Cross-Session Coordination",
-      "source_json_path": "docs/json/governance/cross-session-coordination.v1.json"
+      "source_json_path": "json/governance/cross-session-coordination.v1.json"
     },
     {
       "document_id": "debug-bundle-policy",
       "title": "Debug Bundle Policy",
-      "source_json_path": "docs/json/governance/debug-bundle-policy.v1.json"
+      "source_json_path": "json/governance/debug-bundle-policy.v1.json"
     },
     {
       "document_id": "delegate-fleet-orchestration",
       "title": "Delegate/Fleet Orchestration Doctrine",
-      "source_json_path": "docs/json/governance/delegate-fleet-orchestration.v1.json"
+      "source_json_path": "json/governance/delegate-fleet-orchestration.v1.json"
     },
     {
       "document_id": "dependency-policy",
       "title": "Rig Relay Dependency Policy",
-      "source_json_path": "docs/json/governance/dependency-policy.v1.json"
+      "source_json_path": "json/governance/dependency-policy.v1.json"
     },
     {
       "document_id": "desktop-cockpit-ui",
       "title": "Rig Relay Desktop Cockpit UI",
-      "source_json_path": "docs/json/governance/desktop-cockpit-ui.v1.json"
+      "source_json_path": "json/governance/desktop-cockpit-ui.v1.json"
     },
     {
       "document_id": "desktop-hitl-boundary",
       "title": "Desktop HITL Boundary",
-      "source_json_path": "docs/json/governance/desktop-hitl-boundary.v1.json"
+      "source_json_path": "json/governance/desktop-hitl-boundary.v1.json"
     },
     {
       "document_id": "execution-progress-projection",
       "title": "ExecutionProgressProjection \u2014 Design",
-      "source_json_path": "docs/json/governance/execution-progress-projection.v1.json"
+      "source_json_path": "json/governance/execution-progress-projection.v1.json"
     },
     {
       "document_id": "fleet-coordination-plane",
       "title": "Rig Fleet Coordination Plane",
-      "source_json_path": "docs/json/governance/fleet-coordination-plane.v1.json"
+      "source_json_path": "json/governance/fleet-coordination-plane.v1.json"
     },
     {
       "document_id": "frontend-rendering-safety",
       "title": "Frontend Rendering Safety Doctrine",
-      "source_json_path": "docs/json/governance/frontend-rendering-safety.v1.json"
+      "source_json_path": "json/governance/frontend-rendering-safety.v1.json"
     },
     {
       "document_id": "future-passkey-plan",
       "title": "Future Passkey Plan",
-      "source_json_path": "docs/json/governance/future-passkey-plan.v1.json"
+      "source_json_path": "json/governance/future-passkey-plan.v1.json"
     },
     {
       "document_id": "identity-provider-policy",
       "title": "Identity Provider Policy",
-      "source_json_path": "docs/json/governance/identity-provider-policy.v1.json"
+      "source_json_path": "json/governance/identity-provider-policy.v1.json"
     },
     {
       "document_id": "mission-context-packets",
       "title": "Mission Context Packets",
-      "source_json_path": "docs/json/governance/mission-context-packets.v1.json"
+      "source_json_path": "json/governance/mission-context-packets.v1.json"
     },
     {
       "document_id": "mission-envelope",
       "title": "Mission Envelope",
-      "source_json_path": "docs/json/governance/mission-envelope.v1.json"
+      "source_json_path": "json/governance/mission-envelope.v1.json"
     },
     {
       "document_id": "mission-router",
       "title": "Rig Mission Router \u2014 Phase 0",
-      "source_json_path": "docs/json/governance/mission-router.v1.json"
+      "source_json_path": "json/governance/mission-router.v1.json"
     },
     {
       "document_id": "model-observation-dataset",
       "title": "Model Observation Dataset",
-      "source_json_path": "docs/json/governance/model-observation-dataset.v1.json"
+      "source_json_path": "json/governance/model-observation-dataset.v1.json"
     },
     {
       "document_id": "orchestrator-subagent-model",
       "title": "Orchestrator, Subagent, Model, and Ralph Roles",
-      "source_json_path": "docs/json/governance/orchestrator-subagent-model.v1.json"
+      "source_json_path": "json/governance/orchestrator-subagent-model.v1.json"
     },
     {
       "document_id": "orchestrator-loop-boundary",
       "title": "Orchestrator Loop Boundary",
-      "source_json_path": "docs/json/governance/orchestrator_loop_boundary.v1.json"
+      "source_json_path": "json/governance/orchestrator_loop_boundary.v1.json"
     },
     {
       "document_id": "provider-onboarding-policy",
       "title": "Provider Onboarding Policy",
-      "source_json_path": "docs/json/governance/provider-onboarding-policy.v1.json"
+      "source_json_path": "json/governance/provider-onboarding-policy.v1.json"
     },
     {
       "document_id": "ralph-background-loop",
       "title": "Ralph \u2014 Governed Background Maintenance Loop",
-      "source_json_path": "docs/json/governance/ralph-background-loop.v1.json"
+      "source_json_path": "json/governance/ralph-background-loop.v1.json"
     },
     {
       "document_id": "ralph-worktree-lanes",
       "title": "Ralph Worktree Lanes \u2014 Background Isolation Model",
-      "source_json_path": "docs/json/governance/ralph-worktree-lanes.v1.json"
+      "source_json_path": "json/governance/ralph-worktree-lanes.v1.json"
     },
     {
       "document_id": "receipt-envelope",
       "title": "Receipt Envelope",
-      "source_json_path": "docs/json/governance/receipt-envelope.v1.json"
+      "source_json_path": "json/governance/receipt-envelope.v1.json"
     },
     {
       "document_id": "relay-desktop-projection-contract",
       "title": "Relay Desktop Projection Contract",
-      "source_json_path": "docs/json/governance/relay-desktop-projection-contract.v1.json"
+      "source_json_path": "json/governance/relay-desktop-projection-contract.v1.json"
     },
     {
       "document_id": "relay-local-remote-boundary",
       "title": "Relay Local/Remote Authority Boundary",
-      "source_json_path": "docs/json/governance/relay-local-remote-boundary.v1.json"
+      "source_json_path": "json/governance/relay-local-remote-boundary.v1.json"
     },
     {
       "document_id": "relay-surface-matrix",
       "title": "Relay Surface Matrix",
-      "source_json_path": "docs/json/governance/relay-surface-matrix.v1.json"
+      "source_json_path": "json/governance/relay-surface-matrix.v1.json"
     },
     {
       "document_id": "reviewer-orchestrator",
       "title": "Reviewer Orchestrator Doctrine",
-      "source_json_path": "docs/json/governance/reviewer-orchestrator.v1.json"
+      "source_json_path": "json/governance/reviewer-orchestrator.v1.json"
     },
     {
       "document_id": "rig-to-relay-pattern-inventory",
       "title": "Rig-to-Relay Pattern Inventory",
-      "source_json_path": "docs/json/governance/rig-to-relay-pattern-inventory.v1.json"
+      "source_json_path": "json/governance/rig-to-relay-pattern-inventory.v1.json"
     },
     {
       "document_id": "rig-to-relay-porting-doctrine",
       "title": "Rig-to-Relay Porting Doctrine",
-      "source_json_path": "docs/json/governance/rig-to-relay-porting-doctrine.v1.json"
+      "source_json_path": "json/governance/rig-to-relay-porting-doctrine.v1.json"
     },
     {
       "document_id": "runtime-context-resolver",
       "title": "Runtime Context Resolver",
-      "source_json_path": "docs/json/governance/runtime-context-resolver.v1.json"
+      "source_json_path": "json/governance/runtime-context-resolver.v1.json"
     },
     {
       "document_id": "runtime-port-status",
       "title": "Runtime Port Status Normalization",
-      "source_json_path": "docs/json/governance/runtime-port-status.v1.json"
+      "source_json_path": "json/governance/runtime-port-status.v1.json"
     },
     {
       "document_id": "runtime-supervisor",
       "title": "RuntimeSupervisor Architecture",
-      "source_json_path": "docs/json/governance/runtime-supervisor.v1.json"
+      "source_json_path": "json/governance/runtime-supervisor.v1.json"
     },
     {
       "document_id": "runtime-tool-invocation-adapter-implementation",
       "title": "Runtime Tool Invocation Adapter \u2014 Implementation",
-      "source_json_path": "docs/json/governance/runtime-tool-invocation-adapter-implementation.v1.json"
+      "source_json_path": "json/governance/runtime-tool-invocation-adapter-implementation.v1.json"
     },
     {
       "document_id": "runtime-tool-invocation-adapter",
       "title": "Runtime Tool Invocation Adapter",
-      "source_json_path": "docs/json/governance/runtime-tool-invocation-adapter.v1.json"
+      "source_json_path": "json/governance/runtime-tool-invocation-adapter.v1.json"
     },
     {
       "document_id": "runtime-tool-invocation-dry-run",
       "title": "Runtime Tool Invocation Dry-Run",
-      "source_json_path": "docs/json/governance/runtime-tool-invocation-dry-run.v1.json"
+      "source_json_path": "json/governance/runtime-tool-invocation-dry-run.v1.json"
     },
     {
       "document_id": "runtime-tool-invocation-execution",
       "title": "Runtime Tool Invocation Execution",
-      "source_json_path": "docs/json/governance/runtime-tool-invocation-execution.v1.json"
+      "source_json_path": "json/governance/runtime-tool-invocation-execution.v1.json"
     },
     {
       "document_id": "runtime-tool-invocation-result-contract",
       "title": "Runtime Tool Invocation Result Contract",
-      "source_json_path": "docs/json/governance/runtime-tool-invocation-result-contract.v1.json"
+      "source_json_path": "json/governance/runtime-tool-invocation-result-contract.v1.json"
     },
     {
       "document_id": "session-lifecycle-finalize-tool",
       "title": "Session Lifecycle Finalize Tool",
-      "source_json_path": "docs/json/governance/session-lifecycle-finalize-tool.v1.json"
+      "source_json_path": "json/governance/session-lifecycle-finalize-tool.v1.json"
     },
     {
       "document_id": "session-storage-lifecycle",
       "title": "Session Storage Lifecycle",
-      "source_json_path": "docs/json/governance/session-storage-lifecycle.v1.json"
+      "source_json_path": "json/governance/session-storage-lifecycle.v1.json"
     },
     {
       "document_id": "step-up-authorization",
       "title": "Step-Up Authorization Doctrine",
-      "source_json_path": "docs/json/governance/step-up-authorization.v1.json"
+      "source_json_path": "json/governance/step-up-authorization.v1.json"
     },
     {
       "document_id": "storage-retention-policy",
       "title": "Storage Retention Policy",
-      "source_json_path": "docs/json/governance/storage_retention_policy.v1.json"
+      "source_json_path": "json/governance/storage_retention_policy.v1.json"
     },
     {
       "document_id": "telemetry-contribution-policy",
       "title": "Telemetry Contribution Policy",
-      "source_json_path": "docs/json/governance/telemetry-contribution-policy.v1.json"
+      "source_json_path": "json/governance/telemetry-contribution-policy.v1.json"
     },
     {
       "document_id": "test-suite-doctrine",
       "title": "Test Suite Doctrine",
-      "source_json_path": "docs/json/governance/test_suite_doctrine.v1.json"
+      "source_json_path": "json/governance/test_suite_doctrine.v1.json"
     },
     {
       "document_id": "textual-retirement-policy",
       "title": "Textual TUI Retirement Policy",
-      "source_json_path": "docs/json/governance/textual-retirement-policy.v1.json"
+      "source_json_path": "json/governance/textual-retirement-policy.v1.json"
     },
     {
       "document_id": "textual-rig-console",
       "title": "Textual Rig Console",
-      "source_json_path": "docs/json/governance/textual-rig-console.v1.json"
+      "source_json_path": "json/governance/textual-rig-console.v1.json"
     },
     {
       "document_id": "tool-runtime-boundary",
       "title": "ToolRuntime Boundary",
-      "source_json_path": "docs/json/governance/tool_runtime_boundary.v1.json"
+      "source_json_path": "json/governance/tool_runtime_boundary.v1.json"
     },
     {
       "document_id": "tracing-doctrine",
       "title": "Tracing Doctrine",
-      "source_json_path": "docs/json/governance/tracing_doctrine.v1.json"
+      "source_json_path": "json/governance/tracing_doctrine.v1.json"
     },
     {
       "document_id": "update-policy",
       "title": "Rig Relay Update Policy",
-      "source_json_path": "docs/json/governance/update-policy.v1.json"
+      "source_json_path": "json/governance/update-policy.v1.json"
     },
     {
       "document_id": "usage-data-doctrine",
       "title": "Rig Relay Usage Data Doctrine",
-      "source_json_path": "docs/json/governance/usage-data-doctrine.v1.json"
+      "source_json_path": "json/governance/usage-data-doctrine.v1.json"
     },
     {
       "document_id": "validation-scheduler",
       "title": "Validation Scheduler",
-      "source_json_path": "docs/json/governance/validation-scheduler.v1.json"
+      "source_json_path": "json/governance/validation-scheduler.v1.json"
     },
     {
       "document_id": "vibe-legacy-deprecation",
       "title": "Vibe Legacy Deprecation Doctrine",
-      "source_json_path": "docs/json/governance/vibe-legacy-deprecation.v1.json"
+      "source_json_path": "json/governance/vibe-legacy-deprecation.v1.json"
     },
     {
       "document_id": "vibe-rig-compatibility-bridge",
       "title": "Vibe / Rig Compatibility Bridge",
-      "source_json_path": "docs/json/governance/vibe-rig-compatibility-bridge.v1.json"
+      "source_json_path": "json/governance/vibe-rig-compatibility-bridge.v1.json"
     },
     {
       "document_id": "vscodium-extension-client",
       "title": "Governance: VSCodium Extension Client",
-      "source_json_path": "docs/json/governance/vscodium-extension-client.v1.json"
+      "source_json_path": "json/governance/vscodium-extension-client.v1.json"
     },
     {
       "document_id": "worktree-manager",
       "title": "Worktree Manager \u2014 Governance & Safety",
-      "source_json_path": "docs/json/governance/worktree-manager.v1.json"
+      "source_json_path": "json/governance/worktree-manager.v1.json"
+    },
+    {
+      "document_id": "github-app-integration-audit-v0",
+      "title": "GitHub App Integration Audit v0",
+      "source_json_path": "json/integrations/github_app_integration_audit_v0.v1.json"
     },
     {
       "document_id": "privacy-notice-alpha",
       "title": "Privacy Notice \u2014 Alpha",
-      "source_json_path": "docs/json/legal/privacy-notice-alpha.v1.json"
+      "source_json_path": "json/legal/privacy-notice-alpha.v1.json"
     },
     {
       "document_id": "usage-data-license-alpha",
       "title": "Usage Data Commercial License \u2014 Alpha",
-      "source_json_path": "docs/json/legal/usage-data-license-alpha.v1.json"
+      "source_json_path": "json/legal/usage-data-license-alpha.v1.json"
     },
     {
       "document_id": "ide-capability-map",
       "title": "IDE Capability Map",
-      "source_json_path": "docs/json/protocols/ide-capability-map.v1.json"
+      "source_json_path": "json/protocols/ide-capability-map.v1.json"
     },
     {
       "document_id": "ide-sidecar-ipc",
       "title": "Rig IDE / Sidecar IPC Protocol (v1)",
-      "source_json_path": "docs/json/protocols/ide-sidecar-ipc.v1.json"
+      "source_json_path": "json/protocols/ide-sidecar-ipc.v1.json"
     },
     {
       "document_id": "mcp-context-tools",
       "title": "MCP Context Tools",
-      "source_json_path": "docs/json/protocols/mcp-context-tools.v1.json"
+      "source_json_path": "json/protocols/mcp-context-tools.v1.json"
     },
     {
       "document_id": "github-pages-artifact-site",
       "title": "GitHub Pages \u2014 Artifact-Rendered Documentation Site",
-      "source_json_path": "docs/json/publishing/github-pages-artifact-site.v1.json"
+      "source_json_path": "json/publishing/github-pages-artifact-site.v1.json"
     },
     {
       "document_id": "alpha-release-checklist",
       "title": "Alpha Release Checklist",
-      "source_json_path": "docs/json/release/alpha-release-checklist.v1.json"
+      "source_json_path": "json/release/alpha-release-checklist.v1.json"
     },
     {
       "document_id": "known-limitations-alpha",
       "title": "Known Limitations for Alpha",
-      "source_json_path": "docs/json/release/known-limitations-alpha.v1.json"
+      "source_json_path": "json/release/known-limitations-alpha.v1.json"
     },
     {
       "document_id": "static-site-v1-readiness",
       "title": "Static Site v1 Readiness",
-      "source_json_path": "docs/json/release/static_site_v1_readiness.v1.json"
+      "source_json_path": "json/release/static_site_v1_readiness.v1.json"
     },
     {
       "document_id": "versioning-policy",
       "title": "Rig Relay Versioning Policy",
-      "source_json_path": "docs/json/release/versioning-policy.v1.json"
+      "source_json_path": "json/release/versioning-policy.v1.json"
     },
     {
       "document_id": "security-policy",
       "title": "Rig Relay Security Policy v0",
-      "source_json_path": "docs/json/security/security_policy_v0.v1.json"
+      "source_json_path": "json/security/security_policy_v0.v1.json"
     },
     {
       "document_id": "rig-relay-threat-model-v0",
       "title": "Rig Relay Security Threat Model v0",
-      "source_json_path": "docs/json/security/threat_model_v0.v1.json"
+      "source_json_path": "json/security/threat_model_v0.v1.json"
     },
     {
       "document_id": "runtime-provenance",
       "title": "Runtime Provenance",
-      "source_json_path": "docs/json/troubleshooting/runtime-provenance.v1.json"
+      "source_json_path": "json/troubleshooting/runtime-provenance.v1.json"
     },
     {
       "document_id": "textual-rig-console-progress-timeline",
       "title": "ProgressTimelineWidget \u2014 Design",
-      "source_json_path": "docs/json/ui/textual-rig-console-progress-timeline.v1.json"
+      "source_json_path": "json/ui/textual-rig-console-progress-timeline.v1.json"
     },
     {
       "document_id": "textual-rig-console-slice-1",
       "title": "Textual Rig Console \u2014 Slice 1: Projection-Only SessionPaneWidget",
-      "source_json_path": "docs/json/ui/textual-rig-console-slice-1.v1.json"
+      "source_json_path": "json/ui/textual-rig-console-slice-1.v1.json"
     },
     {
       "document_id": "textual-rig-console-slice-2-evidence-rail",
       "title": "Textual Rig Console \u2014 Slice 2: EvidenceRailWidget",
-      "source_json_path": "docs/json/ui/textual-rig-console-slice-2-evidence-rail.v1.json"
+      "source_json_path": "json/ui/textual-rig-console-slice-2-evidence-rail.v1.json"
     },
     {
       "document_id": "textual-rig-console-slice-3-dashboard",
       "title": "Textual Rig Console \u2014 Slice 3: DashboardScreen",
-      "source_json_path": "docs/json/ui/textual-rig-console-slice-3-dashboard.v1.json"
+      "source_json_path": "json/ui/textual-rig-console-slice-3-dashboard.v1.json"
     },
     {
       "document_id": "textual-rig-console-slice-4-action-boundary",
       "title": "Textual Rig Console \u2014 Slice 4: Read-Only Action Surface and Projection Provider Boundary",
-      "source_json_path": "docs/json/ui/textual-rig-console-slice-4-action-boundary.v1.json"
+      "source_json_path": "json/ui/textual-rig-console-slice-4-action-boundary.v1.json"
     },
     {
       "document_id": "textual-rig-console-slice-5-1-worker-refresh",
       "title": "Textual Rig Console \u2014 Slice 5.1: Worker-Safe Dashboard Refresh",
-      "source_json_path": "docs/json/ui/textual-rig-console-slice-5-1-worker-refresh.v1.json"
+      "source_json_path": "json/ui/textual-rig-console-slice-5-1-worker-refresh.v1.json"
     },
     {
       "document_id": "textual-rig-console-slice-5-runtime-provider",
       "title": "Textual Rig Console \u2014 Slice 5: Read-Only Runtime Dashboard Provider",
-      "source_json_path": "docs/json/ui/textual-rig-console-slice-5-runtime-provider.v1.json"
+      "source_json_path": "json/ui/textual-rig-console-slice-5-runtime-provider.v1.json"
     },
     {
       "document_id": "textual-rig-console-slice-6-coordination-session-enrichment",
       "title": "Textual Rig Console \u2014 Slice 6: Coordination/Session Enrichment",
-      "source_json_path": "docs/json/ui/textual-rig-console-slice-6-coordination-session-enrichment.v1.json"
+      "source_json_path": "json/ui/textual-rig-console-slice-6-coordination-session-enrichment.v1.json"
     },
     {
       "document_id": "textual-streaming-smoothness",
       "title": "Textual Streaming Smoothness \u2014 Provider Delta Coalescing",
-      "source_json_path": "docs/json/ui/textual-streaming-smoothness.v1.json"
+      "source_json_path": "json/ui/textual-streaming-smoothness.v1.json"
     }
   ],
   "collections": [
@@ -1149,6 +1154,7 @@
     "troubleshooting",
     "ui",
     "code-schemas",
-    "security"
+    "security",
+    "integrations"
   ]
 }

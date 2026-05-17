@@ -1386,6 +1386,19 @@
           "title_override": "Security Threat Model v0"
         }
       ]
+    },
+    {
+      "collection_id": "integrations",
+      "title": "Integrations",
+      "description": "External service integration audits, designs, and configuration schemas.",
+      "order": 35,
+      "documents": [
+        {
+          "document_id": "github-app-integration-audit-v0",
+          "path": "docs/json/integrations/github_app_integration_audit_v0.v1.json",
+          "title_override": "GitHub App Integration Audit v0"
+        }
+      ]
     }
   ],
   "disclosure_policy": {

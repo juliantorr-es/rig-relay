@@ -1,0 +1,29 @@
+{
+  "schema_version": "rig.diagram.v1",
+  "diagram_id": "security-threat-matrix",
+  "title": "Security Threat Coverage Matrix",
+  "summary": "Matrix showing threat categories, affected assets, and implementation status.",
+  "status": "active",
+  "kind": "matrix",
+  "columns": ["Category", "Count", "Release Blockers", "Mitigated"],
+  "rows": [
+    {"Category": "Prompt Injection", "Count": "2", "Release Blockers": "2", "Mitigated": "0"},
+    {"Category": "Sensitive Info Disclosure", "Count": "3", "Release Blockers": "3", "Mitigated": "2"},
+    {"Category": "WebSocket Security", "Count": "3", "Release Blockers": "2", "Mitigated": "3"},
+    {"Category": "Authorization Failure", "Count": "1", "Release Blockers": "1", "Mitigated": "1"},
+    {"Category": "Excessive Agency", "Count": "1", "Release Blockers": "0", "Mitigated": "0"},
+    {"Category": "Integrity Violation", "Count": "3", "Release Blockers": "1", "Mitigated": "0"},
+    {"Category": "Injection", "Count": "1", "Release Blockers": "1", "Mitigated": "0"},
+    {"Category": "Supply Chain", "Count": "2", "Release Blockers": "0", "Mitigated": "0"},
+    {"Category": "Denial of Service", "Count": "1", "Release Blockers": "0", "Mitigated": "0"}
+  ],
+  "accessibility": {
+    "alt": "Matrix showing security threat categories, count per category, release blockers, and mitigation status.",
+    "summary": "9 threat categories with implementation status"
+  },
+  "provenance": {
+    "source_files": ["docs/json/security/threat_model_v0.v1.json"]
+  },
+  "created_at": "2026-05-18",
+  "updated_at": "2026-05-18"
+}

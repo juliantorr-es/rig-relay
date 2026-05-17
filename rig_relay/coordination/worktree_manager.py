@@ -31,7 +31,20 @@ from typing import ClassVar, final
 
 from pydantic import BaseModel, ConfigDict
 
+from rig_relay.tracing.golden_path import build_golden_path_event
+from rig_relay.tracing.store import get_default_trace_store
+
 logger = logging.getLogger(__name__)
+
+
+def _emit_worktree_trace(event_type: str, *, payload: dict | None = None) -> None:
+    """Emit a content-light worktree trace event. Non-fatal on error."""
+    try:
+        store = get_default_trace_store()
+        event = build_golden_path_event(event_type=event_type, payload=payload or {})
+        store.write(event)
+    except Exception:
+        pass
 
 
 # ── Constants ──────────────────────────────────────────────────────────
@@ -225,6 +238,10 @@ class WorktreeManager:
 
         if result.returncode != 0:
             error_msg = result.stderr.strip() or "unknown error"
+            _emit_worktree_trace(
+                "worktree.mutation.failed",
+                payload={"operation": "git_create", "error": error_msg[:200]},
+            )
             return WorktreeOperationResult(
                 operation=WorktreeOperationKind.CREATE,
                 status="error",
@@ -236,6 +253,10 @@ class WorktreeManager:
         head_sha = self._get_head_for_path(worktree_path)
 
         now = datetime.now(UTC).isoformat()
+        _emit_worktree_trace(
+            "worktree.mutation.started",
+            payload={"operation": "create", "branch_name": branch_name},
+        )
         record = WorktreeRecord(
             workspace_id=workspace_id,
             branch_name=branch_name,
@@ -288,6 +309,11 @@ class WorktreeManager:
         # ── Check if worktree is dirty (unless force) ──
         if not force:
             dirty = self._is_worktree_dirty(worktree_path)
+            if not dirty:
+                _emit_worktree_trace(
+                    "worktree.protected_files_preserved",
+                    payload={"worktree_path": str(worktree_path)},
+                )
             if dirty:
                 return WorktreeOperationResult(
                     operation=WorktreeOperationKind.REMOVE,
@@ -308,6 +334,10 @@ class WorktreeManager:
 
         if result.returncode != 0:
             error_msg = result.stderr.strip() or "unknown error"
+            _emit_worktree_trace(
+                "worktree.mutation.failed",
+                payload={"operation": "git_remove", "error": error_msg[:200]},
+            )
             return WorktreeOperationResult(
                 operation=WorktreeOperationKind.REMOVE,
                 status="error",
@@ -316,6 +346,14 @@ class WorktreeManager:
             )
 
         now = datetime.now(UTC).isoformat()
+        _emit_worktree_trace(
+            "worktree.mutation.started",
+            payload={"operation": "remove", "workspace_id": workspace_id},
+        )
+        _emit_worktree_trace(
+            "worktree.mutation.completed",
+            payload={"operation": "remove", "status": "removed"},
+        )
         record = WorktreeRecord(
             workspace_id=workspace_id,
             path=str(worktree_path),

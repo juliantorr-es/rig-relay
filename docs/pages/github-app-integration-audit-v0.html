@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub App Integration Audit v0 — Rig Relay Docs</title>
+<meta name="description" content="Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/github-app-integration-audit-v0.html">
+<meta property="og:title" content="GitHub App Integration Audit v0">
+<meta property="og:description" content="Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/github-app-integration-audit-v0.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="GitHub App Integration Audit v0">
+<meta name="twitter:description" content="Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="/rig-relay/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/rig-relay/assets/site.css">
+<script src="/rig-relay/assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="/rig-relay/">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="/rig-relay/">Rig Relay Documentation</a> / <a href="/rig-relay/collections/integrations.html">Integrations</a></p>
+
+  <h1>GitHub App Integration Audit v0</h1>
+  <p class="doc-summary">Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>draft</dd>
+    <dt>Updated</dt><dd>2026-05-17</dd>
+    <dt>Commit</dt><dd><code>0517a0e0</code></dd>
+    <dt>Source</dt><dd><code>json/integrations/github_app_integration_audit_v0.v1.json</code></dd>
+  </dl>
+</header>
+<main id="main" class="doc-page">
+  <article>
+    <section><h2>Product Intent</h2><p>Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.</p></section>
+<section>
+  <h2>App Registration</h2>
+  <dl>
+    <dt>App name recommendation</dt><dd>Rig Relay</dd>
+    <dt>Owner type</dt><dd>either</dd>
+    <dt>Homepage URL</dt><dd>https://juliantorr-es.github.io/rig-relay</dd>
+    <dt>Callback URL needed</dt><dd>False</dd>
+    <dt>Setup URL needed</dt><dd>False</dd>
+    <dt>Webhook URL needed</dt><dd>True</dd>
+    <dt>Webhook secret required</dt><dd>True</dd>
+    <dt>SSL verification required</dt><dd>True</dd>
+    <dt>Public/private</dt><dd>private_initial</dd>
+    <dt>Device flow needed</dt><dd>False</dd>
+    <dt>User authorization needed</dt><dd>False</dd>
+    <dt>Notes</dt><dd>Private app initially, public later. Owned by personal developer account initially; migrate to Rig Relay organization later if desired. Homepage URL is the live Rig Relay static docs site. Webhook URL needed for hosted/relay endpoint; local dev requires tunnel or webhook replay strategy. User authorization deferred unless acting on behalf of individual users is needed. Device flow deferred unless CLI/login needs it. Installation visibility starts private/internal.</dd>
+  </dl>
+</section>
+<section>
+  <h2>Permission Profiles (4)</h2>
+  <table><tr><th>ID</th><th>Title</th><th>Use Case</th><th>Phase</th><th>Repo Permissions</th></tr>
+<tr><td>observe_public_repo</td><td>Observe Public Repository</td><td>Initial connection: let Rig observe repository events without asking for broad PATs. Maps pushes, PRs, checks, comments into Rig evidence.</td><td>phase_1_webhook_setup</td><td>metadata: read, contents: read, pull_requests: read, issues: read, commit_statuses: read, checks: read</td></tr>
+<tr><td>evidence_status_reporter</td><td>Evidence Status Reporter</td><td>Rig completes local validation, creates check run or commit status on GitHub with results.</td><td>phase_2_evidence_reporting</td><td>metadata: read, contents: read, pull_requests: read, checks: write, commit_statuses: write</td></tr>
+<tr><td>governed_pr_assistant</td><td>Governed Pull Request Assistant</td><td>Rig proposes a code change, user approves via desktop cockpit, Rig creates branch, commits changes, opens PR, and comments with evidence.</td><td>phase_3_governed_actions</td><td>metadata: read, contents: write, pull_requests: write, issues: write</td></tr>
+<tr><td>admin_avoidance_profile</td><td>Admin Avoidance Profile</td><td>Prevent accidental permission escalation. Audited against every implementation phase.</td><td>all_phases</td><td>administration: avoid, secrets: avoid, actions: avoid, workflows: avoid, deployments: avoid, repository_rules: avoid, environments: avoid, pages: avoid, webhooks: avoid, security_events: avoid, codespaces: avoid, dependabot_secrets: avoid</td></tr>
+</table>
+  <details><summary>observe_public_repo: Observe Public Repository</summary><p>Read repository metadata and events for public repos. No write access.</p><p><strong>Rationale:</strong> Minimum permissions required for event observation. Contents read is needed for reading repository files through the API. Checks read is needed for observing CI/check outputs. Issues read is needed for issue comment observation if used for agent collaboration.</p><p><strong>Risks:</strong></p><ul><li>Contents read exposes repository source code to the Rig process</li><li>Event payloads may contain sensitive commit metadata</li><li>Scope creep if additional read permissions are requested later without profile audit</li></ul><p><strong>User consent copy:</strong> Rig Relay will observe repository events (pushes, pull requests, checks) to build local evidence. No code or repository content will be sent to external services. All processing is local.</p></details><details><summary>evidence_status_reporter: Evidence Status Reporter</summary><p>Post Rig status/check outputs back to GitHub after local validation. Adds write access for checks/statuses.</p><p><strong>Rationale:</strong> Checks write allows creating annotated check runs. Commit statuses write allows posting status to PRs. Both are required for the evidence feedback loop: Rig validates locally, reports results to GitHub.</p><p><strong>Risks:</strong></p><ul><li>Write access to checks/statuses could be misused to post misleading status</li><li>Check run annotations could expose local file paths or internal state</li><li>Need approval gate before any automated status posting</li></ul><p><strong>User consent copy:</strong> Rig Relay will post check runs and commit statuses to GitHub with validation results. No code or internal file paths will be included in status reports.</p></details><details><summary>governed_pr_assistant: Governed Pull Request Assistant</summary><p>Create branches, PRs, and comments only after explicit user approval. Highest-risk profile with write access.</p><p><strong>Rationale:</strong> Contents write is required for branch/commit creation. Pull requests write for PR creation. Issues write for commenting on PRs/issues. All write actions are gated behind explicit user approval in the cockpit.</p><p><strong>Risks:</strong></p><ul><li>Contents write is the highest-risk permission — allows pushing commits</li><li>Pull requests write could be misused to modify or close PRs</li><li>Requires robust approval UI and audit trail</li><li>Requires worktree isolation to prevent dirty-file corruption</li></ul><p><strong>User consent copy:</strong> Rig Relay may create branches, commits, and pull requests on your behalf. Every write action requires explicit approval in the desktop cockpit. You can review the full diff before approving. All actions are recorded in the local evidence store.</p></details><details><summary>admin_avoidance_profile: Admin Avoidance Profile</summary><p>Explicitly documents permissions Rig should NOT request for v0. Serves as a safety checklist.</p><p><strong>Rationale:</strong> Administration, Secrets, Actions write, Workflows write, Deployments write, Repository rules write, and Organization members write must never be requested in v0. These permissions grant broad mutation authority that violates Rig&#x27;s governed, approval-gated design. Pages/webhooks write could interfere with GitHub Pages publishing or webhook configuration. Security events read could expose vulnerability data.</p><p><strong>Risks:</strong></p><ul><li>Accidental inclusion in permission manifest during implementation</li><li>Organization-level permissions could be requested by mistake if owner_type is organization</li><li>Future phases may need to revisit specific avoidance items with new threat model</li></ul><p><strong>User consent copy:</strong> Rig Relay does not request administration, secrets, actions, workflows, deployments, repository rules, or organization member permissions.</p></details>
+</section>
+<section>
+  <h2>Webhook Subscriptions (11)</h2>
+  <table><tr><th>Event</th><th>Actions</th><th>Risk</th><th>Handler</th></tr>
+<tr><td>ping</td><td>*</td><td>low</td><td>rig_relay.github_app.webhooks.verify_ping</td></tr>
+<tr><td>installation</td><td>created, deleted, new_permissions_accepted, suspend, unsuspend</td><td>low</td><td>rig_relay.github_app.event_store.update_installation</td></tr>
+<tr><td>installation_repositories</td><td>added, removed</td><td>low</td><td>rig_relay.github_app.event_store.update_repositories</td></tr>
+<tr><td>push</td><td>*</td><td>low</td><td>rig_relay.github_app.router.handle_push</td></tr>
+<tr><td>pull_request</td><td>opened, closed, reopened, edited, synchronize, ready_for_review, review_requested, review_request_removed</td><td>low</td><td>rig_relay.github_app.router.handle_pull_request</td></tr>
+<tr><td>check_run</td><td>created, completed, rerequested</td><td>low</td><td>rig_relay.github_app.router.handle_check_run</td></tr>
+<tr><td>check_suite</td><td>completed, requested, rerequested</td><td>low</td><td>rig_relay.github_app.router.handle_check_suite</td></tr>
+<tr><td>issue_comment</td><td>created, edited, deleted</td><td>low</td><td>rig_relay.github_app.router.handle_issue_comment</td></tr>
+<tr><td>repository</td><td>publicized, privatized, deleted, renamed, transferred</td><td>low</td><td>rig_relay.github_app.event_store.update_repository</td></tr>
+<tr><td>release</td><td>published, edited, deleted</td><td>low</td><td>rig_relay.github_app.router.handle_release</td></tr>
+<tr><td>page_build</td><td>*</td><td>low</td><td>rig_relay.github_app.router.handle_page_build</td></tr>
+</table>
+</section>
+<section>
+  <h2>Data Flows (8)</h2>
+  <table><tr><th>ID</th><th>Title</th><th>Flow</th><th>Trigger</th></tr>
+<tr><td>app_registration_manual_setup</td><td>GitHub App Manual Registration Setup</td><td>User (GitHub portal) → Rig Relay config store</td><td>User follows setup instructions in frontend wizard</td></tr>
+<tr><td>installation_created_webhook</td><td>Installation Created Webhook</td><td>GitHub webhook → Rig Relay backend event store</td><td>User installs GitHub App on account/organization</td></tr>
+<tr><td>repository_selected</td><td>Repository Selected Webhook</td><td>GitHub webhook (installation_repositories event) → Rig Relay backend repositories store</td><td>User adds/removes repository from installation</td></tr>
+<tr><td>push_received</td><td>Push Received Webhook</td><td>GitHub webhook (push event) → Rig Relay backend event store, context assembler</td><td>Commit pushed to repository</td></tr>
+<tr><td>pull_request_received</td><td>Pull Request Received Webhook</td><td>GitHub webhook (pull_request event) → Rig Relay backend event store</td><td>PR opened, closed, updated, or synchronized</td></tr>
+<tr><td>check_status_report</td><td>Check Status Report to GitHub</td><td>Rig Relay validation results → GitHub API (check runs or commit statuses)</td><td>Rig completes local validation and user approves status posting</td></tr>
+<tr><td>governed_pr_creation_future</td><td>Governed PR Creation (Future)</td><td>Rig Relay agent proposal → GitHub API (branch, commit, PR)</td><td>Agent proposes change, user explicitly approves in cockpit</td></tr>
+<tr><td>pages_publish_visibility</td><td>GitHub Pages Publishing Visibility</td><td>GitHub webhook (page_build event) → Rig Relay backend event store</td><td>GitHub Pages build completes</td></tr>
+</table>
+</section>
+<section>
+  <h2>Trust Boundaries (9)</h2>
+  <table><tr><th>ID</th><th>Zone Flow</th><th>Authority</th><th>Data</th></tr>
+<tr><td>TB-GH-WEBHOOK-01</td><td>GitHub webhook delivery → Rig Relay backend webhook handler</td><td>Authority change</td><td>GitHub event payload (JSON up to 25 MB), HMAC signature, event headers</td></tr>
+<tr><td>TB-GH-TOKEN-02</td><td>GitHub API (installation token endpoint) → Rig Relay backend API client</td><td>Authority change</td><td>Installation access token (1-hour expiry), JWT for app authentication</td></tr>
+<tr><td>TB-GH-KEY-03</td><td>GitHub App private key → Rig Relay local secure storage</td><td>No auth change</td><td>PEM-encoded RSA private key</td></tr>
+<tr><td>TB-GH-EVENTSTORE-04</td><td>Rig Relay GitHub event store → Rig Relay frontend projection</td><td>No auth change</td><td>GitHub event metadata (event type, repository name, timestamp, status)</td></tr>
+<tr><td>TB-GH-FRONTEND-05</td><td>Frontend setup UI → Rig Relay local config file</td><td>No auth change</td><td>App ID, webhook secret reference, private key reference (no raw secrets)</td></tr>
+<tr><td>TB-GH-WRITE-06</td><td>Model/agent suggestion → GitHub write action (branch, commit, PR, comment)</td><td>Authority change</td><td>Code changes, commit messages, PR descriptions from agent output</td></tr>
+<tr><td>TB-GH-CONTEXT-07</td><td>GitHub webhook payload → Rig Relay context assembler</td><td>No auth change</td><td>Repository event data, commit metadata, PR descriptions, comment text</td></tr>
+<tr><td>TB-GH-EVIDENCE-08</td><td>GitHub API response → Rig Relay evidence store</td><td>No auth change</td><td>GitHub API data (repository info, PR details, check run status)</td></tr>
+<tr><td>TB-GH-WORKTREE-09</td><td>GitHub webhook event → Rig Relay worktree action decision</td><td>Authority change</td><td>Event type, repository identity, commit SHA, branch name</td></tr>
+</table>
+  <details><summary>TB-GH-WEBHOOK-01</summary><p><strong>Threats:</strong></p><ul><li>Spoofed webhook with invalid signature</li><li>Replay attack with duplicated delivery ID</li><li>Oversized payload DoS</li><li>Malformed JSON injection</li><li>Information leakage via events from unauthorized repos</li></ul><p><strong>Controls:</strong></p><ul><li>X-Hub-Signature-256 verification with timing-safe compare</li><li>Delivery deduplication by delivery ID</li><li>Payload size cap</li><li>JSON parsing after signature verification</li><li>Repository authorization check</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_webhook_signature_verification</li><li>test_webhook_signature_rejection</li><li>test_delivery_deduplication</li><li>test_payload_size_rejection</li><li>test_unauthorized_repo_rejection</li></ul></details><details><summary>TB-GH-TOKEN-02</summary><p><strong>Threats:</strong></p><ul><li>Token interception in transit</li><li>Token leakage in logs or traces</li><li>Token misuse for unauthorized API calls</li><li>Token reuse after expiry</li><li>JWT signing key compromise</li></ul><p><strong>Controls:</strong></p><ul><li>HTTPS only for token exchange</li><li>Token memory cache only (no durable storage)</li><li>Token never logged (content-light trace events only)</li><li>Repository authorization check before API calls</li><li>Private key in OS keyring or file outside repo</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_token_memory_only</li><li>test_token_not_logged</li><li>test_token_not_in_frontend</li><li>test_private_key_not_in_repo</li></ul></details><details><summary>TB-GH-KEY-03</summary><p><strong>Threats:</strong></p><ul><li>Key committed to repository</li><li>Key exposed in environment variables</li><li>Key leaked in trace events or logs</li><li>Key file permissions too open</li><li>Key extracted from process memory dump</li></ul><p><strong>Controls:</strong></p><ul><li>Key stored in OS keyring (keychain://) or file outside repo</li><li>Key reference only in config (no raw key value)</li><li>Key never in trace events or frontend</li><li>File permissions check on key file</li><li>Detection test for PEM in repo</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_private_key_not_in_repo</li><li>test_private_key_reference_only</li><li>test_private_key_not_in_trace</li><li>test_private_key_not_in_frontend</li></ul></details><details><summary>TB-GH-EVENTSTORE-04</summary><p><strong>Threats:</strong></p><ul><li>Raw webhook payload leaked to frontend</li><li>Installation token leaked via event data</li><li>Sensitive repo metadata exposed (private repo names)</li><li>Local file paths exposed in event data</li></ul><p><strong>Controls:</strong></p><ul><li>Content-light projection only</li><li>Never project raw payload</li><li>Never project tokens or keys</li><li>Repo name visible only to authenticated local user</li><li>Projection model validation before frontend delivery</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_frontend_no_raw_payload</li><li>test_frontend_no_tokens</li><li>test_frontend_content_light_projection</li></ul></details><details><summary>TB-GH-FRONTEND-05</summary><p><strong>Threats:</strong></p><ul><li>User pastes private key into config UI → stored in config</li><li>Webhook secret entered in plaintext → persisted</li><li>Config file written with world-readable permissions</li></ul><p><strong>Controls:</strong></p><ul><li>Frontend never accepts raw secrets — only references</li><li>Config schema rejects raw PEM/secret values</li><li>Config file permissions check on write</li><li>Validation before config write</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_config_rejects_raw_private_key</li><li>test_config_rejects_raw_webhook_secret</li><li>test_frontend_no_secret_input_fields</li></ul></details><details><summary>TB-GH-WRITE-06</summary><p><strong>Threats:</strong></p><ul><li>Agent proposes malicious code change</li><li>Agent proposes commits to wrong repository</li><li>Agent impersonates user in commit metadata</li><li>Agent bypasses approval gate</li><li>Agent writes sensitive data to PR description</li></ul><p><strong>Controls:</strong></p><ul><li>Explicit user approval required for every write action</li><li>Full diff review before approval</li><li>Audit trail for every write proposal and decision</li><li>No automated write actions</li><li>Content safety review on PR descriptions</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_write_action_requires_approval</li><li>test_write_action_audit_trail</li><li>test_no_automated_writes</li><li>test_approval_ui_renders</li></ul></details><details><summary>TB-GH-CONTEXT-07</summary><p><strong>Threats:</strong></p><ul><li>Injection of malicious context via PR description</li><li>Exfiltration of private code via context assembly</li><li>Context poisoning from unauthorized repositories</li><li>Large context payload from verbose webhook events</li></ul><p><strong>Controls:</strong></p><ul><li>GitHub payloads treated as untrusted context</li><li>Content sanitization before context assembly</li><li>Repository authorization check</li><li>Context size limits</li><li>Trace of context sources</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_github_payloads_untrusted_context</li><li>test_context_size_limits</li><li>test_context_source_trace</li></ul></details><details><summary>TB-GH-EVIDENCE-08</summary><p><strong>Threats:</strong></p><ul><li>Evidence store polluted with large API responses</li><li>API keys/tokens in evidence store</li><li>User data from GitHub API stored without consent</li></ul><p><strong>Controls:</strong></p><ul><li>Content-light evidence entries only</li><li>No API tokens or keys in evidence</li><li>Evidence size limits</li><li>Trace correlation with source</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_evidence_no_tokens</li><li>test_evidence_content_light</li><li>test_evidence_source_trace</li></ul></details><details><summary>TB-GH-WORKTREE-09</summary><p><strong>Threats:</strong></p><ul><li>Worktree operation triggered by unauthorized repository</li><li>Worktree mutation without user consent</li><li>Cross-session worktree contamination from webhook data</li></ul><p><strong>Controls:</strong></p><ul><li>Repository authorization check before worktree action</li><li>No automated worktree writes from webhooks</li><li>Worktree isolation preserved</li><li>User approval for worktree mutations</li></ul><p><strong>Required Tests:</strong></p><ul><li>test_webhook_no_auto_worktree_mutation</li><li>test_webhook_worktree_authorization</li></ul></details>
+</section>
+<section>
+  <h2>Security Controls (14)</h2>
+  <table><tr><th>ID</th><th>Title</th><th>Status</th><th>Description</th></tr>
+<tr><td>SC-GH-SIG-01</td><td>Webhook Signature Verification</td><td>planned</td><td>Verify X-Hub-Signature-256 header using webhook secret and HMAC-SHA256. Use timing-safe comparison (hmac.compare_digest). Reject before JSON parsing.</td></tr>
+<tr><td>SC-GH-SIG-02</td><td>Reject Missing/Invalid Signature Before Processing</td><td>planned</td><td>If X-Hub-Signature-256 is missing or signature does not match, return 401 immediately. Never parse payload body before signature verification.</td></tr>
+<tr><td>SC-GH-DEDUP-03</td><td>Delivery Deduplication</td><td>planned</td><td>Deduplicate webhook deliveries by X-GitHub-Delivery header. If delivery ID already exists in event ledger, ignore (idempotent).</td></tr>
+<tr><td>SC-GH-AUTHZ-04</td><td>Installation/Repository Authorization Check</td><td>planned</td><td>Before processing any webhook event, verify installation id is known and repository (if present) is in authorized list.</td></tr>
+<tr><td>SC-GH-PERM-05</td><td>Minimum Necessary Permissions</td><td>planned</td><td>Every permission requested in the GitHub App manifest must be justified by a specific use case. Never request permissions from admin_avoidance_profile. Audit permissions against current profile at installation time.</td></tr>
+<tr><td>SC-GH-TOKEN-06</td><td>Installation Token Memory Cache Only</td><td>planned</td><td>Installation access tokens stored only in memory cache with expiry. Never written to disk, keyring, or environment variables. Memory cache cleared on process exit.</td></tr>
+<tr><td>SC-GH-KEY-07</td><td>Private Key Outside Repo</td><td>planned</td><td>Private key stored in OS keyring (keychain://) or in file path outside repository. Key reference only in config. Never committed to git. File permissions must be 600 or stricter.</td></tr>
+<tr><td>SC-GH-FRONTEND-08</td><td>No Secrets in Frontend Projection</td><td>planned</td><td>Frontend projections must never contain private key material, webhook secrets, installation tokens, or raw webhook payloads. Content-light projections only.</td></tr>
+<tr><td>SC-GH-NOPAYLOAD-09</td><td>No Raw Payload in Frontend by Default</td><td>planned</td><td>Raw webhook payloads are never projected to the frontend. Only event metadata (type, repository, timestamp, status) is shown.</td></tr>
+<tr><td>SC-GH-APPROVAL-10</td><td>Write Actions Require Explicit User Approval</td><td>planned</td><td>Any action that creates branches, commits, PRs, comments, or modifies GitHub state must receive explicit user approval through the cockpit. No automated write actions.</td></tr>
+<tr><td>SC-GH-UNTRUSTED-11</td><td>GitHub Payloads Treated as Untrusted Context</td><td>planned</td><td>Content from GitHub webhook payloads and API responses is treated as untrusted when fed into agent context. Sanitize, validate, and trace sources.</td></tr>
+<tr><td>SC-GH-RATE-12</td><td>Rate Limit and Backoff Handling</td><td>planned</td><td>Respect GitHub API rate limits. Implement exponential backoff with jitter for 429 responses. Monitor X-RateLimit-Remaining header.</td></tr>
+<tr><td>SC-GH-SIZE-13</td><td>Payload Size Cap Under 25 MB</td><td>planned</td><td>Enforce a local payload size cap (e.g., 5 MB) well under GitHub&#x27;s 25 MB limit. Reject oversized payloads before processing.</td></tr>
+<tr><td>SC-GH-TRACE-14</td><td>Content-Light Trace Events with Correlation</td><td>planned</td><td>All GitHub App trace events are content-light. Include correlation fields (trace_id, github_delivery_id, github_installation_id, github_repository_id). Never include secrets, tokens, or raw payloads.</td></tr>
+</table>
+</section>
+<section>
+  <h2>Trace Events (23)</h2>
+  <table><tr><th>Event Name</th><th>Source Component</th><th>Safe to Log</th><th>Correlation Fields</th></tr>
+<tr><td>github.app.config_loaded</td><td>config</td><td>True</td><td>trace_id, span_id, session_id</td></tr>
+<tr><td>github.app.config_invalid</td><td>config</td><td>True</td><td>trace_id, span_id, session_id</td></tr>
+<tr><td>github.webhook.received</td><td>webhooks</td><td>True</td><td>trace_id, span_id, github_delivery_id, github_event</td></tr>
+<tr><td>github.webhook.signature_verified</td><td>webhooks</td><td>True</td><td>trace_id, span_id, github_delivery_id</td></tr>
+<tr><td>github.webhook.signature_rejected</td><td>webhooks</td><td>True</td><td>trace_id, span_id, github_delivery_id</td></tr>
+<tr><td>github.webhook.ignored</td><td>router</td><td>True</td><td>trace_id, span_id, github_delivery_id, github_event</td></tr>
+<tr><td>github.webhook.processed</td><td>router</td><td>True</td><td>trace_id, span_id, github_delivery_id, github_event</td></tr>
+<tr><td>github.webhook.failed</td><td>router</td><td>True</td><td>trace_id, span_id, github_delivery_id, github_event</td></tr>
+<tr><td>github.installation.created</td><td>event_store</td><td>True</td><td>trace_id, span_id, github_delivery_id, github_installation_id, github_sender_id</td></tr>
+<tr><td>github.installation.deleted</td><td>event_store</td><td>True</td><td>trace_id, span_id, github_delivery_id, github_installation_id</td></tr>
+<tr><td>github.installation.repositories_added</td><td>event_store</td><td>True</td><td>trace_id, span_id, github_delivery_id, github_installation_id, github_repository_id</td></tr>
+<tr><td>github.installation.repositories_removed</td><td>event_store</td><td>True</td><td>trace_id, span_id, github_delivery_id, github_installation_id, github_repository_id</td></tr>
+<tr><td>github.token.requested</td><td>auth</td><td>True</td><td>trace_id, span_id, github_installation_id</td></tr>
+<tr><td>github.token.created</td><td>tokens</td><td>True</td><td>trace_id, span_id, github_installation_id</td></tr>
+<tr><td>github.token.failed</td><td>auth</td><td>True</td><td>trace_id, span_id, github_installation_id</td></tr>
+<tr><td>github.permissions.missing</td><td>permissions</td><td>True</td><td>trace_id, span_id, github_installation_id</td></tr>
+<tr><td>github.repository.authorized</td><td>router</td><td>True</td><td>trace_id, span_id, github_repository_id, repository_full_name</td></tr>
+<tr><td>github.repository.unauthorized</td><td>router</td><td>True</td><td>trace_id, span_id, github_repository_id</td></tr>
+<tr><td>github.check.created</td><td>router</td><td>True</td><td>trace_id, span_id, github_installation_id, github_repository_id, commit_sha</td></tr>
+<tr><td>github.check.failed</td><td>router</td><td>True</td><td>trace_id, span_id, github_installation_id, github_repository_id</td></tr>
+<tr><td>github.write_action.proposed</td><td>router</td><td>True</td><td>trace_id, span_id, session_id, job_id</td></tr>
+<tr><td>github.write_action.approved</td><td>router</td><td>True</td><td>trace_id, span_id, session_id, job_id</td></tr>
+<tr><td>github.write_action.rejected</td><td>router</td><td>True</td><td>trace_id, span_id, session_id, job_id</td></tr>
+</table>
+</section>
+<section>
+  <h2>Storage Model</h2>
+  <table><tr><th>Path</th><th>Content</th><th>Secrets</th><th>Format</th></tr>
+<tr><td>.rig/github/app_config.json</td><td>App registration metadata (references only)</td><td>No secrets</td><td>JSON</td></tr>
+<tr><td>.rig/github/installations.json</td><td>Installation records</td><td>No secrets</td><td>JSON</td></tr>
+<tr><td>.rig/github/deliveries/*.jsonl</td><td>Webhook delivery ledger</td><td>No secrets</td><td>JSONL (append-only)</td></tr>
+<tr><td>.rig/github/repositories.json</td><td>Authorized repository list</td><td>No secrets</td><td>JSON</td></tr>
+<tr><td>memory_only</td><td>Installation access token cache</td><td>Secrets</td><td>In-memory dict with expiry (cachetools TTLCache)</td></tr>
+<tr><td>OS keyring or file outside repo</td><td>Private key</td><td>Secrets</td><td>PEM-encoded RSA private key</td></tr>
+</table>
+  <h3>Rules</h3>
+  <ul><li>Never store raw private key or webhook secret in config files</li><li>Never store installation tokens to disk</li><li>All local paths are repo-relative (.rig/github/)</li><li>Append-only delivery ledger — never modify existing entries</li><li>No user machine paths in docs or config</li><li>Config uses reference URIs: keychain://service/account, env://VAR_NAME, file:///absolute/path/outside/repo</li></ul>
+</section>
+<section>
+  <h2>UI States (8)</h2>
+  <table><tr><th>ID</th><th>Title</th><th>Empty State</th></tr>
+<tr><td>not_configured</td><td>Not Configured</td><td>GitHub App not configured. Run the setup wizard to connect Rig Relay to your GitHub repositories.</td></tr>
+<tr><td>app_registered</td><td>App Registered</td><td>GitHub App registered but not installed. Install the app on your account or organization to continue.</td></tr>
+<tr><td>installed_no_repo</td><td>Installed — No Repositories</td><td>GitHub App installed, choose repositories to observe.</td></tr>
+<tr><td>repo_connected</td><td>Repository Connected</td><td>Repository connected. Webhooks are flowing into Rig evidence.</td></tr>
+<tr><td>webhook_degraded</td><td>Webhook Degraded</td><td>Webhook connection degraded. Check your webhook configuration and ensure your relay endpoint is reachable.</td></tr>
+<tr><td>permission_update_required</td><td>Permission Update Required</td><td>Permission update required. The requested profile requires additional permissions. Review and update in GitHub App settings.</td></tr>
+<tr><td>token_unavailable</td><td>Token Unavailable</td><td>Installation access token could not be created. Check your private key configuration.</td></tr>
+<tr><td>event_processing</td><td>Event Processing Active</td><td>No recent GitHub events. Events will appear here when webhooks are received.</td></tr>
+</table>
+</section>
+<section>
+  <h2>Implementation Phases (4)</h2>
+  <table><tr><th>ID</th><th>Title</th><th>Goal</th><th>Dependencies</th></tr>
+<tr><td>phase_1_webhook_setup</td><td>Phase 1 — Webhook Receiving and Event Ledger</td><td>Receive, verify, deduplicate, and store GitHub webhook events. Read-only observation with no API write access.</td><td>Blocked by: None</td></tr>
+<tr><td>phase_2_evidence_reporting</td><td>Phase 2 — Evidence Status Reporting to GitHub</td><td>Post Rig validation results back to GitHub as check runs or commit statuses. Requires installation token exchange and checks:write permission.</td><td>Blocked by: phase_1_webhook_setup</td></tr>
+<tr><td>phase_3_governed_actions</td><td>Phase 3 — Governed Write Actions (Branch, Commit, PR, Comment)</td><td>Create branches, commits, PRs, and comments only after explicit user approval in desktop cockpit.</td><td>Blocked by: phase_2_evidence_reporting</td></tr>
+<tr><td>phase_4_static_site_integration</td><td>Phase 4 — Static Site Publishing Visibility</td><td>Observe GitHub Pages builds and repository events related to static site publishing.</td><td>Blocked by: phase_1_webhook_setup</td></tr>
+</table>
+</section>
+<section>
+  <h2>Risks (8)</h2>
+  <table><tr><th>ID</th><th>Title</th><th>Severity</th><th>Blocker</th></tr>
+<tr><td>RSK-GH-KEY-01</td><td>Private Key Compromise</td><td>critical</td><td>⚠ Release Blocker</td></tr>
+<tr><td>RSK-GH-WEBHOOK-02</td><td>Webhook Secret Compromise</td><td>high</td><td>⚠ Release Blocker</td></tr>
+<tr><td>RSK-GH-TOKEN-03</td><td>Installation Token Leakage</td><td>high</td><td>⚠ Release Blocker</td></tr>
+<tr><td>RSK-GH-WRITE-04</td><td>Unauthorized Write Actions</td><td>high</td><td>⚠ Release Blocker</td></tr>
+<tr><td>RSK-GH-CONTEXT-05</td><td>Context Poisoning via GitHub Events</td><td>medium</td><td></td></tr>
+<tr><td>RSK-GH-SIZE-06</td><td>Webhook Payload DoS</td><td>medium</td><td></td></tr>
+<tr><td>RSK-GH-RATE-07</td><td>GitHub API Rate Limit Exhaustion</td><td>medium</td><td></td></tr>
+<tr><td>RSK-GH-PERM-08</td><td>Permission Scope Creep</td><td>medium</td><td></td></tr>
+</table>
+  <details><summary>RSK-GH-KEY-01: Private Key Compromise</summary><p>If the GitHub App private key is compromised, an attacker can generate JWTs, obtain installation tokens, and read/write to all installed repositories. This is the highest-value secret in the GitHub App integration.</p><p><strong>Mitigations:</strong></p><ul><li>Private key in OS keyring, never in repo</li><li>File permissions 600 or stricter</li><li>Key reference only in config</li><li>Never in trace events, logs, or frontend</li><li>Detection test for PEM in repo</li><li>Key rotation procedure documented</li></ul></details><details><summary>RSK-GH-WEBHOOK-02: Webhook Secret Compromise</summary><p>If the webhook secret is compromised, an attacker can forge webhook events and inject malicious data into the Rig event store.</p><p><strong>Mitigations:</strong></p><ul><li>Webhook secret in keyring or env, never in repo</li><li>Secret reference only in config</li><li>Never in trace events or frontend</li><li>Signature verification on every request</li></ul></details><details><summary>RSK-GH-TOKEN-03: Installation Token Leakage</summary><p>If an installation access token leaks to disk, logs, or frontend, an attacker with local access can use it to access repositories until it expires (1 hour).</p><p><strong>Mitigations:</strong></p><ul><li>Memory-only token cache</li><li>Never written to disk</li><li>Never in trace events or frontend</li><li>Short expiry (1 hour, cache with 55-min TTL)</li><li>No long-lived token storage</li></ul></details><details><summary>RSK-GH-WRITE-04: Unauthorized Write Actions</summary><p>An agent or bug could create branches, commits, or PRs without explicit user approval, violating the governed write model.</p><p><strong>Mitigations:</strong></p><ul><li>Explicit user approval required for every write action</li><li>No automated write actions</li><li>Approval gate integration test</li><li>Audit trail for every write proposal</li></ul></details><details><summary>RSK-GH-CONTEXT-05: Context Poisoning via GitHub Events</summary><p>Malicious or crafted GitHub event payloads (PR descriptions, commit messages, issue comments) could inject harmful context into the agent&#x27;s prompt.</p><p><strong>Mitigations:</strong></p><ul><li>GitHub payloads treated as untrusted context</li><li>Content sanitization</li><li>Context size limits</li><li>Source tracing</li><li>Repository authorization check</li></ul></details><details><summary>RSK-GH-SIZE-06: Webhook Payload DoS</summary><p>Large webhook payloads (near 25 MB GitHub cap) could consume excessive memory or disk, or block the webhook processing pipeline.</p><p><strong>Mitigations:</strong></p><ul><li>Local payload size cap (e.g., 5 MB)</li><li>Reject before full body read</li><li>Content-light event ledger (no raw payload storage)</li><li>Rate limiting on webhook endpoint</li></ul></details><details><summary>RSK-GH-RATE-07: GitHub API Rate Limit Exhaustion</summary><p>Excessive API calls for token exchange or status posting could exhaust rate limits, degrading the integration.</p><p><strong>Mitigations:</strong></p><ul><li>Token cache with expiry (reuse within window)</li><li>Exponential backoff with jitter</li><li>Rate limit monitoring via X-RateLimit-Remaining</li><li>User-facing rate limit status</li></ul></details><details><summary>RSK-GH-PERM-08: Permission Scope Creep</summary><p>Over time, new features may request additional permissions without proper audit, gradually expanding the attack surface.</p><p><strong>Mitigations:</strong></p><ul><li>Admin avoidance profile as canonical deny-list</li><li>Permission audit on every profile change</li><li>Permission diff detection on installation update</li><li>Release gate requiring permission justification</li></ul></details>
+</section>
+<section>
+  <h2>Release Gates (12)</h2>
+  <table><tr><th>ID</th><th>Title</th><th>Blocker</th><th>Pass Condition</th></tr>
+<tr><td>GHA01</td><td>App config schema exists and validates</td><td>⚠ Release Blocker</td><td>Schema validates a well-formed config and rejects invalid ones.</td></tr>
+<tr><td>GHA02</td><td>Webhook signature verification tested</td><td>⚠ Release Blocker</td><td>Valid signatures pass verification; invalid signatures are rejected with timing-safe compare.</td></tr>
+<tr><td>GHA03</td><td>Invalid signature rejected before processing</td><td>⚠ Release Blocker</td><td>Requests with invalid or missing signatures return 401 before body parsing.</td></tr>
+<tr><td>GHA04</td><td>Delivery dedupe tested</td><td>⚠ Release Blocker</td><td>Duplicate delivery IDs are detected and ignored; first delivery is processed normally.</td></tr>
+<tr><td>GHA05</td><td>Installation token creation path designed and tested with mocked GitHub</td><td>⚠ Release Blocker</td><td>JWT generated from private key, installation token obtained from mock API, cached in memory, expired token refreshed.</td></tr>
+<tr><td>GHA06</td><td>No secrets in frontend projection</td><td>⚠ Release Blocker</td><td>Frontend projection model rejects inclusion of private key, webhook secret, installation token, and raw payloads.</td></tr>
+<tr><td>GHA07</td><td>Permission profile tests cover minimum permissions</td><td>⚠ Release Blocker</td><td>Permission profiles never exceed necessary permissions; admin avoidance profile is enforced.</td></tr>
+<tr><td>GHA08</td><td>GitHub event payloads treated as untrusted context</td><td>⚠ Release Blocker</td><td>Content from webhook payloads is sanitized before entering context assembly; source is traced.</td></tr>
+<tr><td>GHA09</td><td>Write actions require user approval</td><td>⚠ Release Blocker</td><td>Branch/commit/PR creation is blocked without explicit user approval; audit trail records every decision.</td></tr>
+<tr><td>GHA10</td><td>Trace events content-light and correlated</td><td>⚠ Release Blocker</td><td>All trace events include correlation fields; no secrets or raw payloads in trace events.</td></tr>
+<tr><td>GHA11</td><td>Static docs describe setup without secrets</td><td>⚠ Release Blocker</td><td>Generated static HTML for the GitHub App integration audit contains no fake secret values, raw PEM, or webhook secret text.</td></tr>
+<tr><td>GHA12</td><td>Failure/degraded UX states rendered</td><td>⚠ Release Blocker</td><td>All 8 UI states render with correct copy; error states show safe messages without secrets.</td></tr>
+</table>
+</section>
+<section>
+  <h2>Open Questions</h2>
+  <details><summary>Should the webhook endpoint be a local HTTP server, or should Rig use smee.io / a tunnel for local development?</summary><p>GitHub requires a publicly reachable URL for webhook delivery. Local development without a public URL needs a tunnel or webhook replay strategy.</p><p>Needed for: phase_1_webhook_setup</p></details><details><summary>How should the private key be provisioned — user downloads from GitHub and provides path, or Rig guides through GitHub App creation flow?</summary><p>The private key is generated by GitHub at app creation time and downloaded once. Rig needs to receive this key without the user copy-pasting raw PEM into a text field.</p><p>Needed for: phase_1_webhook_setup</p></details><details><summary>Should Rig support multiple GitHub App installations across different accounts/orgs simultaneously?</summary><p>A user might want to observe repos from personal account and organization. Supporting multiple installations increases complexity.</p><p>Needed for: phase_2_evidence_reporting</p></details><details><summary>Should the write-approval model support time-bound or scope-bound pre-approval (e.g., &#x27;approve all check-run postings for the next hour&#x27;)?</summary><p>Frequent approval prompts could degrade UX. Pre-approval with constraints could balance safety and usability.</p><p>Needed for: phase_3_governed_actions</p></details><details><summary>Is the GitHub App integration required to be available in local-only mode (no internet), or can it require connectivity?</summary><p>Rig Relay defaults to local-only. GitHub App integration inherently requires network access. Should Rig gracefully degrade when offline?</p><p>Needed for: phase_1_webhook_setup</p></details>
+</section>
+<section>
+  <h2>Backend Components (12)</h2>
+  <details><summary>models — rig_relay/github_app/models.py</summary><ul><li>Typed payload subset models (installation, repository, push, PR, check run, issue comment)</li><li>Installation and repository identity models</li><li>Delivery ledger models (id, status, created_at, processed_at)</li><li>Permission profile models</li><li>Configuration models for app registration</li></ul></details><details><summary>config — rig_relay/github_app/config.py</summary><ul><li>App ID storage</li><li>Client ID storage (optional)</li><li>Webhook secret reference (keychain://, env://, or file:// outside repo)</li><li>Private key reference (keychain://, env://, or file:// outside repo)</li><li>Installation settings</li><li>Token cache policy</li><li>Webhook delivery policy</li></ul></details><details><summary>manifest — rig_relay/github_app/manifest.py</summary><ul><li>Build GitHub App manifest from permission profiles</li><li>Validate manifest against known safe profiles</li><li>Generate user-visible permission summary</li></ul></details><details><summary>auth — rig_relay/github_app/auth.py</summary><ul><li>JWT generation for app authentication</li><li>Installation access token exchange via GitHub API</li><li>Token expiry handling and refresh</li><li>Token validation</li></ul></details><details><summary>tokens — rig_relay/github_app/tokens.py</summary><ul><li>Installation access token cache with expiry (memory-only)</li><li>Token refresh on expiry</li><li>Token revocation on installation deletion</li><li>Integration with local secure storage (keyring) for private key only</li></ul></details><details><summary>webhooks — rig_relay/github_app/webhooks.py</summary><ul><li>Raw body verification using X-Hub-Signature-256 (HMAC-SHA256)</li><li>Timing-safe comparison of signatures</li><li>Event header extraction (X-GitHub-Event, X-GitHub-Delivery, X-GitHub-Hook-Installation-Target-ID)</li><li>Content-Type validation (application/json)</li><li>Payload size policy enforcement (under 25 MB GitHub cap, under local policy cap)</li><li>Signature rejection before JSON parsing</li></ul></details><details><summary>event_store — rig_relay/github_app/event_store.py</summary><ul><li>Append-only delivery ledger (.rig/github/deliveries/*.jsonl)</li><li>Idempotency and deduplication by X-GitHub-Delivery</li><li>Processing status tracking: received, verified, ignored, processed, failed, redelivered</li><li>Delivery metadata (timestamp, event type, installation id, repository id)</li></ul></details><details><summary>router — rig_relay/github_app/router.py</summary><ul><li>Event/action routing to handler components</li><li>Unknown event refusal (safe default)</li><li>Content-light trace event emission for each webhook</li><li>Coordination with event store for dedup and status</li></ul></details><details><summary>permissions — rig_relay/github_app/permissions.py</summary><ul><li>Permission profile checks against installation permissions</li><li>Installation permission diff detection (user added/removed permissions)</li><li>Minimal permission validation (never exceed admin_avoidance_profile)</li><li>Permission upgrade recommendations for the user</li></ul></details><details><summary>projections — rig_relay/github_app/projections.py</summary><ul><li>Frontend projection state machine: disconnected, app_configured, installed, repo_authorized, webhook_recent, token_refresh_needed, permission_update_needed, degraded</li><li>Build projection from config, installations, repositories, and event store</li></ul></details><details><summary>errors — rig_relay/github_app/errors.py</summary><ul><li>GitHub App error hierarchy</li><li>Safe error messages for frontend (no secrets, no stack traces)</li><li>Error classification: auth, permission, network, rate_limit, configuration</li></ul></details><details><summary>tracing — rig_relay/github_app/tracing.py</summary><ul><li>Content-light GitHub App trace events</li><li>Correlation with existing trace infrastructure (trace_id, span_id)</li><li>GitHub-specific correlation fields (delivery_id, installation_id, repository_id)</li></ul></details>
+</section>
+<section>
+  <h2>Frontend Components (5)</h2>
+  <details><summary>github_connection_panel: GitHub Connection Panel</summary><p>Shows GitHub App connection status, installation state, and authorized repositories. Primary surface for GitHub integration UX.</p><p><strong>Must never display:</strong></p><ul><li>private_key</li><li>webhook_secret</li><li>installation_token</li><li>raw_webhook_payload</li><li>full_local_file_paths</li></ul></details><details><summary>github_setup_wizard: GitHub App Setup Wizard</summary><p>Step-by-step setup guide: register app, configure webhook secret, import config, install app, verify connection.</p><p><strong>Must never display:</strong></p><ul><li>private_key</li><li>webhook_secret</li><li>installation_token</li></ul></details><details><summary>github_activity_feed: GitHub Activity Feed</summary><p>Shows recent GitHub events processed by Rig: pushes, PRs, check runs, comments. Content-light preview only.</p><p><strong>Must never display:</strong></p><ul><li>raw_webhook_payload</li><li>code_content_from_payload</li><li>installation_token</li></ul></details><details><summary>github_permission_manager: GitHub Permission Manager</summary><p>Shows current permissions, diff from required profile, and guides user through permission updates.</p><p><strong>Must never display:</strong></p><ul><li>private_key</li><li>webhook_secret</li></ul></details><details><summary>github_write_approval_dialog: Write Action Approval Dialog</summary><p>Approval UI for governed write actions: branch creation, commit, PR creation, comment posting. Shows full diff before approval.</p><p><strong>Must never display:</strong></p><ul><li>installation_token</li><li>private_key</li></ul></details>
+</section>
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>json/integrations/github_app_integration_audit_v0.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

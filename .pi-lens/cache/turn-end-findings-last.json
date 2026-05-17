@@ -1,4 +1,4 @@
 {
-  "signature": "tests/repository/test_release_candidate_coherence_audit.py::Unresolved from this turn — tests/repository/test_release_candidate_coherence_audit.py:\n🔴 STOP — 7 issue(s) must be fixed:\n  \"_run_support_script\" is not defined\n  L142: Undefined name `_run_support_script`\n  L148: Undefined name `_run_support_script`\n  L156: Undefined name `_run_support_script`\n  L161: Undefined name `_run_support_script`\n  L166: Undefined name `_run_support_script`\n  L171: Undefined name `_run_support_script`",
-  "sessionId": "lens-mp90yi3s-37d27ed3"
+  "signature": "rig_relay/tracing/_contract.py::Unresolved from this turn — rig_relay/tracing/_contract.py:\n🔴 STOP — 1 issue(s) must be fixed:\n  Cannot access attribute \"get\" for class \"FunctionType\"\n    Attribute \"get\" is unknown",
+  "sessionId": "lens-mp91fw7f-b384d232"
 }

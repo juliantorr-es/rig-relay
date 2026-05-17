@@ -33,6 +33,24 @@ from rig_relay.context.warnings import (
     exception_class_name,
 )
 from rig_relay.context.work_map import build_active_work
+from rig_relay.tracing.golden_path import build_golden_path_event
+from rig_relay.tracing.store import get_default_trace_store
+
+
+def _emit_context_trace(
+    event_type: str, *, session_id: str = "", payload: dict[str, Any] | None = None
+) -> None:
+    """Emit a content-light context assembly trace event. Non-fatal on error."""
+    try:
+        store = get_default_trace_store()
+        event = build_golden_path_event(
+            event_type=event_type,
+            correlation={"session_id": session_id},
+            payload=payload or {},
+        )
+        store.write(event)
+    except Exception:
+        pass
 
 
 class ContextCompiler:
@@ -63,6 +81,15 @@ class ContextCompiler:
         messages: list[Any] | None = None,
     ) -> ContextEnvelopeReceipt:
         """Build a context envelope using the cache-aware renderer."""
+        _emit_context_trace(
+            "context.assembly.started",
+            session_id=self._session_id,
+            payload={
+                "has_user_text": bool(user_text),
+                "has_snapshot": snapshot is not None,
+                "has_messages": bool(messages),
+            },
+        )
         renderer = ContextRenderer(workspace_root=self._workspace_root)
         dirty_count = 0
         collision_count = 0
@@ -115,7 +142,7 @@ class ContextCompiler:
         if rendered:
             receipt_sha256 = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
 
-        return ContextEnvelopeReceipt(
+        envelope = ContextEnvelopeReceipt(
             session_id=self._session_id,
             rendered_prompt=rendered,
             section_count=renderer.section_count,
@@ -124,6 +151,18 @@ class ContextCompiler:
             collision_warnings=collision_count,
             receipt_sha256=receipt_sha256,
         )
+        _emit_context_trace(
+            "context.envelope.built",
+            session_id=self._session_id,
+            payload={
+                "section_count": renderer.section_count,
+                "estimated_tokens": envelope.estimated_tokens,
+                "dirty_count": dirty_count,
+                "collision_count": collision_count,
+                "receipt_sha256": receipt_sha256[:16] if receipt_sha256 else "",
+            },
+        )
+        return envelope
 
 
 def execute(  # noqa: PLR0914
@@ -162,6 +201,15 @@ def execute(  # noqa: PLR0914
     req_json = request.model_dump_json(exclude_none=True)
     request_sha256 = hashlib.sha256(req_json.encode("utf-8")).hexdigest()
 
+    _emit_context_trace(
+        "context.sources.selected",
+        session_id=getattr(request, "session_id", ""),
+        payload={
+            "mode": request.mode.value
+            if hasattr(request.mode, "value")
+            else str(request.mode)
+        },
+    )
     # Build repo info (always)
     repo = build_repo_info(root)
 
@@ -184,6 +232,11 @@ def execute(  # noqa: PLR0914
             )
         )
 
+    _emit_context_trace(
+        "context.schema_router.invoked",
+        session_id=getattr(request, "session_id", ""),
+        payload={"planning": True},
+    )
     # ── Plan context via ContextAssemblyPlan ────────────────────
     plan = plan_context(
         request,
@@ -193,6 +246,15 @@ def execute(  # noqa: PLR0914
         repo_index=repo_index,
     )
 
+    _emit_context_trace(
+        "context.schemas.selected",
+        session_id=getattr(request, "session_id", ""),
+        payload={
+            "candidate_count": len(plan.candidates),
+            "selection_count": len(plan.selections),
+            "omission_count": len(plan.omissions),
+        },
+    )
     # Build recommended context from plan selections
     recommended = _map_selections_to_recommendations(plan)
 
@@ -242,6 +304,13 @@ def execute(  # noqa: PLR0914
         },
     )
 
+    _emit_context_trace(
+        "context.generated_html_excluded",
+        session_id=getattr(request, "session_id", ""),
+        payload={
+            "excluded_count": 6
+        },  # docs/pages/**, docs/collections/**, docs/assets/**, search-index.json, render-manifest.json, **/*.html
+    )
     # Canonical hash: excludes volatile fields
     import json
 
@@ -264,6 +333,15 @@ def execute(  # noqa: PLR0914
     packet.optimized_packet_sha256 = packet_sha256
     packet.duration_ms = (time.perf_counter() - start) * 1000
 
+    _emit_context_trace(
+        "context.prompt.emitted",
+        session_id=getattr(request, "session_id", ""),
+        payload={
+            "packet_size_bytes": len(packet.model_dump_json(exclude_none=True)),
+            "duration_ms": packet.duration_ms,
+            "subsystem_count": len(packet.subsystems),
+        },
+    )
     return packet
 
 
@@ -285,6 +363,9 @@ def build_receipt(packet: ContextPacket) -> ContextReceipt:
             exception_class_name,
         )
 
+        _emit_context_trace(
+            "context.assembly.failed", payload={"error": exception_class_name(e)}
+        )
         # ContextReceipt has no warnings field; record safe zero counts only.
         # The warning is emitted through the packet warnings path instead.
         _receipt_findings_warning = build_warning(

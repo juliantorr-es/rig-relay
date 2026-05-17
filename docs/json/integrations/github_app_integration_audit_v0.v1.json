@@ -1,0 +1,1261 @@
+{
+  "schema_version": "rig.github_app.integration_audit.v1",
+  "audit_id": "github-app-integration-audit-v0",
+  "title": "GitHub App Integration Audit v0",
+  "summary": "Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.",
+  "status": "draft",
+  "created_at": "2026-05-17",
+  "updated_at": "2026-05-17",
+  "source_commit": "0517a0e0",
+  "external_references": [
+    {
+      "title": "GitHub Apps Overview",
+      "url": "https://docs.github.com/en/apps/overview",
+      "description": "Official GitHub App documentation — registration, permissions, installation, webhooks",
+      "retrieved_at": "2026-05-17"
+    },
+    {
+      "title": "GitHub App Webhooks",
+      "url": "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-webhooks-for-github-apps",
+      "description": "Webhook event delivery, HMAC signature, retry policy",
+      "retrieved_at": "2026-05-17"
+    },
+    {
+      "title": "GitHub App Installation Access Tokens",
+      "url": "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+      "description": "JWT authentication for apps, installation token exchange, expiry handling",
+      "retrieved_at": "2026-05-17"
+    },
+    {
+      "title": "GitHub App Permissions",
+      "url": "https://docs.github.com/en/rest/overview/permissions-required-for-github-apps",
+      "description": "Permission model, minimum necessary principle",
+      "retrieved_at": "2026-05-17"
+    }
+  ],
+  "app_registration": {
+    "app_name_recommendation": "Rig Relay",
+    "owner_type": "either",
+    "homepage_url": "https://juliantorr-es.github.io/rig-relay",
+    "callback_url_needed": false,
+    "setup_url_needed": false,
+    "webhook_url_needed": true,
+    "webhook_secret_required": true,
+    "ssl_verification_required": true,
+    "public_or_private": "private_initial",
+    "device_flow_needed": false,
+    "user_authorization_needed": false,
+    "notes": "Private app initially, public later. Owned by personal developer account initially; migrate to Rig Relay organization later if desired. Homepage URL is the live Rig Relay static docs site. Webhook URL needed for hosted/relay endpoint; local dev requires tunnel or webhook replay strategy. User authorization deferred unless acting on behalf of individual users is needed. Device flow deferred unless CLI/login needs it. Installation visibility starts private/internal."
+  },
+  "permission_profiles": [
+    {
+      "profile_id": "observe_public_repo",
+      "title": "Observe Public Repository",
+      "description": "Read repository metadata and events for public repos. No write access.",
+      "use_case": "Initial connection: let Rig observe repository events without asking for broad PATs. Maps pushes, PRs, checks, comments into Rig evidence.",
+      "repository_permissions": {
+        "metadata": "read",
+        "contents": "read",
+        "pull_requests": "read",
+        "issues": "read",
+        "commit_statuses": "read",
+        "checks": "read"
+      },
+      "organization_permissions": {},
+      "account_permissions": {},
+      "events_required": ["push", "pull_request", "check_run", "check_suite", "issues", "issue_comment", "installation", "installation_repositories"],
+      "minimum_for_phase": "phase_1_webhook_setup",
+      "rationale": "Minimum permissions required for event observation. Contents read is needed for reading repository files through the API. Checks read is needed for observing CI/check outputs. Issues read is needed for issue comment observation if used for agent collaboration.",
+      "risks": [
+        "Contents read exposes repository source code to the Rig process",
+        "Event payloads may contain sensitive commit metadata",
+        "Scope creep if additional read permissions are requested later without profile audit"
+      ],
+      "frontend_display_label": "Read-only repository observation",
+      "user_consent_copy": "Rig Relay will observe repository events (pushes, pull requests, checks) to build local evidence. No code or repository content will be sent to external services. All processing is local."
+    },
+    {
+      "profile_id": "evidence_status_reporter",
+      "title": "Evidence Status Reporter",
+      "description": "Post Rig status/check outputs back to GitHub after local validation. Adds write access for checks/statuses.",
+      "use_case": "Rig completes local validation, creates check run or commit status on GitHub with results.",
+      "repository_permissions": {
+        "metadata": "read",
+        "contents": "read",
+        "pull_requests": "read",
+        "checks": "write",
+        "commit_statuses": "write"
+      },
+      "organization_permissions": {},
+      "account_permissions": {},
+      "events_required": ["check_suite", "check_run", "pull_request", "push"],
+      "minimum_for_phase": "phase_2_evidence_reporting",
+      "rationale": "Checks write allows creating annotated check runs. Commit statuses write allows posting status to PRs. Both are required for the evidence feedback loop: Rig validates locally, reports results to GitHub.",
+      "risks": [
+        "Write access to checks/statuses could be misused to post misleading status",
+        "Check run annotations could expose local file paths or internal state",
+        "Need approval gate before any automated status posting"
+      ],
+      "frontend_display_label": "Evidence status reporting",
+      "user_consent_copy": "Rig Relay will post check runs and commit statuses to GitHub with validation results. No code or internal file paths will be included in status reports."
+    },
+    {
+      "profile_id": "governed_pr_assistant",
+      "title": "Governed Pull Request Assistant",
+      "description": "Create branches, PRs, and comments only after explicit user approval. Highest-risk profile with write access.",
+      "use_case": "Rig proposes a code change, user approves via desktop cockpit, Rig creates branch, commits changes, opens PR, and comments with evidence.",
+      "repository_permissions": {
+        "metadata": "read",
+        "contents": "write",
+        "pull_requests": "write",
+        "issues": "write"
+      },
+      "organization_permissions": {},
+      "account_permissions": {},
+      "events_required": ["pull_request", "issue_comment", "push"],
+      "minimum_for_phase": "phase_3_governed_actions",
+      "rationale": "Contents write is required for branch/commit creation. Pull requests write for PR creation. Issues write for commenting on PRs/issues. All write actions are gated behind explicit user approval in the cockpit.",
+      "risks": [
+        "Contents write is the highest-risk permission — allows pushing commits",
+        "Pull requests write could be misused to modify or close PRs",
+        "Requires robust approval UI and audit trail",
+        "Requires worktree isolation to prevent dirty-file corruption"
+      ],
+      "frontend_display_label": "Governed PR assistant (approval required)",
+      "user_consent_copy": "Rig Relay may create branches, commits, and pull requests on your behalf. Every write action requires explicit approval in the desktop cockpit. You can review the full diff before approving. All actions are recorded in the local evidence store."
+    },
+    {
+      "profile_id": "admin_avoidance_profile",
+      "title": "Admin Avoidance Profile",
+      "description": "Explicitly documents permissions Rig should NOT request for v0. Serves as a safety checklist.",
+      "use_case": "Prevent accidental permission escalation. Audited against every implementation phase.",
+      "repository_permissions": {
+        "administration": "avoid",
+        "secrets": "avoid",
+        "actions": "avoid",
+        "workflows": "avoid",
+        "deployments": "avoid",
+        "repository_rules": "avoid",
+        "environments": "avoid",
+        "pages": "avoid",
+        "webhooks": "avoid",
+        "security_events": "avoid",
+        "codespaces": "avoid",
+        "dependabot_secrets": "avoid"
+      },
+      "organization_permissions": {
+        "members": "avoid",
+        "administration": "avoid",
+        "secrets": "avoid",
+        "actions": "avoid",
+        "workflows": "avoid"
+      },
+      "account_permissions": {},
+      "events_required": [],
+      "minimum_for_phase": "all_phases",
+      "rationale": "Administration, Secrets, Actions write, Workflows write, Deployments write, Repository rules write, and Organization members write must never be requested in v0. These permissions grant broad mutation authority that violates Rig's governed, approval-gated design. Pages/webhooks write could interfere with GitHub Pages publishing or webhook configuration. Security events read could expose vulnerability data.",
+      "risks": [
+        "Accidental inclusion in permission manifest during implementation",
+        "Organization-level permissions could be requested by mistake if owner_type is organization",
+        "Future phases may need to revisit specific avoidance items with new threat model"
+      ],
+      "frontend_display_label": "Not requested",
+      "user_consent_copy": "Rig Relay does not request administration, secrets, actions, workflows, deployments, repository rules, or organization member permissions."
+    }
+  ],
+  "webhook_subscriptions": [
+    {
+      "event_name": "ping",
+      "actions": [],
+      "permissions_required": [],
+      "why_needed": "Webhook creation confirmation. GitHub sends a ping event when a webhook is first created to verify connectivity.",
+      "handler_component": "rig_relay.github_app.webhooks.verify_ping",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "zen"],
+      "trace_fields": ["github_delivery_id", "github_event", "hook_id"],
+      "storage_effects": ["Record delivery in webhook ledger with status 'verified'"],
+      "frontend_effects": ["Show webhook setup success in connection status"],
+      "ignore_conditions": ["None — always process ping"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "installation",
+      "actions": ["created", "deleted", "new_permissions_accepted", "suspend", "unsuspend"],
+      "permissions_required": [],
+      "why_needed": "Installation lifecycle tracking. Created/deleted tells Rig when the app is installed/uninstalled. Suspended/unsuspended tracks GitHub-imposed pauses.",
+      "handler_component": "rig_relay.github_app.event_store.update_installation",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "action", "installation.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_sender_id"],
+      "storage_effects": ["Update installations.json", "Record delivery in webhook ledger", "Update frontend projection state"],
+      "frontend_effects": ["Installation status change: installed → not_installed", "Show installation permissions summary"],
+      "ignore_conditions": ["None for created/deleted. May ignore suspend/unsuspend in v0 if no remediation UI."],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "installation_repositories",
+      "actions": ["added", "removed"],
+      "permissions_required": [],
+      "why_needed": "Track which repositories are authorized for the installation. Users can add/remove repos from the installation.",
+      "handler_component": "rig_relay.github_app.event_store.update_repositories",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "action", "installation.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id"],
+      "storage_effects": ["Update repositories.json", "Record delivery in webhook ledger", "Update frontend authorized repo list"],
+      "frontend_effects": ["Authorized repository list update", "Installation scope change notification"],
+      "ignore_conditions": ["None for added/removed"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "push",
+      "actions": [],
+      "permissions_required": ["contents: read"],
+      "why_needed": "Core event for observing repository changes. Maps commits, branches, and tags into Rig evidence for context assembly and worktree awareness.",
+      "handler_component": "rig_relay.github_app.router.handle_push",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "repository.id", "head_commit.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id", "github_repository_full_name", "commit_sha"],
+      "storage_effects": ["Record delivery in webhook ledger", "Maybe trigger repo status refresh", "Link to context assembler if repo is in workspace"],
+      "frontend_effects": ["Show recent push event in activity feed", "Update repo last-event timestamp"],
+      "ignore_conditions": ["Pushes to repos not in authorized list", "Branch deletions if not relevant (optional ignore)", "Tag pushes if not observing releases"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "pull_request",
+      "actions": ["opened", "closed", "reopened", "edited", "synchronize", "ready_for_review", "review_requested", "review_request_removed"],
+      "permissions_required": ["pull_requests: read"],
+      "why_needed": "Track PR lifecycle for agent context. PRs may trigger Rig validation, status posting, or future governed PR actions.",
+      "handler_component": "rig_relay.github_app.router.handle_pull_request",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "action", "pull_request.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id", "github_repository_full_name", "pull_request_number"],
+      "storage_effects": ["Record delivery in webhook ledger", "Store PR metadata for agent context", "Link to worktree/proposal if applicable"],
+      "frontend_effects": ["Show PR event in activity feed", "Trigger PR status check if Rig is a reviewer"],
+      "ignore_conditions": ["PRs in repos not authorized", "Draft PRs if configured to ignore", "PRs from bots if configured"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "check_run",
+      "actions": ["created", "completed", "rerequested"],
+      "permissions_required": ["checks: read"],
+      "why_needed": "Observe CI check runs on repositories. Rig may create check runs for its own validation results; this event tracks the lifecycle.",
+      "handler_component": "rig_relay.github_app.router.handle_check_run",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "action", "check_run.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id", "check_run_id"],
+      "storage_effects": ["Record delivery in webhook ledger", "Track check run lifecycle for evidence feedback loop"],
+      "frontend_effects": ["Show check run status in evidence panel", "Link Rig check runs to local validation sessions"],
+      "ignore_conditions": ["Check runs from other apps if configured", "Re-requested actions without user approval in v0"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "check_suite",
+      "actions": ["completed", "requested", "rerequested"],
+      "permissions_required": ["checks: read"],
+      "why_needed": "Track check suite completion to aggregate CI status for agent context.",
+      "handler_component": "rig_relay.github_app.router.handle_check_suite",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "action", "check_suite.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id", "check_suite_id"],
+      "storage_effects": ["Record delivery in webhook ledger", "Aggregate check suite status for context assembly"],
+      "frontend_effects": ["Show suite status in evidence panel"],
+      "ignore_conditions": ["Requested/rerequested without user approval in v0"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "issue_comment",
+      "actions": ["created", "edited", "deleted"],
+      "permissions_required": ["issues: read"],
+      "why_needed": "Observe comments on issues/PRs. In future phases, Rig may respond to comments after user approval.",
+      "handler_component": "rig_relay.github_app.router.handle_issue_comment",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "action", "comment.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id", "issue_number"],
+      "storage_effects": ["Record delivery in webhook ledger", "Store comment for agent context"],
+      "frontend_effects": ["Show comment event in activity feed"],
+      "ignore_conditions": ["Comments from Rig's own bot account", "Comments on repos not authorized", "Deleted comments may be ignored"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "repository",
+      "actions": ["publicized", "privatized", "deleted", "renamed", "transferred"],
+      "permissions_required": [],
+      "why_needed": "Repository lifecycle changes affect authorization and visibility.",
+      "handler_component": "rig_relay.github_app.event_store.update_repository",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "action", "repository.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id"],
+      "storage_effects": ["Update repositories.json", "Record delivery in webhook ledger"],
+      "frontend_effects": ["Repository status change notification", "Remove from authorized list if deleted"],
+      "ignore_conditions": ["None for v0 — track all"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "release",
+      "actions": ["published", "edited", "deleted"],
+      "permissions_required": [],
+      "why_needed": "Optional — track releases for static site publishing visibility if Rig observes release-to-pages pipeline.",
+      "handler_component": "rig_relay.github_app.router.handle_release",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "action", "release.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id", "release_tag"],
+      "storage_effects": ["Record delivery in webhook ledger"],
+      "frontend_effects": ["Release notification if connected to static site publishing"],
+      "ignore_conditions": ["Not subscribed by default — opt-in only"],
+      "risk_level": "low"
+    },
+    {
+      "event_name": "page_build",
+      "actions": [],
+      "permissions_required": [],
+      "why_needed": "Optional — GitHub Pages build event for static site publishing visibility.",
+      "handler_component": "rig_relay.github_app.router.handle_page_build",
+      "idempotency_key_fields": ["X-GitHub-Delivery", "event", "repository.id"],
+      "trace_fields": ["github_delivery_id", "github_event", "github_installation_id", "github_repository_id"],
+      "storage_effects": ["Record delivery in webhook ledger"],
+      "frontend_effects": ["Pages build status in publishing panel"],
+      "ignore_conditions": ["Not subscribed by default — opt-in only"],
+      "risk_level": "low"
+    }
+  ],
+  "backend_components": [
+    {
+      "component_id": "models",
+      "module_path": "rig_relay/github_app/models.py",
+      "responsibilities": [
+        "Typed payload subset models (installation, repository, push, PR, check run, issue comment)",
+        "Installation and repository identity models",
+        "Delivery ledger models (id, status, created_at, processed_at)",
+        "Permission profile models",
+        "Configuration models for app registration"
+      ],
+      "dependencies": ["pydantic"],
+      "notes": "Content-light models only. No raw secret material in model fields. All identity models hash sensitive fields where appropriate.",
+      "test_requirements": ["Model validation tests", "Payload parsing tests", "Schema compliance tests"]
+    },
+    {
+      "component_id": "config",
+      "module_path": "rig_relay/github_app/config.py",
+      "responsibilities": [
+        "App ID storage",
+        "Client ID storage (optional)",
+        "Webhook secret reference (keychain://, env://, or file:// outside repo)",
+        "Private key reference (keychain://, env://, or file:// outside repo)",
+        "Installation settings",
+        "Token cache policy",
+        "Webhook delivery policy"
+      ],
+      "dependencies": ["pydantic-settings", "rig_relay.core.config"],
+      "notes": "No secret values in config JSON or YAML. References only. Private key and webhook secret are NEVER in repo.",
+      "test_requirements": ["Config schema validation", "Secret rejection tests (raw PEM, raw secret)"]
+    },
+    {
+      "component_id": "manifest",
+      "module_path": "rig_relay/github_app/manifest.py",
+      "responsibilities": [
+        "Build GitHub App manifest from permission profiles",
+        "Validate manifest against known safe profiles",
+        "Generate user-visible permission summary"
+      ],
+      "dependencies": ["models", "permissions"],
+      "notes": "Manifest is declarative, not imperative. Does not register the app — only documents what would be registered.",
+      "test_requirements": ["Manifest generation tests", "Profile validation tests"]
+    },
+    {
+      "component_id": "auth",
+      "module_path": "rig_relay/github_app/auth.py",
+      "responsibilities": [
+        "JWT generation for app authentication",
+        "Installation access token exchange via GitHub API",
+        "Token expiry handling and refresh",
+        "Token validation"
+      ],
+      "dependencies": ["cryptography", "httpx", "config"],
+      "notes": "JWT uses RS256 with the app private key. Installation tokens are short-lived (1 hour) per GitHub policy. No long-lived token storage.",
+      "test_requirements": ["JWT generation tests", "Token exchange mock tests", "Expiry handling tests", "Invalid private key error tests"]
+    },
+    {
+      "component_id": "tokens",
+      "module_path": "rig_relay/github_app/tokens.py",
+      "responsibilities": [
+        "Installation access token cache with expiry (memory-only)",
+        "Token refresh on expiry",
+        "Token revocation on installation deletion",
+        "Integration with local secure storage (keyring) for private key only"
+      ],
+      "dependencies": ["auth", "config", "cachetools"],
+      "notes": "Memory-only cache for installation tokens. No durable storage of installation tokens. Private key stored in OS keyring or file outside repo.",
+      "test_requirements": ["Cache expiry tests", "Token refresh mock tests", "No durable storage assertion tests"]
+    },
+    {
+      "component_id": "webhooks",
+      "module_path": "rig_relay/github_app/webhooks.py",
+      "responsibilities": [
+        "Raw body verification using X-Hub-Signature-256 (HMAC-SHA256)",
+        "Timing-safe comparison of signatures",
+        "Event header extraction (X-GitHub-Event, X-GitHub-Delivery, X-GitHub-Hook-Installation-Target-ID)",
+        "Content-Type validation (application/json)",
+        "Payload size policy enforcement (under 25 MB GitHub cap, under local policy cap)",
+        "Signature rejection before JSON parsing"
+      ],
+      "dependencies": ["hmac", "hashlib", "config"],
+      "notes": "Must verify signature before any payload processing. Reject invalid signatures with 401. Use hmac.compare_digest for timing-safe comparison.",
+      "test_requirements": ["Signature verification tests", "Invalid signature rejection tests", "Timing-safe comparison tests", "Payload size rejection tests", "Missing header rejection tests"]
+    },
+    {
+      "component_id": "event_store",
+      "module_path": "rig_relay/github_app/event_store.py",
+      "responsibilities": [
+        "Append-only delivery ledger (.rig/github/deliveries/*.jsonl)",
+        "Idempotency and deduplication by X-GitHub-Delivery",
+        "Processing status tracking: received, verified, ignored, processed, failed, redelivered",
+        "Delivery metadata (timestamp, event type, installation id, repository id)"
+      ],
+      "dependencies": ["models"],
+      "notes": "Append-only JSONL. Never stores raw webhook payload by default — content-light event ledger only. Deduplication is mandatory.",
+      "test_requirements": ["Deduplication tests", "Append-only integrity tests", "Status transition tests"]
+    },
+    {
+      "component_id": "router",
+      "module_path": "rig_relay/github_app/router.py",
+      "responsibilities": [
+        "Event/action routing to handler components",
+        "Unknown event refusal (safe default)",
+        "Content-light trace event emission for each webhook",
+        "Coordination with event store for dedup and status"
+      ],
+      "dependencies": ["models", "webhooks", "event_store", "tracing"],
+      "notes": "Default-deny routing: unknown events are logged and ignored. Router delegates to specific handlers.",
+      "test_requirements": ["Routing tests", "Unknown event refusal tests", "Trace emission tests"]
+    },
+    {
+      "component_id": "permissions",
+      "module_path": "rig_relay/github_app/permissions.py",
+      "responsibilities": [
+        "Permission profile checks against installation permissions",
+        "Installation permission diff detection (user added/removed permissions)",
+        "Minimal permission validation (never exceed admin_avoidance_profile)",
+        "Permission upgrade recommendations for the user"
+      ],
+      "dependencies": ["models", "config"],
+      "notes": "Permissions are checked at installation time and on permission update webhooks. Diff detection alerts user of missing required permissions.",
+      "test_requirements": ["Permission profile validation tests", "Diff detection tests", "Admin avoidance enforcement tests"]
+    },
+    {
+      "component_id": "projections",
+      "module_path": "rig_relay/github_app/projections.py",
+      "responsibilities": [
+        "Frontend projection state machine: disconnected, app_configured, installed, repo_authorized, webhook_recent, token_refresh_needed, permission_update_needed, degraded",
+        "Build projection from config, installations, repositories, and event store"
+      ],
+      "dependencies": ["models", "config", "event_store"],
+      "notes": "Projection is content-light. Never includes secrets, raw payloads, or local paths.",
+      "test_requirements": ["State machine tests", "Projection content safety tests"]
+    },
+    {
+      "component_id": "errors",
+      "module_path": "rig_relay/github_app/errors.py",
+      "responsibilities": [
+        "GitHub App error hierarchy",
+        "Safe error messages for frontend (no secrets, no stack traces)",
+        "Error classification: auth, permission, network, rate_limit, configuration"
+      ],
+      "dependencies": [],
+      "notes": "Error messages must never contain private key material, webhook secrets, or installation tokens.",
+      "test_requirements": ["Error classification tests", "Safe message tests"]
+    },
+    {
+      "component_id": "tracing",
+      "module_path": "rig_relay/github_app/tracing.py",
+      "responsibilities": [
+        "Content-light GitHub App trace events",
+        "Correlation with existing trace infrastructure (trace_id, span_id)",
+        "GitHub-specific correlation fields (delivery_id, installation_id, repository_id)"
+      ],
+      "dependencies": ["rig_relay.core.telemetry", "models"],
+      "notes": "Trace events are content-light per existing policy. Never include raw payloads, tokens, or secrets in trace events.",
+      "test_requirements": ["Trace event emission tests", "Content safety tests", "Correlation field tests"]
+    }
+  ],
+  "frontend_components": [
+    {
+      "component_id": "github_connection_panel",
+      "title": "GitHub Connection Panel",
+      "description": "Shows GitHub App connection status, installation state, and authorized repositories. Primary surface for GitHub integration UX.",
+      "data_sources": ["github_app/projections", "github_app/event_store"],
+      "must_never_display": ["private_key", "webhook_secret", "installation_token", "raw_webhook_payload", "full_local_file_paths"],
+      "must_display": ["permission_profile", "repo_account", "last_event_type", "last_delivery_id_shortened", "current_health", "setup_checklist", "audit_evidence_link"]
+    },
+    {
+      "component_id": "github_setup_wizard",
+      "title": "GitHub App Setup Wizard",
+      "description": "Step-by-step setup guide: register app, configure webhook secret, import config, install app, verify connection.",
+      "data_sources": ["github_app/config", "github_app/projections"],
+      "must_never_display": ["private_key", "webhook_secret", "installation_token"],
+      "must_display": ["setup_checklist", "app_name", "app_id", "installation_url", "webhook_url", "required_permissions"]
+    },
+    {
+      "component_id": "github_activity_feed",
+      "title": "GitHub Activity Feed",
+      "description": "Shows recent GitHub events processed by Rig: pushes, PRs, check runs, comments. Content-light preview only.",
+      "data_sources": ["github_app/event_store"],
+      "must_never_display": ["raw_webhook_payload", "code_content_from_payload", "installation_token"],
+      "must_display": ["event_type", "repository_name", "delivery_id_shortened", "timestamp", "status"]
+    },
+    {
+      "component_id": "github_permission_manager",
+      "title": "GitHub Permission Manager",
+      "description": "Shows current permissions, diff from required profile, and guides user through permission updates.",
+      "data_sources": ["github_app/permissions", "github_app/projections"],
+      "must_never_display": ["private_key", "webhook_secret"],
+      "must_display": ["current_permissions", "required_permissions", "missing_permissions", "admin_avoidance_list"]
+    },
+    {
+      "component_id": "github_write_approval_dialog",
+      "title": "Write Action Approval Dialog",
+      "description": "Approval UI for governed write actions: branch creation, commit, PR creation, comment posting. Shows full diff before approval.",
+      "data_sources": ["github_app/router", "rig_relay.core.governance"],
+      "must_never_display": ["installation_token", "private_key"],
+      "must_display": ["action_description", "full_diff", "target_repository", "target_branch", "evidence_link"]
+    }
+  ],
+  "data_flows": [
+    {
+      "flow_id": "app_registration_manual_setup",
+      "title": "GitHub App Manual Registration Setup",
+      "source": "User (GitHub portal)",
+      "destination": "Rig Relay config store",
+      "trigger": "User follows setup instructions in frontend wizard",
+      "input_data": ["app_id", "client_id", "webhook_secret", "private_key_path"],
+      "output_data": ["app_config.json with references only"],
+      "auth_material": "None (manual setup, no API calls)",
+      "storage": [".rig/github/app_config.json"],
+      "trace_events": ["github.app.config_loaded", "github.app.config_invalid"],
+      "frontend_projection": "Connection panel shows 'app_registered' state",
+      "failure_modes": ["Invalid app_id format", "Private key file not found", "Private key file has invalid PEM", "Config file permissions too open"],
+      "security_controls": ["No secret values in config file", "Private key reference only (path or keychain URI)", "Config file permissions check"]
+    },
+    {
+      "flow_id": "installation_created_webhook",
+      "title": "Installation Created Webhook",
+      "source": "GitHub webhook",
+      "destination": "Rig Relay backend event store",
+      "trigger": "User installs GitHub App on account/organization",
+      "input_data": ["X-Hub-Signature-256", "X-GitHub-Delivery", "X-GitHub-Event", "installation payload"],
+      "output_data": ["Installation record in installations.json", "Delivery record in event ledger"],
+      "auth_material": "Webhook secret (HMAC-SHA256 signature verification)",
+      "storage": [".rig/github/installations.json", ".rig/github/deliveries/*.jsonl"],
+      "trace_events": ["github.webhook.received", "github.webhook.signature_verified", "github.installation.created"],
+      "frontend_projection": "Connection panel shows 'installed' state",
+      "failure_modes": ["Invalid signature → reject 401", "Duplicate delivery → dedupe", "Missing installation id → reject"],
+      "security_controls": ["X-Hub-Signature-256 verification", "Timing-safe compare", "Delivery deduplication", "Content-light event ledger"]
+    },
+    {
+      "flow_id": "repository_selected",
+      "title": "Repository Selected Webhook",
+      "source": "GitHub webhook (installation_repositories event)",
+      "destination": "Rig Relay backend repositories store",
+      "trigger": "User adds/removes repository from installation",
+      "input_data": ["installation_repositories payload with repos_added/repos_removed"],
+      "output_data": ["Updated repositories.json", "Updated frontend projection"],
+      "auth_material": "Webhook secret (HMAC-SHA256)",
+      "storage": [".rig/github/repositories.json"],
+      "trace_events": ["github.webhook.received", "github.installation.repositories_added", "github.installation.repositories_removed"],
+      "frontend_projection": "Authorized repo list updates",
+      "failure_modes": ["Invalid signature → reject", "Duplicate delivery → dedupe"],
+      "security_controls": ["Signature verification", "Deduplication", "Installation id authorization check"]
+    },
+    {
+      "flow_id": "push_received",
+      "title": "Push Received Webhook",
+      "source": "GitHub webhook (push event)",
+      "destination": "Rig Relay backend event store, context assembler",
+      "trigger": "Commit pushed to repository",
+      "input_data": ["push payload with commits, ref, repository info"],
+      "output_data": ["Push event record in event ledger", "Context assembler update if repo is in workspace"],
+      "auth_material": "Webhook secret (HMAC-SHA256)",
+      "storage": [".rig/github/deliveries/*.jsonl"],
+      "trace_events": ["github.webhook.received", "github.webhook.signature_verified", "github.webhook.processed", "github.repository.authorized"],
+      "frontend_projection": "Activity feed shows push event (repo name, branch, commit SHA shortened)",
+      "failure_modes": ["Invalid signature → reject", "Repository not authorized → ignore", "Payload exceeds size policy → reject"],
+      "security_controls": ["Signature verification", "Repository authorization check", "Payload size policy", "Content-light event ledger"]
+    },
+    {
+      "flow_id": "pull_request_received",
+      "title": "Pull Request Received Webhook",
+      "source": "GitHub webhook (pull_request event)",
+      "destination": "Rig Relay backend event store",
+      "trigger": "PR opened, closed, updated, or synchronized",
+      "input_data": ["pull_request payload with PR metadata, head/base SHA"],
+      "output_data": ["PR event record in event ledger", "PR metadata for agent context"],
+      "auth_material": "Webhook secret (HMAC-SHA256)",
+      "storage": [".rig/github/deliveries/*.jsonl"],
+      "trace_events": ["github.webhook.received", "github.webhook.processed"],
+      "frontend_projection": "Activity feed shows PR event (title, action, repository)",
+      "failure_modes": ["Invalid signature → reject", "Repository not authorized → ignore", "PR from bot → optional ignore"],
+      "security_controls": ["Signature verification", "Repository authorization check", "Content-light event ledger"]
+    },
+    {
+      "flow_id": "check_status_report",
+      "title": "Check Status Report to GitHub",
+      "source": "Rig Relay validation results",
+      "destination": "GitHub API (check runs or commit statuses)",
+      "trigger": "Rig completes local validation and user approves status posting",
+      "input_data": ["Validation results (success/failure, annotations, summary)"],
+      "output_data": ["Check run or commit status on GitHub"],
+      "auth_material": "Installation access token (JWT → installation token exchange)",
+      "storage": ["Memory-only token cache"],
+      "trace_events": ["github.token.requested", "github.token.created", "github.check.created", "github.check.failed"],
+      "frontend_projection": "Evidence panel shows check run status, links to GitHub",
+      "failure_modes": ["Token exchange fails → token_unavailable state", "GitHub API rate limit → retry with backoff", "Repository not authorized → refuse"],
+      "security_controls": ["Token memory cache with expiry", "No durable token storage", "Repository authorization check", "Rate limit handling", "Content-light trace events"]
+    },
+    {
+      "flow_id": "governed_pr_creation_future",
+      "title": "Governed PR Creation (Future)",
+      "source": "Rig Relay agent proposal",
+      "destination": "GitHub API (branch, commit, PR)",
+      "trigger": "Agent proposes change, user explicitly approves in cockpit",
+      "input_data": ["Branch name", "Commit message", "File changes", "PR title and body"],
+      "output_data": ["Created branch, commit, and PR on GitHub"],
+      "auth_material": "Installation access token (JWT → installation token exchange)",
+      "storage": ["Memory-only token cache"],
+      "trace_events": ["github.write_action.proposed", "github.write_action.approved", "github.write_action.rejected"],
+      "frontend_projection": "Write action approval dialog shows diff, user approves/rejects, evidence linked",
+      "failure_modes": ["User rejects → action cancelled with audit", "Token expired → refresh and retry", "Branch conflict → report to user", "Rate limited → backoff"],
+      "security_controls": ["Explicit user approval required", "Audit trail for every write action", "Token memory cache with expiry", "No automated write actions"]
+    },
+    {
+      "flow_id": "pages_publish_visibility",
+      "title": "GitHub Pages Publishing Visibility",
+      "source": "GitHub webhook (page_build event)",
+      "destination": "Rig Relay backend event store",
+      "trigger": "GitHub Pages build completes",
+      "input_data": ["page_build payload with status, URL"],
+      "output_data": ["Page build event in event ledger"],
+      "auth_material": "Webhook secret (HMAC-SHA256)",
+      "storage": [".rig/github/deliveries/*.jsonl"],
+      "trace_events": ["github.webhook.received", "github.webhook.processed"],
+      "frontend_projection": "Pages build status in publishing panel",
+      "failure_modes": ["Not subscribed → no events", "Build error → status update"],
+      "security_controls": ["Signature verification", "Deduplication", "Content-light event ledger"]
+    }
+  ],
+  "trust_boundaries": [
+    {
+      "boundary_id": "TB-GH-WEBHOOK-01",
+      "source_zone": "GitHub webhook delivery",
+      "target_zone": "Rig Relay backend webhook handler",
+      "authority_change": true,
+      "data_crossing": "GitHub event payload (JSON up to 25 MB), HMAC signature, event headers",
+      "threats": ["Spoofed webhook with invalid signature", "Replay attack with duplicated delivery ID", "Oversized payload DoS", "Malformed JSON injection", "Information leakage via events from unauthorized repos"],
+      "controls": ["X-Hub-Signature-256 verification with timing-safe compare", "Delivery deduplication by delivery ID", "Payload size cap", "JSON parsing after signature verification", "Repository authorization check"],
+      "required_tests": ["test_webhook_signature_verification", "test_webhook_signature_rejection", "test_delivery_deduplication", "test_payload_size_rejection", "test_unauthorized_repo_rejection"]
+    },
+    {
+      "boundary_id": "TB-GH-TOKEN-02",
+      "source_zone": "GitHub API (installation token endpoint)",
+      "target_zone": "Rig Relay backend API client",
+      "authority_change": true,
+      "data_crossing": "Installation access token (1-hour expiry), JWT for app authentication",
+      "threats": ["Token interception in transit", "Token leakage in logs or traces", "Token misuse for unauthorized API calls", "Token reuse after expiry", "JWT signing key compromise"],
+      "controls": ["HTTPS only for token exchange", "Token memory cache only (no durable storage)", "Token never logged (content-light trace events only)", "Repository authorization check before API calls", "Private key in OS keyring or file outside repo"],
+      "required_tests": ["test_token_memory_only", "test_token_not_logged", "test_token_not_in_frontend", "test_private_key_not_in_repo"]
+    },
+    {
+      "boundary_id": "TB-GH-KEY-03",
+      "source_zone": "GitHub App private key",
+      "target_zone": "Rig Relay local secure storage",
+      "authority_change": false,
+      "data_crossing": "PEM-encoded RSA private key",
+      "threats": ["Key committed to repository", "Key exposed in environment variables", "Key leaked in trace events or logs", "Key file permissions too open", "Key extracted from process memory dump"],
+      "controls": ["Key stored in OS keyring (keychain://) or file outside repo", "Key reference only in config (no raw key value)", "Key never in trace events or frontend", "File permissions check on key file", "Detection test for PEM in repo"],
+      "required_tests": ["test_private_key_not_in_repo", "test_private_key_reference_only", "test_private_key_not_in_trace", "test_private_key_not_in_frontend"]
+    },
+    {
+      "boundary_id": "TB-GH-EVENTSTORE-04",
+      "source_zone": "Rig Relay GitHub event store",
+      "target_zone": "Rig Relay frontend projection",
+      "authority_change": false,
+      "data_crossing": "GitHub event metadata (event type, repository name, timestamp, status)",
+      "threats": ["Raw webhook payload leaked to frontend", "Installation token leaked via event data", "Sensitive repo metadata exposed (private repo names)", "Local file paths exposed in event data"],
+      "controls": ["Content-light projection only", "Never project raw payload", "Never project tokens or keys", "Repo name visible only to authenticated local user", "Projection model validation before frontend delivery"],
+      "required_tests": ["test_frontend_no_raw_payload", "test_frontend_no_tokens", "test_frontend_content_light_projection"]
+    },
+    {
+      "boundary_id": "TB-GH-FRONTEND-05",
+      "source_zone": "Frontend setup UI",
+      "target_zone": "Rig Relay local config file",
+      "authority_change": false,
+      "data_crossing": "App ID, webhook secret reference, private key reference (no raw secrets)",
+      "threats": ["User pastes private key into config UI → stored in config", "Webhook secret entered in plaintext → persisted", "Config file written with world-readable permissions"],
+      "controls": ["Frontend never accepts raw secrets — only references", "Config schema rejects raw PEM/secret values", "Config file permissions check on write", "Validation before config write"],
+      "required_tests": ["test_config_rejects_raw_private_key", "test_config_rejects_raw_webhook_secret", "test_frontend_no_secret_input_fields"]
+    },
+    {
+      "boundary_id": "TB-GH-WRITE-06",
+      "source_zone": "Model/agent suggestion",
+      "target_zone": "GitHub write action (branch, commit, PR, comment)",
+      "authority_change": true,
+      "data_crossing": "Code changes, commit messages, PR descriptions from agent output",
+      "threats": ["Agent proposes malicious code change", "Agent proposes commits to wrong repository", "Agent impersonates user in commit metadata", "Agent bypasses approval gate", "Agent writes sensitive data to PR description"],
+      "controls": ["Explicit user approval required for every write action", "Full diff review before approval", "Audit trail for every write proposal and decision", "No automated write actions", "Content safety review on PR descriptions"],
+      "required_tests": ["test_write_action_requires_approval", "test_write_action_audit_trail", "test_no_automated_writes", "test_approval_ui_renders"]
+    },
+    {
+      "boundary_id": "TB-GH-CONTEXT-07",
+      "source_zone": "GitHub webhook payload",
+      "target_zone": "Rig Relay context assembler",
+      "authority_change": false,
+      "data_crossing": "Repository event data, commit metadata, PR descriptions, comment text",
+      "threats": ["Injection of malicious context via PR description", "Exfiltration of private code via context assembly", "Context poisoning from unauthorized repositories", "Large context payload from verbose webhook events"],
+      "controls": ["GitHub payloads treated as untrusted context", "Content sanitization before context assembly", "Repository authorization check", "Context size limits", "Trace of context sources"],
+      "required_tests": ["test_github_payloads_untrusted_context", "test_context_size_limits", "test_context_source_trace"]
+    },
+    {
+      "boundary_id": "TB-GH-EVIDENCE-08",
+      "source_zone": "GitHub API response",
+      "target_zone": "Rig Relay evidence store",
+      "authority_change": false,
+      "data_crossing": "GitHub API data (repository info, PR details, check run status)",
+      "threats": ["Evidence store polluted with large API responses", "API keys/tokens in evidence store", "User data from GitHub API stored without consent"],
+      "controls": ["Content-light evidence entries only", "No API tokens or keys in evidence", "Evidence size limits", "Trace correlation with source"],
+      "required_tests": ["test_evidence_no_tokens", "test_evidence_content_light", "test_evidence_source_trace"]
+    },
+    {
+      "boundary_id": "TB-GH-WORKTREE-09",
+      "source_zone": "GitHub webhook event",
+      "target_zone": "Rig Relay worktree action decision",
+      "authority_change": true,
+      "data_crossing": "Event type, repository identity, commit SHA, branch name",
+      "threats": ["Worktree operation triggered by unauthorized repository", "Worktree mutation without user consent", "Cross-session worktree contamination from webhook data"],
+      "controls": ["Repository authorization check before worktree action", "No automated worktree writes from webhooks", "Worktree isolation preserved", "User approval for worktree mutations"],
+      "required_tests": ["test_webhook_no_auto_worktree_mutation", "test_webhook_worktree_authorization"]
+    }
+  ],
+  "security_controls": [
+    {
+      "control_id": "SC-GH-SIG-01",
+      "title": "Webhook Signature Verification",
+      "description": "Verify X-Hub-Signature-256 header using webhook secret and HMAC-SHA256. Use timing-safe comparison (hmac.compare_digest). Reject before JSON parsing.",
+      "applies_to": ["github.webhook.received", "all webhook flows"],
+      "required_tests": ["test_webhook_signature_verification", "test_webhook_signature_rejection", "test_webhook_timing_safe_compare"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-SIG-02",
+      "title": "Reject Missing/Invalid Signature Before Processing",
+      "description": "If X-Hub-Signature-256 is missing or signature does not match, return 401 immediately. Never parse payload body before signature verification.",
+      "applies_to": ["github.webhook.received", "all webhook flows"],
+      "required_tests": ["test_webhook_missing_signature_rejected", "test_webhook_invalid_signature_rejected"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-DEDUP-03",
+      "title": "Delivery Deduplication",
+      "description": "Deduplicate webhook deliveries by X-GitHub-Delivery header. If delivery ID already exists in event ledger, ignore (idempotent).",
+      "applies_to": ["github.webhook.received", "event_store"],
+      "required_tests": ["test_delivery_deduplication"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-AUTHZ-04",
+      "title": "Installation/Repository Authorization Check",
+      "description": "Before processing any webhook event, verify installation id is known and repository (if present) is in authorized list.",
+      "applies_to": ["github.webhook.received", "router"],
+      "required_tests": ["test_unauthorized_installation_rejected", "test_unauthorized_repo_rejected"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-PERM-05",
+      "title": "Minimum Necessary Permissions",
+      "description": "Every permission requested in the GitHub App manifest must be justified by a specific use case. Never request permissions from admin_avoidance_profile. Audit permissions against current profile at installation time.",
+      "applies_to": ["manifest", "permissions", "app_registration"],
+      "required_tests": ["test_permission_profile_minimum", "test_admin_avoidance_enforced"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-TOKEN-06",
+      "title": "Installation Token Memory Cache Only",
+      "description": "Installation access tokens stored only in memory cache with expiry. Never written to disk, keyring, or environment variables. Memory cache cleared on process exit.",
+      "applies_to": ["tokens", "auth"],
+      "required_tests": ["test_token_memory_only", "test_token_not_on_disk"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-KEY-07",
+      "title": "Private Key Outside Repo",
+      "description": "Private key stored in OS keyring (keychain://) or in file path outside repository. Key reference only in config. Never committed to git. File permissions must be 600 or stricter.",
+      "applies_to": ["config", "auth"],
+      "required_tests": ["test_private_key_not_in_repo", "test_private_key_reference_only", "test_private_key_file_permissions"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-FRONTEND-08",
+      "title": "No Secrets in Frontend Projection",
+      "description": "Frontend projections must never contain private key material, webhook secrets, installation tokens, or raw webhook payloads. Content-light projections only.",
+      "applies_to": ["projections", "frontend_components"],
+      "required_tests": ["test_frontend_no_secrets", "test_frontend_no_raw_payload", "test_frontend_no_tokens"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-NOPAYLOAD-09",
+      "title": "No Raw Payload in Frontend by Default",
+      "description": "Raw webhook payloads are never projected to the frontend. Only event metadata (type, repository, timestamp, status) is shown.",
+      "applies_to": ["projections", "frontend_components"],
+      "required_tests": ["test_frontend_no_raw_payload"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-APPROVAL-10",
+      "title": "Write Actions Require Explicit User Approval",
+      "description": "Any action that creates branches, commits, PRs, comments, or modifies GitHub state must receive explicit user approval through the cockpit. No automated write actions.",
+      "applies_to": ["router", "governed_pr_assistant profile"],
+      "required_tests": ["test_write_action_requires_approval", "test_no_automated_writes"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-UNTRUSTED-11",
+      "title": "GitHub Payloads Treated as Untrusted Context",
+      "description": "Content from GitHub webhook payloads and API responses is treated as untrusted when fed into agent context. Sanitize, validate, and trace sources.",
+      "applies_to": ["context_assembler", "router"],
+      "required_tests": ["test_github_payloads_untrusted_context", "test_context_source_trace"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-RATE-12",
+      "title": "Rate Limit and Backoff Handling",
+      "description": "Respect GitHub API rate limits. Implement exponential backoff with jitter for 429 responses. Monitor X-RateLimit-Remaining header.",
+      "applies_to": ["auth", "tokens", "router"],
+      "required_tests": ["test_rate_limit_handling", "test_backoff_behavior"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-SIZE-13",
+      "title": "Payload Size Cap Under 25 MB",
+      "description": "Enforce a local payload size cap (e.g., 5 MB) well under GitHub's 25 MB limit. Reject oversized payloads before processing.",
+      "applies_to": ["webhooks"],
+      "required_tests": ["test_payload_size_rejection"],
+      "status": "planned"
+    },
+    {
+      "control_id": "SC-GH-TRACE-14",
+      "title": "Content-Light Trace Events with Correlation",
+      "description": "All GitHub App trace events are content-light. Include correlation fields (trace_id, github_delivery_id, github_installation_id, github_repository_id). Never include secrets, tokens, or raw payloads.",
+      "applies_to": ["tracing", "all components"],
+      "required_tests": ["test_trace_events_content_light", "test_trace_events_correlation_fields"],
+      "status": "planned"
+    }
+  ],
+  "trace_events": [
+    { "event_name": "github.app.config_loaded", "description": "GitHub App configuration loaded and validated", "correlation_fields": ["trace_id", "span_id", "session_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "config" },
+    { "event_name": "github.app.config_invalid", "description": "GitHub App configuration failed validation", "correlation_fields": ["trace_id", "span_id", "session_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "config" },
+    { "event_name": "github.webhook.received", "description": "Raw webhook HTTP request received (headers only, no body)", "correlation_fields": ["trace_id", "span_id", "github_delivery_id", "github_event"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "webhooks" },
+    { "event_name": "github.webhook.signature_verified", "description": "Webhook signature validated successfully", "correlation_fields": ["trace_id", "span_id", "github_delivery_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "webhooks" },
+    { "event_name": "github.webhook.signature_rejected", "description": "Webhook signature validation failed", "correlation_fields": ["trace_id", "span_id", "github_delivery_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "webhooks" },
+    { "event_name": "github.webhook.ignored", "description": "Webhook delivery intentionally ignored (unauthorized repo, unsupported event, etc.)", "correlation_fields": ["trace_id", "span_id", "github_delivery_id", "github_event"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.webhook.processed", "description": "Webhook delivery successfully processed", "correlation_fields": ["trace_id", "span_id", "github_delivery_id", "github_event"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.webhook.failed", "description": "Webhook delivery processing failed", "correlation_fields": ["trace_id", "span_id", "github_delivery_id", "github_event"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.installation.created", "description": "GitHub App installation created", "correlation_fields": ["trace_id", "span_id", "github_delivery_id", "github_installation_id", "github_sender_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "event_store" },
+    { "event_name": "github.installation.deleted", "description": "GitHub App installation deleted", "correlation_fields": ["trace_id", "span_id", "github_delivery_id", "github_installation_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "event_store" },
+    { "event_name": "github.installation.repositories_added", "description": "Repositories added to installation", "correlation_fields": ["trace_id", "span_id", "github_delivery_id", "github_installation_id", "github_repository_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "event_store" },
+    { "event_name": "github.installation.repositories_removed", "description": "Repositories removed from installation", "correlation_fields": ["trace_id", "span_id", "github_delivery_id", "github_installation_id", "github_repository_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "event_store" },
+    { "event_name": "github.token.requested", "description": "Installation access token requested from GitHub API", "correlation_fields": ["trace_id", "span_id", "github_installation_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "auth" },
+    { "event_name": "github.token.created", "description": "Installation access token successfully created and cached", "correlation_fields": ["trace_id", "span_id", "github_installation_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "tokens" },
+    { "event_name": "github.token.failed", "description": "Installation access token creation failed", "correlation_fields": ["trace_id", "span_id", "github_installation_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "auth" },
+    { "event_name": "github.permissions.missing", "description": "Required permissions not granted for installation", "correlation_fields": ["trace_id", "span_id", "github_installation_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "permissions" },
+    { "event_name": "github.repository.authorized", "description": "Repository authorized for processing", "correlation_fields": ["trace_id", "span_id", "github_repository_id", "repository_full_name"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.repository.unauthorized", "description": "Event received for unauthorized repository (ignored)", "correlation_fields": ["trace_id", "span_id", "github_repository_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.check.created", "description": "Check run created on GitHub via API", "correlation_fields": ["trace_id", "span_id", "github_installation_id", "github_repository_id", "commit_sha"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.check.failed", "description": "Check run creation failed on GitHub API", "correlation_fields": ["trace_id", "span_id", "github_installation_id", "github_repository_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.write_action.proposed", "description": "Agent proposed a write action (branch/commit/PR/comment)", "correlation_fields": ["trace_id", "span_id", "session_id", "job_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.write_action.approved", "description": "User approved a proposed write action", "correlation_fields": ["trace_id", "span_id", "session_id", "job_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" },
+    { "event_name": "github.write_action.rejected", "description": "User rejected a proposed write action", "correlation_fields": ["trace_id", "span_id", "session_id", "job_id"], "safe_to_log": true, "never_includes_secrets": true, "source_component": "router" }
+  ],
+  "storage_model": {
+    "artifacts": [
+      { "artifact_path": ".rig/github/app_config.json", "content_type": "App registration metadata (references only)", "contains_secrets": false, "format": "JSON", "description": "GitHub App ID, webhook secret reference (keychain://, env://, file://), private key reference. Never raw PEM or secret values." },
+      { "artifact_path": ".rig/github/installations.json", "content_type": "Installation records", "contains_secrets": false, "format": "JSON", "description": "Installation IDs, account info, permission snapshots. No tokens." },
+      { "artifact_path": ".rig/github/deliveries/*.jsonl", "content_type": "Webhook delivery ledger", "contains_secrets": false, "format": "JSONL (append-only)", "description": "Delivery ID, event type, processing status, timestamp. Content-light — no raw payloads." },
+      { "artifact_path": ".rig/github/repositories.json", "content_type": "Authorized repository list", "contains_secrets": false, "format": "JSON", "description": "Repository IDs, names, authorization status." },
+      { "artifact_path": "memory_only", "content_type": "Installation access token cache", "contains_secrets": true, "format": "In-memory dict with expiry (cachetools TTLCache)", "description": "Installation tokens cached with 55-minute TTL. Never persisted to disk. Cleared on process exit." },
+      { "artifact_path": "OS keyring or file outside repo", "content_type": "Private key", "contains_secrets": true, "format": "PEM-encoded RSA private key", "description": "Stored in OS keyring (keyring library) or in file path outside repository with 600 permissions. Reference only in config." }
+    ],
+    "rules": [
+      "Never store raw private key or webhook secret in config files",
+      "Never store installation tokens to disk",
+      "All local paths are repo-relative (.rig/github/)",
+      "Append-only delivery ledger — never modify existing entries",
+      "No user machine paths in docs or config",
+      "Config uses reference URIs: keychain://service/account, env://VAR_NAME, file:///absolute/path/outside/repo"
+    ]
+  },
+  "ui_states": [
+    {
+      "state_id": "not_configured",
+      "title": "Not Configured",
+      "description": "GitHub App has not been configured. No app_id, private key reference, or webhook secret set.",
+      "visible_to_user": true,
+      "backend_source": "github_app/config",
+      "actions_available": ["open_setup_instructions", "open_github_app_settings", "import_app_config"],
+      "sensitive_data_hidden": ["private_key", "webhook_secret", "installation_token"],
+      "empty_state_copy": "GitHub App not configured. Run the setup wizard to connect Rig Relay to your GitHub repositories.",
+      "error_state_copy": "GitHub App configuration could not be loaded. Check your config file."
+    },
+    {
+      "state_id": "app_registered",
+      "title": "App Registered",
+      "description": "GitHub App is registered in GitHub but not yet installed on any account or organization.",
+      "visible_to_user": true,
+      "backend_source": "github_app/config",
+      "actions_available": ["install_app", "verify_permissions"],
+      "sensitive_data_hidden": ["private_key", "webhook_secret", "installation_token"],
+      "empty_state_copy": "GitHub App registered but not installed. Install the app on your account or organization to continue.",
+      "error_state_copy": "Could not verify app registration status."
+    },
+    {
+      "state_id": "installed_no_repo",
+      "title": "Installed — No Repositories",
+      "description": "GitHub App is installed but no repositories are selected. User needs to choose repositories in installation settings.",
+      "visible_to_user": true,
+      "backend_source": "github_app/projections",
+      "actions_available": ["open_installation_settings", "refresh_installations"],
+      "sensitive_data_hidden": ["installation_token", "webhook_secret", "private_key"],
+      "empty_state_copy": "GitHub App installed, choose repositories to observe.",
+      "error_state_copy": "Could not load installation repositories. Check your GitHub App installation settings."
+    },
+    {
+      "state_id": "repo_connected",
+      "title": "Repository Connected",
+      "description": "At least one repository is authorized and webhooks are flowing. Shows repo name, installation ID shortened, permissions summary, last webhook time.",
+      "visible_to_user": true,
+      "backend_source": "github_app/projections",
+      "actions_available": ["view_activity_feed", "manage_permissions", "view_evidence"],
+      "sensitive_data_hidden": ["installation_token", "webhook_secret", "private_key", "raw_webhook_payload", "full_local_file_paths"],
+      "empty_state_copy": "Repository connected. Webhooks are flowing into Rig evidence.",
+      "error_state_copy": "Repository connection degraded. Last webhook delivery failed."
+    },
+    {
+      "state_id": "webhook_degraded",
+      "title": "Webhook Degraded",
+      "description": "Webhook deliveries are failing: signature failures, timeouts, or no recent deliveries.",
+      "visible_to_user": true,
+      "backend_source": "github_app/projections",
+      "actions_available": ["check_webhook_config", "retry_delivery", "view_delivery_log"],
+      "sensitive_data_hidden": ["webhook_secret", "installation_token", "private_key", "raw_webhook_payload"],
+      "empty_state_copy": "Webhook connection degraded. Check your webhook configuration and ensure your relay endpoint is reachable.",
+      "error_state_copy": "Webhook delivery failed. Last error: signature verification failure or timeout."
+    },
+    {
+      "state_id": "permission_update_required",
+      "title": "Permission Update Required",
+      "description": "The current permission profile requires permissions not granted by the installation. User needs to update permissions in GitHub.",
+      "visible_to_user": true,
+      "backend_source": "github_app/permissions",
+      "actions_available": ["view_permission_diff", "open_github_permission_settings", "downgrade_profile"],
+      "sensitive_data_hidden": ["installation_token", "private_key", "webhook_secret"],
+      "empty_state_copy": "Permission update required. The requested profile requires additional permissions. Review and update in GitHub App settings.",
+      "error_state_copy": "Could not verify permission status. Check your GitHub App installation."
+    },
+    {
+      "state_id": "token_unavailable",
+      "title": "Token Unavailable",
+      "description": "Installation access token could not be created. Safe error shown — no secrets exposed.",
+      "visible_to_user": true,
+      "backend_source": "github_app/tokens",
+      "actions_available": ["retry_token", "check_private_key", "view_token_error_log"],
+      "sensitive_data_hidden": ["private_key", "installation_token", "webhook_secret"],
+      "empty_state_copy": "Installation access token could not be created. Check your private key configuration.",
+      "error_state_copy": "Token creation failed. Verify your private key is valid and the GitHub App is installed."
+    },
+    {
+      "state_id": "event_processing",
+      "title": "Event Processing Active",
+      "description": "Recent GitHub events are flowing into Rig evidence. Shows event type, timestamp, repository, and processing status.",
+      "visible_to_user": true,
+      "backend_source": "github_app/event_store",
+      "actions_available": ["view_recent_events", "open_evidence_panel", "inspect_delivery"],
+      "sensitive_data_hidden": ["raw_webhook_payload", "installation_token", "private_key", "webhook_secret"],
+      "empty_state_copy": "No recent GitHub events. Events will appear here when webhooks are received.",
+      "error_state_copy": "Event processing error. Check the event log for details."
+    }
+  ],
+  "implementation_phases": [
+    {
+      "phase_id": "phase_1_webhook_setup",
+      "title": "Phase 1 — Webhook Receiving and Event Ledger",
+      "goal": "Receive, verify, deduplicate, and store GitHub webhook events. Read-only observation with no API write access.",
+      "backend_work": ["Implement webhooks.py (signature verification, header extraction)", "Implement event_store.py (append-only JSONL, dedup)", "Implement router.py (event/action routing, unknown event refusal)", "Implement models.py (payload subsets for installation, repository)", "Implement config.py (app_id, webhook secret reference)", "Implement projections.py (basic state machine)"],
+      "frontend_work": ["GitHub Connection Panel (not_configured, app_registered, installed_no_repo, repo_connected states)", "GitHub Activity Feed (content-light event preview)", "Setup wizard step 1 (app registration guidance)"],
+      "schemas": ["rig.github_app.integration_audit.v1", "rig.github_app.config.v1", "rig.github_app.webhook_delivery.v1 (optional)"],
+      "tests": ["Webhook signature verification tests", "Delivery deduplication tests", "Event store integrity tests", "Frontend projection safety tests"],
+      "docs": ["Integration audit JSON", "Config schema", "Setup instructions in static docs"],
+      "done_when": "Webhook from GitHub reaches Rig local endpoint, signature verified, event recorded in delivery ledger, frontend shows connection status.",
+      "blocked_by": []
+    },
+    {
+      "phase_id": "phase_2_evidence_reporting",
+      "title": "Phase 2 — Evidence Status Reporting to GitHub",
+      "goal": "Post Rig validation results back to GitHub as check runs or commit statuses. Requires installation token exchange and checks:write permission.",
+      "backend_work": ["Implement auth.py (JWT generation, installation token exchange)", "Implement tokens.py (memory cache with expiry)", "Implement check run/commit status creation via GitHub API", "Implement permission diff detection"],
+      "frontend_work": ["Evidence panel with check run status", "Permission Manager component", "Write action permission indicator (read-only so far)"],
+      "schemas": ["Token cache model (internal)"],
+      "tests": ["JWT generation tests", "Token exchange mock tests", "Token cache expiry tests", "Check run creation mock tests", "Permission diff detection tests"],
+      "docs": ["Evidence reporting documentation"],
+      "done_when": "Rig completes local validation, user approves, check run appears on GitHub PR with Rig evidence link.",
+      "blocked_by": ["phase_1_webhook_setup"]
+    },
+    {
+      "phase_id": "phase_3_governed_actions",
+      "title": "Phase 3 — Governed Write Actions (Branch, Commit, PR, Comment)",
+      "goal": "Create branches, commits, PRs, and comments only after explicit user approval in desktop cockpit.",
+      "backend_work": ["Implement write action proposal pipeline", "Implement approval gate integration with governance module", "Implement branch/commit/PR/comment creation via GitHub API", "Implement write action audit trail"],
+      "frontend_work": ["Write Action Approval Dialog (diff review, approve/reject buttons)", "Audit trail viewer", "Governance settings for write action policy"],
+      "schemas": ["Write action proposal model", "Write action receipt model"],
+      "tests": ["Write action approval gate tests", "Audit trail integrity tests", "No automated writes assertion tests", "Approval UI rendering tests"],
+      "docs": ["Governed PR assistant documentation"],
+      "done_when": "Agent proposes a code change, user reviews diff in cockpit, approves, branch/commit/PR appears on GitHub with evidence link.",
+      "blocked_by": ["phase_2_evidence_reporting"]
+    },
+    {
+      "phase_id": "phase_4_static_site_integration",
+      "title": "Phase 4 — Static Site Publishing Visibility",
+      "goal": "Observe GitHub Pages builds and repository events related to static site publishing.",
+      "backend_work": ["Subscribe to page_build webhook", "Subscribe to repository events if needed", "Link page build status to documentation publishing panel"],
+      "frontend_work": ["Publishing panel showing Pages build status", "Link to live docs site"],
+      "schemas": [],
+      "tests": ["Page build webhook processing tests"],
+      "docs": ["Static site publishing integration documentation"],
+      "done_when": "GitHub Pages build completes, Rig frontend shows build status, link to live site works.",
+      "blocked_by": ["phase_1_webhook_setup"]
+    }
+  ],
+  "risks": [
+    {
+      "risk_id": "RSK-GH-KEY-01",
+      "title": "Private Key Compromise",
+      "severity": "critical",
+      "description": "If the GitHub App private key is compromised, an attacker can generate JWTs, obtain installation tokens, and read/write to all installed repositories. This is the highest-value secret in the GitHub App integration.",
+      "affected_flows": ["check_status_report", "governed_pr_creation_future"],
+      "mitigations": ["Private key in OS keyring, never in repo", "File permissions 600 or stricter", "Key reference only in config", "Never in trace events, logs, or frontend", "Detection test for PEM in repo", "Key rotation procedure documented"],
+      "release_blocker": true
+    },
+    {
+      "risk_id": "RSK-GH-WEBHOOK-02",
+      "title": "Webhook Secret Compromise",
+      "severity": "high",
+      "description": "If the webhook secret is compromised, an attacker can forge webhook events and inject malicious data into the Rig event store.",
+      "affected_flows": ["all webhook flows"],
+      "mitigations": ["Webhook secret in keyring or env, never in repo", "Secret reference only in config", "Never in trace events or frontend", "Signature verification on every request"],
+      "release_blocker": true
+    },
+    {
+      "risk_id": "RSK-GH-TOKEN-03",
+      "title": "Installation Token Leakage",
+      "severity": "high",
+      "description": "If an installation access token leaks to disk, logs, or frontend, an attacker with local access can use it to access repositories until it expires (1 hour).",
+      "affected_flows": ["check_status_report", "governed_pr_creation_future"],
+      "mitigations": ["Memory-only token cache", "Never written to disk", "Never in trace events or frontend", "Short expiry (1 hour, cache with 55-min TTL)", "No long-lived token storage"],
+      "release_blocker": true
+    },
+    {
+      "risk_id": "RSK-GH-WRITE-04",
+      "title": "Unauthorized Write Actions",
+      "severity": "high",
+      "description": "An agent or bug could create branches, commits, or PRs without explicit user approval, violating the governed write model.",
+      "affected_flows": ["governed_pr_creation_future"],
+      "mitigations": ["Explicit user approval required for every write action", "No automated write actions", "Approval gate integration test", "Audit trail for every write proposal"],
+      "release_blocker": true
+    },
+    {
+      "risk_id": "RSK-GH-CONTEXT-05",
+      "title": "Context Poisoning via GitHub Events",
+      "severity": "medium",
+      "description": "Malicious or crafted GitHub event payloads (PR descriptions, commit messages, issue comments) could inject harmful context into the agent's prompt.",
+      "affected_flows": ["push_received", "pull_request_received", "context assembly"],
+      "mitigations": ["GitHub payloads treated as untrusted context", "Content sanitization", "Context size limits", "Source tracing", "Repository authorization check"],
+      "release_blocker": false
+    },
+    {
+      "risk_id": "RSK-GH-SIZE-06",
+      "title": "Webhook Payload DoS",
+      "severity": "medium",
+      "description": "Large webhook payloads (near 25 MB GitHub cap) could consume excessive memory or disk, or block the webhook processing pipeline.",
+      "affected_flows": ["all webhook flows"],
+      "mitigations": ["Local payload size cap (e.g., 5 MB)", "Reject before full body read", "Content-light event ledger (no raw payload storage)", "Rate limiting on webhook endpoint"],
+      "release_blocker": false
+    },
+    {
+      "risk_id": "RSK-GH-RATE-07",
+      "title": "GitHub API Rate Limit Exhaustion",
+      "severity": "medium",
+      "description": "Excessive API calls for token exchange or status posting could exhaust rate limits, degrading the integration.",
+      "affected_flows": ["check_status_report", "governed_pr_creation_future"],
+      "mitigations": ["Token cache with expiry (reuse within window)", "Exponential backoff with jitter", "Rate limit monitoring via X-RateLimit-Remaining", "User-facing rate limit status"],
+      "release_blocker": false
+    },
+    {
+      "risk_id": "RSK-GH-PERM-08",
+      "title": "Permission Scope Creep",
+      "severity": "medium",
+      "description": "Over time, new features may request additional permissions without proper audit, gradually expanding the attack surface.",
+      "affected_flows": ["app_registration_manual_setup", "all API flows"],
+      "mitigations": ["Admin avoidance profile as canonical deny-list", "Permission audit on every profile change", "Permission diff detection on installation update", "Release gate requiring permission justification"],
+      "release_blocker": false
+    }
+  ],
+  "open_questions": [
+    {
+      "question": "Should the webhook endpoint be a local HTTP server, or should Rig use smee.io / a tunnel for local development?",
+      "context": "GitHub requires a publicly reachable URL for webhook delivery. Local development without a public URL needs a tunnel or webhook replay strategy.",
+      "needed_for_phase": "phase_1_webhook_setup"
+    },
+    {
+      "question": "How should the private key be provisioned — user downloads from GitHub and provides path, or Rig guides through GitHub App creation flow?",
+      "context": "The private key is generated by GitHub at app creation time and downloaded once. Rig needs to receive this key without the user copy-pasting raw PEM into a text field.",
+      "needed_for_phase": "phase_1_webhook_setup"
+    },
+    {
+      "question": "Should Rig support multiple GitHub App installations across different accounts/orgs simultaneously?",
+      "context": "A user might want to observe repos from personal account and organization. Supporting multiple installations increases complexity.",
+      "needed_for_phase": "phase_2_evidence_reporting"
+    },
+    {
+      "question": "Should the write-approval model support time-bound or scope-bound pre-approval (e.g., 'approve all check-run postings for the next hour')?",
+      "context": "Frequent approval prompts could degrade UX. Pre-approval with constraints could balance safety and usability.",
+      "needed_for_phase": "phase_3_governed_actions"
+    },
+    {
+      "question": "Is the GitHub App integration required to be available in local-only mode (no internet), or can it require connectivity?",
+      "context": "Rig Relay defaults to local-only. GitHub App integration inherently requires network access. Should Rig gracefully degrade when offline?",
+      "needed_for_phase": "phase_1_webhook_setup"
+    }
+  ],
+  "release_gates": [
+    {
+      "gate_id": "GHA01",
+      "title": "App config schema exists and validates",
+      "required_tests": ["test_config_schema_parses", "test_config_schema_validates_valid_config"],
+      "required_artifacts": ["docs/schemas/rig.github_app.config.v1.schema.json"],
+      "pass_condition": "Schema validates a well-formed config and rejects invalid ones.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA02",
+      "title": "Webhook signature verification tested",
+      "required_tests": ["test_webhook_signature_verification"],
+      "required_artifacts": ["rig_relay/github_app/webhooks.py"],
+      "pass_condition": "Valid signatures pass verification; invalid signatures are rejected with timing-safe compare.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA03",
+      "title": "Invalid signature rejected before processing",
+      "required_tests": ["test_webhook_signature_rejection", "test_webhook_missing_signature_rejected"],
+      "required_artifacts": ["rig_relay/github_app/webhooks.py"],
+      "pass_condition": "Requests with invalid or missing signatures return 401 before body parsing.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA04",
+      "title": "Delivery dedupe tested",
+      "required_tests": ["test_delivery_deduplication"],
+      "required_artifacts": ["rig_relay/github_app/event_store.py"],
+      "pass_condition": "Duplicate delivery IDs are detected and ignored; first delivery is processed normally.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA05",
+      "title": "Installation token creation path designed and tested with mocked GitHub",
+      "required_tests": ["test_token_exchange_mock", "test_token_cache_expiry"],
+      "required_artifacts": ["rig_relay/github_app/auth.py", "rig_relay/github_app/tokens.py"],
+      "pass_condition": "JWT generated from private key, installation token obtained from mock API, cached in memory, expired token refreshed.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA06",
+      "title": "No secrets in frontend projection",
+      "required_tests": ["test_frontend_no_secrets", "test_frontend_no_raw_payload", "test_frontend_no_tokens"],
+      "required_artifacts": ["rig_relay/github_app/projections.py"],
+      "pass_condition": "Frontend projection model rejects inclusion of private key, webhook secret, installation token, and raw payloads.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA07",
+      "title": "Permission profile tests cover minimum permissions",
+      "required_tests": ["test_permission_profile_minimum", "test_admin_avoidance_enforced"],
+      "required_artifacts": ["rig_relay/github_app/permissions.py", "rig_relay/github_app/manifest.py"],
+      "pass_condition": "Permission profiles never exceed necessary permissions; admin avoidance profile is enforced.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA08",
+      "title": "GitHub event payloads treated as untrusted context",
+      "required_tests": ["test_github_payloads_untrusted_context"],
+      "required_artifacts": ["rig_relay/github_app/router.py"],
+      "pass_condition": "Content from webhook payloads is sanitized before entering context assembly; source is traced.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA09",
+      "title": "Write actions require user approval",
+      "required_tests": ["test_write_action_requires_approval", "test_no_automated_writes"],
+      "required_artifacts": ["rig_relay/github_app/router.py", "governance integration"],
+      "pass_condition": "Branch/commit/PR creation is blocked without explicit user approval; audit trail records every decision.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA10",
+      "title": "Trace events content-light and correlated",
+      "required_tests": ["test_trace_events_content_light", "test_trace_events_correlation_fields"],
+      "required_artifacts": ["rig_relay/github_app/tracing.py"],
+      "pass_condition": "All trace events include correlation fields; no secrets or raw payloads in trace events.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA11",
+      "title": "Static docs describe setup without secrets",
+      "required_tests": ["test_docs_no_secrets"],
+      "required_artifacts": ["Generated static docs page for integration audit"],
+      "pass_condition": "Generated static HTML for the GitHub App integration audit contains no fake secret values, raw PEM, or webhook secret text.",
+      "release_blocker": true
+    },
+    {
+      "gate_id": "GHA12",
+      "title": "Failure/degraded UX states rendered",
+      "required_tests": ["test_ui_states_exist", "test_degraded_states_rendered"],
+      "required_artifacts": ["Frontend components: connection panel, activity feed, permission manager"],
+      "pass_condition": "All 8 UI states render with correct copy; error states show safe messages without secrets.",
+      "release_blocker": true
+    }
+  ],
+  "tests": [
+    { "test_id": "TST-01", "title": "Integration audit schema parses", "what_validates": "docs/schemas/rig.github_app.integration_audit.v1.schema.json is valid JSON Schema", "category": "schema_validation" },
+    { "test_id": "TST-02", "title": "Integration audit JSON parses", "what_validates": "docs/json/integrations/github_app_integration_audit_v0.v1.json is valid JSON", "category": "schema_validation" },
+    { "test_id": "TST-03", "title": "Audit includes app_registration", "what_validates": "Audit document has complete app_registration section", "category": "schema_validation" },
+    { "test_id": "TST-04", "title": "Audit includes at least 4 permission profiles", "what_validates": "Audit has observe_public_repo, evidence_status_reporter, governed_pr_assistant, and admin_avoidance_profile", "category": "schema_validation" },
+    { "test_id": "TST-05", "title": "Every permission profile has rationale and risks", "what_validates": "Each profile has non-empty rationale and risks arrays", "category": "schema_validation" },
+    { "test_id": "TST-06", "title": "Admin avoidance profile exists", "what_validates": "admin_avoidance_profile exists and lists avoided permissions", "category": "security" },
+    { "test_id": "TST-07", "title": "Audit includes webhook subs for ping, installation, installation_repositories, push, pull_request", "what_validates": "All required events have webhook subscriptions", "category": "schema_validation" },
+    { "test_id": "TST-08", "title": "Every webhook sub has idempotency fields", "what_validates": "Each subscription has non-empty idempotency_key_fields", "category": "schema_validation" },
+    { "test_id": "TST-09", "title": "Every webhook sub has trace fields", "what_validates": "Each subscription has non-empty trace_fields", "category": "schema_validation" },
+    { "test_id": "TST-10", "title": "Every data flow has security controls", "what_validates": "Each flow has non-empty security_controls", "category": "security" },
+    { "test_id": "TST-11", "title": "Every trust boundary has required tests", "what_validates": "Each boundary has non-empty required_tests", "category": "security" },
+    { "test_id": "TST-12", "title": "Every release gate has pass condition", "what_validates": "Each gate has non-empty pass_condition", "category": "schema_validation" },
+    { "test_id": "TST-13", "title": "Frontend UI states include not_configured, installed_no_repo, repo_connected, webhook_degraded, permission_update_required", "what_validates": "All required UI states exist", "category": "schema_validation" },
+    { "test_id": "TST-14", "title": "Trace events include github.webhook.signature_verified and github.webhook.signature_rejected", "what_validates": "Both signature trace events exist", "category": "schema_validation" },
+    { "test_id": "TST-15", "title": "Storage model forbids raw secret values", "what_validates": "Storage rules explicitly forbid raw secret values in config and disk storage", "category": "security" },
+    { "test_id": "TST-16", "title": "Config schema parses", "what_validates": "docs/schemas/rig.github_app.config.v1.schema.json is valid JSON Schema", "category": "schema_validation" },
+    { "test_id": "TST-17", "title": "Config schema rejects raw private key and raw webhook secret", "what_validates": "Schema validation rejects raw PEM and raw secret strings", "category": "security" },
+    { "test_id": "TST-18", "title": "Audit is added to site manifest", "what_validates": "Site manifest includes github_app_integration_audit_v0 in integrations collection", "category": "schema_validation" },
+    { "test_id": "TST-19", "title": "Static renderer renders audit page", "what_validates": "Running render_static_docs.py produces HTML page for audit", "category": "integration" },
+    { "test_id": "TST-20", "title": "Generated docs do not include fake secret values", "what_validates": "Generated HTML audit page contains no test secret values, PEM keys, or webhook secrets", "category": "security" }
+  ],
+  "provenance": {
+    "generated_by": "pi coding agent (GitHub App Integration Audit mission)",
+    "generated_at": "2026-05-17",
+    "input_artifacts": [
+      "AGENTS.md",
+      "docs/json/security/threat_model_v0.v1.json",
+      "docs/json/security/security_policy_v0.v1.json",
+      "docs/json/tracing/correlation_vocabulary.v1.json",
+      "docs/json/tracing/correlated_visibility_matrix.v1.json",
+      "rig_relay/identity/github.py",
+      "rig_relay/core/auth/github.py",
+      "rig_relay/core/tools/builtins/github_ci_cd.py",
+      "rig_relay/identity/models.py",
+      "scripts/render_static_docs.py",
+      "rig_relay/docs_renderer/"
+    ]
+  }
+}

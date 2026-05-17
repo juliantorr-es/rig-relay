@@ -26,8 +26,24 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from rig_relay.tracing.golden_path import build_golden_path_event
+from rig_relay.tracing.store import get_default_trace_store
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = REPO_ROOT / "docs" / "json" / "code_schemas" / "index.v1.json"
+
+
+def _emit_router_trace(
+    event_type: str, *, payload: dict[str, Any] | None = None
+) -> None:
+    """Emit a content-light code schema router trace event. Non-fatal on error."""
+    try:
+        store = get_default_trace_store()
+        event = build_golden_path_event(event_type=event_type, payload=payload or {})
+        store.write(event)
+    except Exception:
+        pass
+
 
 _EXCLUDE_CONTEXT_GLOBS = [
     "docs/pages/**",
@@ -91,6 +107,10 @@ def _validate_authority(
 def _load_registry(registry_path: Path | None = None) -> list[dict[str, Any]]:
     path = registry_path or REGISTRY_PATH
     if not path.is_file():
+        _emit_router_trace(
+            "context.schema_router.failed",
+            payload={"error": "registry_not_found", "path": str(path)},
+        )
         print(json.dumps({"error": "registry not found", "path": str(path)}))
         sys.exit(1)
     return _load_json(path).get("entries", [])
@@ -177,7 +197,20 @@ def select_schemas(
     changed_files = changed_files or []
     failing_tests = failing_tests or []
 
+    _emit_router_trace(
+        "context.schema_router.invoked",
+        payload={
+            "prompt_length": len(prompt),
+            "changed_files_count": len(changed_files),
+            "failing_tests_count": len(failing_tests),
+            "has_traceback": bool(traceback_text),
+        },
+    )
+
     entries = _load_registry(registry_path)
+    _emit_router_trace(
+        "context.schema_registry.loaded", payload={"entry_count": len(entries)}
+    )
     warnings: list[str] = []
     results: list[dict[str, Any]] = []
 
@@ -202,6 +235,17 @@ def select_schemas(
 
     selected = [r for r in results if r["score"] > 0]
     reported = [r for r in results if r["score"] == 0]
+
+    _emit_router_trace(
+        "context.schemas.selected",
+        payload={
+            "total_active": len(entries),
+            "total_loaded": len(results),
+            "total_selected": len(selected),
+            "selected_ids": [s["schema_id"] for s in selected],
+            "warning_count": len(warnings),
+        },
+    )
 
     return {
         "selected_schemas": selected,
@@ -240,14 +284,34 @@ def _evaluate_entry(
         schema, schema_path, prompt, changed_files, failing_tests, traceback_text
     )
 
+    _emit_router_trace(
+        "context.schema_authority.checked",
+        payload={
+            "schema_id": schema_id,
+            "trusted": is_authoritative,
+            "auth_error": auth_err if not is_authoritative else None,
+        },
+    )
+
     if not is_authoritative:
+        _emit_router_trace(
+            "context.schema_source_hash.mismatched",
+            payload={"schema_id": schema_id, "error": auth_err},
+        )
         warnings.append(f"{schema_id}: authority check failed — {auth_err}")
         if score > 0:
+            _emit_router_trace(
+                "context.schema_router.untrusted_schema_warning",
+                payload={"schema_id": schema_id, "score": score},
+            )
             warnings.append(
                 f"{schema_id}: matched with score={score} but authority check failed; not selected as authoritative"
             )
         return None
 
+    _emit_router_trace(
+        "context.schema_source_hash.matched", payload={"schema_id": schema_id}
+    )
     context_pack = schema.get("context_pack", {})
     return {
         "schema_id": schema_id,

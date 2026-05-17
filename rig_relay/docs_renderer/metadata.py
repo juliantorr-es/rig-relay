@@ -47,5 +47,8 @@ def make_head_tags(sm: SiteMeta, canonical_url: str, og_tags: str) -> str:
     return f"""{canonical_link}
 {og_tags}{og_image_tags}
 <meta name="theme-color" content="{sm.theme_color}">
+<meta name="base-path" content="{sm.base_path}">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
 {favicon_link}
-<link rel="stylesheet" href="{sm.base_path}/assets/site.css">"""
+<link rel="stylesheet" href="{sm.base_path}/assets/site.css">
+<script src="{sm.base_path}/assets/site.js" defer></script>"""

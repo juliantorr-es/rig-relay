@@ -1,0 +1,114 @@
+{
+  "schema_version": "rig.diagram.v1",
+  "diagram_id": "desktop-golden-path-flow",
+  "title": "Desktop Golden Path — Bridge Startup Flow",
+  "summary": "Canonical flow of the desktop bridge startup sequence from frontend boot through WebSocket auth, projection delivery, and status rendering.",
+  "status": "active",
+  "kind": "flow",
+  "layout": {
+    "orientation": "vertical"
+  },
+  "nodes": [
+    {
+      "id": "frontend-boot",
+      "label": "Frontend Boot",
+      "status": "completed",
+      "description": "Browser/pywebview loads index.html and runs orchestrator.js"
+    },
+    {
+      "id": "runtime-config",
+      "label": "Runtime Config",
+      "status": "completed",
+      "description": "Bridge injects runtime config with ws_url, handshake_id, and token_present"
+    },
+    {
+      "id": "websocket-connect",
+      "label": "WebSocket Connect",
+      "status": "active",
+      "description": "Frontend opens WebSocket to /ws with Origin header"
+    },
+    {
+      "id": "websocket-auth",
+      "label": "WebSocket Auth",
+      "status": "active",
+      "description": "Frontend sends auth message with token; bridge validates and returns auth_ok"
+    },
+    {
+      "id": "projection-sent",
+      "label": "Projection Sent",
+      "status": "active",
+      "description": "Bridge builds and sends full desktop projection"
+    },
+    {
+      "id": "projection-rendered",
+      "label": "Projection Rendered",
+      "status": "active",
+      "description": "Frontend renders projection widgets in cockpit UI"
+    },
+    {
+      "id": "status-rendered",
+      "label": "Status Rendered",
+      "status": "completed",
+      "description": "Status bar shows connected state with transport label"
+    },
+    {
+      "id": "idle-ready",
+      "label": "Idle / Ready",
+      "status": "pending",
+      "description": "Cockpit awaits user input or agent activity"
+    }
+  ],
+  "edges": [
+    {
+      "from": "frontend-boot",
+      "to": "runtime-config",
+      "label": "config injected"
+    },
+    {
+      "from": "runtime-config",
+      "to": "websocket-connect",
+      "label": "ws_url resolved"
+    },
+    {
+      "from": "websocket-connect",
+      "to": "websocket-auth",
+      "label": "auth message"
+    },
+    {
+      "from": "websocket-auth",
+      "to": "projection-sent",
+      "label": "auth_ok"
+    },
+    {
+      "from": "projection-sent",
+      "to": "projection-rendered",
+      "label": "widgets built"
+    },
+    {
+      "from": "projection-rendered",
+      "to": "status-rendered",
+      "label": "connected state"
+    },
+    {
+      "from": "status-rendered",
+      "to": "idle-ready",
+      "label": "ready"
+    }
+  ],
+  "accessibility": {
+    "alt": "Flow diagram showing the desktop bridge startup sequence: Frontend Boot → Runtime Config → WebSocket Connect → WebSocket Auth → Projection Sent → Projection Rendered → Status Rendered → Idle/Ready.",
+    "summary": "Eight-step sequential flow from frontend boot to cockpit ready state",
+    "long_description": "This diagram shows the canonical desktop golden path. The browser loads the frontend, receives runtime configuration from the bridge, opens a WebSocket connection, authenticates with a session token, receives the desktop projection, renders the cockpit widgets, updates the status bar to show the connected state, and enters the idle/ready state awaiting user input."
+  },
+  "provenance": {
+    "source_files": [
+      "rig_relay/desktop/bridge_server.py",
+      "frontend/desktop/js/boot/orchestrator.js",
+      "frontend/desktop/js/boot/runtimeConfig.js",
+      "tests/desktop/test_golden_path_browser_integration.py"
+    ],
+    "generated_from": "Phase 3 diagram generation infrastructure"
+  },
+  "created_at": "2026-05-17",
+  "updated_at": "2026-05-17"
+}

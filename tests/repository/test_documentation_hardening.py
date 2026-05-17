@@ -201,11 +201,12 @@ class TestSiteSafetyAudit:
     def test_no_script_tags_from_source(self) -> None:
         for html_file in _PAGES_OUT.glob("*.html"):
             content = html_file.read_text()
-            # Allow only the CSS link
-            script_count = content.count("<script")
-            if script_count > 0:
+            # Allow the site.js deferred script tag added by the renderer
+            lines = [l for l in content.splitlines() if "<script" in l]
+            offending = [l for l in lines if "site.js" not in l]
+            if offending:
                 pytest.fail(
-                    f"{html_file.name}: contains <script> tags ({script_count})"
+                    f"{html_file.name}: contains unexpected <script> tags: {offending[:3]}"
                 )
 
     def test_no_unescaped_unsafe_content(self) -> None:
@@ -362,15 +363,16 @@ class TestCollectionLandingPages:
                     )
 
     def test_index_links_to_all_collection_pages(self) -> None:
-        index = _DOCS_OUT / "index.html"
-        content = index.read_text()
+        # The homepage is now curated; the evidence archive links to all collections
+        archive = _DOCS_OUT / "collections" / "index.html"
+        content = archive.read_text()
         sm = _load_json(_SITE_MANIFEST)
         for col in sm.get("collections", []):
             cid = col.get("collection_id", "")
             if not cid:
                 continue
             assert f"collections/{cid}.html" in content, (
-                f"index.html missing link to collection {cid}"
+                f"archive index.html missing link to collection {cid}"
             )
 
     def test_collection_pages_respect_base_path(self) -> None:

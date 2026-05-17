@@ -65,6 +65,7 @@ async function boot() {
             break;
           case 'disconnected':
           case 'closed':
+            recordFrontendEvent('frontend_disconnected');
             recordFrontendEvent('frontend_degraded');
             break;
         }

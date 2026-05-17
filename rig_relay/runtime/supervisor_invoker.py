@@ -140,24 +140,28 @@ class SupervisorCommandInvoker:
         self._trace_recorder = trace_recorder
 
     def _start_trace_span(
-        self, argv: list[str], cwd_str: str, timeout_seconds: float
+        self,
+        argv: list[str],
+        cwd_str: str,
+        timeout_seconds: float,
+        tool_batch_id: str = "",
     ) -> tuple[Any | None, Any | None, Any | None]:
         if self._trace_recorder is None:
             return None, None, None
         from rig_relay.tracing.models import TraceStatus as _TS
 
         recorder = self._trace_recorder
-        trace_span = recorder.start_span(
-            "runtime.subprocess.execute",
-            attributes={
-                "executable": argv[0],
-                "argv_hash": hashlib.sha256(" ".join(argv).encode()).hexdigest()[:16],
-                "argv_count": len(argv),
-                "cwd_hash": hashlib.sha256(cwd_str.encode()).hexdigest()[:16],
-                "cwd_kind": _classify_cwd_kind(cwd_str),
-                "timeout_seconds": timeout_seconds,
-            },
-        )
+        attrs = {
+            "executable": argv[0],
+            "argv_hash": hashlib.sha256(" ".join(argv).encode()).hexdigest()[:16],
+            "argv_count": len(argv),
+            "cwd_hash": hashlib.sha256(cwd_str.encode()).hexdigest()[:16],
+            "cwd_kind": _classify_cwd_kind(cwd_str),
+            "timeout_seconds": timeout_seconds,
+        }
+        if tool_batch_id:
+            attrs["tool_batch_id"] = tool_batch_id
+        trace_span = recorder.start_span("runtime.subprocess.execute", attributes=attrs)
         return recorder, trace_span, _TS
 
     @staticmethod
