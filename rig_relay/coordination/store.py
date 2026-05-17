@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 import threading
 from typing import Any, Literal
@@ -35,15 +36,16 @@ from rig_relay.coordination.models import (
     build_artifact_published_payload,
     build_conflict_reported_payload,
     build_heartbeat_payload,
+    build_lease_expired_payload,
     build_path_released_payload,
     build_path_reserved_payload,
-    build_projection_read_payload,
     build_reservation_refused_payload,
     build_session_registered_payload,
     build_task_claim_payload,
     build_task_released_payload,
     normalize_path,
     now_plus,
+    salted_path_hash,
 )
 
 
@@ -63,6 +65,32 @@ class CoordinationStore:
         lockfile.touch(exist_ok=True)
         self._digester_fd = open(lockfile, "r+b")
         self._digester_thread_lock = threading.Lock()
+        self._sequence_counter = 0
+        events_path = self._events_path()
+        if not events_path.is_file():
+            return
+        try:
+            with events_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        last = json.loads(line)
+                        self._sequence_counter = max(
+                            self._sequence_counter, last.get("sequence", 0) or 0
+                        )
+                    except json.JSONDecodeError:
+                        pass
+        except OSError:
+            pass
+
+    def _acquire_digester_lock(self) -> None:
+        self._digester_thread_lock.acquire()
+        fcntl.flock(self._digester_fd, fcntl.LOCK_EX)
+
+    def _release_digester_lock(self) -> None:
+        fcntl.flock(self._digester_fd, fcntl.LOCK_UN)
+        self._digester_thread_lock.release()
 
     def _events_path(self) -> Path:
         return self.root / "events.jsonl"
@@ -104,6 +132,49 @@ class CoordinationStore:
             )
         return reservations
 
+    def _iter_active_reservations_locked(
+        self, now: datetime
+    ) -> list[CoordinationPathReservation]:
+        active: list[CoordinationPathReservation] = []
+        lease_dir = self.root / "leases" / "paths"
+        for lease_path in sorted(lease_dir.glob("*.json")):
+            try:
+                reservation = CoordinationPathReservation.model_validate_json(
+                    lease_path.read_text(encoding="utf-8")
+                )
+            except Exception:
+                continue
+
+            if reservation.status == "active" and reservation.expires_at:
+                try:
+                    expires_dt = datetime.fromisoformat(
+                        reservation.expires_at.replace("Z", "+00:00")
+                    )
+                    if expires_dt <= now:
+                        reservation.status = "stale"
+                        self._write_json(
+                            lease_path, reservation.model_dump(exclude_none=True)
+                        )
+                        path_hashes: list[str] = []
+                        if reservation.paths:
+                            path_hashes = sorted(
+                                salted_path_hash(p) for p in reservation.paths
+                            )
+                        self._append_event(
+                            "coord.lease.expired",
+                            build_lease_expired_payload(
+                                reservation.session_id, reservation.task_id, path_hashes
+                            ),
+                        )
+                        continue
+                except (ValueError, TypeError):
+                    pass
+
+            if reservation.status == "active":
+                active.append(reservation)
+
+        return active
+
     def _path_key(self, canonical_json: str) -> str:
         return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()[:24]
 
@@ -127,23 +198,12 @@ class CoordinationStore:
         events_path = self._events_path()
         with events_path.open("a", encoding="utf-8") as f:
             f.write(dump_canonical_json(event.model_dump(exclude_none=True)) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
 
     def _next_sequence(self) -> int:
-        events_path = self._events_path()
-        if not events_path.is_file():
-            return 1
-        try:
-            with events_path.open("r", encoding="utf-8") as f:
-                last_line = ""
-                for line in f:
-                    if line.strip():
-                        last_line = line
-            if last_line:
-                last = json.loads(last_line)
-                return (last.get("sequence", 0) or 0) + 1
-        except (json.JSONDecodeError, OSError):
-            pass
-        return 1
+        self._sequence_counter += 1
+        return self._sequence_counter
 
     def register_session(self, session: CoordinationSession) -> CoordinationSession:
         session_path = self._session_path(session.session_id)
@@ -153,6 +213,27 @@ class CoordinationStore:
         return session
 
     def heartbeat(
+        self,
+        *,
+        session_id: str,
+        task_id: str | None = None,
+        status: str,
+        reserved_paths: list[str] | None = None,
+        current_step: str | None = None,
+    ) -> CoordinationHeartbeat:
+        self._acquire_digester_lock()
+        try:
+            return self._heartbeat_locked(
+                session_id=session_id,
+                task_id=task_id,
+                status=status,
+                reserved_paths=reserved_paths,
+                current_step=current_step,
+            )
+        finally:
+            self._release_digester_lock()
+
+    def _heartbeat_locked(
         self,
         *,
         session_id: str,
@@ -190,6 +271,27 @@ class CoordinationStore:
         ttl_seconds: int,
         scope: dict[str, Any] | None = None,
     ) -> CoordinationClaimResult:
+        self._acquire_digester_lock()
+        try:
+            return self._claim_task_locked(
+                session_id=session_id,
+                task_id=task_id,
+                claim_kind=claim_kind,
+                ttl_seconds=ttl_seconds,
+                scope=scope,
+            )
+        finally:
+            self._release_digester_lock()
+
+    def _claim_task_locked(
+        self,
+        *,
+        session_id: str,
+        task_id: str,
+        claim_kind: str,
+        ttl_seconds: int,
+        scope: dict[str, Any] | None = None,
+    ) -> CoordinationClaimResult:
         task_path = self._task_path(task_id)
         now = datetime.now(UTC)
         expires = now_plus(ttl_seconds)
@@ -205,33 +307,37 @@ class CoordinationStore:
                     else "1970-01-01T00:00:00+00:00"
                 )
                 if expires_dt > now:
-                    # Same-owner renewal: refresh claim, don't block
                     same_owner = (
                         existing.session_id == session_id
                         and existing.task_id == task_id
                     )
-                    if not same_owner:
-                        conflict = CoordinationConflict(
-                            conflict_id=str(hash(task_id + session_id) & 0xFFFFFFFF),
-                            kind="task_already_claimed",
-                            session_id=session_id,
-                            other_session_id=existing.session_id,
-                            task_id=task_id,
-                            paths=[],
-                            recommended_resolution="serialize_or_split_scope",
-                        )
-                        self._write_json(
-                            self._conflict_path(conflict.conflict_id),
-                            conflict.model_dump(exclude_none=True),
-                        )
+                    if same_owner:
                         return CoordinationClaimResult(
-                            allowed=False,
-                            claim=None,
-                            conflict=conflict,
-                            warnings=[
-                                f"Task '{task_id}' already claimed by {existing.session_id}"
-                            ],
+                            allowed=True,
+                            claim=existing,
+                            warnings=["Claim already active for same owner"],
                         )
+                    conflict = CoordinationConflict(
+                        conflict_id=str(hash(task_id + session_id) & 0xFFFFFFFF),
+                        kind="task_already_claimed",
+                        session_id=session_id,
+                        other_session_id=existing.session_id,
+                        task_id=task_id,
+                        paths=[],
+                        recommended_resolution="serialize_or_split_scope",
+                    )
+                    self._write_json(
+                        self._conflict_path(conflict.conflict_id),
+                        conflict.model_dump(exclude_none=True),
+                    )
+                    return CoordinationClaimResult(
+                        allowed=False,
+                        claim=None,
+                        conflict=conflict,
+                        warnings=[
+                            f"Task '{task_id}' already claimed by {existing.session_id}"
+                        ],
+                    )
 
         scope_paths = list(scope.get("allowed_paths", [])) if scope else []
         claim = CoordinationTaskClaim(
@@ -258,18 +364,17 @@ class CoordinationStore:
         paths: list[str],
         ttl_seconds: int,
     ) -> CoordinationReservationResult:
-        with self._digester_thread_lock:
-            fcntl.flock(self._digester_fd, fcntl.LOCK_EX)
-            try:
-                return self._reserve_paths_locked(
-                    session_id=session_id,
-                    task_id=task_id,
-                    mode=mode,
-                    paths=paths,
-                    ttl_seconds=ttl_seconds,
-                )
-            finally:
-                fcntl.flock(self._digester_fd, fcntl.LOCK_UN)
+        self._acquire_digester_lock()
+        try:
+            return self._reserve_paths_locked(
+                session_id=session_id,
+                task_id=task_id,
+                mode=mode,
+                paths=paths,
+                ttl_seconds=ttl_seconds,
+            )
+        finally:
+            self._release_digester_lock()
 
     def _reserve_paths_locked(
         self,
@@ -285,7 +390,8 @@ class CoordinationStore:
 
         # exclusive_write (mode="write") conflicts with both read and write.
         # shared_read (mode="read") conflicts only with existing write.
-        for existing in self._iter_reservations():
+        now = datetime.now(UTC)
+        for existing in self._iter_active_reservations_locked(now):
             if existing.status != "active":
                 continue
             # Same-owner renewal is allowed
@@ -354,6 +460,17 @@ class CoordinationStore:
         return CoordinationReservationResult(allowed=True, reservation=reservation)
 
     def release_paths(self, *, session_id: str, task_id: str, paths: list[str]) -> None:
+        self._acquire_digester_lock()
+        try:
+            self._release_paths_locked(
+                session_id=session_id, task_id=task_id, paths=paths
+            )
+        finally:
+            self._release_digester_lock()
+
+    def _release_paths_locked(
+        self, *, session_id: str, task_id: str, paths: list[str]
+    ) -> None:
         released: list[str] = []
         normalized = [normalize_path(path) for path in paths]
         lease_key = self._path_key(session_id + task_id + "|".join(normalized))
@@ -521,11 +638,16 @@ class CoordinationStore:
         )
 
         projection = projection.with_hash()
-        read_payload = build_projection_read_payload(None, projection.projection_sha256)
-        self._append_event("coord.projection.read", read_payload)
         return projection
 
     def release_task(self, *, session_id: str, task_id: str) -> None:
+        self._acquire_digester_lock()
+        try:
+            self._release_task_locked(session_id=session_id, task_id=task_id)
+        finally:
+            self._release_digester_lock()
+
+    def _release_task_locked(self, *, session_id: str, task_id: str) -> None:
         task_path = self.root / "tasks" / f"{task_id}.json"
         if task_path.exists():
             claim = CoordinationTaskClaim.model_validate_json(
@@ -553,6 +675,17 @@ class CoordinationStore:
         return {"status": "requested", **handoff_payload}
 
     def mark_lease_stale(self, *, session_id: str, task_id: str, reason: str) -> None:
+        self._acquire_digester_lock()
+        try:
+            self._mark_lease_stale_locked(
+                session_id=session_id, task_id=task_id, reason=reason
+            )
+        finally:
+            self._release_digester_lock()
+
+    def _mark_lease_stale_locked(
+        self, *, session_id: str, task_id: str, reason: str
+    ) -> None:
         from rig_relay.coordination.models import build_lease_marked_stale_payload
 
         for path in sorted((self.root / "leases" / "paths").glob("*.json")):
