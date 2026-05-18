@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 import json
 from pathlib import Path
@@ -9,8 +10,15 @@ import time
 
 from rig_relay.site_renderer.loaders import (
     get_git_sha,
+    load_artifacts_for_page,
     load_input_manifest,
     load_page_model,
+)
+from rig_relay.site_renderer.normalizers import (
+    normalize_frontend,
+    normalize_integrations,
+    normalize_release_gate,
+    normalize_testing,
 )
 from rig_relay.site_renderer.renderer import render_index, render_page, write_page
 from rig_relay.site_renderer.safety import (
@@ -29,11 +37,49 @@ ASSETS_SRC = (
 ASSETS_OUT = OUTPUT_DIR / "assets"
 SITE_CSS_SRC = ASSETS_SRC / "site.css"
 
+NORMALIZER_MAP: dict[str, Callable[[dict], list[dict]]] = {
+    "release-candidate": normalize_release_gate,
+    "testing": normalize_testing,
+    "integrations": normalize_integrations,
+    "frontend": normalize_frontend,
+}
+
+
+def _artifact_source_paths(manifest: dict, page_id: str) -> list[str]:
+    inputs = manifest.get("inputs", [])
+    if not isinstance(inputs, list):
+        return []
+    return [
+        e.get("source_path", "")
+        for e in inputs
+        if isinstance(e, dict) and e.get("page_id") == page_id
+    ]
+
+
+def _detect_stale(manifest: dict, page_id: str, head_sha: str) -> list[dict]:
+    stale: list[dict] = []
+    inputs = manifest.get("inputs", [])
+    if not isinstance(inputs, list):
+        return stale
+    for entry in inputs:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("page_id") != page_id:
+            continue
+        expected = entry.get("source_commit")
+        if expected and expected != head_sha:
+            stale.append({
+                "source_path": entry.get("source_path", ""),
+                "expected_sha": expected,
+                "actual_sha": head_sha,
+            })
+    return stale
+
 
 def main() -> int:
     t0 = time.perf_counter()
 
-    print("Rig Relay — Site Renderer v1")
+    print("Rig Relay — Site Renderer v2")
     print(f"  Output: {OUTPUT_DIR}")
 
     head_sha = get_git_sha()
@@ -44,7 +90,10 @@ def main() -> int:
     if not manifest:
         print("  ✗ Input manifest missing or invalid")
         return 1
-    print(f"  ✓ Input manifest: {len(manifest.get('inputs', []))} entries")
+    inputs = manifest.get("inputs", [])
+    if not isinstance(inputs, list):
+        inputs = []
+    print(f"  ✓ Input manifest: {len(inputs)} entries")
 
     page_models: dict[str, dict] = {}
     for pm_path in sorted(SITE_INPUT_DIR.glob("page_*.v1.json")):
@@ -61,14 +110,47 @@ def main() -> int:
 
     rendered: list[dict] = []
     failed: list[dict] = []
+    all_loaded: list[str] = []
+    all_missing: list[str] = []
+    all_stale: list[dict] = []
 
     for page_id, pm in page_models.items():
+        loaded: list[str] = []
+        missing: list[str] = []
+        stale: list[dict] = []
+
         try:
+            artifacts = load_artifacts_for_page(pm, manifest, REPO_ROOT)
+            for entry in inputs:
+                if isinstance(entry, dict) and entry.get("page_id") == page_id:
+                    sp = entry.get("source_path", "")
+                    st = entry.get("source_type", "")
+                    rk = entry.get("renderer_kind", "")
+                    if st == "static_asset":
+                        continue
+                    if sp and rk and rk in artifacts:
+                        loaded.append(sp)
+                    elif sp and st in ("json", "jsonl", "schema"):
+                        missing.append(sp)
+            stale = _detect_stale(manifest, page_id, head_sha)
+
+            all_loaded.extend(loaded)
+            all_missing.extend(missing)
+            all_stale.extend(stale)
+
+            normalizer = NORMALIZER_MAP.get(page_id)
+            if normalizer is not None:
+                sections = normalizer(artifacts)
+            else:
+                sections = pm.get("sections", [])
+
             route = pm.get("route", f"/{page_id}/index.html")
             depth = route.strip("/").count("/")
             relative_root = ".." * depth if depth > 0 else "."
 
-            html = render_page(pm, relative_root=relative_root)
+            page = {**pm, "sections": sections, "generated_at": generated_at}
+
+            html = render_page(page, relative_root=relative_root)
 
             rel_path = route.lstrip("/")
             output_path = OUTPUT_DIR / rel_path
@@ -80,15 +162,29 @@ def main() -> int:
                 safety_notes = f"{len(safety.findings)} potential secrets detected"
                 print(f"  ⚠ {page_id}: {safety_notes}")
 
-            rendered.append({
+            result = {
                 "page_id": page_id,
                 "title": pm.get("title", ""),
                 "route": route,
                 "status": "rendered" if is_public_safe(safety) else "warning",
-                "source_artifact_paths": pm.get("source_artifact_paths", []),
+                "source_artifacts_loaded": loaded,
+                "source_artifacts_missing": missing,
                 "safety_notes": safety_notes,
-            })
+            }
+            if stale:
+                result["stale_warnings"] = stale
+
+            rendered.append(result)
             print(f"  ✓ {page_id} → {route}")
+            if missing:
+                for m in missing:
+                    print(f"    ⚠ Missing artifact: {m}")
+            if stale:
+                for sw in stale:
+                    print(
+                        f"    ⚠ Stale: {sw['source_path']} "
+                        f"(expected={sw['expected_sha']}, actual={sw['actual_sha']})"
+                    )
         except Exception as e:
             print(f"  ✗ {page_id}: render failed — {e}")
             failed.append({
@@ -96,7 +192,8 @@ def main() -> int:
                 "title": pm.get("title", ""),
                 "route": pm.get("route", ""),
                 "status": "failed",
-                "source_artifact_paths": [],
+                "source_artifacts_loaded": loaded,
+                "source_artifacts_missing": missing,
                 "safety_notes": str(e),
             })
 
@@ -116,11 +213,13 @@ def main() -> int:
     safety_passed = is_public_safe(safety_report)
     if safety_passed:
         print(
-            f"  ✓ Public safe — no token/secret leaks detected ({safety_report.file_count} files)"
+            f"  ✓ Public safe — no token/secret leaks detected "
+            f"({safety_report.file_count} files)"
         )
     else:
         print(
-            f"  ⚠ {len(safety_report.findings)} potential leaks in {safety_report.file_count} files:"
+            f"  ⚠ {len(safety_report.findings)} potential leaks in "
+            f"{safety_report.file_count} files:"
         )
         for f in safety_report.findings[:5]:
             print(f"    - {f.pattern_name}: {f.match_preview} ({f.source})")
@@ -146,6 +245,9 @@ def main() -> int:
         "pages_rendered": len(rendered),
         "pages_failed": len(failed),
         "safety_passed": safety_passed,
+        "source_artifacts_loaded": sorted(set(all_loaded)),
+        "source_artifacts_missing": sorted(set(all_missing)),
+        "stale_warnings": all_stale,
         "pages": rendered + failed,
     }
     report_path = OUTPUT_DIR / "site_render_report.v1.json"
@@ -153,7 +255,7 @@ def main() -> int:
         json.dumps(render_report, indent=2, default=str), encoding="utf-8"
     )
 
-    site_manifest = {
+    site_manifest_out = {
         "schema_version": "rig.site.manifest.v1",
         "generated_at": generated_at,
         "head_sha": head_sha,
@@ -164,13 +266,14 @@ def main() -> int:
         ],
         "assets": ["assets/site.css"],
     }
-    manifest_path = OUTPUT_DIR / "site_manifest.v1.json"
-    manifest_path.write_text(
-        json.dumps(site_manifest, indent=2, default=str), encoding="utf-8"
+    manifest_out_path = OUTPUT_DIR / "site_manifest.v1.json"
+    manifest_out_path.write_text(
+        json.dumps(site_manifest_out, indent=2, default=str), encoding="utf-8"
     )
 
     print(
-        f"\n  Render complete: {len(rendered)} pages, {len(failed)} failed, {duration_ms}ms"
+        f"\n  Render complete: {len(rendered)} pages, "
+        f"{len(failed)} failed, {duration_ms}ms"
     )
     print(f"  Report: {report_path}")
 

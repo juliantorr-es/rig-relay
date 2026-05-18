@@ -12,8 +12,8 @@
     },
     "message_id": {
       "type": "string",
-      "description": "Unique per-message identifier. Format: msg_<12hex>. Server and client each maintain their own namespace.",
-      "pattern": "^msg_[a-f0-9]{12,}$"
+      "description": "Unique per-message identifier. Format: msg_<12-24 hex chars>. Server and client each maintain their own namespace.",
+      "pattern": "^msg_[a-f0-9]{12,24}$"
     },
     "handshake_id": {
       "type": "string",

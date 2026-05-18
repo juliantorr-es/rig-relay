@@ -12,36 +12,27 @@ _DEFINITION_LIST_KIND: str = "definition_list"
 _ARTIFACT_NAV_KIND: str = "artifact_nav"
 _SCHEMA_INDEX_KIND: str = "schema_index"
 
-_RELEASE_GATE_PATHS = {
-    "gate": "docs/json/release_gate/rc_readiness_gate.v1.json",
-    "verdict": "docs/json/release_gate/rc_candidate_verdict.v1.json",
-    "golden_path": "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
-}
-
-_TESTING_PATHS = {
-    "inventory": "docs/json/testing/test_inventory.v1.json",
-    "classifications": "docs/json/testing/test_classification.v1.jsonl",
-    "seams": "docs/json/testing/known_test_seams.v1.jsonl",
-}
-
-_INTEGRATION_PATHS = {
-    "ide_capability_map": "docs/protocols/ide-capability-map.md",
-    "mcp_capability_map": "docs/protocols/mcp-capability-map.md",
-    "capability_manifest": "etc/rig.ide.capability_manifest.v1.json",
-    "protocol_index": None,
-}
-
-_FRONTEND_PATHS = {
-    "telemetry_doctrine": "docs/governance/usage-data-doctrine.md",
-    "desktop_golden_path": "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
-    "telemetry_policy": None,
-}
-
 
 def _e(text: object) -> str:
     if text is None:
         return ""
     return html.escape(str(text))
+
+
+def _artifact_dict(artifacts: dict, *keys: str) -> dict | None:
+    for k in keys:
+        v = artifacts.get(k)
+        if isinstance(v, dict):
+            return v
+    return None
+
+
+def _artifact_list(artifacts: dict, *keys: str) -> list:
+    for k in keys:
+        v = artifacts.get(k)
+        if isinstance(v, list):
+            return v
+    return []
 
 
 def _callout_section(title: str, body: str, kind: str = "warn") -> dict:
@@ -99,35 +90,79 @@ def _schema_index_section(title: str, schemas: list[dict]) -> dict:
 
 
 def normalize_release_gate(artifacts: dict) -> list[dict]:
-    gate = artifacts.get("gate")
-    verdict = artifacts.get("verdict")
-    golden_path = artifacts.get("golden_path")
+    gate = _artifact_dict(artifacts, "release_gate", "gate")
+    verdict = _artifact_dict(artifacts, "rc_verdict", "verdict")
+    golden_path = _artifact_dict(artifacts, "golden_path")
+    blockers_rows = _artifact_list(artifacts, "rc_blockers", "blockers")
+    validation_runs_rows = _artifact_list(
+        artifacts, "rc_validation_runs", "validation_runs"
+    )
+    deferred_risks_rows = _artifact_list(
+        artifacts, "rc_deferred_risks", "deferred_risks"
+    )
 
-    if gate is None and verdict is None and golden_path is None:
+    if all(
+        v is None or (isinstance(v, list) and len(v) == 0)
+        for v in [
+            gate,
+            verdict,
+            golden_path,
+            blockers_rows,
+            validation_runs_rows,
+            deferred_risks_rows,
+        ]
+    ):
         return [
             _callout_section(
                 "Release Gate Data Missing",
-                "No release gate artifacts found. Run the release gate validator to populate this data.",
+                "No release gate artifacts found. "
+                "Run the release gate validator to populate this data.",
             )
         ]
 
     sections: list[dict] = []
 
+    overall_status = "unknown"
     if gate is not None:
-        overall = _e(gate.get("overall_status", "unknown"))
+        overall_status = _e(gate.get("overall_status", "unknown"))
+
+    if verdict is not None:
+        overall_status = _e(
+            verdict.get("verdict", verdict.get("gate_overall_status", "unknown"))
+        )
+
+    if overall_status.lower() in ("hold", "blocked"):
+        hero_label = "Hold" if overall_status.lower() == "hold" else "Blocked"
+    elif overall_status.lower() == "promote":
+        hero_label = "Promote"
+    elif gate is not None and _e(gate.get("overall_status", "")).lower() == "blocked":
+        hero_label = "Blocked"
+        overall_status = "blocked"
+    else:
+        hero_label = overall_status
+
+    hero_parts: list[str] = []
+    if gate is not None:
+        gate_id = _e(gate.get("gate_id", ""))
+        branch = _e(gate.get("branch", ""))
+        head_sha = _e(gate.get("head_sha", ""))[:12]
+        hero_parts.append(f"Gate: {gate_id} | Branch: {branch} | SHA: {head_sha}")
+    if verdict is not None:
+        validator = _e(verdict.get("validator_result", "unknown"))
+        errors = _e(verdict.get("validator_error_count", 0))
+        hero_parts.append(f"Validator: {validator} | Errors: {errors}")
+
+    sections.append(
+        _hero_section(
+            "Release Gate Readiness", hero_label, " | ".join(hero_parts), overall_status
+        )
+    )
+
+    if gate is not None:
         gate_id = _e(gate.get("gate_id", ""))
         branch = _e(gate.get("branch", ""))
         head_sha = _e(gate.get("head_sha", ""))[:12]
         generated = _e(gate.get("generated_at", ""))
-
-        sections.append(
-            _hero_section(
-                "Release Gate Readiness",
-                overall,
-                f"Gate: {gate_id} | Branch: {branch} | SHA: {head_sha}",
-                overall,
-            )
-        )
 
         sections.append(
             _definition_list_section(
@@ -178,6 +213,70 @@ def normalize_release_gate(artifacts: dict) -> list[dict]:
                 "info",
             )
         )
+
+    if isinstance(blockers_rows, list) and blockers_rows:
+        bl_headers = ["Blocker ID", "Title", "Status", "Phase"]
+        bl_rows: list[list[str]] = []
+        for b in blockers_rows:
+            if not isinstance(b, dict):
+                continue
+            bl_rows.append([
+                _e(b.get("blocker_id", b.get("id", ""))),
+                _e(b.get("title", b.get("description", ""))),
+                _e(b.get("status", "unknown")),
+                _e(b.get("phase", b.get("phase_id", ""))),
+            ])
+        if bl_rows:
+            sections.append(
+                _table_section(
+                    f"Open Blockers ({len(bl_rows)})",
+                    bl_headers,
+                    bl_rows,
+                    "Release Candidate Blockers",
+                )
+            )
+
+    if isinstance(validation_runs_rows, list) and validation_runs_rows:
+        vr_headers = ["Run ID", "Status", "Timestamp"]
+        vr_rows: list[list[str]] = []
+        for r in validation_runs_rows:
+            if not isinstance(r, dict):
+                continue
+            vr_rows.append([
+                _e(r.get("run_id", r.get("id", ""))),
+                _e(r.get("status", "unknown")),
+                _e(r.get("timestamp", r.get("generated_at", ""))),
+            ])
+        if vr_rows:
+            sections.append(
+                _table_section(
+                    f"Validation Runs ({len(vr_rows)})",
+                    vr_headers,
+                    vr_rows,
+                    "Release Candidate Validation Runs",
+                )
+            )
+
+    if isinstance(deferred_risks_rows, list) and deferred_risks_rows:
+        dr_headers = ["Risk ID", "Title", "Deferral Reason"]
+        dr_rows: list[list[str]] = []
+        for d in deferred_risks_rows:
+            if not isinstance(d, dict):
+                continue
+            dr_rows.append([
+                _e(d.get("risk_id", d.get("id", ""))),
+                _e(d.get("title", d.get("description", ""))),
+                _e(d.get("deferral_reason", d.get("reason", ""))),
+            ])
+        if dr_rows:
+            sections.append(
+                _table_section(
+                    f"Deferred Risks ({len(dr_rows)})",
+                    dr_headers,
+                    dr_rows,
+                    "Release Candidate Deferred Risks",
+                )
+            )
 
     if verdict is not None:
         v = _e(verdict.get("verdict", "unknown"))
@@ -266,15 +365,35 @@ def normalize_release_gate(artifacts: dict) -> list[dict]:
 
 
 def normalize_testing(artifacts: dict) -> list[dict]:
-    inventory = artifacts.get("inventory")
-    classifications = artifacts.get("classifications")
-    seams = artifacts.get("seams")
+    inventory = _artifact_dict(artifacts, "test_inventory", "inventory")
+    classifications_dict = _artifact_dict(
+        artifacts, "test_classification", "classifications"
+    )
+    classifications_list = _artifact_list(
+        artifacts, "test_classification", "classifications"
+    )
+    seams = _artifact_list(artifacts, "test_seams", "seams")
+    hardened = _artifact_list(artifacts, "hardened_tests", "hardened")
+    deleted = _artifact_list(artifacts, "deleted_tests", "deleted")
 
-    if inventory is None and classifications is None and seams is None:
+    has_data = any(
+        v is not None and (not isinstance(v, list) or len(v) > 0)
+        for v in [
+            inventory,
+            classifications_dict,
+            classifications_list,
+            seams,
+            hardened,
+            deleted,
+        ]
+    )
+
+    if not has_data:
         return [
             _callout_section(
                 "Test Data Missing",
-                "No test artifacts found. Run the test inventory and classification scans.",
+                "No test artifacts found. Run the test inventory and classification "
+                "scans to populate this data.",
             )
         ]
 
@@ -355,37 +474,91 @@ def normalize_testing(artifacts: dict) -> list[dict]:
             )
         )
 
-    if classifications is not None:
+    if classifications_dict is not None:
         definition_items: list[dict] = []
-        counts = (
-            classifications.get("counts", {})
-            if isinstance(classifications, dict)
-            else {}
-        )
-
-        for marker, count in sorted(counts.items()):
-            definition_items.append({
-                "term": _e(marker),
-                "definition": f"Count: {_e(count)}",
-            })
-
+        counts = classifications_dict.get("counts", {})
+        if isinstance(counts, dict):
+            for marker, count in sorted(counts.items()):
+                definition_items.append({
+                    "term": _e(marker),
+                    "definition": f"Count: {_e(count)}",
+                })
         if definition_items:
             sections.append(
                 _definition_list_section("Classification Counts", definition_items)
             )
+    elif isinstance(classifications_list, list) and classifications_list:
+        definition_items: list[dict] = []
+        for i, c in enumerate(classifications_list):
+            if not isinstance(c, dict):
+                continue
+            marker = c.get("marker", c.get("classification", f"entry-{i}"))
+            status = c.get("classification", c.get("status", "unknown"))
+            definition_items.append({"term": _e(marker), "definition": _e(status)})
+        if definition_items:
+            sections.append(
+                _definition_list_section("Classification Records", definition_items)
+            )
 
     if isinstance(seams, list) and seams:
-        seam_entries: list[dict] = []
-        for i, s in enumerate(seams):
-            seam_entries.append({
-                "id": _e(s.get("protected_seam", s.get("seam_id", f"seam-{i}"))),
-                "title": _e(s.get("reason", s.get("description", ""))),
-                "detail": _e(s.get("stress_surface", "")),
-                "status": _e(s.get("classification", "unknown")),
-            })
-        sections.append(
-            _timeline_section(f"Known Seams ({len(seam_entries)})", seam_entries)
-        )
+        seam_rows: list[list[str]] = []
+        for s in seams:
+            if not isinstance(s, dict):
+                continue
+            seam_rows.append([
+                _e(s.get("protected_seam", s.get("seam_id", ""))),
+                _e(s.get("reason", s.get("description", ""))),
+                _e(s.get("classification", s.get("status", "deferred"))),
+                _e(s.get("stress_surface", "")),
+            ])
+        if seam_rows:
+            sections.append(
+                _table_section(
+                    f"Known Test Seams ({len(seam_rows)})",
+                    ["Seam", "Description", "Status", "Surface"],
+                    seam_rows,
+                )
+            )
+
+    if isinstance(hardened, list) and hardened:
+        ht_rows: list[list[str]] = []
+        for h in hardened:
+            if not isinstance(h, dict):
+                continue
+            ht_rows.append([
+                _e(h.get("test_id", h.get("id", ""))),
+                _e(h.get("name", h.get("title", ""))),
+                _e(h.get("classification", h.get("status", "unknown"))),
+                _e(h.get("hardened_at", h.get("timestamp", ""))),
+            ])
+        if ht_rows:
+            sections.append(
+                _table_section(
+                    f"Hardened Tests ({len(ht_rows)})",
+                    ["Test ID", "Name", "Classification", "Hardened At"],
+                    ht_rows,
+                )
+            )
+
+    if isinstance(deleted, list) and deleted:
+        del_rows: list[list[str]] = []
+        for d in deleted:
+            if not isinstance(d, dict):
+                continue
+            del_rows.append([
+                _e(d.get("test_id", d.get("id", ""))),
+                _e(d.get("name", d.get("title", ""))),
+                _e(d.get("reason", "")),
+                _e(d.get("deleted_at", d.get("timestamp", ""))),
+            ])
+        if del_rows:
+            sections.append(
+                _table_section(
+                    f"Deleted Tests ({len(del_rows)})",
+                    ["Test ID", "Name", "Reason", "Deleted At"],
+                    del_rows,
+                )
+            )
 
     return sections
 
@@ -393,10 +566,20 @@ def normalize_testing(artifacts: dict) -> list[dict]:
 def normalize_integrations(artifacts: dict) -> list[dict]:
     sections: list[dict] = []
 
-    manifest = artifacts.get("capability_manifest")
-    has_data = manifest is not None
+    manifest = _artifact_dict(artifacts, "integration_manifest", "capability_manifest")
+    mcp_manifest = _artifact_dict(artifacts, "mcp_manifest")
+    has_data = manifest is not None or mcp_manifest is not None
 
-    if has_data and manifest is not None:
+    if not has_data:
+        return [
+            _callout_section(
+                "Integration Data Not Available",
+                "IDE capability manifest and MCP capability map are not yet available.",
+                "info",
+            )
+        ]
+
+    if manifest is not None:
         mf_name = _e(
             manifest.get("name", manifest.get("manifest_id", "IDE Capability Manifest"))
         )
@@ -428,14 +611,28 @@ def normalize_integrations(artifacts: dict) -> list[dict]:
                     cap_rows,
                 )
             )
-    else:
-        sections.append(
-            _callout_section(
-                "Integration Data Not Available",
-                "IDE capability manifest and MCP capability map are not yet available.",
-                "info",
-            )
+
+    if mcp_manifest is not None:
+        mcp_capabilities = mcp_manifest.get(
+            "capabilities", mcp_manifest.get("tools", [])
         )
+        if mcp_capabilities:
+            mcp_rows: list[list[str]] = []
+            for c in mcp_capabilities:
+                mcp_rows.append([
+                    _e(c.get("name", c.get("id", ""))),
+                    _e(c.get("tier", "")),
+                    _e(c.get("permission", "")),
+                    _e(c.get("description", "")),
+                ])
+            if mcp_rows:
+                sections.append(
+                    _table_section(
+                        f"MCP Tools ({len(mcp_rows)})",
+                        ["Tool Name", "Tier", "Permission", "Description"],
+                        mcp_rows,
+                    )
+                )
 
     return sections
 
@@ -443,12 +640,26 @@ def normalize_integrations(artifacts: dict) -> list[dict]:
 def normalize_frontend(artifacts: dict) -> list[dict]:
     sections: list[dict] = []
 
-    gp = artifacts.get("desktop_golden_path")
+    gp = _artifact_dict(artifacts, "frontend_maturity", "desktop_golden_path")
+    telemetry = _artifact_dict(artifacts, "telemetry_policy")
+
+    if gp is None and telemetry is None:
+        return [
+            _callout_section(
+                "Frontend Data Not Available",
+                "Desktop golden path and telemetry policy data are not yet available.",
+                "info",
+            )
+        ]
 
     if gp is not None:
         gp_status = _e(gp.get("overall_status", "unknown"))
+        if gp_status.lower() in ("not_verified", "not verified"):
+            hero_label = "Not Verified"
+        else:
+            hero_label = gp_status
         sections.append(
-            _hero_section("Frontend & Desktop Readiness", gp_status, "", gp_status)
+            _hero_section("Frontend & Desktop Readiness", hero_label, "", gp_status)
         )
 
         steps = gp.get("steps", [])
@@ -481,25 +692,26 @@ def normalize_frontend(artifacts: dict) -> list[dict]:
         sections.append(
             _callout_section(
                 "Frontend Data Not Available",
-                "Desktop golden path and telemetry policy data are not yet available.",
+                "Desktop golden path data is not yet available.",
                 "info",
             )
         )
 
-    telemetry = artifacts.get("telemetry_policy")
     if telemetry is not None:
+        enabled = telemetry.get("enabled", False)
         sections.append(
             _definition_list_section(
                 "Telemetry Policy",
                 [
                     {
                         "term": "Policy",
-                        "definition": _e(telemetry.get("policy", "unknown")),
+                        "definition": _e(
+                            telemetry.get(
+                                "policy", telemetry.get("doctrine", "unknown")
+                            )
+                        ),
                     },
-                    {
-                        "term": "Enabled",
-                        "definition": str(telemetry.get("enabled", False)),
-                    },
+                    {"term": "Enabled", "definition": _e(str(enabled))},
                 ],
             )
         )

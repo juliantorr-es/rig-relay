@@ -7,7 +7,10 @@
   "source_artifact_paths": [
     "docs/json/release_gate/rc_readiness_gate.v1.json",
     "docs/json/release_gate/rc_candidate_verdict.v1.json",
-    "docs/json/release_candidate/rc_reviewer_golden_path.v1.json"
+    "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
+    "docs/json/release_gate/rc_blockers.v1.jsonl",
+    "docs/json/release_gate/rc_validation_runs.v1.jsonl",
+    "docs/json/release_gate/rc_deferred_risks.v1.jsonl"
   ],
   "generated_from_schema_versions": [
     "rig.release_gate.readiness.v1",
@@ -15,64 +18,6 @@
     "rig.release_candidate.reviewer_golden_path.v1"
   ],
   "public_safety_status": "public_safe",
-  "sections": [
-    {
-      "kind": "hero_status",
-      "title": "RC Verdict",
-      "status_label": "Hold",
-      "status_class": "warn",
-      "summary": "Release candidate is HOLD. Dogfood operational readiness phase (6) is blocked. 5/6 phases ready, 1 blocking.",
-      "blocker_count": 1,
-      "ready_count": 5,
-      "failed_count": 0
-    },
-    {
-      "kind": "table",
-      "caption": "Release Gate Phases",
-      "headers": ["Phase", "Title", "Status", "Blockers", "Seams"],
-      "rows": [
-        ["phase_1", "Governance & Coordination", "ready", "0", "0"],
-        ["phase_2", "Telemetry & Privacy", "ready", "0", "1"],
-        ["phase_3", "Runtime, Tools & Context API", "ready", "0", "1"],
-        ["phase_4", "UI, Docs, CI & Packaging", "ready", "0", "2"],
-        ["phase_5", "Public Docs & Licensing", "ready", "0", "0"],
-        ["phase_6", "Dogfood Operational Readiness", "blocked", "0", "2"]
-      ]
-    },
-    {
-      "kind": "timeline",
-      "heading": "Golden Path Steps",
-      "entries": [
-        {"timestamp": "gp_install_sync", "title": "Install & Sync", "description": "uv sync completes without errors", "status": "passing"},
-        {"timestamp": "gp_understand_product", "title": "Understand Product", "description": "Manual reviewer step", "status": "not_verified"},
-        {"timestamp": "gp_launch_server", "title": "Launch Server", "description": "ACP server binds localhost port", "status": "passing"},
-        {"timestamp": "gp_launch_frontend", "title": "Launch Frontend", "description": "Cockpit loads without blank screen", "status": "passing"},
-        {"timestamp": "gp_read_only_intent", "title": "Read-Only Intent", "description": "worktree_list completes via frontend", "status": "passing"},
-        {"timestamp": "gp_inspect_evidence", "title": "Inspect Evidence", "description": "JSON/JSONL/CSV evidence exists", "status": "passing"},
-        {"timestamp": "gp_clean_shutdown", "title": "Clean Shutdown", "description": "Server exits without orphaned children", "status": "passing"}
-      ]
-    },
-    {
-      "kind": "table",
-      "caption": "Promote Requirements",
-      "headers": ["Requirement", "Status"],
-      "rows": [
-        ["All open blockers resolved", "pending"],
-        ["Dogfood golden path all blocking steps passing", "not_verified"],
-        ["Validator returns passed with 0 errors", "failed — 2 errors"]
-      ]
-    },
-    {
-      "kind": "artifact_nav",
-      "heading": "Source Artifacts",
-      "links": [
-        {"label": "Release Gate Readiness", "href": "docs/json/release_gate/rc_readiness_gate.v1.json", "description": "Full phase-by-phase readiness gate"},
-        {"label": "RC Candidate Verdict", "href": "docs/json/release_gate/rc_candidate_verdict.v1.json", "description": "Automated verdict computation"},
-        {"label": "Golden Path Checklist", "href": "docs/json/release_candidate/rc_reviewer_golden_path.v1.json", "description": "Dogfood reviewer checklist"},
-        {"label": "Schema: Readiness Gate", "href": "docs/schemas/rig.release_gate.readiness.v1.schema.json", "description": "Schema for readiness gate"},
-        {"label": "Schema: RC Verdict", "href": "docs/schemas/rig.release_gate.rc_candidate_verdict.v1.schema.json", "description": "Schema for RC verdict"}
-      ]
-    }
-  ],
+  "sections": [],
   "generated_at": "2026-05-18T00:00:00Z"
 }

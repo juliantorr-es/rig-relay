@@ -46,6 +46,34 @@
     "safety_passed": {
       "type": "boolean"
     },
+    "source_artifacts_loaded": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "source_artifacts_missing": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "stale_warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_path", "expected_sha", "artifact_sha"],
+        "properties": {
+          "source_path": { "type": "string" },
+          "expected_sha": { "type": "string" },
+          "artifact_sha": { "type": "string" }
+        }
+      }
+    },
+    "safety_scan_passed": {
+      "type": "boolean"
+    },
+    "safety_finding_count": {
+      "type": "integer",
+      "minimum": 0
+    },
     "pages": {
       "type": "array",
       "items": {

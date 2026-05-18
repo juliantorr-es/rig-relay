@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 import subprocess
 
-_REQUIRED_PAGE_FIELDS = {"page_id", "title", "route", "sections"}
+_REQUIRED_PAGE_FIELDS = {"page_id", "title", "route"}
 _REQUIRED_MANIFEST_FIELDS = {"schema_version", "inputs"}
+_SOURCE_TYPES_FOR_NORMALIZER = {"json", "jsonl", "schema"}
 
 
 def load_json(path: Path) -> dict:
@@ -40,9 +41,45 @@ def load_page_model(path: Path) -> dict | None:
     for field in _REQUIRED_PAGE_FIELDS:
         if field not in data:
             return None
-    if not isinstance(data.get("sections"), list) or len(data["sections"]) == 0:
-        return None
     return data
+
+
+def load_artifacts_for_page(
+    page_model: dict, manifest: dict, repo_root: Path | None = None
+) -> dict:
+    if repo_root is None:
+        repo_root = Path.cwd()
+    root_r = repo_root.resolve()
+    artifacts: dict[str, object] = {}
+    page_id = page_model.get("page_id", "")
+    inputs = manifest.get("inputs", [])
+    if not isinstance(inputs, list):
+        return artifacts
+    for entry in inputs:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("page_id") != page_id:
+            continue
+        source_type = entry.get("source_type", "")
+        if source_type not in _SOURCE_TYPES_FOR_NORMALIZER:
+            continue
+        source_path = entry.get("source_path", "")
+        kind = entry.get("renderer_kind", "")
+        if not source_path or not kind:
+            continue
+        full = (root_r / source_path).resolve()
+        if not str(full).startswith(str(root_r)):
+            continue
+        if not full.is_file():
+            continue
+        if kind in artifacts and isinstance(artifacts[kind], dict):
+            continue
+        if source_type == "jsonl":
+            if kind not in artifacts:
+                artifacts[kind] = load_jsonl(full)
+        else:
+            artifacts[kind] = load_json(full)
+    return artifacts
 
 
 def load_input_manifest(path: Path) -> dict | None:

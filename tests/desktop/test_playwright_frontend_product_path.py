@@ -384,6 +384,7 @@ def test_static_probe_alone_cannot_mark_ready(
     assert console_errors == [], f"Console errors: {console_errors}"
     assert page_errors == [], f"Page errors: {page_errors}"
 
+
 @pytest.mark.e2e
 @pytest.mark.integration
 @pytest.mark.real_artifact
@@ -393,18 +394,19 @@ def test_frontend_layout_operator_mode_shell(
 ) -> None:
     page.set_viewport_size({"width": 1280, "height": 800})
     try:
-        page.goto(browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000)
-        
+        page.goto(
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
+        )
+
         # Wait for Ready status
         page.wait_for_function(
             "() => { const el = document.querySelector('#status-connection'); return el && el.textContent.includes('Ready'); }",
             timeout=30000,
         )
-        
+
         # Wait for widgets to populate
         page.wait_for_function(
-            "() => document.querySelectorAll('.widget-card').length >= 3",
-            timeout=30000,
+            "() => document.querySelectorAll('.widget-card').length >= 3", timeout=30000
         )
 
         viewport_size = page.viewport_size
@@ -414,7 +416,9 @@ def test_frontend_layout_operator_mode_shell(
         # mode-bar height check
         mode_bar_box = page.locator("#mode-bar").bounding_box()
         assert mode_bar_box is not None
-        assert 20 <= mode_bar_box["height"] <= 60, f"Mode bar height abnormal: {mode_bar_box['height']}"
+        assert 20 <= mode_bar_box["height"] <= 60, (
+            f"Mode bar height abnormal: {mode_bar_box['height']}"
+        )
 
         # main-grid height check
         main_grid_box = page.locator("#main-grid").bounding_box()
@@ -435,7 +439,9 @@ def test_frontend_layout_operator_mode_shell(
         # Footer position check
         footer_box = page.locator("#footer-bar").bounding_box()
         assert footer_box is not None
-        assert footer_box["y"] >= main_grid_box["y"] + main_grid_box["height"], "Footer overlaps main-grid"
+        assert footer_box["y"] >= main_grid_box["y"] + main_grid_box["height"], (
+            "Footer overlaps main-grid"
+        )
 
         # Widget card checks
         widgets = page.locator(".widget-card").all()
@@ -453,25 +459,102 @@ def test_frontend_layout_operator_mode_shell(
                 assert box["y"] <= vp_height + 500, "Widget is completely lost"
 
     except Exception:
-        _capture_browser_failure(page, browser_artifacts, "frontend_layout_operator_mode")
+        _capture_browser_failure(
+            page, browser_artifacts, "frontend_layout_operator_mode"
+        )
         raise
 
+
 def test_structural_css_layout_rules() -> None:
-    layout_css_path = Path(__file__).parent.parent.parent / "frontend" / "desktop" / "css" / "layout.css"
+    layout_css_path = (
+        Path(__file__).parent.parent.parent
+        / "frontend"
+        / "desktop"
+        / "css"
+        / "layout.css"
+    )
     css = layout_css_path.read_text()
-    
+
     # Assert grid template areas
-    assert 'grid-template-areas:' in css
+    assert "grid-template-areas:" in css
     assert '"header"' in css
     assert '"mode"' in css
     assert '"main"' in css
     assert '"footer"' in css
-    
+
     # Assert grid area assignments
-    assert '#main-grid { grid-area: main;' in css or 'grid-area: main;' in css.split('#main-grid {')[1]
-    assert '#mode-bar { grid-area: mode;' in css or 'grid-area: mode;' in css.split('#mode-bar {')[1]
-    
+    assert (
+        "#main-grid { grid-area: main;" in css
+        or "grid-area: main;" in css.split("#main-grid {")[1]
+    )
+    assert (
+        "#mode-bar { grid-area: mode;" in css
+        or "grid-area: mode;" in css.split("#mode-bar {")[1]
+    )
+
     # Assert nested overflow prevention
-    main_grid_block = css.split('#main-grid {')[1].split('}')[0]
-    assert 'min-height: 0;' in main_grid_block
-    assert 'min-width: 0;' in main_grid_block
+    main_grid_block = css.split("#main-grid {")[1].split("}")[0]
+    assert "min-height: 0;" in main_grid_block
+    assert "min-width: 0;" in main_grid_block
+
+
+@pytest.mark.e2e
+@pytest.mark.integration
+@pytest.mark.real_artifact
+@pytest.mark.timeout(120)
+def test_frontend_shows_protocol_widget_and_heartbeat(
+    browser_server: RCLiveServer, browser_artifacts: Path, page
+) -> None:
+    """Protocol widget renders and shows heartbeat after bridge protocol established."""
+    console_errors: list[str] = []
+    page_errors: list[str] = []
+
+    page.on(
+        "console",
+        lambda msg: (
+            console_errors.append(f"{msg.type}: {msg.text}")
+            if msg.type == "error"
+            else None
+        ),
+    )
+    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+    try:
+        page.goto(
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
+        )
+
+        # Wait for main grid — proves frontend loaded and rendered
+        page.wait_for_function(
+            "() => document.querySelector('#main-grid') !== null", timeout=15000
+        )
+
+        # Verify protocol widget exists in DOM
+        page.wait_for_function(
+            "() => document.querySelector('[id=\"widget-bridgeProtocol\"]') !== null",
+            timeout=20000,
+        )
+
+        # Verify protocol widget shows heartbeat status
+        # The heartbeat label text should appear within the widget
+        page.wait_for_function(
+            """() => {
+                var el = document.querySelector('[id=\"widget-bridgeProtocol\"]');
+                if (!el) return false;
+                return el.textContent && el.textContent.includes('Heartbeat');
+            }""",
+            timeout=20000,
+        )
+
+        # Verify no fatal page errors
+        assert len(page_errors) == 0, f"Page errors should be empty, got: {page_errors}"
+
+        # Verify widget is visible
+        assert page.locator("#widget-bridgeProtocol").is_visible()
+
+    finally:
+        artifact_root = browser_artifacts / "protocol_widget"
+        if console_errors:
+            (artifact_root / "console_errors.txt").write_text(
+                "\n".join(console_errors), encoding="utf-8"
+            )

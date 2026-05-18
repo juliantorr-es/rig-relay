@@ -78,7 +78,7 @@ def test_schema_message_id_pattern_matches_implementation():
     schema_path = SCHEMA_DIR / "rig.relay.bridge_message.v1.schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     pattern = schema["properties"]["message_id"]["pattern"]
-    assert pattern == "^msg_[a-f0-9]{12,}$"
+    assert pattern == "^msg_[a-f0-9]{12,24}$"
 
 
 # ── BridgeMessage model ─────────────────────────────────────────────

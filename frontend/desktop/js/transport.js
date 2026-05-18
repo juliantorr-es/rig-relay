@@ -89,6 +89,7 @@ function _signalReady() {
   for (const msg of _outboundQueue) {
     _wsClient.send(_normalizeDesktopIntentRequest(msg));
   }
+  // ── Pre-ready queue flushed. Post-ready intent sends use protocol client.
   _outboundQueue = [];
 }
 
@@ -105,6 +106,7 @@ export function onProjectionReceived() {
     for (const msg of _outboundQueue) {
       _wsClient.send(_normalizeDesktopIntentRequest(msg));
     }
+    // ── Pre-ready queue flushed. Post-ready intent sends use protocol client.
     _outboundQueue = [];
   }
 }
@@ -226,6 +228,28 @@ export function setWsClient(client, transportAuthority) {
 // Ownership: frontend/desktop/js/transport.js
 // ════════════════════════════════════════════════════════════════
 export function sendMessage(msg) {
+  // ── Deprecated critical-message path ──
+  // Protocol client (protocol/client.js) is the canonical path for
+  // critical message kinds (intent_request, etc.). This function
+  // remains as a non-critical legacy adapter (chat_state, subscribe, etc.).
+  // Intents dispatched here are non-authoritative and may be dropped.
+
+  // Intent messages: delegate to protocol client if available
+  if (msg && msg.type === 'desktop_intent_request') {
+    var pc = (typeof window !== 'undefined') ? window.__RIG_RELAY_PROTOCOL_CLIENT__ : null;
+    if (pc && typeof pc.sendIntentRequest === 'function') {
+      var intentId = msg.intent_id || _newIntentId();
+      pc.sendIntentRequest(
+        intentId,
+        msg.intent_name || '',
+        msg.parameters || msg.payload || {},
+        'idem_' + intentId
+      );
+      return 'delegated_to_protocol';
+    }
+    // Fall through to legacy path only if protocol client unavailable
+  }
+
   const isProjReceived = _firstProjectionReceived || (_wsClient && _wsClient._firstProjectionReceived);
   if (_wsClient && _wsClient.connected && _wsClient.authenticated && isProjReceived) {
     return _wsClient.send(_normalizeDesktopIntentRequest(msg));

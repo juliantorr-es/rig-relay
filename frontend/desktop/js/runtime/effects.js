@@ -355,6 +355,19 @@ export function createEffectRunner(config = {}) {
     const intent = ctx.state?.intents?.[intentId];
     if (!intent) return;
 
+    // Delegate to protocol client if available (v1 envelope path)
+    var pc = (typeof window !== 'undefined') ? window.__RIG_RELAY_PROTOCOL_CLIENT__ : null;
+    if (pc && typeof pc.sendIntentRequest === 'function') {
+      pc.sendIntentRequest(
+        intentId,
+        intent.name || intentId,
+        intent.params || {},
+        'idem_' + intentId
+      );
+      return;
+    }
+
+    // Fallback: legacy bare-message path
     const message = {
       type: 'desktop_intent_request',
       intent_id: intentId,
@@ -363,7 +376,6 @@ export function createEffectRunner(config = {}) {
       schema_version: 'rig.relay.desktop_intent_request.v1',
       created_at: new Date().toISOString(),
     };
-
     client.send(message);
   });
 

@@ -279,6 +279,14 @@ class ProjectionWebSocketServer:
         self._invalid_message_closed_count = 0
         self._lock = asyncio.Lock()
         self._current_connection_id = ""
+        self._evidence_recorder: Any | None = None
+        self._per_connection_pending: dict[str, list[dict]] = {}
+        self._MAX_PER_CONNECTION_QUEUE = 64
+        self._NEVER_DROP_KINDS: frozenset[str] = frozenset({"error", "intent_result"})
+        self._COALESCE_KINDS: frozenset[str] = frozenset({
+            "lifecycle_event",
+            "heartbeat",
+        })
 
     def _emit_probe(self, step_id: str, label: str, details: dict[str, Any]) -> None:
         if self._probe_callback is not None:
@@ -432,7 +440,7 @@ class ProjectionWebSocketServer:
                 ack = self._wrap_envelope(
                     "heartbeat", {}, tracker, ack_for=msg.message_id
                 )
-                await _send_json(websocket, ack)
+                await self._send_with_flow_control(websocket, ack, tracker, "heartbeat")
 
             case BridgeMessageKind.INTENT_REQUEST:
                 idem_key = msg.idempotency_key or msg.payload.get("intent_id", "")
@@ -459,6 +467,118 @@ class ProjectionWebSocketServer:
 
             case _:
                 pass
+
+    async def _send_with_flow_control(
+        self,
+        websocket: Any,
+        envelope: dict[str, Any],
+        tracker: ProtocolTracker,
+        kind: str,
+    ) -> None:
+        hsid = tracker.handshake_id
+
+        if kind in self._COALESCE_KINDS and hsid in self._per_connection_pending:
+            pending = self._per_connection_pending[hsid]
+            for i in range(len(pending) - 1, -1, -1):
+                pm = pending[i]
+                if isinstance(pm, dict) and pm.get("kind") == kind:
+                    pending[i] = envelope
+                    tracker.record_coalesced(1)
+                    tc = self._get_tracker(websocket) or tracker
+                    if tc:
+                        await self._emit_protocol_evidence(
+                            tc, "flow_control", {"action": "coalesced", "kind": kind}
+                        )
+                    return
+
+        pending_list = self._per_connection_pending.setdefault(hsid, [])
+        tracker.record_queue_depth(len(pending_list) + 1)
+
+        if len(pending_list) >= self._MAX_PER_CONNECTION_QUEUE:
+            if kind in self._NEVER_DROP_KINDS:
+                self._drop_lowest_priority(hsid, kind, tracker)
+            else:
+                priority = envelope.get("priority", "normal")
+                if priority in ("low", "normal"):
+                    tracker.record_dropped(1)
+                    await self._emit_protocol_evidence(
+                        tracker,
+                        "flow_control",
+                        {
+                            "action": "dropped_incoming",
+                            "kind": kind,
+                            "priority": priority,
+                        },
+                    )
+                    return
+
+        pending_list.append(envelope)
+        await self._flush_connection_queue(websocket, tracker)
+
+    def _drop_lowest_priority(
+        self, handshake_id: str, incoming_kind: str, tracker: ProtocolTracker
+    ) -> None:
+        pending = self._per_connection_pending.get(handshake_id)
+        if not pending:
+            return
+        _priority_order = {"critical": 0, "high": 1, "normal": 2, "low": 3}
+        worst_idx = -1
+        worst_priority = -1
+        for i, msg in enumerate(pending):
+            if not isinstance(msg, dict):
+                continue
+            k = msg.get("kind", "")
+            if k in self._NEVER_DROP_KINDS:
+                continue
+            p = _priority_order.get(msg.get("priority", "normal"), 2)
+            if p > worst_priority:
+                worst_priority = p
+                worst_idx = i
+        if worst_idx >= 0:
+            pending.pop(worst_idx)
+            tracker.record_dropped(1)
+
+    async def _flush_connection_queue(
+        self, websocket: Any, tracker: ProtocolTracker
+    ) -> None:
+        pending = self._per_connection_pending.get(tracker.handshake_id)
+        if not pending:
+            return
+        while pending:
+            msg = pending.pop(0)
+            await _send_json(websocket, msg)
+        if tracker.handshake_id in self._per_connection_pending:
+            del self._per_connection_pending[tracker.handshake_id]
+
+    async def _emit_protocol_evidence(
+        self, tracker: ProtocolTracker, event_type: str, details: dict[str, Any]
+    ) -> None:
+        try:
+            from rig_relay.desktop.bridge_protocol import create_protocol_evidence_event
+
+            event = create_protocol_evidence_event(tracker, event_type, details)
+            if self._evidence_recorder is not None:
+                self._evidence_recorder.record(event_type, event)
+        except ImportError:
+            pass
+
+    async def _start_heartbeat(self, websocket: Any, tracker: ProtocolTracker) -> None:
+        try:
+            while True:
+                await asyncio.sleep(15)
+                if not tracker or websocket.closed:
+                    break
+                tracker.record_heartbeat()
+                envelope = self._wrap_envelope(
+                    kind="heartbeat", payload={}, tracker=tracker
+                )
+                await self._send_with_flow_control(
+                    websocket, envelope, tracker, "heartbeat"
+                )
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
 
     @property
     def port(self) -> int:
@@ -688,6 +808,7 @@ class ProjectionWebSocketServer:
                 return
 
         subscribe_task: asyncio.Task[None] | None = None
+        heartbeat_task: asyncio.Task[None] | None = None
         authenticated = False
         message_count = 0
         invalid_count = 0
@@ -733,6 +854,16 @@ class ProjectionWebSocketServer:
                             transport_session_id=transport_id,
                             attributes={"transport.session_id": transport_id},
                         )
+                        handshake_id = message.get("handshake_id", "")
+                        tracker = self._protocol_trackers.get(handshake_id)
+                        if not tracker and handshake_id:
+                            tracker = ProtocolTracker(handshake_id)
+                            self._protocol_trackers[handshake_id] = tracker
+                            self._ws_handshake_id[id(websocket)] = handshake_id
+                        if tracker:
+                            heartbeat_task = asyncio.ensure_future(
+                                self._start_heartbeat(websocket, tracker)
+                            )
                     continue
 
                 # Check for v1 bridge protocol envelope
@@ -842,12 +973,15 @@ class ProjectionWebSocketServer:
             pass
         finally:
             timeout_task.cancel()
+            if heartbeat_task is not None:
+                heartbeat_task.cancel()
             if subscribe_task is not None:
                 subscribe_task.cancel()
             ws_id = id(websocket)
             handshake_id = self._ws_handshake_id.pop(ws_id, None)
             if handshake_id:
                 self._protocol_trackers.pop(handshake_id, None)
+                self._per_connection_pending.pop(handshake_id, None)
             async with self._lock:
                 self._connections.discard(websocket)
                 if subscribe_task is not None and self._active_subscriptions > 0:
@@ -1078,7 +1212,9 @@ class ProjectionWebSocketServer:
                         tracker,
                         projection_sequence=tracker._projection_seq + 1,
                     )
-                    await _send_json(websocket, envelope)
+                    await self._send_with_flow_control(
+                        websocket, envelope, tracker, "projection"
+                    )
                 else:
                     await _send_json(
                         websocket,
@@ -1475,7 +1611,9 @@ class ProjectionWebSocketServer:
                         tracker,
                         projection_sequence=tracker._projection_seq + 1,
                     )
-                    await _send_json(websocket, envelope)
+                    await self._send_with_flow_control(
+                        websocket, envelope, tracker, "projection"
+                    )
                 else:
                     await _send_json(
                         websocket,

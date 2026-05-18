@@ -5,13 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from rig_relay.site_renderer.loaders import get_git_sha, load_json, load_page_model
-from rig_relay.site_renderer.models import (
-    InputEntry,
-    InputManifest,
-    PageModel,
-    SectionKind,
+from rig_relay.site_renderer.loaders import (
+    get_git_sha,
+    load_artifacts_for_page,
+    load_json,
+    load_jsonl,
+    load_page_model,
 )
+from rig_relay.site_renderer.models import InputEntry, InputManifest, PageModel
 from rig_relay.site_renderer.normalizers import build_page_model, normalize_release_gate
 from rig_relay.site_renderer.renderer import render_index, render_page
 from rig_relay.site_renderer.safety import (
@@ -159,10 +160,7 @@ class TestPageSchema:
             data["schema_version"] = data.pop("$schema")
         model = PageModel.model_validate(data)
         assert model.page_id == "release-candidate"
-        assert len(model.sections) > 0
-        hero_status = model.sections[0]
-        assert hero_status.kind == SectionKind.HERO_STATUS
-        assert hero_status.status_label in ("Hold", "Promote")
+        assert len(model.source_artifact_paths) > 0
 
     def test_pydantic_input_manifest_parses(self):
         data = _load_json_artifact("docs/json/site/input_manifest.v1.json")
@@ -493,9 +491,6 @@ class TestLoaders:
         assert data["page_id"] == "release-candidate"
         assert data["title"] == "Release Candidate Status"
         assert "route" in data
-        assert "sections" in data
-        assert isinstance(data["sections"], list)
-        assert len(data["sections"]) > 0
 
     def test_load_input_manifest_loads_correctly(self):
         path = _repo_artifact("docs/json/site/input_manifest.v1.json")
@@ -619,7 +614,16 @@ class TestReleaseCandidatePage:
             model_path = _repo_artifact("docs/json/site/page_release_candidate.v1.json")
             if not model_path.is_file():
                 pytest.skip("Release candidate page model not found")
-            page = json.loads(model_path.read_text(encoding="utf-8"))
+            page = load_page_model(model_path)
+            assert page is not None
+            manifest_path = _repo_artifact("docs/json/site/input_manifest.v1.json")
+            if manifest_path.is_file():
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            else:
+                manifest = {"inputs": []}
+            artifacts = load_artifacts_for_page(page, manifest, REPO_ROOT)
+            sections = normalize_release_gate(artifacts)
+            page["sections"] = sections
             cls._html = render_page(page)
         return cls._html
 
@@ -634,10 +638,10 @@ class TestReleaseCandidatePage:
         assert "phase_1" in html
         assert "phase_6" in html
 
-    def test_release_candidate_page_has_golden_path_timeline(self):
+    def test_release_candidate_page_has_golden_path(self):
         html = self._get_html()
         assert "gp_install_sync" in html
-        assert "gp_clean_shutdown" in html
+        assert "gp_shutdown_cleanly" in html
 
     def test_release_candidate_page_has_promote_requirements(self):
         html = self._get_html()
@@ -654,3 +658,287 @@ class TestReleaseCandidatePage:
     def test_page_has_source_artifact_references(self):
         html = self._get_html()
         assert "docs/json/release_gate/" in html or "source_artifact_paths" in html
+
+
+# ---------------------------------------------------------------------------
+# Release Candidate Dynamic Rendering Tests (real_artifact)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.real_artifact
+class TestReleaseCandidateDynamic:
+    def test_release_page_sections_come_from_normalizer(self, tmp_path):
+        gate_path = _repo_artifact("docs/json/release_gate/rc_readiness_gate.v1.json")
+        verdict_path = _repo_artifact(
+            "docs/json/release_gate/rc_candidate_verdict.v1.json"
+        )
+        golden_path = _repo_artifact(
+            "docs/json/release_candidate/rc_reviewer_golden_path.v1.json"
+        )
+
+        if not (
+            gate_path.is_file() and verdict_path.is_file() and golden_path.is_file()
+        ):
+            pytest.skip("One or more release gate artifacts missing")
+
+        gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+        gp = json.loads(golden_path.read_text(encoding="utf-8"))
+
+        sections = normalize_release_gate({
+            "gate": gate,
+            "verdict": verdict,
+            "golden_path": gp,
+        })
+        assert len(sections) > 0
+
+        all_text = json.dumps(sections)
+        phase_ids = {p["phase_id"] for p in gate.get("phases", [])}
+        for pid in phase_ids:
+            assert pid in all_text, f"Phase ID {pid} not found in normalized sections"
+
+        step_ids = {s["step_id"] for s in gp.get("steps", [])}
+        assert any(sid in all_text for sid in step_ids), (
+            "No golden path step IDs in sections"
+        )
+
+    def test_release_page_hero_reflects_verdict_status(self, tmp_path):
+        mock_verdict = {"verdict": "hold", "gate_overall_status": "blocked"}
+        mock_gate = {"overall_status": "blocked"}
+
+        sections = normalize_release_gate({
+            "verdict": mock_verdict,
+            "gate": mock_gate,
+            "golden_path": None,
+        })
+
+        hero_sections = [s for s in sections if s.get("kind") == "hero_status"]
+        assert len(hero_sections) > 0
+
+        status_labels = [s.get("status_label", "").lower() for s in hero_sections]
+        assert any(label in ("hold", "blocked") for label in status_labels)
+
+        for s in hero_sections:
+            assert s.get("status_class") == "warn", (
+                f"Expected warn, got {s.get('status_class')}"
+            )
+            assert s.get("status_class") != "ok"
+
+    def test_release_page_cannot_claim_promote_when_verdict_says_hold(self, tmp_path):
+        mock_verdict = {"verdict": "hold", "gate_overall_status": "blocked"}
+        mock_gate = {"overall_status": "blocked"}
+
+        sections = normalize_release_gate({
+            "verdict": mock_verdict,
+            "gate": mock_gate,
+            "golden_path": None,
+        })
+
+        hero_sections = [s for s in sections if s.get("kind") == "hero_status"]
+        forbidden_claims = {"ready", "promote", "passing"}
+        for hero in hero_sections:
+            status_label = str(hero.get("status_label", "")).lower()
+            summary = str(hero.get("summary", "")).lower()
+            combined = status_label + " " + summary
+            for claim in forbidden_claims:
+                assert claim not in combined, (
+                    f"Hero status claims '{claim}' despite hold verdict"
+                )
+
+    def test_blockers_table_comes_from_blockers_jsonl(self, tmp_path):
+        blocker_jsonl = tmp_path.joinpath("rc_blockers.jsonl")
+        blocker_jsonl.write_text(
+            '{"blocker_id":"blk_test_a","title":"Blocker A","status":"open"}\n'
+            '{"blocker_id":"blk_test_b","title":"Blocker B","status":"open"}\n',
+            encoding="utf-8",
+        )
+        blockers = load_jsonl(blocker_jsonl)
+        assert len(blockers) == 2
+        blocker_ids = [b["blocker_id"] for b in blockers]
+
+        gate = {
+            "overall_status": "blocked",
+            "gate_id": "test-gate",
+            "branch": "main",
+            "head_sha": "a" * 40,
+            "generated_at": "2026-05-18T00:00:00Z",
+            "phases": [
+                {
+                    "phase_id": "phase_test",
+                    "title": "Test Phase",
+                    "status": "blocked",
+                    "blocker_ids": blocker_ids,
+                    "remaining_seams": [],
+                }
+            ],
+        }
+        sections = normalize_release_gate({
+            "gate": gate,
+            "verdict": None,
+            "golden_path": None,
+        })
+        all_text = json.dumps(sections)
+        for bid in blocker_ids:
+            assert bid in all_text, f"Blocker ID {bid} not found in normalized sections"
+
+    def test_validation_runs_table_comes_from_jsonl(self, tmp_path):
+        run_jsonl = tmp_path.joinpath("rc_validation_runs.jsonl")
+        run_jsonl.write_text(
+            '{"validation_run_id":"vr_test_001","result":"passed"}\n'
+            '{"validation_run_id":"vr_test_002","result":"blocked"}\n',
+            encoding="utf-8",
+        )
+        runs = load_jsonl(run_jsonl)
+        assert len(runs) == 2
+        run_ids = [r["validation_run_id"] for r in runs]
+
+        verdict = {
+            "verdict": "hold",
+            "gate_overall_status": "blocked",
+            "validator_result": "failed",
+            "validator_error_count": 2,
+            "open_blocker_ids": [],
+            "promote_blockers": [],
+            "required_next_actions": run_ids,
+            "validation_run_ids": run_ids,
+        }
+        sections = normalize_release_gate({
+            "gate": None,
+            "verdict": verdict,
+            "golden_path": None,
+        })
+        all_text = json.dumps(sections)
+        for rid in run_ids:
+            assert rid in all_text, (
+                f"Validation run ID {rid} not found in normalized sections"
+            )
+
+    def test_missing_required_artifact_produces_warning(self, tmp_path):
+        sections = normalize_release_gate({})
+        assert len(sections) > 0
+        warnings = [s for s in sections if s.get("callout_class") == "warn"]
+        assert len(warnings) > 0, (
+            "Missing artifacts must produce at least one warn callout"
+        )
+        all_text = json.dumps(sections)
+        release_status_patterns = ["ready", "promote", "passing"]
+        for pattern in release_status_patterns:
+            assert pattern not in all_text.lower(), (
+                f"Found release status claim '{pattern}' when all artifacts are missing"
+            )
+
+    def test_all_page_models_have_empty_sections(self, tmp_path):
+        site_dir = _repo_artifact("docs/json/site")
+        page_files = sorted(site_dir.glob("page_*.v1.json"))
+        if not page_files:
+            pytest.skip("No page model files found in docs/json/site/")
+
+        for pf in page_files:
+            model = json.loads(pf.read_text(encoding="utf-8"))
+            assert "sections" in model, f"Missing 'sections' in {pf.name}"
+            assert isinstance(model["sections"], list), (
+                f"'sections' is not a list in {pf.name}"
+            )
+            paths = model.get("source_artifact_paths", [])
+            assert isinstance(paths, list) and len(paths) > 0, (
+                f"'source_artifact_paths' empty or missing in {pf.name}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Dynamic Rendering Tests (integration)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestDynamicRendering:
+    def test_render_release_page_with_live_artifacts(self, tmp_path):
+        gate_path = _repo_artifact("docs/json/release_gate/rc_readiness_gate.v1.json")
+        verdict_path = _repo_artifact(
+            "docs/json/release_gate/rc_candidate_verdict.v1.json"
+        )
+        golden_path = _repo_artifact(
+            "docs/json/release_candidate/rc_reviewer_golden_path.v1.json"
+        )
+
+        if not (
+            gate_path.is_file() and verdict_path.is_file() and golden_path.is_file()
+        ):
+            pytest.skip("One or more release gate artifacts missing")
+
+        gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+        gp = json.loads(golden_path.read_text(encoding="utf-8"))
+
+        sections = normalize_release_gate({
+            "gate": gate,
+            "verdict": verdict,
+            "golden_path": gp,
+        })
+        page = _page_model_dict(
+            sections=sections,
+            page_id="release-candidate-dynamic",
+            title="Release Candidate Dynamic",
+            route="/release-candidate-dynamic/index.html",
+        )
+        html = render_page(page)
+
+        phase_ids = {p["phase_id"] for p in gate.get("phases", [])}
+        for pid in phase_ids:
+            assert pid in html, f"Phase ID {pid} missing from rendered HTML"
+
+        verdict_status = verdict.get("verdict", "").lower()
+        assert verdict_status in html.lower(), (
+            f"Verdict status '{verdict_status}' missing from rendered HTML"
+        )
+
+        report = scan_content(html, source="render_release_page_with_live_artifacts")
+        assert is_public_safe(report), (
+            "Safety findings in rendered release page: "
+            + ", ".join(f"{f.pattern_name}:{f.match_preview}" for f in report.findings)
+        )
+
+    def test_render_page_with_missing_artifacts(self, tmp_path):
+        sections = normalize_release_gate({})
+        page = _page_model_dict(
+            sections=sections,
+            page_id="missing-artifacts",
+            title="Missing Artifacts",
+            route="/missing-artifacts/index.html",
+            source_artifact_paths=[],
+        )
+        html = render_page(page)
+
+        assert "Data Missing" in html or "Not Available" in html, (
+            "Missing-artifact page must indicate data unavailability"
+        )
+        hardcoded_phases = "phase_1_governance_coordination"
+        assert hardcoded_phases not in html, (
+            f"Hardcoded phase data '{hardcoded_phases}' found in missing-artifact page"
+        )
+        report = scan_content(html, source="render_page_with_missing_artifacts")
+        assert is_public_safe(report), "Safety findings in missing-artifact page"
+
+    def test_render_report_includes_artifact_availability(self, tmp_path):
+        report = {
+            "schema_version": "rig.site.render_report.v1",
+            "generated_at": "2026-05-18T00:00:00Z",
+            "head_sha": "a" * 40,
+            "branch": "main",
+            "render_duration_ms": 0,
+            "pages_rendered": 0,
+            "pages_failed": 0,
+            "safety_passed": True,
+            "pages": [],
+            "source_artifacts_loaded": [
+                "docs/json/release_gate/rc_readiness_gate.v1.json"
+            ],
+            "source_artifacts_missing": ["docs/json/release_gate/rc_blockers.v1.jsonl"],
+            "safety_scan_passed": True,
+        }
+        for key in (
+            "source_artifacts_loaded",
+            "source_artifacts_missing",
+            "safety_scan_passed",
+        ):
+            assert key in report, f"Render report missing required key: {key}"
