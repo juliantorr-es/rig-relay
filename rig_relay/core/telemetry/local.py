@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 import uuid
@@ -31,6 +32,24 @@ class ContextAccounting(BaseModel):
 
 from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
 
+_telemetry_enabled: bool = True
+_degradation_marker_written: set[str] = set()
+DEGRADATION_MARKER_FILENAME = "telemetry_degradation.json"
+
+
+def set_telemetry_enabled(enabled: bool) -> None:
+    global _telemetry_enabled
+    _telemetry_enabled = enabled
+
+
+def is_telemetry_enabled() -> bool:
+    env_value = os.environ.get("RIG_TELEMETRY_ENABLED", "").strip().lower()
+    if env_value in {"0", "false", "no", "off"}:
+        return False
+    if env_value in {"1", "true", "yes", "on"}:
+        return True
+    return _telemetry_enabled
+
 
 def dump_canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -43,6 +62,56 @@ def get_observability_log_path(session_id: str) -> Path:
     return base / "observability.jsonl"
 
 
+def get_degradation_marker_path(session_id: str) -> Path:
+    base = SESSIONS_ROOT.path / session_id
+    base.mkdir(parents=True, exist_ok=True)
+    return base / DEGRADATION_MARKER_FILENAME
+
+
+def write_degradation_marker(session_id: str) -> Path | None:
+    path = get_degradation_marker_path(session_id)
+    if session_id in _degradation_marker_written:
+        return path
+    marker = {
+        "schema_version": "rig.relay.telemetry_degradation.v1",
+        "session_id": session_id,
+        "degradation_mode": "disabled",
+        "degradation_reason": "Telemetry disabled — harness operating in reduced-adaptation mode",
+        "generated_at": datetime.now(UTC).isoformat(),
+        "preserved_capabilities": [
+            "core_harness_execution",
+            "local_static_validation",
+            "frontend_basic_operation",
+        ],
+        "degraded_capabilities": [
+            "adaptive_diagnostics",
+            "ux_optimization",
+            "agent_tool_optimization",
+            "ralph_refinement",
+            "orchestrator_adaptation",
+            "subagent_behavior_refinement",
+        ],
+        "disabled_capabilities": ["telemetry_bundle_export", "debug_packet_export"],
+        "export_allowed": False,
+        "debug_quarantine_enabled": True,
+    }
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(dump_canonical_json(marker) + "\n", encoding="utf-8")
+    tmp.rename(path)
+    _degradation_marker_written.add(session_id)
+    return path
+
+
+def read_degradation_marker(session_id: str) -> dict[str, Any] | None:
+    path = get_degradation_marker_path(session_id)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def log_local_event(
     session_id: str,
     event_name: str,
@@ -51,6 +120,10 @@ def log_local_event(
     receipt_candidate: bool = False,
 ) -> None:
     """Write a telemetry event to the local JSONL sink with a formal envelope."""
+    if not is_telemetry_enabled():
+        write_degradation_marker(session_id)
+        return
+
     path = get_observability_log_path(session_id)
 
     # 1. Determine sequence (simple line count)

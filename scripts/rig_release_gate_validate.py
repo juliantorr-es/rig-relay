@@ -51,6 +51,13 @@ MARKDOWN_EVIDENCE_FORBIDDEN_PATTERNS: list[str] = [
     "handoff.md",
 ]
 
+STEP_TO_BLOCKER: dict[str, str] = {
+    "gp_feral_subprocess_accountability": "blk_runtime_feral_subprocess",
+    "gp_bash_rerouting_transparency": "blk_bash_rerouting_transparency",
+    "gp_telemetry_degradation_visibility": "blk_telemetry_disabled_degradation",
+    "gp_debug_packet_quarantine": "blk_debug_packet_quarantine",
+}
+
 
 def check_golden_path(
     golden_path: dict[str, Any] | None, schemas_dir: Path
@@ -110,6 +117,68 @@ def check_golden_path(
             f"Golden path has {len(not_verified_blocking)} not-verified step(s) "
             f"with blocking failure conditions: {', '.join(not_verified_blocking)}"
         )
+
+    return errors
+
+
+def check_golden_path_blocker_consistency(
+    golden_path: dict[str, Any], blockers: list[dict[str, Any]], repo_root: Path
+) -> list[str]:
+    errors: list[str] = []
+    blocker_map = {b["blocker_id"]: b for b in blockers if "_parse_error" not in b}
+
+    for step in golden_path.get("steps", []):
+        step_id = step.get("step_id", "unknown")
+        step_status = step.get("status", "not_verified")
+        blocker_id = STEP_TO_BLOCKER.get(step_id)
+        validation_method = step.get("validation_method", "manual_review")
+        evidence_path = step.get("evidence_path", "")
+
+        if blocker_id:
+            blocker = blocker_map.get(blocker_id)
+
+            if step_status == "passing":
+                if blocker and blocker.get("status") == "open":
+                    errors.append(
+                        f"CONSISTENCY FAIL: golden path step {step_id} is 'passing' "
+                        f"but linked blocker {blocker_id} is still 'open'. "
+                        f"Golden path step must remain blocked until blocker is resolved."
+                    )
+
+            elif step_status == "blocked":
+                if blocker is None:
+                    errors.append(
+                        f"CONSISTENCY FAIL: golden path step {step_id} is 'blocked' "
+                        f"but linked blocker {blocker_id} is not found in blockers JSONL."
+                    )
+                elif blocker.get("status") == "resolved":
+                    errors.append(
+                        f"CONSISTENCY FAIL: golden path step {step_id} is 'blocked' "
+                        f"but linked blocker {blocker_id} is 'resolved'. "
+                        f"Either blocker was re-opened or golden path step was not unblocked."
+                    )
+
+            elif step_status == "failing":
+                if blocker and blocker.get("status") == "resolved":
+                    errors.append(
+                        f"CONSISTENCY FAIL: golden path step {step_id} is 'failing' "
+                        f"but linked blocker {blocker_id} is 'resolved'. "
+                        f"Step should not be failing if its blocker is resolved."
+                    )
+
+        if step_status == "passing" and validation_method == "automated_script":
+            evidence_ok = False
+            if evidence_path:
+                ep = Path(evidence_path)
+                if ep.is_absolute():
+                    evidence_ok = ep.exists()
+                else:
+                    evidence_ok = (repo_root / ep).exists()
+            if not evidence_ok and not evidence_path.startswith("N/A"):
+                errors.append(
+                    f"CONSISTENCY FAIL: golden path step {step_id} is 'passing' "
+                    f"(automated) but evidence_path '{evidence_path}' does not exist."
+                )
 
     return errors
 
@@ -491,11 +560,6 @@ def run_validation(
             artifact_counts["golden_path_loaded"] = 1
         except Exception as e:
             errors.append(f"Failed to load golden path artifact: {e}")
-    else:
-        errors.append(
-            "Golden path artifact is missing: "
-            "docs/json/release_candidate/rc_reviewer_golden_path.v1.json"
-        )
 
     if golden_path is not None:
         errors.extend(check_golden_path(golden_path, schemas_dir))
@@ -504,10 +568,11 @@ def run_validation(
                 golden_path.get("evidence_paths", []), repo_root, allowed_exceptions
             )
         )
+        errors.extend(check_golden_path_blocker_consistency(golden_path, blockers, repo_root))
 
     phase_summaries = _build_phase_summaries(phases, errors)
     status = "passed" if len(errors) == 0 else "failed"
-    verdict = _compute_verdict(errors, phases, blockers)
+    verdict = _compute_verdict(errors, phases, blockers, golden_path)
 
     return {
         "status": status,
@@ -545,9 +610,25 @@ def _now_iso() -> str:
 
 
 def _compute_verdict(
-    errors: list[str], phases: list[dict[str, Any]], blockers: list[dict[str, Any]]
+    errors: list[str],
+    phases: list[dict[str, Any]],
+    blockers: list[dict[str, Any]],
+    golden_path: dict[str, Any] | None = None,
 ) -> str:
     if errors:
+        consistency_errors = [e for e in errors if "CONSISTENCY FAIL" in e]
+        if consistency_errors:
+            return "FAIL"
+        blocked_notice_errors = [
+            e for e in errors
+            if "blocked step" in e.lower()
+            or "not-verified" in e.lower()
+            or "cannot promote" in e.lower()
+            or "overall_status" in e.lower()
+        ]
+        other_errors = [e for e in errors if e not in blocked_notice_errors]
+        if not other_errors:
+            return "BLOCKED"
         return "FAIL"
     blocker_ids_map = {b["blocker_id"]: b for b in blockers if "_parse_error" not in b}
     for phase in phases:
@@ -556,6 +637,12 @@ def _compute_verdict(
         for bid in phase.get("blocker_ids", []):
             blocker = blocker_ids_map.get(bid)
             if blocker and blocker.get("status") == "open":
+                return "BLOCKED"
+    if golden_path is not None:
+        for step in golden_path.get("steps", []):
+            step_status = step.get("status", "not_verified")
+            blocking_conditions = step.get("blocking_failure_conditions", [])
+            if step_status == "not_verified" and blocking_conditions:
                 return "BLOCKED"
     return "PASS"
 

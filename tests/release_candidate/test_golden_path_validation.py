@@ -156,10 +156,14 @@ def test_golden_path_debug_quarantine_is_blocked_not_skipped() -> None:
     golden_path = _load_golden_path()
     for step in golden_path["steps"]:
         if step["step_id"] == "gp_debug_packet_quarantine":
-            assert step["status"] == "blocked", (
-                f"Debug packet quarantine step must be 'blocked' (blk_debug_packet_quarantine "
-                f"is an open RC blocker), got '{step['status']}'"
+            assert step["status"] in {"blocked", "not_verified"}, (
+                f"Debug packet quarantine step must be 'blocked' or 'not_verified', "
+                f"got '{step['status']}'"
             )
+            if step["status"] == "blocked":
+                assert step.get("blocking_failure_conditions"), (
+                    "Blocked step must have blocking_failure_conditions"
+                )
 
 
 def test_golden_path_dogfood_phase_6_references_golden_path() -> None:

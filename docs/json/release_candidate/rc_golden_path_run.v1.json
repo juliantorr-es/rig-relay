@@ -1,0 +1,225 @@
+{
+  "automated_steps_passed": 5,
+  "automated_steps_total": 5,
+  "blocked_steps": [],
+  "blockers_loaded": 9,
+  "branch": "main",
+  "commands_run": [
+    "load: docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
+    "load: docs/json/release_gate/rc_blockers.v1.jsonl"
+  ],
+  "consistency_errors": [],
+  "evidence_paths": [
+    "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
+    "docs/json/release_candidate/rc_installability_verdict.v1.json",
+    "docs/json/release_gate/rc_blockers.v1.jsonl",
+    "docs/json/release_gate/rc_candidate_verdict.v1.json",
+    "docs/json/release_gate/rc_readiness_gate.v1.json"
+  ],
+  "generated_at": "2026-05-18T02:32:58Z",
+  "head_sha": "7a6b4947c6fdbcaaec5500ae65bf29a6063bce3b",
+  "manual_steps_not_verified": 6,
+  "manual_steps_total": 6,
+  "missing_evidence": [
+    "gp_launch_server",
+    "gp_run_real_work_lane",
+    "gp_telemetry_degradation_visibility",
+    "gp_structured_evidence_inspection",
+    "gp_shutdown_cleanly"
+  ],
+  "open_blocker_count": 0,
+  "open_blocker_ids": [],
+  "overall_status": "manual_required",
+  "required_next_actions": [
+    "Human reviewer must exercise and verify manual golden path steps",
+    "Run server/frontend product path: launch server, cockpit, run real work lane"
+  ],
+  "schema_version": "rig.release_candidate.golden_path_run.v1",
+  "server_frontend_product_path": {
+    "bridge_server_exists": true,
+    "frontend_index_exists": true,
+    "product_path_tests_exist": true,
+    "projection_schema_exists": true,
+    "websocket_server_exists": true
+  },
+  "step_results": [
+    {
+      "automated_check_passed": true,
+      "can_automate": true,
+      "detail": "Installability verdict exists and passed",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_install_sync",
+      "validation_method": "automated_script"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": false,
+      "detail": "README.md exists with expected content",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_understand_product",
+      "validation_method": "manual_review"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path NOT FOUND: N/A (requires live server log capture)",
+      "evidence_exists": false,
+      "server_frontend_path": true,
+      "status": "not_verified",
+      "step_id": "gp_launch_server",
+      "validation_method": "manual_review"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path exists: frontend/desktop/index.html",
+      "evidence_exists": true,
+      "server_frontend_path": true,
+      "status": "not_verified",
+      "step_id": "gp_launch_frontend",
+      "validation_method": "manual_review"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": false,
+      "detail": "Frontend assets, projection schema, product-path tests, and bridge server all exist",
+      "evidence_exists": true,
+      "server_frontend_path": true,
+      "status": "not_verified",
+      "step_id": "gp_frontend_primary_surface",
+      "validation_method": "manual_review"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path NOT FOUND: ~/.rig/relay/sessions/<id>/observability.jsonl",
+      "evidence_exists": false,
+      "server_frontend_path": true,
+      "status": "not_verified",
+      "step_id": "gp_run_real_work_lane",
+      "validation_method": "receipt_inspection"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": true,
+      "detail": "Evidence path exists: tests/runtime/test_feral_subprocess_accountability.py",
+      "evidence_exists": true,
+      "linked_blocker_id": "blk_runtime_feral_subprocess",
+      "linked_blocker_status": "resolved",
+      "server_frontend_path": false,
+      "status": "passing",
+      "step_id": "gp_feral_subprocess_accountability",
+      "validation_method": "automated_script"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path exists: docs/schemas/rig.relay.bash_receipt.v1.schema.json",
+      "evidence_exists": true,
+      "linked_blocker_id": "blk_bash_rerouting_transparency",
+      "linked_blocker_status": "resolved",
+      "server_frontend_path": false,
+      "status": "passing",
+      "step_id": "gp_bash_rerouting_transparency",
+      "validation_method": "receipt_inspection"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path NOT FOUND: ~/.rig/relay/sessions/<id>/observability.jsonl",
+      "evidence_exists": false,
+      "linked_blocker_id": "blk_telemetry_disabled_degradation",
+      "linked_blocker_status": "resolved",
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_telemetry_degradation_visibility",
+      "validation_method": "log_assertion"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path exists: tests/context/test_get_context_integration.py",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_context_assembler_availability",
+      "validation_method": "receipt_inspection"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path NOT FOUND: .rig/reports/reports.jsonl",
+      "evidence_exists": false,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_structured_evidence_inspection",
+      "validation_method": "receipt_inspection"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": true,
+      "detail": "No forbidden Markdown evidence paths found in golden path evidence_paths",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_no_markdown_evidence_leakage",
+      "validation_method": "automated_script"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": true,
+      "detail": "Evidence path exists: tests/telemetry/test_quarantine.py",
+      "evidence_exists": true,
+      "linked_blocker_id": "blk_debug_packet_quarantine",
+      "linked_blocker_status": "resolved",
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_debug_packet_quarantine",
+      "validation_method": "automated_script"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path exists: tests/coordination/test_watcher.py",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_coordination_watchable",
+      "validation_method": "receipt_inspection"
+    },
+    {
+      "automated_check_passed": false,
+      "can_automate": false,
+      "detail": "Evidence path NOT FOUND: N/A (requires live shutdown log capture)",
+      "evidence_exists": false,
+      "server_frontend_path": true,
+      "status": "not_verified",
+      "step_id": "gp_shutdown_cleanly",
+      "validation_method": "manual_review"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": false,
+      "detail": "Blockers and deferred risks artifacts exist",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_see_blocked_deferred_state",
+      "validation_method": "manual_review"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": true,
+      "detail": "Validator verdict=BLOCKED, errors=3",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_release_gate_validator_baseline",
+      "validation_method": "automated_script"
+    }
+  ]
+}

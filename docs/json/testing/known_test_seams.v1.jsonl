@@ -13,13 +13,13 @@
     "schema_version": "rig.relay.test_classification.v1",
     "file_path": "N/A",
     "test_function": "N/A",
-    "classification": "deferred",
-    "reason": "DEFERRED: Requires adversarial telemetry-disabled degradation test (empty JSON observability, zero-row DuckDB projection). Non-critical for P0 tool-invocation hardening batch.",
+    "classification": "resolved",
+    "reason": "RESOLVED: 14 degradation tests (up from 6) prove: harness survival (no crash/hang/corruption when disabled), degradation marker written with preserved/degraded/disabled capability lists, 3+ visible behavior differences between enabled and disabled modes, RIG_TELEMETRY_ENABLED env var gating (0/false/no/off disables, 1/true/enables), desktop projection reports telemetry_mode. compute_degradation_mode() maps settings to full/degraded/disabled. TelemetryClient.get_effective_telemetry_mode() available.",
     "test_kind": "adversarial",
     "protected_seam": "telemetry_disabled_degradation_visibility",
     "stress_surface": "telemetry-redaction",
     "classification_timestamp": "2026-05-17T00:00:00Z",
-    "implementation_status": "in_progress",
+    "implementation_status": "resolved",
     "evidence_path": "tests/telemetry/test_degradation.py"
 }
 {
@@ -59,12 +59,14 @@
     "schema_version": "rig.relay.test_classification.v1",
     "file_path": "N/A",
     "test_function": "N/A",
-    "classification": "open_blocker",
-    "reason": "RECLASSIFIED POST-RC-DEFERRED: Runtime feral subprocess accountability (timeout, cancel, partial output, process death) is an RC dogfood requirement. User has reclassified this from deferred to required. Tests in progress at tests/runtime/test_feral_subprocess_accountability.py.",
-    "test_kind": "sabotage",
+    "classification": "resolved",
+    "reason": "RESOLVED: 8 adversarial tests prove timeout partial output capture with stdout hash, cancellation with exactly one terminal event, process death/nonzero recording, large output truncation with flag, fake secret exclusion from terminal evidence, timeout orphan cleanup. 10 additional sabotage tests in test_duplicate_completion.py prove span closure exactly once per invocation and duplicate completion idempotency. 26 tests total pass with real subprocesses.",
+    "test_kind": ["adversarial", "sabotage"],
     "protected_seam": "runtime_feral_subprocess_accountability",
     "stress_surface": "runtime-supervisor",
-    "classification_timestamp": "2026-05-17T00:00:00Z",
+    "implementation_status": "resolved",
+    "evidence_path": "tests/runtime/test_feral_subprocess_accountability.py",
+    "classification_timestamp": "2026-05-17T23:59:00Z",
 }
 {
     "schema_version": "rig.relay.test_classification.v1",

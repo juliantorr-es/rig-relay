@@ -33,6 +33,7 @@ from rig_relay.core.tools.permissions import (
     PermissionScope,
     RequiredPermission,
 )
+from rig_relay.core.tools.reroute import BashRerouteMetadata, try_reroute
 from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from rig_relay.core.tools.utils import is_path_within_workdir
 from rig_relay.core.types import ToolResultEvent, ToolStreamEvent
@@ -279,6 +280,7 @@ class BashResult(BaseModel):
     supervisor_result_envelope: dict[str, object] | None = None
     supervisor_result_envelope_sha256: str | None = None
     supervisor_result_classification: str | None = None
+    reroute: BashRerouteMetadata | None = None
 
 
 class BashReceipt(BaseModel):
@@ -306,6 +308,7 @@ class BashReceipt(BaseModel):
     supervisor_result_envelope_sha256: str | None = None
     supervisor_result_envelope_id: str | None = None
     supervisor_result_classification: str | None = None
+    reroute: BashRerouteMetadata | None = None
 
 
 class Bash(
@@ -334,6 +337,16 @@ class Bash(
     @classmethod
     def get_status_text(cls) -> str:
         return "Running command"
+
+    @staticmethod
+    def _extract_reroute_stdout(events: list[Any]) -> str:
+        if not events:
+            return ""
+        last = events[-1]
+        for attr in ("stdout", "content", "matches"):
+            if hasattr(last, attr) and (val := getattr(last, attr)):
+                return str(val)
+        return ""
 
     @staticmethod
     def _has_find_execution_predicate(command: str) -> bool:
@@ -632,6 +645,7 @@ class Bash(
                 else None
             ),
             supervisor_result_classification=result.supervisor_result_classification,
+            reroute=result.reroute,
         )
 
     @final
@@ -789,13 +803,40 @@ class Bash(
 
         # ── Command rerouting ─────────────────────────────────
         # Check if the command is better handled by a dedicated tool
-        from rig_relay.core.tools.reroute import try_reroute
-
-        rerouted, result_model, events = await try_reroute(args.command, ctx)
+        rerouted, result_model, events, reroute_meta = await try_reroute(
+            args.command, ctx
+        )
         if rerouted:
+            yield BashResult(
+                command=args.command,
+                stdout=self._extract_reroute_stdout(events),
+                stderr="",
+                returncode=0,
+                status="success",
+                duration_ms=(time.perf_counter() - start) * 1000,
+                reroute=reroute_meta,
+            )
             for event in events:
                 yield event
             return
+
+        if reroute_meta.raw_bash_skipped:
+            elapsed = (time.perf_counter() - start) * 1000
+            yield BashResult(
+                command=args.command,
+                stdout="",
+                stderr="",
+                returncode=-1,
+                status="refused",
+                duration_ms=elapsed,
+                error_kind="refused",
+                refusal_reason=reroute_meta.refusal_reason,
+                reroute=reroute_meta,
+            )
+            return
+
+        for event in events:
+            yield event
 
         guard = get_guard()
         is_destructive, reason = guard.is_destructive_git_command(args.command)
@@ -814,6 +855,7 @@ class Bash(
                 stderr_truncated=False,
                 error_kind="refused",
                 refusal_reason=reason,
+                reroute=reroute_meta,
             )
             return
 
@@ -844,12 +886,12 @@ class Bash(
                     max_stderr=max_stderr_cap,
                     start=start,
                 )
+                result.reroute = reroute_meta
                 yield result
                 return
             else:
                 # Shell features detected — refuse under supervised path
                 elapsed = (time.perf_counter() - start) * 1000
-                features_str = ", ".join(shell_check.detected_features)
                 yield BashResult(
                     command=args.command,
                     stdout="",
@@ -865,8 +907,9 @@ class Bash(
                     refusal_reason=(
                         f"Shell features require explicit policy and are not executed "
                         f"by the supervised subprocess runner. "
-                        f"Detected: {features_str}"
+                        f"Detected: {', '.join(shell_check.detected_features)}"
                     ),
+                    reroute=reroute_meta,
                 )
                 return
 
@@ -879,6 +922,7 @@ class Bash(
                 max_stderr=max_stderr_cap,
                 start=start,
             )
+            result.reroute = reroute_meta
             yield result
         except (ToolError, asyncio.CancelledError):
             raise
@@ -897,4 +941,5 @@ class Bash(
                 stderr_truncated=False,
                 error_kind="internal_error",
                 refusal_reason=str(exc),
+                reroute=reroute_meta,
             )

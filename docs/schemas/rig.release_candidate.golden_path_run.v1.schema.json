@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.dev/schemas/rig.release_candidate.golden_path_run.v1.schema.json",
+  "title": "Rig Relay RC Golden Path Run v1",
+  "description": "Structured output from the golden path executor/checker script (scripts/rig_rc_golden_path_check.py). Captures automated check results and distinguishes them from manual steps and blocked steps.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "branch",
+    "head_sha",
+    "overall_status",
+    "automated_steps_total",
+    "automated_steps_passed",
+    "manual_steps_total",
+    "manual_steps_not_verified",
+    "blocked_steps",
+    "missing_evidence",
+    "commands_run",
+    "evidence_paths",
+    "required_next_actions",
+    "step_results",
+    "consistency_errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.release_candidate.golden_path_run.v1"]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this run was generated."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch at run time."
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 40,
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["passed", "blocked", "failed", "manual_required"],
+      "description": "Aggregate status. 'passed' means all blocking automated steps pass and all blocked steps have matching open blockers. 'blocked' means at least one blocking step is blocked. 'failed' means inconsistency or missing evidence. 'manual_required' means human reviewer must exercise remaining steps."
+    },
+    "automated_steps_total": {
+      "type": "integer",
+      "min_capacity": 0,
+      "description": "Total number of steps with automated validation_method."
+    },
+    "automated_steps_passed": {
+      "type": "integer",
+      "min_capacity": 0,
+      "description": "Number of automated steps that passed."
+    },
+    "manual_steps_total": {
+      "type": "integer",
+      "min_capacity": 0,
+      "description": "Total number of steps requiring manual review."
+    },
+    "manual_steps_not_verified": {
+      "type": "integer",
+      "min_capacity": 0,
+      "description": "Number of manual steps still not_verified."
+    },
+    "blocked_steps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "step_ids of blocked golden path steps."
+    },
+    "missing_evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Evidence paths referenced by steps that do not exist on disk."
+    },
+    "commands_run": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Commands executed during this run."
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to all evidence artifacts produced or referenced."
+    },
+    "required_next_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable actions required before PROMOTE."
+    },
+    "step_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step_id", "status", "validation_method", "can_automate"],
+        "properties": {
+          "step_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["passing", "blocked", "failing", "not_verified"] },
+          "validation_method": { "type": "string" },
+          "can_automate": { "type": "boolean" },
+          "automated_check_passed": { "type": "boolean" },
+          "linked_blocker_id": { "type": "string" },
+          "linked_blocker_status": { "type": "string" },
+          "evidence_exists": { "type": "boolean" },
+          "server_frontend_path": { "type": "boolean", "description": "Whether this step exercises the server/frontend product path." },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "consistency_errors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Consistency violations between golden path steps and blocker state."
+    }
+  }
+}

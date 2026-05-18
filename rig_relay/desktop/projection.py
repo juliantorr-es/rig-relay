@@ -530,11 +530,17 @@ def build_projection(  # noqa: PLR0914
                 f"Data source '{name}' not available. Run the corresponding generator."
             )
 
+    from rig_relay.core.telemetry.local import is_telemetry_enabled as _tele_enabled
+
+    effective_mode = "full" if _tele_enabled() else "disabled"
+
     projection: dict[str, Any] = {
         "schema_version": "rig.relay.desktop_projection.v1",
         "generated_at": now.isoformat(),
         "app_version": app_version,
         "alpha_label": "a" in app_version or "alpha" in app_version,
+        "telemetry_mode": effective_mode,
+        "telemetry_degraded": not _tele_enabled(),
         "source_status": source_status,
         "current_state": current_state,
         "queue": queue,

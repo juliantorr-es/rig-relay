@@ -12,9 +12,12 @@ receives the result from the dedicated tool as if it had called it.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import shlex
 from typing import Any
+
+from pydantic import BaseModel
 
 from rig_relay.core.types import ToolStreamEvent
 
@@ -182,9 +185,26 @@ def detect_and_advertise_reroute(command: str) -> str | None:
     return None
 
 
+def _category_from_builder(builder: callable) -> str:
+    """Map a reroute builder function to its original_command_category."""
+    if builder is _reroute_read_file:
+        return "file_read"
+    if builder is _reroute_grep:
+        return "search"
+    if builder is _reroute_git:
+        return "git"
+    if builder is _reroute_read_file_by_python:
+        return "python_subprocess"
+    return "unknown"
+
+
+def _empty_metadata() -> BashRerouteMetadata:
+    return BashRerouteMetadata(was_rerouted=False, final_outcome="not_rerouted")
+
+
 async def try_reroute(
     command: str, ctx: Any | None
-) -> tuple[bool, Any | None, list[ToolStreamEvent | Any]]:
+) -> tuple[bool, Any | None, list[ToolStreamEvent | Any], BashRerouteMetadata]:
     """Attempt to reroute a bash command to its dedicated builtin tool.
 
     Args:
@@ -192,13 +212,13 @@ async def try_reroute(
         ctx: The InvokeContext from the bash tool call.
 
     Returns:
-        Tuple of (was_rerouted, result_model_or_None, events_list).
+        Tuple of (was_rerouted, result_model_or_None, events_list, metadata).
         If was_rerouted is True, the caller should yield events_list
         and NOT execute the bash command.
     """
     tokens = _parse_tokens(command)
     if not tokens:
-        return False, None, []
+        return False, None, [], _empty_metadata()
 
     for tool_name, builder, description in REROUTE_REGISTRY:
         args_dict = builder(command, tokens)
@@ -222,11 +242,37 @@ async def try_reroute(
         try:
             mgr = getattr(ctx, "tool_manager", None)
             if mgr is None:
-                return False, None, []
+                meta = BashRerouteMetadata(
+                    was_rerouted=False,
+                    raw_bash_skipped=True,
+                    original_command_category=_category_from_builder(builder),
+                    original_command_hash=hashlib.sha256(command.encode()).hexdigest(),
+                    rerouted_tool_name=actual_tool,
+                    reroute_reason=description,
+                    permission_decision="not_checked",
+                    safety_class="risky_reroute",
+                    final_outcome="refused_reroute",
+                    refusal_reason="tool_manager not available",
+                    matched_pattern=tokens[0],
+                )
+                return False, None, [], meta
 
             tool_cls = mgr.get(actual_tool)
             if tool_cls is None:
-                return False, None, []
+                meta = BashRerouteMetadata(
+                    was_rerouted=False,
+                    raw_bash_skipped=True,
+                    original_command_category=_category_from_builder(builder),
+                    original_command_hash=hashlib.sha256(command.encode()).hexdigest(),
+                    rerouted_tool_name=actual_tool,
+                    reroute_reason=description,
+                    permission_decision="not_checked",
+                    safety_class="risky_reroute",
+                    final_outcome="refused_reroute",
+                    refusal_reason=f"target tool '{actual_tool}' not found",
+                    matched_pattern=tokens[0],
+                )
+                return False, None, [], meta
 
             # ── Build args model and instantiate tool ──────────
             args_model_cls, _ = tool_cls._get_type_hints()
@@ -251,12 +297,37 @@ async def try_reroute(
                         tool_call_id=ctx.tool_call_id if ctx else "",
                     )
                 )
-                return False, None, events
+                meta = BashRerouteMetadata(
+                    was_rerouted=False,
+                    raw_bash_skipped=True,
+                    original_command_category=_category_from_builder(builder),
+                    original_command_hash=hashlib.sha256(command.encode()).hexdigest(),
+                    rerouted_tool_name=actual_tool,
+                    reroute_reason=description,
+                    permission_decision="denied",
+                    safety_class="blocked",
+                    final_outcome="refused_reroute",
+                    refusal_reason=perm_ctx.reason,
+                    matched_pattern=tokens[0],
+                )
+                return False, None, events, meta
 
             async for event in tool_instance.run(args, ctx):
                 events.append(event)
 
-            return True, events[-1] if events else None, events
+            meta = BashRerouteMetadata(
+                was_rerouted=True,
+                raw_bash_skipped=True,
+                original_command_category=_category_from_builder(builder),
+                original_command_hash=hashlib.sha256(command.encode()).hexdigest(),
+                rerouted_tool_name=actual_tool,
+                reroute_reason=description,
+                permission_decision="allowed",
+                safety_class="safe_reroute",
+                final_outcome="rerouted",
+                matched_pattern=tokens[0],
+            )
+            return True, events[-1] if events else None, events, meta
 
         except Exception as e:
             events.append(
@@ -266,9 +337,37 @@ async def try_reroute(
                     tool_call_id=ctx.tool_call_id if ctx else "",
                 )
             )
-            return False, None, events
+            meta = BashRerouteMetadata(
+                was_rerouted=False,
+                raw_bash_skipped=True,
+                original_command_category=_category_from_builder(builder),
+                original_command_hash=hashlib.sha256(command.encode()).hexdigest(),
+                rerouted_tool_name=actual_tool,
+                reroute_reason=description,
+                permission_decision="not_checked",
+                safety_class="risky_reroute",
+                final_outcome="refused_reroute",
+                refusal_reason=str(e),
+                matched_pattern=tokens[0],
+            )
+            return False, None, events, meta
 
-    return False, None, []
+    return False, None, [], _empty_metadata()
 
 
-__all__ = ["detect_and_advertise_reroute", "try_reroute"]
+class BashRerouteMetadata(BaseModel):
+    was_rerouted: bool = False
+    raw_bash_skipped: bool = False
+    original_command_category: str | None = None
+    original_command_hash: str | None = None
+    rerouted_tool_name: str | None = None
+    reroute_reason: str | None = None
+    permission_decision: str | None = None
+    safety_class: str | None = None
+    final_outcome: str | None = None
+    refusal_reason: str | None = None
+    matched_pattern: str | None = None
+    redaction_status: str = "none"
+
+
+__all__ = ["BashRerouteMetadata", "detect_and_advertise_reroute", "try_reroute"]

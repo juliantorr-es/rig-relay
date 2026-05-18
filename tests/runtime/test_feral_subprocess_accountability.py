@@ -333,3 +333,84 @@ time.sleep(9999)
         pytest.fail(f"Subprocess PID {pid} is still alive after cancellation (orphan)")
     except ProcessLookupError:
         pass  # Expected: process no longer exists
+
+
+# ── Test 7: Fake secrets absent from persisted evidence ─────────────────
+
+
+@pytest.mark.asyncio
+async def test_fake_secret_absent_from_terminal_evidence(
+    lease_store: ExecutionLeaseStore, tmp_path: Path
+) -> None:
+    """sabotage — fake secret in stdout must be absent from terminal evidence."""
+    script = tmp_path / "secret_writer.py"
+    script.write_text(
+        "import sys, os\n"
+        "sys.stdout.write('SECRET_API_KEY=sk-12345-deadbeef-fake\\n')\n"
+        "sys.stdout.write('normal output line\\n')\n"
+        "sys.stdout.flush()\n"
+        "os.close(sys.stdout.fileno())\n"
+    )
+
+    req = _request(argv=[PYTHON, str(script)], cwd=str(tmp_path), timeout_ms=5000)
+    lease = _acquire(lease_store, req)
+
+    supervisor = RuntimeSupervisor(lease_store=lease_store)
+    events = await _collect_events(supervisor, lease)
+
+    terminal = events[-1]
+    dumped = terminal.model_dump(mode="json")
+
+    assert "SECRET_API_KEY" not in str(dumped)
+    assert "sk-12345" not in str(dumped)
+    assert "deadbeef-fake" not in str(dumped)
+
+    if isinstance(terminal, RuntimeCompletionEvent):
+        assert terminal.stdout_sha256 is not None
+        assert terminal.stdout_bytes > 0
+
+
+# ── Test 8: Timeout leaves no orphan process ────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_timeout_leaves_no_orphan_process(
+    lease_store: ExecutionLeaseStore, tmp_path: Path
+) -> None:
+    """sabotage — timeout kills subprocess, no orphan."""
+    pid_file = tmp_path / "timeout_feral_pid.txt"
+    script = tmp_path / "write_pid_and_hang.py"
+    script.write_text(
+        f"""import os, time
+with open({str(pid_file)!r}, 'w') as f:
+    f.write(str(os.getpid()))
+    f.flush()
+time.sleep(9999)
+"""
+    )
+
+    req = _request(argv=[PYTHON, str(script)], cwd=str(tmp_path), timeout_ms=500)
+    lease = _acquire(lease_store, req)
+
+    supervisor = RuntimeSupervisor(lease_store=lease_store)
+
+    events = await _collect_events(supervisor, lease)
+
+    terminal = events[-1]
+    assert isinstance(terminal, RuntimeFailureEvent)
+    assert terminal.status == RuntimeInvocationStatus.TIMED_OUT
+
+    # Give the supervisor time to kill the process
+    await asyncio.sleep(0.3)
+
+    # Read PID from file
+    assert pid_file.exists(), "Pid file must exist"
+    pid = int(pid_file.read_text().strip())
+    assert pid > 0
+
+    # Verify process is dead
+    try:
+        os.kill(pid, 0)
+        pytest.fail(f"Subprocess PID {pid} is still alive after timeout (orphan)")
+    except ProcessLookupError:
+        pass

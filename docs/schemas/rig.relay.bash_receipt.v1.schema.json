@@ -106,12 +106,58 @@
         }
       ],
       "description": "Reason for refusal, if refused"
+    },
+    "reroute": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "was_rerouted": {"type": "boolean"},
+            "raw_bash_skipped": {"type": "boolean"},
+            "original_command_category": {
+              "oneOf": [
+                {"type": "string", "enum": ["file_read", "search", "git", "python_subprocess", "unknown"]},
+                {"type": "null"}
+              ]
+            },
+            "original_command_hash": {
+              "oneOf": [{"type": "string"}, {"type": "null"}]
+            },
+            "rerouted_tool_name": {
+              "oneOf": [{"type": "string"}, {"type": "null"}]
+            },
+            "reroute_reason": {
+              "oneOf": [{"type": "string"}, {"type": "null"}]
+            },
+            "permission_decision": {
+              "oneOf": [{"type": "string", "enum": ["allowed", "denied", "not_checked"]}, {"type": "null"}]
+            },
+            "safety_class": {
+              "oneOf": [{"type": "string", "enum": ["safe_reroute", "risky_reroute", "blocked"]}, {"type": "null"}]
+            },
+            "final_outcome": {
+              "oneOf": [{"type": "string", "enum": ["rerouted", "refused_reroute", "not_rerouted"]}, {"type": "null"}]
+            },
+            "refusal_reason": {
+              "oneOf": [{"type": "string"}, {"type": "null"}]
+            },
+            "matched_pattern": {
+              "oneOf": [{"type": "string"}, {"type": "null"}]
+            },
+            "redaction_status": {"type": "string"}
+          },
+          "required": ["was_rerouted", "raw_bash_skipped", "redaction_status"]
+        },
+        {"type": "null"}
+      ],
+      "description": "Bash rerouting transparency metadata. Records whether the command was rerouted to a safer tool, why, and the outcome."
     }
   },
   "required": [
     "command",
     "status",
-    "exit_code"
+    "exit_code",
+    "reroute"
   ],
   "additionalProperties": false
 }

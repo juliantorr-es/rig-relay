@@ -1,5 +1,5 @@
 {
-  "blocking_phase_ids": ["phase_2_telemetry_privacy", "phase_3_runtime_tools_context_api", "phase_6_dogfood_operational_readiness"],
+  "blocking_phase_ids": ["phase_6_dogfood_operational_readiness"],
   "branch": "main",
   "deferred_risk_ids": [
     "risk_markdown_audit_leaks"
@@ -15,35 +15,38 @@
     "tests/rc_seams/test_rc_seam_tests.py"
   ],
   "gate_artifact": "docs/json/release_gate/rc_readiness_gate.v1.json",
-  "gate_overall_status": "blocked",
-  "generated_at": "2026-05-17T18:30:00Z",
-  "head_sha": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
+  "gate_overall_status": "not_verified",
+  "generated_at": "2026-05-18T02:30:00Z",
+  "head_sha": "7a6b4947c6fdbcaaec5500ae65bf29a6063bce3b",
   "installability_status": "passed",
   "known_seam_count": 10,
-  "open_blocker_ids": ["blk_runtime_feral_subprocess", "blk_bash_rerouting_transparency", "blk_telemetry_disabled_degradation", "blk_debug_packet_quarantine"],
+  "open_blocker_ids": [],
   "promote_blockers": [
-    "All 4 open blockers resolved",
-    "All phases status is 'ready' or 'passing'",
-    "Validator returns 'passed' with 0 errors",
-    "No 'unknown' phase statuses remain",
-    "Dogfood golden path reviewer checklist all blocking steps 'passing'"
+    "All open blockers resolved",
+    "Dogfood golden path reviewer checklist all blocking steps 'passing'",
+    "Validator returns 'passed' with 0 errors"
   ],
   "ready_phase_ids": [
     "phase_1_governance_coordination",
+    "phase_2_telemetry_privacy",
+    "phase_3_runtime_tools_context_api",
     "phase_4_ui_docs_ci_packaging",
     "phase_5_public_docs_licensing"
   ],
   "required_next_actions": [
-    "Complete dogfood golden path reviewer checklist — all blocking steps must pass before PROMOTE",
-    "Resolve 4 open RC blockers: feral subprocess accountability, bash rerouting transparency, telemetry-disabled degradation, debug packet quarantine",
-    "Monitor CI release workflow on next tag push to verify correct repo trigger"
+    "Complete dogfood golden path reviewer checklist — 15 not_verified steps must be exercised before PROMOTE",
+    "Human reviewer must verify manual steps including server launch, cockpit, real work lane, shutdown"
   ],
   "resolved_blocker_ids": [
     "blk_phase4_ci_repo_ref",
     "blk_phase4_pi_lens_in_git",
     "blk_phase4_deferred_checks_required",
     "blk_phase5_license_policy_json_missing",
-    "blk_phase5_repo_policy_json_missing"
+    "blk_phase5_repo_policy_json_missing",
+    "blk_telemetry_disabled_degradation",
+    "blk_debug_packet_quarantine",
+    "blk_runtime_feral_subprocess",
+    "blk_bash_rerouting_transparency"
   ],
   "resolved_seam_count": 7,
   "schema_validation": "153/153 passed",
@@ -55,9 +58,10 @@
     "vr_release_gate_cli_20260517",
     "vr_tracing_real_source_20260517",
     "vr_guard_escape_hatches_20260517",
-    "VR-CONTEXT-DIGESTION-001"
+    "VR-CONTEXT-DIGESTION-001",
+    "VR-GOLDEN-PATH-001"
   ],
   "validator_error_count": 0,
-  "validator_result": "passed",
+  "validator_result": "not_verified",
   "verdict": "hold"
 }

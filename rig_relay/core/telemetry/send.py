@@ -130,17 +130,45 @@ class TelemetryClient:
     def _is_local_observability_enabled(self) -> bool:
         try:
             config = self._config_getter()
-            return config.enable_local_observability
+            if not config.enable_local_observability:
+                return False
         except Exception:
             return True
+        from rig_relay.core.telemetry.local import is_telemetry_enabled
+
+        return is_telemetry_enabled()
 
     def _is_remote_telemetry_enabled(self) -> bool:
         """Check if remote telemetry is enabled."""
         try:
             config = self._config_getter()
-            return config.enable_remote_telemetry or config.enable_telemetry
+            if not (config.enable_remote_telemetry or config.enable_telemetry):
+                return False
         except Exception:
             return False
+        from rig_relay.core.telemetry.local import is_telemetry_enabled
+
+        return is_telemetry_enabled()
+
+    def get_effective_telemetry_mode(self) -> str:
+        try:
+            config = self._config_getter()
+            local_enabled = config.enable_local_observability
+            remote_enabled = config.enable_remote_telemetry or config.enable_telemetry
+        except Exception:
+            from rig_relay.core.telemetry.local import is_telemetry_enabled
+
+            if not is_telemetry_enabled():
+                return "disabled"
+            return "full"
+
+        if not is_telemetry_enabled():
+            return "disabled"
+        if not local_enabled:
+            return "disabled"
+        if not remote_enabled:
+            return "degraded"
+        return "full"
 
     def is_active(self) -> bool:
         return (
@@ -203,6 +231,9 @@ class TelemetryClient:
                 )
 
         # Remote Telemetry Sink — gated by settings AND consent
+        if not self._is_remote_telemetry_enabled():
+            return
+
         decision = self._evaluate_consent_gate(event_name)
 
         if not decision.allowed:
