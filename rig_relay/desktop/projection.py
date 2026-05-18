@@ -360,6 +360,24 @@ def _build_update(build_root: Path) -> dict[str, Any]:
     }
 
 
+def _build_identity() -> dict[str, Any]:
+    """Build content-light identity status from token store."""
+    from rig_relay.identity.token_store import DevFileTokenStore
+
+    store = DevFileTokenStore()
+    statuses = store.all_statuses()
+    providers: dict[str, dict[str, Any]] = {}
+    for name, st in statuses.items():
+        providers[name] = {
+            "status": st.get("status", "signed_out"),
+            "display_name": st.get("display_name", ""),
+            "scopes": st.get("scopes", []),
+            "expires_at": st.get("expires_at", ""),
+        }
+    any_signed_in = any(s.get("status") == "signed_in" for s in providers.values())
+    return {"available": True, "any_signed_in": any_signed_in, "providers": providers}
+
+
 def _build_release_gate() -> dict[str, Any]:
     """Read release gate data from docs/json/release_gate/."""
     gate_path = (
@@ -505,6 +523,7 @@ def build_projection(  # noqa: PLR0914
     update = _build_update(root)
     storage = _build_storage(root)
     providers = _build_providers()
+    identity = _build_identity()
     integrity = _build_integrity(root)
     tool_runtime_summary = _build_tool_runtime_summary()
     release_gate = _build_release_gate()
@@ -518,6 +537,7 @@ def build_projection(  # noqa: PLR0914
         "update": update["available"],
         "storage": storage["available"],
         "provider_status": providers["total"] > 0,
+        "identity": identity["available"],
         "integrity": integrity is not None,
         "tool_runtime_summary": tool_runtime_summary.get("available", False),
         "release_gate": release_gate["available"],
@@ -550,6 +570,7 @@ def build_projection(  # noqa: PLR0914
         "update": update,
         "storage": storage,
         "providers": providers,
+        "identity": identity,
         "integrity": integrity,
         "tool_runtime_summary": tool_runtime_summary,
         "_release_gate": release_gate,

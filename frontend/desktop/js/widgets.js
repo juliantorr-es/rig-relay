@@ -671,8 +671,48 @@ registerWidget('reviewStorage', (container, level) => {
 
 registerWidget('identity', (container, level) => {
   if (level !== 'standard') return;
-  renderStandardCard(container, 'Identity',
-    '<span class="widget-missing">Sign in to associate telemetry.</span>', 'identity');
+  const proj = state.projection;
+  const id = (proj && proj.identity) || {};
+  const providers = id.providers || {};
+  const hasGithub = providers.github || {};
+  const hasGoogle = providers.google || {};
+
+  const ghStatus = hasGithub.status || 'signed_out';
+  const goStatus = hasGoogle.status || 'signed_out';
+  const anySignedIn = ghStatus === 'signed_in' || goStatus === 'signed_in';
+  const anyPending = ghStatus === 'pending' || goStatus === 'pending';
+
+  let html = '<table class="kv-table">';
+
+  function providerRow(name, p) {
+    const st = p.status || 'signed_out';
+    let cls = st === 'signed_in' ? 'ok' : st === 'pending' ? 'warn' : st === 'error' || st === 'failed' ? 'error' : '';
+    let label = st === 'signed_in' ? (p.display_name || 'Signed in') : st;
+    return row(name, label, cls);
+  }
+
+  html += providerRow('GitHub', hasGithub);
+  html += providerRow('Google', hasGoogle);
+  html += '</table>';
+
+  html += '<div class="widget-actions" style="flex-wrap:wrap;gap:4px">';
+  if (ghStatus !== 'signed_in' && ghStatus !== 'pending') {
+    html += '<button onclick="window.RigRelay.signInWithProvider(\'github\')">Sign in GitHub</button>';
+  }
+  if (goStatus !== 'signed_in' && goStatus !== 'pending') {
+    html += '<button onclick="window.RigRelay.signInWithProvider(\'google\')">Sign in Google</button>';
+  }
+  if (anySignedIn) {
+    html += '<button onclick="window.RigRelay.dispatchIntent(\'identity_status\')">Refresh</button>';
+  }
+  if (anyPending) {
+    html += '<button onclick="window.RigRelay.checkAuthStatus(\'github\')">Check GitHub</button>';
+    html += '<button onclick="window.RigRelay.checkAuthStatus(\'google\')">Check Google</button>';
+  }
+  html += '</div>';
+
+  const statusCls = anySignedIn ? 'ok' : anyPending ? 'warn' : '';
+  renderStandardCard(container, 'Identity', html, 'identity', statusCls);
 });
 
 registerWidget('modelProviders', (container, level) => {

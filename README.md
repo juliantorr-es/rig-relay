@@ -196,5 +196,5 @@ Key evidence paths:
 
 Telemetry is local-first and opt-out only. No raw file contents, secrets, or
 private code are emitted. All content-derived data uses SHA256 hashes.
-Telemetry-disabled mode must visibly degrade behavior (currently an open RC blocker).
+Telemetry-disabled mode visibly degrades behavior and is covered by release-gate evidence.
 See [`docs/governance/usage-data-doctrine.md`](docs/governance/usage-data-doctrine.md).

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# Derived from mistralai/mistral-vibe. Modified for Rig Relay.
 from pathlib import Path
 import shlex
 import stat
@@ -8,15 +7,16 @@ import subprocess
 from textwrap import dedent
 
 INSTALL_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "install.sh"
+_GITHUB_INSTALL_TARGET = "git+https://github.com/juliantorr-es/rig-relay.git"
 
-_FAKE_VIBE_SCRIPT = """#!/usr/bin/env bash
+_FAKE_RIG_RELAY_SCRIPT = """#!/usr/bin/env bash
 exit 0
 """
 
-_FAKE_UV_SCRIPT = """#!/usr/bin/env bash
+_FAKE_UV_SCRIPT = f"""#!/usr/bin/env bash
 set -euo pipefail
 
-tool_bin_dir="${UV_TOOL_BIN_DIR:?UV_TOOL_BIN_DIR must be set}"
+tool_bin_dir="${{UV_TOOL_BIN_DIR:?UV_TOOL_BIN_DIR must be set}}"
 
 case "$*" in
   "--version")
@@ -25,18 +25,18 @@ case "$*" in
   "tool dir --bin")
     echo "$tool_bin_dir"
     ;;
-  "tool install rig-relay"|"tool upgrade rig-relay")
+  "tool install {_GITHUB_INSTALL_TARGET}"|"tool upgrade rig-relay")
     mkdir -p "$tool_bin_dir"
-    cat >"$tool_bin_dir/vibe" <<'VIBE'
+    cat >"$tool_bin_dir/rig-relay" <<'RIG_RELAY'
 #!/usr/bin/env bash
 exit 0
-VIBE
-    chmod +x "$tool_bin_dir/vibe"
-    cat >"$tool_bin_dir/vibe-acp" <<'VIBE_ACP'
+RIG_RELAY
+    chmod +x "$tool_bin_dir/rig-relay"
+    cat >"$tool_bin_dir/rig-relay-acp" <<'RIG_RELAY_ACP'
 #!/usr/bin/env bash
 exit 0
-VIBE_ACP
-    chmod +x "$tool_bin_dir/vibe-acp"
+RIG_RELAY_ACP
+    chmod +x "$tool_bin_dir/rig-relay-acp"
     ;;
   *)
     echo "unexpected uv invocation: $*" >&2
@@ -55,8 +55,8 @@ def _write_fake_uv(path: Path) -> None:
     _write_executable(path, _FAKE_UV_SCRIPT)
 
 
-def _write_fake_vibe(path: Path) -> None:
-    _write_executable(path, _FAKE_VIBE_SCRIPT)
+def _write_fake_rig_relay(path: Path) -> None:
+    _write_executable(path, _FAKE_RIG_RELAY_SCRIPT)
 
 
 def _write_fake_uv_installer(payload_path: Path) -> None:
@@ -103,6 +103,12 @@ def _run_install_script(
     )
 
 
+def test_install_script_uses_github_source_not_plain_pypi() -> None:
+    text = INSTALL_SCRIPT.read_text(encoding="utf-8")
+    assert f'uv tool install "{_GITHUB_INSTALL_TARGET}"' in text
+    assert "uv tool install rig-relay" not in text
+
+
 def test_install_reports_missing_path_for_uv_tool_bin(tmp_path: Path) -> None:
     home = tmp_path / "home"
     fake_bin = tmp_path / "fake-bin"
@@ -128,9 +134,7 @@ def test_install_reports_missing_path_for_uv_tool_bin(tmp_path: Path) -> None:
         )
         == 1
     )
-    assert (
-        "uv was installed but not found in PATH for this session" not in result.stdout
-    )
+    assert "uv was installed but not found in PATH for this session" not in result.stdout
 
 
 def test_install_succeeds_when_uv_bin_dir_is_already_on_path(tmp_path: Path) -> None:
@@ -144,28 +148,26 @@ def test_install_succeeds_when_uv_bin_dir_is_already_on_path(tmp_path: Path) -> 
 
     assert result.returncode == 0
     assert "Installation completed successfully!" in result.stdout
-    assert (fake_bin / "vibe").exists()
-    assert (fake_bin / "vibe-acp").exists()
+    assert (fake_bin / "rig-relay").exists()
+    assert (fake_bin / "rig-relay-acp").exists()
 
 
-def test_install_fails_when_vibe_not_in_uv_tool_dir(tmp_path: Path) -> None:
-    """Covers the fallback error when uv tool dir doesn't contain a vibe binary."""
+def test_install_fails_when_rig_relay_not_in_uv_tool_dir(tmp_path: Path) -> None:
     home = tmp_path / "home"
     fake_bin = tmp_path / "fake-bin"
     home.mkdir()
     fake_bin.mkdir()
 
-    # Create a fake uv that does NOT produce a vibe binary on install
     _write_executable(
         fake_bin / "uv",
-        """\
+        f"""\
         #!/usr/bin/env bash
         set -euo pipefail
-        tool_bin_dir="${UV_TOOL_BIN_DIR:?UV_TOOL_BIN_DIR must be set}"
+        tool_bin_dir="${{UV_TOOL_BIN_DIR:?UV_TOOL_BIN_DIR must be set}}"
         case "$*" in
           "--version") echo "uv 0.test" ;;
           "tool dir --bin") echo "$tool_bin_dir" ;;
-          "tool install rig-relay") mkdir -p "$tool_bin_dir" ;;
+          "tool install {_GITHUB_INSTALL_TARGET}") mkdir -p "$tool_bin_dir" ;;
           *) echo "unexpected: $*" >&2; exit 1 ;;
         esac
         """,
@@ -182,18 +184,16 @@ def test_install_fails_when_vibe_not_in_uv_tool_dir(tmp_path: Path) -> None:
     assert "Your PATH does not include" not in result.stderr
 
 
-def test_update_succeeds_when_vibe_is_already_on_path(tmp_path: Path) -> None:
+def test_update_succeeds_when_rig_relay_is_already_on_path(tmp_path: Path) -> None:
     home = tmp_path / "home"
     fake_bin = tmp_path / "fake-bin"
     home.mkdir()
     fake_bin.mkdir()
     _write_fake_uv(fake_bin / "uv")
-    _write_fake_vibe(fake_bin / "vibe")
+    _write_fake_rig_relay(fake_bin / "rig-relay")
 
     result = _run_install_script(home, [fake_bin], {"UV_TOOL_BIN_DIR": str(fake_bin)})
 
     assert result.returncode == 0
     assert "Updating rig-relay from GitHub repository using uv..." in result.stdout
-    assert (
-        "Installing rig-relay from GitHub repository using uv..." not in result.stdout
-    )
+    assert "Installing rig-relay from GitHub repository using uv..." not in result.stdout

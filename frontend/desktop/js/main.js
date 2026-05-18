@@ -61,38 +61,81 @@ export function wireUI() {
       }
     },
 
-    openInAppAuth(authUrl, loopbackPort, stateHash, providerName) {
-      if (window.pywebview && window.pywebview.api) {
+    openInAppAuth(authUrl, loopbackPort, stateHash, providerName, authSessionId) {
+      // Convenience wrapper — backend session MUST already be running.
+      // If pywebview available, attempt in-app window; otherwise browser tab.
+      if (!authUrl) {
+        console.warn('openInAppAuth: no auth_url provided');
+        return;
+      }
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.open_auth_window) {
         window.pywebview.api.open_auth_window(authUrl, loopbackPort, stateHash)
           .then(() => {
-            if (window.location && typeof window.location.href !== 'undefined') {
-              window.location.href = authUrl;
+            if (authSessionId) {
+              window.RigRelay._pollAuthSession(authSessionId, providerName);
             }
-            const pollInterval = setInterval(() => {
-              window.pywebview.api.poll_oauth_callback().then((cbResult) => {
-                if (cbResult.status === 'completed') {
-                  clearInterval(pollInterval);
-                  window.location.href = window.location.origin + window.location.pathname;
-                  const exchangeName = providerName === 'google'
-                    ? 'sign_in_google_exchange'
-                    : 'sign_in_github_exchange';
-                  dispatchIntent(exchangeName, {
-                    auth_url: authUrl,
-                    loopback_port: Number(loopbackPort),
-                    state_hash: stateHash,
-                    redirect_uri: 'http://127.0.0.1:' + loopbackPort + '/callback',
-                  });
-                } else if (cbResult.status === 'error') {
-                  clearInterval(pollInterval);
-                  console.warn('OAuth error:', cbResult.message);
-                  window.location.href = window.location.origin + window.location.pathname;
-                }
-              });
-            }, 1000);
           });
       } else {
         window.open(authUrl, '_blank');
+        if (authSessionId) {
+          window.RigRelay._pollAuthSession(authSessionId, providerName);
+        }
       }
+    },
+
+    signInWithProvider(providerName) {
+      const startIntent = 'sign_in_' + providerName + '_start';
+      const sendBtn = el('send-btn');
+      const savedSendHandler = sendBtn ? sendBtn.onclick : null;
+
+      // Dispatch start intent, then handle the result to show actions
+      window.RigRelay._pendingAuthStart = { provider: providerName };
+      dispatchIntent(startIntent, {});
+    },
+
+    checkAuthStatus(providerName) {
+      const sessionId = window.RigRelay._authSessionId;
+      if (!sessionId) {
+        dispatchIntent('identity_status');
+        return;
+      }
+      const pollIntent = 'sign_in_' + providerName + '_poll';
+      dispatchIntent(pollIntent, { auth_session_id: sessionId });
+    },
+
+    _pollAuthSession(sessionId, providerName) {
+      // Poll the backend session status periodically
+      const pollIntent = 'sign_in_' + providerName + '_poll';
+      let attempts = 0;
+      const maxAttempts = 60;
+      window.RigRelay._authPollTimer = setInterval(() => {
+        attempts++;
+        if (attempts > maxAttempts) {
+          clearInterval(window.RigRelay._authPollTimer);
+          window.RigRelay._authPollTimer = null;
+          console.warn('Auth poll timed out after ' + maxAttempts + ' attempts');
+          return;
+        }
+        dispatchIntent(pollIntent, { auth_session_id: sessionId });
+      }, 2000);
+    },
+
+    cancelAuth(providerName) {
+      const sessionId = window.RigRelay._authSessionId;
+      if (!sessionId) return;
+      if (window.RigRelay._authPollTimer) {
+        clearInterval(window.RigRelay._authPollTimer);
+        window.RigRelay._authPollTimer = null;
+      }
+      const cancelIntent = 'sign_in_' + providerName + '_cancel';
+      dispatchIntent(cancelIntent, { auth_session_id: sessionId });
+    },
+
+    submitManualCode(providerName, code) {
+      const sessionId = window.RigRelay._authSessionId;
+      if (!sessionId || !code) return;
+      const manualIntent = 'sign_in_' + providerName + '_manual_code';
+      dispatchIntent(manualIntent, { auth_session_id: sessionId, manual_code: code });
     },
 
     submitOAuthCode() {

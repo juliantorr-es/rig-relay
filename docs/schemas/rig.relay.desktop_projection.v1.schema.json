@@ -17,6 +17,7 @@
     "update",
     "storage",
     "providers",
+    "identity",
     "warnings",
     "read_only_actions"
   ],
@@ -405,6 +406,43 @@
         "valid_count",
         "providers"
       ]
+    },
+    "identity": {
+      "type": "object",
+      "description": "Content-light identity provider status. No raw tokens, access codes, or secrets.",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "any_signed_in": {
+          "type": "boolean"
+        },
+        "providers": {
+          "type": "object",
+          "description": "Provider name to status map. Values are content-light summaries.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "description": "One of: signed_out, pending, signed_in, error, expired, cancelled"
+              },
+              "display_name": {
+                "type": "string"
+              },
+              "scopes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "expires_at": {
+                "type": "string"
+              }
+            },
+            "required": ["status"]
+          }
+        }
+      },
+      "required": ["available", "any_signed_in", "providers"]
     },
     "warnings": {
       "type": "array",

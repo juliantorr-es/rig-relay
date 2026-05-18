@@ -110,6 +110,11 @@ export function handleIntentResult(msg) {
   // ── Restore any pending intent buttons ──
   restoreIntentButton(name, status);
 
+  // ── Auth intent handling ──
+  if (_handleAuthIntentResult(name, status, result)) {
+    return;
+  }
+
   if (name.startsWith('ralph_')) {
     if (result.status !== 'refused' && result.ralph && result.ralph.panel) {
       state.ralph.panel = result.ralph.panel;
@@ -133,6 +138,11 @@ export function handleIntentResult(msg) {
     return;
   }
 
+  // ── Identity status update ──
+  if (name === 'identity_status' || name.startsWith('sign_out_')) {
+    renderWidget('identity');
+  }
+
   var details = {};
   if (result.status === 'refused') {
     details.error_code = result.error_code;
@@ -141,6 +151,209 @@ export function handleIntentResult(msg) {
     details.hint = result.hint;
   }
   updateIntentResult(status, name, summary, details);
+}
+
+// ── Auth intent result handler ───────────────────────────────────────
+
+function _handleAuthIntentResult(name, status, result) {
+  const extra = result.extra_fields || {};
+  const isAuthStart = name === 'sign_in_github_start' || name === 'sign_in_google_start';
+  const isAuthPoll = name === 'sign_in_github_poll' || name === 'sign_in_google_poll';
+  const isAuthCancel = name === 'sign_in_github_cancel' || name === 'sign_in_google_cancel';
+  const isAuthManual = name === 'sign_in_github_manual_code' || name === 'sign_in_google_manual_code';
+
+  if (!isAuthStart && !isAuthPoll && !isAuthCancel && !isAuthManual) {
+    return false;
+  }
+
+  const providerName = extra.provider || name.split('_')[2] || '';
+
+  if (isAuthStart && status === 'completed' && extra.auth_url && extra.auth_session_id) {
+    // Store session ID for polling
+    window.RigRelay._authSessionId = extra.auth_session_id;
+    // Clear previous poll timer if any
+    if (window.RigRelay._authPollTimer) {
+      clearInterval(window.RigRelay._authPollTimer);
+      window.RigRelay._authPollTimer = null;
+    }
+    // Show auth action card
+    _showAuthActionCard(providerName, extra);
+    renderWidget('identity');
+    updateIntentResult(status, name, 'Auth URL ready. Open your browser to sign in.', {});
+    return true;
+  }
+
+  if (isAuthStart && status === 'completed' && !extra.configured) {
+    updateIntentResult('failed', name,
+      providerName + ' credentials not configured. Set environment variables.',
+      { error_code: 'not_configured' });
+    renderWidget('identity');
+    return true;
+  }
+
+  if (isAuthPoll) {
+    const authStatus = extra.status || 'pending';
+    if (authStatus === 'signed_in') {
+      // Stop polling — signed in
+      if (window.RigRelay._authPollTimer) {
+        clearInterval(window.RigRelay._authPollTimer);
+        window.RigRelay._authPollTimer = null;
+      }
+      window.RigRelay._authSessionId = null;
+      updateIntentResult('completed', name,
+        'Signed in to ' + providerName + (extra.display_name ? ' as ' + extra.display_name : '') + '.', {});
+      renderWidget('identity');
+    } else if (authStatus === 'pending') {
+      // Still waiting — update with subtle status
+      updateIntentResult('completed', name,
+        'Waiting for ' + providerName + ' authorization...', {});
+    } else if (authStatus === 'failed' || authStatus === 'cancelled' || authStatus === 'expired') {
+      // Stop polling — failed/cancelled/expired
+      if (window.RigRelay._authPollTimer) {
+        clearInterval(window.RigRelay._authPollTimer);
+        window.RigRelay._authPollTimer = null;
+      }
+      window.RigRelay._authSessionId = null;
+      updateIntentResult('failed', name,
+        providerName + ' sign-in ' + authStatus + '.',
+        { error_code: extra.error_code || authStatus });
+      renderWidget('identity');
+    } else {
+      updateIntentResult('failed', name, summary || 'Auth error', { error_code: result.error_code });
+      renderWidget('identity');
+    }
+    return true;
+  }
+
+  if (isAuthCancel) {
+    if (window.RigRelay._authPollTimer) {
+      clearInterval(window.RigRelay._authPollTimer);
+      window.RigRelay._authPollTimer = null;
+    }
+    window.RigRelay._authSessionId = null;
+    updateIntentResult('completed', name, providerName + ' sign-in cancelled.', {});
+    renderWidget('identity');
+    return true;
+  }
+
+  if (isAuthManual) {
+    updateIntentResult(status, name,
+      status === 'completed' ? 'Signed in to ' + providerName + ' via manual code.' : summary,
+      { error_code: result.error_code });
+    renderWidget('identity');
+    return true;
+  }
+
+  return true;
+}
+
+function _showAuthActionCard(providerName, extra) {
+  const authUrl = extra.auth_url || '';
+  const sessionId = extra.auth_session_id || '';
+  const container = el('widget-intentResult');
+  if (!container) return;
+
+  while (container.firstChild) container.removeChild(container.firstChild);
+
+  const header = document.createElement('div');
+  header.className = 'widget-header';
+  header.onclick = function() { window.RigRelay.cycleWidgetDisclosure('intentResult'); };
+  header.textContent = 'Sign in with ' + providerName;
+
+  const chip = document.createElement('div');
+  chip.className = 'widget-chip warn';
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  chip.appendChild(dot);
+  chip.appendChild(document.createTextNode('Action required'));
+  header.appendChild(chip);
+
+  const icon = document.createElement('span');
+  icon.className = 'widget-expand-icon';
+  icon.textContent = '\u25B2';
+  header.appendChild(icon);
+
+  const body = document.createElement('div');
+  body.className = 'widget-body';
+
+  const desc = document.createElement('div');
+  desc.style.cssText = 'margin-bottom:8px;color:var(--text-secondary)';
+  desc.textContent = 'A browser tab will open for you to authorize.';
+  body.appendChild(desc);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
+
+  const openBtn = document.createElement('button');
+  openBtn.textContent = 'Open Browser';
+  openBtn.onclick = function() {
+    window.RigRelay.openInAppAuth(authUrl, 0, '', providerName, sessionId);
+  };
+  btnRow.appendChild(openBtn);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Copy Auth URL';
+  copyBtn.onclick = function() {
+    navigator.clipboard.writeText(authUrl).then(function() {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(function() { copyBtn.textContent = 'Copy Auth URL'; }, 2000);
+    });
+  };
+  btnRow.appendChild(copyBtn);
+
+  const checkBtn = document.createElement('button');
+  checkBtn.textContent = 'Check Status';
+  checkBtn.onclick = function() {
+    window.RigRelay.checkAuthStatus(providerName);
+  };
+  btnRow.appendChild(checkBtn);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'color:var(--warn)';
+  cancelBtn.onclick = function() {
+    window.RigRelay.cancelAuth(providerName);
+  };
+  btnRow.appendChild(cancelBtn);
+
+  body.appendChild(btnRow);
+
+  const manualDiv = document.createElement('div');
+  manualDiv.style.cssText = 'margin-top:10px;padding-top:8px;border-top:1px solid var(--border-subtle)';
+  const manualLabel = document.createElement('div');
+  manualLabel.style.cssText = 'font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:4px';
+  manualLabel.textContent = 'Or paste authorization code manually:';
+  manualDiv.appendChild(manualLabel);
+
+  const manualRow = document.createElement('div');
+  manualRow.style.cssText = 'display:flex;gap:4px';
+  const codeInput = document.createElement('input');
+  codeInput.type = 'text';
+  codeInput.placeholder = 'Paste code here...';
+  codeInput.style.cssText = 'flex:1;padding:4px 8px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:var(--font-size-xs)';
+  codeInput.id = 'oauth-manual-code-input';
+  manualRow.appendChild(codeInput);
+
+  const submitBtn = document.createElement('button');
+  submitBtn.textContent = 'Submit';
+  submitBtn.onclick = function() {
+    var codeInput = document.getElementById('oauth-manual-code-input');
+    if (codeInput && codeInput.value) {
+      window.RigRelay.submitManualCode(providerName, codeInput.value);
+    }
+  };
+  manualRow.appendChild(submitBtn);
+  manualDiv.appendChild(manualRow);
+  body.appendChild(manualDiv);
+
+  const trigger = document.createElement('div');
+  trigger.className = 'widget-expand-trigger';
+  trigger.textContent = 'Expand \u2192';
+  trigger.onclick = function() { window.RigRelay.cycleWidgetDisclosure('intentResult'); };
+
+  container.appendChild(header);
+  container.appendChild(body);
+  container.appendChild(trigger);
 }
 
 export function handleProgressEvent(msg) {

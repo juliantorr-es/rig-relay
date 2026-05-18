@@ -1,14 +1,35 @@
-name: Release to Pipy and Zed's store
+name: Release to PyPI and Zed store
 
 on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      publish_to_pypi:
+        description: "Set true to publish a distribution to PyPI"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      publish_zed_extension:
+        description: "Set true to publish the Zed extension"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
 
 jobs:
-  release-pypy:
-    name: Release to Pypi
+  release-pypi:
+    name: Release to PyPI
     runs-on: ubuntu-latest
+    if: github.repository == 'juliantorr-es/rig-relay' && (github.event_name == 'release' || github.event.inputs.publish_to_pypi == 'true')
     environment:
       name: pypi
       url: https://pypi.org/p/rig-relay
@@ -41,13 +62,12 @@ jobs:
           path: dist/
 
       - name: Publish distribution to PyPI
-        if: github.repository == 'juliantorr-es/rig-relay'
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
 
   release-zed-extension:
     name: Release Zed Extension
     runs-on: ubuntu-latest
-    if: github.repository == 'juliantorr-es/rig-relay'
+    if: github.repository == 'juliantorr-es/rig-relay' && (github.event_name == 'release' || github.event.inputs.publish_zed_extension == 'true')
     permissions:
       contents: read
     environment:

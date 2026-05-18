@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Security vulnerability (private)
+    url: https://github.com/juliantorr-es/rig-relay/security/advisories/new
+    about: Report vulnerabilities privately. Do not post exploit details publicly.
   - name: Feature request
     url: https://github.com/juliantorr-es/rig-relay/discussions/new?category=ideas
     about: Suggest a new feature or improvement via GitHub Discussions
@@ -7,5 +10,5 @@ contact_links:
     url: https://discord.com/channels/1144547040454508606/1447989080720670915
     about: Join Mistral AI Discord server for support and discussions
   - name: Read the docs
-    url: https://docs.mistral.ai/rig-relay/introduction
+    url: https://github.com/juliantorr-es/rig-relay#readme
     about: Read the Rig Relay documentation for more information

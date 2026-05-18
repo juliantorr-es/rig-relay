@@ -208,56 +208,80 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
         "parameters": {},
     },
     "sign_in_github_start": {
-        "description": "Start GitHub OAuth sign-in flow. Returns auth_url, loopback_port, state_hash. Does not exchange code unless credentials are configured.",
+        "description": "Start GitHub OAuth sign-in flow. Backend starts loopback listener, returns auth_url and auth_session_id. Frontend opens auth_url in browser.",
         "affects_projection": False,
         "parameters": {},
     },
     "sign_in_google_start": {
-        "description": "Start Google OAuth sign-in flow. Returns auth_url, loopback_port, state_hash. Does not exchange code unless credentials are configured.",
+        "description": "Start Google OAuth sign-in flow. Backend starts loopback listener, returns auth_url and auth_session_id. Frontend opens auth_url in browser.",
         "affects_projection": False,
         "parameters": {},
     },
-    "sign_in_github_exchange": {
-        "description": "Exchange OAuth code for GitHub access token. Starts loopback server to capture callback, exchanges code, stores token. Returns provider status.",
+    "sign_in_github_poll": {
+        "description": "Check GitHub auth session status. If callback received, exchanges code. Does NOT start a second listener.",
         "affects_projection": False,
         "parameters": {
-            "auth_url": {
+            "auth_session_id": {
                 "type": "string",
-                "description": "Auth URL from sign_in_github_start.",
-            },
-            "redirect_uri": {
+                "description": "Auth session ID from sign_in_github_start.",
+            }
+        },
+    },
+    "sign_in_google_poll": {
+        "description": "Check Google auth session status. If callback received, exchanges code. Does NOT start a second listener.",
+        "affects_projection": False,
+        "parameters": {
+            "auth_session_id": {
                 "type": "string",
-                "description": "Redirect URI from sign_in_github_start.",
-            },
-            "loopback_port": {
-                "type": "integer",
-                "description": "Loopback port from sign_in_github_start.",
-            },
-            "state_hash": {
+                "description": "Auth session ID from sign_in_google_start.",
+            }
+        },
+    },
+    "sign_in_github_cancel": {
+        "description": "Cancel a pending GitHub auth session. Cleans up loopback listener.",
+        "affects_projection": False,
+        "parameters": {
+            "auth_session_id": {
                 "type": "string",
-                "description": "State hash from sign_in_github_start.",
+                "description": "Auth session ID from sign_in_github_start.",
+            }
+        },
+    },
+    "sign_in_google_cancel": {
+        "description": "Cancel a pending Google auth session. Cleans up loopback listener.",
+        "affects_projection": False,
+        "parameters": {
+            "auth_session_id": {
+                "type": "string",
+                "description": "Auth session ID from sign_in_google_start.",
+            }
+        },
+    },
+    "sign_in_github_manual_code": {
+        "description": "Exchange a manually provided authorization code for GitHub. Does not wait for loopback callback.",
+        "affects_projection": False,
+        "parameters": {
+            "auth_session_id": {
+                "type": "string",
+                "description": "Auth session ID from sign_in_github_start.",
+            },
+            "manual_code": {
+                "type": "string",
+                "description": "Authorization code to exchange.",
             },
         },
     },
-    "sign_in_google_exchange": {
-        "description": "Exchange OAuth code for Google access token. Starts loopback server to capture callback, exchanges code, stores token. Returns provider status.",
+    "sign_in_google_manual_code": {
+        "description": "Exchange a manually provided authorization code for Google. Does not wait for loopback callback.",
         "affects_projection": False,
         "parameters": {
-            "auth_url": {
+            "auth_session_id": {
                 "type": "string",
-                "description": "Auth URL from sign_in_google_start.",
+                "description": "Auth session ID from sign_in_google_start.",
             },
-            "redirect_uri": {
+            "manual_code": {
                 "type": "string",
-                "description": "Redirect URI from sign_in_google_start.",
-            },
-            "loopback_port": {
-                "type": "integer",
-                "description": "Loopback port from sign_in_google_start.",
-            },
-            "state_hash": {
-                "type": "string",
-                "description": "State hash from sign_in_google_start.",
+                "description": "Authorization code to exchange.",
             },
         },
     },
@@ -805,10 +829,22 @@ def _execute_allowed_intent(
         "sign_in_google_start": lambda: _execute_sign_in_start(
             intent_id, "google", params
         ),
-        "sign_in_github_exchange": lambda: _execute_sign_in_exchange(
+        "sign_in_github_poll": lambda: _execute_sign_in_poll(
             intent_id, "github", params
         ),
-        "sign_in_google_exchange": lambda: _execute_sign_in_exchange(
+        "sign_in_google_poll": lambda: _execute_sign_in_poll(
+            intent_id, "google", params
+        ),
+        "sign_in_github_cancel": lambda: _execute_sign_in_cancel(
+            intent_id, "github", params
+        ),
+        "sign_in_google_cancel": lambda: _execute_sign_in_cancel(
+            intent_id, "google", params
+        ),
+        "sign_in_github_manual_code": lambda: _execute_sign_in_manual_code(
+            intent_id, "github", params
+        ),
+        "sign_in_google_manual_code": lambda: _execute_sign_in_manual_code(
             intent_id, "google", params
         ),
         "sign_out_provider": lambda: _execute_sign_out_provider(intent_id, params),
@@ -1623,26 +1659,25 @@ def _execute_sign_in_start(
 ) -> dict[str, Any]:
     """Start OAuth sign-in flow for a provider.
 
-    Returns auth_url, loopback_port, state_hash. Does not exchange code
-    unless credentials are configured. Returns pending result if not configured.
+    Backend creates an auth session with a non-blocking async loopback
+    listener. Returns auth_url and auth_session_id to frontend.
+    The frontend opens auth_url in browser; backend-owned loopback
+    listener captures the callback independently.
     """
     try:
-        import hashlib
-        import secrets
-
-        from rig_relay.identity.oauth_loopback import (
-            build_loopback_redirect_uri,
-            find_free_loopback_port,
-        )
+        from rig_relay.identity.auth_session_manager import get_auth_session_manager
+        from rig_relay.identity.models import IdentityProviderKind
 
         if provider_name == "github":
             from rig_relay.identity.github import GitHubIdentityProvider
 
             provider = GitHubIdentityProvider()
+            provider_kind = IdentityProviderKind.GITHUB
         elif provider_name == "google":
             from rig_relay.identity.google import GoogleIdentityProvider
 
             provider = GoogleIdentityProvider()
+            provider_kind = IdentityProviderKind.GOOGLE
         else:
             return _build_result(
                 f"sign_in_{provider_name}_start",
@@ -1651,11 +1686,6 @@ def _execute_sign_in_start(
                 error_code="invalid_provider",
                 summary=f"Unknown provider: {provider_name}",
             )
-
-        port = find_free_loopback_port()
-        redirect_uri = build_loopback_redirect_uri(port)
-        state = secrets.token_hex(32)
-        state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
 
         if not provider.is_configured():
             return _build_result(
@@ -1667,8 +1697,7 @@ def _execute_sign_in_start(
                 f"Set credentials and retry.",
                 extra_fields={
                     "auth_url": "",
-                    "loopback_port": port,
-                    "state_hash": state_hash,
+                    "auth_session_id": "",
                     "provider": provider_name,
                     "status": "pending",
                     "configured": False,
@@ -1676,9 +1705,9 @@ def _execute_sign_in_start(
                 },
             )
 
-        scopes = provider.default_scopes()
-        auth_url = provider.build_auth_url(
-            redirect_uri=redirect_uri, state=state, scopes=scopes
+        mgr = get_auth_session_manager()
+        session, auth_url = mgr.start_session(
+            provider_kind=provider_kind, provider_impl=provider
         )
 
         return _build_result(
@@ -1687,16 +1716,15 @@ def _execute_sign_in_start(
             "completed",
             result_kind="identity_status",
             summary=f"Sign in with {provider_name}: auth URL generated. "
-            f"Scopes: {', '.join(scopes)}.",
+            f"Scopes: {', '.join(session.scopes)}.",
             extra_fields={
                 "auth_url": auth_url,
-                "loopback_port": port,
-                "redirect_uri": redirect_uri,
-                "state_hash": state_hash,
+                "auth_session_id": session.session_id,
+                "redirect_uri": session.redirect_uri,
                 "provider": provider_name,
                 "status": "pending",
                 "configured": True,
-                "scopes": scopes,
+                "scopes": session.scopes,
             },
         )
     except Exception as e:
@@ -1758,183 +1786,290 @@ def _execute_sign_out_provider(
         )
 
 
-def _execute_sign_in_exchange(
+def _execute_sign_in_poll(
     intent_id: str, provider_name: str, params: dict[str, Any]
 ) -> dict[str, Any]:
-    """Exchange OAuth code for an access token.
+    """Check auth session status and exchange code if callback received.
 
-    Starts the loopback callback server on the port from sign_in_*_start,
-    opens the browser to the auth URL, captures the callback, exchanges
-    the code for a token, and stores it in the token store.
-
-    Args:
-        intent_id: Unique intent execution ID.
-        provider_name: "github" or "google".
-        params: Dict with auth_url, redirect_uri, loopback_port, state_hash
-            from sign_in_*_start result.
-
-    Returns:
-        Content-light result with provider status after exchange.
+    Does NOT start a second loopback listener. The backend auth session
+    already owns the listener. This intent checks status and exchanges
+    a captured code for tokens.
     """
     try:
-        import hashlib
-        import webbrowser
+        from rig_relay.identity.auth_session_manager import get_auth_session_manager
 
-        from rig_relay.identity.models import IdentityProviderKind
-        from rig_relay.identity.oauth_loopback import start_loopback_server
-        from rig_relay.identity.token_store import DevFileTokenStore
-
-        auth_url = str(params.get("auth_url", ""))
-        redirect_uri = str(params.get("redirect_uri", ""))
-        loopback_port = int(params.get("loopback_port", 0))
-        expected_state_hash = str(params.get("state_hash", ""))
-
-        if not auth_url or not redirect_uri or not loopback_port:
+        auth_session_id = str(params.get("auth_session_id", ""))
+        if not auth_session_id:
             return _build_result(
-                f"sign_in_{provider_name}_exchange",
+                f"sign_in_{provider_name}_poll",
                 intent_id,
                 "failed",
                 error_code="missing_parameters",
-                summary=f"Missing parameters. Call sign_in_{provider_name}_start first.",
+                summary=f"auth_session_id is required. Call sign_in_{provider_name}_start first.",
             )
 
-        if provider_name == "github":
-            from rig_relay.identity.github import GitHubIdentityProvider
-
-            provider = GitHubIdentityProvider()
-            provider_kind = IdentityProviderKind.GITHUB
-        elif provider_name == "google":
-            from rig_relay.identity.google import GoogleIdentityProvider
-
-            provider = GoogleIdentityProvider()
-            provider_kind = IdentityProviderKind.GOOGLE
-        else:
+        mgr = get_auth_session_manager()
+        session = mgr.get_session(auth_session_id)
+        if session is None:
             return _build_result(
-                f"sign_in_{provider_name}_exchange",
+                f"sign_in_{provider_name}_poll",
                 intent_id,
                 "failed",
-                error_code="invalid_provider",
-                summary=f"Unknown provider: {provider_name}",
+                error_code="session_not_found",
+                summary=f"Auth session {auth_session_id} not found.",
             )
 
-        if not provider.is_configured():
+        if session.provider.value != provider_name:
             return _build_result(
-                f"sign_in_{provider_name}_exchange",
+                f"sign_in_{provider_name}_poll",
                 intent_id,
-                "refused",
-                error_code="not_configured",
-                summary=f"{provider_name} credentials not configured. "
-                f"Set environment variables and retry.",
+                "failed",
+                error_code="provider_mismatch",
+                summary=f"Session provider {session.provider.value} "
+                f"does not match {provider_name}.",
             )
 
-        # Open browser to auth URL
-        webbrowser.open(auth_url)
-
-        # Start loopback server to capture OAuth callback
-        callback_result = start_loopback_server(loopback_port, timeout=120.0)
-
-        error = callback_result.get("error")
-        if error:
-            if error == "timeout":
+        match session.status:
+            case "pending" if _is_expired(session):
                 return _build_result(
-                    f"sign_in_{provider_name}_exchange",
+                    f"sign_in_{provider_name}_poll",
                     intent_id,
                     "failed",
-                    error_code="auth_timeout",
-                    summary=f"{provider_name} sign-in timed out after 120s. No callback received.",
+                    error_code="session_expired",
+                    summary=f"{provider_name} sign-in timed out. Start a new session.",
+                    extra_fields={
+                        "auth_session_id": auth_session_id,
+                        "status": "expired",
+                        "provider": provider_name,
+                    },
                 )
-            return _build_result(
-                f"sign_in_{provider_name}_exchange",
-                intent_id,
-                "failed",
-                error_code="auth_error",
-                summary=f"{provider_name} sign-in error: {error}",
-            )
 
-        code = str(callback_result.get("code", ""))
-        state = str(callback_result.get("state", ""))
-        state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
+            case "pending":
+                return _build_result(
+                    f"sign_in_{provider_name}_poll",
+                    intent_id,
+                    "completed",
+                    result_kind="identity_status",
+                    summary=f"Waiting for {provider_name} callback...",
+                    extra_fields={
+                        "auth_session_id": auth_session_id,
+                        "status": "pending",
+                        "provider": provider_name,
+                    },
+                )
 
-        # Verify state hash matches what we sent
-        if expected_state_hash and state_hash != expected_state_hash:
-            return _build_result(
-                f"sign_in_{provider_name}_exchange",
-                intent_id,
-                "refused",
-                error_code="state_mismatch",
-                summary=f"{provider_name} sign-in refused: state mismatch (possible CSRF).",
-            )
+            case "callback_received":
+                result = mgr.exchange_session(auth_session_id)
+                if result.get("error"):
+                    return _build_result(
+                        f"sign_in_{provider_name}_poll",
+                        intent_id,
+                        "failed",
+                        error_code=result.get("error", "exchange_failed"),
+                        summary=f"{provider_name} token exchange failed: "
+                        f"{result.get('message', result.get('error', ''))}",
+                        extra_fields={
+                            "auth_session_id": auth_session_id,
+                            "status": "failed",
+                            "provider": provider_name,
+                        },
+                    )
+                from rig_relay.identity.token_store import DevFileTokenStore
 
-        if not code:
-            return _build_result(
-                f"sign_in_{provider_name}_exchange",
-                intent_id,
-                "failed",
-                error_code="missing_code",
-                summary=f"No authorization code received from {provider_name}.",
-            )
+                store = DevFileTokenStore()
+                statuses = store.all_statuses()
+                provider_status = statuses.get(provider_name, {})
+                return _build_result(
+                    f"sign_in_{provider_name}_poll",
+                    intent_id,
+                    "completed",
+                    result_kind="identity_status",
+                    summary=f"Signed in to {provider_name} as "
+                    f"{result.get('display_name', 'unknown')}.",
+                    extra_fields={
+                        "auth_session_id": auth_session_id,
+                        "provider": provider_name,
+                        "status": provider_status.get("status", "signed_in"),
+                        "display_name": result.get("display_name", ""),
+                        "scopes": result.get("scopes", []),
+                    },
+                    projection_refresh_recommended=True,
+                )
 
-        # Exchange code for token
-        token_data = provider.exchange_code(code, redirect_uri)
+            case "exchanged":
+                from rig_relay.identity.token_store import DevFileTokenStore
 
-        access_token = token_data.get("access_token", "")
-        if not access_token:
-            return _build_result(
-                f"sign_in_{provider_name}_exchange",
-                intent_id,
-                "failed",
-                error_code="exchange_failed",
-                summary=f"{provider_name} code exchange returned no access token. "
-                f"Response: {token_data.get('error', 'unknown')}",
-            )
+                store = DevFileTokenStore()
+                statuses = store.all_statuses()
+                provider_status = statuses.get(provider_name, {})
+                return _build_result(
+                    f"sign_in_{provider_name}_poll",
+                    intent_id,
+                    "completed",
+                    result_kind="identity_status",
+                    summary=f"Already signed in to {provider_name}.",
+                    extra_fields={
+                        "auth_session_id": auth_session_id,
+                        "provider": provider_name,
+                        "status": "signed_in",
+                        "display_name": session.display_name,
+                        "scopes": session.scopes,
+                    },
+                    projection_refresh_recommended=True,
+                )
 
-        # Store token locally
-        store = DevFileTokenStore()
-        store.put(
-            provider=provider_kind,
-            token_bundle={
-                "access_token": access_token,
-                "refresh_token": token_data.get("refresh_token", ""),
-                "expires_in": token_data.get("expires_in", 3600),
-                "account_id": token_data.get("account_id", ""),
-                "display_name": token_data.get("display_name", ""),
-                "email": token_data.get("email", ""),
-            },
-            scopes=token_data.get("scopes", provider.default_scopes()),
+            case "failed":
+                return _build_result(
+                    f"sign_in_{provider_name}_poll",
+                    intent_id,
+                    "failed",
+                    error_code=session.error_code or "auth_failed",
+                    summary=f"{provider_name} sign-in failed: "
+                    f"{session.error_message or session.error_code}",
+                    extra_fields={
+                        "auth_session_id": auth_session_id,
+                        "status": "failed",
+                        "provider": provider_name,
+                        "error_code": session.error_code,
+                    },
+                )
+
+            case "cancelled" | "expired":
+                return _build_result(
+                    f"sign_in_{provider_name}_poll",
+                    intent_id,
+                    "failed",
+                    error_code=session.status,
+                    summary=f"{provider_name} sign-in {session.status}.",
+                    extra_fields={
+                        "auth_session_id": auth_session_id,
+                        "status": session.status,
+                        "provider": provider_name,
+                    },
+                )
+
+    except Exception as e:
+        return _build_result(
+            f"sign_in_{provider_name}_poll",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"{provider_name} sign-in poll failed: {e}",
         )
 
-        # Refresh metadata via store
-        statuses = store.all_statuses()
-        provider_status = statuses.get(provider_name, {})
-        summary_detail = (
-            f"Signed in to {provider_name} as "
-            f"{token_data.get('display_name', 'unknown')}. "
-            f"Scopes: {', '.join(provider.default_scopes())}."
-        )
+
+def _execute_sign_in_cancel(
+    intent_id: str, provider_name: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Cancel a pending auth session. Cleans up loopback listener."""
+    try:
+        from rig_relay.identity.auth_session_manager import get_auth_session_manager
+
+        auth_session_id = str(params.get("auth_session_id", ""))
+        if not auth_session_id:
+            return _build_result(
+                f"sign_in_{provider_name}_cancel",
+                intent_id,
+                "failed",
+                error_code="missing_parameters",
+                summary="auth_session_id is required.",
+            )
+
+        mgr = get_auth_session_manager()
+        result = mgr.cancel_session(auth_session_id, reason="user_cancelled")
+        if result.get("error"):
+            return _build_result(
+                f"sign_in_{provider_name}_cancel",
+                intent_id,
+                "failed",
+                error_code=result["error"],
+                summary=f"Cancel failed: {result['error']}",
+            )
 
         return _build_result(
-            f"sign_in_{provider_name}_exchange",
+            f"sign_in_{provider_name}_cancel",
             intent_id,
             "completed",
             result_kind="identity_status",
-            summary=summary_detail,
+            summary=f"{provider_name} sign-in cancelled.",
             extra_fields={
+                "auth_session_id": auth_session_id,
+                "status": "cancelled",
                 "provider": provider_name,
-                "status": provider_status.get("status", "signed_in"),
-                "display_name": token_data.get("display_name", ""),
-                "account_id": token_data.get("account_id", ""),
-                "scopes": provider.default_scopes(),
-                "email": token_data.get("email", ""),
             },
         )
     except Exception as e:
         return _build_result(
-            f"sign_in_{provider_name}_exchange",
+            f"sign_in_{provider_name}_cancel",
             intent_id,
             "failed",
             error_code="execution_error",
-            summary=f"{provider_name} sign-in failed: {e}",
+            summary=f"Cancel failed: {e}",
         )
+
+
+def _execute_sign_in_manual_code(
+    intent_id: str, provider_name: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Exchange a manually provided authorization code."""
+    try:
+        from rig_relay.identity.auth_session_manager import get_auth_session_manager
+
+        auth_session_id = str(params.get("auth_session_id", ""))
+        manual_code = str(params.get("manual_code", ""))
+        if not auth_session_id or not manual_code:
+            return _build_result(
+                f"sign_in_{provider_name}_manual_code",
+                intent_id,
+                "failed",
+                error_code="missing_parameters",
+                summary="Both auth_session_id and manual_code are required.",
+            )
+
+        mgr = get_auth_session_manager()
+        result = mgr.exchange_manual_code(auth_session_id, manual_code)
+        if result.get("error"):
+            return _build_result(
+                f"sign_in_{provider_name}_manual_code",
+                intent_id,
+                "failed",
+                error_code=result.get("error", "exchange_failed"),
+                summary=f"Manual code exchange failed: "
+                f"{result.get('message', result.get('error', ''))}",
+            )
+
+        return _build_result(
+            f"sign_in_{provider_name}_manual_code",
+            intent_id,
+            "completed",
+            result_kind="identity_status",
+            summary=f"Signed in to {provider_name} via manual code.",
+            extra_fields={
+                "auth_session_id": auth_session_id,
+                "provider": provider_name,
+                "status": "signed_in",
+                "display_name": result.get("display_name", ""),
+                "scopes": result.get("scopes", []),
+            },
+            projection_refresh_recommended=True,
+        )
+    except Exception as e:
+        return _build_result(
+            f"sign_in_{provider_name}_manual_code",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Manual code exchange failed: {e}",
+        )
+
+
+def _is_expired(session: Any) -> bool:
+    import time
+
+    return getattr(session, "is_expired", False) or (
+        hasattr(session, "expires_at")
+        and time.time() > getattr(session, "expires_at", 0)
+    )
 
 
 # ── Telemetry Consent Intent Handlers ────────────────────────────────

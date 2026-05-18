@@ -5,14 +5,21 @@
 Rig Relay is local-first software. Most security concerns relate to local tool execution
 boundaries, credential handling, and debug packet quarantine.
 
-Please report security vulnerabilities by opening a GitHub issue with the `security` label
-at https://github.com/juliantorr-es/rig-relay/issues.
+Do **not** report vulnerabilities, leaked secrets, or exploit details in public issues,
+public discussions, or chat logs.
+
+Report vulnerabilities privately through GitHub Security Advisories:
+https://github.com/juliantorr-es/rig-relay/security/advisories/new
+
+If private reporting is unavailable in your environment, open a minimal public issue
+without sensitive details and request a private follow-up channel.
 
 ## Supported Versions
 
-| Version | Supported |
-|---|---|
-| 0.1.x (alpha) | :white_check_mark: |
+| Version | Supported | Scope |
+|---|---|---|
+| 0.1.0a1 | :white_check_mark: | Current alpha release candidate |
+| 0.1.x (alpha) | :white_check_mark: | Best-effort security fixes during alpha line |
 
 ## Local Execution Safety
 
@@ -26,7 +33,7 @@ boundaries are enforced:
 
 ## Credential Handling
 
-- API keys are stored in the platform-native credential store (macOS Keychain, etc.).
+- API keys use OS-native credential storage when available, with local fallback.
 - Tokens and secrets are redacted from telemetry, traces, and debug bundles.
 - No credentials are transmitted without explicit user consent.
 

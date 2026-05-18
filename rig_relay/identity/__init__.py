@@ -22,6 +22,12 @@ See ``docs/governance/identity-provider-policy.md``.
 
 from __future__ import annotations
 
+from rig_relay.identity.auth_session_manager import (
+    AuthSession,
+    AuthSessionManager,
+    AuthSessionStatus,
+    get_auth_session_manager,
+)
 from rig_relay.identity.models import (
     IdentityAccountSummary,
     IdentityProviderKind,
@@ -35,6 +41,9 @@ from rig_relay.identity.providers import IdentityProvider
 from rig_relay.identity.token_store import DevFileTokenStore, TokenStore
 
 __all__ = [
+    "AuthSession",
+    "AuthSessionManager",
+    "AuthSessionStatus",
     "DevFileTokenStore",
     "IdentityAccountSummary",
     "IdentityProvider",
@@ -45,4 +54,5 @@ __all__ = [
     "OAuthStartResult",
     "TokenBundleMetadata",
     "TokenStore",
+    "get_auth_session_manager",
 ]
