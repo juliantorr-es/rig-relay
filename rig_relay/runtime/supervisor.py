@@ -704,6 +704,8 @@ class RuntimeSupervisor:
             yield ce
 
         # ── Emit terminal event ─────────────────────────────────────
+        _terminal_handled = False
+
         terminal_event: RuntimeCompletionEvent | RuntimeFailureEvent
         if timed_out:
             terminal_event = _make_failure(
@@ -777,6 +779,11 @@ class RuntimeSupervisor:
             )
 
         yield terminal_event
+
+        if _terminal_handled:
+            return
+        _terminal_handled = True
+
         trace_event(
             "runtime.subprocess.exit",
             attributes={

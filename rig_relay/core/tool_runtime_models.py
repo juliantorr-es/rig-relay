@@ -76,6 +76,7 @@ class RefusalCode(StrEnum):
     CONTEXT_OBSERVATION_FAILED = "context_observation_failed"
     MALFORMED_TOOL_ARGS = "malformed_tool_args"
     UNSUPPORTED_EXECUTION_MODE = "unsupported_execution_mode"
+    CAPABILITY_GATED = "capability_gated"
 
 
 class ToolRuntimeRequest(BaseModel):

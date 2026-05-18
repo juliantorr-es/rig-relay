@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.release_gate.capability_gate_matrix.v1.schema.json",
+  "title": "Capability Gate Matrix v1",
+  "description": "Structured inventory of every sensitive capability, which surface enforces it, and test evidence.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "capabilities"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.release_gate.capability_gate_matrix.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this matrix was generated."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CapabilityGateEntry"
+      }
+    }
+  },
+  "definitions": {
+    "CapabilityGateEntry": {
+      "type": "object",
+      "required": [
+        "capability_id",
+        "surface",
+        "enforced",
+        "enforcement_point",
+        "file",
+        "test_file",
+        "notes"
+      ],
+      "properties": {
+        "capability_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique capability identifier."
+        },
+        "surface": {
+          "type": "string",
+          "enum": [
+            "desktop_intent",
+            "acp_command",
+            "integration_projection",
+            "websocket_server"
+          ],
+          "description": "Which surface enforces this capability gate."
+        },
+        "enforced": {
+          "type": "boolean",
+          "description": "Whether the gate is currently enforced."
+        },
+        "enforcement_point": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Description of where enforcement occurs (e.g. execute_desktop_intent -> CapabilityGate.is_allowed())."
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source file with line number of the enforcement point."
+        },
+        "test_file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Test file and class/function covering this capability gate."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the capability gate."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

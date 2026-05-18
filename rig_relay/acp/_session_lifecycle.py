@@ -57,6 +57,7 @@ from rig_relay.core.config import (
 from rig_relay.core.hooks.config import load_hooks_from_fs
 from rig_relay.core.session.session_loader import SessionLoader
 from rig_relay.core.types import Role
+from rig_relay.governance.service_state import get_capability_gate
 
 
 class SessionLifecycleMixin:
@@ -200,6 +201,13 @@ class SessionLifecycleMixin:
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> NewSessionResponse:
+        gate = get_capability_gate()
+        state = gate.state_summary()
+        if state.get("service_state") in {"setup_required", "locked"}:
+            raise ConfigurationError(
+                "Service is locked. Profile must be unlocked to create ACP sessions."
+            )
+
         load_dotenv_values()
         os.chdir(cwd)
 
@@ -265,6 +273,13 @@ class SessionLifecycleMixin:
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse | None:
+        gate = get_capability_gate()
+        state = gate.state_summary()
+        if state.get("service_state") in {"setup_required", "locked"}:
+            raise ConfigurationError(
+                "Service is locked. Profile must be unlocked to load ACP sessions."
+            )
+
         load_dotenv_values()
         os.chdir(cwd)
 
@@ -348,6 +363,13 @@ class SessionLifecycleMixin:
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ForkSessionResponse:
+        gate = get_capability_gate()
+        state = gate.state_summary()
+        if state.get("service_state") in {"setup_required", "locked"}:
+            raise ConfigurationError(
+                "Service is locked. Profile must be unlocked to fork ACP sessions."
+            )
+
         load_dotenv_values()
         os.chdir(cwd)
 

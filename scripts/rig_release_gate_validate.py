@@ -568,6 +568,17 @@ def run_validation(
 
     phases = gate.get("phases", [])
     artifact_counts["phases"] = len(phases)
+
+    try:
+        gate_check = load_artifact(readiness_gate_path)
+        if gate_check.get("generated_at") != gate.get("generated_at"):
+            errors.append(
+                "CONSISTENCY WARNING: readiness gate was modified during validation. "
+                "Re-run for a consistent snapshot."
+            )
+    except Exception:
+        pass
+
     policy = gate.get("policy", {})
 
     allowed_exceptions = policy.get("allowed_markdown_exceptions", [])

@@ -1,0 +1,112 @@
+{
+  "schema_version": "rig.release_candidate.local_service_security_boundary.v1",
+  "boundary_id": "local-service-security-boundary-v1",
+  "generated_at": "2026-05-18T06:39:22.093105+00:00",
+  "branch": "main",
+  "head_sha": "8c070ff7cf42795ab79284b92826e1ff9e02b1e8",
+  "loopback_binding": {
+    "enforced": true,
+    "mechanism": "_is_loopback_host() check in DesktopBridgeServer.start(). Rejects non-loopback hosts unless RIG_RELAY_ALLOW_NON_LOOPBACK_LOCAL_BRIDGE env var is set.",
+    "non_loopback_requires_flag": "RIG_RELAY_ALLOW_NON_LOOPBACK_LOCAL_BRIDGE",
+    "notes": "Default bind is 127.0.0.1. Explicit unsafe/dev flag required for any non-loopback bind."
+  },
+  "origin_validation": {
+    "http_validated": true,
+    "websocket_validated": true,
+    "allowed_origins": [
+      "http://127.0.0.1",
+      "https://127.0.0.1",
+      "http://localhost",
+      "https://localhost"
+    ],
+    "rejected_origins": [
+      "https://evil.example",
+      "http://attacker.local",
+      "https://any-remote-origin"
+    ],
+    "null_origin_policy": "Allowed \u2014 pywebview sends null origin for file:// loads in local webview",
+    "missing_origin_policy": "Allowed \u2014 curl, health probes, and local tools may not send Origin",
+    "file_origin_policy": "Never allowed \u2014 file:// origins rejected unconditionally",
+    "notes": "Origin validation on both HTTP (bridge_server._handle_http) and WebSocket (websocket_server._inspect_origin) surfaces."
+  },
+  "host_validation": {
+    "dns_rebinding_defense": true,
+    "allowed_hosts": [
+      "127.0.0.1",
+      "localhost",
+      "::1"
+    ],
+    "rejected_hosts_behavior": "403 Forbidden with JSON error response. DNS-rebinding hostnames like evil.example.com resolving to 127.0.0.1 are rejected.",
+    "notes": "Host header validated in _handle_http() before any route processing."
+  },
+  "websocket_protection": {
+    "token_required": true,
+    "origin_validated": true,
+    "rejects_remote_origin": true,
+    "rejects_wrong_token": true,
+    "reconnect_requires_re_auth": true,
+    "notes": "WebSocket connections validate Origin in process_request handler and require token auth as first message. Reconnect goes through full auth cycle."
+  },
+  "service_state_gating": {
+    "http_routes_gated": true,
+    "websocket_intents_gated": true,
+    "locked_behavior": "Sensitive HTTP routes return 403. Sensitive intents refused with service_gated error code.",
+    "setup_required_behavior": "Same as locked \u2014 no sensitive operations until profile is created and unlocked.",
+    "sensitive_capabilities_blocked": [
+      "provider_onboarding_save_key",
+      "provider_onboarding_remove_key",
+      "telemetry_upload_google",
+      "telemetry_consent_grant",
+      "telemetry_consent_revoke",
+      "sign_in_github_start",
+      "sign_in_google_start",
+      "create_telemetry_bundle_dry_run",
+      "create_chatgpt_dev_bundle_dry_run",
+      "checkpoint.commit",
+      "lease_cleanup.archive",
+      "worktree_create",
+      "worktree_remove",
+      "fleet_orchestrate"
+    ],
+    "always_allowed": [
+      "refresh_projection",
+      "identity_status",
+      "get_chat_state",
+      "run_storage_audit",
+      "run_validation_suite",
+      "provider_status",
+      "provider_health_check",
+      "healthz (unauthenticated)"
+    ],
+    "notes": "Service state gating via CapabilityGate from rig_relay.governance.service_state. Profile must be unlocked before sensitive capabilities are available."
+  },
+  "token_handling": {
+    "generated_per_startup": true,
+    "not_in_logs": true,
+    "not_in_projection": true,
+    "html_injection_intentional": true,
+    "html_injection_reason": "pywebview local webview needs the token for WebSocket auth. Token is injected into index.html at serve time. This is a local-only surface.",
+    "runtime_config_strips_token": true,
+    "notes": "Token is generated per server start (secrets.token_hex(32)). Never persisted to disk. Strip from /runtime-config.json HTTP response. Present in HTML injection for pywebview only. Logs show token_present (boolean), never raw token."
+  },
+  "oauth_loopback_exception": {
+    "separate_from_bridge": true,
+    "state_validated": true,
+    "not_governed_by_cockpit_token": true,
+    "notes": "OAuth loopback listener (AuthSessionManager) runs on separate port, separate thread. Validates state hash with SHA256 comparison to prevent CSRF. Not governed by cockpit bridge token \u2014 OAuth callback is a distinct security boundary."
+  },
+  "health_endpoint": {
+    "unauthenticated": true,
+    "content_light": true,
+    "notes": "/healthz returns content-light readiness state only: bridge mode, transport label, service state, profile exists/state, TLS status. No tokens, no secrets, no projection data, no file paths."
+  },
+  "test_results": {
+    "total": 34,
+    "passed": 34,
+    "failed": 0,
+    "modules": [
+      "tests/desktop/test_local_service_security.py"
+    ]
+  },
+  "overall_assessment": "secure"
+}

@@ -181,9 +181,23 @@ class CoordinationStore:
         )
         events_path = self._events_path()
         with events_path.open("a", encoding="utf-8") as f:
-            f.write(dump_canonical_json(event.model_dump(exclude_none=True)) + "\n")
+            line = dump_canonical_json(event.model_dump(exclude_none=True)) + "\n"
+            pos_before = f.tell()
+            f.write(line)
             f.flush()
             os.fsync(f.fileno())
+            pos_after = f.tell()
+            expected = len(line.encode("utf-8"))
+            actual = pos_after - pos_before
+            if actual != expected:
+                from rig_relay.core.logger import logger
+
+                logger.error(
+                    "coordination append truncated: expected=%s actual=%s event_id=%s",
+                    expected,
+                    actual,
+                    event.event_id,
+                )
 
     def _next_sequence(self) -> int:
         """Return the next sequence number by reading the latest max from events.jsonl.

@@ -1,0 +1,276 @@
+{
+  "schema_version": "rig.release_gate.capability_gate_matrix.v1",
+  "generated_at": "2026-05-17T00:00:00Z",
+  "capabilities": [
+    {
+      "capability_id": "provider_onboarding_save_key",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating::test_provider_onboarding_save_key_refused_when_locked",
+      "notes": ""
+    },
+    {
+      "capability_id": "provider_onboarding_remove_key",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "telemetry_upload_google",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "telemetry_consent_grant",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "telemetry_consent_revoke",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "sign_in_github_start",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating::test_sign_in_start_refused_when_setup_required",
+      "notes": ""
+    },
+    {
+      "capability_id": "sign_in_google_start",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "create_telemetry_bundle_dry_run",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "create_chatgpt_dev_bundle_dry_run",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "checkpoint.commit",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "lease_cleanup.archive",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "worktree_create",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "worktree_remove",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating",
+      "notes": ""
+    },
+    {
+      "capability_id": "fleet_orchestrate",
+      "surface": "desktop_intent",
+      "enforced": true,
+      "enforcement_point": "execute_desktop_intent -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/desktop/intents.py:629",
+      "test_file": "tests/governance/test_service_state.py::TestDesktopIntentGating::test_fleet_orchestrate_refused_when_no_profile",
+      "notes": ""
+    },
+    {
+      "capability_id": "acp_command:leanstall",
+      "surface": "acp_command",
+      "enforced": true,
+      "enforcement_point": "_handle_leanstall -> CapabilityGate.is_allowed()",
+      "file": "rig_relay/acp/_commands.py:247",
+      "test_file": "tests/governance/test_service_state.py::TestCapabilityGate",
+      "notes": ""
+    },
+    {
+      "capability_id": "acp_command:unleanstall",
+      "surface": "acp_command",
+      "enforced": false,
+      "enforcement_point": "CapabilityGate.ACP_COMMAND_CAPABILITIES membership; handler at _handle_unleanstall lacks is_allowed() check",
+      "file": "rig_relay/acp/_commands.py:269",
+      "test_file": "tests/governance/test_service_state.py::TestCapabilityGate",
+      "notes": "Listed in ACP_COMMAND_CAPABILITIES frozenset but _handle_unleanstall does not call is_allowed()"
+    },
+    {
+      "capability_id": "acp_command:proxy-setup",
+      "surface": "acp_command",
+      "enforced": false,
+      "enforcement_point": "CapabilityGate.ACP_COMMAND_CAPABILITIES membership; handler at _handle_proxy_setup lacks is_allowed() check",
+      "file": "rig_relay/acp/_commands.py:215",
+      "test_file": "tests/governance/test_service_state.py::TestCapabilityGate",
+      "notes": "Listed in ACP_COMMAND_CAPABILITIES frozenset but _handle_proxy_setup does not call is_allowed()"
+    },
+    {
+      "capability_id": "github:read_repo_metadata",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: false. Always available when signed in."
+    },
+    {
+      "capability_id": "github:read_issues",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: false. Always available when signed in."
+    },
+    {
+      "capability_id": "github:read_pull_requests",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: false. Always available when signed in."
+    },
+    {
+      "capability_id": "github:read_workflow_runs",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: false. Always available when signed in."
+    },
+    {
+      "capability_id": "github:create_check_run_or_status",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: true, gated: true. Requires unlocked profile."
+    },
+    {
+      "capability_id": "github:create_issue_comment",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: true, gated: true. Requires unlocked profile."
+    },
+    {
+      "capability_id": "github:propose_patch_metadata",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: true, gated: true. Requires unlocked profile."
+    },
+    {
+      "capability_id": "github:webhook_event_ingest",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: false. Not MCP/ACP exposable."
+    },
+    {
+      "capability_id": "google_drive:list_user_selected_files",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: false. Always available when signed in."
+    },
+    {
+      "capability_id": "google_drive:read_file_metadata",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: false. Always available when signed in."
+    },
+    {
+      "capability_id": "google_drive:read_exported_document_text",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: false. telemetry_safety_class: restricted."
+    },
+    {
+      "capability_id": "google_drive:write_app_created_evidence_file",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: true, gated: true. Requires unlocked profile."
+    },
+    {
+      "capability_id": "google_drive:watch_file_changes_if_scope_allows",
+      "surface": "integration_projection",
+      "enforced": true,
+      "enforcement_point": "build_integration_projection -> gate.is_allowed() for profile_gate_required caps",
+      "file": "rig_relay/core/integrations/registry.py:69",
+      "test_file": "tests/integration/test_integration_acp_mcp_release_gate.py::TestMCPACPReadiness",
+      "notes": "profile_gate_required: true, gated: false. Requires unlocked profile."
+    }
+  ]
+}

@@ -155,6 +155,21 @@ class AuthSessionManager:
         with self._lock:
             self._prune_if_needed()
 
+            for sid, existing in list(self._sessions.items()):
+                if (
+                    existing.provider == provider_kind
+                    and existing.status == AuthSessionStatus.PENDING
+                ):
+                    logger.warning(
+                        "refusing double-listen for provider=%s existing_session_id=%s",
+                        provider_kind.value,
+                        sid,
+                    )
+                    raise RuntimeError(
+                        f"Auth session already pending for {provider_kind.value}. "
+                        f"Cancel or wait for existing session (id={sid[:8]}...)"
+                    )
+
             port = find_free_loopback_port()
             redirect_uri = build_loopback_redirect_uri(port)
             state = secrets.token_hex(32)

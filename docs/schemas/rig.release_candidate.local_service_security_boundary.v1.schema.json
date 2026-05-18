@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.release_candidate.local_service_security_boundary.v1.schema.json",
+  "title": "Local Service Security Boundary v1",
+  "description": "Structured evidence that the local HTTP/WebSocket bridge and service endpoints are hardened against remote-origin, DNS-rebinding, and unauthenticated access.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "boundary_id",
+    "generated_at",
+    "branch",
+    "head_sha",
+    "loopback_binding",
+    "origin_validation",
+    "host_validation",
+    "websocket_protection",
+    "service_state_gating",
+    "token_handling",
+    "oauth_loopback_exception",
+    "health_endpoint",
+    "test_results",
+    "overall_assessment"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.release_candidate.local_service_security_boundary.v1"
+    },
+    "boundary_id": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "branch": { "type": "string" },
+    "head_sha": { "type": "string" },
+    "loopback_binding": {
+      "type": "object",
+      "required": ["enforced", "mechanism", "non_loopback_requires_flag"],
+      "properties": {
+        "enforced": { "type": "boolean" },
+        "mechanism": { "type": "string" },
+        "non_loopback_requires_flag": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "origin_validation": {
+      "type": "object",
+      "required": ["http_validated", "websocket_validated", "allowed_origins", "rejected_origins"],
+      "properties": {
+        "http_validated": { "type": "boolean" },
+        "websocket_validated": { "type": "boolean" },
+        "allowed_origins": { "type": "array", "items": { "type": "string" } },
+        "rejected_origins": { "type": "array", "items": { "type": "string" } },
+        "null_origin_policy": { "type": "string" },
+        "missing_origin_policy": { "type": "string" },
+        "file_origin_policy": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "host_validation": {
+      "type": "object",
+      "required": ["dns_rebinding_defense", "allowed_hosts"],
+      "properties": {
+        "dns_rebinding_defense": { "type": "boolean" },
+        "allowed_hosts": { "type": "array", "items": { "type": "string" } },
+        "rejected_hosts_behavior": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "websocket_protection": {
+      "type": "object",
+      "required": ["token_required", "origin_validated", "rejects_remote_origin"],
+      "properties": {
+        "token_required": { "type": "boolean" },
+        "origin_validated": { "type": "boolean" },
+        "rejects_remote_origin": { "type": "boolean" },
+        "rejects_wrong_token": { "type": "boolean" },
+        "reconnect_requires_re_auth": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "service_state_gating": {
+      "type": "object",
+      "required": ["http_routes_gated", "websocket_intents_gated", "locked_behavior"],
+      "properties": {
+        "http_routes_gated": { "type": "boolean" },
+        "websocket_intents_gated": { "type": "boolean" },
+        "locked_behavior": { "type": "string" },
+        "setup_required_behavior": { "type": "string" },
+        "sensitive_capabilities_blocked": { "type": "array", "items": { "type": "string" } },
+        "always_allowed": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      }
+    },
+    "token_handling": {
+      "type": "object",
+      "required": ["generated_per_startup", "not_in_logs", "not_in_projection"],
+      "properties": {
+        "generated_per_startup": { "type": "boolean" },
+        "not_in_logs": { "type": "boolean" },
+        "not_in_projection": { "type": "boolean" },
+        "html_injection_intentional": { "type": "boolean" },
+        "html_injection_reason": { "type": "string" },
+        "runtime_config_strips_token": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "oauth_loopback_exception": {
+      "type": "object",
+      "required": ["separate_from_bridge", "state_validated", "not_governed_by_cockpit_token"],
+      "properties": {
+        "separate_from_bridge": { "type": "boolean" },
+        "state_validated": { "type": "boolean" },
+        "not_governed_by_cockpit_token": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "health_endpoint": {
+      "type": "object",
+      "required": ["unauthenticated", "content_light"],
+      "properties": {
+        "unauthenticated": { "type": "boolean" },
+        "content_light": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "test_results": {
+      "type": "object",
+      "required": ["total", "passed", "failed"],
+      "properties": {
+        "total": { "type": "integer" },
+        "passed": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "modules": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "overall_assessment": {
+      "type": "string",
+      "enum": ["secure", "acceptable", "needs_work", "failing"]
+    }
+  }
+}

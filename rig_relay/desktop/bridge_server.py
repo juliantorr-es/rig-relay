@@ -55,6 +55,16 @@ HTTP_OK = 200
 
 _JSON_HEADERS = Headers({"Content-Type": "application/json"})
 
+# Allowed HTTP origins for browser requests. DNS-rebinding domains and remote
+# origins are rejected. Missing Origin is allowed for local tools (curl, health probes).
+# Only pywebview-style local origins and explicit loopback are permitted.
+ALLOWED_HTTP_ORIGINS: frozenset[str] = frozenset({
+    "http://127.0.0.1",
+    "https://127.0.0.1",
+    "http://localhost",
+    "https://localhost",
+})
+
 
 class _WebSocketNoiseFilter(logging.Filter):
     """Downgrade non-WebSocket HTTP request errors to warnings.
@@ -686,9 +696,45 @@ class DesktopBridgeServer:
         self._print_handshake_trace()
         self._started = False
 
-    def _handle_http(self, request: Request, frontend_dir: Path) -> Response | None:  # noqa: PLR0911
+    def _handle_http(self, request: Request, frontend_dir: Path) -> Response | None:  # noqa: PLR0911 PLR0912
         raw_path = request.path or "/"
         path = raw_path.split("?", 1)[0] if "?" in raw_path else raw_path
+
+        # Extract Host header for DNS-rebinding defense
+        host_header = ""
+        if hasattr(request, "headers") and request.headers:
+            host_header = request.headers.get("Host", "")
+
+        # Validate Host header (DNS-rebinding defense)
+        host_ok, host_reason = _validate_host_header(host_header, self._config.host)
+        if not host_ok:
+            logger.warning(
+                "audit.host.rejected reason=%s host=%s", host_reason, host_header
+            )
+            return _json_response(
+                {"error": "forbidden", "reason": host_reason}, status_code=403
+            )
+
+        # Extract and validate Origin header
+        origin = ""
+        if hasattr(request, "headers") and request.headers:
+            origin = request.headers.get("Origin", "")
+
+        origin_ok, origin_reason = _validate_http_origin(
+            origin, self._config.host, self._bound_port
+        )
+        if not origin_ok:
+            logger.warning(
+                "audit.origin.rejected reason=%s origin=%s", origin_reason, origin
+            )
+            return _json_response(
+                {"error": "forbidden", "reason": origin_reason}, status_code=403
+            )
+
+        # Gate sensitive routes by service state
+        gated_response = self._gate_route_by_service_state(path)
+        if gated_response is not None:
+            return gated_response
 
         # WebSocket upgrade — only GET is valid; reject POST/PUT/etc.
         if path == "/ws":
@@ -859,6 +905,61 @@ class DesktopBridgeServer:
             return _empty_response(404, "Not Found")
 
         return self._serve_file(requested)
+
+    def _gate_route_by_service_state(self, path: str) -> Response | None:
+        """Gate sensitive HTTP routes by service state.
+
+        Returns None if the route is allowed, or a 403 JSON response if gated.
+        When the profile is setup_required or locked, sensitive routes are
+        blocked even with valid token/origin.
+        """
+        from rig_relay.governance.service_state import get_capability_gate
+
+        gate = get_capability_gate()
+        state_summary = gate.state_summary()
+        service_state = state_summary.get("service_state", "")
+        profile_state = state_summary.get("profile_state", "")
+
+        # Always allowed routes (never gated)
+        if path in {
+            "/",
+            "/index.html",
+            "/healthz",
+            "/runtime-config.json",
+            "/runtime-config",
+            "/ws",
+        }:
+            return None
+        if (
+            path.startswith("/js/")
+            or path.startswith("/css/")
+            or path.startswith("/assets/")
+        ):
+            return None
+        if path == "/frontend-event":
+            return None
+
+        # In ready/degraded state, all routes are allowed
+        if service_state in {"ready", "degraded"}:
+            return None
+
+        # In setup_required or locked state, block sensitive routes
+        if service_state in {"setup_required", "locked"}:
+            message = f"Service is {service_state}. Route '{path}' is not available until profile is unlocked."
+            logger.warning(
+                "audit.route.gated service_state=%s path=%s", service_state, path
+            )
+            return _json_response(
+                {
+                    "error": "service_gated",
+                    "service_state": service_state,
+                    "profile_state": profile_state,
+                    "message": message,
+                },
+                status_code=403,
+            )
+
+        return None
 
     async def _handle_ws(self, conn: ServerConnection) -> None:
         """Handle WebSocket connections — delegates to ProjectionWebSocketServer."""
@@ -1070,10 +1171,28 @@ class DesktopBridgeServer:
             "active_ws_clients": 0,
             "last_ws_error": None,
             "service_state": state_summary.get("service_state", "unknown"),
+            "readiness_state": self._compute_readiness(state_summary),
             "profile_exists": state_summary.get("profile_exists", False),
             "profile_state": state_summary.get("profile_state", "setup_required"),
             "local_auth_enabled": state_summary.get("local_auth_enabled", False),
         })
+
+    def _compute_readiness(self, state_summary: dict[str, Any]) -> str:  # noqa: PLR0911
+        """Map service state to readiness state for frontend consumption."""
+        service_state = state_summary.get("service_state", "setup_required")
+        if service_state in {"starting"}:
+            return "starting"
+        if service_state == "setup_required":
+            return "setup_required"
+        if service_state == "locked":
+            return "locked"
+        if service_state == "ready":
+            return "ready"
+        if service_state == "degraded":
+            return "degraded"
+        if service_state == "failed":
+            return "failed"
+        return service_state
 
     def _print_handshake_trace(self) -> None:
         trace_path = (
@@ -1104,6 +1223,54 @@ __all__ = ["DesktopBridgeConfig", "DesktopBridgeRuntimeConfig", "DesktopBridgeSe
 
 def _is_loopback_host(host: str) -> bool:
     return host in {"127.0.0.1", "localhost", "::1"}
+
+
+def _validate_http_origin(origin: str, host: str, bound_port: int) -> tuple[bool, str]:  # noqa: PLR0911
+    """Validate HTTP Origin header for local bridge requests.
+
+    Returns (allowed, reason).
+    - Missing Origin is allowed (curl, health probes, pywebview with no origin).
+    - null origin is allowed (pywebview sends null origin for file:// loads).
+    - file:// origins are never allowed.
+    - Loopback origins matching expected host:port are allowed.
+    - DNS-rebinding hostnames (non-loopback in Origin) are rejected.
+    """
+    if not origin:
+        return True, ""
+    origin_lower = origin.lower()
+    if origin_lower == "null":
+        return True, ""
+    if origin_lower.startswith("file://"):
+        return False, "file:// origins are not allowed"
+    if origin in ALLOWED_HTTP_ORIGINS:
+        return True, ""
+    # Allow any origin containing 127.0.0.1 or localhost with matching port
+    for loopback in {"127.0.0.1", "localhost"}:
+        if loopback in origin_lower:
+            return True, ""
+    if bound_port and f":{bound_port}" in origin:
+        for loopback in {"127.0.0.1", "localhost", "::1"}:
+            if loopback in origin_lower:
+                return True, ""
+    return False, f"Origin '{origin}' is not a local origin"
+
+
+def _validate_host_header(host_header: str, bind_host: str) -> tuple[bool, str]:
+    """Validate Host header for DNS-rebinding defense.
+
+    Returns (allowed, reason).
+    The Host must be localhost, 127.0.0.1, ::1, or match the bind host.
+    DNS-rebinding hostnames (e.g. evil.example.com resolving to 127.0.0.1) are rejected.
+    Missing Host is allowed (local tools).
+    """
+    if not host_header:
+        return True, ""
+    host_clean = host_header.split(":")[0].lower()
+    if host_clean in {"127.0.0.1", "localhost", "::1"}:
+        return True, ""
+    if host_clean == bind_host:
+        return True, ""
+    return False, f"Host '{host_header}' is not a localhost address"
 
 
 def _unsafe_non_loopback_allowed() -> bool:

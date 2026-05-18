@@ -230,6 +230,24 @@ class CapabilityGate:
         "fleet_orchestrate",
     })
 
+    # ACP commands that require unlocked profile
+    ACP_COMMAND_CAPABILITIES: frozenset[str] = frozenset({
+        "acp_command:leanstall",
+        "acp_command:unleanstall",
+        "acp_command:proxy-setup",
+    })
+
+    # Mutation tools gated on profile state — prepended with "tool:" prefix
+    MUTATION_TOOL_CAPABILITIES: frozenset[str] = frozenset({
+        "tool:BashTool",
+        "tool:WriteFileTool",
+        "tool:SearchReplaceTool",
+        "tool:CheckpointTool",
+        "tool:CoordinationTool",
+        "tool:BehaviorPatchTool",
+        "tool:TaskTool",
+    })
+
     # Always allowed regardless of profile state
     ALWAYS_ALLOWED: frozenset[str] = frozenset({
         "refresh_projection",
@@ -273,21 +291,42 @@ class CapabilityGate:
         if intent_name in self.ALWAYS_ALLOWED:
             return True, ""
 
+        sensitive = (
+            intent_name in self.SENSITIVE_CAPABILITIES
+            or intent_name in self.ACP_COMMAND_CAPABILITIES
+            or (
+                intent_name.startswith("tool:")
+                and intent_name in self.MUTATION_TOOL_CAPABILITIES
+            )
+        )
+
         profile = self._profile_store.load()
 
         if profile is None:
             # No profile — first launch, everything sensitive is gated
-            if intent_name in self.SENSITIVE_CAPABILITIES:
+            if sensitive:
                 return False, "setup_required: no local profile exists"
             return True, ""
 
         if profile.is_unlocked():
             return True, ""
 
-        if intent_name in self.SENSITIVE_CAPABILITIES:
+        if sensitive:
             return False, f"profile is {profile.profile_state.value}"
 
         return True, ""
+
+    def check_tool_execution(
+        self, tool_name: str, execution_mode: str
+    ) -> tuple[bool, str]:
+        """Check if a tool execution is allowed given execution mode and profile state.
+
+        Read-only tools always pass. Mutation tools are gated on profile state.
+        Returns (allowed, reason).
+        """
+        if execution_mode not in {"mutation_execution", "mutation_proposal"}:
+            return True, ""
+        return self.is_allowed(f"tool:{tool_name}")
 
     def state_summary(self) -> dict[str, Any]:
         """Return service state summary for health/projection."""

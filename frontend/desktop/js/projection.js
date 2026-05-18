@@ -84,6 +84,9 @@ export function handleProjection(data) {
         digest: effectiveDigest
       }).catch(function() {});
     }
+    if (window.RigRelay && typeof window.RigRelay.onProjectionReceived === 'function') {
+      window.RigRelay.onProjectionReceived();
+    }
   }
 
   if (projection.ralph_lifecycle) {
@@ -372,6 +375,10 @@ export function handleProgressEvents(events) {
 }
 
 // ── Reset for reconnect ──────────────────────────────────────────────
+
+export function isProjectionReady() {
+  return !!_lastDigest;
+}
 
 export function resetDigest() {
   _lastDigest = '';

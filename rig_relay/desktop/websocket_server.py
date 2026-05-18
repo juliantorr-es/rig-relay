@@ -1171,6 +1171,38 @@ class ProjectionWebSocketServer:
                 },
             )
         else:
+            # Gate sensitive intent capabilities by service state
+            from rig_relay.governance.service_state import get_capability_gate
+
+            gate = get_capability_gate()
+            intent_name = intent_msg.get("intent_name", "")
+            allowed, reason = gate.is_allowed(intent_name)
+            if not allowed:
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "desktop_intent_result",
+                        "data": {
+                            "schema_version": "rig.relay.desktop_intent_result.v1",
+                            "intent_id": intent_msg.get("intent_id", "unknown"),
+                            "created_at": __import__("datetime")
+                            .datetime.now(__import__("datetime").timezone.utc)
+                            .isoformat(),
+                            "intent_name": intent_name,
+                            "status": "refused",
+                            "dry_run": True,
+                            "result_kind": "service_gated",
+                            "summary": f"Intent '{intent_name}' is gated: {reason}",
+                            "output_refs": [],
+                            "projection_refresh_recommended": False,
+                            "authorization_required": False,
+                            "warnings": [],
+                            "error_code": "service_gated",
+                        },
+                        "seq": self._next_seq(),
+                    },
+                )
+                return subscribe_task
 
             async def _progress_emitter(event_data: dict[str, Any]) -> None:
                 await self.broadcast_progress_event(event_data)

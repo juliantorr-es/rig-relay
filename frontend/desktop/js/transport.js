@@ -13,6 +13,12 @@ import { renderStatusBar } from './status.js';
 
 let _wsClient = null;
 let _transportAuthority = null;
+let _firstProjectionReceived = false;
+let _wsAuthenticated = false;
+let _outboundQueue = [];
+let _wsUrl = '';
+let _handshakeId = '';
+let _onMessage = null;
 
 function _newIntentId() {
   if (
@@ -56,7 +62,34 @@ function _dispatch(event, detail) {
   return snap;
 }
 
+function _signalReady() {
+  console.log("[bridge:frontend] transport ready (WS auth + first projection)");
+  _dispatch('auth_ok', {
+    reason: 'transport ready',
+    ws_url: _wsUrl,
+    transport: _wsUrl.startsWith('wss://') ? 'wss' : 'ws',
+    handshake_id: _handshakeId,
+  });
+  renderStatusBar();
+  if (_onMessage) _onMessage({ type: '_transport', status: 'connected' });
+  _wsClient.send({ type: 'get_chat_state' });
+  for (const msg of _outboundQueue) {
+    _wsClient.send(_normalizeDesktopIntentRequest(msg));
+  }
+  _outboundQueue = [];
+}
+
+export function onProjectionReceived() {
+  _firstProjectionReceived = true;
+  if (_wsAuthenticated && _transportAuthority) {
+    _signalReady();
+  }
+}
+
 export function initTransport(wsUrl, token, onMessage, transportAuthority, handshakeId) {
+  _wsUrl = wsUrl;
+  _handshakeId = handshakeId || '';
+  _onMessage = onMessage || null;
   _transportAuthority = transportAuthority || null;
   if (_transportAuthority && handshakeId) {
     _transportAuthority.setHandshakeId(handshakeId);
@@ -90,16 +123,11 @@ export function initTransport(wsUrl, token, onMessage, transportAuthority, hands
           ws_url: wsUrl,
         });
       } else if (status === 'connected') {
-        console.log("[bridge:frontend] WebSocket connected + authenticated");
-        _dispatch('auth_ok', {
-          reason: 'websocket authenticated',
-          ws_url: wsUrl,
-          transport: secureTransport ? 'wss' : 'ws',
-          handshake_id: handshakeId || '',
-        });
-        renderStatusBar();
-        if (onMessage) onMessage({ type: '_transport', status: 'connected' });
-        _wsClient.send({ type: 'get_chat_state' });
+        _wsAuthenticated = true;
+        console.log("[bridge:frontend] WebSocket connected + authenticated, waiting for first projection");
+        if (_firstProjectionReceived) {
+          _signalReady();
+        }
       } else if (status === 'auth_failed') {
         console.error("[bridge:frontend] WebSocket auth failed:", detail);
         _dispatch('auth_failed', {
@@ -154,8 +182,12 @@ export function setWsClient(client) {
 }
 
 export function sendMessage(msg) {
-  if (_wsClient && _wsClient.connected && _wsClient.authenticated) {
+  if (_wsClient && _wsClient.connected && _wsClient.authenticated && _firstProjectionReceived) {
     return _wsClient.send(_normalizeDesktopIntentRequest(msg));
+  }
+  if (_wsClient && _wsClient.connected && _wsClient.authenticated && !_firstProjectionReceived) {
+    _outboundQueue.push(msg);
+    return 'queued';
   }
   return false;
 }

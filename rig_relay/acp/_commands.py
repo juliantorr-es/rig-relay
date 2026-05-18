@@ -29,6 +29,7 @@ from rig_relay.core.proxy_setup import (
     unset_proxy_var,
 )
 from rig_relay.core.types import CompactEndEvent, CompactStartEvent
+from rig_relay.governance.service_state import get_capability_gate
 
 
 class CommandsMixin:
@@ -214,6 +215,13 @@ class CommandsMixin:
     async def _handle_proxy_setup(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
     ) -> PromptResponse:
+        gate = get_capability_gate()
+        allowed, reason = gate.is_allowed("acp_command:proxy-setup")
+        if not allowed:
+            return await self._command_reply(
+                session, f"Command blocked: {reason}", message_id
+            )
+
         parts = text_prompt.strip().split(None, 1)
         args = parts[1] if len(parts) > 1 else ""
 
@@ -242,6 +250,13 @@ class CommandsMixin:
     async def _handle_leanstall(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
     ) -> PromptResponse:
+        gate = get_capability_gate()
+        allowed, reason = gate.is_allowed("acp_command:leanstall")
+        if not allowed:
+            return await self._command_reply(
+                session, f"Command blocked: {reason}", message_id
+            )
+
         current = list(session.agent_loop.base_config.installed_agents)
         if "lean" in current:
             return await self._command_reply(
@@ -260,6 +275,13 @@ class CommandsMixin:
     async def _handle_unleanstall(
         self, session: AcpSessionLoop, text_prompt: str, message_id: str
     ) -> PromptResponse:
+        gate = get_capability_gate()
+        allowed, reason = gate.is_allowed("acp_command:unleanstall")
+        if not allowed:
+            return await self._command_reply(
+                session, f"Command blocked: {reason}", message_id
+            )
+
         current = list(session.agent_loop.base_config.installed_agents)
         if "lean" not in current:
             return await self._command_reply(

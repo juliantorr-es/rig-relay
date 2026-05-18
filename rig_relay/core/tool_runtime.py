@@ -34,6 +34,17 @@ from rig_relay.core.tool_subprocess import ToolSubprocessRunner
 from rig_relay.core.tools.base import ToolPermissionError
 from rig_relay.runtime.supervisor_result import RuntimeSupervisorResultClassification
 
+
+def _get_profile_gate() -> Any | None:
+    """Return the CapabilityGate singleton or None if the governance module is unavailable."""
+    try:
+        from rig_relay.governance.service_state import get_capability_gate
+
+        return get_capability_gate()
+    except ImportError:
+        return None
+
+
 # ── Callback signatures for dependency injection ──────────────────────
 
 
@@ -239,6 +250,39 @@ class ToolRuntime:
                     "runtime_envelope_sha256": request.runtime_envelope_sha256,
                 }
             )
+
+        # ── 1.5. Profile gate check ─────────────────────────────
+        profile_gate = _get_profile_gate()
+        if profile_gate is not None:
+            allowed, reason = profile_gate.check_tool_execution(
+                tool_name=tn, execution_mode=request.execution_mode
+            )
+            if not allowed:
+                self._stats_delta("tool_calls_rejected", 1)
+                _finalize_span(
+                    status_str="refused",
+                    attrs={
+                        "tool.status": "refused",
+                        "tool.refusal_code": "capability_gated",
+                    },
+                )
+                return ToolRuntimeResult.refused(
+                    tool_name=tn,
+                    tool_call_id=cid,
+                    refusal=ToolRuntimeRefusal(
+                        refusal_code=RefusalCode.CAPABILITY_GATED,
+                        message=f"Profile gate: {reason}",
+                        recoverable=True,
+                        suggested_next_action="Unlock the profile to enable mutation tools",
+                    ),
+                    approval_status=ToolRuntimeApprovalStatus.DENIED,
+                ).model_copy(
+                    update={
+                        "source_kind": request.source_kind,
+                        "source_id": request.source_id,
+                        "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                    }
+                )
 
         # ── 2. Permission check ─────────────────────────────────
         if not request.bypass_permissions:
