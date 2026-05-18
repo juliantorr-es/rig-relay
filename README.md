@@ -5,12 +5,7 @@
 
 **Rig Relay — a governed local server/control-plane with a desktop cockpit.**
 
-Rig Relay is a local control-plane for governed agentic development. The
-desktop cockpit is the primary surface for operators and reviewers; the CLI
-is a shim for launch, debug, and operator flows. The product provides
-receipt-backed evidence, worktree isolation, multi-provider consultation
-(Council), and fleet orchestration. It exposes MCP tools for Antigravity,
-VS Code, and Zed, and speaks ACP for editor-integrated agent sessions.
+Rig Relay is a local server/control-plane with a desktop cockpit frontend for coordinating agent work, observing runtime/tool behavior, and producing structured evidence. CLI entry points are debug/admin/operator shims, not the primary product surface. The product provides receipt-backed evidence, worktree isolation, multi-provider consultation (Council), and fleet orchestration. It exposes MCP tools for Antigravity, VS Code, and Zed, and speaks ACP for editor-integrated agent sessions.
 
 ## Quick Start
 
@@ -199,7 +194,7 @@ Key evidence paths:
 
 ### Telemetry & Privacy
 
-Telemetry is local-first and opt-in only. No raw file contents, secrets, or
+Telemetry is local-first and opt-out only. No raw file contents, secrets, or
 private code are emitted. All content-derived data uses SHA256 hashes.
 Telemetry-disabled mode must visibly degrade behavior (currently an open RC blocker).
 See [`docs/governance/usage-data-doctrine.md`](docs/governance/usage-data-doctrine.md).
