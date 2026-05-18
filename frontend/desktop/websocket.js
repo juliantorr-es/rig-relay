@@ -93,6 +93,24 @@ class ProjectionWebSocketClient {
         return;
       }
 
+      // ── Bridge Protocol: route v1 envelope messages ──────────────────
+      if (message.schema_version === 'rig.relay.bridge_message.v1' && message.message_id) {
+        // Transition transport authority for projection envelopes
+        if (message.kind === 'projection' && this.transportMachine) {
+          this.transportMachine.transition('projection_received', {
+            ws_url: this.wsUrl,
+          });
+        }
+        this.onMessage(message);
+        if (message.kind === 'projection' && this.transportMachine) {
+          this.transportMachine.transition('projection_rendered', {
+            ws_url: this.wsUrl,
+            projection_digest: (message.payload && message.payload.digest) || '',
+          });
+        }
+        return;
+      }
+
       switch (message.type) {
         case 'auth_ok':
           this.authenticated = true;

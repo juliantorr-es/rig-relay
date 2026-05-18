@@ -1912,15 +1912,15 @@ registerWidget('releaseGate', (container, level) => {
 
 // ── Bridge Protocol widget ──────────────────────────────────────────
 
-registerWidget('bridgeProtocol', function(container, level) {
-  if (level !== 'standard') return;
-  renderBridgeProtocol(container);
-});
+ registerWidget('bridgeProtocol', function(container, level) {
+   if (level === 'expanded') return;
+   renderBridgeProtocol(container, level);
+ });
 
-function renderBridgeProtocol(container) {
+function renderBridgeProtocol(container, level) {
   var client = window.__RIG_RELAY_PROTOCOL_CLIENT__
   if (!client) {
-    renderStandardCard(container, 'Bridge Protocol', '<span class="widget-missing">Protocol client not initialized</span>', 'bridgeProtocol', 'warn')
+    renderCompactCard(container, 'Bridge Protocol', 'Protocol client not initialized', 'bridgeProtocol', 'warn')
     return
   }
 
@@ -1936,6 +1936,15 @@ function renderBridgeProtocol(container) {
 
   html += '<div class="proto-row"><span class="proto-label">Heartbeat</span>'
   html += '<span class="proto-value ' + hbCls + '">' + escapeHtml(hbStatus) + '</span></div>'
+
+  // Compact: only show heartbeat + seq
+  if (level === 'compact') {
+    html += '<div class="proto-row"><span class="proto-label">Seq</span>'
+    html += '<span class="proto-value">in:' + (stats.inboundSeq || 0) + ' out:' + (stats.outboundSeq || 0) + '</span></div>'
+    html += '</div>'
+    renderStandardCard(container, 'Bridge Protocol', html, 'bridgeProtocol', hbCls === 'ok' ? 'ok' : 'warn')
+    return
+  }
 
   html += '<div class="proto-row"><span class="proto-label">Outbound Seq</span>'
   html += '<span class="proto-value">' + (stats.outboundSeq || 0) + '</span></div>'

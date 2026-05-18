@@ -72,6 +72,8 @@ export function createProtocolClient(config) {
       intent_id: intentId,
       intent_name: intentName,
       parameters: params || {},
+      schema_version: 'rig.relay.desktop_intent_request.v1',
+      created_at: new Date().toISOString(),
     }, {
       requiresAck: true,
       idempotencyKey: idempotencyKey || ('idem_' + intentId),
