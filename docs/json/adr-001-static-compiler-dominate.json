@@ -1,0 +1,10 @@
+{
+  "schema_version": "rig.architecture.decision_record.v1",
+  "id": "ADR-001-STATIC-COMPILER-DOMINATE",
+  "title": "Upgrade Static Site Compiler with Dominate and Transition to Structured Data Substrates",
+  "date": "2026-05-17",
+  "status": "accepted",
+  "context": "The current static site compiler relies on raw f-string interpolation for HTML generation, which is difficult to maintain and scale. Additionally, the project uses Markdown as the primary documentation substrate, which is sub-optimal for machine readability compared to established structured formats like JSON, JSONL, and CSV.",
+  "decision": "1. Upgrade the static site compiler to use the 'dominate' library for programmatic, dependency-light HTML generation. 2. Transition away from Markdown as the primary document substrate in favor of JSON/JSONL/CSV to ensure long-term machine readability and stability of documentation artifacts.",
+  "consequences": "HTML generation will be safer, more Pythonic, and easier to extend into a premium UI dashboard. The project will successfully avoid bloated framework dependencies like MkDocs or Jinja2. Future documentation will be written in JSON/JSONL/CSV formats, requiring tooling updates to render these formats cleanly into the new dashboard UI without relying on Markdown compilation."
+}

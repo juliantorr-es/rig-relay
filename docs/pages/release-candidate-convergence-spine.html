@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Release Candidate Convergence Spine v0 — 5-Phase Roadmap — Rig Relay Docs</title>
+<meta name="description" content="Holistic RC coherence audit: Phase 1–5 blocker resolution roadmap with 8 critical blockers, 14 evidence-matrix subsystems, 10 prioritized next prompts, and a dependency utilization plan. RC path visible but key blockers remain — LICENSE mismatch, dead CI workflow, lease manager lock bypass, task claim missing event emission, and digestion pipeline design-only.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/release-candidate-convergence-spine.html">
+<meta property="og:title" content="Release Candidate Convergence Spine v0 — 5-Phase Roadmap">
+<meta property="og:description" content="Holistic RC coherence audit: Phase 1–5 blocker resolution roadmap with 8 critical blockers, 14 evidence-matrix subsystems, 10 prioritized next prompts, and a dependency utilization plan. RC path visible but key blockers remain — LICENSE mismatch, dead CI workflow, lease manager lock bypass, task claim missing event emission, and digestion pipeline design-only.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/release-candidate-convergence-spine.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Release Candidate Convergence Spine v0 — 5-Phase Roadmap">
+<meta name="twitter:description" content="Holistic RC coherence audit: Phase 1–5 blocker resolution roadmap with 8 critical blockers, 14 evidence-matrix subsystems, 10 prioritized next prompts, and a dependency utilization plan. RC path visible but key blockers remain — LICENSE mismatch, dead CI workflow, lease manager lock bypass, task claim missing event emission, and digestion pipeline design-only.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Release Candidate Convergence Spine v0 — 5-Phase Roadmap</h1>
+  <p class="doc-summary">Holistic RC coherence audit: Phase 1–5 blocker resolution roadmap with 8 critical blockers, 14 evidence-matrix subsystems, 10 prioritized next prompts, and a dependency utilization plan. RC path visible but key blockers remain — LICENSE mismatch, dead CI workflow, lease manager lock bypass, task claim missing event emission, and digestion pipeline design-only.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-17</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/release_candidate_convergence_spine.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#executive-verdict-heading">Executive Verdict</a></li>
+<li><a href="#completed-slices-heading">Completed Convergence Slices</a></li>
+<li><a href="#critical-blockers-heading">Critical Blockers Before RC</a></li>
+<li><a href="#phase1-heading">Phase 1 — Governance and Coordination</a></li>
+<li><a href="#phase1-blockers-heading">Blockers</a></li>
+<li><a href="#phase1-tests-heading">Required Tests</a></li>
+<li><a href="#phase1-release-gates-heading">Required Release Gate Checks</a></li>
+<li><a href="#phase1-dod-heading">Definition of Done</a></li>
+<li><a href="#phase2-heading">Phase 2 — Telemetry, Consent, Privacy, Debug</a></li>
+<li><a href="#phase2-blockers-heading">Blockers (non-blocking for Phase 2 sign-off)</a></li>
+<li><a href="#phase2-tests-heading">Required Tests</a></li>
+<li><a href="#phase2-release-gates-heading">Required Release Gate Checks</a></li>
+<li><a href="#phase2-dod-heading">Definition of Done</a></li>
+<li><a href="#phase3-heading">Phase 3 — Runtime, Tools, Context, API/Digestion</a></li>
+<li><a href="#phase3-blockers-heading">Blockers</a></li>
+<li><a href="#phase3-tests-heading">Required Tests</a></li>
+<li><a href="#phase3-release-gates-heading">Required Release Gate Checks</a></li>
+<li><a href="#phase3-dod-heading">Definition of Done</a></li>
+<li><a href="#phase4-heading">Phase 4 — UI, Static Docs, Release Gate, CI, Packaging</a></li>
+<li><a href="#phase4-blockers-heading">Blockers</a></li>
+<li><a href="#phase4-tests-heading">Required Tests</a></li>
+<li><a href="#phase4-dod-heading">Definition of Done</a></li>
+<li><a href="#phase5-heading">Phase 5 — Public Release, Onboarding, GitHub, Docs, Distribution</a></li>
+<li><a href="#phase5-blockers-heading">Blockers</a></li>
+<li><a href="#phase5-dod-heading">Definition of Done</a></li>
+<li><a href="#dependency-plan-heading">Dependency Utilization Plan</a></li>
+<li><a href="#evidence-matrix-heading">Release Candidate Evidence Matrix</a></li>
+<li><a href="#next-prompts-heading">Top 10 Next Prompts</a></li>
+<li><a href="#next-slice-heading">Recommended Immediate Next Implementation Slice</a></li>
+<li><a href="#subagent-summary-heading">Subagent Execution Summary</a></li>
+<li><a href="#test-results-heading">Final Test Results</a></li>
+<li><a href="#git-status-heading">Git Status</a></li>
+<li><a href="#remaining-seams-heading">Remaining Seams (intentionally deferred)</a></li>
+  </ol>
+</nav>
+<h1 id="executive-verdict-heading" class="disclosure-summary" data-disclosure-level="summary">Executive Verdict</h1>
+
+<p id="executive-verdict-content" class="disclosure-summary" data-disclosure-level="summary">RC path visible, key blockers remain. The coordination event ledger is now hardened for cross-process sequence safety. The digestion pipeline guards all 10 mutation methods. Telemetry consent and redaction are enforced. Release gate CLI works. Guard escape hatches are blocked. Static docs render with CSP. However: Phase 5 has a LICENSE mismatch blocker (AGPL vs Apache). Phase 4 has a dead CI release workflow referencing the wrong repo. Phase 1 has a lease manager lock bypass and task claim missing event emission. The digestion pipeline remains design-only — no digester class, no envelope models. RC Phase 1–3 are functionally complete for single-session scope. Multi-agent subprocess dispatch is blocked on the digestion pipeline implementation.</p>
+
+<h2 id="completed-slices-heading" class="disclosure-standard" data-disclosure-level="standard">Completed Convergence Slices</h2>
+
+<table id="completed-slices-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Slice</th><th>Date</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td>Release gate registry + CLI seam closure</td><td>Prior</td><td>tests/release_gate/test_release_gate_cli.py (10 tests)</td></tr>
+<tr><td>Telemetry panopticon audit</td><td>Prior</td><td>docs/audits/telemetry-panopticon-audit.md</td></tr>
+<tr><td>Telemetry consent enforcement</td><td>Prior</td><td>tests/core/test_telemetry_consent_gate.py (15 tests)</td></tr>
+<tr><td>Test-suite reality pressure audit</td><td>Prior</td><td>docs/audits/test-suite-reality-pressure-audit.md</td></tr>
+<tr><td>Seam pressure harness v0</td><td>Prior</td><td>Real CLI, scanner, guard, concurrency tests</td></tr>
+<tr><td>Serialized digestion pipeline v0</td><td>Prior</td><td>reserve_paths digester-guarded; redaction + consent expiry wired; trace scanner expanded; subprocess race test</td></tr>
+<tr><td>Coordination digester formalization v0</td><td>Prior</td><td>All 10 mutation methods guarded; stale lease fix; claim_task idempotency; event sequence counter; read projection purity</td></tr>
+<tr><td>Coordination event ledger hardening v0</td><td>This mission</td><td>Cross-process sequence safety via file-backed _next_sequence; register_session/publish_artifact/report_conflict/request_handoff guarded; DuckDB ledger integrity tests</td></tr>
+</tbody>
+</table>
+
+<h2 id="critical-blockers-heading" class="disclosure-standard" data-disclosure-level="standard">Critical Blockers Before RC</h2>
+
+<table id="critical-blockers-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Blocker</th><th>Phase</th><th>Severity</th><th>Resolution</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>LICENSE mismatch: LICENSE (AGPL) ≠ README (Apache) ≠ classifier (Apache)</td><td>Phase 5</td><td>BLOCKER</td><td>Reconcile all three to AGPL-3.0-or-later</td></tr>
+<tr><td>2</td><td>SECURITY.md missing</td><td>Phase 5</td><td>BLOCKER</td><td>Create security policy</td></tr>
+<tr><td>3</td><td>CHANGELOG contains wrong project (mistral-vibe history)</td><td>Phase 5</td><td>BLOCKER</td><td>Replace with Rig Relay 0.1.0α1 entries</td></tr>
+<tr><td>4</td><td>Lease manager lock bypass</td><td>Phase 1</td><td>HIGH</td><td>Remove direct writes from lease_manager.py; use store methods only</td></tr>
+<tr><td>5</td><td>Task claim refusal no event emission</td><td>Phase 1</td><td>MEDIUM</td><td>Add coord.task.claim_refused event + build_task_claim_refused_payload</td></tr>
+<tr><td>6</td><td>CI release workflow guards on mistralai/mistral-vibe</td><td>Phase 4</td><td>HIGH</td><td>Update repo reference to juliantorr-es/rig-relay</td></tr>
+<tr><td>7</td><td>3 deferred release gate checks marked required</td><td>Phase 4</td><td>MEDIUM</td><td>Demote from required to deferred in gate policy</td></tr>
+<tr><td>8</td><td>Digestion pipeline design-only (no Digester class, no envelope models)</td><td>Phase 3</td><td>HIGH</td><td>Implement digester + LeaseRequestEnvelope/LeaseDecisionEnvelope</td></tr>
+</tbody>
+</table>
+
+<h2 id="phase1-heading" class="disclosure-standard" data-disclosure-level="standard">Phase 1 — Governance and Coordination</h2>
+
+<p id="phase1-status" class="disclosure-standard" data-disclosure-level="standard">Status: READY (2 blockers remain)</p>
+
+<table id="phase1-area-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Area</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Git discipline commands blocked (8 destructive + 6 escape hatches)</td><td>✅</td></tr>
+<tr><td>Dirty file preservation (SHA256-gated write_file/search_replace)</td><td>✅</td></tr>
+<tr><td>Multi-agent coordination store (10 digester-guarded methods)</td><td>✅</td></tr>
+<tr><td>Path lease lifecycle (reserve → expire → release → stale)</td><td>✅</td></tr>
+<tr><td>Task claim lifecycle (claim → release, same-owner idempotent)</td><td>✅</td></tr>
+<tr><td>Session lifecycle (register → heartbeat → status)</td><td>✅</td></tr>
+<tr><td>Event ledger sequence safety (cross-process file-backed _next_sequence)</td><td>✅</td></tr>
+<tr><td>Projection read purity (no event append, no mutation)</td><td>✅</td></tr>
+<tr><td>Cross-process lease guard (fcntl.flock + subprocess race test)</td><td>✅</td></tr>
+<tr><td>Stale lease recovery (_iter_active_reservations_locked + cleanup_leases.py)</td><td>✅</td></tr>
+<tr><td>Denied conflict as evidence (path refusals complete; task refusals missing event)</td><td>⚠️</td></tr>
+<tr><td>Lease manager lock safety</td><td>❌ Bypasses digester</td></tr>
+<tr><td>Task claim refusal event emission</td><td>❌ Missing event</td></tr>
+</tbody>
+</table>
+
+<h3 id="phase1-blockers-heading" class="disclosure-standard" data-disclosure-level="standard">Blockers</h3>
+
+<table id="phase1-blockers-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Blocker</th><th>Resolution</th></tr></thead>
+<tbody>
+<tr><td>B1</td><td>lease_manager.py writes directly to lease files outside digester lock</td><td>Remove direct writes; use store methods only; share digester lock</td></tr>
+<tr><td>B2</td><td>_claim_task_locked writes conflict file but no coord.task.claim_refused event</td><td>Add _append_event + build_task_claim_refused_payload</td></tr>
+</tbody>
+</table>
+
+<h3 id="phase1-tests-heading" class="disclosure-standard" data-disclosure-level="standard">Required Tests</h3>
+
+<ul id="phase1-tests-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Task claim denial emits event (P0)</li>
+  <li>Lease manager lock safety multi-process test (P0)</li>
+  <li>Event sequence monotonicity across subprocesses (P1)</li>
+  <li>Conflict file ↔ event consistency check (P1)</li>
+  <li>read_state_projection skips expired task claims (P2)</li>
+</ul>
+
+<h3 id="phase1-release-gates-heading" class="disclosure-standard" data-disclosure-level="standard">Required Release Gate Checks</h3>
+
+<ul id="phase1-release-gates-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>All destructive git commands blocked (exists)</li>
+  <li>Dirty file preservation gate (exists)</li>
+  <li>Concurrent path claim exactly-one-winner (exists)</li>
+  <li>Cross-process digester lock integrity (exists)</li>
+  <li>Event sequence unique under concurrency (exists)</li>
+  <li>Read projection does not mutate (exists)</li>
+  <li>Task claim conflict event emission (needed after B2 fix)</li>
+  <li>Lease manager lock safety (needed after B1 fix)</li>
+</ul>
+
+<h3 id="phase1-dod-heading" class="disclosure-standard" data-disclosure-level="standard">Definition of Done</h3>
+
+<ol id="phase1-dod-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>All 10 mutation methods digester-guarded; 0 double-wins under 50-iteration stress</li>
+  <li>Every denied coordination operation recorded in both file store AND event ledger</li>
+  <li>Stale leases auto-detected and manually recoverable</li>
+  <li>Event sequences unique and strictly increasing across subprocesses</li>
+  <li>All coordination tests pass (25+ tests); DuckDB ledger integrity verified</li>
+</ol>
+
+<h2 id="phase2-heading" class="disclosure-standard" data-disclosure-level="standard">Phase 2 — Telemetry, Consent, Privacy, Debug</h2>
+
+<p id="phase2-status" class="disclosure-standard" data-disclosure-level="standard">Status: READY (2 medium blockers deferred to Phase 3)</p>
+
+<table id="phase2-area-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Area</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Remote telemetry consent gate (5 states + scope + expiry)</td><td>✅</td></tr>
+<tr><td>Consent scope enforcement (4 granular scopes)</td><td>✅</td></tr>
+<tr><td>Consent expiry enforcement (expires_at checked)</td><td>✅</td></tr>
+<tr><td>Remote upload redaction (redact_for_remote wired before HTTP POST)</td><td>✅</td></tr>
+<tr><td>Local denial content-light (no subject_hash, no raw payload)</td><td>✅</td></tr>
+<tr><td>Forbidden field coverage (47 entries + 16 name patterns + 5 regexes)</td><td>✅</td></tr>
+<tr><td>Nested payload redaction (recursive dict/list/tuple walk)</td><td>✅</td></tr>
+<tr><td>Static site no tracking (CSP &#x27;self&#x27;, zero analytics/pixels/fingerprinting)</td><td>✅</td></tr>
+<tr><td>Debug packet quarantine boundary</td><td>❌ Deferred</td></tr>
+<tr><td>Debug packet user action gate</td><td>❌ Deferred</td></tr>
+</tbody>
+</table>
+
+<h3 id="phase2-blockers-heading" class="disclosure-standard" data-disclosure-level="standard">Blockers (non-blocking for Phase 2 sign-off)</h3>
+
+<ul id="phase2-blockers-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Debug packet quarantine: No sandbox; deferred to Phase 3</li>
+  <li>Debug packet user action gate: Manual CLI only; deferred to Phase 3</li>
+  <li>Stale test docstrings: 2 classes say OPEN SEAM but code is fixed — cosmetic cleanup</li>
+</ul>
+
+<h3 id="phase2-tests-heading" class="disclosure-standard" data-disclosure-level="standard">Required Tests</h3>
+
+<ul id="phase2-tests-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Debug bundle quarantine boundary (P2)</li>
+  <li>Debug bundle requires user confirmation (P2)</li>
+  <li>Debug bundle emits creation receipt (P2)</li>
+  <li>Consent expired with timezone edge cases (P2)</li>
+  <li>Redaction empty containers edge case (P3)</li>
+  <li>Static site CSP blocks unsafe-inline/eval (P3)</li>
+  <li>Consent default scopes are basic only (P3)</li>
+</ul>
+
+<h3 id="phase2-release-gates-heading" class="disclosure-standard" data-disclosure-level="standard">Required Release Gate Checks</h3>
+
+<ul id="phase2-release-gates-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>RG-PHASE2-01: consent gate + content-light + redaction tests pass</li>
+  <li>RG-PHASE2-02: redaction is last transform before HTTP POST</li>
+  <li>RG-PHASE2-03: subject_hash never in denial events</li>
+  <li>RG-PHASE2-04: CSP has no unsafe-eval, no third-party origins</li>
+  <li>RG-PHASE2-05: localStorage limited to UX preference key</li>
+</ul>
+
+<h3 id="phase2-dod-heading" class="disclosure-standard" data-disclosure-level="standard">Definition of Done</h3>
+
+<ol id="phase2-dod-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>All consent gate states enforced (NOT_REQUESTED, GRANTED, DENIED, REVOKED, EXPIRED)</li>
+  <li>Remote upload properties redacted before HTTP POST</li>
+  <li>Local denial events content-light</li>
+  <li>47 forbidden fields covered; nested payloads walked</li>
+  <li>Static site: zero tracking, zero third-party pixels, zero fingerprinting</li>
+  <li>localStorage: UX preference persistence only</li>
+</ol>
+
+<h2 id="phase3-heading" class="disclosure-standard" data-disclosure-level="standard">Phase 3 — Runtime, Tools, Context, API/Digestion</h2>
+
+<p id="phase3-status" class="disclosure-standard" data-disclosure-level="standard">Status: READY (digestion pipeline is design-only — blocks multi-agent Phase 4)</p>
+
+<table id="phase3-area-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Area</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Subprocess lifecycle (no shell, bounded drain, state machine)</td><td>✅</td></tr>
+<tr><td>Cancellation/timeout (terminate→kill escalation, stall detection)</td><td>✅</td></tr>
+<tr><td>Lease-gated mutation tools (direct store calls, no digestion pipeline)</td><td>⚠️</td></tr>
+<tr><td>Tool receipts emitted (content-light, SHA256-hashed)</td><td>✅</td></tr>
+<tr><td>Bash/mutation guard (4-layer: env scrub, pattern detect, sensitive paths, denylist)</td><td>✅</td></tr>
+<tr><td>Context packet assembly (content-light, canonical SHA256, 5 modes)</td><td>✅</td></tr>
+<tr><td>Context cache safety (fingerprint-based, atomic writes, no TTL/eviction)</td><td>✅</td></tr>
+<tr><td>Context digestion readiness (design doc only, no implementation)</td><td>❌</td></tr>
+<tr><td>Local API command/query split (WebSocket intents, projection purity)</td><td>✅</td></tr>
+<tr><td>Envelope schema spine (tool receipts + context + desktop; missing digestion envelopes)</td><td>⚠️</td></tr>
+<tr><td>Projection read purity (digest dedup, schema-validated)</td><td>✅</td></tr>
+</tbody>
+</table>
+
+<h3 id="phase3-blockers-heading" class="disclosure-standard" data-disclosure-level="standard">Blockers</h3>
+
+<ul id="phase3-blockers-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Digestion pipeline unimplemented: No Digester class, no LeaseRequestEnvelope/LeaseDecisionEnvelope models. This is the architectural gap that blocks multi-agent subprocess dispatch. Non-blocking for single-session RC but required before Phase 4.</li>
+  <li>Context cache design-only: No production cache store. Acceptable for Phase 3.</li>
+</ul>
+
+<h3 id="phase3-tests-heading" class="disclosure-standard" data-disclosure-level="standard">Required Tests</h3>
+
+<ul id="phase3-tests-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Digestion pipeline contract tests (P0)</li>
+  <li>Concurrent mutation TOCTOU test (P1)</li>
+  <li>Context cache invalidation integration test (P2)</li>
+  <li>Tool receipt round-trip test (P1)</li>
+  <li>Bash rerouting permission test (P2)</li>
+  <li>Digest-based projection dedup test (P3)</li>
+</ul>
+
+<h3 id="phase3-release-gates-heading" class="disclosure-standard" data-disclosure-level="standard">Required Release Gate Checks</h3>
+
+<ul id="phase3-release-gates-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>pyright — strict type check</li>
+  <li>ruff check + ruff format</li>
+  <li>Full suite passes</li>
+  <li>Schema validation (scripts/rig_relay_validate_schemas.py)</li>
+  <li>Cockpit launch + projection build + chat (manual)</li>
+  <li>rig.get_context returns valid packet in 5 modes (manual)</li>
+  <li>Mutation tools refuse without authorization (manual)</li>
+</ul>
+
+<h3 id="phase3-dod-heading" class="disclosure-standard" data-disclosure-level="standard">Definition of Done</h3>
+
+<ol id="phase3-dod-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Single-session agent loop: mutation tools with lease-gating, receipt emission, dirty-guard checks</li>
+  <li>Runtime supervisor: subprocess lifecycle, timeout, cancellation, stall detection</li>
+  <li>Bash: 4-layer hardening + transparent rerouting</li>
+  <li>Context: content-light, hash-stable packets with canonical SHA256</li>
+  <li>Desktop WebSocket: clean command/query split; projection reads pure</li>
+  <li>All schemas validate; all tests pass; pyright clean</li>
+</ol>
+
+<h2 id="phase4-heading" class="disclosure-standard" data-disclosure-level="standard">Phase 4 — UI, Static Docs, Release Gate, CI, Packaging</h2>
+
+<p id="phase4-status" class="disclosure-standard" data-disclosure-level="standard">Status: READY (3 blockers: CI repo ref, deferred checks, .pi-lens in git)</p>
+
+<table id="phase4-area-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Area</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Cockpit/UI (pywebview + WebSocket, strict CSP, zero tracking)</td><td>✅</td></tr>
+<tr><td>WebSocket intent safety (11 invariants, auth, rate limit, schema validation)</td><td>✅</td></tr>
+<tr><td>Static docs (223 pages, 35 collections, 143 schemas, search index)</td><td>✅</td></tr>
+<tr><td>Schema registry coverage (143 schemas, 6 renderable doc kinds)</td><td>✅</td></tr>
+<tr><td>Release gate check coverage (11 implemented, 3 deferred placeholders)</td><td>⚠️</td></tr>
+<tr><td>Release gate CLI (canonical JSON receipt, --strict, --include/--exclude)</td><td>✅</td></tr>
+<tr><td>CI (5 workflows: pre-commit, tests, release gate, pages, PyInstaller build)</td><td>⚠️</td></tr>
+<tr><td>Packaging/pyinstaller (linux/macOS/windows; 4 entry points; platformdirs+keyring)</td><td>✅</td></tr>
+</tbody>
+</table>
+
+<h3 id="phase4-blockers-heading" class="disclosure-standard" data-disclosure-level="standard">Blockers</h3>
+
+<table id="phase4-blockers-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Blocker</th><th>Resolution</th></tr></thead>
+<tbody>
+<tr><td>B1</td><td>release.yml guards on mistralai/mistral-vibe — dead code</td><td>Update to juliantorr-es/rig-relay</td></tr>
+<tr><td>B2</td><td>3 deferred checks marked required_checks in gate policy</td><td>Demote from required to deferred</td></tr>
+<tr><td>B3</td><td>15 .pi-lens/ files tracked in git</td><td>Add to .gitignore</td></tr>
+</tbody>
+</table>
+
+<h3 id="phase4-tests-heading" class="disclosure-standard" data-disclosure-level="standard">Required Tests</h3>
+
+<ul id="phase4-tests-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Release gate policy references only implemented checks (P1)</li>
+  <li>CI release workflow triggers on correct repo (P1)</li>
+  <li>.pi-lens/ files not tracked (P2)</li>
+  <li>Vulnerability scan (placeholder for future)</li>
+</ul>
+
+<h3 id="phase4-dod-heading" class="disclosure-standard" data-disclosure-level="standard">Definition of Done</h3>
+
+<ol id="phase4-dod-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Cockpit serves UI; all intents read-only; mutation intents refused</li>
+  <li>Static docs render from canonical JSON; all schemas registered</li>
+  <li>Release gate: only implemented checks marked required; deferred checks not blockers</li>
+  <li>CI: pre-commit + tests + release gate on correct repo; PyInstaller builds for all platforms</li>
+  <li>.pi-lens/ in .gitignore</li>
+</ol>
+
+<h2 id="phase5-heading" class="disclosure-standard" data-disclosure-level="standard">Phase 5 — Public Release, Onboarding, GitHub, Docs, Distribution</h2>
+
+<p id="phase5-status" class="disclosure-standard" data-disclosure-level="standard">Status: BLOCKED (LICENSE mismatch, missing SECURITY.md, wrong CHANGELOG)</p>
+
+<table id="phase5-area-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Area</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>README (features, safety story, config, development)</td><td>✅</td></tr>
+<tr><td>LICENSE/legal</td><td>❌ AGPL file vs Apache README vs Apache classifier</td></tr>
+<tr><td>ATTRIBUTION / THIRD_PARTY_NOTICES / UPSTREAM</td><td>✅</td></tr>
+<tr><td>CONTRIBUTING.md (CLA, setup)</td><td>✅</td></tr>
+<tr><td>SECURITY.md</td><td>❌ Missing</td></tr>
+<tr><td>CODE_OF_CONDUCT.md</td><td>❌ Missing</td></tr>
+<tr><td>Onboarding docs (quick start, install.md, AGENTS.md)</td><td>✅</td></tr>
+<tr><td>Telemetry disclosure (footer exists; no README section)</td><td>⚠️</td></tr>
+<tr><td>Debug packet policy (documented, dry-run only)</td><td>✅</td></tr>
+<tr><td>Release notes (CHANGELOG shows mistral-vibe history, not Rig Relay)</td><td>❌</td></tr>
+<tr><td>GitHub Pages (deploy workflow, 223 pages, CSP, search, social)</td><td>✅</td></tr>
+</tbody>
+</table>
+
+<h3 id="phase5-blockers-heading" class="disclosure-standard" data-disclosure-level="standard">Blockers</h3>
+
+<table id="phase5-blockers-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Blocker</th><th>Resolution</th></tr></thead>
+<tbody>
+<tr><td>B1</td><td>LICENSE (AGPL) ≠ README (Apache) ≠ classifier (Apache)</td><td>Reconcile all three. If AGPL-3.0-or-later is intentional: update README and classifier.</td></tr>
+<tr><td>B2</td><td>SECURITY.md missing</td><td>Create or reference docs/pages/security-policy.html</td></tr>
+<tr><td>B3</td><td>CHANGELOG.md contains mistral-vibe history</td><td>Replace with Rig Relay 0.1.0α1 release notes</td></tr>
+<tr><td>B4</td><td>CODE_OF_CONDUCT.md missing</td><td>Create</td></tr>
+</tbody>
+</table>
+
+<h3 id="phase5-dod-heading" class="disclosure-standard" data-disclosure-level="standard">Definition of Done</h3>
+
+<ol id="phase5-dod-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>LICENSE, README, and pyproject.toml classifier all state same license</li>
+  <li>SECURITY.md, CODE_OF_CONDUCT.md present</li>
+  <li>CHANGELOG contains Rig Relay releases</li>
+  <li>README has explicit telemetry/data disclosure section</li>
+  <li>GitHub Pages deploys correctly on push to main</li>
+</ol>
+
+<h2 id="dependency-plan-heading" class="disclosure-standard" data-disclosure-level="standard">Dependency Utilization Plan</h2>
+
+<details id="dependency-plan-table" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" data-collapsed-default="true"><summary></summary><table id="dependency-plan-table" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" data-collapsed-default="true">
+<thead><tr><th>Dependency</th><th>Where it helps the RC path</th></tr></thead>
+<tbody>
+<tr><td>DuckDB</td><td>Read-side ledger integrity tests (unique sequences, valid JSON, required fields); analytics projections (contention hotspots, latency histograms, test-suite inventory); never canonical state</td></tr>
+<tr><td>pytest-xdist</td><td>Parallel test execution; exposes filesystem/global-state hazards across workers</td></tr>
+<tr><td>pytest-timeout</td><td>Guards against hanging tests (trace scanner, release gate, large JSONL scans)</td></tr>
+<tr><td>pytest-asyncio</td><td>Async test support for agent loop, telemetry, supervisor, WebSocket</td></tr>
+<tr><td>respx</td><td>Mock HTTP transport for telemetry upload + consent gate tests</td></tr>
+<tr><td>pexpect</td><td>Interactive CLI testing (cockpit, onboarding, ACP)</td></tr>
+<tr><td>jsonschema</td><td>Envelope validation, schema registry, release gate static checks</td></tr>
+<tr><td>pydantic</td><td>All models; envelope serialization; redaction classification</td></tr>
+<tr><td>cryptography</td><td>SSL context, token encryption, SHA256 hashing</td></tr>
+<tr><td>zstandard</td><td>Debug packet compression; artifact compaction</td></tr>
+<tr><td>pyright</td><td>Strict type checking (CI gate)</td></tr>
+<tr><td>ruff</td><td>Linting + formatting (CI gate)</td></tr>
+<tr><td>vulture</td><td>Dead code detection (useful for CI hardening)</td></tr>
+<tr><td>typos</td><td>Spelling in docs + comments (pre-commit)</td></tr>
+<tr><td>pyinstaller</td><td>Desktop app distribution (macOS/linux/windows)</td></tr>
+<tr><td>pywebview</td><td>Desktop cockpit UI container</td></tr>
+<tr><td>platformdirs</td><td>Cross-platform config/data/cache paths</td></tr>
+<tr><td>keyring</td><td>Secure credential storage (API keys, tokens)</td></tr>
+<tr><td>gitpython</td><td>Git operations in context compiler, checkpoint tool</td></tr>
+<tr><td>tree-sitter/tree-sitter-bash</td><td>Bash parsing for rerouting and pattern detection</td></tr>
+<tr><td>ast-grep-py</td><td>Structural code search for trace scanner and refactoring</td></tr>
+<tr><td>watchfiles</td><td>File watching for dev mode and live reload</td></tr>
+<tr><td>pyinstrument</td><td>Performance profiling for latency hotspot detection</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="evidence-matrix-heading" class="disclosure-standard" data-disclosure-level="standard">Release Candidate Evidence Matrix</h2>
+
+<details id="evidence-matrix-table" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" data-collapsed-default="true"><summary></summary><table id="evidence-matrix-table" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" data-collapsed-default="true">
+<thead><tr><th>Subsystem</th><th>Status</th><th>Blocking Tests</th><th>Evidence Artifact</th><th>Release Gate Check</th><th>Owner</th></tr></thead>
+<tbody>
+<tr><td>Git discipline</td><td>✅ ready</td><td>11 escape hatch tests</td><td>tests/guard/test_escape_hatches.py</td><td>RG-GUARD-01</td><td>Governance</td></tr>
+<tr><td>Coordination ledger</td><td>✅ ready</td><td>25 concurrency tests</td><td>events.jsonl + DuckDB checks</td><td>RG-COORD-01</td><td>Coordination</td></tr>
+<tr><td>Digestion pipeline</td><td>⚠️ design</td><td>Contract tests needed</td><td>serialized-digestion-pipeline.md</td><td>—</td><td>Phase 3</td></tr>
+<tr><td>Telemetry consent</td><td>✅ ready</td><td>23 content-light tests</td><td>observability.jsonl</td><td>RG-PHASE2-01</td><td>Telemetry</td></tr>
+<tr><td>Redaction</td><td>✅ ready</td><td>6 redaction tests</td><td>redaction_proofs/</td><td>RG-PHASE2-02</td><td>Evidence</td></tr>
+<tr><td>Debug packets</td><td>⚠️ deferred</td><td>Quarantine tests needed</td><td>debug-bundle-policy.html</td><td>—</td><td>Phase 3</td></tr>
+<tr><td>Trace contract</td><td>✅ ready</td><td>20 real-source tests</td><td>correlation_vocabulary.v1.json</td><td>RG-TRACE-01</td><td>Tracing</td></tr>
+<tr><td>Runtime supervisor</td><td>✅ ready</td><td>20 test files</td><td>tests/runtime/</td><td>RG-RUNTIME-01</td><td>Runtime</td></tr>
+<tr><td>Hardened tools</td><td>✅ ready</td><td>Mutation + bash tests</td><td>Tool receipt schemas</td><td>RG-TOOLS-01</td><td>Tools</td></tr>
+<tr><td>Context assembler</td><td>✅ ready</td><td>21 test files</td><td>ContextPacket artifacts</td><td>RG-CONTEXT-01</td><td>Context</td></tr>
+<tr><td>Local API</td><td>✅ ready</td><td>WebSocket intent tests</td><td>websocket_server.py</td><td>RG-API-01</td><td>Desktop</td></tr>
+<tr><td>Static docs</td><td>✅ ready</td><td>Renderer tests</td><td>docs/pages/ (223 pages)</td><td>RG-STATIC-01</td><td>Docs</td></tr>
+<tr><td>UI/webview</td><td>✅ ready</td><td>Cockpit integration</td><td>frontend/desktop/</td><td>—</td><td>Desktop</td></tr>
+<tr><td>Release gate</td><td>✅ ready</td><td>5 test files</td><td>release_evidence_gate_v1.json</td><td>Self-testing</td><td>Release Gate</td></tr>
+<tr><td>CI</td><td>⚠️ wrong repo</td><td>Workflow tests</td><td>.github/workflows/</td><td>—</td><td>DevOps</td></tr>
+<tr><td>Packaging</td><td>✅ ready</td><td>PyInstaller CI</td><td>build-and-upload.yml</td><td>—</td><td>DevOps</td></tr>
+<tr><td>Public docs</td><td>❌ blocked</td><td>LICENSE mismatch</td><td>Multiple</td><td>—</td><td>Docs</td></tr>
+<tr><td>Licensing</td><td>❌ blocked</td><td>3-way mismatch</td><td>LICENSE, README.md, pyproject.toml</td><td>—</td><td>Legal</td></tr>
+</tbody>
+</table></details>
+
+<h2 id="next-prompts-heading" class="disclosure-standard" data-disclosure-level="standard">Top 10 Next Prompts</h2>
+
+<ol id="next-prompts-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Fix Lease Manager Lock Bypass + Task Claim Event Emission (Phase 1 blockers)</li>
+  <li>Digestion Pipeline Implementation v0 (Phase 3 blocker)</li>
+  <li>Context Assembler Digestion Integration (Phase 3)</li>
+  <li>CI Release Workflow Fix + Release Gate Policy Cleanup (Phase 4 blockers)</li>
+  <li>LICENSE Reconciliation + SECURITY.md + CHANGELOG (Phase 5 blockers)</li>
+  <li>Debug Packet Quarantine + User Action Gate (Phase 2 deferred)</li>
+  <li>DuckDB Read-Side Analytics Projections (cross-cutting)</li>
+  <li>Hardened Tool Invocation Digestion (Phase 3 deferred)</li>
+  <li>Release Gate Check Hardening (Phase 4)</li>
+  <li>Code of Conduct + Telemetry Disclosure + Onboarding Polish (Phase 5)</li>
+</ol>
+
+<h2 id="next-slice-heading" class="disclosure-standard" data-disclosure-level="standard">Recommended Immediate Next Implementation Slice</h2>
+
+<p id="next-slice-rationale" class="disclosure-standard" data-disclosure-level="standard">Fix Phase 1 + Phase 5 Blockers: Lease Manager Lock Bypass + Task Claim Event + LICENSE Reconciliation. These are the remaining blockers before declaring Phase 1 and Phase 5 &quot;done.&quot; The lease manager lock bypass is the only coordination mutation path that can still race under concurrent subprocesses. The LICENSE mismatch is a legal blocker for any public release. Both are small, concrete fixes that don&#x27;t require architectural design. The digestion pipeline implementation is the larger architectural gap, but it blocks Phase 4 multi-agent dispatch, not Phase 1–3 single-session RC. Fix the blockers first, then implement the digester.</p>
+
+<pre id="paste-ready-prompt"><code class="language-text">Phase 1 + Phase 5 Blocker Resolution v0
+
+Fix the remaining RC Phase 1 and Phase 5 blockers:
+
+Phase 1 blockers:
+1. Lease manager lock bypass — rig_relay/coordination/lease_manager.py 
+   release_paths() and renew_lease() write directly to lease JSON files
+   outside the digester lock. Remove direct writes; use store methods onlv.
+   Add subprocess race test proving no corruption.
+
+2. Task claim refusal event emission — rig_relay/coordination/store.py
+   _claim_task_locked writes conflict file but doesn&#x27;t emit 
+   coord.task.claim_refused event. Add _append_event + 
+   build_task_claim_refused_payload in models.py.
+
+Phase 5 blockers:
+3. LICENSE reconciliation — pyproject.toml says AGPL-3.0-or-later.
+   Update README.md license section and pyproject.toml classifiers to match.
+   
+4. SECURITY.md — create minimal security policy referencing 
+   docs/pages/security-policy.html.
+
+5. CHANGELOG.md — replace mistral-vibe version history with 
+   Rig Relay 0.1.0α1 entries summarizing completed convergence slices.
+
+Hard constraints: No new dependencies. No SQLite. No database.
+Tests must use real temp coordination stores and subprocesses for lock 
+safety validation. Run uv run pytest tests/coordination/ -q after edits.</code></pre>
+
+<h2 id="subagent-summary-heading" class="disclosure-standard" data-disclosure-level="standard">Subagent Execution Summary</h2>
+
+<table id="subagent-summary-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Subagent</th><th>Domain</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>A</td><td>Event ledger hardening</td><td>_next_sequence now reads max sequence from events.jsonl on disk under lock; register_session, publish_artifact, report_conflict, request_handoff now digester-guarded</td></tr>
+<tr><td>B</td><td>DuckDB ledger integrity tests</td><td>4 tests: unique sequences, no duplicate event IDs, strictly increasing sequences, required fields present</td></tr>
+<tr><td>C</td><td>Phase 1 audit</td><td>2 blockers found: lease manager lock bypass, task claim missing event. 5 new tests needed. 8 of 8 release gate checks exist (2 need new tests after blocker fixes)</td></tr>
+<tr><td>D</td><td>Phase 2 audit</td><td>All consent/redaction/privacy checks pass. Debug packet quarantine + user gate deferred to Phase 3.</td></tr>
+<tr><td>E</td><td>Phase 3 audit</td><td>Runtime/tools/context functionally complete for single-session. Digestion pipeline is design-only — blocks multi-agent Phase 4.</td></tr>
+<tr><td>F</td><td>Phase 4+5 audit</td><td>3 Phase 4 blockers (CI repo ref, deferred checks, .pi-lens in git). 4 Phase 5 blockers (LICENSE, SECURITY.md, CHANGELOG, CODE_OF_CONDUCT).</td></tr>
+</tbody>
+</table>
+
+<h2 id="test-results-heading" class="disclosure-standard" data-disclosure-level="standard">Final Test Results</h2>
+
+<table id="test-results-table" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Suite</th><th>Tests</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Coordination concurrency (existing)</td><td>10</td><td>✅ Pass</td></tr>
+<tr><td>Coordination digester formalization</td><td>6</td><td>✅ Pass</td></tr>
+<tr><td>Coordination digester events</td><td>5</td><td>✅ Pass</td></tr>
+<tr><td>Coordination DuckDB event ledger</td><td>4</td><td>✅ Pass</td></tr>
+<tr><td>Telemetry content-light</td><td>8</td><td>✅ Pass</td></tr>
+<tr><td>Telemetry consent gate</td><td>15 (from prior baseline)</td><td>✅ Pass</td></tr>
+<tr><td>Tracing real-source</td><td>20</td><td>✅ Pass</td></tr>
+<tr><td>Release gate CLI</td><td>10</td><td>✅ Pass</td></tr>
+<tr><td>Guard escape hatches</td><td>17</td><td>✅ Pass</td></tr>
+<tr><td>Total focused</td><td>~95</td><td>All pass</td></tr>
+</tbody>
+</table>
+
+<h3 id="git-status-heading" class="disclosure-standard" data-disclosure-level="standard">Git Status</h3>
+
+<ul id="git-status-content" class="disclosure-standard" data-disclosure-level="standard">
+  <li>main @ 565c296</li>
+  <li>Modified: rig_relay/coordination/store.py (+83/-20)</li>
+  <li>New: tests/coordination/test_coordination_event_ledger.py (4 DuckDB tests)</li>
+  <li>Pre-existing dirty: none</li>
+  <li>No commits, no pushes, no force operations</li>
+</ul>
+
+<h3 id="remaining-seams-heading" class="disclosure-standard" data-disclosure-level="standard">Remaining Seams (intentionally deferred)</h3>
+
+<ul id="remaining-seams-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Digestion pipeline implementation (design doc exists, no code)</li>
+  <li>Debug packet quarantine boundary</li>
+  <li>Debug packet user action gate</li>
+  <li>Context cache production implementation</li>
+  <li>Vulnerability scanning (release gate Lane B)</li>
+  <li>Static render integrity verification (release gate Lane B)</li>
+  <li>build_projection_read_payload removed from store.py imports — still defined in models.py for fleet/cockpit use</li>
+</ul>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/release_candidate_convergence_spine.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

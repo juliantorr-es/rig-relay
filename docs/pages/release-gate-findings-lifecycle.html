@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Release Gate Findings Lifecycle — Rig Relay Docs</title>
+<meta name="description" content="The Release Evidence Gate produces findings — deterministic observations about the repository&#x27;s release readiness. Without a lifecycle, every finding is either ignored (eroding trust) or treated as a ...">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/release-gate-findings-lifecycle.html">
+<meta property="og:title" content="Release Gate Findings Lifecycle">
+<meta property="og:description" content="The Release Evidence Gate produces findings — deterministic observations about the repository&#x27;s release readiness. Without a lifecycle, every finding is either ignored (eroding trust) or treated as a ...">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/release-gate-findings-lifecycle.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Release Gate Findings Lifecycle">
+<meta name="twitter:description" content="The Release Evidence Gate produces findings — deterministic observations about the repository&#x27;s release readiness. Without a lifecycle, every finding is either ignored (eroding trust) or treated as a ...">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Release Gate Findings Lifecycle</h1>
+  <p class="doc-summary">The Release Evidence Gate produces findings — deterministic observations about the repository&#x27;s release readiness. Without a lifecycle, every finding is either ignored (eroding trust) or treated as a ...</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/release-gate-findings-lifecycle.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Release Gate Findings Lifecycle</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Why This Exists</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">The Release Evidence Gate produces findings — deterministic observations about the repository&#x27;s release readiness. Without a lifecycle, every finding is either ignored (eroding trust) or treated as a blocker (paralyzing progress). The findings lifecycle provides governed classification so the gate can be honest about debt while allowing intentional, auditable deferral.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Lifecycle States</h2>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>State</th><th>Meaning</th><th>Blocks Release?</th></tr></thead>
+<tbody>
+<tr><td>`accepted_false_positive`</td><td>Known not to represent a real product/release risk</td><td>No</td></tr>
+<tr><td>`intentional_deferred`</td><td>Work intentionally deferred; visible but not blocking</td><td>No (unless `release_blocking_override: true`)</td></tr>
+<tr><td>`known_debt`</td><td>Real debt; remains visible</td><td>Yes, by default. Can be overridden with `release_blocking_override: false`</td></tr>
+<tr><td>`needs_fix`</td><td>Confirmed actionable; must block</td><td>Yes (always)</td></tr>
+<tr><td>`not_applicable`</td><td>Finding does not apply to the current release surface</td><td>No</td></tr>
+<tr><td>`watch`</td><td>Non-blocking observation</td><td>No</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Core Principle: Triage Does Not Delete</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">Findings are never removed from the gate output. Triage means **classify and alter release-blocking effect while preserving evidence**. Suppressed or deferred findings remain visible with their effective state, original severity, and lifecycle classification. The Romulans may cloak ships; Rig does not cloak findings.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">How Expiration Works</h2>
+
+<ul id="list-9" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Entries with an `expires` date become invalid after that date</li>
+  <li>Expired entries **do not suppress or downgrade** findings</li>
+  <li>Expired entries are reported in the gate output as `triage_expired: true`</li>
+  <li>The triage reason is prefixed with `[EXPIRED]`</li>
+  <li>Entries without `expires` are permanent (use sparingly for blocker/high findings)</li>
+</ul>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">How to Add a Policy Entry</h2>
+
+<ol id="list-11" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Open `docs/json/release_gate/findings_lifecycle.v1.json`</li>
+  <li>Add an entry to the `entries` array:</li>
+</ol>
+
+<pre id="json-12"><code class="language-json">{
+  &quot;finding_id&quot;: &quot;trace.violation.TC-0021&quot;,
+  &quot;check_id&quot;: &quot;runtime.trace_contract.clean_or_triaged&quot;,
+  &quot;lifecycle_state&quot;: &quot;accepted_false_positive&quot;,
+  &quot;reason&quot;: &quot;String literal check_id in source, not a trace event emission.&quot;,
+  &quot;owner&quot;: &quot;lane-c&quot;,
+  &quot;expires&quot;: &quot;2026-12-31&quot;,
+  &quot;evidence_refs&quot;: [&quot;rig_relay/release_gate/_runtime_readiness.py&quot;]
+}</code></pre>
+
+<ol id="list-13" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Run the gate to verify: `uv run python -m rig_relay.release_gate --lifecycle docs/json/release_gate/findings_lifecycle.v1.json --output .build/rig-relay/release-gate.json`</li>
+  <li>Check that the finding is classified, original severity is preserved, and release-blocking effect is appropriate</li>
+</ol>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">How to Run the Gate With and Without Lifecycle</h2>
+
+<pre id="code-15"><code class="language-bash"># Without lifecycle (raw findings)
+python -m rig_relay.release_gate --output .build/rig-relay/release-gate-raw.json
+
+# With lifecycle (classified findings)
+python -m rig_relay.release_gate \
+  --lifecycle docs/json/release_gate/findings_lifecycle.v1.json \
+  --output .build/rig-relay/release-gate-classified.json</code></pre>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Gate Output With Lifecycle</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">When lifecycle is active, each flattening finding gains additional fields:</p>
+
+<ul id="list-18" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`original_severity` — the check&#x27;s original severity</li>
+  <li>`effective_severity` — severity after lifecycle application</li>
+  <li>`lifecycle_state` — the matched lifecycle state (empty if unmatched)</li>
+  <li>`release_blocking` — whether this finding blocks release (after lifecycle)</li>
+  <li>`triage_reason` — justification from the policy entry</li>
+  <li>`triage_owner` — accountable person/team</li>
+  <li>`triage_expires` — expiration date (empty if permanent)</li>
+  <li>`triage_evidence_refs` — supporting evidence references</li>
+  <li>`triage_expired` — true if the entry has expired</li>
+</ul>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">The `lifecycle` section of the gate output reports:</p>
+
+<ul id="list-20" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`policy_id`, `schema_version`</li>
+  <li>`entries_loaded`, `entries_applied`, `entries_expired`, `entries_unmatched`</li>
+  <li>`policy_findings` — findings about the lifecycle policy itself (e.g., unmatched entries)</li>
+</ul>
+
+<h2 id="h2-21" class="disclosure-standard" data-disclosure-level="standard">How This Supports Release Discipline</h2>
+
+<ul id="list-22" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Honest gate**: The gate fails for real untriaged blockers; it does not fail for known, governed exceptions</li>
+  <li>**Auditable**: Every classification has a reason, owner, and optional expiration</li>
+  <li>**Visible debt**: `known_debt` findings remain visible in output even when non-blocking</li>
+  <li>**Expiration enforced**: Classifications that outlive their justification automatically revert to blocking</li>
+  <li>**No mass suppression**: Each entry matches exact `finding_id + check_id` — no wildcards, no blanket exemptions</li>
+</ul>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Avoiding Abuse</h2>
+
+<ul id="list-24" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Do not classify real blockers as `accepted_false_positive` without evidence</li>
+  <li>Do not use `known_debt` with `release_blocking_override: false` to normalize broken windows — set an expiration</li>
+  <li>Every `accepted_false_positive` entry should reference evidence (a source file, commit, or issue)</li>
+  <li>If more than 20% of findings are triaged, the triage policy itself is probably a finding</li>
+</ul>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Connection to Telemetry/Tracing Governance</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">This lifecycle aligns with the tracing governance doctrine (`docs/governance/usage-data-doctrine.md`):</p>
+
+<ul id="list-27" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Findings are evidence-bearing observations with identity, severity, source, and recommendation</li>
+  <li>The lifecycle policy is schema-governed (`rig.release_gate.findings_lifecycle.v1`)</li>
+  <li>Policy effects are exposed in machine-readable gate output</li>
+  <li>The system is observable: lifecycle application is reported, not hidden</li>
+</ul>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Schema</h2>
+
+<ul id="list-29" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Schema**: `docs/schemas/rig.release_gate.findings_lifecycle.v1.schema.json`</li>
+  <li>**Policy**: `docs/json/release_gate/findings_lifecycle.v1.json`</li>
+  <li>**Implementation**: `rig_relay/release_gate/findings_lifecycle.py`</li>
+  <li>**Models**: `rig_relay/release_gate/models.py` (LifecycleState, LifecycleEntry, LifecyclePolicy, etc.)</li>
+  <li>**Tests**: `tests/release_gate/test_findings_lifecycle.py`</li>
+</ul>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/release-gate-findings-lifecycle.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

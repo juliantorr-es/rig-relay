@@ -14,6 +14,31 @@ import { renderStatusBar } from './status.js';
 let _wsClient = null;
 let _transportAuthority = null;
 
+function _newIntentId() {
+  if (
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === 'function'
+  ) {
+    return 'intent_' + globalThis.crypto.randomUUID();
+  }
+  return (
+    'intent_' +
+    Date.now().toString(36) +
+    '_' +
+    Math.random().toString(36).slice(2, 8)
+  );
+}
+
+function _normalizeDesktopIntentRequest(msg) {
+  if (!msg || msg.type !== 'desktop_intent_request') return msg;
+  return {
+    ...msg,
+    schema_version: msg.schema_version || 'rig.relay.desktop_intent_request.v1',
+    intent_id: msg.intent_id || _newIntentId(),
+    created_at: msg.created_at || new Date().toISOString(),
+  };
+}
+
 function _applySnapshot(snap) {
   state.wsConnected = snap.wsConnected;
   state.transport.status = snap.transport.status;
@@ -130,7 +155,7 @@ export function setWsClient(client) {
 
 export function sendMessage(msg) {
   if (_wsClient && _wsClient.connected && _wsClient.authenticated) {
-    return _wsClient.send(msg);
+    return _wsClient.send(_normalizeDesktopIntentRequest(msg));
   }
   return false;
 }

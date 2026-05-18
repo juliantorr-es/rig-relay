@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Boundary, Strict Concurrency, and Worker Readiness Audit v0 — Rig Relay Docs</title>
+<meta name="description" content="**Generated**: 2026-05-17 **Schema**: `rig.relay.audit.v1` **Status**: Complete **Subagents**: 6 concurrent (A–F), coordinator synthesis **Repo state**: `main` @ `9717e21`, clean working tree, 7271 te...">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/api-concurrency-worker-readiness-audit.html">
+<meta property="og:title" content="API Boundary, Strict Concurrency, and Worker Readiness Audit v0">
+<meta property="og:description" content="**Generated**: 2026-05-17 **Schema**: `rig.relay.audit.v1` **Status**: Complete **Subagents**: 6 concurrent (A–F), coordinator synthesis **Repo state**: `main` @ `9717e21`, clean working tree, 7271 te...">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/api-concurrency-worker-readiness-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="API Boundary, Strict Concurrency, and Worker Readiness Audit v0">
+<meta name="twitter:description" content="**Generated**: 2026-05-17 **Schema**: `rig.relay.audit.v1` **Status**: Complete **Subagents**: 6 concurrent (A–F), coordinator synthesis **Repo state**: `main` @ `9717e21`, clean working tree, 7271 te...">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>API Boundary, Strict Concurrency, and Worker Readiness Audit v0</h1>
+  <p class="doc-summary">**Generated**: 2026-05-17 **Schema**: `rig.relay.audit.v1` **Status**: Complete **Subagents**: 6 concurrent (A–F), coordinator synthesis **Repo state**: `main` @ `9717e21`, clean working tree, 7271 te...</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/api-concurrency-worker-readiness-audit.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">API Boundary, Strict Concurrency, and Worker Readiness Audit v0</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Generated**: 2026-05-17 **Schema**: `rig.relay.audit.v1` **Status**: Complete **Subagents**: 6 concurrent (A–F), coordinator synthesis **Repo state**: `main` @ `9717e21`, clean working tree, 7271 tests collected</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">1. Executive Verdict</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">**MOSTLY READY WITH DEFINED MUTATION GAPS**</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">The digestion pipeline pattern has been proven for `reserve_paths` (cross-process `fcntl.flock`, 0% double-win under stress). But only one of eight coordination mutation methods is guarded. The remaining seven have TOCTOU races. The API boundary has a mature WebSocket protocol as foundation. Worker classification reveals critical event-loop blockers from synchronous git/file-tree calls. DuckDB is safely constrained to read-side analytics. Global state has manageable hazards (4 singleton patterns, 73 Path.cwd() defaults).</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">**Blockers before subprocess fan-out**:</p>
+
+<ol id="list-8" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`claim_task`, `release_paths`, `release_task`, `mark_lease_stale` all lack digester guard</li>
+  <li>Stale leases block reservations forever (no expiry cleanup in `_iter_reservations`)</li>
+  <li>`events.jsonl` sequence numbers race under concurrent writers</li>
+  <li>Git subprocess calls block the async event loop in the context compiler hot path</li>
+  <li>No serialization boundary for subagent subprocesses (all communication is direct Python import)</li>
+</ol>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">**Not a blocker**: DuckDB is clean. Redaction is wired. Consent expiry is enforced. Trace scanner detects all known prefixes. Release gate CLI passes. Guard escape hatches pass.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">2. Current Architecture Map</h2>
+
+<pre id="code-12"><code class="language-text">                        ┌─────────────────────────┐
+                        │   Desktop Cockpit (UI)   │
+                        │   WebSocket protocol     │ ← mature, typed messages
+                        └───────────┬─────────────┘
+                                    │ JSON intents (read-only)
+                        ┌───────────▼─────────────┐
+                        │   Agent Loop (core)      │
+                        │   ┌───────────────────┐  │
+                        │   │ Context Compiler   │  │ ← git subprocess (blocks loop)
+                        │   │ Repo Index         │  │ ← DuckDB in-memory
+                        │   │ LLM Calls          │  │ ← async (network)
+                        │   │ Tool Execution     │  │ ← async tasks + supervisor
+                        │   │ Telemetry Client   │  │ ← async fire-and-forget
+                        │   └───────────────────┘  │
+                        └───┬─────────┬───────────┘
+                            │         │
+              ┌─────────────▼──┐  ┌──▼──────────────────┐
+              │ Coordination   │  │ Evidence/Telemetry   │
+              │ Store          │  │                      │
+              │ ┌────────────┐ │  │ observability.jsonl   │
+              │ │ reserve    │◄├──┤ redact_for_remote()  │ ← wired
+              │ │  _paths    │ │  │ consent expiry check │ ← enforced
+              │ │ (DIGESTED) │ │  │ reports.jsonl        │
+              │ └────────────┘ │  │ trace_events.jsonl    │
+              │ ┌────────────┐ │  └──────────────────────┘
+              │ │ claim_task │ │  ← TOCTOU (unlocked)
+              │ │ heartbeat  │ │  ← TOCTOU (unlocked)
+              │ │ release_*  │ │  ← TOCTOU (unlocked)
+              │ │ mark_stale │ │  ← TOCTOU (unlocked)
+              │ └────────────┘ │
+              └───────┬────────┘
+                      │
+          ┌───────────▼───────────┐
+          │  Canonical Artifacts  │
+          │  .build/coordination/ │
+          │  .rig/reports/        │
+          │  .rig/analytics/      │
+          │  ~/.rig/relay/       │
+          └──────────────────────┘</code></pre>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">**Legend**: ✅ Digester-guarded · ❌ TOCTOU race · ⚠️ Read-side only</p>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">3. Mutation Surface Inventory (condensed from Subagent A)</h2>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">CoordinationStore — 9 mutation methods, 1 guarded</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Method</th><th>TOCTOU?</th><th>Digester-guarded?</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>`reserve_paths`</td><td>No (locked)</td><td>**Yes** (`fcntl.flock` + `threading.Lock`)</td><td>✅ Safe</td></tr>
+<tr><td>`claim_task`</td><td>**Yes** — exists+read+write gap</td><td>No</td><td>❌ Must be guarded</td></tr>
+<tr><td>`release_paths`</td><td>**Yes** — exists+read+write gap</td><td>No</td><td>❌ Must be guarded</td></tr>
+<tr><td>`release_task`</td><td>**Yes** — same pattern</td><td>No</td><td>❌ Must be guarded</td></tr>
+<tr><td>`mark_lease_stale`</td><td>**Yes** — iterates all leases, then writes</td><td>No</td><td>❌ Must be guarded</td></tr>
+<tr><td>`heartbeat`</td><td>**Yes** — reads session, modifies, writes back</td><td>No</td><td>❌ Must be guarded</td></tr>
+<tr><td>`register_session`</td><td>No (new session_id)</td><td>No</td><td>⚠️ Safe by construction</td></tr>
+<tr><td>`publish_artifact`</td><td>Minimal (different SHA → different file)</td><td>No</td><td>⚠️ Safe by construction</td></tr>
+<tr><td>`report_conflict`</td><td>Minimal (different conflict_id)</td><td>No</td><td>⚠️ Safe by construction</td></tr>
+<tr><td>`request_handoff`</td><td>No (append-only)</td><td>No</td><td>⚠️ Safe by construction</td></tr>
+<tr><td>`read_state_projection`</td><td>No (read-only + event append)</td><td>No</td><td>⚠️ Event append only</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Critical: Stale lease bug</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">`_iter_reservations()` in `store.py:91-99` reads all lease files from disk but **never filters expired leases**. An expired lease with `status=&quot;active&quot;` blocks new reservations permanently. `_projection()` marks them stale in-memory but does NOT persist the change to disk. `read_state_projection()` skips them via expiry check. But `reserve_paths` goes through `_iter_reservations` which uses raw file read. **Result: stale leases block forever. No automatic cleanup.**</p>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">Other write surfaces</h3>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Surface</th><th>Safety</th></tr></thead>
+<tbody>
+<tr><td>`events.jsonl` append</td><td>Partial — O_APPEND safe for lines ≤ PIPE_BUF, no sequence atomicity</td></tr>
+<tr><td>`observability.jsonl` append</td><td>Partial — same, plus session-scoped (different files per session)</td></tr>
+<tr><td>`reports.jsonl` append</td><td>Partial — same pattern, dedup key computed but not enforced</td></tr>
+<tr><td>`write_projection()` (analytics/bash/reports indexes)</td><td>**Unsafe** — direct `write_text()`, no temp+rename</td></tr>
+<tr><td>Static renderer (docs/pages, docs/assets, etc.)</td><td>**Unsafe** — direct `write_text()`, no staging directory</td></tr>
+<tr><td>Release gate output</td><td>**Unsafe** — direct `write_text()`, no atomic write</td></tr>
+<tr><td>Context layout/assembly report writes</td><td>✅ Safe — temp+rename atomic</td></tr>
+<tr><td>Desktop intent result writes</td><td>✅ Safe — temp+rename atomic + try/except for concurrent writes</td></tr>
+<tr><td>Tool cache (DuckDB)</td><td>✅ Safe — DuckDB WAL handles concurrency</td></tr>
+</tbody>
+</table>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">4. API Boundary Recommendation (condensed from Subagent B)</h2>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">Foundation: Desktop WebSocket Protocol</h3>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">The Desktop Cockpit already has a mature typed-message protocol:</p>
+
+<ul id="list-26" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Discriminated `type` field + typed payload + sequence numbers</li>
+  <li>Auth gating, rate limiting, jsonschema validation</li>
+  <li>Request/response pattern</li>
+  <li>This is the basis for the HTTP API</li>
+</ul>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">Proposed endpoints (command/query separated)</h3>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">**Commands** (POST — produce intent envelopes → digester):</p>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Endpoint</th><th>Backed by</th><th>Envelope needed?</th></tr></thead>
+<tbody>
+<tr><td>`POST /coordination/lease-requests`</td><td>`PathLeaseManager.claim_paths()`</td><td>Yes — `rig.relay.api.lease_request.v1`</td></tr>
+<tr><td>`POST /coordination/task-claims`</td><td>`CoordinationStore.claim_task()`</td><td>Yes — `rig.relay.api.task_claim.v1`</td></tr>
+<tr><td>`POST /coordination/session-events`</td><td>`register_session()` + `heartbeat()`</td><td>Yes — unified event envelope</td></tr>
+<tr><td>`POST /coordination/conflicts`</td><td>`report_conflict()`</td><td>`CoordinationConflict` model exists</td></tr>
+<tr><td>`POST /coordination/handoffs`</td><td>`request_handoff()`</td><td>Yes</td></tr>
+<tr><td>`POST /coordination/artifacts`</td><td>`publish_artifact()`</td><td>`CoordinationArtifactRef` model exists</td></tr>
+<tr><td>`POST /coordination/release-tasks`</td><td>`release_task()`</td><td>Yes</td></tr>
+<tr><td>`POST /context/requests`</td><td>`ContextCompiler.build_envelope()`</td><td>`ContextRequest` model exists</td></tr>
+<tr><td>`POST /tools/invocations`</td><td>`RuntimeToolInvocationAdapter`</td><td>`RuntimeToolInvocationEnvelope` exists</td></tr>
+<tr><td>`POST /telemetry/events`</td><td>`send_telemetry_event()`</td><td>`rig.relay.observability.v1` implied</td></tr>
+<tr><td>`POST /reports/submit`</td><td>`write_report_to_ledger()`</td><td>Yes</td></tr>
+<tr><td>`POST /release-gate/runs`</td><td>`GateRunner.run()`</td><td>`GateResult` model exists</td></tr>
+</tbody>
+</table>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">**Queries** (GET — read projections, never mutate):</p>
+
+<table id="table-31" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Endpoint</th><th>Backed by</th></tr></thead>
+<tbody>
+<tr><td>`GET /coordination/projections/current`</td><td>`read_state_projection()`</td></tr>
+<tr><td>`GET /coordination/projections/summary`</td><td>New — lightweight subset</td></tr>
+<tr><td>`GET /context/packets/{id}`</td><td>`ContextPacket` retrieval (needs persistence)</td></tr>
+<tr><td>`GET /tools/invocations/{id}`</td><td>`RuntimeToolExecutionResult` retrieval (needs async store)</td></tr>
+<tr><td>`GET /telemetry/local-events/{session_id}`</td><td>`observability.jsonl` read</td></tr>
+<tr><td>`GET /release-gate/runs/{id}`</td><td>`GateResult` retrieval</td></tr>
+<tr><td>`GET /reports/query`</td><td>DuckDB-powered queries over report ledger</td></tr>
+<tr><td>`GET /ralph/panels/{scan_id}`</td><td>Ralph panel retrieval</td></tr>
+</tbody>
+</table>
+
+<p id="p-32" class="disclosure-standard" data-disclosure-level="standard">**Endpoints to drop**: `POST /workstream/events`, `GET /workstream/status` — fully redundant with coordination endpoints.</p>
+
+<h3 id="h3-33" class="disclosure-standard" data-disclosure-level="standard">Envelope schema inventory</h3>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">Of ~16 required envelope schemas: **2 exist** (`rig.context_request.v1`, `rig.relay.runtime_tool_invocation.v1`). **14 are missing**. All have backing Pydantic models that can be promoted to full JSON Schema.</p>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-36" class="disclosure-standard" data-disclosure-level="standard">5. Digestion Migration Plan</h2>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">Phase 1 (this slice): Guard remaining coordination methods</h3>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">Extend the `.digester.lock` (`fcntl.flock` + `threading.Lock`) to cover:</p>
+
+<ol id="list-39" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`claim_task` — `tasks/*.json` read/write</li>
+  <li>`release_paths` — `leases/paths/*.json` read/write</li>
+  <li>`release_task` — `tasks/*.json` read/write</li>
+  <li>`mark_lease_stale` — multi-file lease iteration + write</li>
+  <li>`heartbeat` — `sessions/*.json` read/write</li>
+</ol>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">Fix the stale lease bug: `_iter_reservations` must filter expired leases on disk or write `status=&quot;stale&quot;` back to disk.</p>
+
+<h3 id="h3-41" class="disclosure-standard" data-disclosure-level="standard">Phase 2: events.jsonl hardening</h3>
+
+<ul id="list-42" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Atomic sequence counter (file-backed or flock-guarded increment)</li>
+  <li>Idempotency dedup via event_id check before append</li>
+  <li>`fsync` after critical writes</li>
+</ul>
+
+<h3 id="h3-43" class="disclosure-standard" data-disclosure-level="standard">Phase 3: API airlock</h3>
+
+<p id="p-44" class="disclosure-standard" data-disclosure-level="standard">Wrap all guarder methods behind HTTP endpoints. Subprocesses submit intent envelopes via POST. The digester is the only writer.</p>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-46" class="disclosure-standard" data-disclosure-level="standard">6. Strict Concurrency Risks (condensed from Subagent C)</h2>
+
+<h3 id="h3-47" class="disclosure-standard" data-disclosure-level="standard">Top 10 risks ranked by severity</h3>
+
+<table id="table-48" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Risk</th><th>Severity</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Stale leases block reservations forever</td><td>**Critical**</td><td>`_iter_reservations` doesn&#x27;t filter expired</td><td>Filter expired in `_iter_reservations`; persist stale status</td></tr>
+<tr><td>2</td><td>`claim_task` TOCTOU</td><td>**Critical**</td><td>No digester guard</td><td>Extend `.digester.lock` coverage</td></tr>
+<tr><td>3</td><td>Same-owner claim_task retry creates duplicate</td><td>**Critical**</td><td>Idempotency gap: same-owner check falls through to create new claim</td><td>Idempotency check before create</td></tr>
+<tr><td>4</td><td>`release_paths` + `reserve_paths` race</td><td>**High**</td><td>`release_paths` unlocked but operates on same lease dir</td><td>Guard `release_paths`</td></tr>
+<tr><td>5</td><td>`events.jsonl` sequence collision</td><td>**High**</td><td>`_next_sequence()` reads last line count — racy</td><td>Atomic counter or flock-guarded increment</td></tr>
+<tr><td>6</td><td>`events.jsonl` interleaved lines &gt; PIPE_BUF</td><td>**High**</td><td>No writer lock on events.jsonl</td><td>Flock or single-writer pattern</td></tr>
+<tr><td>7</td><td>`mark_lease_stale` iteration gap</td><td>**High**</td><td>Iterates all leases, reads, writes — new leases added mid-iteration missed</td><td>Guard with digester lock</td></tr>
+<tr><td>8</td><td>`heartbeat` lost update</td><td>**Medium**</td><td>Concurrent heartbeats on same session interleave</td><td>Guard with session-level lock</td></tr>
+<tr><td>9</td><td>Crash between lease write and event append</td><td>**Medium**</td><td>Lease file written, event not appended → incomplete audit trail</td><td>Event-first or journal-before-commit</td></tr>
+<tr><td>10</td><td>Observability sequence collision</td><td>**Medium**</td><td>Same as events.jsonl but per-session file</td><td>Atomic sequence per session</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-49" class="disclosure-standard" data-disclosure-level="standard">Lock file analysis</h3>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">The `.digester.lock` (`fcntl.flock`) is:</p>
+
+<ul id="list-51" class="disclosure-standard" data-disclosure-level="standard">
+  <li>✅ Released on process crash (kernel-level cleanup)</li>
+  <li>✅ Cross-process safe</li>
+  <li>✅ Re-entrant on same fd (no deadlock on nested calls)</li>
+  <li>⚠️ Only covers `reserve_paths` — 7 other mutation methods bypass it</li>
+  <li>⚠️ Lockfile deletion defeats it (new inode) — but no code deletes it</li>
+</ul>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-53" class="disclosure-standard" data-disclosure-level="standard">7. Safe Worker Classification (condensed from Subagent D)</h2>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">Execution pools needed</h3>
+
+<table id="table-55" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Pool</th><th>Purpose</th><th>Size</th><th>What goes here</th></tr></thead>
+<tbody>
+<tr><td>**Bounded Thread Pool**</td><td>I/O offload from async event loop</td><td>`os.cpu_count() + 4`</td><td>Git subprocess calls, `rglob`/`glob`/`iterdir`, file reads</td></tr>
+<tr><td>**Process Pool**</td><td>CPU-bound parallelism</td><td>`os.cpu_count() - 1`</td><td>Trace scanner, release gate checks, static renderer, schema validation fan-out</td></tr>
+<tr><td>**Supervisor Subprocesses**</td><td>Governed subprocess execution</td><td>Bounded by lease count</td><td>Tool execution, git operations</td></tr>
+<tr><td>**Digester Single-Writer**</td><td>Serialized mutation</td><td>1 per domain</td><td>All coordination mutations, context packet publish</td></tr>
+<tr><td>**Async Task Groups**</td><td>Managed async concurrency</td><td>Per-domain semaphores (4–16)</td><td>Tool execution, telemetry send, WebSocket subscriptions</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-56" class="disclosure-standard" data-disclosure-level="standard">Critical event-loop blockers (fix now)</h3>
+
+<table id="table-57" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Call site</th><th>Blocking operation</th><th>Latency</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>`context/repo_map.py:105`</td><td>`subprocess.check_output` (git)</td><td>100ms–1s</td><td>`loop.run_in_executor()`</td></tr>
+<tr><td>`context/repo_index.py:24`</td><td>`subprocess.check_output` (git)</td><td>100ms–1s</td><td>`loop.run_in_executor()`</td></tr>
+<tr><td>`core/tools/builtins/checkpoint.py:301`</td><td>`subprocess.run` (git)</td><td>100ms–1s</td><td>`loop.run_in_executor()`</td></tr>
+<tr><td>65+ `rglob`/`glob`/`iterdir` calls</td><td>Sync filesystem traversal</td><td>10ms–1s</td><td>`anyio.Path` or `run_in_executor()`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-58" class="disclosure-standard" data-disclosure-level="standard">Hidden latency top 10</h3>
+
+<table id="table-59" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Operation</th><th>Latency</th><th>Blocks loop?</th></tr></thead>
+<tbody>
+<tr><td>Git subprocess (repo_map, repo_index)</td><td>100ms–1s</td><td>**Yes**</td></tr>
+<tr><td>Trace scanner (998+ files)</td><td>1s–10s+</td><td>No (CLI)</td></tr>
+<tr><td>LLM API calls</td><td>1s–30s</td><td>**Yes** (intentional)</td></tr>
+<tr><td>Telemetry close/drain</td><td>100ms–1s</td><td>**Yes**</td></tr>
+<tr><td>WebSocket projection build</td><td>1s–10s+</td><td>No (executor)</td></tr>
+<tr><td>DuckDB observability queries</td><td>100ms–1s</td><td>No (on-demand)</td></tr>
+<tr><td>Release gate checks (full suite)</td><td>10s+</td><td>No (CLI)</td></tr>
+<tr><td>File tree scans (rglob)</td><td>10ms–1s</td><td>**Yes** (many sites)</td></tr>
+<tr><td>JSON schema validation</td><td>10ms–100ms</td><td>No (sync paths)</td></tr>
+<tr><td>Static renderer</td><td>1s–10s+</td><td>No (CLI)</td></tr>
+</tbody>
+</table>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-61" class="disclosure-standard" data-disclosure-level="standard">8. Global State and Cache Hazards (condensed from Subagent E)</h2>
+
+<h3 id="h3-62" class="disclosure-standard" data-disclosure-level="standard">Critical</h3>
+
+<table id="table-63" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Hazard</th><th>Location</th></tr></thead>
+<tbody>
+<tr><td>Nested `asyncio.run()` in async context</td><td>`desktop/intents.py:1303,1493,2214,2222,2714`</td></tr>
+<tr><td>Manual `asyncio.new_event_loop()` split-brain</td><td>`cli/desktop_cockpit.py:1019`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-64" class="disclosure-standard" data-disclosure-level="standard">High</h3>
+
+<table id="table-65" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Hazard</th><th>Location</th></tr></thead>
+<tbody>
+<tr><td>`os.environ` mutation</td><td>`cli/desktop_cockpit.py:687,892,1252`</td></tr>
+<tr><td>73 `Path.cwd()` default parameters</td><td>Scattered across codebase</td></tr>
+<tr><td>`asyncio.run()` inside ThreadPoolExecutor</td><td>`core/utils/concurrency.py:28`</td></tr>
+<tr><td>`websearch.py` httpx client not in `async with`</td><td>`core/tools/builtins/websearch.py:84`</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-66" class="disclosure-standard" data-disclosure-level="standard">Medium</h3>
+
+<table id="table-67" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Hazard</th><th>Location</th></tr></thead>
+<tbody>
+<tr><td>4 singleton patterns without locks</td><td>`dirty_guard.py`, `tool_runtime_ledger.py`, `_harness_manager.py`, `event_loop_util.py`</td></tr>
+<tr><td>`_pending_tasks` set without lock + `aclose()` race</td><td>`core/telemetry/send.py:97`</td></tr>
+<tr><td>`EventEmissionScanner._scan_cache` never invalidated</td><td>`tracing/_contract.py:337`</td></tr>
+<tr><td>`walk_local_config_dirs` @cache never invalidated</td><td>`core/paths/_local_config_walk.py:184`</td></tr>
+</tbody>
+</table>
+
+<p id="p-68" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-69" class="disclosure-standard" data-disclosure-level="standard">9. DuckDB Utilization Plan (condensed from Subagent F)</h2>
+
+<h3 id="h3-70" class="disclosure-standard" data-disclosure-level="standard">Current usage: Clean</h3>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">DuckDB is used at 15 sites. **Zero** are canonical state. All are:</p>
+
+<ul id="list-72" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Derived read-side** (7 sites): analytics substrate, telemetry projection, reports query, bash query, repo index, current_state</li>
+  <li>**Cache** (1 site): tool result cache (`tool_cache.duckdb`) — content-addressed, TTL-expiring, fail-safe (returns None on error)</li>
+  <li>**Script/pipeline** (5 sites): compaction, bundle generation, dataset inspection, tool refinement</li>
+  <li>**Normalization** (2 sites): bash_rows, model_rows (no direct DuckDB import)</li>
+</ul>
+
+<h3 id="h3-73" class="disclosure-standard" data-disclosure-level="standard">Architecture boundary: Enforced</h3>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">`tests/core/test_architecture_boundaries.py` prohibits DuckDB imports in: `AgentLoop`, all core mixins, `runtime_state.py`, `conversation_turn.py`. This boundary is comprehensive and tested.</p>
+
+<h3 id="h3-75" class="disclosure-standard" data-disclosure-level="standard">Proposed new read-side projections (all safe, in-memory ephemeral)</h3>
+
+<ol id="list-76" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Telemetry event aggregates — count/latency by event_name, session, day</li>
+  <li>Coordination contention hotspots — conflict rates, digester latency histogram</li>
+  <li>Release gate findings over time — historical pass/fail trends</li>
+  <li>Test-suite inventory — module-by-module test coverage, xfail ratio</li>
+  <li>Trace event drift reports — registered vs emitted coverage gap</li>
+  <li>Bash invocation risk patterns — rerouting effectiveness</li>
+  <li>Worker latency/queue-depth reports — for future worker pools</li>
+  <li>Tool refinement opportunity ranking — failure rate, fallback-to-bash rate</li>
+  <li>Context assembly cache hit rates — stable prefix persistence</li>
+  <li>Session lifecycle analytics — duration, message count, tool patterns</li>
+</ol>
+
+<h3 id="h3-77" class="disclosure-standard" data-disclosure-level="standard">Forbidden: Never use DuckDB for</h3>
+
+<ul id="list-78" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Lease grant authority (→ CoordinationStore + fcntl)</li>
+  <li>Task claim authority (→ CoordinationStore)</li>
+  <li>Consent source of truth (→ TelemetryConsentRecord JSON)</li>
+  <li>Debug packet raw storage (→ file artifacts + SHA256 manifest)</li>
+  <li>Canonical event ledger (→ events.jsonl append-only)</li>
+  <li>Workstream canonical ledger (→ workstream JSONL)</li>
+  <li>Release gate canonical results (→ gate JSON output)</li>
+  <li>Subagent coordination transaction engine (→ digester)</li>
+  <li>Agent loop runtime decisions (→ config, permissions, tool manifests)</li>
+  <li>Model prompt construction (→ context envelope assembly)</li>
+</ul>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-80" class="disclosure-standard" data-disclosure-level="standard">10. Hidden Latency Map (condensed from Subagent D)</h2>
+
+<table id="table-81" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Operation</th><th>Latency class</th><th>Blocks event loop?</th><th>Fix priority</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Git subprocess (repo_map, repo_index)</td><td>100ms–1s</td><td>**YES**</td><td>NOW</td></tr>
+<tr><td>2</td><td>rglob/glob/iterdir (65+ sites)</td><td>10ms–1s</td><td>**YES** (many)</td><td>NOW</td></tr>
+<tr><td>3</td><td>LLM API calls</td><td>1s–30s</td><td>Yes (intentional)</td><td>Async (correct)</td></tr>
+<tr><td>4</td><td>Telemetry close/drain</td><td>100ms–1s</td><td>**YES**</td><td>Add timeout</td></tr>
+<tr><td>5</td><td>Trace scanner (998+ files)</td><td>1s–10s+</td><td>No (CLI)</td><td>Process pool</td></tr>
+<tr><td>6</td><td>WebSocket projection build</td><td>1s–10s+</td><td>No (executor)</td><td>Correct</td></tr>
+<tr><td>7</td><td>Release gate checks (full)</td><td>10s+</td><td>No (CLI)</td><td>Process pool</td></tr>
+<tr><td>8</td><td>DuckDB observability queries</td><td>100ms–1s</td><td>No (on-demand)</td><td>Async task</td></tr>
+<tr><td>9</td><td>JSON schema validation</td><td>10ms–100ms</td><td>No (sync paths)</td><td>Executor if async</td></tr>
+<tr><td>10</td><td>Static renderer</td><td>1s–10s+</td><td>No (CLI)</td><td>Process pool</td></tr>
+</tbody>
+</table>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-83" class="disclosure-standard" data-disclosure-level="standard">11. Required Tests (ranked by risk)</h2>
+
+<table id="table-84" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Priority</th><th>Test</th><th>Risk addressed</th></tr></thead>
+<tbody>
+<tr><td>**P0**</td><td>`_iter_reservations` filters expired leases (stale lease blocks forever)</td><td>Critical — data corruption</td></tr>
+<tr><td>**P0**</td><td>Two concurrent `claim_task` for same task_id → exactly 1 granted</td><td>Critical — double-claim</td></tr>
+<tr><td>**P0**</td><td>`release_paths` + `reserve_paths` race → no inconsistent state</td><td>Critical — TOCTOU</td></tr>
+<tr><td>**P0**</td><td>Same-owner `claim_task` retry is idempotent (no duplicate claim)</td><td>Critical — idempotency</td></tr>
+<tr><td>**P1**</td><td>Event sequence numbers never collide under concurrent append</td><td>High — audit integrity</td></tr>
+<tr><td>**P1**</td><td>events.jsonl lines &gt; PIPE_BUF don&#x27;t interleave</td><td>High — corruption</td></tr>
+<tr><td>**P1**</td><td>Crash between lease write and event append → event recoverable</td><td>Medium — crash recovery</td></tr>
+<tr><td>**P1**</td><td>`mark_lease_stale` + concurrent `reserve_paths` → no missed leases</td><td>High — iteration gap</td></tr>
+<tr><td>**P2**</td><td>Git subprocess via executor doesn&#x27;t deadlock</td><td>High — event loop</td></tr>
+<tr><td>**P2**</td><td>rglob in executor doesn&#x27;t block event loop</td><td>High — event loop</td></tr>
+<tr><td>**P2**</td><td>Telemetry send pending tasks bounded by semaphore</td><td>Medium — resource leak</td></tr>
+<tr><td>**P3**</td><td>Stale lock detection and automatic release</td><td>Low — lock hygiene</td></tr>
+<tr><td>**P3**</td><td>Static renderer concurrent run → no corrupted output</td><td>Medium — build tool</td></tr>
+<tr><td>**P3**</td><td>write_projection uses temp+rename → atomic</td><td>Medium — index integrity</td></tr>
+</tbody>
+</table>
+
+<p id="p-85" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-86" class="disclosure-standard" data-disclosure-level="standard">12. Convergent Implementation Plan</h2>
+
+<h3 id="h3-87" class="disclosure-standard" data-disclosure-level="standard">Big Slices (in order)</h3>
+
+<table id="table-88" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Slice</th><th>What</th><th>Why first/second/Nth</th></tr></thead>
+<tbody>
+<tr><td>**A**: Local API Airlock + Envelope Schema Spine</td><td>HTTP endpoints for all digester-guarded commands; JSON Schema for all envelopes</td><td>Provides the serialization boundary subprocesses need; forces mutation through digester</td></tr>
+<tr><td>**B**: Coordination Digester Formalization</td><td>Guard claim_task, release_paths, release_task, mark_lease_stale, heartbeat; fix stale lease bug</td><td>Completes the single-writer property; eliminates remaining TOCTOU races</td></tr>
+<tr><td>**C**: Projection Read Purity + Observation Split</td><td>Projections must not append events.jsonl; read-side only</td><td>Separates command from query; prevents read-side mutation</td></tr>
+<tr><td>**D**: Context Assembler Request Digestion</td><td>context.requested envelopes → context_packet.ready/rejected</td><td>Makes context assembly queueable; enables cache lifecycle</td></tr>
+<tr><td>**E**: Hardened Tool Invocation Digestion</td><td>tool.invocation.requested → lease check → receipt emission</td><td>Completes the tool execution safety boundary</td></tr>
+<tr><td>**F**: Worker Classification Registry + Bounded Executors</td><td>Thread pool for I/O, process pool for CPU</td><td>Fixes event-loop blocking; enables parallelism</td></tr>
+<tr><td>**G**: DuckDB Read-Side Analytics Projections</td><td>10 proposed projections</td><td>Read-side insight without canonical dependency</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-89" class="disclosure-standard" data-disclosure-level="standard">Next slice: Slice A — Local API Airlock + Envelope Schema Spine</h3>
+
+<p id="p-90" class="disclosure-standard" data-disclosure-level="standard">**Justification**: All remaining coordination mutations need a serialization boundary before subprocesses can safely interact with the store. The Desktop WebSocket protocol provides the typed-message foundation. The envelope schemas are missing but the Pydantic models exist. This slice creates the API surface that Slice B (digester formalization) feeds into. Slice B fixes the TOCTOU races; Slice A provides the boundary that enforces them.</p>
+
+<p id="p-91" class="disclosure-standard" data-disclosure-level="standard">Building the API first (even if the mutations behind it still race) establishes:</p>
+
+<ol id="list-92" class="disclosure-standard" data-disclosure-level="standard">
+  <li>The envelope contract subprocesses will use</li>
+  <li>The JSON Schema spine for all future digester inputs</li>
+  <li>The command/query separation that prevents read-side mutation</li>
+  <li>A foundation to test Slice B&#x27;s digester guards against</li>
+</ol>
+
+<p id="p-93" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-94" class="disclosure-standard" data-disclosure-level="standard">13. Next Implementation Slice Prompt</h2>
+
+<pre id="code-95"><code class="language-text">API Airlock + Envelope Schema Spine v0
+
+Implement the minimal safe local API surface for Rig Relay&#x27;s future
+subagent subprocess architecture.
+
+Hard constraint: No new database dependencies. No SQLite.
+
+## What exists
+- Desktop WebSocket protocol: mature typed-message protocol with type
+  discriminator, auth, rate limiting, jsonschema validation
+- CoordinationStore with 1 digester-guarded method (reserve_paths)
+- Pydantic models for all coordination operations
+- Context request/packet models with JSON Schema
+- Runtime tool invocation envelope model with JSON Schema
+- Redaction wired into telemetry upload path
+- Consent expiry enforced
+
+## What to build
+
+### 1. Envelope Schema Spine
+
+Create JSON Schema files for these envelope families (Pydantic models already exist):
+
+- rig.relay.api.lease_request.v1.json
+- rig.relay.api.task_claim.v1.json
+- rig.relay.api.session_event.v1.json (unifies register_session + heartbeat)
+- rig.relay.api.conflict.v1.json (CoordinationConflict model exists)
+- rig.relay.api.handoff.v1.json
+- rig.relay.api.artifact.v1.json (CoordinationArtifactRef model exists)
+- rig.relay.api.release_task.v1.json
+- rig.relay.api.report_submit.v1.json
+- rig.relay.api.telemetry_event.v1.json (formalizes rig.relay.observability.v1)
+- rig.relay.api.release_gate_run.v1.json (GateResult model exists)
+- rig.relay.coordination.state_projection.v1.json (already a model)
+
+Where Pydantic models exist, extract the JSON Schema from the model.
+
+### 2. Minimal HTTP API
+
+Using the Desktop WebSocket protocol as foundation, implement:
+
+POST endpoints (command, produce intent envelopes):
+  POST /api/v1/coordination/lease-requests
+  POST /api/v1/coordination/task-claims
+  POST /api/v1/coordination/session-events
+  POST /api/v1/coordination/handoffs
+  POST /api/v1/coordination/artifacts
+  POST /api/v1/coordination/release-tasks
+  POST /api/v1/context/requests
+  POST /api/v1/tools/invocations (deferred body, skeleton routing)
+  POST /api/v1/telemetry/events
+  POST /api/v1/reports/submit
+  POST /api/v1/release-gate/runs
+
+GET endpoints (query, read projections):
+  GET /api/v1/coordination/projections/current
+  GET /api/v1/coordination/projections/summary
+  GET /api/v1/telemetry/local-events/{session_id}
+  GET /api/v1/reports/query (DuckDB-powered, read-side)
+  GET /api/v1/health
+
+Use localhost-only binding. No TLS required for v0.
+Use aiohttp or the existing httpx server capabilities.
+Accept and validate JSON against the envelope schemas.
+
+### 3. Content-Light Enforcement
+
+Every POST endpoint must:
+- Validate the request body against its envelope JSON Schema
+- Reject requests containing forbidden fields (token, api_key, password, etc.)
+- Log only content-light metadata (no raw paths, no secrets, no payloads)
+- Return an idempotency-aware response (201 Created or 200 OK with existing result)
+
+### 4. Command/Query Separation
+
+- GET endpoints must NEVER mutate canonical state
+- read_state_projection currently appends an event — fix in this slice: remove
+  the event append from read paths (move to a dedicated audit log if needed)
+
+### 5. Tests
+
+- Contract tests: every endpoint validates its schema
+- Content-light tests: POST bodies with secrets are rejected
+- Idempotency tests: same request twice returns same result
+- Read-purity tests: GET endpoints never produce side effects
+- Integration test: full lease request → decision → projection flow via API
+
+### Non-goals
+- Do not implement API auth beyond localhost-only
+- Do not implement tool invocation body (skeleton routing only)
+- Do not fix TOCTOU races in coordination store (that is Slice B)
+- Do not add process pool or thread pool infrastructure
+- Do not touch Docker, Kubernetes, or any deployment infrastructure
+
+## Pi subagent execution
+
+Launch 4 implementation subagents + 1 coordinator:
+- Subagent A: Envelope schemas (extract from Pydantic models, write JSON Schema files)
+- Subagent B: HTTP API server (aiohttp routes, request/response models)
+- Subagent C: Content-light enforcement + read purity
+- Subagent D: Contract tests + integration tests
+- Coordinator: Fan-in, run full suite, resolve conflicts
+
+Run:
+  uv run pytest tests/api/ -q
+  uv run ruff check rig_relay/api/
+  uv run pyright rig_relay/api/</code></pre>
+
+<p id="p-96" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-97" class="disclosure-standard" data-disclosure-level="standard">14. Subagent Execution Summary</h2>
+
+<table id="table-98" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Subagent</th><th>Domain</th><th>Key findings</th><th>Tables produced</th></tr></thead>
+<tbody>
+<tr><td>**A**</td><td>Mutation Plane Audit</td><td>7/8 coordination methods unguarded; stale lease bug; non-atomic writes in renderer/projections</td><td>Write path table (40+ rows), TOCTOU analysis, artifact inventory</td></tr>
+<tr><td>**B**</td><td>API Boundary + Envelopes</td><td>Desktop WebSocket protocol is mature foundation; 14 envelope schemas missing; no subprocess serialization boundary</td><td>Endpoint table (20 rows), envelope inventory (16 schemas), inner protocol analysis</td></tr>
+<tr><td>**C**</td><td>Strict Concurrency</td><td>Stale leases block forever; claim_task idempotency gap; events.jsonl no sequence atomicity</td><td>Race class table (15 rows), idempotency inventory, crash recovery inventory, lock file analysis</td></tr>
+<tr><td>**D**</td><td>Worker Classification</td><td>Git subprocess blocks event loop; 65+ rglob calls block; no semaphore on tool execution</td><td>Workload table (47 rows), latency top 20, 5 worker pool designs</td></tr>
+<tr><td>**E**</td><td>Global State + Cache</td><td>2 critical asyncio anti-patterns; 73 Path.cwd() defaults; 4 singleton races</td><td>Global state table (20+ rows), cache audit, asyncio.create_task audit, HTTP client lifecycle</td></tr>
+<tr><td>**F**</td><td>DuckDB Safe-Use</td><td>DuckDB is 100% read-side + cache; architecture boundary enforced; 10 proposed projections; tool cache concurrency acceptable</td><td>Usage table (15 rows), proposed projections (10), forbidden uses (10), concurrency safety table</td></tr>
+</tbody>
+</table>
+
+<p id="p-99" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-100" class="disclosure-standard" data-disclosure-level="standard">Audit Metadata</h2>
+
+<ul id="list-101" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Repo**: `main` @ `9717e21`</li>
+  <li>**Test baseline**: 8 telemetry, 10 coordination, 20 tracing, 10 release gate, 17 guard — all passing</li>
+  <li>**Total tests collected**: 7271</li>
+  <li>**Subagents**: 6 concurrent general-purpose agents</li>
+  <li>**Git discipline**: No commits, no pushes, no force operations, no dirty file overwrites</li>
+  <li>**Time**: ~90 seconds total wall-clock</li>
+</ul>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/api-concurrency-worker-readiness-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

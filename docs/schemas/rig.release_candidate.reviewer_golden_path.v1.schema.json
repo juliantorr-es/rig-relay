@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json",
   "title": "Rig Relay RC Reviewer Golden Path v1",
   "description": "Structured golden-path checklist for dogfood operational readiness review. A reviewer follows each step and records pass/fail/blocked. No PROMOTE verdict is possible while any step with blocking_failure_conditions remains in a non-passing state.",

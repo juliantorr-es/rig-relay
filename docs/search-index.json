@@ -1,5 +1,15 @@
 [
   {
+    "document_id": "acp-setup",
+    "title": "ACP Setup",
+    "summary": "Rig Relay can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). Rig Relay includes the `rig-relay-acp` tool. Once you have set up...",
+    "tags": [
+      "guide",
+      "migration"
+    ],
+    "path": "pages/acp-setup.html"
+  },
+  {
     "document_id": "rig-integration-contract",
     "title": "Rig Integration Contract",
     "summary": "This document defines the architectural and runtime boundaries between **Rig** (the governed control plane) and **Rig Relay** (the interactive agent harness). It establishes the shared contracts and m",
@@ -68,6 +78,16 @@
     "summary": "Implementation date: 2026-05-15",
     "tags": [],
     "path": "pages/subagent-runtime-v1.html"
+  },
+  {
+    "document_id": "api-concurrency-worker-readiness-audit",
+    "title": "API Boundary, Strict Concurrency, and Worker Readiness Audit v0",
+    "summary": "**Generated**: 2026-05-17 **Schema**: `rig.relay.audit.v1` **Status**: Complete **Subagents**: 6 concurrent (A\u2013F), coordinator synthesis **Repo state**: `main` @ `9717e21`, clean working tree, 7271 te...",
+    "tags": [
+      "audit",
+      "migration"
+    ],
+    "path": "pages/api-concurrency-worker-readiness-audit.html"
   },
   {
     "document_id": "artifact-schema-doctrine",
@@ -294,6 +314,17 @@
     "path": "pages/inventory.html"
   },
   {
+    "document_id": "pi-harness-extension-health-audit",
+    "title": "Pi Harness Extension Health Audit",
+    "summary": "Audit of extension entry points, loading model, crash containment, and session finalization boundary.",
+    "tags": [
+      "pi",
+      "extensions",
+      "coordination"
+    ],
+    "path": "pages/pi-harness-extension-health-audit.html"
+  },
+  {
     "document_id": "provider-adapter-contract-design",
     "title": "Audit: Provider Adapter Contract Design",
     "summary": "Status: Draft",
@@ -327,6 +358,33 @@
     "summary": "Status: Draft",
     "tags": [],
     "path": "pages/relay-validation-gates-roadmap.html"
+  },
+  {
+    "document_id": "release-candidate-convergence-spine",
+    "title": "Release Candidate Convergence Spine v0 \u2014 5-Phase Roadmap",
+    "summary": "Holistic RC coherence audit: Phase 1\u20135 blocker resolution roadmap with 8 critical blockers, 14 evidence-matrix subsystems, 10 prioritized next prompts, and a dependency utilization plan. RC path visible but key blockers remain \u2014 LICENSE mismatch, dead CI workflow, lease manager lock bypass, task claim missing event emission, and digestion pipeline design-only.",
+    "tags": [
+      "release-candidate",
+      "roadmap",
+      "phase-1",
+      "phase-2",
+      "phase-3",
+      "phase-4",
+      "phase-5",
+      "blockers",
+      "governance",
+      "coordination",
+      "telemetry",
+      "runtime",
+      "tools",
+      "context",
+      "ui",
+      "docs",
+      "ci",
+      "packaging",
+      "public-release"
+    ],
+    "path": "pages/release-candidate-convergence-spine.html"
   },
   {
     "document_id": "rig-intake-cannibalization-plan",
@@ -455,6 +513,16 @@
     "path": "pages/session-lifecycle-state-machine.html"
   },
   {
+    "document_id": "telemetry-panopticon-audit",
+    "title": "Rig Relay Telemetry Audit: Governed Product Telemetry or Panopticon?",
+    "summary": "**Audit date**: 2026-05-17 **Auditor**: Lane B (telemetry/surveillance boundary audit) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Status**: Clean working tree",
+    "tags": [
+      "audit",
+      "migration"
+    ],
+    "path": "pages/telemetry-panopticon-audit.html"
+  },
+  {
     "document_id": "default-suite-tiering-report",
     "title": "Test Suite Tiering Report",
     "summary": "- Conftest hygiene (1): conftest source guard",
@@ -516,6 +584,16 @@
     "summary": "**Generated**: 2026-05-16T04:45:48Z",
     "tags": [],
     "path": "pages/test-quality-summary.html"
+  },
+  {
+    "document_id": "test-suite-reality-pressure-audit",
+    "title": "Test Suite Reality Pressure Audit v0",
+    "summary": "**Audit date**: 2026-05-17 **Auditor**: Julian Torres (via pi coding agent) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Suite scale**: 7,191 collected tests across ~400+ test files...",
+    "tags": [
+      "audit",
+      "migration"
+    ],
+    "path": "pages/test-suite-reality-pressure-audit.html"
   },
   {
     "document_id": "test-cleanup-roadmap",
@@ -1095,6 +1173,17 @@
     "path": "pages/execution-progress-projection.html"
   },
   {
+    "document_id": "file-coordination-markers",
+    "title": "File Coordination Markers",
+    "summary": "Inline and sidecar coordination markers for safe multi-agent file edits.",
+    "tags": [
+      "coordination",
+      "markers",
+      "multi-agent"
+    ],
+    "path": "pages/file-coordination-markers.html"
+  },
+  {
     "document_id": "fleet-coordination-plane",
     "title": "Rig Fleet Coordination Plane",
     "summary": "**Status: Phase 3 \u2014 Runtime Lease Hardening (Complete). Phase 0 \u2014 Patch Proposal Models (Complete, 2026-05). Phase 0 \u2014 Mission Router (Complete, 2026-05).**",
@@ -1172,6 +1261,17 @@
     "path": "pages/orchestrator-loop-boundary.html"
   },
   {
+    "document_id": "pi-harness-extension-health",
+    "title": "Pi Harness Extension Health",
+    "summary": "Crash containment, quarantine, and safe-mode guidance for Pi harness extensions.",
+    "tags": [
+      "pi",
+      "extensions",
+      "safe-mode"
+    ],
+    "path": "pages/pi-harness-extension-health.html"
+  },
+  {
     "document_id": "provider-onboarding-policy",
     "title": "Provider Onboarding Policy",
     "summary": "**Draft.** Defines the security and product boundaries for cloud model provider",
@@ -1219,6 +1319,16 @@
     "summary": "**Draft.** Defines which user-facing surfaces are primary, transitional, or",
     "tags": [],
     "path": "pages/relay-surface-matrix.html"
+  },
+  {
+    "document_id": "release-gate-findings-lifecycle",
+    "title": "Release Gate Findings Lifecycle",
+    "summary": "The Release Evidence Gate produces findings \u2014 deterministic observations about the repository's release readiness. Without a lifecycle, every finding is either ignored (eroding trust) or treated as a ...",
+    "tags": [
+      "governance",
+      "migration"
+    ],
+    "path": "pages/release-gate-findings-lifecycle.html"
   },
   {
     "document_id": "reviewer-orchestrator",
@@ -1298,6 +1408,16 @@
     "path": "pages/runtime-tool-invocation-result-contract.html"
   },
   {
+    "document_id": "serialized-digestion-pipeline",
+    "title": "Serialized Digestion Pipeline v0",
+    "summary": "**Status**: v0 architecture **Date**: May 2026 **Scope**: coordination artifact mutation safety, multi-agent concurrency, intent-envelope pattern",
+    "tags": [
+      "governance",
+      "migration"
+    ],
+    "path": "pages/serialized-digestion-pipeline.html"
+  },
+  {
     "document_id": "session-lifecycle-finalize-tool",
     "title": "Session Lifecycle Finalize Tool",
     "summary": "**File:** `docs/governance/session-lifecycle-finalize-tool.md`",
@@ -1330,6 +1450,16 @@
       "privacy"
     ],
     "path": "pages/storage-retention-policy.html"
+  },
+  {
+    "document_id": "telemetry-consent-enforcement",
+    "title": "Telemetry Consent Enforcement",
+    "summary": "**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)",
+    "tags": [
+      "governance",
+      "migration"
+    ],
+    "path": "pages/telemetry-consent-enforcement.html"
   },
   {
     "document_id": "telemetry-contribution-policy",
@@ -1441,6 +1571,16 @@
     "path": "pages/worktree-manager.html"
   },
   {
+    "document_id": "install",
+    "title": "Rig Relay Install Channels",
+    "summary": "Rig Relay is a Python CLI application distributed via PyPI. The recommended install methods use standard Python packaging tools.",
+    "tags": [
+      "guide",
+      "migration"
+    ],
+    "path": "pages/install.html"
+  },
+  {
     "document_id": "github-app-integration-audit-v0",
     "title": "GitHub App Integration Audit v0",
     "summary": "Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.",
@@ -1462,6 +1602,16 @@
     "path": "pages/usage-data-license-alpha.html"
   },
   {
+    "document_id": "protocol-surfaces",
+    "title": "Protocol Surfaces",
+    "summary": "Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.",
+    "tags": [
+      "reference",
+      "migration"
+    ],
+    "path": "pages/protocol-surfaces.html"
+  },
+  {
     "document_id": "ide-capability-map",
     "title": "IDE Capability Map",
     "summary": "Canonical capability registry for Rig Relay IDE bridges. Generated from `etc/rig.ide.capability_manifest.v1.json`. Do not edit by hand.",
@@ -1481,6 +1631,16 @@
     "summary": "**Status:** Planning. MCP resource/tool exposure of `rig.get_context`.",
     "tags": [],
     "path": "pages/mcp-context-tools.html"
+  },
+  {
+    "document_id": "proxy-setup",
+    "title": "Proxy Setup",
+    "summary": "Rig Relay supports proxy configuration for environments that require network traffic to go through a proxy server. Proxy settings are shared between the CLI and ACP \u2014 configuring them in one will appl...",
+    "tags": [
+      "guide",
+      "migration"
+    ],
+    "path": "pages/proxy-setup.html"
   },
   {
     "document_id": "github-pages-artifact-site",
@@ -1516,6 +1676,16 @@
     "summary": "Rig Relay has an **independent version line** derived from Mistral Vibe CLI",
     "tags": [],
     "path": "pages/versioning-policy.html"
+  },
+  {
+    "document_id": "rig-mcp-capability-map",
+    "title": "Rig MCP Server \u2014 Capability Map",
+    "summary": "The first 16 MCP tools exposed by Rig Relay. Designed for consumption by Antigravity, VS Code, Zed, Cursor, and other MCP hosts.",
+    "tags": [
+      "reference",
+      "migration"
+    ],
+    "path": "pages/rig-mcp-capability-map.html"
   },
   {
     "document_id": "security-policy",

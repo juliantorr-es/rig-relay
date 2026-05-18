@@ -1,0 +1,805 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "serialized-digestion-pipeline",
+  "document_type": "governance",
+  "title": "Serialized Digestion Pipeline v0",
+  "summary": "**Status**: v0 architecture **Date**: May 2026 **Scope**: coordination artifact mutation safety, multi-agent concurrency, intent-envelope pattern",
+  "status": "active",
+  "created_at": "2026-05-18",
+  "updated_at": "2026-05-18",
+  "source_commit": "c92a220a",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "governance",
+    "migration"
+  ],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/serialized-digestion-pipeline.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Serialized Digestion Pipeline v0",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Status**: v0 architecture **Date**: May 2026 **Scope**: coordination artifact mutation safety, multi-agent concurrency, intent-envelope pattern",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Why direct shared mutation failed",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "`CoordinationStore.reserve_paths` and sibling mutation methods suffered a textbook TOCTOU (time-of-check-time-of-use) race. The pattern:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-5",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Agent A reads active leases \u2192 no conflict detected",
+        "Agent B reads active leases \u2192 no conflict detected",
+        "Agent A writes grant for path X",
+        "Agent B writes grant for path X"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Both agents observed the pre-mutation state, both concluded the path was free, both wrote. Under concurrent subprocesses (asyncio tasks, future subagent processes, signal-interleaved writes), the double-win rate approached ~50% for contended paths. No lock, no serialization, no post-write validation \u2014 just a read-then-write gap wide enough for any concurrent actor to slip through.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "This pattern breaks at every concurrency boundary: threads, asyncio tasks within one process, OS subprocesses sharing a filesystem-backed store, and eventually fleet agents on different machines. `tempfile.replace()` only guarantees atomicity of a single write \u2014 it does not serialize competing writes. Two processes can atomically write conflicting files to the same logical resource.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Why the fix is digestion, not lock-scoped everything",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "The architectural philosophy rejects blanket locking for four reasons:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-10",
+      "type": "heading",
+      "level": 3,
+      "content": "Commands mutate, queries read \u2014 don't mix them",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "CQS (Command-Query Separation) applies at the architectural layer. A query (projection read) must never trigger a mutation side-effect. A command (intent envelope submission) produces decisions, not arbitrary state changes. Mixing them \u2014 locking a data structure long enough to query and then mutate \u2014 is the root cause of TOCTOU. Single-writer digestion makes the boundary absolute.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-12",
+      "type": "heading",
+      "level": 3,
+      "content": "Subagents submit intent envelopes, not direct mutations",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "Subagents (whether in-process, subprocess, or fleet-remote) never call `store.reserve_path()` or `store.claim_task()`. They submit typed intent envelopes (e.g., `LeaseRequestEnvelope`) to the digester. The envelope is a declaration of desired state, not a state-changing operation. This is the CQS boundary: agents express intent, digester decides outcome.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-14",
+      "type": "heading",
+      "level": 3,
+      "content": "The digester is the single writer for its canonical stream",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Exactly one component \u2014 the digester \u2014 writes to canonical coordination artifacts. All other components are read-only consumers of projections. This is not \"single-writer via lock\" \u2014 it is architecturally single-writer. The digester processes one envelope at a time, sequentially, because it owns the write path. Adversarial or concurrent writers cannot exist by design.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Advisory locks are an implementation detail, not the architecture",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "In-process, the digester may use an `asyncio.Lock` or a file-system advisory lock (`fnctl.flock`) to guard its single-writer section across subprocess boundaries. This is a correctness mechanism for the digester's own serial execution guarantee, not a general-purpose coordination primitive exposed to consumers.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-18",
+      "type": "heading",
+      "level": 3,
+      "content": "Denied and conflicting intents become evidence, not invisible failure",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "When lock-scoped mutation patterns deny a request, the denial is often a silent return value (or exception) with no durable record. The digestion pipeline treats every decision as a first-class artifact: granted/denied/rejected decisions are written to `events.jsonl` and conflict records to `conflicts/`. Nothing is invisible.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Producer \u2192 Envelope \u2192 Digester \u2192 Decision \u2192 Projection flow",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-21",
+      "type": "code",
+      "language": "text",
+      "content": "Producer                Envelope              Digester               Decision              Projection\n(agent/tool/session)    (intent artifact)     (single writer)        (outcome artifact)    (read-only view)\n\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510            \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510      \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Subagent \u2502\u2500\u2500intent\u2500\u2500\u25b6\u2502 LeaseRequest    \u2502\u2500\u2500\u2500\u25b6\u2502              \u2502\u2500\u2500\u2500\u2500\u2500\u25b6\u2502 LeaseDecision   \u2502    \u2502            \u2502\n\u2502 Session  \u2502            \u2502 Envelope       \u2502    \u2502  Digester    \u2502      \u2502 Envelope        \u2502    \u2502 Projection \u2502\n\u2502 Tool     \u2502            \u2502                \u2502    \u2502              \u2502      \u2502                 \u2502    \u2502 Layer      \u2502\n\u2502 Ralph    \u2502            \u2502 schema-valid   \u2502    \u2502 checks       \u2502      \u2502 granted \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25b6\u2500\u2500\u25b6\u2502 (queries)  \u2502\n\u2502          \u2502            \u2502 sha256-hashed  \u2502    \u2502 canonical    \u2502      \u2502 denied  \u2500\u2500\u25b6 evt  \u2502    \u2502            \u2502\n\u2502          \u2502            \u2502 auth-attested  \u2502    \u2502 state        \u2502      \u2502 rejected\u2500\u2500\u25b6 evt  \u2502    \u2502            \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518            \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-22",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 1: Producer emits intent envelope",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "A producer (subagent, tool executor, session lifecycle handler, Ralph scanner) constructs a typed envelope \u2014 e.g., `LeaseRequestEnvelope` with fields: `lease_id`, `path`, `requested_by_session`, `requested_at`, `mode` (read/write/exclusive). The envelope is written as a standalone JSON artifact under a pending-intent directory or submitted via IPC (future).",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-24",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 2: Envelope validation",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "Before reaching the digester, each envelope is validated:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-26",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Schema validation**: matches the envelope's declared JSON schema",
+        "**Hash integrity**: `envelope_sha256` matches the payload",
+        "**Auth attestation**: `requested_by_session` corresponds to an active, authorized session"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Invalid envelopes are rejected before digestion \u2014 they never reach the canonical state check.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-28",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 3: Digester checks against canonical state",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-29",
+      "type": "paragraph",
+      "content": "The digester reads the current canonical state for the affected resource (leases, tasks, sessions) and evaluates the request:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-30",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Path X requested for exclusive write \u2192 check no active lease exists for X",
+        "Task Y claimed \u2192 check no other session has claimed Y",
+        "Session Z forked \u2192 check parent session is terminal"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "This is the serialized single-writer section. Only the digester performs this check-then-update sequence, and it does so one envelope at a time.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-32",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 4: Digester produces a decision",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "The outcome is a `LeaseDecisionEnvelope` (or `TaskDecisionEnvelope`, etc.) with:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-34",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "`decision`: `granted` | `denied` | `rejected`",
+        "`reason`: human-readable rationale for denied/rejected",
+        "`digester_session`: session ID of the digester that processed the request",
+        "`processed_at`: timestamp",
+        "`evidence_sha256`: hash chain link to the request envelope"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-35",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 5: Decision routing",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-36",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Granted decisions**: update canonical artifacts (`leases/paths/X.json` written). The intent envelope is moved from pending to accepted.",
+        "**Denied decisions**: intent moved to rejected directory; `coord.path.reservation_refused` event written to `events.jsonl`; conflict record written to `conflicts/`.",
+        "**Rejected decisions**: (schema/auth failure) \u2014 envelope discarded or moved to dead-letter; event written to `events.jsonl`."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-37",
+      "type": "heading",
+      "level": 3,
+      "content": "Step 6: Projection layer serves queries",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-38",
+      "type": "paragraph",
+      "content": "All read-side consumers (agents checking \"is path X available?\", dashboard displaying active leases, Ralph scanning for mission candidates) read from projections \u2014 compiled read-only views rebuilt from canonical artifacts. No consumer reads canonical artifacts directly for query purposes. Projections are regenerated atomically (write to temp, rename over old) when canonical state changes.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-39",
+      "type": "heading",
+      "level": 2,
+      "content": "How subagent subprocesses will use this",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-40",
+      "type": "paragraph",
+      "content": "Future Rig subagents are separate tailored agent-loop subprocesses. Each:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-41",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Submits intent envelopes via artifact files or IPC** \u2014 never calls `store.*` mutation methods directly. For v0, intent envelopes are JSON files written to a well-known pending-intent directory. Future: Unix domain socket or sidecar IPC."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-42",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Does NOT directly mutate shared coordination state** \u2014 the subagent binary has no import of `CoordinationStore` mutation methods. It only imports the envelope builder and the projection reader."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-43",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Reads projections for state queries** \u2014 \"what paths are claimed?\" \u2192 read `projections/leases.json` (or query through a projection client). Projections are rebuilt by the digester after every accepted decision."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-44",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Receives decisions from the digester** \u2014 the subagent polls (or subscribes, in IPC future) for decision envelopes matching its session ID. A granted decision means \"proceed with work on path X\". A denied decision means \"path X is contested \u2014 stand down, read the conflict record\"."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "This makes subagents truly disposable: they hold no canonical state, they don't need to coordinate among themselves, and a crashed subagent leaves no corrupted state (at most, an orphaned pending intent, which the digester can detect via heartbeat/liveness).",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-46",
+      "type": "heading",
+      "level": 2,
+      "content": "Which artifacts are canonical",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-47",
+      "type": "table",
+      "columns": [
+        "Artifact path",
+        "Content",
+        "Mutation pattern"
+      ],
+      "rows": [
+        [
+          "`leases/paths/*.json`",
+          "Path reservations with session, mode, timestamp",
+          "Write-on-grant, delete-on-release (via digester only)"
+        ],
+        [
+          "`tasks/*.json`",
+          "Task claims with session, scope, status",
+          "Write-on-claim, update-on-complete/abandon (via digester only)"
+        ],
+        [
+          "`sessions/*.json`",
+          "Session state, heartbeat, parent/child linkage",
+          "Write-on-create, update-on-state-change (via digester only)"
+        ],
+        [
+          "`events.jsonl`",
+          "Append-only event ledger \u2014 every decision, conflict, state transition",
+          "Append-only (via digester only)"
+        ],
+        [
+          "`conflicts/*.json`",
+          "Conflict records \u2014 denied/reserved intents with rationale",
+          "Write-on-conflict (via digester only)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-48",
+      "type": "paragraph",
+      "content": "**Projections are NOT canonical**. They are read-only compiled views rebuilt from canonical artifacts. They can be deleted and regenerated at any time without data loss. They exist for query performance and consumer isolation.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-49",
+      "type": "heading",
+      "level": 2,
+      "content": "How denied conflicts become telemetry and evidence",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "Every denied lease produces:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-51",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**`coord.path.reservation_refused` event** \u2014 appended to `events.jsonl` with:",
+        "`envelope_sha256` of the denied request",
+        "`conflicting_lease_sha256` of the existing lease that blocked it",
+        "`refusal_reason` (already_leased, session_inactive, path_invalid)",
+        "`requested_by_session`, `processed_at`"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-52",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Conflict record** \u2014 written to `conflicts/<conflict_id>.json` with:",
+        "Full request envelope (inlined or referenced by hash)",
+        "Full blocking lease (inlined or referenced by hash)",
+        "Decision rationale",
+        "Timestamp and digest chain link"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-53",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Telemetry scope** \u2014 these events feed the `coordination_metrics` telemetry scope:",
+        "`denial_rate` per path prefix",
+        "`contention_hotspots` (paths with high refusal frequency)",
+        "`double_win_rate` (if detected post-digester \u2014 should be zero)",
+        "`digester_latency` distribution",
+        "`pending_intent_age` (how long intents sit before digestion)"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-54",
+      "type": "paragraph",
+      "content": "All denial data is durable, queryable, and feeds both operational monitoring and the Ralph mission candidate scanner (contended paths \u2192 `CandidateKind.CONTENTION_HOTSPOT`).",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-55",
+      "type": "heading",
+      "level": 2,
+      "content": "Why no database dependency",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-56",
+      "type": "paragraph",
+      "content": "SQLite, DuckDB, Postgres, and Redis are out of scope for coordination artifacts. Rationale:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-57",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Filesystem is the universal substrate** \u2014 works across subprocesses, machines, and CI environments without setup or credentials",
+        "**JSON/JSONL is human-readable and git-diffable** \u2014 agents and operators can inspect state with any text tool",
+        "**Atomic file operations exist** \u2014 `tempfile + os.rename` is atomic on POSIX; `flock` provides advisory locking without a database server",
+        "**Schemas and receipts provide integrity** \u2014 every artifact has a declared JSON schema and SHA256 hash chain; no need for database constraints",
+        "**Projections are files too** \u2014 DuckDB may be used internally by the analytics subsystem (`rig_relay/analytics/`), but that is an analytical read-side, not the coordination write path"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-58",
+      "type": "paragraph",
+      "content": "The digestion pipeline writes canonical JSON/JSONL artifacts using atomic file operations. The single-writer guarantee (not database transactions) provides consistency.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-59",
+      "type": "heading",
+      "level": 2,
+      "content": "How this prepares context assembler and hardened built-in tools",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-60",
+      "type": "heading",
+      "level": 3,
+      "content": "Context assembler",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-61",
+      "type": "paragraph",
+      "content": "The context assembler (`rig_relay/context/compiler.py`) currently reads repo state directly. The digestion pipeline enables:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-62",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**`context.requested` envelopes** \u2014 when an agent requests context for a mission, the request becomes an envelope. The digester checks: is this session authorized? has this context already been assembled within TTL? are any paths blacklisted for this session?"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-63",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**`context_packet.ready` / `context_packet.rejected` events** \u2014 decisions on context requests become telemetry events in `events.jsonl`. Rejected packets (e.g., \"path blacklisted\", \"session expired\") become conflict records."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-64",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Context packet caching** \u2014 the digester can serve cached context packets when the underlying artifacts haven't changed, avoiding redundant compilation."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-65",
+      "type": "heading",
+      "level": 3,
+      "content": "Hardened built-in tools",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-66",
+      "type": "paragraph",
+      "content": "Every mutation-capable built-in tool (`WriteFile`, `SearchReplace`, `BashTool` with mutation side-effects, `checkpoint`) will flow through the digestion pipeline:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-67",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**`tool.invocation.requested` envelope** \u2014 before execution, the tool submits a lease request for the paths it intends to mutate. The digester checks: is the session authorized? does a conflicting lease exist? is the path in the session's declared scope?"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-68",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Lease-required mutation gate** \u2014 the tool execution is gated on receiving a `LeaseDecisionEnvelope` with `granted`. If denied, the tool raises `ToolPermissionError` with the conflict reason."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-69",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Receipt emission** \u2014 after successful execution, the tool emits a receipt into the tool invocation trace. The receipt's `evidence_sha256` chains into the lease's termination event, providing end-to-end audit: request \u2192 grant \u2192 execution \u2192 receipt \u2192 release."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-70",
+      "type": "paragraph",
+      "content": "This eliminates the current pattern where tools check permissions inline without serialized coordination, which would produce the same TOCTOU race described above when multiple session processes run concurrently.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    }
+  ],
+  "provenance": {
+    "source_files": [
+      "docs/governance/serialized-digestion-pipeline.md"
+    ]
+  }
+}

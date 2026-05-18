@@ -4,132 +4,103 @@
     {
       "check_id": "pyproject_parseable",
       "detail": "pyproject.toml parses as valid TOML",
-      "duration_ms": 0,
+      "duration_ms": 2,
       "status": "pass"
     },
     {
       "check_id": "package_metadata",
       "detail": "name=rig-relay, version=0.1.0a1, python_requires=>=3.12, license OK",
-      "duration_ms": 17,
+      "duration_ms": 2,
       "status": "pass"
     },
     {
       "check_id": "entry_points_exist",
-      "detail": "4 entry points resolve (rig-relay, rig-relay-acp, rig-relay-cockpit, rig-relay-ide-sidecar)",
-      "duration_ms": 40,
+      "detail": "rig-relay and rig-relay-acp entry points resolve",
+      "duration_ms": 35,
       "status": "pass"
     },
     {
       "check_id": "cli_help_succeeds",
-      "detail": "rig-relay --help returned exit code 0",
-      "duration_ms": 2125,
+      "detail": "`uv run rig-relay --help` returned exit code 0",
+      "duration_ms": 2218,
       "status": "pass"
     },
     {
       "check_id": "cli_acp_help_succeeds",
-      "detail": "rig-relay-acp --help returned exit code 0",
-      "duration_ms": 2312,
+      "detail": "`uv run rig-relay-acp --help` returned exit code 0",
+      "duration_ms": 2665,
       "status": "pass"
     },
     {
       "check_id": "doctor_command",
-      "detail": "rig-relay doctor returned exit code 0",
-      "duration_ms": 504,
+      "detail": "`uv run rig-relay doctor` returned exit code 0",
+      "duration_ms": 688,
       "status": "pass"
     },
     {
       "check_id": "required_public_docs",
-      "detail": "8/8 public docs present",
+      "detail": "All 4 required public docs present",
       "duration_ms": 0,
       "status": "pass"
     },
     {
       "check_id": "license_consistency",
-      "detail": "AGPL-3.0-or-later matches LICENSE file",
+      "detail": "pyproject.toml license (AGPL-3.0-or-later) matches LICENSE file (AGPL-3.0)",
       "duration_ms": 1,
       "status": "pass"
     },
     {
       "check_id": "schema_validation",
-      "detail": "153/153 schemas validated (http vs https, draft-2020-12 vs draft-07). 125/151 pass. NOT caused by this mission.",
-      "duration_ms": 3000,
-      "status": "fail"
+      "detail": "Schema validation script passed",
+      "duration_ms": 254,
+      "status": "pass"
     },
     {
       "check_id": "release_gate_validator",
-      "detail": "scripts/rig_release_gate_validate.py exists and parses",
-      "duration_ms": 10,
+      "detail": "scripts/rig_release_gate_validate.py exists and is parseable Python",
+      "duration_ms": 6,
       "status": "pass"
     },
     {
       "check_id": "no_markdown_evidence",
-      "detail": "116 .md files in docs/audits/ — pre-existing migration backlog",
-      "duration_ms": 5,
+      "detail": "Found 113 .md file(s) in forbidden evidence dirs: ['docs/audits/determinism-maturity-matrix.md', 'docs/audits/artifact-schema-doctrine.md', 'docs/audits/provider-boundary-adapter-contract-map.md', 'docs/audits/brand-refresh-bauhaus-phosphor.md', 'docs/audits/vibe-cli-purge-inventory.md']...",
+      "duration_ms": 4,
       "status": "warn"
     },
     {
       "check_id": "version_ascii",
-      "detail": "version 0.1.0a1 is ASCII",
+      "detail": "Version '0.1.0a1' is ASCII-only",
       "duration_ms": 0,
       "status": "pass"
     },
     {
       "check_id": "python_version_constraint",
-      "detail": "requires-python >=3.12",
+      "detail": "requires-python='>=3.12' correctly includes >=3.12",
+      "duration_ms": 24,
+      "status": "pass"
+    },
+    {
+      "check_id": "dogfood_readiness_distinction",
+      "detail": "Installability smoke may pass but dogfood golden path is 'not_verified'. 2 steps not yet verified by a human reviewer. Do not treat installability-only checks as RC readiness.",
       "duration_ms": 0,
-      "status": "pass"
-    },
-    {
-      "check_id": "install_script_syntax",
-      "detail": "scripts/install.sh is valid bash syntax",
-      "duration_ms": 10,
-      "status": "pass"
-    },
-    {
-      "check_id": "install_script_source",
-      "detail": "install.sh uses git+https://github.com/juliantorr-es/rig-relay.git (not PyPI)",
-      "duration_ms": 1,
-      "status": "pass"
-    },
-    {
-      "check_id": "package_wheel_targets",
-      "detail": "wheel include targets only existing directories",
-      "duration_ms": 1,
-      "status": "pass"
-    },
-    {
-      "check_id": "ruff_first_party",
-      "detail": "known-first-party set to rig_relay",
-      "duration_ms": 1,
-      "status": "pass"
+      "status": "warn"
     }
   ],
   "cli_entry_points_checked": [
     "rig-relay",
-    "rig-relay-acp",
-    "rig-relay-cockpit",
-    "rig-relay-ide-sidecar"
+    "rig-relay-acp"
   ],
   "commands_run": [
-    "uv run rig-relay --help",
-    "uv run rig-relay-acp --help",
-    "uv run rig-relay doctor",
-    "uv run rig-relay doctor --json",
-    "uv run python scripts/rig_rc_installability_check.py",
-    "uv run pytest tests/release_candidate/test_installability_check.py -v",
-    "uv run python scripts/rig_relay_validate_schemas.py"
+    "cli_help_succeeds",
+    "cli_acp_help_succeeds",
+    "doctor_command",
+    "schema_validation"
   ],
-  "duration_ms": 6000,
+  "duration_ms": 5974,
   "errors": [],
-  "evidence_paths": [
-    "docs/schemas/rig.release_candidate.installability_check.v1.schema.json",
-    "docs/json/release_candidate/rc_installability_verdict.v1.json",
-    "scripts/rig_rc_installability_check.py",
-    "rig_relay/cli/doctor.py",
-    "tests/release_candidate/test_installability_check.py"
-  ],
-  "generated_at": "2026-05-18T00:27:07Z",
-  "head_sha": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+  "evidence_paths": [],
+  "generated_at": "2026-05-18T03:58:47Z",
+  "head_sha": "a0dc9c56003ddade9f3c09e023e40426979ea412",
   "license_status": "pass",
   "overall_status": "passed",
   "package_name": "rig-relay",
@@ -138,23 +109,13 @@
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "SECURITY.md",
-    "CODE_OF_CONDUCT.md",
-    "THIRD_PARTY_NOTICES.md",
-    "ATTRIBUTION.md",
-    "CONTRIBUTING.md"
+    "SECURITY.md"
   ],
   "python_requires": ">=3.12",
-  "required_next_actions": [
-    "Migrate 116 legacy .md files from docs/audits/ to structured JSON artifacts",
-    "Add version bump script for future RC versions",
-    "Remove 4 stale ruff per-file-ignores for non-existent vibe/ paths",
-    "Add packaging marker tests (wheel build, pipx install e2e) in future RC phase"
-  ],
+  "required_next_actions": [],
   "schema_version": "rig.release_candidate.installability_check.v1",
   "warnings": [
-    "no_markdown_evidence: 116 legacy .md files in docs/audits/ must be migrated to structured JSON artifacts",
-    "4 stale ruff per-file-ignores reference non-existent vibe/ paths (deferred to migration owner)",
-    "No version bump script exists (scripts/bump_version.py missing)"
+    "no_markdown_evidence: Found 113 .md file(s) in forbidden evidence dirs: ['docs/audits/determinism-maturity-matrix.md', 'docs/audits/artifact-schema-doctrine.md', 'docs/audits/provider-boundary-adapter-contract-map.md', 'docs/audits/brand-refresh-bauhaus-phosphor.md', 'docs/audits/vibe-cli-purge-inventory.md']...",
+    "dogfood_readiness_distinction: Installability smoke may pass but dogfood golden path is 'not_verified'. 2 steps not yet verified by a human reviewer. Do not treat installability-only checks as RC readiness."
   ]
 }

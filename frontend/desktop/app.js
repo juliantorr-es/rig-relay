@@ -1100,7 +1100,7 @@ function renderProgressTimeline() {
 function handleWSMessage(message) {
   switch (message.type) {
     case 'desktop_intent_result':
-      displayOperateIntentResult(message.result || message);
+      displayOperateIntentResult(message.data || message.result || message);
       break;
     case 'chat_state':
     case 'chat_state_updated':

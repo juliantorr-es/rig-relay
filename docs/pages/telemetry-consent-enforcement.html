@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telemetry Consent Enforcement — Rig Relay Docs</title>
+<meta name="description" content="**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/telemetry-consent-enforcement.html">
+<meta property="og:title" content="Telemetry Consent Enforcement">
+<meta property="og:description" content="**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/telemetry-consent-enforcement.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Telemetry Consent Enforcement">
+<meta name="twitter:description" content="**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Telemetry Consent Enforcement</h1>
+  <p class="doc-summary">**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/telemetry-consent-enforcement.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Telemetry Consent Enforcement</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Architecture</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Rig Relay telemetry has two independent sinks:</p>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Sink</th><th>Default</th><th>Requires</th><th>Degrades when off</th></tr></thead>
+<tbody>
+<tr><td>**Local observability**</td><td>ON</td><td>`enable_local_observability=True`</td><td>Governed mode, fleet, checkpoint, coordination, replay, autonomous spawn</td></tr>
+<tr><td>**Remote beta sharing**</td><td>OFF</td><td>`enable_remote_telemetry=True` **AND** valid consent record with required scopes</td><td>Remote upload, maintainer debugging, shared benchmarks, cross-user reports</td></tr>
+</tbody>
+</table>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">Consent enforcement adds a second gate to the remote sink. Before remote upload:</p>
+
+<ol id="list-8" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Settings gate: `enable_remote_telemetry` or `enable_telemetry` must be `True`.</li>
+  <li>Consent gate: A `TelemetryConsentRecord` must exist, be `GRANTED`, and cover the required scopes for the event.</li>
+</ol>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">If either gate fails, remote upload is blocked and a locally auditable denial event is written.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Consent Decision Model</h2>
+
+<pre id="code-12"><code class="language-python">@dataclass
+class TelemetryUploadDecision:
+    allowed: bool
+    reason: str              # remote_disabled, consent_not_found, consent_not_requested,
+                             # consent_denied, consent_revoked, consent_policy_invalid,
+                             # scope_missing, consent_granted
+    consent_status: str | None
+    matched_scopes: list[str]
+    missing_scopes: list[str]
+    policy_version: str | None
+    remote_enabled: bool
+    decided_at: str</code></pre>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Decision Reasons</h3>
+
+<table id="table-14" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Reason</th><th>Meaning</th><th>Remote upload</th></tr></thead>
+<tbody>
+<tr><td>`remote_disabled`</td><td>`enable_remote_telemetry` is `False`</td><td>Blocked</td></tr>
+<tr><td>`consent_not_found`</td><td>Consent getter returned `None` or threw an exception</td><td>Blocked (fail closed)</td></tr>
+<tr><td>`consent_not_requested`</td><td>Consent record exists but status is `NOT_REQUESTED`</td><td>Blocked</td></tr>
+<tr><td>`consent_denied`</td><td>User explicitly denied telemetry</td><td>Blocked</td></tr>
+<tr><td>`consent_revoked`</td><td>User revoked previously granted consent</td><td>Blocked</td></tr>
+<tr><td>`consent_policy_invalid`</td><td>Consent record is malformed or has unknown status</td><td>Blocked</td></tr>
+<tr><td>`scope_missing`</td><td>Consent is granted but required scopes are missing</td><td>Blocked</td></tr>
+<tr><td>`consent_granted`</td><td>All gates pass</td><td>Allowed</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-15" class="disclosure-standard" data-disclosure-level="standard">Fail-Closed Semantics</h3>
+
+<ul id="list-16" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Loader exception → `consent_not_found` → **blocked**</li>
+  <li>`None` consent → `consent_not_found` → **blocked**</li>
+  <li>Malformed record → `consent_policy_invalid` → **blocked**</li>
+  <li>Unknown scope mapping → defaults to `USAGE_METRICS` → allowed only if scope present</li>
+</ul>
+
+<h3 id="h3-17" class="disclosure-standard" data-disclosure-level="standard">Revocation Beats Settings</h3>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">A revoked consent record always blocks remote upload, even if `enable_remote_telemetry` or the legacy `enable_telemetry` alias is `True`.</p>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Scope Mapping</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Events are mapped to consent scopes by prefix:</p>
+
+<table id="table-22" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Event prefix</th><th>Required scope</th></tr></thead>
+<tbody>
+<tr><td>`rig.relay.tool.*`</td><td>`TOOL_REFINEMENT_METRICS`</td></tr>
+<tr><td>`rig.relay.session.*`</td><td>`USAGE_METRICS`</td></tr>
+<tr><td>`rig.relay.context.*`</td><td>`USAGE_METRICS`</td></tr>
+<tr><td>`rig.relay.checkpoint.*`</td><td>`COORDINATION_METRICS`</td></tr>
+<tr><td>`coord.*`</td><td>`COORDINATION_METRICS`</td></tr>
+<tr><td>`rig.relay.model_observation.*`</td><td>`PROVIDER_MODEL_BENCHMARKING`</td></tr>
+<tr><td>All other events</td><td>`USAGE_METRICS` (default)</td></tr>
+</tbody>
+</table>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Model observation events require `PROVIDER_MODEL_BENCHMARKING`, which is **never in the default grant set**. This scope requires explicit opt-in.</p>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Local Audit Trail</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">Every consent decision — both allowed and denied — is logged locally:</p>
+
+<table id="table-27" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Event</th><th>When emitted</th></tr></thead>
+<tbody>
+<tr><td>`telemetry.remote_upload.allowed`</td><td>Consent gate passed, upload proceeds</td></tr>
+<tr><td>`telemetry.remote_upload.denied`</td><td>Consent gate failed, upload blocked</td></tr>
+</tbody>
+</table>
+
+<p id="p-28" class="disclosure-standard" data-disclosure-level="standard">Denial events are content-light:</p>
+
+<ul id="list-29" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`original_event` — the event that was blocked</li>
+  <li>`reason` — the denial reason</li>
+  <li>`consent_status` — consent record status (if available)</li>
+  <li>`matched_scopes` / `missing_scopes` — scope match details</li>
+  <li>`remote_enabled` — whether remote was enabled in settings</li>
+  <li>`decided_at` — ISO timestamp</li>
+</ul>
+
+<p id="p-30" class="disclosure-standard" data-disclosure-level="standard">**No raw content, no subject hash, no PII is included in denial events.**</p>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-32" class="disclosure-standard" data-disclosure-level="standard">Local Observability Unaffected</h2>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Consent enforcement **only** gates the remote upload path. The local observability sink (`observability.jsonl`) is written regardless of consent status. This is intentional: local observability is product infrastructure for governed mode, fleet coordination, and Ralph projections.</p>
+
+<p id="p-34" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-35" class="disclosure-standard" data-disclosure-level="standard">Debug Bundles</h2>
+
+<p id="p-36" class="disclosure-standard" data-disclosure-level="standard">Debug bundle upload (Google Drive) is a separate explicit user action governed by its own consent path. This slice does not change debug bundle behavior.</p>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-38" class="disclosure-standard" data-disclosure-level="standard">Test Coverage</h2>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">15 tests in `tests/core/test_telemetry_consent_gate.py`:</p>
+
+<table id="table-40" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test</th><th>Proves</th></tr></thead>
+<tbody>
+<tr><td>Remote disabled → no upload even with consent granted</td><td>Settings gate supersedes consent</td></tr>
+<tr><td>Remote enabled + consent granted → upload occurs</td><td>Happy path</td></tr>
+<tr><td>Remote enabled + consent revoked → no upload</td><td>Revocation blocks upload</td></tr>
+<tr><td>Revoked consent beats legacy `enable_telemetry=True`</td><td>Revocation &gt; settings</td></tr>
+<tr><td>Consent not-requested → no upload</td><td>Fail closed on missing consent</td></tr>
+<tr><td>No consent getter → no upload</td><td>Fail closed on missing getter</td></tr>
+<tr><td>Consent getter returns None → no upload</td><td>Fail closed on None</td></tr>
+<tr><td>Missing required scope → no upload</td><td>Scope enforcement</td></tr>
+<tr><td>Consent loader exception → no upload</td><td>Fail closed on exceptions</td></tr>
+<tr><td>Local observability writes when remote denied</td><td>Local sink unaffected</td></tr>
+<tr><td>Denial writes auditable local decision</td><td>Audit trail</td></tr>
+<tr><td>Decision preserves content-light boundary</td><td>No PII leakage</td></tr>
+<tr><td>Existing debug bundle behavior unchanged</td><td>No regression</td></tr>
+<tr><td>Revoked consent blocks upload with sensitive payload</td><td>E2E revocation</td></tr>
+<tr><td>Decision never leaks subject_hash</td><td>Content-light guarantee</td></tr>
+</tbody>
+</table>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Existing telemetry send tests (39 tests) pass via a backward-compatible bypass fixture.</p>
+
+<p id="p-42" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-43" class="disclosure-standard" data-disclosure-level="standard">Configuration</h2>
+
+<pre id="code-44"><code class="language-python"># In _agent_init.py, the TelemetryClient is constructed with:
+consent_record_getter=self._load_consent_record
+
+# _load_consent_record reads from:
+#   .rig/relay/telemetry_consent.json
+#
+# If the file doesn&#x27;t exist, consent is None → upload blocked (fail closed).</code></pre>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">To grant consent, write a valid `TelemetryConsentRecord` to `.rig/relay/telemetry_consent.json`:</p>
+
+<pre id="json-46"><code class="language-json">{
+  &quot;schema_version&quot;: &quot;rig.relay.telemetry_consent.v1&quot;,
+  &quot;consent_id&quot;: &quot;cons_abc123def456&quot;,
+  &quot;subject_hash&quot;: &quot;&lt;sha256 of anonymous identifier&gt;&quot;,
+  &quot;provider&quot;: &quot;local&quot;,
+  &quot;status&quot;: &quot;granted&quot;,
+  &quot;scopes&quot;: [
+    &quot;usage_metrics&quot;,
+    &quot;content_light_bundles&quot;,
+    &quot;crash_reports&quot;,
+    &quot;coordination_metrics&quot;,
+    &quot;tool_refinement_metrics&quot;
+  ],
+  &quot;granted_at&quot;: &quot;2026-05-17T00:00:00Z&quot;,
+  &quot;policy_version&quot;: &quot;alpha-usage-data-license-v1&quot;,
+  &quot;local_only&quot;: true
+}</code></pre>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-48" class="disclosure-standard" data-disclosure-level="standard">Remaining Risks</h2>
+
+<ol id="list-49" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Consent store is file-based** — the `.rig/relay/telemetry_consent.json` path is fragile. A proper consent store with migration support should replace this in the next slice.</li>
+  <li>**No UI for consent management** — currently requires manual JSON editing. The desktop cockpit should expose consent controls.</li>
+  <li>**No per-repo scoping** — consent is global per machine. A user cannot grant consent for one repo but not another.</li>
+  <li>**No consent expiry enforcement** — the `expires_at` field exists on `TelemetryConsentRecord` but is not enforced by the gate.</li>
+</ol>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">These are deferred to future slices. The enforcement boundary itself is now closed.</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/telemetry-consent-enforcement.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

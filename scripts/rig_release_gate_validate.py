@@ -397,18 +397,33 @@ def check_stale_evidence(
     repo_root: Path,
     current_head: str,
 ) -> list[str]:
-    """Detect validation runs and phase statuses referencing commits older than current HEAD."""
+    """Detect phase statuses referencing commits older than current HEAD.
+
+    Validation runs are append-only historical evidence. Only the runs
+    referenced by the current readiness gate phases are checked for staleness;
+    unreferenced archived rows are intentionally ignored.
+    """
     errors: list[str] = []
     if not current_head:
         return errors
 
+    referenced_run_ids = {
+        rid
+        for phase in phases
+        for rid in phase.get("validation_run_ids", [])
+        if isinstance(rid, str)
+    }
+
     for run in validation_runs:
         if "_parse_error" in run:
+            continue
+        run_id = run.get("validation_run_id", "")
+        if run_id not in referenced_run_ids:
             continue
         run_commit = run.get("source_commit", "")
         if run_commit and run_commit != current_head:
             errors.append(
-                f"Validation run {run.get('validation_run_id')} is stale: "
+                f"Validation run {run_id} is stale: "
                 f"source_commit={run_commit[:8]} != HEAD={current_head[:8]}"
             )
 

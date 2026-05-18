@@ -1,0 +1,308 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "install",
+  "document_type": "guide",
+  "title": "Rig Relay Install Channels",
+  "summary": "Rig Relay is a Python CLI application distributed via PyPI. The recommended install methods use standard Python packaging tools.",
+  "status": "active",
+  "created_at": "2026-05-18",
+  "updated_at": "2026-05-18",
+  "source_commit": "c92a220a",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "guide",
+    "migration"
+  ],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/install.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Rig Relay Install Channels",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Primary Install: Python Packaging",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Rig Relay is a Python CLI application distributed via PyPI. The recommended install methods use standard Python packaging tools.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-4",
+      "type": "heading",
+      "level": 3,
+      "content": "uv tool install (recommended)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-5",
+      "type": "code",
+      "language": "bash",
+      "content": "uv tool install rig-relay",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-6",
+      "type": "heading",
+      "level": 3,
+      "content": "pipx install",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-7",
+      "type": "code",
+      "language": "bash",
+      "content": "pipx install rig-relay",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-8",
+      "type": "heading",
+      "level": 3,
+      "content": "pip install (lower priority, risk of environment conflicts)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-9",
+      "type": "code",
+      "language": "bash",
+      "content": "pip install rig-relay",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Source Install (Contributors)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-11",
+      "type": "code",
+      "language": "bash",
+      "content": "git clone https://github.com/juliantorr-es/rig-relay\ncd rig-relay\nuv sync --all-extras",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "OS-Specific Channels",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Homebrew (future)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "A Homebrew tap (`homebrew-rig-relay`) will be published when the project reaches beta stability. The formula uses:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-15",
+      "type": "code",
+      "language": "ruby",
+      "content": "class RigRelay < Formula\n  include Language::Python::Virtualenv\n  desc \"Governed coding-agent harness with coordination, checkpoints, and dataset telemetry\"\n  url \"https://files.pythonhosted.org/packages/.../rig_relay-0.1.0a1.tar.gz\"\n  depends_on \"python@3.12\"\n  def install\n    virtualenv_install_with_resources\n  end\nend",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "npm wrapper (future convenience shim)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-17",
+      "type": "paragraph",
+      "content": "An npm package may be published as a thin wrapper that bootstraps `uv` or `pipx` under the hood. It is NOT a Node.js rewrite.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-18",
+      "type": "code",
+      "language": "bash",
+      "content": "npm install -g rig-relay\nrig-relay",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "Console Scripts",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "The Python package exposes these commands via `pyproject.toml` `[project.scripts]`:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-21",
+      "type": "table",
+      "columns": [
+        "Command",
+        "Entry Point"
+      ],
+      "rows": [
+        [
+          "`rig-relay`",
+          "`rig_relay.cli.entrypoint:main`"
+        ],
+        [
+          "`rig-relay-acp`",
+          "`rig_relay.cli.acp_entrypoint:main`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "The `vibe` and `vibe-acp` commands are **deprecated legacy aliases**. New users should treat `rig-relay` as the primary product command and the pywebview cockpit as the primary operator surface. The Textual TUI is legacy compatibility-only and is being retired.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-23",
+      "type": "heading",
+      "level": 2,
+      "content": "Version",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "Rig Relay v0.1.0-alpha.1 (Python package `0.1.0a1`). Derived from Mistral Vibe CLI lineage; independent version line. Upstream compatibility is not guaranteed.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-25",
+      "type": "paragraph",
+      "content": "See [versioning policy](release/versioning-policy.md) for version semantics.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-26",
+      "type": "heading",
+      "level": 2,
+      "content": "Legacy Migration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-27",
+      "type": "paragraph",
+      "content": "Rig Relay is migrating from Vibe-derived internals (`vibe.*`) to Relay-native packages (`rig_relay.*`). Existing `vibe.*` imports remain supported during alpha. See the [Legacy Deprecation Doctrine](governance/vibe-legacy-deprecation.md) for the migration plan.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    }
+  ],
+  "provenance": {
+    "source_files": [
+      "docs/install.md"
+    ]
+  }
+}

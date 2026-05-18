@@ -226,6 +226,7 @@ markers = [
   "contract: domain contract/unit tests",
   "integration: crosses multiple components/processes/filesystems",
   "e2e: broad-stack or full flow",
+  "adversarial: adversarial or injection-focused coverage",
   "packaging: packaged app / installer / bundle checks",
   "slow: intentionally slow",
   "legacy: retained but not part of default suite",
@@ -237,6 +238,7 @@ markers = [
   "quarantine: quarantined test, runs only in dedicated quarantine job",
   "sabotage: corruption/sabotage injection tests for runtime hardening",
   "real_artifact: tests using real file artifacts (no mocking)",
+  "substrate: storage, cache, or infrastructure substrate coverage",
 ]
 filterwarnings = [
   # (e2e) streaming mock server is started in a thread; and the cli is spawn in a fork

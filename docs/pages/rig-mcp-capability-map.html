@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig MCP Server — Capability Map — Rig Relay Docs</title>
+<meta name="description" content="The first 16 MCP tools exposed by Rig Relay. Designed for consumption by Antigravity, VS Code, Zed, Cursor, and other MCP hosts.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/rig-mcp-capability-map.html">
+<meta property="og:title" content="Rig MCP Server — Capability Map">
+<meta property="og:description" content="The first 16 MCP tools exposed by Rig Relay. Designed for consumption by Antigravity, VS Code, Zed, Cursor, and other MCP hosts.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/rig-mcp-capability-map.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig MCP Server — Capability Map">
+<meta name="twitter:description" content="The first 16 MCP tools exposed by Rig Relay. Designed for consumption by Antigravity, VS Code, Zed, Cursor, and other MCP hosts.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Rig MCP Server — Capability Map</h1>
+  <p class="doc-summary">The first 16 MCP tools exposed by Rig Relay. Designed for consumption by Antigravity, VS Code, Zed, Cursor, and other MCP hosts.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/rig-mcp-capability-map.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig MCP Server — Capability Map</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">The first 16 MCP tools exposed by Rig Relay. Designed for consumption by Antigravity, VS Code, Zed, Cursor, and other MCP hosts.</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Tools are organized into 5 tiers. Tiers 0-2 are always available. Tiers 3+ require authorization receipts.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Tier 0 — Read-Only Context</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Tools that inspect state without any mutation. Safe by default.</p>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">`rig.current_mission`</h3>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">Get the active mission envelope: scope, sprint, task assignments.</p>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">`rig.search_evidence`</h3>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Search the evidence ledger for receipts, findings, and coordination events.</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">`rig.read_receipt`</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">Read a specific receipt by ID. Returns summary + content hashes.</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">`rig.list_worktrees`</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">List all tracked git worktrees: workspace ID, path, status, HEAD SHA.</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">`rig.inspect_schema`</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Inspect a Rig schema (mission-envelope, receipt, patch-proposal, consultation).</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">`rig.summarize_dirty_state`</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Summarize dirty files with path hashes only. No file contents exposed.</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">`rig.run_readonly_doctor`</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">Read-only diagnostics: git repo check, worktree health, lease status.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Tier 1 — Analysis / Packet Generation</h2>
+
+<p id="p-21" class="disclosure-standard" data-disclosure-level="standard">Non-mutating tools that produce artifacts.</p>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">`rig.build_context_packet`</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">Build a content-light mission context packet with configurable redaction.</p>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">`rig.create_consult_packet`</h3>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Create a structured consultation packet for adversarial provider review.</p>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">`rig.compare_provider_opinions`</h3>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Compare council findings across providers. Returns consensus and disagreements.</p>
+
+<h2 id="h2-28" class="disclosure-standard" data-disclosure-level="standard">Tier 2 — Validation / Bounded Execution</h2>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">Run known validators and audits. Read-only outputs.</p>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">`rig.run_validator`</h3>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">Run an approved validator (pytest, ruff, pyright, work_doctor). Returns receipt.</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">`rig.check_merge_friendly`</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">Check if the working tree is clean and safe to merge.</p>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">`rig.audit_dirty_state`</h3>
+
+<p id="p-35" class="disclosure-standard" data-disclosure-level="standard">Audit dirty file state and produce a recommendation.</p>
+
+<h2 id="h2-36" class="disclosure-standard" data-disclosure-level="standard">Tier 3 — Patch Proposal</h2>
+
+<p id="p-37" class="disclosure-standard" data-disclosure-level="standard">Creates artifacts for review. Does NOT apply to the workspace.</p>
+
+<h3 id="h3-38" class="disclosure-standard" data-disclosure-level="standard">`rig.propose_patch`</h3>
+
+<p id="p-39" class="disclosure-standard" data-disclosure-level="standard">Create a patch proposal with rationale, target files, and proposed changes. Returns `blocked_pending_approval` + receipt ID. User must approve in Rig before the patch is applied.</p>
+
+<h2 id="h2-40" class="disclosure-standard" data-disclosure-level="standard">Tier 4 — Mutation</h2>
+
+<p id="p-41" class="disclosure-standard" data-disclosure-level="standard">Requires explicit authorization receipt.</p>
+
+<h3 id="h3-42" class="disclosure-standard" data-disclosure-level="standard">`rig.request_user_approval`</h3>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">Request user approval for a gated action. Returns an authorization receipt that can be passed to Tier 3+ tools.</p>
+
+<h2 id="h2-44" class="disclosure-standard" data-disclosure-level="standard">Tier 5 — Git / Release</h2>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">Denied by default. Requires promotion flow.</p>
+
+<h3 id="h3-46" class="disclosure-standard" data-disclosure-level="standard">`rig.promote_to_preproduction`</h3>
+
+<p id="p-47" class="disclosure-standard" data-disclosure-level="standard">Promote approved patches to the preproduction branch. Requires authorization receipt AND explicit user confirmation.</p>
+
+<h2 id="h2-48" class="disclosure-standard" data-disclosure-level="standard">Usage with Antigravity</h2>
+
+<p id="p-49" class="disclosure-standard" data-disclosure-level="standard">Configure Antigravity&#x27;s MCP settings to connect to Rig:</p>
+
+<pre id="json-50"><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;rig-relay&quot;: {
+      &quot;command&quot;: &quot;uv&quot;,
+      &quot;args&quot;: [&quot;run&quot;, &quot;rig-relay&quot;, &quot;mcp&quot;, &quot;serve&quot;, &quot;--stdio&quot;]
+    }
+  }
+}</code></pre>
+
+<p id="p-51" class="disclosure-standard" data-disclosure-level="standard">Antigravity agents can then call Rig tools through standard MCP tool calls. Every mutation-tier tool returns `approval_required: true` — Antigravity should display this to the user as a confirmation gate.</p>
+
+<h2 id="h2-52" class="disclosure-standard" data-disclosure-level="standard">Usage with VS Code / Zed</h2>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">Same stdio transport. The Rig MCP server speaks standard JSON-RPC 2.0 MCP protocol. Any MCP-compatible host can connect.</p>
+
+<pre id="json-54"><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;rig-relay&quot;: {
+      &quot;command&quot;: &quot;uv&quot;,
+      &quot;args&quot;: [&quot;run&quot;, &quot;rig-relay&quot;, &quot;mcp&quot;, &quot;serve&quot;, &quot;--stdio&quot;]
+    }
+  }
+}</code></pre>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/rig-mcp-capability-map.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

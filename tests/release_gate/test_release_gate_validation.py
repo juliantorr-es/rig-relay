@@ -660,6 +660,76 @@ class TestStaleEvidenceDetection:
         stale_errors = [e for e in result["errors"] if "stale" in e.lower()]
         assert len(stale_errors) == 0
 
+    def test_unreferenced_historical_validation_run_is_ignored(self, tmp_path: Path):
+        subprocess.run(
+            ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+        (tmp_path / "dummy.txt").write_text("test")
+        subprocess.run(
+            ["git", "add", "dummy.txt"], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+
+        head_sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp_path, text=True
+        ).strip()
+
+        _copy_schemas(tmp_path)
+        gate = _minimal_gate()
+        gate["phases"][0]["status"] = "passing"
+        gate["phases"][0]["source_commit"] = head_sha
+        gate["phases"][0]["validation_run_ids"] = ["VR-CURRENT"]
+        _write_gate(tmp_path, gate)
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(
+            tmp_path,
+            "rc_validation_runs.v1.jsonl",
+            [
+                {
+                    "validation_run_id": "VR-CURRENT",
+                    "phase_ids": ["phase_1"],
+                    "command": "uv run pytest",
+                    "result": "passed",
+                    "tests_run": 10,
+                    "test_classifications": {"unit": 10},
+                    "source_commit": head_sha,
+                    "created_at": "2026-05-17T00:00:00Z",
+                },
+                {
+                    "validation_run_id": "VR-ARCHIVED",
+                    "phase_ids": ["phase_1"],
+                    "command": "uv run pytest",
+                    "result": "passed",
+                    "tests_run": 10,
+                    "test_classifications": {"unit": 10},
+                    "source_commit": "abc1230000000000000000000000000000000000",
+                    "created_at": "2026-05-17T00:00:00Z",
+                },
+            ],
+        )
+
+        result = _run(tmp_path, expect_pass=True)
+        assert result["status"] == "passed", f"Unexpected errors: {result['errors']}"
+        stale_errors = [e for e in result["errors"] if "stale" in e.lower()]
+        assert len(stale_errors) == 0
+
     def test_no_head_available_graceful_degradation(self, tmp_path: Path):
         _copy_schemas(tmp_path)
         gate = _minimal_gate()

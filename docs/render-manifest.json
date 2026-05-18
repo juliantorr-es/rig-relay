@@ -1,9 +1,14 @@
 {
-  "generated_at": "2026-05-17T17:04:04.574178+00:00",
-  "git_commit": "9c77bfa23106",
-  "page_count": 223,
+  "generated_at": "2026-05-18T03:36:22.657556+00:00",
+  "git_commit": "a0dc9c56003d",
+  "page_count": 238,
   "collection_page_count": 35,
   "pages": [
+    {
+      "document_id": "acp-setup",
+      "title": "ACP Setup",
+      "source_json_path": "json/acp-setup.v1.json"
+    },
     {
       "document_id": "rig-integration-contract",
       "title": "Rig Integration Contract",
@@ -53,6 +58,11 @@
       "document_id": "subagent-runtime-v1",
       "title": "SubagentRuntime v1 \u2014 Evidence and Tool Execution Mode",
       "source_json_path": "json/audits/agent-loop/subagent-runtime-v1.v1.json"
+    },
+    {
+      "document_id": "api-concurrency-worker-readiness-audit",
+      "title": "API Boundary, Strict Concurrency, and Worker Readiness Audit v0",
+      "source_json_path": "json/audits/api-concurrency-worker-readiness-audit.v1.json"
     },
     {
       "document_id": "artifact-schema-doctrine",
@@ -215,6 +225,11 @@
       "source_json_path": "json/audits/global-rig-declutter/inventory.v1.json"
     },
     {
+      "document_id": "pi-harness-extension-health-audit",
+      "title": "Pi Harness Extension Health Audit",
+      "source_json_path": "json/audits/pi-harness-extension-health.v1.json"
+    },
+    {
       "document_id": "provider-adapter-contract-design",
       "title": "Audit: Provider Adapter Contract Design",
       "source_json_path": "json/audits/provider-adapter-contract-design.v1.json"
@@ -238,6 +253,11 @@
       "document_id": "relay-validation-gates-roadmap",
       "title": "Audit: Relay Validation Gates and Doctor Roadmap",
       "source_json_path": "json/audits/relay-validation-gates-roadmap.v1.json"
+    },
+    {
+      "document_id": "release-candidate-convergence-spine",
+      "title": "Release Candidate Convergence Spine v0 \u2014 5-Phase Roadmap",
+      "source_json_path": "json/audits/release_candidate_convergence_spine.v1.json"
     },
     {
       "document_id": "rig-intake-cannibalization-plan",
@@ -330,6 +350,11 @@
       "source_json_path": "json/audits/session-lifecycle-state-machine.v1.json"
     },
     {
+      "document_id": "telemetry-panopticon-audit",
+      "title": "Rig Relay Telemetry Audit: Governed Product Telemetry or Panopticon?",
+      "source_json_path": "json/audits/telemetry-panopticon-audit.v1.json"
+    },
+    {
       "document_id": "default-suite-tiering-report",
       "title": "Test Suite Tiering Report",
       "source_json_path": "json/audits/test-suite/default_suite_tiering_report.v1.json"
@@ -373,6 +398,11 @@
       "document_id": "test-quality-summary",
       "title": "Test Quality Audit Summary",
       "source_json_path": "json/audits/test-suite/test_quality_summary.v1.json"
+    },
+    {
+      "document_id": "test-suite-reality-pressure-audit",
+      "title": "Test Suite Reality Pressure Audit v0",
+      "source_json_path": "json/audits/test-suite-reality-pressure-audit.v1.json"
     },
     {
       "document_id": "test-cleanup-roadmap",
@@ -780,6 +810,11 @@
       "source_json_path": "json/governance/execution-progress-projection.v1.json"
     },
     {
+      "document_id": "file-coordination-markers",
+      "title": "File Coordination Markers",
+      "source_json_path": "json/governance/file-coordination-markers.v1.json"
+    },
+    {
       "document_id": "fleet-coordination-plane",
       "title": "Rig Fleet Coordination Plane",
       "source_json_path": "json/governance/fleet-coordination-plane.v1.json"
@@ -830,6 +865,11 @@
       "source_json_path": "json/governance/orchestrator_loop_boundary.v1.json"
     },
     {
+      "document_id": "pi-harness-extension-health",
+      "title": "Pi Harness Extension Health",
+      "source_json_path": "json/governance/pi-harness-extension-health.v1.json"
+    },
+    {
       "document_id": "provider-onboarding-policy",
       "title": "Provider Onboarding Policy",
       "source_json_path": "json/governance/provider-onboarding-policy.v1.json"
@@ -863,6 +903,11 @@
       "document_id": "relay-surface-matrix",
       "title": "Relay Surface Matrix",
       "source_json_path": "json/governance/relay-surface-matrix.v1.json"
+    },
+    {
+      "document_id": "release-gate-findings-lifecycle",
+      "title": "Release Gate Findings Lifecycle",
+      "source_json_path": "json/governance/release-gate-findings-lifecycle.v1.json"
     },
     {
       "document_id": "reviewer-orchestrator",
@@ -920,6 +965,11 @@
       "source_json_path": "json/governance/runtime-tool-invocation-result-contract.v1.json"
     },
     {
+      "document_id": "serialized-digestion-pipeline",
+      "title": "Serialized Digestion Pipeline v0",
+      "source_json_path": "json/governance/serialized-digestion-pipeline.v1.json"
+    },
+    {
       "document_id": "session-lifecycle-finalize-tool",
       "title": "Session Lifecycle Finalize Tool",
       "source_json_path": "json/governance/session-lifecycle-finalize-tool.v1.json"
@@ -938,6 +988,11 @@
       "document_id": "storage-retention-policy",
       "title": "Storage Retention Policy",
       "source_json_path": "json/governance/storage_retention_policy.v1.json"
+    },
+    {
+      "document_id": "telemetry-consent-enforcement",
+      "title": "Telemetry Consent Enforcement",
+      "source_json_path": "json/governance/telemetry-consent-enforcement.v1.json"
     },
     {
       "document_id": "telemetry-contribution-policy",
@@ -1005,6 +1060,11 @@
       "source_json_path": "json/governance/worktree-manager.v1.json"
     },
     {
+      "document_id": "install",
+      "title": "Rig Relay Install Channels",
+      "source_json_path": "json/install.v1.json"
+    },
+    {
       "document_id": "github-app-integration-audit-v0",
       "title": "GitHub App Integration Audit v0",
       "source_json_path": "json/integrations/github_app_integration_audit_v0.v1.json"
@@ -1020,6 +1080,11 @@
       "source_json_path": "json/legal/usage-data-license-alpha.v1.json"
     },
     {
+      "document_id": "protocol-surfaces",
+      "title": "Protocol Surfaces",
+      "source_json_path": "json/protocol-surfaces.v1.json"
+    },
+    {
       "document_id": "ide-capability-map",
       "title": "IDE Capability Map",
       "source_json_path": "json/protocols/ide-capability-map.v1.json"
@@ -1033,6 +1098,11 @@
       "document_id": "mcp-context-tools",
       "title": "MCP Context Tools",
       "source_json_path": "json/protocols/mcp-context-tools.v1.json"
+    },
+    {
+      "document_id": "proxy-setup",
+      "title": "Proxy Setup",
+      "source_json_path": "json/proxy-setup.v1.json"
     },
     {
       "document_id": "github-pages-artifact-site",
@@ -1058,6 +1128,11 @@
       "document_id": "versioning-policy",
       "title": "Rig Relay Versioning Policy",
       "source_json_path": "json/release/versioning-policy.v1.json"
+    },
+    {
+      "document_id": "rig-mcp-capability-map",
+      "title": "Rig MCP Server \u2014 Capability Map",
+      "source_json_path": "json/rig-mcp-capability-map.v1.json"
     },
     {
       "document_id": "security-policy",

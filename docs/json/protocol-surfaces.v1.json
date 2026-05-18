@@ -1,0 +1,302 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "protocol-surfaces",
+  "document_type": "reference",
+  "title": "Protocol Surfaces",
+  "summary": "Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.",
+  "status": "active",
+  "created_at": "2026-05-18",
+  "updated_at": "2026-05-18",
+  "source_commit": "c92a220a",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "reference",
+    "migration"
+  ],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/protocol-surfaces.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Protocol Surfaces",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "ACP Agent \u2014 Editor \u2194 Agent",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Rig presents itself as a governed coding agent to editors and IDEs (Zed, JetBrains, VS Code). ACP standardizes session management, progress streaming, edit proposals, and permission gating.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-5",
+      "type": "table",
+      "columns": [
+        "Concept",
+        "Rig Mapping"
+      ],
+      "rows": [
+        [
+          "ACP Session",
+          "Rig mission / lane / worktree session"
+        ],
+        [
+          "ACP Progress",
+          "Rig progress events (phase, status, percent)"
+        ],
+        [
+          "ACP Edit",
+          "Rig patch proposal (never direct write)"
+        ],
+        [
+          "ACP Permission",
+          "Rig approval gate / authorization receipt"
+        ],
+        [
+          "ACP Terminal",
+          "Rig deterministic execution stream"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-6",
+      "type": "code",
+      "language": "text",
+      "content": "Editor/IDE  \u2192  ACP Client  \u2192  Rig ACP Agent\n  send session requests\n  receive plans, edits, progress\n  request permissions",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "Entry point: `rig_relay.protocols.acp.RigACPAgent`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "MCP Client \u2014 Rig \u2194 External Tools",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "Rig consumes external MCP servers for additional tools, databases, and context sources. Rig acts as an MCP host, connecting to servers over stdio or Streamable HTTP.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "This surface is future work. The adapter layer is designed but not yet wired to the tool manager.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "MCP Server \u2014 Host \u2194 Rig Tools",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "Rig exposes governed tools, resources, and prompts to MCP hosts (Antigravity, Claude Desktop, Cursor, Zed). Tools are tiered: read-only context first, mutation gated behind authorization receipts.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-13",
+      "type": "code",
+      "language": "text",
+      "content": "Antigravity / Claude / Cursor / Zed\n  \u2192  MCP Client\n    \u2192  Rig MCP Server\n      \u2192  governed tool execution\n      \u2192  receipt-backed result",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "Entry point: `rig_relay.protocols.mcp.RigMCPServer`",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-15",
+      "type": "paragraph",
+      "content": "Transport: stdio (local) or Streamable HTTP (remote).",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-16",
+      "type": "heading",
+      "level": 3,
+      "content": "Tool Tiers",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-17",
+      "type": "table",
+      "columns": [
+        "Tier",
+        "Access",
+        "Examples"
+      ],
+      "rows": [
+        [
+          "0 \u2014 Read-only",
+          "Always available",
+          "`rig.current_mission`, `rig.summarize_dirty_state`, `rig.list_worktrees`"
+        ],
+        [
+          "1 \u2014 Analysis",
+          "Always available",
+          "`rig.build_context_packet`, `rig.create_consult_packet`"
+        ],
+        [
+          "2 \u2014 Validation",
+          "Always available",
+          "`rig.run_validator`, `rig.check_merge_friendly`"
+        ],
+        [
+          "3 \u2014 Patch proposal",
+          "Gated",
+          "`rig.propose_patch` \u2014 returns approval gate"
+        ],
+        [
+          "4 \u2014 Mutation",
+          "Requires auth receipt",
+          "`rig.request_user_approval`"
+        ],
+        [
+          "5 \u2014 Git/release",
+          "Denied by default",
+          "`rig.promote_to_preproduction`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "Every Tier 3+ tool returns `blocked_pending_approval` + `receipt_id` + `approval_required: true`.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-19",
+      "type": "heading",
+      "level": 2,
+      "content": "WebSocket \u2014 Cockpit \u2194 Backend",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-20",
+      "type": "paragraph",
+      "content": "Local projection stream for the desktop cockpit. Token-gated, localhost-only (`127.0.0.1`), content-light. Clients authenticate with a session token, then subscribe to projection pushes, request chat state, send messages, and dispatch desktop intents.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-21",
+      "type": "code",
+      "language": "text",
+      "content": "Frontend (pywebview)  \u2192  WebSocket  \u2192  ProjectionWebSocketServer\n  auth, subscribe, get_projection, send_chat_message, desktop_intent\n  \u2190  projection, chat_state, progress_events, intent_results",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-22",
+      "type": "paragraph",
+      "content": "Port: 9876 (default). Token auto-generated per session, delivered via inline script injection in the HTML payload.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    }
+  ],
+  "provenance": {
+    "source_files": [
+      "docs/protocol-surfaces.md"
+    ]
+  }
+}

@@ -82,9 +82,12 @@ export function hideExpanded() {
 // ── Built-in widget renderers ──
 
 registerWidget('operatorHeader', (container, level) => {
+  const proj = state.projection;
+  const telemetryMode = proj ? (proj.telemetry_mode || 'unknown') : '—';
+  const telemetryState = proj && proj.telemetry_degraded ? 'Degraded' : 'Healthy';
+
   if (level === 'compact') {
     renderCompactChip(container, 'Session', () => {
-      const proj = state.projection;
       const version = (proj && proj.app_version) || '—';
       return { text: version, cls: 'info' };
     });
@@ -94,13 +97,14 @@ registerWidget('operatorHeader', (container, level) => {
     renderExpandedWidget(container, 'Session', buildOperatorHeaderExpanded());
     return;
   }
-  const proj = state.projection;
   const cs = (proj && proj.current_state) || {};
   const st = (proj && proj.storage) || {};
   const html =
     '<table class="kv-table">' +
     row('Mode', 'desktop') +
     row('Version', proj ? proj.app_version : '—') +
+    row('Telemetry', telemetryMode, proj && proj.telemetry_degraded ? 'warn' : 'ok') +
+    row('Telemetry state', telemetryState, proj && proj.telemetry_degraded ? 'warn' : 'ok') +
     row('Session', cs.available ? (cs.generated_at || '').substring(0, 10) : '—') +
     row('Storage', st.available ? formatBytes((st.total_size_mb || 0) * 1024 * 1024) : '—') +
     '</table>';
@@ -341,9 +345,9 @@ registerWidget('progressTimeline', (container, level) => {
     return;
   }
   if (level === 'compact') {
-    var events = state.progressEvents;
-    if (!events.length) return;
-    var latest = events[events.length - 1];
+    const progressEvents = state.progressEvents;
+    if (!progressEvents.length) return;
+    const latest = progressEvents[progressEvents.length - 1];
     var data = latest.data || latest;
     var type = (data.event_type || 'unknown').replace(/^operation\./, '');
     var status = data.status || 'running';
@@ -813,6 +817,8 @@ function buildOperatorHeaderExpanded() {
     row('App version', proj ? proj.app_version : '—') +
     row('Schema', (proj && proj.schema_version) || '—') +
     row('Alpha label', proj && proj.alpha_label ? 'Yes' : 'No') +
+    row('Telemetry', proj ? (proj.telemetry_mode || 'unknown') : '—', proj && proj.telemetry_degraded ? 'warn' : 'ok') +
+    row('Telemetry state', proj && proj.telemetry_degraded ? 'Degraded' : 'Healthy', proj && proj.telemetry_degraded ? 'warn' : 'ok') +
     (cs.available ? row('Generated at', (cs.generated_at || '').substring(0, 19)) : row('Current state', 'Not available', 'warn')) +
     '</table>' +
     '<h3 style="margin-top:16px">Storage</h3>' +

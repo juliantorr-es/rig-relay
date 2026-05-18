@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Relay Install Channels — Rig Relay Docs</title>
+<meta name="description" content="Rig Relay is a Python CLI application distributed via PyPI. The recommended install methods use standard Python packaging tools.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/install.html">
+<meta property="og:title" content="Rig Relay Install Channels">
+<meta property="og:description" content="Rig Relay is a Python CLI application distributed via PyPI. The recommended install methods use standard Python packaging tools.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/install.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay Install Channels">
+<meta name="twitter:description" content="Rig Relay is a Python CLI application distributed via PyPI. The recommended install methods use standard Python packaging tools.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Rig Relay Install Channels</h1>
+  <p class="doc-summary">Rig Relay is a Python CLI application distributed via PyPI. The recommended install methods use standard Python packaging tools.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/install.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Install Channels</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Primary Install: Python Packaging</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Rig Relay is a Python CLI application distributed via PyPI. The recommended install methods use standard Python packaging tools.</p>
+
+<h3 id="h3-4" class="disclosure-standard" data-disclosure-level="standard">uv tool install (recommended)</h3>
+
+<pre id="code-5"><code class="language-bash">uv tool install rig-relay</code></pre>
+
+<h3 id="h3-6" class="disclosure-standard" data-disclosure-level="standard">pipx install</h3>
+
+<pre id="code-7"><code class="language-bash">pipx install rig-relay</code></pre>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">pip install (lower priority, risk of environment conflicts)</h3>
+
+<pre id="code-9"><code class="language-bash">pip install rig-relay</code></pre>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Source Install (Contributors)</h2>
+
+<pre id="code-11"><code class="language-bash">git clone https://github.com/juliantorr-es/rig-relay
+cd rig-relay
+uv sync --all-extras</code></pre>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">OS-Specific Channels</h2>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Homebrew (future)</h3>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">A Homebrew tap (`homebrew-rig-relay`) will be published when the project reaches beta stability. The formula uses:</p>
+
+<pre id="code-15"><code class="language-ruby">class RigRelay &lt; Formula
+  include Language::Python::Virtualenv
+  desc &quot;Governed coding-agent harness with coordination, checkpoints, and dataset telemetry&quot;
+  url &quot;https://files.pythonhosted.org/packages/.../rig_relay-0.1.0a1.tar.gz&quot;
+  depends_on &quot;python@3.12&quot;
+  def install
+    virtualenv_install_with_resources
+  end
+end</code></pre>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">npm wrapper (future convenience shim)</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">An npm package may be published as a thin wrapper that bootstraps `uv` or `pipx` under the hood. It is NOT a Node.js rewrite.</p>
+
+<pre id="code-18"><code class="language-bash">npm install -g rig-relay
+rig-relay</code></pre>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Console Scripts</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">The Python package exposes these commands via `pyproject.toml` `[project.scripts]`:</p>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Command</th><th>Entry Point</th></tr></thead>
+<tbody>
+<tr><td>`rig-relay`</td><td>`rig_relay.cli.entrypoint:main`</td></tr>
+<tr><td>`rig-relay-acp`</td><td>`rig_relay.cli.acp_entrypoint:main`</td></tr>
+</tbody>
+</table>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">The `vibe` and `vibe-acp` commands are **deprecated legacy aliases**. New users should treat `rig-relay` as the primary product command and the pywebview cockpit as the primary operator surface. The Textual TUI is legacy compatibility-only and is being retired.</p>
+
+<h2 id="h2-23" class="disclosure-standard" data-disclosure-level="standard">Version</h2>
+
+<p id="p-24" class="disclosure-standard" data-disclosure-level="standard">Rig Relay v0.1.0-alpha.1 (Python package `0.1.0a1`). Derived from Mistral Vibe CLI lineage; independent version line. Upstream compatibility is not guaranteed.</p>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">See [versioning policy](release/versioning-policy.md) for version semantics.</p>
+
+<h2 id="h2-26" class="disclosure-standard" data-disclosure-level="standard">Legacy Migration</h2>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Rig Relay is migrating from Vibe-derived internals (`vibe.*`) to Relay-native packages (`rig_relay.*`). Existing `vibe.*` imports remain supported during alpha. See the [Legacy Deprecation Doctrine](governance/vibe-legacy-deprecation.md) for the migration plan.</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/install.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

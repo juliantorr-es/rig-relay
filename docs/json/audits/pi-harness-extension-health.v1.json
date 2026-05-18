@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.documentation.page.v1",
-  "document_id": "pi-harness-extension-health",
+  "document_id": "pi-harness-extension-health-audit",
   "document_type": "audit",
   "title": "Pi Harness Extension Health Audit",
   "summary": "Audit of extension entry points, loading model, crash containment, and session finalization boundary.",

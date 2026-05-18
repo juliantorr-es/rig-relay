@@ -1,23 +1,37 @@
 {
-  "blocking_phase_ids": ["phase_6_dogfood_operational_readiness"],
+  "blocking_phase_ids": [
+    "phase_6_dogfood_operational_readiness"
+  ],
   "branch": "main",
   "deferred_risk_ids": [
     "risk_markdown_audit_leaks"
   ],
   "deferred_seam_count": 0,
   "evidence_paths": [
-    "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
-    "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json",
-    "docs/json/release_gate/rc_blockers.v1.jsonl",
+    "README.md",
+    "docs/json/release_candidate/rc_installability_verdict.v1.json",
+    "docs/json/release_candidate/rc_golden_path_run.v1.json",
+    "docs/json/release_gate/rc_readiness_gate.v1.json",
     "docs/json/release_gate/rc_validation_runs.v1.jsonl",
+    "docs/json/release_gate/rc_blockers.v1.jsonl",
     "docs/json/release_gate/rc_deferred_risks.v1.jsonl",
-    "docs/json/testing/known_test_seams.v1.jsonl",
-    "tests/rc_seams/test_rc_seam_tests.py"
+    "tests/release_candidate/test_golden_path_live.py",
+    "tests/desktop/test_playwright_frontend_product_path.py",
+    "tests/runtime/test_feral_subprocess_accountability.py",
+    "tests/tools/test_bash_rerouting_transparency.py",
+    "scripts/rig_rc_golden_path_check.py",
+    "scripts/rig_release_gate_validate.py",
+    "scripts/rig_relay_validate_schemas.py",
+    "docs/schemas/rig.release_candidate.golden_path_run.v1.schema.json",
+    "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json",
+    "docs/schemas/rig.release_gate.readiness.v1.schema.json",
+    "docs/schemas/rig.release_gate.validation_run.v1.schema.json",
+    "docs/schemas/rig.release_gate.rc_candidate_verdict.v1.schema.json"
   ],
   "gate_artifact": "docs/json/release_gate/rc_readiness_gate.v1.json",
-  "gate_overall_status": "not_verified",
-  "generated_at": "2026-05-18T02:30:00Z",
-  "head_sha": "7a6b4947c6fdbcaaec5500ae65bf29a6063bce3b",
+  "gate_overall_status": "blocked",
+  "generated_at": "2026-05-18T04:00:17Z",
+  "head_sha": "a0dc9c56003ddade9f3c09e023e40426979ea412",
   "installability_status": "passed",
   "known_seam_count": 10,
   "open_blocker_ids": [],
@@ -34,8 +48,8 @@
     "phase_5_public_docs_licensing"
   ],
   "required_next_actions": [
-    "Complete dogfood golden path reviewer checklist — 15 not_verified steps must be exercised before PROMOTE",
-    "Human reviewer must verify manual steps including server launch, cockpit, real work lane, shutdown"
+    "Complete dogfood golden path reviewer checklist — 2 not_verified manual steps remain before PROMOTE",
+    "Human reviewer must verify manual steps: gp_understand_product and gp_see_blocked_deferred_state"
   ],
   "resolved_blocker_ids": [
     "blk_phase4_ci_repo_ref",
@@ -49,19 +63,19 @@
     "blk_bash_rerouting_transparency"
   ],
   "resolved_seam_count": 7,
-  "schema_validation": "153/153 passed",
+  "schema_validation": "156/156 passed",
   "schema_version": "rig.relay.rc_candidate_verdict.v1",
   "unknown_phase_ids": [],
   "validation_run_ids": [
-    "vr_coordination_concurrency_20260517",
-    "vr_telemetry_consent_redaction_20260517",
-    "vr_release_gate_cli_20260517",
-    "vr_tracing_real_source_20260517",
-    "vr_guard_escape_hatches_20260517",
-    "VR-CONTEXT-DIGESTION-001",
-    "VR-GOLDEN-PATH-001"
+    "vr_live_rc_python_20260518",
+    "vr_frontend_browser_chromium_20260518",
+    "vr_runtime_bash_transparency_20260518",
+    "vr_installability_20260518",
+    "vr_schema_validation_20260518",
+    "vr_golden_path_check_20260518",
+    "vr_release_gate_validate_20260518"
   ],
-  "validator_error_count": 0,
-  "validator_result": "not_verified",
+  "validator_error_count": 2,
+  "validator_result": "failed",
   "verdict": "hold"
 }

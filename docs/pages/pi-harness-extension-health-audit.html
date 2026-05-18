@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi Harness Extension Health Audit — Rig Relay Docs</title>
+<meta name="description" content="Audit of extension entry points, loading model, crash containment, and session finalization boundary.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/pi-harness-extension-health-audit.html">
+<meta property="og:title" content="Pi Harness Extension Health Audit">
+<meta property="og:description" content="Audit of extension entry points, loading model, crash containment, and session finalization boundary.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/pi-harness-extension-health-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Pi Harness Extension Health Audit">
+<meta name="twitter:description" content="Audit of extension entry points, loading model, crash containment, and session finalization boundary.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Pi Harness Extension Health Audit</h1>
+  <p class="doc-summary">Audit of extension entry points, loading model, crash containment, and session finalization boundary.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-17</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/pi-harness-extension-health.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Pi Harness Extension Health Audit</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Audit scope: local harness-controlled extension loading, crash containment, and session finalization. Evidence came from `extensions/vscodium-rig-relay/src/extension.ts`, `rig_relay/cli/ide_sidecar.py`, `rig_relay/acp/_session_lifecycle.py`, `rig_relay/evidence/session_lifecycle_tool.py`, and coordination/session tooling.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Findings</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Question</th><th>Finding</th></tr></thead>
+<tbody>
+<tr><td>Extension lifecycle entry points</td><td>VS Code extension `activate()` spawns the sidecar and registers a webview; ACP and desktop entrypoints bootstrap agent loops and config.</td></tr>
+<tr><td>Discovery/loading</td><td>Current extension host loads one local extension and then spawns the sidecar eagerly; no discovery registry or lazy activation gate was found in repo-controlled code.</td></tr>
+<tr><td>Crash containment</td><td>Existing code logs sidecar exit/spawn errors, but extension failures can still terminate the sidecar path and leave no explicit quarantine state.</td></tr>
+<tr><td>Persistence across sessions</td><td>No extension crash history or quarantine manifest was found.</td></tr>
+<tr><td>Finalization path</td><td>Session lifecycle finalizer exists and is content-light; it is independent of the extension host path.</td></tr>
+<tr><td>File ownership metadata</td><td>Coordination ownership exists in path/task/lease tools and docs; no visible file-marker protocol existed before this slice.</td></tr>
+</tbody>
+</table>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/pi-harness-extension-health.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

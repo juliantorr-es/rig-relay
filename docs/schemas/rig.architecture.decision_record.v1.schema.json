@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.architecture.decision_record.v1.schema.json",
+  "title": "Architecture Decision Record v1",
+  "description": "A structured architectural decision record.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "default": "rig.architecture.decision_record.v1"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the decision record."
+    },
+    "title": {
+      "type": "string",
+      "description": "A clear, concise title of the decision."
+    },
+    "date": {
+      "type": "string",
+      "description": "Date the decision was recorded (YYYY-MM-DD)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "accepted",
+        "deprecated",
+        "superseded"
+      ],
+      "description": "Current status of the decision."
+    },
+    "context": {
+      "type": "string",
+      "description": "The context and problem statement."
+    },
+    "decision": {
+      "type": "string",
+      "description": "The chosen solution or decision."
+    },
+    "consequences": {
+      "type": "string",
+      "description": "The resulting context, after applying the decision."
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "date",
+    "status",
+    "context",
+    "decision",
+    "consequences"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi Harness Extension Health — Rig Relay Docs</title>
+<meta name="description" content="Crash containment, quarantine, and safe-mode guidance for Pi harness extensions.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/pi-harness-extension-health.html">
+<meta property="og:title" content="Pi Harness Extension Health">
+<meta property="og:description" content="Crash containment, quarantine, and safe-mode guidance for Pi harness extensions.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/pi-harness-extension-health.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Pi Harness Extension Health">
+<meta name="twitter:description" content="Crash containment, quarantine, and safe-mode guidance for Pi harness extensions.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Pi Harness Extension Health</h1>
+  <p class="doc-summary">Crash containment, quarantine, and safe-mode guidance for Pi harness extensions.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-17</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/pi-harness-extension-health.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Pi Harness Extension Health</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Extension crashes are isolated at the extension boundary. The harness records crash metadata, keeps session finalization available, and quarantines repeat offenders.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Rules</h2>
+
+<ul id="list-4" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Wrap activation and event handling in per-extension try/except boundaries.</li>
+  <li>Record extension id, phase, redacted message, traceback hash, timestamp, session id, and crash count.</li>
+  <li>Quarantine repeat offenders after the policy threshold.</li>
+  <li>Use safe mode to start with nonessential extensions disabled.</li>
+  <li>Expose a health status command and a quarantine-clear command.</li>
+</ul>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Operational meaning</h2>
+
+<p id="paragraph-6" class="disclosure-standard" data-disclosure-level="standard">A quarantined extension stays disabled on future startup until cleared intentionally. Failures remain visible in structured health state instead of being hidden.</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/pi-harness-extension-health.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

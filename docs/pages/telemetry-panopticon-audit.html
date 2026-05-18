@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig Relay Telemetry Audit: Governed Product Telemetry or Panopticon? — Rig Relay Docs</title>
+<meta name="description" content="**Audit date**: 2026-05-17 **Auditor**: Lane B (telemetry/surveillance boundary audit) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Status**: Clean working tree">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/telemetry-panopticon-audit.html">
+<meta property="og:title" content="Rig Relay Telemetry Audit: Governed Product Telemetry or Panopticon?">
+<meta property="og:description" content="**Audit date**: 2026-05-17 **Auditor**: Lane B (telemetry/surveillance boundary audit) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Status**: Clean working tree">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/telemetry-panopticon-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig Relay Telemetry Audit: Governed Product Telemetry or Panopticon?">
+<meta name="twitter:description" content="**Audit date**: 2026-05-17 **Auditor**: Lane B (telemetry/surveillance boundary audit) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Status**: Clean working tree">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Rig Relay Telemetry Audit: Governed Product Telemetry or Panopticon?</h1>
+  <p class="doc-summary">**Audit date**: 2026-05-17 **Auditor**: Lane B (telemetry/surveillance boundary audit) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Status**: Clean working tree</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/telemetry-panopticon-audit.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay Telemetry Audit: Governed Product Telemetry or Panopticon?</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Audit date**: 2026-05-17 **Auditor**: Lane B (telemetry/surveillance boundary audit) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Status**: Clean working tree</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Executive Verdict</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">**Verdict: Governed telemetry — not a panopticon.**</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s telemetry implementation is a legitimate first-party product telemetry system with clear architectural separation between local operational telemetry (required for product function) and remote beta-sharing telemetry (off by default). The content-light doctrine is genuinely implemented in code, not just documented. Defaults are safe: remote sharing is `False`, local observability is `True` with documented feature degradation when disabled. There are alpha-stage gaps in consent enforcement flow, dead OTEL dependencies, and a few open questions about the `session_id` as a stable pseudonymous identifier, but the architecture is sound and the implementation is honest.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Architecture Summary</h2>
+
+<pre id="code-9"><code class="language-text">┌─────────────────────────────────────────────┐
+│              Agent Loop / Tools              │
+│        (emits events via mixin)              │
+└──────────────────┬──────────────────────────┘
+                   │ send_telemetry_event()
+                   ▼
+┌─────────────────────────────────────────────┐
+│         TelemetryClient (send.py)            │
+│                                              │
+│  ┌─ Local Sink ──────────────────────────┐  │
+│  │ enable_local_observability (default ON) │  │
+│  │ → ~/.rig/relay/sessions/&lt;id&gt;/          │  │
+│  │   observability.jsonl                  │  │
+│  │ → hash-chained, canonical JSONL        │  │
+│  └────────────────────────────────────────┘  │
+│                                              │
+│  ┌─ Remote Sink ─────────────────────────┐  │
+│  │ enable_remote_telemetry (default OFF)   │  │
+│  │ → https://api.deepseek.com/v1/         │  │
+│  │   datalake/events                      │  │
+│  │ → fire-and-forget, exception-silent    │  │
+│  └────────────────────────────────────────┘  │
+└─────────────────────────────────────────────┘
+                   │
+    ┌──────────────┼──────────────┐
+    ▼              ▼              ▼
+┌────────┐  ┌───────────┐  ┌──────────┐
+│ Tracing │  │ Analytics │  │ Evidence │
+│ (OTEL   │  │ (DuckDB   │  │ (Google  │
+│  deps,  │  │  local)   │  │  Drive   │
+│  unused)│  │           │  │  upload) │
+└────────┘  └───────────┘  └──────────┘</code></pre>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Complete Evidence Table</h2>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">1. Event Emission (Agent Loop)</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/core/_telemetry.py`</td></tr>
+<tr><td>**Symbol**</td><td>`TelemetryMixin` (mixin on `AgentLoop`)</td></tr>
+<tr><td>**Data collected**</td><td>Event name, session_id, tool name, status, tool output hash, file counts, model name, agent profile, timing, byte counts</td></tr>
+<tr><td>**Destination**</td><td>TelemetryClient → local JSONL + optional remote</td></tr>
+<tr><td>**Identifier risk**</td><td>Pseudonymous (stable `session_id` UUID, client-generated)</td></tr>
+<tr><td>**Content risk**</td><td>None — hashes and counts only. No raw prompts, outputs, paths, or file contents</td></tr>
+<tr><td>**User control**</td><td>Local ON by default (required for governed mode). Remote OFF by default</td></tr>
+<tr><td>**Disclosure**</td><td>`beta-telemetry-onboarding.md`, `usage-data-doctrine.md`</td></tr>
+<tr><td>**Retention**</td><td>Local: evidence-retained. Remote: alpha only, TTL unspecified</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green</td></tr>
+<tr><td>**Required fix**</td><td>Specify remote TTL; add consent gate before emission</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">2. TelemetryClient — Local Sink</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/core/telemetry/send.py:150-162`</td></tr>
+<tr><td>**Symbol**</td><td>`TelemetryClient.send_telemetry_event()` local block</td></tr>
+<tr><td>**Data collected**</td><td>Event name, properties dict, session_id, parent_session_id</td></tr>
+<tr><td>**Destination**</td><td>`~/.rig/relay/sessions/&lt;id&gt;/observability.jsonl`</td></tr>
+<tr><td>**Identifier risk**</td><td>Pseudonymous (session_id)</td></tr>
+<tr><td>**Content risk**</td><td>None — properties are content-light per sending callers</td></tr>
+<tr><td>**User control**</td><td>Controlled by `enable_local_observability` setting (default True)</td></tr>
+<tr><td>**Disclosure**</td><td>Documented in telemetry modes and onboarding</td></tr>
+<tr><td>**Retention**</td><td>Local disk, evidence-retained, user-deletable</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green</td></tr>
+<tr><td>**Required fix**</td><td>None — this is the governed local store</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">3. TelemetryClient — Remote Sink</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/core/telemetry/send.py:163-205`</td></tr>
+<tr><td>**Symbol**</td><td>`TelemetryClient.send_telemetry_event()` remote block</td></tr>
+<tr><td>**Data collected**</td><td>Event name, properties + base_metadata (session_id, parent_session_id, agent_entrypoint, agent_version, client_name, client_version)</td></tr>
+<tr><td>**Destination**</td><td>`https://api.deepseek.com/v1/datalake/events` (or Mistral provider API base)</td></tr>
+<tr><td>**Identifier risk**</td><td>Pseudonymous (stable session_id + client_name/version)</td></tr>
+<tr><td>**Content risk**</td><td>None — hashes and counts, no raw content</td></tr>
+<tr><td>**User control**</td><td>**Default OFF** (`enable_remote_telemetry=False`, `enable_telemetry=False`)</td></tr>
+<tr><td>**Disclosure**</td><td>`beta-telemetry-onboarding.md`, `telemetry-contribution-policy.md`</td></tr>
+<tr><td>**Retention**</td><td>Server-side TTL unknown (DeepSeek datalake)</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green (when off by default) / 🟡 Yellow (when enabled, due to unknown server retention and missing consent gate in code)</td></tr>
+<tr><td>**Required fix**</td><td>Document server-side TTL; wire consent enforcement before upload; add `--dry-run` receipt</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">4. Build Base Metadata</h3>
+
+<table id="table-19" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/core/telemetry/build_metadata.py`</td></tr>
+<tr><td>**Symbol**</td><td>`build_base_metadata()`, `EntrypointMetadata`</td></tr>
+<tr><td>**Data collected**</td><td>`agent_entrypoint` (cli/acp/desktop/programmatic), `agent_version`, `client_name`, `client_version`, `session_id`, `parent_session_id`</td></tr>
+<tr><td>**Destination**</td><td>Included in every telemetry event (local + remote)</td></tr>
+<tr><td>**Identifier risk**</td><td>Pseudonymous — product version + session UUID. No IP, no user-agent, no machine fingerprint</td></tr>
+<tr><td>**Content risk**</td><td>None</td></tr>
+<tr><td>**User control**</td><td>Inherent to telemetry toggle</td></tr>
+<tr><td>**Disclosure**</td><td>Schema-visible in `TelemetryBaseMetadata`</td></tr>
+<tr><td>**Retention**</td><td>Follows event retention</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green</td></tr>
+<tr><td>**Required fix**</td><td>None — this is minimal product metadata</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-20" class="disclosure-standard" data-disclosure-level="standard">5. User-Agent Header (HTTP)</h3>
+
+<table id="table-21" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/core/utils/http.py:35`</td></tr>
+<tr><td>**Symbol**</td><td>`get_user_agent()`</td></tr>
+<tr><td>**Data collected**</td><td>Static string: `&quot;Mistral-Vibe/&lt;version&gt;&quot;` or `&quot;mistral-client-python/Mistral-Vibe/&lt;version&gt;&quot;`</td></tr>
+<tr><td>**Destination**</td><td>HTTP header on remote telemetry POST</td></tr>
+<tr><td>**Identifier risk**</td><td>None — identifies product version, not user or device</td></tr>
+<tr><td>**Content risk**</td><td>None</td></tr>
+<tr><td>**User control**</td><td>N/A (not user-identifying)</td></tr>
+<tr><td>**Disclosure**</td><td>Implicit in HTTP protocol</td></tr>
+<tr><td>**Retention**</td><td>Server access log (not in our control)</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green</td></tr>
+<tr><td>**Required fix**</td><td>None</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">6. Tracing Subsystem (OTEL Unused)</h3>
+
+<table id="table-23" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/tracing/` (recorder, redaction, store, contract, context, models)</td></tr>
+<tr><td>**Symbol**</td><td>`TraceRecorder`, `sanitize_trace_attributes()`, `TraceContractRegistry`</td></tr>
+<tr><td>**Data collected**</td><td>Trace events with redacted attributes (token/api_key/password/secret/credential/authorization/cookie/bearer keys dropped)</td></tr>
+<tr><td>**Destination**</td><td>Local JSONL only (`~/.rig/relay/traces/`)</td></tr>
+<tr><td>**Identifier risk**</td><td>Pseudonymous (correlation_id, handshake_id)</td></tr>
+<tr><td>**Content risk**</td><td>Low — redaction layer active; keys dropped, strings truncated at 1000 chars</td></tr>
+<tr><td>**User control**</td><td>Local only, no remote export path wired</td></tr>
+<tr><td>**Disclosure**</td><td>`tracing-v0.md`, `correlated_visibility_matrix.v1.json`</td></tr>
+<tr><td>**Retention**</td><td>Local disk</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green</td></tr>
+<tr><td>**Required fix**</td><td>Remove dead OpenTelemetry dependencies or wire them in with governance</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">7. OpenTelemetry Dependencies (Dead Weight)</h3>
+
+<table id="table-25" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`pyproject.toml`, `uv.lock`</td></tr>
+<tr><td>**Symbol**</td><td>`opentelemetry-api`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp-proto-http`, `opentelemetry-semantic-conventions`</td></tr>
+<tr><td>**Data collected**</td><td>**Nothing** — these are installed dependencies with zero import or usage in the codebase</td></tr>
+<tr><td>**Destination**</td><td>N/A</td></tr>
+<tr><td>**Identifier risk**</td><td>None currently (unused)</td></tr>
+<tr><td>**Content risk**</td><td>None currently (unused)</td></tr>
+<tr><td>**User control**</td><td>N/A</td></tr>
+<tr><td>**Disclosure**</td><td>Not disclosed — these are not documented as used, but their presence in pyproject.toml is discoverable</td></tr>
+<tr><td>**Retention**</td><td>N/A</td></tr>
+<tr><td>**Verdict**</td><td>🟡 Yellow — dead dependencies create supply-chain surface area and may imply planned functionality not yet disclosed</td></tr>
+<tr><td>**Required fix**</td><td>Remove OTEL dependencies or document governance plan for them</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-26" class="disclosure-standard" data-disclosure-level="standard">8. Google Drive Upload (Debug Bundle)</h3>
+
+<table id="table-27" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/evidence/google_drive_upload.py`, `rig_relay/evidence/telemetry_bundle.py`</td></tr>
+<tr><td>**Symbol**</td><td>`upload_bundle()`, `validate_bundle()`, `create_bundle()`</td></tr>
+<tr><td>**Data collected**</td><td>Content-light telemetry bundles (validated for forbidden content)</td></tr>
+<tr><td>**Destination**</td><td>Google Drive (`drive.file` scope, user-authenticated)</td></tr>
+<tr><td>**Identifier risk**</td><td>Linked to user&#x27;s Google account via OAuth</td></tr>
+<tr><td>**Content risk**</td><td>Low — bundle validator enforces content-light guarantee, rejects raw prompts/outputs/secrets</td></tr>
+<tr><td>**User control**</td><td>**Explicit user action** — never automatic. Requires OAuth consent, `--confirm` flag, dry-run by default</td></tr>
+<tr><td>**Disclosure**</td><td>`debug-bundle-policy.md`, `telemetry-contribution-policy.md`</td></tr>
+<tr><td>**Retention**</td><td>User&#x27;s own Google Drive</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green — explicit export, not surveillance</td></tr>
+<tr><td>**Required fix**</td><td>None</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">9. Consent Model</h3>
+
+<table id="table-29" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/identity/telemetry_consent.py`</td></tr>
+<tr><td>**Symbol**</td><td>`TelemetryConsentRecord`, `TelemetryConsentScope`, `grant_consent()`, `observation_allowed_by_consent()`</td></tr>
+<tr><td>**Data collected**</td><td>consent_id, subject_hash, provider, status, scopes, timestamps, policy_version</td></tr>
+<tr><td>**Destination**</td><td>Local consent store</td></tr>
+<tr><td>**Identifier risk**</td><td>Low — `subject_hash` is a hash, not raw identity</td></tr>
+<tr><td>**Content risk**</td><td>None — content-light by design</td></tr>
+<tr><td>**User control**</td><td>`NOT_REQUESTED` by default, scoped to 5 basic categories for default grant</td></tr>
+<tr><td>**Disclosure**</td><td>Schema `rig.relay.telemetry_consent.v1.schema.json`</td></tr>
+<tr><td>**Retention**</td><td>Local</td></tr>
+<tr><td>**Verdict**</td><td>🟡 Yellow — model exists but consent enforcement hooks are not fully wired into the upload path. The `send_telemetry_event()` method checks `_is_remote_telemetry_enabled()` (a settings toggle) but does not check consent record</td></tr>
+<tr><td>**Required fix**</td><td>Wire `observation_allowed_by_consent()` into the remote upload gate</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-30" class="disclosure-standard" data-disclosure-level="standard">10. Static Generated Website</h3>
+
+<table id="table-31" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`docs/assets/site.js`, `docs/index.html`, all `docs/pages/*.html`</td></tr>
+<tr><td>**Symbol**</td><td>Client-side search, disclosure controls, section linking</td></tr>
+<tr><td>**Data collected**</td><td>**Nothing** — site.js explicitly states: &quot;No framework. No remote CDNs. No tracking. No eval.&quot;</td></tr>
+<tr><td>**Destination**</td><td>N/A</td></tr>
+<tr><td>**Identifier risk**</td><td>**None** — no localStorage, no cookies, no fingerprinting, no remote requests</td></tr>
+<tr><td>**Content risk**</td><td>None</td></tr>
+<tr><td>**User control**</td><td>All functionality works without JS (progressive enhancement)</td></tr>
+<tr><td>**Disclosure**</td><td>Source code comment in site.js</td></tr>
+<tr><td>**Retention**</td><td>N/A</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green — exemplary</td></tr>
+<tr><td>**Required fix**</td><td>None</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">11. Analytics Substrate (Local Only)</h3>
+
+<table id="table-33" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/analytics/`, `rig_relay/core/telemetry/duckdb_projection.py`</td></tr>
+<tr><td>**Symbol**</td><td>`bash_rows.py`, `model_rows.py`, DuckDB projections</td></tr>
+<tr><td>**Data collected**</td><td>Aggregate bash invocation stats, model usage stats derived from local observability</td></tr>
+<tr><td>**Destination**</td><td>Local DuckDB database (`.rig/relay/analytics/`)</td></tr>
+<tr><td>**Identifier risk**</td><td>None — aggregate, local only</td></tr>
+<tr><td>**Content risk**</td><td>None — derived from content-light events</td></tr>
+<tr><td>**User control**</td><td>Local only, never exported by default</td></tr>
+<tr><td>**Disclosure**</td><td>`usage-data-doctrine.md`</td></tr>
+<tr><td>**Retention**</td><td>Local disk</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green</td></tr>
+<tr><td>**Required fix**</td><td>None</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-34" class="disclosure-standard" data-disclosure-level="standard">12. Telemetry Validation &amp; Receipts</h3>
+
+<table id="table-35" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/core/telemetry/validation.py`, `rig_relay/core/telemetry/receipts.py`</td></tr>
+<tr><td>**Symbol**</td><td>`EvidenceValidationResult`, `EvidenceReceipt`, `verify_receipt()`</td></tr>
+<tr><td>**Data collected**</td><td>Receipt chain: event_index, evidence_sha256, evidence_relative_path, event_name</td></tr>
+<tr><td>**Destination**</td><td>Local — validates observability.jsonl integrity</td></tr>
+<tr><td>**Identifier risk**</td><td>None — hash chain verification</td></tr>
+<tr><td>**Content risk**</td><td>None — hashes only</td></tr>
+<tr><td>**User control**</td><td>Automatic, part of local observability</td></tr>
+<tr><td>**Disclosure**</td><td>`rig.relay.artifact.envelope.v1.schema.json`</td></tr>
+<tr><td>**Retention**</td><td>Local</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green</td></tr>
+<tr><td>**Required fix**</td><td>None</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-36" class="disclosure-standard" data-disclosure-level="standard">13. Telemetry Settings / Feature Gates</h3>
+
+<table id="table-37" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>`rig_relay/core/config/telemetry_modes.py`, `rig_relay/core/config/_settings.py`</td></tr>
+<tr><td>**Symbol**</td><td>`disabled_features_for_settings()`, `can_use_*()` guards</td></tr>
+<tr><td>**Data collected**</td><td>Settings: `enable_local_observability` (default True), `enable_remote_telemetry` (default False), `mode` (basic_local/governed_local/beta_orchestration)</td></tr>
+<tr><td>**Destination**</td><td>Configuration — gates features, not data</td></tr>
+<tr><td>**Identifier risk**</td><td>None</td></tr>
+<tr><td>**Content risk**</td><td>None</td></tr>
+<tr><td>**User control**</td><td>Full — three modes with documented feature degradation</td></tr>
+<tr><td>**Disclosure**</td><td>`beta-telemetry-onboarding.md`, `telemetry_modes.py` docstring</td></tr>
+<tr><td>**Retention**</td><td>Settings file</td></tr>
+<tr><td>**Verdict**</td><td>🟢 Green</td></tr>
+<tr><td>**Required fix**</td><td>None — the degradation model is correct</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-38" class="disclosure-standard" data-disclosure-level="standard">14. Session ID (Pseudonymous Identifier)</h3>
+
+<table id="table-39" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>**File**</td><td>Throughout (`TelemetryClient`, `AgentLoop`, local store)</td></tr>
+<tr><td>**Symbol**</td><td>`session_id` (UUID4 generated per session)</td></tr>
+<tr><td>**Data collected**</td><td>Stable UUID that persists for the lifespan of a session</td></tr>
+<tr><td>**Destination**</td><td>Every event, local + remote</td></tr>
+<tr><td>**Identifier risk**</td><td>**Pseudonymous** — stable across a session. If the same user runs multiple sessions, each gets a new UUID (not linkable across sessions without parent_session_id chain). The `parent_session_id` creates a session lineage.</td></tr>
+<tr><td>**Content risk**</td><td>Low — identifier, not content</td></tr>
+<tr><td>**User control**</td><td>Cannot be disabled (required for coordination)</td></tr>
+<tr><td>**Disclosure**</td><td>Not separately disclosed</td></tr>
+<tr><td>**Retention**</td><td>Follows event retention</td></tr>
+<tr><td>**Verdict**</td><td>🟡 Yellow — `session_id` is a necessary operational identifier, but the lineage chain (`parent_session_id`) creates a persistent pseudonymous trail across sessions. This is not disguised or hidden, but it&#x27;s not clearly explained to users</td></tr>
+<tr><td>**Required fix**</td><td>Document session_id lineage in privacy notice; consider session_id rotation for privacy-sensitive deployments</td></tr>
+</tbody>
+</table>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-41" class="disclosure-standard" data-disclosure-level="standard">Top 10 Risks (Ranked)</h2>
+
+<table id="table-42" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Risk</th><th>Severity</th><th>Category</th><th>Gap</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>**Consent enforcement not wired into upload path** — `send_telemetry_event()` checks settings toggle (`enable_remote_telemetry`) but never checks `TelemetryConsentRecord`. A user who enabled remote sharing in settings but later revoked consent would still have data uploaded</td><td>HIGH</td><td>Implementation gap</td><td>Wire `observation_allowed_by_consent()` into remote gate</td></tr>
+<tr><td>2</td><td>**Remote server-side retention unknown** — Uploads go to DeepSeek datalake with no documented TTL, deletion API, or data processing agreement</td><td>MEDIUM</td><td>Disclosure gap</td><td>Document or negotiate server-side retention policy</td></tr>
+<tr><td>3</td><td>**Session lineage creates persistent pseudonymous trail** — `parent_session_id` chains sessions together indefinitely. Combined with `client_name`/`client_version`, this creates a reasonably linkable profile</td><td>MEDIUM</td><td>Linkability risk</td><td>Document lineage; add lineage-break option for privacy-sensitive users</td></tr>
+<tr><td>4</td><td>**Dead OTEL dependencies** — 4 OpenTelemetry packages installed but zero usage. Creates supply-chain surface area and implies planned export capabilities not yet governed</td><td>MEDIUM</td><td>Supply chain / disclosure gap</td><td>Remove or govern with explicit policy</td></tr>
+<tr><td>5</td><td>**Consent scopes conflate product function with commercialization** — `TOOL_REFINEMENT_METRICS` is in the default grant set alongside `USAGE_METRICS`. Users cannot opt out of refinement telemetry without also losing governed mode</td><td>MEDIUM</td><td>Granularity gap</td><td>Split refinement metrics into a separate toggle or make the trade-off clearer</td></tr>
+<tr><td>6</td><td>**`enable_telemetry` legacy alias** — The `VibeConfig` model has `enable_telemetry: bool = False` marked as &quot;Legacy alias for enable_remote_telemetry&quot;. If a user sets `enable_telemetry = True` expecting a master switch, they get remote sharing enabled without understanding the distinction</td><td>LOW</td><td>Naming risk</td><td>Remove legacy alias or emit deprecation warning</td></tr>
+<tr><td>7</td><td>**Exception-silent upload failures** — Remote upload failures are silently swallowed (`except Exception: pass`). This means users might believe remote sharing is off when it&#x27;s actually just failing</td><td>LOW</td><td>Transparency risk</td><td>Log upload failures locally at DEBUG level so they&#x27;re auditable</td></tr>
+<tr><td>8</td><td>**No machine-readable privacy policy on generated site** — The static site has no `privacy.html` page, no `/rig-relay/.well-known/` privacy endpoint, and no machine-readable policy JSON linked from the home page</td><td>LOW</td><td>Disclosure gap</td><td>Add privacy policy page to generated site; link from footer</td></tr>
+<tr><td>9</td><td>**Observation consent model is provider-scoped but not repository-scoped** — A user who consents to provider observations for one repo implicitly consents for all repos on the same machine</td><td>LOW</td><td>Scope granularity gap</td><td>Consider per-repo consent scoping</td></tr>
+<tr><td>10</td><td>**No automated test proving forbidden fields are excluded** — The redaction module has unit tests, but there&#x27;s no end-to-end test that captures a real tool call, runs it through the telemetry pipeline, and asserts no raw prompts/paths/secrets appear in the output</td><td>LOW</td><td>Test coverage gap</td><td>Add E2E telemetry sanitization test</td></tr>
+</tbody>
+</table>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-44" class="disclosure-standard" data-disclosure-level="standard">Doctrine Compliance Matrix</h2>
+
+<table id="table-45" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Doctrine Requirement</th><th>Status</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td>First-party telemetry by default</td><td>✅ Compliant</td><td>`enable_remote_telemetry=False` default. All telemetry is self-hosted (local JSONL) or first-party (DeepSeek/Mistral datalake)</td></tr>
+<tr><td>Opt-out supported</td><td>✅ Compliant</td><td>`enable_local_observability` and `enable_remote_telemetry` independently toggleable</td></tr>
+<tr><td>Disabling degrades features</td><td>✅ Compliant</td><td>`telemetry_modes.py` explicitly disables governed mode, fleet, checkpoint, coordination leases, replay/debug, autonomous spawn when local ops disabled</td></tr>
+<tr><td>Degradation is disclosed</td><td>✅ Compliant</td><td>`beta-telemetry-onboarding.md` documents degraded feature tables</td></tr>
+<tr><td>No sale of raw user content</td><td>✅ Compliant</td><td>Multiple &quot;never&quot; clauses in doctrine and code. Content-light enforcement in bundle validator</td></tr>
+<tr><td>No raw prompts in telemetry</td><td>✅ Compliant</td><td>`send_tool_call_finished()` sends hashes only (`input_sha256`, `output_sha256`), never raw content</td></tr>
+<tr><td>No raw file contents</td><td>✅ Compliant</td><td>Event payloads never include file bodies — only hashes and byte counts</td></tr>
+<tr><td>No credentials/secrets</td><td>✅ Compliant</td><td>`sanitize_trace_attributes()` drops keys matching token/api_key/password/secret/credential/authorization/cookie/bearer</td></tr>
+<tr><td>Commercialization limited to aggregated/de-identified</td><td>✅ Compliant (by doctrine) / 🟡 Untested (in code)</td><td>Doctrine permits commercialization of derived insights. The export pipeline enforces content-light but doesn&#x27;t verify aggregation level before export</td></tr>
+<tr><td>Inspectable telemetry</td><td>✅ Compliant</td><td>Local `observability.jsonl` is human-readable. Schemas in `docs/schemas/`. Events are canonical JSON</td></tr>
+<tr><td>Schema-governed</td><td>✅ Compliant</td><td>Events registered in `EventName` enum. Schemas in `docs/schemas/` with versioned IDs</td></tr>
+<tr><td>Auditable receipts</td><td>✅ Compliant</td><td>`EvidenceReceipt` with SHA256 chain. `verify_receipt()` validates integrity</td></tr>
+<tr><td>Privacy notice exists</td><td>✅ Compliant</td><td>`privacy-notice-alpha.md` and JSON equivalent</td></tr>
+<tr><td>No third-party analytics on static site</td><td>✅ Compliant</td><td>`site.js` explicitly: &quot;No tracking.&quot; Static site is pure HTML/CSS/JS with zero remote requests</td></tr>
+<tr><td>No silent commit trailers</td><td>✅ Compliant</td><td>`beta-telemetry-onboarding.md`: &quot;Rig Relay does not add silent co-author trailers&quot;</td></tr>
+<tr><td>Debug bundles explicit</td><td>✅ Compliant</td><td>`telemetry_bundle.py` dry-run by default; Google Drive upload requires `--confirm` flag</td></tr>
+</tbody>
+</table>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-47" class="disclosure-standard" data-disclosure-level="standard">Opt-Out / Degradation Review</h2>
+
+<h3 id="h3-48" class="disclosure-standard" data-disclosure-level="standard">Local Operational Telemetry (default ON)</h3>
+
+<table id="table-49" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Feature</th><th>When Enabled</th><th>When Disabled</th></tr></thead>
+<tbody>
+<tr><td>Governed mode</td><td>Full governance: tool permissions, mutation gating, session rules</td><td>**Disabled** — reverts to basic safety</td></tr>
+<tr><td>Fleet/delegate</td><td>Multi-agent coordination, worktree isolation</td><td>**Disabled**</td></tr>
+<tr><td>Checkpoint commits</td><td>Git checkpoint tool available</td><td>**Disabled**</td></tr>
+<tr><td>Coordination leases</td><td>Path reservations, collision detection</td><td>**Disabled**</td></tr>
+<tr><td>Replay/debug</td><td>Session replay and debugging</td><td>**Disabled**</td></tr>
+<tr><td>Autonomous spawn</td><td>Sub-agent execution</td><td>**Disabled**</td></tr>
+<tr><td>Ralph scanner</td><td>Projection-based candidate ranking</td><td>**Disabled** — no projections to consume</td></tr>
+<tr><td>Basic agent loop</td><td>Functional</td><td>**Still functional** — basic safety remains</td></tr>
+</tbody>
+</table>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">**Verdict**: The degradation is real, architectural, and intentional. Disabling local telemetry genuinely removes functionality because the functionality depends on the observability data. This is honest design, not deceptive dark-pattern degradation.</p>
+
+<h3 id="h3-51" class="disclosure-standard" data-disclosure-level="standard">Remote Beta Sharing (default OFF)</h3>
+
+<ul id="list-52" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`enable_remote_telemetry = False` by default</li>
+  <li>`enable_telemetry = False` by default (legacy alias)</li>
+  <li>When disabled: no HTTP requests leave the machine for telemetry</li>
+  <li>When enabled: content-light bundles posted to DeepSeek datalake</li>
+</ul>
+
+<p id="p-53" class="disclosure-standard" data-disclosure-level="standard">**Verdict**: Default-off is the correct privacy posture. The remote path is gated behind a boolean toggle that is respected in code.</p>
+
+<h3 id="h3-54" class="disclosure-standard" data-disclosure-level="standard">Gap: Consent vs. Settings</h3>
+
+<p id="p-55" class="disclosure-standard" data-disclosure-level="standard">The consent model (`TelemetryConsentRecord`) defines scopes and tracks consent status, but the upload gate checks only `enable_remote_telemetry` — a settings flag — not the consent record. A user who toggles remote sharing ON but later revokes consent would still have data uploaded. This is the top-ranked risk.</p>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-57" class="disclosure-standard" data-disclosure-level="standard">Static-Site Review</h2>
+
+<table id="table-58" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Check</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Third-party analytics scripts</td><td>**None found**</td></tr>
+<tr><td>Tracking pixels / beacons</td><td>**None found**</td></tr>
+<tr><td>localStorage / cookies</td><td>**None set** (verified in site.js)</td></tr>
+<tr><td>Remote CDN requests</td><td>**None** — all assets self-hosted</td></tr>
+<tr><td>Fingerprinting</td><td>**None** — no canvas, no font enumeration, no WebGL</td></tr>
+<tr><td>Raw IP collection</td><td>**None** — static site, no server-side collection</td></tr>
+<tr><td>Raw referrer collection</td><td>**None**</td></tr>
+<tr><td>Search query collection</td><td>**Client-side only** — search-index.json loaded and searched in-browser</td></tr>
+<tr><td>Privacy notice on site</td><td>**Missing** — no privacy page linked from generated site</td></tr>
+<tr><td>Machine-readable policy</td><td>**Missing** — no `.well-known/` or structured policy artifact</td></tr>
+</tbody>
+</table>
+
+<p id="p-59" class="disclosure-standard" data-disclosure-level="standard">**Verdict**: The static site is exemplary in its privacy posture — zero tracking, zero remote requests, progressive enhancement. The only gap is the absence of a visible privacy notice on the generated site itself.</p>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-61" class="disclosure-standard" data-disclosure-level="standard">Monetization Boundary Review</h2>
+
+<h3 id="h3-62" class="disclosure-standard" data-disclosure-level="standard">What the Doctrine Says</h3>
+
+<p id="p-63" class="disclosure-standard" data-disclosure-level="standard">From `usage-data-doctrine.md` and `telemetry-contribution-policy.md`:</p>
+
+<p id="p-64" class="disclosure-standard" data-disclosure-level="standard">**Permitted commercialization**:</p>
+
+<ul id="list-65" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Aggregated, de-identified, or derived insights</li>
+  <li>Benchmarks</li>
+  <li>Models</li>
+  <li>Reports</li>
+  <li>Product intelligence generated from telemetry</li>
+</ul>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">**Prohibited**:</p>
+
+<ul id="list-67" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Sale of raw user content</li>
+  <li>Sale of prompts</li>
+  <li>Sale of credentials or secrets</li>
+  <li>Sale of private files or repository contents</li>
+</ul>
+
+<h3 id="h3-68" class="disclosure-standard" data-disclosure-level="standard">What the Code Enforces</h3>
+
+<ul id="list-69" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Content-light bundle validator** (`telemetry_bundle.py`): rejects bundles containing raw prompts, model outputs, file contents, stdout/stderr, diffs, or secrets</li>
+  <li>**Redaction pipeline** (`redaction.py`): drops token/key/secret/credential fields</li>
+  <li>**Export pipeline** (`dataset_export.py`): content-light enforcement with manifest `content_light_guarantee: true`</li>
+  <li>**Consent scopes**: Commercial/data license scopes (`COMMERCIAL_DATASET_LICENSE`, `AGGREGATE_PUBLIC_REPORTING`) are **never in the default grant set** — they require explicit opt-in</li>
+</ul>
+
+<h3 id="h3-70" class="disclosure-standard" data-disclosure-level="standard">Gap Identified</h3>
+
+<p id="p-71" class="disclosure-standard" data-disclosure-level="standard">The doctrine says Rig &quot;may commercialize aggregated, de-identified, or derived insights&quot; but the code currently doesn&#x27;t verify **aggregation level** before export — it only enforces content-light. Individual tool-call events are technically &quot;content-light&quot; but not &quot;aggregated.&quot; There should be a gate that either:</p>
+
+<ol id="list-72" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Requires a minimum k-anonymity threshold before export, or</li>
+  <li>Requires explicit `COMMERCIAL_DATASET_LICENSE` consent before any export that isn&#x27;t aggregated</li>
+</ol>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">**Verdict**: The raw-content boundary is hard (code-enforced). The aggregation boundary is soft (doctrine-stated, not code-enforced). This is acceptable for alpha but should be hardened.</p>
+
+<p id="p-74" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-75" class="disclosure-standard" data-disclosure-level="standard">Required Fixes — Convergent Slices</h2>
+
+<h3 id="h3-76" class="disclosure-standard" data-disclosure-level="standard">Slice A: Consent Enforcement Wire-Up (BLOCKER)</h3>
+
+<p id="p-77" class="disclosure-standard" data-disclosure-level="standard">**Problem**: Consent record exists but doesn&#x27;t gate the upload path.</p>
+
+<p id="p-78" class="disclosure-standard" data-disclosure-level="standard">**Changes**:</p>
+
+<ul id="list-79" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Code: `rig_relay/core/telemetry/send.py` — add `consent_record` parameter to `send_telemetry_event()` or check consent store before remote upload</li>
+  <li>Code: `rig_relay/core/_telemetry.py` — pass consent state through the TelemetryMixin</li>
+  <li>Tests: `tests/core/test_telemetry_send.py` — add test proving upload is refused when consent is REVOKED even if settings toggle is ON</li>
+  <li>Tests: `tests/identity/test_telemetry_consent.py` — add integration test wiring consent to telemetry client</li>
+  <li>Docs: update `telemetry-contribution-policy.md` with consent enforcement flow diagram</li>
+</ul>
+
+<h3 id="h3-80" class="disclosure-standard" data-disclosure-level="standard">Slice B: Redaction and Linkability Firewall</h3>
+
+<p id="p-81" class="disclosure-standard" data-disclosure-level="standard">**Problem**: Session lineage is unbroken; session_id is a stable pseudonymous identifier.</p>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">**Changes**:</p>
+
+<ul id="list-83" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Code: Add `lineage_break` option to session fork that generates a new root session_id with no parent</li>
+  <li>Code: Add session_id rotation on consent revocation</li>
+  <li>Docs: Document session_id lifecycle in privacy notice, including lineage implications</li>
+  <li>Docs: Add data flow diagram showing what identifiers persist where</li>
+  <li>Tests: Test that lineage break prevents correlation across sessions</li>
+</ul>
+
+<h3 id="h3-84" class="disclosure-standard" data-disclosure-level="standard">Slice C: Opt-Out and Degraded-Mode Enforcement</h3>
+
+<p id="p-85" class="disclosure-standard" data-disclosure-level="standard">**Problem**: Legacy `enable_telemetry` alias creates confusion; no automated test proves all exporters respect opt-out.</p>
+
+<p id="p-86" class="disclosure-standard" data-disclosure-level="standard">**Changes**:</p>
+
+<ul id="list-87" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Code: Deprecate or remove `enable_telemetry` legacy alias in `_settings.py`</li>
+  <li>Code: Add `_verify_opt_out_respected()` check that runs on startup</li>
+  <li>Tests: E2E test proving zero remote HTTP requests when remote telemetry is disabled</li>
+  <li>Tests: Test proving all feature gates degrade correctly</li>
+  <li>Docs: Clarify the three-mode model in onboarding</li>
+</ul>
+
+<h3 id="h3-88" class="disclosure-standard" data-disclosure-level="standard">Slice D: Static-Site Privacy Presence</h3>
+
+<p id="p-89" class="disclosure-standard" data-disclosure-level="standard">**Problem**: Generated site has no privacy notice or machine-readable policy.</p>
+
+<p id="p-90" class="disclosure-standard" data-disclosure-level="standard">**Changes**:</p>
+
+<ul id="list-91" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Docs: Add `docs/json/legal/site-privacy.v1.json` (privacy notice for site visitors)</li>
+  <li>Renderer: Render privacy page from JSON artifact</li>
+  <li>Code: Add privacy link to site footer/nav</li>
+  <li>Docs: Add `Content-Security-Policy` validation to release gate</li>
+</ul>
+
+<h3 id="h3-92" class="disclosure-standard" data-disclosure-level="standard">Slice E: Telemetry Receipts, Retention, and Audit UI</h3>
+
+<p id="p-93" class="disclosure-standard" data-disclosure-level="standard">**Problem**: Remote retention TTL unknown; no automated test for forbidden-field exclusion.</p>
+
+<p id="p-94" class="disclosure-standard" data-disclosure-level="standard">**Changes**:</p>
+
+<ul id="list-95" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Code: Add retention TTL field to remote upload payload (or negotiate with endpoint)</li>
+  <li>Tests: E2E telemetry sanitization test — capture real tool call, run through pipeline, assert no raw prompts/paths/secrets in output</li>
+  <li>Tests: Receipt chain integrity test for multi-event sessions</li>
+  <li>Docs: Document destruction/deletion process for remote data</li>
+  <li>Code: Add content-light audit report generator that users can run locally</li>
+</ul>
+
+<p id="p-96" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-97" class="disclosure-standard" data-disclosure-level="standard">Test Plan</h2>
+
+<table id="table-98" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test</th><th>File</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Opt-out enforcement (remote OFF → zero HTTP)</td><td>`tests/core/test_telemetry_send.py`</td><td>❌ Missing</td></tr>
+<tr><td>Redaction — forbidden fields excluded</td><td>`tests/evidence/test_redaction.py`</td><td>✅ Exists (unit tests)</td></tr>
+<tr><td>Redaction — E2E with real tool call</td><td>`tests/telemetry/test_observability_e2e.py`</td><td>⚠️ Partial — checks event structure, not content exclusion</td></tr>
+<tr><td>Schema governance — event validates against schema</td><td>`tests/scripts/test_telemetry_contribution_schemas.py`</td><td>✅ Exists</td></tr>
+<tr><td>Static-site — no third-party trackers</td><td>Release gate `static.renderer.no_secret_leakage`</td><td>✅ Exists (Lane B)</td></tr>
+<tr><td>Receipt generation — hash chain valid</td><td>`tests/core/test_telemetry_send.py`</td><td>⚠️ Needs verification</td></tr>
+<tr><td>Retention — TTL respected</td><td>N/A</td><td>❌ Not applicable (remote TTL unknown)</td></tr>
+<tr><td>Disclosure — onboarding matches implementation</td><td>N/A</td><td>⚠️ Manual verification needed</td></tr>
+<tr><td>No hidden channels — all upload paths covered</td><td>`tests/scripts/test_rig_relay_telemetry_bundle.py`</td><td>✅ Exists (bundle validation)</td></tr>
+<tr><td>Consent wire-up — revoked consent blocks upload</td><td>`tests/identity/test_telemetry_consent.py`</td><td>❌ Missing</td></tr>
+</tbody>
+</table>
+
+<p id="p-99" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-100" class="disclosure-standard" data-disclosure-level="standard">Open Questions</h2>
+
+<ol id="list-101" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**What is the server-side retention policy for DeepSeek&#x27;s datalake endpoint?** The code uploads to `https://api.deepseek.com/v1/datalake/events` but there&#x27;s no documented TTL, deletion API, or data processing agreement. If the datalake retains events indefinitely, this changes the risk calculus for remote sharing.</li>
+</ol>
+
+<ol id="list-102" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Are OpenTelemetry dependencies planned for future use or are they dead weight?** Four OTEL packages in `pyproject.toml` with zero usage. If they&#x27;re planned, the governance plan should be documented before wiring them in. If they&#x27;re dead weight, they should be removed.</li>
+</ol>
+
+<ol id="list-103" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Is the `subject_hash` in TelemetryConsentRecord derived from identity data, or is it a random identifier?** The consent model has a `subject_hash` field with no documentation on how it&#x27;s generated. If it&#x27;s a hash of an email, GitHub username, or other PII, it flips from pseudonymous to personal data.</li>
+</ol>
+
+<ol id="list-104" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**What is the data processing relationship with Mistral/DeepSeek?** The telemetry upload endpoint is on their API infrastructure. Are they a data processor or a joint controller? Is there a DPA? This matters for GDPR compliance if European users adopt Rig Relay.</li>
+</ol>
+
+<ol id="list-105" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Can users delete their remote telemetry data?** The doctrine says remote data is deletable, but there&#x27;s no code path implementing a deletion request.</li>
+</ol>
+
+<p id="p-106" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-107" class="disclosure-standard" data-disclosure-level="standard">Final Assessment</h2>
+
+<p id="p-108" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s telemetry implementation is **governed first-party product telemetry**, not surveillance or a panopticon. The architecture separates local operational telemetry from remote sharing cleanly. Defaults are safe. Content-light guarantees are implemented in code, not just stated in docs. The static site is tracking-free. The degradation model when telemetry is disabled is honest and architectural, not a dark pattern.</p>
+
+<p id="p-109" class="disclosure-standard" data-disclosure-level="standard">The gaps — consent enforcement wire-up, session lineage documentation, dead OTEL dependencies, and missing E2E content-exclusion tests — are alpha-stage implementation issues, not architectural design flaws. They should be addressed before general availability, particularly the consent enforcement gap (Slice A), which is the only finding that could cause a user&#x27;s revoked consent to be ignored.</p>
+
+<p id="p-110" class="disclosure-standard" data-disclosure-level="standard">If the alternative were a panopticon, it would be capturing raw prompts, raw file contents, raw paths, IP addresses, user agents, and session replays, uploading them silently to a third-party analytics service with no opt-out. Rig Relay does none of these things. It is not that. It is a governed telemetry system that needs its last few consent bolts tightened.</p>
+
+<p id="p-111" class="disclosure-standard" data-disclosure-level="standard">**Bottom line: Not a panopticon. Governed telemetry. Ship with Slice A fixed.**</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/telemetry-panopticon-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

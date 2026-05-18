@@ -102,7 +102,7 @@ export function handleChatState(data) {
 }
 
 export function handleIntentResult(msg) {
-  const result = msg.result || msg;
+  const result = msg.data || msg.result || msg;
   const name = result.intent_kind || result.intent_name || 'Intent';
   const status = result.status || 'unknown';
   const summary = result.message || result.summary || '';

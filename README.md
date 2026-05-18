@@ -3,11 +3,13 @@
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/release/python-3120/)
 [![License](https://img.shields.io/github/license/juliantorr-es/rig-relay)](https://github.com/juliantorr-es/rig-relay/blob/main/LICENSE)
 
-**Rig Relay — a governed local coding harness.**
+**Rig Relay — a governed local server/control-plane with a desktop cockpit.**
 
-A desktop cockpit for governed agentic development. Chat-first interface,
+Rig Relay is a local control-plane for governed agentic development. The
+desktop cockpit is the primary surface for operators and reviewers; the CLI
+is a shim for launch, debug, and operator flows. The product provides
 receipt-backed evidence, worktree isolation, multi-provider consultation
-(Council), and fleet orchestration. Exposes MCP tools for Antigravity,
+(Council), and fleet orchestration. It exposes MCP tools for Antigravity,
 VS Code, and Zed, and speaks ACP for editor-integrated agent sessions.
 
 ## Quick Start
@@ -57,7 +59,9 @@ uv run rig-relay
 Operator, Review, System, and Technical layout modes. Widgets at three
 disclosure levels: compact chips, standard cards, and full-page expanded
 views. Chat sends to AgentLoop → LLM → tools → response. WebSocket
-streams projections and chat state to the frontend.
+streams projections and chat state to the frontend. The server/control-plane
+can also be launched headlessly for review, browser validation, and live
+exercise of the cockpit path.
 
 ```bash
 uv run rig-relay --dry-run       # projection dump, no window

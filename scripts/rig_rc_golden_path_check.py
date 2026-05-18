@@ -302,7 +302,9 @@ def _check_step_gp_see_blocked_deferred_state(repo_root: Path) -> dict[str, Any]
     }
 
 
-def _check_step_gp_frontend_primary_surface(repo_root: Path) -> dict[str, Any]:
+def _check_step_gp_frontend_primary_surface(
+    repo_root: Path, validation_runs: list[dict[str, Any]]
+) -> dict[str, Any]:
     projection_schema = repo_root / "docs" / "schemas" / "rig.relay.desktop_projection.v1.schema.json"
     frontend_index = repo_root / "frontend" / "desktop" / "index.html"
     desktop_tests = repo_root / "tests" / "desktop" / "test_product_path.py"
@@ -310,6 +312,33 @@ def _check_step_gp_frontend_primary_surface(repo_root: Path) -> dict[str, Any]:
     all_exist = all(
         p.is_file() for p in [projection_schema, frontend_index, desktop_tests, bridge_server]
     )
+    browser_run = next(
+        (
+            run
+            for run in validation_runs
+            if run.get("result") == "passed"
+            and "tests/desktop/test_playwright_frontend_product_path.py" in run.get(
+                "command", ""
+            )
+            and "phase_4_ui_docs_ci_packaging" in run.get("phase_ids", [])
+        ),
+        None,
+    )
+    if browser_run is not None:
+        return {
+            "step_id": "gp_frontend_primary_surface",
+            "status": "passing",
+            "validation_method": "automated_script",
+            "can_automate": True,
+            "automated_check_passed": True,
+            "evidence_exists": True,
+            "server_frontend_path": True,
+            "detail": (
+                "Browser validation run "
+                f"{browser_run.get('validation_run_id')} confirms the cockpit loads "
+                "as the primary surface and shows live release-gate state"
+            ),
+        }
     return {
         "step_id": "gp_frontend_primary_surface",
         "status": "not_verified",
@@ -431,6 +460,7 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
         repo_root / "docs" / "json" / "release_candidate" / "rc_reviewer_golden_path.v1.json"
     )
     blockers_path = repo_root / "docs" / "json" / "release_gate" / "rc_blockers.v1.jsonl"
+    validation_runs_path = repo_root / "docs" / "json" / "release_gate" / "rc_validation_runs.v1.jsonl"
 
     commands_run: list[str] = [
         "load: docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
@@ -443,6 +473,7 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
 
     blockers = _load_jsonl(blockers_path)
     blockers_loaded = len(blockers)
+    validation_runs = _load_jsonl(validation_runs_path)
     open_blockers = [
         b for b in blockers if b.get("status") == "open" and "_parse_error" not in b
     ]
@@ -459,7 +490,7 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
         "gp_no_markdown_evidence_leakage": lambda g, **_: _check_step_gp_no_markdown_evidence_leakage(g),
         "gp_release_gate_validator_baseline": lambda *_: _check_step_gp_release_gate_validator_baseline(repo_root),
         "gp_see_blocked_deferred_state": lambda *_: _check_step_gp_see_blocked_deferred_state(repo_root),
-        "gp_frontend_primary_surface": lambda *_: _check_step_gp_frontend_primary_surface(repo_root),
+        "gp_frontend_primary_surface": lambda *_: _check_step_gp_frontend_primary_surface(repo_root, validation_runs),
     }
 
     for step in steps:
@@ -517,10 +548,17 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
     elif overall_status == "failed":
         next_actions = [f"Fix {len(consistency_errors)} consistency error(s)"] + consistency_errors
     else:
-        next_actions = [
-            "Human reviewer must exercise and verify manual golden path steps",
-            "Run server/frontend product path: launch server, cockpit, run real work lane",
+        step_map = {step.get("step_id", ""): step for step in steps}
+        manual_step_ids = [
+            sr["step_id"] for sr in manual_steps if sr["status"] == "not_verified"
         ]
+        next_actions = [
+            "Human reviewer must exercise and verify the remaining manual golden path steps"
+        ]
+        next_actions.extend(
+            f"{step_id}: {step_map.get(step_id, {}).get('command_or_ui_action', '')}"
+            for step_id in manual_step_ids
+        )
 
     server_frontend_checks = _check_server_frontend_presence(repo_root)
 

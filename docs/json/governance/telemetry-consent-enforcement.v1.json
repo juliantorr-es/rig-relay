@@ -1,0 +1,699 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "telemetry-consent-enforcement",
+  "document_type": "governance",
+  "title": "Telemetry Consent Enforcement",
+  "summary": "**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)",
+  "status": "active",
+  "created_at": "2026-05-18",
+  "updated_at": "2026-05-18",
+  "source_commit": "c92a220a",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "governance",
+    "migration"
+  ],
+  "audience": [
+    "contributor",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/telemetry-consent-enforcement.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Telemetry Consent Enforcement",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Architecture",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Rig Relay telemetry has two independent sinks:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "Sink",
+        "Default",
+        "Requires",
+        "Degrades when off"
+      ],
+      "rows": [
+        [
+          "**Local observability**",
+          "ON",
+          "`enable_local_observability=True`",
+          "Governed mode, fleet, checkpoint, coordination, replay, autonomous spawn"
+        ],
+        [
+          "**Remote beta sharing**",
+          "OFF",
+          "`enable_remote_telemetry=True` **AND** valid consent record with required scopes",
+          "Remote upload, maintainer debugging, shared benchmarks, cross-user reports"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-7",
+      "type": "paragraph",
+      "content": "Consent enforcement adds a second gate to the remote sink. Before remote upload:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-8",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Settings gate: `enable_remote_telemetry` or `enable_telemetry` must be `True`.",
+        "Consent gate: A `TelemetryConsentRecord` must exist, be `GRANTED`, and cover the required scopes for the event."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "If either gate fails, remote upload is blocked and a locally auditable denial event is written.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Consent Decision Model",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-12",
+      "type": "code",
+      "language": "python",
+      "content": "@dataclass\nclass TelemetryUploadDecision:\n    allowed: bool\n    reason: str              # remote_disabled, consent_not_found, consent_not_requested,\n                             # consent_denied, consent_revoked, consent_policy_invalid,\n                             # scope_missing, consent_granted\n    consent_status: str | None\n    matched_scopes: list[str]\n    missing_scopes: list[str]\n    policy_version: str | None\n    remote_enabled: bool\n    decided_at: str",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-13",
+      "type": "heading",
+      "level": 3,
+      "content": "Decision Reasons",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-14",
+      "type": "table",
+      "columns": [
+        "Reason",
+        "Meaning",
+        "Remote upload"
+      ],
+      "rows": [
+        [
+          "`remote_disabled`",
+          "`enable_remote_telemetry` is `False`",
+          "Blocked"
+        ],
+        [
+          "`consent_not_found`",
+          "Consent getter returned `None` or threw an exception",
+          "Blocked (fail closed)"
+        ],
+        [
+          "`consent_not_requested`",
+          "Consent record exists but status is `NOT_REQUESTED`",
+          "Blocked"
+        ],
+        [
+          "`consent_denied`",
+          "User explicitly denied telemetry",
+          "Blocked"
+        ],
+        [
+          "`consent_revoked`",
+          "User revoked previously granted consent",
+          "Blocked"
+        ],
+        [
+          "`consent_policy_invalid`",
+          "Consent record is malformed or has unknown status",
+          "Blocked"
+        ],
+        [
+          "`scope_missing`",
+          "Consent is granted but required scopes are missing",
+          "Blocked"
+        ],
+        [
+          "`consent_granted`",
+          "All gates pass",
+          "Allowed"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-15",
+      "type": "heading",
+      "level": 3,
+      "content": "Fail-Closed Semantics",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-16",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Loader exception \u2192 `consent_not_found` \u2192 **blocked**",
+        "`None` consent \u2192 `consent_not_found` \u2192 **blocked**",
+        "Malformed record \u2192 `consent_policy_invalid` \u2192 **blocked**",
+        "Unknown scope mapping \u2192 defaults to `USAGE_METRICS` \u2192 allowed only if scope present"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h3-17",
+      "type": "heading",
+      "level": 3,
+      "content": "Revocation Beats Settings",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-18",
+      "type": "paragraph",
+      "content": "A revoked consent record always blocks remote upload, even if `enable_remote_telemetry` or the legacy `enable_telemetry` alias is `True`.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-19",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-20",
+      "type": "heading",
+      "level": 2,
+      "content": "Scope Mapping",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "Events are mapped to consent scopes by prefix:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-22",
+      "type": "table",
+      "columns": [
+        "Event prefix",
+        "Required scope"
+      ],
+      "rows": [
+        [
+          "`rig.relay.tool.*`",
+          "`TOOL_REFINEMENT_METRICS`"
+        ],
+        [
+          "`rig.relay.session.*`",
+          "`USAGE_METRICS`"
+        ],
+        [
+          "`rig.relay.context.*`",
+          "`USAGE_METRICS`"
+        ],
+        [
+          "`rig.relay.checkpoint.*`",
+          "`COORDINATION_METRICS`"
+        ],
+        [
+          "`coord.*`",
+          "`COORDINATION_METRICS`"
+        ],
+        [
+          "`rig.relay.model_observation.*`",
+          "`PROVIDER_MODEL_BENCHMARKING`"
+        ],
+        [
+          "All other events",
+          "`USAGE_METRICS` (default)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-23",
+      "type": "paragraph",
+      "content": "Model observation events require `PROVIDER_MODEL_BENCHMARKING`, which is **never in the default grant set**. This scope requires explicit opt-in.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-24",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-25",
+      "type": "heading",
+      "level": 2,
+      "content": "Local Audit Trail",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-26",
+      "type": "paragraph",
+      "content": "Every consent decision \u2014 both allowed and denied \u2014 is logged locally:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-27",
+      "type": "table",
+      "columns": [
+        "Event",
+        "When emitted"
+      ],
+      "rows": [
+        [
+          "`telemetry.remote_upload.allowed`",
+          "Consent gate passed, upload proceeds"
+        ],
+        [
+          "`telemetry.remote_upload.denied`",
+          "Consent gate failed, upload blocked"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-28",
+      "type": "paragraph",
+      "content": "Denial events are content-light:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-29",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "`original_event` \u2014 the event that was blocked",
+        "`reason` \u2014 the denial reason",
+        "`consent_status` \u2014 consent record status (if available)",
+        "`matched_scopes` / `missing_scopes` \u2014 scope match details",
+        "`remote_enabled` \u2014 whether remote was enabled in settings",
+        "`decided_at` \u2014 ISO timestamp"
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-30",
+      "type": "paragraph",
+      "content": "**No raw content, no subject hash, no PII is included in denial events.**",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-32",
+      "type": "heading",
+      "level": 2,
+      "content": "Local Observability Unaffected",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-33",
+      "type": "paragraph",
+      "content": "Consent enforcement **only** gates the remote upload path. The local observability sink (`observability.jsonl`) is written regardless of consent status. This is intentional: local observability is product infrastructure for governed mode, fleet coordination, and Ralph projections.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-34",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-35",
+      "type": "heading",
+      "level": 2,
+      "content": "Debug Bundles",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-36",
+      "type": "paragraph",
+      "content": "Debug bundle upload (Google Drive) is a separate explicit user action governed by its own consent path. This slice does not change debug bundle behavior.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-37",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-38",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Coverage",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-39",
+      "type": "paragraph",
+      "content": "15 tests in `tests/core/test_telemetry_consent_gate.py`:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-40",
+      "type": "table",
+      "columns": [
+        "Test",
+        "Proves"
+      ],
+      "rows": [
+        [
+          "Remote disabled \u2192 no upload even with consent granted",
+          "Settings gate supersedes consent"
+        ],
+        [
+          "Remote enabled + consent granted \u2192 upload occurs",
+          "Happy path"
+        ],
+        [
+          "Remote enabled + consent revoked \u2192 no upload",
+          "Revocation blocks upload"
+        ],
+        [
+          "Revoked consent beats legacy `enable_telemetry=True`",
+          "Revocation > settings"
+        ],
+        [
+          "Consent not-requested \u2192 no upload",
+          "Fail closed on missing consent"
+        ],
+        [
+          "No consent getter \u2192 no upload",
+          "Fail closed on missing getter"
+        ],
+        [
+          "Consent getter returns None \u2192 no upload",
+          "Fail closed on None"
+        ],
+        [
+          "Missing required scope \u2192 no upload",
+          "Scope enforcement"
+        ],
+        [
+          "Consent loader exception \u2192 no upload",
+          "Fail closed on exceptions"
+        ],
+        [
+          "Local observability writes when remote denied",
+          "Local sink unaffected"
+        ],
+        [
+          "Denial writes auditable local decision",
+          "Audit trail"
+        ],
+        [
+          "Decision preserves content-light boundary",
+          "No PII leakage"
+        ],
+        [
+          "Existing debug bundle behavior unchanged",
+          "No regression"
+        ],
+        [
+          "Revoked consent blocks upload with sensitive payload",
+          "E2E revocation"
+        ],
+        [
+          "Decision never leaks subject_hash",
+          "Content-light guarantee"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-41",
+      "type": "paragraph",
+      "content": "Existing telemetry send tests (39 tests) pass via a backward-compatible bypass fixture.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-42",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-43",
+      "type": "heading",
+      "level": 2,
+      "content": "Configuration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "code-44",
+      "type": "code",
+      "language": "python",
+      "content": "# In _agent_init.py, the TelemetryClient is constructed with:\nconsent_record_getter=self._load_consent_record\n\n# _load_consent_record reads from:\n#   .rig/relay/telemetry_consent.json\n#\n# If the file doesn't exist, consent is None \u2192 upload blocked (fail closed).",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-45",
+      "type": "paragraph",
+      "content": "To grant consent, write a valid `TelemetryConsentRecord` to `.rig/relay/telemetry_consent.json`:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "json-46",
+      "type": "json",
+      "content": "{\n  \"schema_version\": \"rig.relay.telemetry_consent.v1\",\n  \"consent_id\": \"cons_abc123def456\",\n  \"subject_hash\": \"<sha256 of anonymous identifier>\",\n  \"provider\": \"local\",\n  \"status\": \"granted\",\n  \"scopes\": [\n    \"usage_metrics\",\n    \"content_light_bundles\",\n    \"crash_reports\",\n    \"coordination_metrics\",\n    \"tool_refinement_metrics\"\n  ],\n  \"granted_at\": \"2026-05-17T00:00:00Z\",\n  \"policy_version\": \"alpha-usage-data-license-v1\",\n  \"local_only\": true\n}",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-47",
+      "type": "paragraph",
+      "content": "---",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "h2-48",
+      "type": "heading",
+      "level": 2,
+      "content": "Remaining Risks",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-49",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Consent store is file-based** \u2014 the `.rig/relay/telemetry_consent.json` path is fragile. A proper consent store with migration support should replace this in the next slice.",
+        "**No UI for consent management** \u2014 currently requires manual JSON editing. The desktop cockpit should expose consent controls.",
+        "**No per-repo scoping** \u2014 consent is global per machine. A user cannot grant consent for one repo but not another.",
+        "**No consent expiry enforcement** \u2014 the `expires_at` field exists on `TelemetryConsentRecord` but is not enforced by the gate."
+      ],
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-50",
+      "type": "paragraph",
+      "content": "These are deferred to future slices. The enforcement boundary itself is now closed.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    }
+  ],
+  "provenance": {
+    "source_files": [
+      "docs/governance/telemetry-consent-enforcement.md"
+    ]
+  }
+}

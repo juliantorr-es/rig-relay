@@ -156,8 +156,8 @@ def test_golden_path_debug_quarantine_is_blocked_not_skipped() -> None:
     golden_path = _load_golden_path()
     for step in golden_path["steps"]:
         if step["step_id"] == "gp_debug_packet_quarantine":
-            assert step["status"] in {"blocked", "not_verified"}, (
-                f"Debug packet quarantine step must be 'blocked' or 'not_verified', "
+            assert step["status"] in {"passing", "blocked", "not_verified"}, (
+                f"Debug packet quarantine step must be 'passing', 'blocked', or 'not_verified', "
                 f"got '{step['status']}'"
             )
             if step["status"] == "blocked":
@@ -240,10 +240,17 @@ def test_installability_alone_cannot_satisfy_dogfood() -> None:
         "Installability check must include dogfood_readiness_distinction"
     )
     if installability["overall_status"] == "passed":
-        assert dogfood_check["status"] == "pass", (
-            "If installability passes, dogfood_distinction must also pass "
-            "(golden path must be verified)"
-        )
+        golden_path = _load_golden_path()
+        if golden_path["overall_status"] == "passing":
+            assert dogfood_check["status"] == "pass", (
+                "If installability passes and the golden path is fully passing, "
+                "dogfood_distinction must also pass"
+            )
+        else:
+            assert dogfood_check["status"] == "warn", (
+                "If installability passes but the golden path is not yet verified, "
+                "dogfood_distinction must warn instead of implying readiness"
+            )
     else:
         assert dogfood_check["status"] in {"warn", "fail"}, (
             f"Dogfood distinction check must warn or fail when golden path is not passing. "

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protocol Surfaces — Rig Relay Docs</title>
+<meta name="description" content="Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/protocol-surfaces.html">
+<meta property="og:title" content="Protocol Surfaces">
+<meta property="og:description" content="Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/protocol-surfaces.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Protocol Surfaces">
+<meta name="twitter:description" content="Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Protocol Surfaces</h1>
+  <p class="doc-summary">Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/protocol-surfaces.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Protocol Surfaces</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">ACP Agent — Editor ↔ Agent</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Rig presents itself as a governed coding agent to editors and IDEs (Zed, JetBrains, VS Code). ACP standardizes session management, progress streaming, edit proposals, and permission gating.</p>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Concept</th><th>Rig Mapping</th></tr></thead>
+<tbody>
+<tr><td>ACP Session</td><td>Rig mission / lane / worktree session</td></tr>
+<tr><td>ACP Progress</td><td>Rig progress events (phase, status, percent)</td></tr>
+<tr><td>ACP Edit</td><td>Rig patch proposal (never direct write)</td></tr>
+<tr><td>ACP Permission</td><td>Rig approval gate / authorization receipt</td></tr>
+<tr><td>ACP Terminal</td><td>Rig deterministic execution stream</td></tr>
+</tbody>
+</table>
+
+<pre id="code-6"><code class="language-text">Editor/IDE  →  ACP Client  →  Rig ACP Agent
+  send session requests
+  receive plans, edits, progress
+  request permissions</code></pre>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">Entry point: `rig_relay.protocols.acp.RigACPAgent`</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">MCP Client — Rig ↔ External Tools</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Rig consumes external MCP servers for additional tools, databases, and context sources. Rig acts as an MCP host, connecting to servers over stdio or Streamable HTTP.</p>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">This surface is future work. The adapter layer is designed but not yet wired to the tool manager.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">MCP Server — Host ↔ Rig Tools</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">Rig exposes governed tools, resources, and prompts to MCP hosts (Antigravity, Claude Desktop, Cursor, Zed). Tools are tiered: read-only context first, mutation gated behind authorization receipts.</p>
+
+<pre id="code-13"><code class="language-text">Antigravity / Claude / Cursor / Zed
+  →  MCP Client
+    →  Rig MCP Server
+      →  governed tool execution
+      →  receipt-backed result</code></pre>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Entry point: `rig_relay.protocols.mcp.RigMCPServer`</p>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Transport: stdio (local) or Streamable HTTP (remote).</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Tool Tiers</h3>
+
+<table id="table-17" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Tier</th><th>Access</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><td>0 — Read-only</td><td>Always available</td><td>`rig.current_mission`, `rig.summarize_dirty_state`, `rig.list_worktrees`</td></tr>
+<tr><td>1 — Analysis</td><td>Always available</td><td>`rig.build_context_packet`, `rig.create_consult_packet`</td></tr>
+<tr><td>2 — Validation</td><td>Always available</td><td>`rig.run_validator`, `rig.check_merge_friendly`</td></tr>
+<tr><td>3 — Patch proposal</td><td>Gated</td><td>`rig.propose_patch` — returns approval gate</td></tr>
+<tr><td>4 — Mutation</td><td>Requires auth receipt</td><td>`rig.request_user_approval`</td></tr>
+<tr><td>5 — Git/release</td><td>Denied by default</td><td>`rig.promote_to_preproduction`</td></tr>
+</tbody>
+</table>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Every Tier 3+ tool returns `blocked_pending_approval` + `receipt_id` + `approval_required: true`.</p>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">WebSocket — Cockpit ↔ Backend</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">Local projection stream for the desktop cockpit. Token-gated, localhost-only (`127.0.0.1`), content-light. Clients authenticate with a session token, then subscribe to projection pushes, request chat state, send messages, and dispatch desktop intents.</p>
+
+<pre id="code-21"><code class="language-text">Frontend (pywebview)  →  WebSocket  →  ProjectionWebSocketServer
+  auth, subscribe, get_projection, send_chat_message, desktop_intent
+  ←  projection, chat_state, progress_events, intent_results</code></pre>
+
+<p id="p-22" class="disclosure-standard" data-disclosure-level="standard">Port: 9876 (default). Token auto-generated per session, delivered via inline script injection in the HTML payload.</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/protocol-surfaces.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

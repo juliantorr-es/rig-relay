@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Suite Reality Pressure Audit v0 — Rig Relay Docs</title>
+<meta name="description" content="**Audit date**: 2026-05-17 **Auditor**: Julian Torres (via pi coding agent) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Suite scale**: 7,191 collected tests across ~400+ test files...">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/test-suite-reality-pressure-audit.html">
+<meta property="og:title" content="Test Suite Reality Pressure Audit v0">
+<meta property="og:description" content="**Audit date**: 2026-05-17 **Auditor**: Julian Torres (via pi coding agent) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Suite scale**: 7,191 collected tests across ~400+ test files...">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/test-suite-reality-pressure-audit.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Test Suite Reality Pressure Audit v0">
+<meta name="twitter:description" content="**Audit date**: 2026-05-17 **Auditor**: Julian Torres (via pi coding agent) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Suite scale**: 7,191 collected tests across ~400+ test files...">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Test Suite Reality Pressure Audit v0</h1>
+  <p class="doc-summary">**Audit date**: 2026-05-17 **Auditor**: Julian Torres (via pi coding agent) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Suite scale**: 7,191 collected tests across ~400+ test files...</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/audits/test-suite-reality-pressure-audit.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Test Suite Reality Pressure Audit v0</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Audit date**: 2026-05-17 **Auditor**: Julian Torres (via pi coding agent) **Repository**: `rig-relay`, branch `main`, commit `c92a220a` **Suite scale**: 7,191 collected tests across ~400+ test files in 55 directories **Methodology**: Static audit + 6 parallel deep-dive agents (release gate, telemetry/consent, trace contract, static docs/site, runtime/supervisor, coordination/Git discipline) + adversarial gap analysis</p>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">1. Executive Verdict</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">**Verdict: Large suite with medium false-confidence risk.**</p>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">The Rig Relay test suite is substantial (7,191 tests) and contains genuinely strong tests in several critical areas. However, it also harbors significant blind spots where tests certify synthetic mock pathways rather than real product seams. The suite is not a &quot;padded room&quot; — the guard, runtime supervisor, static site integrity, redaction policy, and documentation governance tests exert real pressure on production boundaries. But the telemetry consent gate has **zero test coverage**, the largest release gate test file (34 tests) exercises **zero real check functions**, the trace contract enforcer is **never run against real code**, and no test proves the full telemetry upload pipeline works end-to-end.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">**The suite would benefit more from filling a few critical gaps than from any broad refactor.** The mock theater is concentrated in specific files; the real-pressure tests are concentrated in others. A targeted hardening of ~5 seams would significantly increase credibility.</p>
+
+<h3 id="h3-8" class="disclosure-standard" data-disclosure-level="standard">Scorecard</h3>
+
+<table id="table-9" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Dimension</th><th>Rating</th></tr></thead>
+<tbody>
+<tr><td>Real seam pressure</td><td>Medium (strong in guard/runtime/static-site; absent in consent/CLI)</td></tr>
+<tr><td>Mock reliance</td><td>High (78 files use monkeypatch, auto-use conftest patches config/paths/API keys)</td></tr>
+<tr><td>Negative-path coverage</td><td>Medium (strong in redaction/receipts; absent in telemetry send)</td></tr>
+<tr><td>Would fail on real drift</td><td>Mixed (yes for guard/schemas/supervisor; no for release gate engine/trace contract/telemetry send)</td></tr>
+<tr><td>Adversarial/sabotage testing</td><td>Absent (no test intentionally corrupts real artifacts to prove detection)</td></tr>
+</tbody>
+</table>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">2. Test Inventory</h2>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">By Directory</h3>
+
+<table id="table-13" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Directory</th><th>Files</th><th>Approx Tests</th><th>Dominant Type</th><th>Dominant Data Source</th><th>Real-Pressure %</th></tr></thead>
+<tbody>
+<tr><td>`tests/core/`</td><td>61</td><td>~1,000</td><td>Unit + Integration</td><td>Mixed (FakeBackend, monkeypatch)</td><td>30%</td></tr>
+<tr><td>`tests/tools/`</td><td>34</td><td>~600</td><td>Unit</td><td>Synthetic + monkeypatch</td><td>20%</td></tr>
+<tr><td>`tests/acp/`</td><td>32</td><td>~500</td><td>Integration</td><td>Synthetic + mock transport</td><td>25%</td></tr>
+<tr><td>`tests/desktop/`</td><td>24</td><td>~400</td><td>Integration</td><td>Mock WebSocket + synthetic</td><td>30%</td></tr>
+<tr><td>`tests/coordination/`</td><td>24</td><td>~350</td><td>Unit + Integration</td><td>File-backed store (real JSON)</td><td>40%</td></tr>
+<tr><td>`tests/context/`</td><td>21</td><td>~300</td><td>Unit</td><td>Synthetic + fake backend</td><td>20%</td></tr>
+<tr><td>`tests/runtime/`</td><td>20</td><td>~350</td><td>Integration</td><td>**Real subprocess** + temp files</td><td>**70%**</td></tr>
+<tr><td>`tests/ralph/`</td><td>18</td><td>~250</td><td>Unit</td><td>Synthetic projections</td><td>15%</td></tr>
+<tr><td>`tests/scripts/`</td><td>17</td><td>~250</td><td>CLI/Integration</td><td>Real scripts via subprocess</td><td>50%</td></tr>
+<tr><td>`tests/` (root)</td><td>17</td><td>~250</td><td>Mixed</td><td>Mixed</td><td>30%</td></tr>
+<tr><td>`tests/evidence/`</td><td>15</td><td>~250</td><td>Integration</td><td>Real functions + synthetic payloads</td><td>45%</td></tr>
+<tr><td>`tests/tracing/`</td><td>13</td><td>~200</td><td>Unit + Integration</td><td>Real trace store + synthetic events</td><td>50%</td></tr>
+<tr><td>`tests/repository/`</td><td>12</td><td>~200</td><td>Integration</td><td>**Real committed files**</td><td>**80%**</td></tr>
+<tr><td>`tests/telemetry/`</td><td>11</td><td>~180</td><td>Unit + Integration</td><td>Synthetic + schema fixtures</td><td>40%</td></tr>
+<tr><td>`tests/e2e/`</td><td>9</td><td>~100</td><td>E2E</td><td>Mock server + TUI snapshots</td><td>35%</td></tr>
+<tr><td>`tests/docs/`</td><td>9</td><td>~120</td><td>Governance</td><td>**Real committed docs**</td><td>**75%**</td></tr>
+<tr><td>`tests/stubs/`</td><td>7</td><td>0</td><td>Infrastructure</td><td>Fake classes</td><td>N/A</td></tr>
+<tr><td>`tests/release_gate/`</td><td>6</td><td>~120</td><td>Unit + Integration</td><td>Mixed (real repo + synthetic)</td><td>40%</td></tr>
+<tr><td>`tests/governance/`</td><td>6</td><td>~80</td><td>Unit</td><td>Synthetic models</td><td>15%</td></tr>
+<tr><td>`tests/cli/`</td><td>6</td><td>~80</td><td>CLI/Integration</td><td>Real CLI entrypoints</td><td>50%</td></tr>
+<tr><td>`tests/backend/`</td><td>6</td><td>~80</td><td>Unit</td><td>Mock backends</td><td>10%</td></tr>
+<tr><td>`tests/guard/`</td><td>3</td><td>~60</td><td>Integration</td><td>**Real git repos**</td><td>**90%**</td></tr>
+<tr><td>Other (25 dirs)</td><td>25</td><td>~300</td><td>Mixed</td><td>Mixed</td><td>30%</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">Key Infrastructure</h3>
+
+<table id="table-15" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Item</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>Test files using `monkeypatch`</td><td>78</td></tr>
+<tr><td>Test files using `respx`</td><td>5</td></tr>
+<tr><td>Test files using `subprocess.run` (real execution)</td><td>~15</td></tr>
+<tr><td>`Fake*` stub classes</td><td>7 (FakeBackend, FakeClient, FakeTool, FakeMCPRegistry, FakeConnectorRegistry, FakeAudioPlayer, FakeTTSClient)</td></tr>
+<tr><td>Autouse fixtures in `conftest.py`</td><td>5 (tmp CWD, config dir, API key mock, platform mock, telemetry events mock)</td></tr>
+<tr><td>**Global `telemetry_events` autouse fixture**</td><td>**Patches `send_telemetry_event` to a bypass recorder — disables consent gating in ALL tests**</td></tr>
+<tr><td>Pytest markers defined</td><td>13 (smoke, contract, integration, e2e, packaging, slow, legacy, flaky, network, provider, destructive, migration, quarantine)</td></tr>
+<tr><td>Missing markers</td><td>`adversarial`, `sabotage`, `real_artifact`, `network_forbidden`</td></tr>
+</tbody>
+</table>
+
+<p id="p-16" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">3. Credibility Heatmap</h2>
+
+<table id="table-18" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Surface</th><th>Real Seam Pressure</th><th>Negative Coverage</th><th>Synthetic Reliance</th><th>Mock Intensity</th><th>Risk</th><th>Recommended Action</th></tr></thead>
+<tbody>
+<tr><td>**Release gate**</td><td>Medium</td><td>Partial</td><td>High (engine tests)</td><td>High (engine); Low (checks)</td><td>**HIGH**</td><td>Replace 34 mock-theater engine tests with CLI integration; add sabotage harness</td></tr>
+<tr><td>**Telemetry send/upload**</td><td>**NONE**</td><td>Partial</td><td>Extreme</td><td>**ABSURD**</td><td>**CRITICAL**</td><td>Write consent-gate E2E tests; prove remote upload gated by settings+consent</td></tr>
+<tr><td>**Consent model**</td><td>High (model only)</td><td>Partial</td><td>None</td><td>None</td><td>**HIGH**</td><td>Connect consent model to send pipeline; test revoked→blocked E2E</td></tr>
+<tr><td>**Redaction**</td><td>High (function)</td><td>Partial</td><td>Medium (payloads)</td><td>Medium (bundle tests mock redaction)</td><td>Medium</td><td>Run redaction against real event payloads; test bundle redaction without mocks</td></tr>
+<tr><td>**Debug bundle**</td><td>Low</td><td>Absent</td><td>High</td><td>High</td><td>**HIGH**</td><td>Prove bundles are explicit user action; test bundle redaction E2E</td></tr>
+<tr><td>**Trace contract**</td><td>**NONE** (enforcer)</td><td>Partial</td><td>High</td><td>High (enforcer tests)</td><td>**CRITICAL**</td><td>Run scanner+validator against real code; detect unregistered emissions</td></tr>
+<tr><td>**Runtime supervisor**</td><td>**HIGH**</td><td>Strong</td><td>Low</td><td>Low</td><td>Low</td><td>Preserve; fill state-machine wiring gap</td></tr>
+<tr><td>**Coordination/store**</td><td>Low (single-thread)</td><td>Good</td><td>None (file-backed)</td><td>None</td><td>Medium</td><td>Add concurrent multi-agent conflict tests</td></tr>
+<tr><td>**Worktree/Git guard**</td><td>**HIGH**</td><td>Strong</td><td>None (real git)</td><td>None</td><td>Low</td><td>Test escape hatches (`git -c`, subprocess bypass)</td></tr>
+<tr><td>**Static renderer**</td><td>**HIGH**</td><td>Strong</td><td>Low (committed artifacts)</td><td>None</td><td>Low</td><td>Add fresh-render-vs-committed drift detection</td></tr>
+<tr><td>**Schemas/docs JSON**</td><td>**HIGH**</td><td>Strong</td><td>None (real files)</td><td>None</td><td>Low</td><td>Add unreferenced-schema detection</td></tr>
+<tr><td>**Desktop/WebSocket**</td><td>Medium</td><td>Partial</td><td>Medium</td><td>Medium</td><td>Medium</td><td>Add real WebSocket integration tests</td></tr>
+<tr><td>**CI workflows**</td><td>Medium</td><td>Partial</td><td>Low</td><td>Low</td><td>Medium</td><td>Test CI workflow execution in temp</td></tr>
+</tbody>
+</table>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">4. False-Confidence Findings</h2>
+
+<h3 id="h3-21" class="disclosure-standard" data-disclosure-level="standard">Finding 1: Release Gate Engine Tests Are Pure Mock Theater</h3>
+
+<ul id="list-22" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `tests/release_gate/test_release_evidence_gate.py` (34 tests)</li>
+  <li>**Pattern**: Every test constructs `GateRunner(checks={id: make_check_fn(fake_result)})` — synthetic check functions that return hardcoded `CheckResult` objects.</li>
+  <li>**Why weak**: Zero real check functions are exercised. If someone deletes `check_schema_validation()` from the codebase, all 34 tests still pass.</li>
+  <li>**Missing seam**: Full-gate integration with `build_default_registry()` + real repo artifacts.</li>
+  <li>**Recommendation**: **Demote to pure unit tests.** Add new CLI integration tests that run `python -m rig_relay.release_gate` and assert JSON output validates against schema.</li>
+  <li>**Verdict**: Keep (sorting/stability logic is valid) but **demote claim** — these do not prove the release gate works.</li>
+</ul>
+
+<h3 id="h3-23" class="disclosure-standard" data-disclosure-level="standard">Finding 2: Telemetry Consent Gate Has Zero Test Coverage</h3>
+
+<ul id="list-24" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`, line 226)</li>
+  <li>**Pattern**: The `telemetry_events` autouse fixture in `conftest.py` monkeypatches `send_telemetry_event` to bypass `_evaluate_consent_gate` entirely. No test exercises the consent enforcement path.</li>
+  <li>**Why weak**: The single function that decides whether data leaves the machine is never called by any test. The test file (`test_telemetry_send.py`) mocks HTTP transport with `MagicMock` + `AsyncMock`.</li>
+  <li>**Missing seam**: Full pipeline: `send_telemetry_event` → `_evaluate_consent_gate` → HTTP POST with real consent record.</li>
+  <li>**Recommendation**: Write E2E test with `enable_remote_telemetry=True`, `enable_local_observability=True`, and a real consent record. Prove: granted→uploads, revoked→blocked, local-writes-persist-when-remote-denied.</li>
+  <li>**Verdict**: **Replace** — current tests certify mock behavior, not real gating.</li>
+</ul>
+
+<h3 id="h3-25" class="disclosure-standard" data-disclosure-level="standard">Finding 3: Trace Contract Enforcer Never Run Against Real Code</h3>
+
+<ul id="list-26" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `tests/tracing/test_trace_contract_enforcer.py`</li>
+  <li>**Pattern**: `EventEmissionScanner` is imported but `.scan()` is never called. All validator tests use hand-crafted `EmittedEvent` lists with names like `&quot;unregistered.event&quot;`. Real unregistered emissions (`subagent.runtime`) go undetected.</li>
+  <li>**Why weak**: The contract enforcer machinery is tested in isolation but never fed real codebase output. Two separate scanners exist (audit script vs `_contract.py`) and are never cross-validated.</li>
+  <li>**Missing seam**: Real scan of `rig_relay/` source → feed into `TraceContractValidator.validate_all()` → assert zero violations.</li>
+  <li>**Recommendation**: Write contract enforcement integration test: `scan(codebase) → validate(all_emissions) → assert_no_violations`. Add sabotage test: emit unregistered event in temp source → assert detection.</li>
+  <li>**Verdict**: **Strengthen** — validator logic tests are good but disconnected from reality.</li>
+</ul>
+
+<h3 id="h3-27" class="disclosure-standard" data-disclosure-level="standard">Finding 4: Telemetry Send Tests Are Mock Theater</h3>
+
+<ul id="list-28" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `tests/core/test_telemetry_send.py`</li>
+  <li>**Pattern**: `unittest.mock.AsyncMock` for HTTP client, `MagicMock` for client, `build_test_vibe_config()` synthetic config, `_make_resolved_tool_call()` synthetic calls. The `telemetry_events` fixture bypasses all real behavior.</li>
+  <li>**Why weak**: Tests prove `send_telemetry_event` was _called_ with correct payload shape, not that it _did_ anything real. No real HTTP, no real consent, no real observability writes.</li>
+  <li>**Missing seam**: Real TelemetryClient with real config, real API key, real HTTP round-trip (or at minimum, real consent gating + local write).</li>
+  <li>**Recommendation**: **Replace** with tests that exercise the real pipeline.</li>
+  <li>**Verdict**: Mock theater. Keep payload shape assertions, discard the rest.</li>
+</ul>
+
+<h3 id="h3-29" class="disclosure-standard" data-disclosure-level="standard">Finding 5: No CLI Integration Tests for Release Gate</h3>
+
+<ul id="list-30" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `rig_relay/release_gate/__main__.py` (untested)</li>
+  <li>**Pattern**: Zero tests invoke `_main()` or parse CLI arguments. `--output`, `--include-check`, `--exclude-check`, `--lifecycle` flags are completely untested. Exit codes (0/1/2) are unverified.</li>
+  <li>**Why weak**: The primary user-facing interface to the release gate has no test coverage. The CLI output format differs from the receipt format and neither is schema-validated.</li>
+  <li>**Missing seam**: `subprocess.run([&quot;python&quot;, &quot;-m&quot;, &quot;rig_relay.release_gate&quot;, ...])` → assert exit code, parse JSON output, validate against schema.</li>
+  <li>**Recommendation**: Add CLI integration tests.</li>
+  <li>**Verdict**: **Add** — this is a missing test, not a weak one.</li>
+</ul>
+
+<h3 id="h3-31" class="disclosure-standard" data-disclosure-level="standard">Finding 6: Dead Assertion in Findings Lifecycle Test</h3>
+
+<ul id="list-32" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `tests/release_gate/test_findings_lifecycle.py`, line ~303</li>
+  <li>**Pattern**: `assert result.overall_status == GateRunner.__module__` — `GateRunner.__module__` evaluates to `&quot;rig_relay.release_gate.runner&quot;`, which will never equal any `GateStatus` value. This assertion is silently dead.</li>
+  <li>**Why weak**: The assertion always passes (comparing string to enum by value), masking a missing validation of the actual gate outcome.</li>
+  <li>**Missing seam**: Should assert `result.overall_status != GateStatus.FAILED` or similar.</li>
+  <li>**Recommendation**: Fix the assertion.</li>
+  <li>**Verdict**: **Fix immediately** — one-line bug.</li>
+</ul>
+
+<h3 id="h3-33" class="disclosure-standard" data-disclosure-level="standard">Finding 7: Escape Hatches in Git Guard Not Tested</h3>
+
+<ul id="list-34" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `tests/guard/test_dirty_file.py`</li>
+  <li>**Pattern**: `is_destructive_git_command()` is tested with exact command strings (`&quot;git reset&quot;`, `&quot;git clean&quot;`). No test verifies that `git -c foo=bar reset --hard HEAD` is detected (would NOT match the `stripped.startswith(&quot;git reset &quot;)` check due to `-c` insertion).</li>
+  <li>**Why weak**: The destructive command detection is purely string-matching. `git commit --amend` and `git push --force` are not in the blocked set at all. No test proves the check is actually called before subprocess execution.</li>
+  <li>**Missing seam**: Test bypass vectors: `git -c`, `GIT_DIR` env manipulation, `git config alias`, direct subprocess invocation.</li>
+  <li>**Recommendation**: Add escape-hatch tests; expand blocked command set to include `--amend` and `--force`.</li>
+  <li>**Verdict**: **Strengthen** — current tests are good for what they cover but don&#x27;t close the gate.</li>
+</ul>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Finding 8: Coordination Store Tests Are Single-Threaded</h3>
+
+<ul id="list-36" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `tests/coordination/test_store.py`, `tests/coordination/test_path_lease.py`</li>
+  <li>**Pattern**: All conflict tests are sequential: session-A reserves, then session-B tries. No test uses `asyncio.gather()` or threads to simulate concurrent access.</li>
+  <li>**Why weak**: The store uses `tempfile.replace()` for atomic writes, but no test proves atomicity under contention. Real multi-agent scenarios could have race conditions.</li>
+  <li>**Missing seam**: Two concurrent tasks claiming the same path simultaneously.</li>
+  <li>**Recommendation**: Add concurrent access tests with `asyncio.gather()`.</li>
+  <li>**Verdict**: **Strengthen** — conflict rules are correct but concurrency safety is unproven.</li>
+</ul>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">Finding 9: Version-Sniffing Tests Are Brittle</h3>
+
+<ul id="list-38" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Files**: `tests/docs/test_install_update_desktop.py`, `tests/docs/test_vibe_legacy_boundary.py`</li>
+  <li>**Pattern**: Hardcoded `&quot;0.1.0a1&quot;` assertions will break on every version bump.</li>
+  <li>**Why weak**: These test a specific version string rather than testing version format or consistency across files.</li>
+  <li>**Missing seam**: Test that `pyproject.toml` version matches `__init__.py` version (format check, not value check).</li>
+  <li>**Recommendation**: Replace hardcoded version with format/consistency check.</li>
+  <li>**Verdict**: **Demote** — keep consistency check, drop hardcoded value.</li>
+</ul>
+
+<h3 id="h3-39" class="disclosure-standard" data-disclosure-level="standard">Finding 10: Broken Machine-Specific Test</h3>
+
+<ul id="list-40" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**File**: `tests/docs/test_vibe_cli_purge_inventory.py`</li>
+  <li>**Pattern**: References absolute path `/Users/user/.gemini/antigravity/brain/f57b5347-...` — only exists on one developer&#x27;s machine.</li>
+  <li>**Why weak**: Will fail on any other machine. Local development artifact left in test suite.</li>
+  <li>**Missing seam**: N/A — should not exist in test suite.</li>
+  <li>**Recommendation**: **Delete** or make conditional with `pytest.skip` when path doesn&#x27;t exist.</li>
+  <li>**Verdict**: **Delete later** — not actionable outside one machine.</li>
+</ul>
+
+<h3 id="h3-41" class="disclosure-standard" data-disclosure-level="standard">Additional Findings</h3>
+
+<table id="table-42" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>File</th><th>Issue</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>11</td><td>`tests/release_gate/test_runtime_readiness_checks.py` (TraceContractStatusMapping)</td><td>Patches scanner, validator, report builder — real trace contract scanning never exercised</td><td>Strengthen</td></tr>
+<tr><td>12</td><td>`tests/telemetry/test_observability_e2e.py`</td><td>Sets `enable_remote_telemetry=False` — remote path never tested</td><td>Strengthen</td></tr>
+<tr><td>13</td><td>`tests/evidence/test_redaction.py` (`test_telemetry_bundle_builder_calls_redaction`)</td><td>Monkeypatches redaction with fake — proves it was called, not that it worked</td><td>Strengthen</td></tr>
+<tr><td>14</td><td>`tests/core/test_tool_runtime.py`</td><td>100% fake — all dependencies injected as lambdas; no real tool execution</td><td>Keep (unit) but demote claim</td></tr>
+<tr><td>15</td><td>`tests/core/test_tool_runtime_v1.py`</td><td>`MagicMock()` for trace store — checks calls, not content</td><td>Demote claim</td></tr>
+</tbody>
+</table>
+
+<p id="p-43" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-44" class="disclosure-standard" data-disclosure-level="standard">5. Excellent Tests (Template-Worthy)</h2>
+
+<h3 id="h3-45" class="disclosure-standard" data-disclosure-level="standard">1. `tests/guard/test_dirty_file.py` + `tests/guard/test_integration.py`</h3>
+
+<p id="p-46" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: Uses real `git init` + `git status --porcelain=v1` capture. Tests the full guard pipeline: capture → hash → gate → tool integration. Real git repos, real file hashing, real exception raising from tools. Proves dirty files are protected and safe writes are allowed. The integration test exercises WriteFile and SearchReplace tools through their real `run()` methods.</p>
+
+<h3 id="h3-47" class="disclosure-standard" data-disclosure-level="standard">2. `tests/runtime/test_runtime_supervisor.py`</h3>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: Uses `sys.executable` with `asyncio.create_subprocess_exec` — real OS processes. Tests timeout (200ms timeout on 30s sleep), non-zero exit (42), command-not-found, governance gates, heartbeat detection, stall warnings, output truncation, and lease release. Zero mocks. The heartbeat test verifies the _count_ of heartbeats received, proving real timing behavior.</p>
+
+<h3 id="h3-49" class="disclosure-standard" data-disclosure-level="standard">3. `tests/evidence/test_tool_receipt_policy.py`</h3>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: Tests the real `_FORBIDDEN_RECEIPT_FIELDS` enforcement with 15+ parametrized forbidden field cases. Covers nested forbidden fields, value-shape heuristics (large strings, diff markers, excessive newlines), per-receipt-type testing (BashReceipt, ValidateReceipt, SearchReplaceReceipt, WriteFileReceipt), and edge cases (empty payload, non-dict values, malformed events). **No mocks.**</p>
+
+<h3 id="h3-51" class="disclosure-standard" data-disclosure-level="standard">4. `tests/evidence/test_validation.py`</h3>
+
+<p id="p-52" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: 12 distinct failure modes tested for evidence session validation: missing JSONL, absolute path references, path escapes, hash mismatches, malformed JSONL, unreferenced evidence files, manifest hash mismatches, manifest path escapes, missing manifest files. Real production validation function exercised. **No mocks.**</p>
+
+<h3 id="h3-53" class="disclosure-standard" data-disclosure-level="standard">5. `tests/repository/test_documentation_hardening.py`</h3>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: Comprehensive site integrity: SHA256 hash verification of migrated files, no local absolute paths in HTML, no unexpected `&lt;script&gt;` tags, no unescaped unsafe content, every page in manifest, search index completeness, no broken asset paths, readability smoke tests. Reads real committed `docs/` artifacts. **No mocks.**</p>
+
+<h3 id="h3-55" class="disclosure-standard" data-disclosure-level="standard">6. `tests/repository/test_static_site_js.py`</h3>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: Directly inspects committed `site.js` for forbidden patterns: no `eval`, no `new Function`, no remote URLs, no analytics SDK calls (`gtag`, `analytics`, `pixel`, `fbq`), no token/secret literals. Verifies HTML integration points. **This is the test that proves no third-party tracking exists.**</p>
+
+<h3 id="h3-57" class="disclosure-standard" data-disclosure-level="standard">7. `tests/release_gate/test_static_artifact_checks.py` (smoke tests)</h3>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: The integration tests (`test_static_artifact_checks_run_on_real_repo`, `test_check_ids_are_deterministic_on_real_repo`, `test_all_check_results_have_evidence_on_real_repo`) run real release gate checks against the actual repo. The determinism test catches non-deterministic check behavior. The secret leakage check scans real HTML for GitHub PATs, PEM keys, bearer tokens. **Real seam pressure.**</p>
+
+<h3 id="h3-59" class="disclosure-standard" data-disclosure-level="standard">8. `tests/coordination/test_checkpoint.py`</h3>
+
+<p id="p-60" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: Uses real `git init` → `git commit` via the checkpoint tool. Verifies commits with `git log --oneline --name-only -1`. Tests lease conflict detection through real `CoordinationStore`. Tests dirty-file protection through real `DirtyFileGuard`. Proves no push occurs. **Real git, real guard, real store.**</p>
+
+<h3 id="h3-61" class="disclosure-standard" data-disclosure-level="standard">9. `tests/coordination/test_worktree_manager.py`</h3>
+
+<p id="p-62" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: Creates real linked git worktrees via `git worktree add`. Tests full lifecycle: create → list → inspect (including dirty detection) → remove (refusing dirty without force). Uses real `subprocess.run([&quot;git&quot;, &quot;worktree&quot;, ...])`. **Genuine infrastructure testing.**</p>
+
+<h3 id="h3-63" class="disclosure-standard" data-disclosure-level="standard">10. `tests/telemetry/test_receipts.py`</h3>
+
+<p id="p-64" class="disclosure-standard" data-disclosure-level="standard">**Why excellent**: Tests receipt chain integrity with real SHA256 hashing: tampered `previous_receipt_sha256` → fail, tampered `evidence_sha256` → fail, event name mismatch → fail, missing receipt → fail. Proves validation is read-only (no side effects). **Deterministic, tamper-proof design.**</p>
+
+<h3 id="h3-65" class="disclosure-standard" data-disclosure-level="standard">Honorable Mentions</h3>
+
+<table id="table-66" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Strength</th></tr></thead>
+<tbody>
+<tr><td>`tests/release_gate/test_runtime_readiness_checks.py`</td><td>Real `websocket_server.py` regex-scanning for security invariants; real GitHub App audit JSON reads</td></tr>
+<tr><td>`tests/runtime/test_runtime_supervisor_result_envelope.py`</td><td>Real subprocess execution with cancellation (task.cancel) and trace verification</td></tr>
+<tr><td>`tests/runtime/test_runtime_audit_persistence.py`</td><td>Content-light enforcement at persisted-file level; proves raw data never hits disk</td></tr>
+<tr><td>`tests/coordination/test_schema_validation.py`</td><td>Python contamination detection across ALL real schema files</td></tr>
+<tr><td>`tests/identity/test_telemetry_consent.py`</td><td>Real consent model; proves commercial scopes excluded from defaults</td></tr>
+<tr><td>`tests/tracing/test_trace_models.py`</td><td>Redaction coverage: token/api_key/password/secret/authorization all redacted</td></tr>
+</tbody>
+</table>
+
+<p id="p-67" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-68" class="disclosure-standard" data-disclosure-level="standard">6. Missing Failure Probes</h2>
+
+<h3 id="h3-69" class="disclosure-standard" data-disclosure-level="standard">Critical (Seam Currently Open)</h3>
+
+<table id="table-70" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Probe Description</th><th>What It Breaks</th><th>Existing Test?</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Set `enable_remote_telemetry=True`, grant consent, verify HTTP POST occurs</td><td>Consent gate</td><td>**NONE**</td></tr>
+<tr><td>2</td><td>Set `enable_remote_telemetry=True`, revoke consent, verify HTTP POST is blocked</td><td>Consent revocation</td><td>**NONE**</td></tr>
+<tr><td>3</td><td>Set `enable_remote_telemetry=False`, `enable_local_observability=True`, verify local JSONL still written</td><td>Local/remote independence</td><td>**NONE**</td></tr>
+<tr><td>4</td><td>Run `EventEmissionScanner.scan()` on `rig_relay/`, feed into `TraceContractValidator.validate_all()`, assert zero unregistered emissions</td><td>Trace contract enforcement</td><td>**NONE**</td></tr>
+<tr><td>5</td><td>Run `python -m rig_relay.release_gate`, assert exit code 0, validate JSON output against `rig.release_evidence_gate.v1.schema.json`</td><td>Release gate CLI</td><td>**NONE**</td></tr>
+<tr><td>6</td><td>Add forbidden field (`raw_prompt_text`) to a `TOOL_CALL_COMPLETED` event, verify it&#x27;s redacted before remote upload</td><td>Forbidden field E2E</td><td>**NONE**</td></tr>
+<tr><td>7</td><td>Two concurrent `asyncio.create_task` calls claiming same lease path, verify exactly one succeeds</td><td>Multi-agent lease safety</td><td>**NONE**</td></tr>
+<tr><td>8</td><td>Run `git -c foo.bar=baz reset --hard HEAD`, verify blocked by destructive command check</td><td>Git guard escape hatch</td><td>**NONE**</td></tr>
+<tr><td>9</td><td>Register telemetry event in `EventName` enum but never emit it, verify trace contract detects registered-never-emitted</td><td>Trace contract drift detection</td><td>**NONE** (enforcer logic tested with synthetic data, never run against real registry)</td></tr>
+<tr><td>10</td><td>Create debug bundle automatically (not explicit user action), verify it&#x27;s blocked</td><td>Debug bundle gate</td><td>**NONE**</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-71" class="disclosure-standard" data-disclosure-level="standard">High-Value (Would Close Important Seams)</h3>
+
+<table id="table-72" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Probe Description</th></tr></thead>
+<tbody>
+<tr><td>11</td><td>Remove a check from `_checks_registry.py`, verify `test_registry_has_all_11_checks` fails</td></tr>
+<tr><td>12</td><td>Add unregistered event emission to production code, verify trace contract test fails</td></tr>
+<tr><td>13</td><td>Change `site.js` to include `gtag(&#x27;config&#x27;, ...)`, verify `test_no_analytics_calls` fails</td></tr>
+<tr><td>14</td><td>Corrupt a schema JSON file, verify `test_schema_is_valid_json_and_draft7` fails</td></tr>
+<tr><td>15</td><td>Create a conversation summary with bad filename, verify `test_conversation_summary_names` fails</td></tr>
+<tr><td>16</td><td>Add a Markdown file outside policy, verify `test_non_grandfathered_markdown_is_allowed_or_in_manifest` fails</td></tr>
+<tr><td>17</td><td>Add Python syntax to a schema JSON, verify `test_no_schema_contains_python_syntax` fails</td></tr>
+<tr><td>18</td><td>Modify a migrated file without updating manifest hash, verify `test_migration_hashes_match_actual_files` fails</td></tr>
+<tr><td>19</td><td>Run `render_static_docs.py` fresh, diff against committed `docs/`, verify no unexpected drift</td></tr>
+<tr><td>20</td><td>`subprocess.run([&quot;git&quot;, &quot;reset&quot;, &quot;--hard&quot;, &quot;HEAD&quot;])` through bash tool, verify guard blocks it</td></tr>
+</tbody>
+</table>
+
+<p id="p-73" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-74" class="disclosure-standard" data-disclosure-level="standard">7. Synthetic Fixture Provenance</h2>
+
+<h3 id="h3-75" class="disclosure-standard" data-disclosure-level="standard">Fixture Families</h3>
+
+<table id="table-76" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Family</th><th>Examples</th><th>Count (approx)</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>**Real captured artifacts**</td><td>`docs/schemas/*.json`, `docs/json/*.json`, `docs/assets/site.js`, committed `docs/pages/*.html`</td><td>~200 tests</td><td>✅ Excellent — these ARE the contract</td></tr>
+<tr><td>**Schema fixtures**</td><td>`rig.relay.observability.v1.schema.json` loaded for validation</td><td>~50 tests</td><td>✅ Good — validates real schemas</td></tr>
+<tr><td>**Real git repos**</td><td>`_init_git_repo()` in guard/checkpoint/worktree tests</td><td>~40 tests</td><td>✅ Excellent — real git</td></tr>
+<tr><td>**Real subprocess**</td><td>`sys.executable -c &quot;...&quot;` in supervisor tests</td><td>~30 tests</td><td>✅ Excellent — real OS processes</td></tr>
+<tr><td>**Synthetic-but-adversarial**</td><td>Forbidden payloads in `test_redaction.py`, `test_tool_receipt_policy.py`</td><td>~80 tests</td><td>✅ Good — explicit adversarial intent</td></tr>
+<tr><td>**Synthetic neutral**</td><td>Hand-crafted `EmittedEvent` lists in trace contract tests</td><td>~50 tests</td><td>⚠️ Needs provenance labeling — useful but disconnected from reality</td></tr>
+<tr><td>**Synthetic toy**</td><td>Hardcoded `CheckResult` objects in `test_release_evidence_gate.py`</td><td>34 tests</td><td>❌ Mock theater — proves nothing about real system</td></tr>
+<tr><td>**Mock payloads**</td><td>`AsyncMock`, `MagicMock` in telemetry send tests</td><td>~30 tests</td><td>❌ Mock theater — certifies mock behavior</td></tr>
+<tr><td>**Generated temp data**</td><td>`tmp_path` files in most tests</td><td>~4,000 tests</td><td>✅ Appropriate — temp dirs are standard test isolation</td></tr>
+<tr><td>**Unknown provenance**</td><td>Various inline dicts and objects</td><td>~2,000 tests</td><td>⚠️ Should be documented</td></tr>
+</tbody>
+</table>
+
+<h3 id="h3-77" class="disclosure-standard" data-disclosure-level="standard">Recommendations</h3>
+
+<ol id="list-78" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Add `@pytest.mark.real_artifact`** to tests using real committed files, schemas, or git repos — currently ~350 tests.</li>
+  <li>**Add `@pytest.mark.synthetic`** to tests using hand-crafted data disconnected from production — currently ~2,500 tests. This is not shame, it&#x27;s triage metadata.</li>
+  <li>**Add `@pytest.mark.adversarial`** to redaction, forbidden-field, and validation-failure tests — currently ~130 tests.</li>
+  <li>**Add fixture provenance comments** to large synthetic fixture families explaining why they&#x27;re synthetic (e.g., &quot;These `EmittedEvent` lists encode known trace contract violation patterns for validator logic testing — not real codebase output.&quot;).</li>
+</ol>
+
+<p id="p-79" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-80" class="disclosure-standard" data-disclosure-level="standard">8. Proposed Test Taxonomy</h2>
+
+<h3 id="h3-81" class="disclosure-standard" data-disclosure-level="standard">Recommended Marker Additions</h3>
+
+<p id="p-82" class="disclosure-standard" data-disclosure-level="standard">Add to `pyproject.toml` `[tool.pytest.ini_options.markers]`:</p>
+
+<pre id="code-83"><code class="language-toml">&quot;adversarial: intentionally breaks system to prove detection works&quot;,
+&quot;sabotage: mutates real artifacts in temp copy to verify test catches drift&quot;,
+&quot;real_artifact: uses real committed repo files, schemas, or git repos&quot;,
+&quot;synthetic: uses hand-crafted data; not connected to production artifacts&quot;,
+&quot;network_forbidden: must not make real network calls&quot;,
+&quot;concurrent: tests multi-agent concurrent access patterns&quot;,</code></pre>
+
+<h3 id="h3-84" class="disclosure-standard" data-disclosure-level="standard">Existing Markers (Keep All)</h3>
+
+<pre id="code-85"><code class="language-toml">&quot;smoke: fastest confidence checks; must pass before demo/share&quot;,
+&quot;contract: domain contract/unit tests&quot;,
+&quot;integration: crosses multiple components/processes/filesystems&quot;,
+&quot;e2e: broad-stack or full flow&quot;,
+&quot;packaging: packaged app / installer / bundle checks&quot;,
+&quot;slow: intentionally slow&quot;,
+&quot;legacy: retained but not part of default suite&quot;,
+&quot;flaky: known nondeterministic, must not run in default suite&quot;,
+&quot;network: requires external network&quot;,
+&quot;provider: requires external model/provider/API&quot;,
+&quot;destructive: mutates worktrees/branches/files beyond temp dirs&quot;,
+&quot;migration: test being relocated during test layout canonicalization&quot;,
+&quot;quarantine: quarantined test, runs only in dedicated quarantine job&quot;,</code></pre>
+
+<h3 id="h3-86" class="disclosure-standard" data-disclosure-level="standard">Recommended Marker Assignment (Examples)</h3>
+
+<table id="table-87" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Test</th><th>Recommended Markers</th></tr></thead>
+<tbody>
+<tr><td>`tests/guard/test_dirty_file.py`</td><td>`integration`, `real_artifact`</td></tr>
+<tr><td>`tests/release_gate/test_release_evidence_gate.py`</td><td>`contract`, `synthetic`</td></tr>
+<tr><td>`tests/evidence/test_tool_receipt_policy.py`</td><td>`contract`, `adversarial`</td></tr>
+<tr><td>`tests/telemetry/test_observability_e2e.py`</td><td>`integration`, `synthetic` (currently)</td></tr>
+<tr><td>`tests/runtime/test_runtime_supervisor.py`</td><td>`integration`, `real_artifact`</td></tr>
+<tr><td>`tests/tracing/test_trace_contract_enforcer.py`</td><td>`contract`, `synthetic`</td></tr>
+<tr><td>`tests/repository/test_documentation_hardening.py`</td><td>`integration`, `real_artifact`</td></tr>
+</tbody>
+</table>
+
+<p id="p-88" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-89" class="disclosure-standard" data-disclosure-level="standard">9. Proposed Convergent Patch Slices</h2>
+
+<h3 id="h3-90" class="disclosure-standard" data-disclosure-level="standard">Slice A: Test Inventory and Marker Taxonomy</h3>
+
+<p id="p-91" class="disclosure-standard" data-disclosure-level="standard">**Files to change**: `pyproject.toml` (marker additions), ~30 test files (add marker decorators) **Tests to add**: 0 (metadata only) **Seams closed**: Test categorization enables targeted CI runs (only run `real_artifact` tests post-commit, run full `synthetic` suite pre-push) **Acceptance criteria**:</p>
+
+<ul id="list-92" class="disclosure-standard" data-disclosure-level="standard">
+  <li>All 350+ `real_artifact` tests have `@pytest.mark.real_artifact`</li>
+  <li>All adversarial tests have `@pytest.mark.adversarial`</li>
+  <li>`uv run pytest -m &quot;real_artifact&quot;` collects only real-artifact tests</li>
+  <li>CI pipeline separates `synthetic` and `real_artifact` runs</li>
+</ul>
+
+<h3 id="h3-93" class="disclosure-standard" data-disclosure-level="standard">Slice B: Real Artifact Contract Harness</h3>
+
+<p id="p-94" class="disclosure-standard" data-disclosure-level="standard">**Files to change**: New file `tests/contract/conftest.py`, update ~15 test files **Tests to add**: `test_schema_every_docs_json_validates_against_declared_schema`, `test_schema_no_unreferenced_schemas`, `test_every_event_name_in_constants_is_emitted_somewhere`, `test_every_docs_page_has_corresponding_json_source` **Seams closed**: Schema-doc coverage, event name registration coverage **Acceptance criteria**: All new tests pass; adding a docs/json file without updating schemas fails</p>
+
+<h3 id="h3-95" class="disclosure-standard" data-disclosure-level="standard">Slice C: Telemetry/Consent E2E Failure Probes **(HIGHEST PRIORITY)**</h3>
+
+<p id="p-96" class="disclosure-standard" data-disclosure-level="standard">**Files to change**: New file `tests/telemetry/test_consent_gate_e2e.py`, possible changes to `conftest.py` (add opt-out for `telemetry_events` fixture) **Tests to add**:</p>
+
+<ul id="list-97" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`test_remote_upload_blocked_when_disabled`</li>
+  <li>`test_remote_upload_allowed_when_enabled_and_consent_granted`</li>
+  <li>`test_remote_upload_blocked_when_consent_revoked`</li>
+  <li>`test_local_observability_writes_when_remote_denied`</li>
+  <li>`test_forbidden_field_redacted_before_remote_upload`</li>
+  <li>`test_debug_bundle_requires_explicit_user_action`</li>
+  <li>`test_consent_gate_evaluated_before_every_upload` **Seams closed**: Consent gating, remote upload, redaction pipeline, debug bundle gate **Acceptance criteria**: All tests pass; `_evaluate_consent_gate` code path exercised; adding forbidden field to event model fails test</li>
+</ul>
+
+<h3 id="h3-98" class="disclosure-standard" data-disclosure-level="standard">Slice D: Release Gate and Trace Contract Sabotage Harness</h3>
+
+<p id="p-99" class="disclosure-standard" data-disclosure-level="standard">**Files to change**: New files `tests/sabotage/test_release_gate_sabotage.py`, `tests/sabotage/test_trace_contract_sabotage.py` **Tests to add**:</p>
+
+<ul id="list-100" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Sabotage operators for release gate: remove schema file → expect FAIL, change schema_version → expect FAIL, remove check from registry → expect count change, corrupt static site asset → expect FAIL</li>
+  <li>Sabotage operators for trace contract: emit unregistered event in temp source → expect detection, remove registered event name → expect detection, change event name format → expect violation</li>
+  <li>Sabotage operators for Git guard: `git -c` bypass attempt, `GIT_DIR` manipulation, alias bypass **Seams closed**: Release gate CLI, trace contract enforcement, Git guard escape hatches **Acceptance criteria**: All sabotage operators produce expected failure; no false negatives</li>
+</ul>
+
+<h3 id="h3-101" class="disclosure-standard" data-disclosure-level="standard">Slice E: Static Site and Schema Reality Harness</h3>
+
+<p id="p-102" class="disclosure-standard" data-disclosure-level="standard">**Files to change**: New file `tests/static/test_fresh_render_drift.py`, updates to `tests/repository/test_documentation_hardening.py` **Tests to add**:</p>
+
+<ul id="list-103" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`test_fresh_render_matches_committed` — run `render_static_docs.py`, diff against `docs/`</li>
+  <li>`test_all_internal_links_resolve` — crawl every `&lt;a href&gt;` in generated HTML</li>
+  <li>`test_privacy_page_exists_and_is_complete`</li>
+  <li>`test_no_localstorage_tracking` — audit `localStorage` usage</li>
+  <li>`test_search_index_entries_valid` — validate each entry&#x27;s structure **Seams closed**: Renderer drift, broken links, privacy page gating **Acceptance criteria**: Fresh render produces byte-identical (or approved-delta) output; no broken links</li>
+</ul>
+
+<h3 id="h3-104" class="disclosure-standard" data-disclosure-level="standard">Slice F: Worktree/Git Discipline Temp-Repo Harness</h3>
+
+<p id="p-105" class="disclosure-standard" data-disclosure-level="standard">**Files to change**: New file `tests/guard/test_escape_hatches.py`, updates to `tests/coordination/test_store.py` **Tests to add**:</p>
+
+<ul id="list-106" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Escape hatch tests: `git -c foo=bar reset`, `GIT_DIR` manipulation, `git stash push` → `git stash drop`, `git commit --amend` blocking</li>
+  <li>Concurrent lease tests: two `asyncio.create_task` calls racing for same path</li>
+  <li>Checkpoint list/restore tests **Seams closed**: Git guard bypass vectors, multi-agent lease safety, checkpoint lifecycle **Acceptance criteria**: All escape hatch attempts blocked; concurrent claims produce exactly one winner</li>
+</ul>
+
+<h3 id="h3-107" class="disclosure-standard" data-disclosure-level="standard">Slice G: Flake/Order/Mutation Pressure Runner</h3>
+
+<p id="p-108" class="disclosure-standard" data-disclosure-level="standard">**Files to change**: New script `scripts/rig_relay_mutation_runner.py` **Tests to add**: N/A (infrastructure) **Seams closed**: Test suite determinism, flake detection, order-dependence detection **Acceptance criteria**: Runner identifies flaky tests, order-dependent tests, and tests that pass despite broken seams</p>
+
+<p id="p-109" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-110" class="disclosure-standard" data-disclosure-level="standard">10. Immediate Top 5 Prompts</h2>
+
+<h3 id="h3-111" class="disclosure-standard" data-disclosure-level="standard">Prompt 1: Telemetry Consent Gate E2E Tests (Slice C)</h3>
+
+<pre id="code-112"><code class="language-text">Write E2E tests for the telemetry consent gate at rig_relay/core/telemetry/send.py.
+
+The consent gate function is _evaluate_consent_gate (line 226). It is currently NEVER called by any test because the tests/conftest.py telemetry_events autouse fixture monkeypatches send_telemetry_event to bypass it.
+
+Create tests/telemetry/test_consent_gate_e2e.py with these tests:
+1. test_remote_upload_blocked_when_disabled — enable_remote_telemetry=False, verify no HTTP POST
+2. test_remote_upload_allowed_when_enabled_and_consent_granted — enable_remote_telemetry=True, consent GRANTED with basic scopes, verify HTTP POST occurs (use respx to mock the actual HTTP endpoint)
+3. test_remote_upload_blocked_when_consent_revoked — enable_remote_telemetry=True, consent REVOKED, verify HTTP POST is blocked
+4. test_local_observability_writes_when_remote_denied — enable_remote_telemetry=False, enable_local_observability=True, verify JSONL file is written locally
+5. test_forbidden_field_redacted_before_remote_upload — craft a payload with raw_prompt_text, verify it&#x27;s [REDACTED] in the HTTP POST body
+6. test_consent_gate_evaluated_on_every_send — verify _evaluate_consent_gate is called per-event, not cached
+
+You will need to override the conftest.py telemetry_events fixture in your test file. Study tests/telemetry/test_observability_e2e.py for the pattern (they use importlib.reload + monkeypatch.setattr to restore real send_telemetry_event).
+
+Use respx to mock the HTTP endpoint. Use the real TelemetryClient, real consent model functions (grant_consent, revoke_consent from rig_relay.identity.telemetry_consent), and real redact_for_remote from rig_relay.evidence.redaction.</code></pre>
+
+<h3 id="h3-113" class="disclosure-standard" data-disclosure-level="standard">Prompt 2: Release Gate CLI Integration Tests (Slice D)</h3>
+
+<pre id="code-114"><code class="language-text">Write CLI integration tests for the release gate at rig_relay/release_gate/__main__.py.
+
+Currently, 34 tests in tests/release_gate/test_release_evidence_gate.py are entirely synthetic — they construct GateRunner with fake check functions and never exercise real checks. The CLI entry point (__main__.py) is completely untested.
+
+Create tests/release_gate/test_cli_integration.py with these tests:
+1. test_cli_runs_and_exits_zero_on_clean_repo — subprocess.run([&quot;python&quot;, &quot;-m&quot;, &quot;rig_relay.release_gate&quot;]), assert exit code 0
+2. test_cli_output_validates_against_schema — parse JSON output, validate against docs/schemas/rig.release_evidence_gate.v1.schema.json
+3. test_cli_include_check_filters_correctly — --include-check with a specific check ID, verify only that check appears in output
+4. test_cli_exclude_check_filters_correctly — --exclude-check, verify excluded
+5. test_cli_output_file_written — --output path, verify file exists with valid JSON
+6. test_cli_lifecycle_flag_accepted — --lifecycle with a valid policy file, verify it&#x27;s used
+7. test_cli_nonzero_exit_when_gate_fails — create a synthetic failure condition, assert exit code 1
+
+Use the real repo as the test target. For the failure test, create a temporary broken artifact (e.g., a JSON file with bad syntax in a temp copy of docs/json/) that should trigger a release gate check failure.</code></pre>
+
+<h3 id="h3-115" class="disclosure-standard" data-disclosure-level="standard">Prompt 3: Trace Contract Enforcement Against Real Code (Slice D)</h3>
+
+<pre id="code-116"><code class="language-text">Wire the trace contract enforcer to run against real production code.
+
+Currently, tests/tracing/test_trace_contract_enforcer.py tests TraceContractValidator with hand-crafted EmittedEvent lists — never runs EventEmissionScanner.scan() against real source files. A real unregistered emission (subagent.runtime) goes undetected.
+
+Add these tests to tests/tracing/test_trace_contract_enforcer.py:
+1. test_real_scan_finds_all_registered_events — EventEmissionScanner.scan() on rig_relay/, assert every event in the visibility matrix&#x27;s current_events_found lists is found
+2. test_no_unregistered_emissions_in_production — scan + validate_all, assert zero violations for emitted-never-registered
+3. test_no_registered_never_emitted — scan + validate_all, assert zero violations for registered-never-emitted (with status filter for &quot;planned&quot;/&quot;future&quot;)
+4. test_unregistered_emission_detected — create a temp .py file with recorder.span(&quot;unregistered.test.event&quot;), scan it, assert violation detected
+
+You&#x27;ll need to:
+- Import EventEmissionScanner from rig_relay.tracing._contract
+- Import TraceContractValidator from rig_relay.tracing._contract
+- Import TraceContractRegistry and build_contract_report
+- Call scanner.scan(Path(&quot;rig_relay&quot;)) to get real emissions
+- Feed real emissions into validator.validate_all(registry, emissions)
+- Handle the subagent.runtime case — it&#x27;s currently unregistered, so either register it or add to a known-exclusion list
+
+The audit script (scripts/rig_relay_trace_visibility_audit.py) has a DIFFERENT scanner implementation — do NOT use it. Use the _contract.py scanner.</code></pre>
+
+<h3 id="h3-117" class="disclosure-standard" data-disclosure-level="standard">Prompt 4: Static Site Renderer Drift Detection (Slice E)</h3>
+
+<pre id="code-118"><code class="language-text">Add fresh-render-vs-committed drift detection tests.
+
+Currently, no test runs render_static_docs.py fresh and compares output against the committed docs/ directory. A renderer regression that produces subtly different HTML would pass all tests.
+
+Create tests/static/test_fresh_render_drift.py with these tests:
+1. test_fresh_render_produces_same_page_count — run render_static_docs.py to a temp dir, compare page count
+2. test_fresh_render_pages_have_same_structure — for each page, verify &lt;title&gt;, &lt;h1&gt;, &lt;nav&gt;, &lt;main&gt; exist in fresh output
+3. test_no_new_script_tags_in_fresh_render — verify no unexpected &lt;script&gt; tags appear
+4. test_no_analytics_or_tracking_in_fresh_render — scan all fresh HTML for gtag/analytics/pixel/fbq/segment/amplitude
+5. test_search_index_regenerated_complete — run search index generation, verify all pages have entries
+6. test_fresh_render_manifest_matches — verify render-manifest.json in fresh output matches page file list
+
+Also add to tests/repository/test_documentation_hardening.py:
+7. test_all_internal_links_resolve — crawl every &lt;a href=&quot;...&quot;&gt; in every generated HTML page, verify target exists
+8. test_privacy_page_gated — assert docs/pages/privacy-notice-alpha.html exists and has required content
+
+Use subprocess.run([&quot;python&quot;, &quot;scripts/render_static_docs.py&quot;, &quot;--output&quot;, tmp_dir]) for fresh rendering. Do NOT mutate the committed docs/ directory.</code></pre>
+
+<h3 id="h3-119" class="disclosure-standard" data-disclosure-level="standard">Prompt 5: Git Guard Escape Hatch and Concurrent Lease Tests (Slice F)</h3>
+
+<pre id="code-120"><code class="language-text">Close the escape hatch gap in the Git destructive command guard.
+
+The guard at rig_relay/core/guard.py blocks git reset/clean/stash/restore via string matching (is_destructive_git_command). But git -c foo=bar reset --hard HEAD bypasses the check because the string starts with &quot;git -c&quot; not &quot;git reset&quot;. Also, git commit --amend and git push --force are NOT in the blocked set.
+
+Create tests/guard/test_escape_hatches.py with these tests:
+1. test_git_c_bypass_blocked — git -c user.name=attacker reset --hard HEAD, assert classified as destructive
+2. test_git_config_alias_bypass_blocked — if git supports alias checking, test that aliased destructive commands are caught
+3. test_git_commit_amend_blocked — git commit --amend, assert blocked
+4. test_git_push_force_blocked — git push --force, assert blocked
+5. test_direct_subprocess_intercepted — prove the guard check is actually called before subprocess execution (not just a passive string classifier)
+
+Also add to tests/coordination/test_store.py:
+6. test_concurrent_lease_claims_produce_exactly_one_winner — use asyncio.gather() to race two claims for the same path
+7. test_concurrent_write_write_blocked_under_contention — two concurrent write claims on overlapping paths
+
+For the guard tests, you may need to:
+- Update is_destructive_git_command to handle -c flags and other git option insertion
+- Add --amend and --force to the blocked command set
+- Consider parsing the command through argparse-like git CLI understanding</code></pre>
+
+<p id="p-121" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-122" class="disclosure-standard" data-disclosure-level="standard">Appendix A: Sabotage Operators (Future Harness Design)</h2>
+
+<p id="p-123" class="disclosure-standard" data-disclosure-level="standard">This table defines the sabotage harness proposed in Section 9, Slice D. Each operator corresponds to a controlled test that mutates a temp copy and verifies detection.</p>
+
+<table id="table-124" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>#</th><th>Operator</th><th>Target Surface</th><th>Expected Detection</th><th>Existing Test?</th></tr></thead>
+<tbody>
+<tr><td>S1</td><td>Delete `docs/schemas/rig.release_evidence_gate.v1.schema.json` from temp copy</td><td>Release gate</td><td>`check_schema_validation` reports FAIL</td><td>No (unit test of function, not sabotage)</td></tr>
+<tr><td>S2</td><td>Remove `check_websocket_security` from `_checks_registry.py`</td><td>Release gate</td><td>`test_full_registry_count` fails (11→10)</td><td>Yes</td></tr>
+<tr><td>S3</td><td>Add `recorder.span(&quot;unregistered.test.event&quot;)` to temp source file</td><td>Trace contract</td><td>`_check_emitted_registered` detects violation</td><td>No (scanner never run against code)</td></tr>
+<tr><td>S4</td><td>Remove `rig.relay.tool_call.completed` from visibility matrix</td><td>Trace contract</td><td>Chain integration test fails on count assertion</td><td>Partial</td></tr>
+<tr><td>S5</td><td>Set `enable_remote_telemetry=True`, leave consent revoked</td><td>Telemetry</td><td>HTTP POST blocked</td><td>**No (critical gap)**</td></tr>
+<tr><td>S6</td><td>Add `raw_prompt_text: &quot;secret&quot;` to `TOOL_CALL_COMPLETED` event</td><td>Redaction</td><td>`redact_for_remote` produces `[REDACTED]`</td><td>No (E2E path not tested)</td></tr>
+<tr><td>S7</td><td>Add `gtag(&#x27;config&#x27;, &#x27;UA-XXXXX-Y&#x27;)` to `docs/assets/site.js`</td><td>Static site</td><td>`test_no_analytics_calls` fails</td><td>Yes</td></tr>
+<tr><td>S8</td><td>Run `git -c user.name=x reset --hard HEAD` through bash tool</td><td>Git guard</td><td>Guard blocks destructive command</td><td>**No (escape hatch gap)**</td></tr>
+<tr><td>S9</td><td>Write Python `import` statement into a schema JSON file</td><td>Schema validation</td><td>`test_no_schema_contains_python_syntax` fails</td><td>Yes</td></tr>
+<tr><td>S10</td><td>Create `docs/conversations/bad-name.md` (violates naming convention)</td><td>Docs governance</td><td>`test_conversation_summary_names` fails</td><td>Yes</td></tr>
+<tr><td>S11</td><td>Corrupt `docs/schemas/rig.relay.artifact.envelope.v1.schema.json` (invalid JSON)</td><td>Schema validation</td><td>`test_schema_is_valid_json_and_draft7` fails</td><td>Yes</td></tr>
+<tr><td>S12</td><td>Register event in `EventName` but never emit in code</td><td>Trace contract</td><td>`_check_registered_emitted` detects</td><td>No (scanner never run)</td></tr>
+</tbody>
+</table>
+
+<p id="p-125" class="disclosure-standard" data-disclosure-level="standard">Sabotage operators with **&quot;No&quot;** in the last column represent **open seams** — vulnerabilities in the test suite that would allow silent production breakage.</p>
+
+<p id="p-126" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-127" class="disclosure-standard" data-disclosure-level="standard">Appendix B: Dead Assertion Report</h2>
+
+<table id="table-128" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Line</th><th>Issue</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>`tests/release_gate/test_findings_lifecycle.py`</td><td>~303</td><td>`assert result.overall_status == GateRunner.__module__` — always True (compares enum to module name string)</td><td>Change to `assert result.overall_status != GateStatus.FAILED` or similar</td></tr>
+</tbody>
+</table>
+
+<p id="p-129" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-130" class="disclosure-standard" data-disclosure-level="standard">Appendix C: What This Audit Did NOT Cover</h2>
+
+<ul id="list-131" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Performance/benchmark tests</li>
+  <li>TUI snapshot tests (textual)</li>
+  <li>Audio transcriber/TTS tests</li>
+  <li>Browser sign-in tests</li>
+  <li>Demo fixtures</li>
+  <li>Model analytics tests</li>
+  <li>Onboarding flow tests</li>
+  <li>Backend data tests (mock backend training data)</li>
+  <li>Autocompletion tests</li>
+  <li>Banner tests</li>
+</ul>
+
+<p id="p-132" class="disclosure-standard" data-disclosure-level="standard">These areas are lower risk for false confidence because they test self-contained components where mock vs. real has less impact on system integrity.</p>
+
+<p id="p-133" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<p id="p-134" class="disclosure-standard" data-disclosure-level="standard">_End of audit. For questions or to begin implementing the recommended slices, start with Slice C (Telemetry/Consent E2E) as it closes the most critical open seam._</p>
+
+<p id="p-135" class="disclosure-standard" data-disclosure-level="standard">---</p>
+
+<h2 id="h2-136" class="disclosure-standard" data-disclosure-level="standard">Serialized Digestion Pipeline v0 Follow-up (May 2026)</h2>
+
+<h3 id="h3-137" class="disclosure-standard" data-disclosure-level="standard">Findings closed</h3>
+
+<ul id="list-138" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Seam 1**: `send_telemetry_event` leaking forbidden fields — `redact_for_remote` wired into upload path</li>
+  <li>**Seam 2**: `_evaluate_consent_gate` ignoring `expires_at` — expiry enforcement added</li>
+  <li>**Seam 3**: `EventEmissionScanner` regex missing `subagent.*`, `validate.*`, `tool_*` prefixes — expanded</li>
+  <li>**Seam 4**: `CoordinationStore.reserve_paths` TOCTOU double-win — digestion pipeline with advisory digester lock (see `docs/governance/serialized-digestion-pipeline.md`)</li>
+</ul>
+
+<h3 id="h3-139" class="disclosure-standard" data-disclosure-level="standard">Findings remaining</h3>
+
+<ul id="list-140" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Context assembler digestion pipeline (future slice)</li>
+  <li>Hardened built-in tool digestion pipeline (future slice)</li>
+  <li>Full lease request envelope schema formalization (future)</li>
+  <li>`subagent.runtime` vocabulary registration (current slice if done by Subagent B)</li>
+</ul>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/audits/test-suite-reality-pressure-audit.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

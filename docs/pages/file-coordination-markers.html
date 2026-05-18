@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Coordination Markers — Rig Relay Docs</title>
+<meta name="description" content="Inline and sidecar coordination markers for safe multi-agent file edits.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/file-coordination-markers.html">
+<meta property="og:title" content="File Coordination Markers">
+<meta property="og:description" content="Inline and sidecar coordination markers for safe multi-agent file edits.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/file-coordination-markers.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="File Coordination Markers">
+<meta name="twitter:description" content="Inline and sidecar coordination markers for safe multi-agent file edits.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>File Coordination Markers</h1>
+  <p class="doc-summary">Inline and sidecar coordination markers for safe multi-agent file edits.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-17</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/file-coordination-markers.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">File Coordination Markers</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Agents claim files before edits, release them after edits, and scan markers before touching shared work. JSON and generated outputs use the sidecar ledger only.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">States</h2>
+
+<ul id="list-4" class="disclosure-standard" data-disclosure-level="standard">
+  <li>active: file is currently owned by a session.</li>
+  <li>released_modified: file changed and may accept additive follow-up work.</li>
+  <li>released_readonly: file was inspected or tagged but not modified.</li>
+</ul>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Safety boundary</h2>
+
+<p id="paragraph-6" class="disclosure-standard" data-disclosure-level="standard">Inline markers are only inserted where comments are safe. The sidecar ledger records every claim and release event append-only.</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/file-coordination-markers.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

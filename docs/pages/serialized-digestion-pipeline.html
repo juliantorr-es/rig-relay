@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serialized Digestion Pipeline v0 — Rig Relay Docs</title>
+<meta name="description" content="**Status**: v0 architecture **Date**: May 2026 **Scope**: coordination artifact mutation safety, multi-agent concurrency, intent-envelope pattern">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/serialized-digestion-pipeline.html">
+<meta property="og:title" content="Serialized Digestion Pipeline v0">
+<meta property="og:description" content="**Status**: v0 architecture **Date**: May 2026 **Scope**: coordination artifact mutation safety, multi-agent concurrency, intent-envelope pattern">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/serialized-digestion-pipeline.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Serialized Digestion Pipeline v0">
+<meta name="twitter:description" content="**Status**: v0 architecture **Date**: May 2026 **Scope**: coordination artifact mutation safety, multi-agent concurrency, intent-envelope pattern">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Serialized Digestion Pipeline v0</h1>
+  <p class="doc-summary">**Status**: v0 architecture **Date**: May 2026 **Scope**: coordination artifact mutation safety, multi-agent concurrency, intent-envelope pattern</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/serialized-digestion-pipeline.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Serialized Digestion Pipeline v0</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">**Status**: v0 architecture **Date**: May 2026 **Scope**: coordination artifact mutation safety, multi-agent concurrency, intent-envelope pattern</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Why direct shared mutation failed</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">`CoordinationStore.reserve_paths` and sibling mutation methods suffered a textbook TOCTOU (time-of-check-time-of-use) race. The pattern:</p>
+
+<ol id="list-5" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Agent A reads active leases → no conflict detected</li>
+  <li>Agent B reads active leases → no conflict detected</li>
+  <li>Agent A writes grant for path X</li>
+  <li>Agent B writes grant for path X</li>
+</ol>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">Both agents observed the pre-mutation state, both concluded the path was free, both wrote. Under concurrent subprocesses (asyncio tasks, future subagent processes, signal-interleaved writes), the double-win rate approached ~50% for contended paths. No lock, no serialization, no post-write validation — just a read-then-write gap wide enough for any concurrent actor to slip through.</p>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">This pattern breaks at every concurrency boundary: threads, asyncio tasks within one process, OS subprocesses sharing a filesystem-backed store, and eventually fleet agents on different machines. `tempfile.replace()` only guarantees atomicity of a single write — it does not serialize competing writes. Two processes can atomically write conflicting files to the same logical resource.</p>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Why the fix is digestion, not lock-scoped everything</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">The architectural philosophy rejects blanket locking for four reasons:</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Commands mutate, queries read — don&#x27;t mix them</h3>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">CQS (Command-Query Separation) applies at the architectural layer. A query (projection read) must never trigger a mutation side-effect. A command (intent envelope submission) produces decisions, not arbitrary state changes. Mixing them — locking a data structure long enough to query and then mutate — is the root cause of TOCTOU. Single-writer digestion makes the boundary absolute.</p>
+
+<h3 id="h3-12" class="disclosure-standard" data-disclosure-level="standard">Subagents submit intent envelopes, not direct mutations</h3>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Subagents (whether in-process, subprocess, or fleet-remote) never call `store.reserve_path()` or `store.claim_task()`. They submit typed intent envelopes (e.g., `LeaseRequestEnvelope`) to the digester. The envelope is a declaration of desired state, not a state-changing operation. This is the CQS boundary: agents express intent, digester decides outcome.</p>
+
+<h3 id="h3-14" class="disclosure-standard" data-disclosure-level="standard">The digester is the single writer for its canonical stream</h3>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Exactly one component — the digester — writes to canonical coordination artifacts. All other components are read-only consumers of projections. This is not &quot;single-writer via lock&quot; — it is architecturally single-writer. The digester processes one envelope at a time, sequentially, because it owns the write path. Adversarial or concurrent writers cannot exist by design.</p>
+
+<h3 id="h3-16" class="disclosure-standard" data-disclosure-level="standard">Advisory locks are an implementation detail, not the architecture</h3>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">In-process, the digester may use an `asyncio.Lock` or a file-system advisory lock (`fnctl.flock`) to guard its single-writer section across subprocess boundaries. This is a correctness mechanism for the digester&#x27;s own serial execution guarantee, not a general-purpose coordination primitive exposed to consumers.</p>
+
+<h3 id="h3-18" class="disclosure-standard" data-disclosure-level="standard">Denied and conflicting intents become evidence, not invisible failure</h3>
+
+<p id="p-19" class="disclosure-standard" data-disclosure-level="standard">When lock-scoped mutation patterns deny a request, the denial is often a silent return value (or exception) with no durable record. The digestion pipeline treats every decision as a first-class artifact: granted/denied/rejected decisions are written to `events.jsonl` and conflict records to `conflicts/`. Nothing is invisible.</p>
+
+<h2 id="h2-20" class="disclosure-standard" data-disclosure-level="standard">Producer → Envelope → Digester → Decision → Projection flow</h2>
+
+<pre id="code-21"><code class="language-text">Producer                Envelope              Digester               Decision              Projection
+(agent/tool/session)    (intent artifact)     (single writer)        (outcome artifact)    (read-only view)
+
+┌──────────┐            ┌────────────────┐    ┌──────────────┐      ┌─────────────────┐    ┌────────────┐
+│ Subagent │──intent──▶│ LeaseRequest    │───▶│              │─────▶│ LeaseDecision   │    │            │
+│ Session  │            │ Envelope       │    │  Digester    │      │ Envelope        │    │ Projection │
+│ Tool     │            │                │    │              │      │                 │    │ Layer      │
+│ Ralph    │            │ schema-valid   │    │ checks       │      │ granted ────────▶──▶│ (queries)  │
+│          │            │ sha256-hashed  │    │ canonical    │      │ denied  ──▶ evt  │    │            │
+│          │            │ auth-attested  │    │ state        │      │ rejected──▶ evt  │    │            │
+└──────────┘            └────────────────┘    └──────────────┘      └─────────────────┘    └────────────┘</code></pre>
+
+<h3 id="h3-22" class="disclosure-standard" data-disclosure-level="standard">Step 1: Producer emits intent envelope</h3>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">A producer (subagent, tool executor, session lifecycle handler, Ralph scanner) constructs a typed envelope — e.g., `LeaseRequestEnvelope` with fields: `lease_id`, `path`, `requested_by_session`, `requested_at`, `mode` (read/write/exclusive). The envelope is written as a standalone JSON artifact under a pending-intent directory or submitted via IPC (future).</p>
+
+<h3 id="h3-24" class="disclosure-standard" data-disclosure-level="standard">Step 2: Envelope validation</h3>
+
+<p id="p-25" class="disclosure-standard" data-disclosure-level="standard">Before reaching the digester, each envelope is validated:</p>
+
+<ul id="list-26" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Schema validation**: matches the envelope&#x27;s declared JSON schema</li>
+  <li>**Hash integrity**: `envelope_sha256` matches the payload</li>
+  <li>**Auth attestation**: `requested_by_session` corresponds to an active, authorized session</li>
+</ul>
+
+<p id="p-27" class="disclosure-standard" data-disclosure-level="standard">Invalid envelopes are rejected before digestion — they never reach the canonical state check.</p>
+
+<h3 id="h3-28" class="disclosure-standard" data-disclosure-level="standard">Step 3: Digester checks against canonical state</h3>
+
+<p id="p-29" class="disclosure-standard" data-disclosure-level="standard">The digester reads the current canonical state for the affected resource (leases, tasks, sessions) and evaluates the request:</p>
+
+<ul id="list-30" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Path X requested for exclusive write → check no active lease exists for X</li>
+  <li>Task Y claimed → check no other session has claimed Y</li>
+  <li>Session Z forked → check parent session is terminal</li>
+</ul>
+
+<p id="p-31" class="disclosure-standard" data-disclosure-level="standard">This is the serialized single-writer section. Only the digester performs this check-then-update sequence, and it does so one envelope at a time.</p>
+
+<h3 id="h3-32" class="disclosure-standard" data-disclosure-level="standard">Step 4: Digester produces a decision</h3>
+
+<p id="p-33" class="disclosure-standard" data-disclosure-level="standard">The outcome is a `LeaseDecisionEnvelope` (or `TaskDecisionEnvelope`, etc.) with:</p>
+
+<ul id="list-34" class="disclosure-standard" data-disclosure-level="standard">
+  <li>`decision`: `granted` | `denied` | `rejected`</li>
+  <li>`reason`: human-readable rationale for denied/rejected</li>
+  <li>`digester_session`: session ID of the digester that processed the request</li>
+  <li>`processed_at`: timestamp</li>
+  <li>`evidence_sha256`: hash chain link to the request envelope</li>
+</ul>
+
+<h3 id="h3-35" class="disclosure-standard" data-disclosure-level="standard">Step 5: Decision routing</h3>
+
+<ul id="list-36" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Granted decisions**: update canonical artifacts (`leases/paths/X.json` written). The intent envelope is moved from pending to accepted.</li>
+  <li>**Denied decisions**: intent moved to rejected directory; `coord.path.reservation_refused` event written to `events.jsonl`; conflict record written to `conflicts/`.</li>
+  <li>**Rejected decisions**: (schema/auth failure) — envelope discarded or moved to dead-letter; event written to `events.jsonl`.</li>
+</ul>
+
+<h3 id="h3-37" class="disclosure-standard" data-disclosure-level="standard">Step 6: Projection layer serves queries</h3>
+
+<p id="p-38" class="disclosure-standard" data-disclosure-level="standard">All read-side consumers (agents checking &quot;is path X available?&quot;, dashboard displaying active leases, Ralph scanning for mission candidates) read from projections — compiled read-only views rebuilt from canonical artifacts. No consumer reads canonical artifacts directly for query purposes. Projections are regenerated atomically (write to temp, rename over old) when canonical state changes.</p>
+
+<h2 id="h2-39" class="disclosure-standard" data-disclosure-level="standard">How subagent subprocesses will use this</h2>
+
+<p id="p-40" class="disclosure-standard" data-disclosure-level="standard">Future Rig subagents are separate tailored agent-loop subprocesses. Each:</p>
+
+<ol id="list-41" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Submits intent envelopes via artifact files or IPC** — never calls `store.*` mutation methods directly. For v0, intent envelopes are JSON files written to a well-known pending-intent directory. Future: Unix domain socket or sidecar IPC.</li>
+</ol>
+
+<ol id="list-42" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Does NOT directly mutate shared coordination state** — the subagent binary has no import of `CoordinationStore` mutation methods. It only imports the envelope builder and the projection reader.</li>
+</ol>
+
+<ol id="list-43" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Reads projections for state queries** — &quot;what paths are claimed?&quot; → read `projections/leases.json` (or query through a projection client). Projections are rebuilt by the digester after every accepted decision.</li>
+</ol>
+
+<ol id="list-44" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Receives decisions from the digester** — the subagent polls (or subscribes, in IPC future) for decision envelopes matching its session ID. A granted decision means &quot;proceed with work on path X&quot;. A denied decision means &quot;path X is contested — stand down, read the conflict record&quot;.</li>
+</ol>
+
+<p id="p-45" class="disclosure-standard" data-disclosure-level="standard">This makes subagents truly disposable: they hold no canonical state, they don&#x27;t need to coordinate among themselves, and a crashed subagent leaves no corrupted state (at most, an orphaned pending intent, which the digester can detect via heartbeat/liveness).</p>
+
+<h2 id="h2-46" class="disclosure-standard" data-disclosure-level="standard">Which artifacts are canonical</h2>
+
+<table id="table-47" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Artifact path</th><th>Content</th><th>Mutation pattern</th></tr></thead>
+<tbody>
+<tr><td>`leases/paths/*.json`</td><td>Path reservations with session, mode, timestamp</td><td>Write-on-grant, delete-on-release (via digester only)</td></tr>
+<tr><td>`tasks/*.json`</td><td>Task claims with session, scope, status</td><td>Write-on-claim, update-on-complete/abandon (via digester only)</td></tr>
+<tr><td>`sessions/*.json`</td><td>Session state, heartbeat, parent/child linkage</td><td>Write-on-create, update-on-state-change (via digester only)</td></tr>
+<tr><td>`events.jsonl`</td><td>Append-only event ledger — every decision, conflict, state transition</td><td>Append-only (via digester only)</td></tr>
+<tr><td>`conflicts/*.json`</td><td>Conflict records — denied/reserved intents with rationale</td><td>Write-on-conflict (via digester only)</td></tr>
+</tbody>
+</table>
+
+<p id="p-48" class="disclosure-standard" data-disclosure-level="standard">**Projections are NOT canonical**. They are read-only compiled views rebuilt from canonical artifacts. They can be deleted and regenerated at any time without data loss. They exist for query performance and consumer isolation.</p>
+
+<h2 id="h2-49" class="disclosure-standard" data-disclosure-level="standard">How denied conflicts become telemetry and evidence</h2>
+
+<p id="p-50" class="disclosure-standard" data-disclosure-level="standard">Every denied lease produces:</p>
+
+<ol id="list-51" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**`coord.path.reservation_refused` event** — appended to `events.jsonl` with:</li>
+  <li>`envelope_sha256` of the denied request</li>
+  <li>`conflicting_lease_sha256` of the existing lease that blocked it</li>
+  <li>`refusal_reason` (already_leased, session_inactive, path_invalid)</li>
+  <li>`requested_by_session`, `processed_at`</li>
+</ol>
+
+<ol id="list-52" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Conflict record** — written to `conflicts/&lt;conflict_id&gt;.json` with:</li>
+  <li>Full request envelope (inlined or referenced by hash)</li>
+  <li>Full blocking lease (inlined or referenced by hash)</li>
+  <li>Decision rationale</li>
+  <li>Timestamp and digest chain link</li>
+</ol>
+
+<ol id="list-53" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Telemetry scope** — these events feed the `coordination_metrics` telemetry scope:</li>
+  <li>`denial_rate` per path prefix</li>
+  <li>`contention_hotspots` (paths with high refusal frequency)</li>
+  <li>`double_win_rate` (if detected post-digester — should be zero)</li>
+  <li>`digester_latency` distribution</li>
+  <li>`pending_intent_age` (how long intents sit before digestion)</li>
+</ol>
+
+<p id="p-54" class="disclosure-standard" data-disclosure-level="standard">All denial data is durable, queryable, and feeds both operational monitoring and the Ralph mission candidate scanner (contended paths → `CandidateKind.CONTENTION_HOTSPOT`).</p>
+
+<h2 id="h2-55" class="disclosure-standard" data-disclosure-level="standard">Why no database dependency</h2>
+
+<p id="p-56" class="disclosure-standard" data-disclosure-level="standard">SQLite, DuckDB, Postgres, and Redis are out of scope for coordination artifacts. Rationale:</p>
+
+<ul id="list-57" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Filesystem is the universal substrate** — works across subprocesses, machines, and CI environments without setup or credentials</li>
+  <li>**JSON/JSONL is human-readable and git-diffable** — agents and operators can inspect state with any text tool</li>
+  <li>**Atomic file operations exist** — `tempfile + os.rename` is atomic on POSIX; `flock` provides advisory locking without a database server</li>
+  <li>**Schemas and receipts provide integrity** — every artifact has a declared JSON schema and SHA256 hash chain; no need for database constraints</li>
+  <li>**Projections are files too** — DuckDB may be used internally by the analytics subsystem (`rig_relay/analytics/`), but that is an analytical read-side, not the coordination write path</li>
+</ul>
+
+<p id="p-58" class="disclosure-standard" data-disclosure-level="standard">The digestion pipeline writes canonical JSON/JSONL artifacts using atomic file operations. The single-writer guarantee (not database transactions) provides consistency.</p>
+
+<h2 id="h2-59" class="disclosure-standard" data-disclosure-level="standard">How this prepares context assembler and hardened built-in tools</h2>
+
+<h3 id="h3-60" class="disclosure-standard" data-disclosure-level="standard">Context assembler</h3>
+
+<p id="p-61" class="disclosure-standard" data-disclosure-level="standard">The context assembler (`rig_relay/context/compiler.py`) currently reads repo state directly. The digestion pipeline enables:</p>
+
+<ol id="list-62" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**`context.requested` envelopes** — when an agent requests context for a mission, the request becomes an envelope. The digester checks: is this session authorized? has this context already been assembled within TTL? are any paths blacklisted for this session?</li>
+</ol>
+
+<ol id="list-63" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**`context_packet.ready` / `context_packet.rejected` events** — decisions on context requests become telemetry events in `events.jsonl`. Rejected packets (e.g., &quot;path blacklisted&quot;, &quot;session expired&quot;) become conflict records.</li>
+</ol>
+
+<ol id="list-64" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Context packet caching** — the digester can serve cached context packets when the underlying artifacts haven&#x27;t changed, avoiding redundant compilation.</li>
+</ol>
+
+<h3 id="h3-65" class="disclosure-standard" data-disclosure-level="standard">Hardened built-in tools</h3>
+
+<p id="p-66" class="disclosure-standard" data-disclosure-level="standard">Every mutation-capable built-in tool (`WriteFile`, `SearchReplace`, `BashTool` with mutation side-effects, `checkpoint`) will flow through the digestion pipeline:</p>
+
+<ol id="list-67" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**`tool.invocation.requested` envelope** — before execution, the tool submits a lease request for the paths it intends to mutate. The digester checks: is the session authorized? does a conflicting lease exist? is the path in the session&#x27;s declared scope?</li>
+</ol>
+
+<ol id="list-68" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Lease-required mutation gate** — the tool execution is gated on receiving a `LeaseDecisionEnvelope` with `granted`. If denied, the tool raises `ToolPermissionError` with the conflict reason.</li>
+</ol>
+
+<ol id="list-69" class="disclosure-standard" data-disclosure-level="standard">
+  <li>**Receipt emission** — after successful execution, the tool emits a receipt into the tool invocation trace. The receipt&#x27;s `evidence_sha256` chains into the lease&#x27;s termination event, providing end-to-end audit: request → grant → execution → receipt → release.</li>
+</ol>
+
+<p id="p-70" class="disclosure-standard" data-disclosure-level="standard">This eliminates the current pattern where tools check permissions inline without serialized coordination, which would produce the same TOCTOU race described above when multiple session processes run concurrently.</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/serialized-digestion-pipeline.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

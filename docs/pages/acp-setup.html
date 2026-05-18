@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACP Setup — Rig Relay Docs</title>
+<meta name="description" content="Rig Relay can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). Rig Relay includes the `rig-relay-acp` tool. Once you have set up...">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/acp-setup.html">
+<meta property="og:title" content="ACP Setup">
+<meta property="og:description" content="Rig Relay can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). Rig Relay includes the `rig-relay-acp` tool. Once you have set up...">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/acp-setup.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ACP Setup">
+<meta name="twitter:description" content="Rig Relay can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). Rig Relay includes the `rig-relay-acp` tool. Once you have set up...">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>ACP Setup</h1>
+  <p class="doc-summary">Rig Relay can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). Rig Relay includes the `rig-relay-acp` tool. Once you have set up...</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Source</dt><dd><code>docs/json/acp-setup.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">ACP Setup</h1>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Rig Relay can be used in text editors and IDEs that support [Agent Client Protocol](https://agentclientprotocol.com/overview/clients). Rig Relay includes the `rig-relay-acp` tool. Once you have set up Rig Relay with the API keys, you are ready to use `rig-relay-acp` in your editor. Below are the setup instructions for some editors that support ACP.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Zed</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">For usage in Zed, we recommend using the [Rig Relay Zed&#x27;s extension](https://zed.dev/extensions/rig-relay). Alternatively, you can set up a local install as follows:</p>
+
+<ol id="list-5" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Go to `~/.config/zed/settings.json` and, under the `agent_servers` JSON object, add the following key-value pair to invoke the `rig-relay-acp` command. Here is the snippet:</li>
+</ol>
+
+<pre id="json-6"><code class="language-json">{
+   &quot;agent_servers&quot;: {
+      &quot;Rig Relay&quot;: {
+         &quot;type&quot;: &quot;custom&quot;,
+         &quot;command&quot;: &quot;rig-relay-acp&quot;,
+         &quot;args&quot;: [],
+         &quot;env&quot;: {}
+      }
+   }
+}</code></pre>
+
+<ol id="list-7" class="disclosure-standard" data-disclosure-level="standard">
+  <li>In the `New Thread` pane on the right, select the `Rig Relay` agent and start the conversation.</li>
+</ol>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">JetBrains IDEs</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">For using Rig Relay in JetBrains IDEs, you&#x27;ll need to have the [Jetbrains AI Assistant extension](https://plugins.jetbrains.com/plugin/22282-jetbrains-ai-assistant) installed</p>
+
+<h3 id="h3-10" class="disclosure-standard" data-disclosure-level="standard">Version 2025.3 or later</h3>
+
+<ol id="list-11" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Open settings, then go to `Tools &gt; AI Assistant &gt; Agents`. Search for `Rig Relay`, click install</li>
+</ol>
+
+<ol id="list-12" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Open AI Assistant. You should be able to select Rig Relay from the agent selector (if you&#x27;re not authenticated yet, you will be prompted to do so).</li>
+</ol>
+
+<h3 id="h3-13" class="disclosure-standard" data-disclosure-level="standard">Legacy method</h3>
+
+<ol id="list-14" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Add the following snippet to your JetBrains IDE acp.json ([documentation](https://www.jetbrains.com/help/ai-assistant/acp.html)):</li>
+</ol>
+
+<pre id="json-15"><code class="language-json">{
+  &quot;agent_servers&quot;: {
+    &quot;Rig Relay&quot;: {
+      &quot;command&quot;: &quot;rig-relay-acp&quot;,
+    }
+  }
+}</code></pre>
+
+<ol id="list-16" class="disclosure-standard" data-disclosure-level="standard">
+  <li>In the AI Chat agent selector, select the new Rig Relay agent and start the conversation.</li>
+</ol>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Neovim (using avante.nvim)</h2>
+
+<p id="p-18" class="disclosure-standard" data-disclosure-level="standard">Add Rig Relay in the acp_providers section of your configuration</p>
+
+<pre id="code-19"><code class="language-lua">{
+  acp_providers = {
+    [&quot;rig-relay&quot;] = {
+      command = &quot;rig-relay-acp&quot;,
+      env = {
+         DEEPSEEK_API_KEY = os.getenv(&quot;DEEPSEEK_API_KEY&quot;), -- necessary if you setup Rig Relay manually
+      },
+    }
+  }
+}</code></pre>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/acp-setup.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>
