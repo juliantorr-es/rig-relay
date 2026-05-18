@@ -26,11 +26,11 @@ def main() -> int:
     """Entrypoint for the packaged app. Supports CLI flags for SwiftUI shell."""
     args = sys.argv[1:] if len(sys.argv) > 1 else []
 
-    if "--demo-seed" in args:
+    if "--dev-demo-seed" in args:
         return _cmd_seed()
-    if "--demo-doctor" in args:
+    if "--dev-demo-doctor" in args:
         return _cmd_doctor()
-    if "--demo-render-docs" in args:
+    if "--dev-demo-render-docs" in args:
         return _cmd_render_docs()
     if "--launch-cockpit" in args:
         return _cmd_launch_cockpit()

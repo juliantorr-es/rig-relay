@@ -49,3 +49,15 @@ class EventName(StrEnum):
     # Telemetry consent enforcement events
     TELEMETRY_REMOTE_UPLOAD_ALLOWED = "telemetry.remote_upload.allowed"
     TELEMETRY_REMOTE_UPLOAD_DENIED = "telemetry.remote_upload.denied"
+    # Integration events
+    INTEGRATION_STATUS_CHECKED = "rig.relay.integration.status_checked"
+    INTEGRATION_CONNECTION_STATE_CHANGED = (
+        "rig.relay.integration.connection_state_changed"
+    )
+    INTEGRATION_CAPABILITY_INVOKED = "rig.relay.integration.capability_invoked"
+    INTEGRATION_SCOPE_GRANTED = "rig.relay.integration.scope_granted"
+    INTEGRATION_SCOPE_REVOKED = "rig.relay.integration.scope_revoked"
+    INTEGRATION_EVIDENCE_WRITTEN = "rig.relay.integration.evidence_written"
+    INTEGRATION_MUTATION_GATED = "rig.relay.integration.mutation_gated"
+    INTEGRATION_MUTATION_APPROVED = "rig.relay.integration.mutation_approved"
+    INTEGRATION_MUTATION_REFUSED = "rig.relay.integration.mutation_refused"

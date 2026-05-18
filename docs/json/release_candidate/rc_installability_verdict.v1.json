@@ -84,6 +84,12 @@
       "detail": "Installability smoke may pass but dogfood golden path is 'not_verified'. 2 steps not yet verified by a human reviewer. Do not treat installability-only checks as RC readiness.",
       "duration_ms": 0,
       "status": "warn"
+    },
+    {
+      "check_id": "demo_commands_not_in_product_help",
+      "detail": "Demo commands (demo-seed, demo-doctor, demo-render-docs) moved to dev namespace; not presented as product commands in rig-relay --help",
+      "duration_ms": 0,
+      "status": "pass"
     }
   ],
   "cli_entry_points_checked": [

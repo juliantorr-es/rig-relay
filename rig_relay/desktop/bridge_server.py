@@ -1013,6 +1013,10 @@ class DesktopBridgeServer:
                 )
 
     def _build_healthz(self) -> Response:
+        from rig_relay.governance.service_state import get_capability_gate
+
+        gate = get_capability_gate()
+        state_summary = gate.state_summary()
         return _json_response({
             "ok": True,
             "schema_version": "rig.desktop.healthz.v1",
@@ -1065,6 +1069,10 @@ class DesktopBridgeServer:
             ),
             "active_ws_clients": 0,
             "last_ws_error": None,
+            "service_state": state_summary.get("service_state", "unknown"),
+            "profile_exists": state_summary.get("profile_exists", False),
+            "profile_state": state_summary.get("profile_state", "setup_required"),
+            "local_auth_enabled": state_summary.get("local_auth_enabled", False),
         })
 
     def _print_handshake_trace(self) -> None:

@@ -378,6 +378,40 @@ def _build_identity() -> dict[str, Any]:
     return {"available": True, "any_signed_in": any_signed_in, "providers": providers}
 
 
+def _build_integrations() -> dict[str, Any]:
+    """Build content-light integration provider status from manifests and identity."""
+    try:
+        from rig_relay.core.integrations.registry import build_integration_projection
+
+        providers_list = build_integration_projection()
+        connected_count = sum(
+            1 for p in providers_list if p.get("connection_state") == "connected"
+        )
+        configured_count = sum(
+            1
+            for p in providers_list
+            if p.get("connection_state") not in {"not_configured", "auth_required"}
+        )
+        return {
+            "available": True,
+            "total": len(providers_list),
+            "connected": connected_count,
+            "configured": configured_count,
+            "providers": providers_list,
+        }
+    except Exception:
+        return {"available": False}
+
+
+def _build_service_state() -> dict[str, Any]:
+    from rig_relay.governance.service_state import get_capability_gate
+
+    gate = get_capability_gate()
+    summary = gate.state_summary()
+    summary["available"] = True
+    return summary
+
+
 def _build_release_gate() -> dict[str, Any]:
     """Read release gate data from docs/json/release_gate/."""
     gate_path = (
@@ -524,9 +558,11 @@ def build_projection(  # noqa: PLR0914
     storage = _build_storage(root)
     providers = _build_providers()
     identity = _build_identity()
+    integrations = _build_integrations()
     integrity = _build_integrity(root)
     tool_runtime_summary = _build_tool_runtime_summary()
     release_gate = _build_release_gate()
+    service_state = _build_service_state()
 
     source_status = {
         "current_state": current_state["available"],
@@ -538,9 +574,11 @@ def build_projection(  # noqa: PLR0914
         "storage": storage["available"],
         "provider_status": providers["total"] > 0,
         "identity": identity["available"],
+        "integrations": integrations["available"],
         "integrity": integrity is not None,
         "tool_runtime_summary": tool_runtime_summary.get("available", False),
         "release_gate": release_gate["available"],
+        "service_state": service_state["available"],
     }
 
     warnings: list[str] = []
@@ -571,9 +609,11 @@ def build_projection(  # noqa: PLR0914
         "storage": storage,
         "providers": providers,
         "identity": identity,
+        "integrations": integrations,
         "integrity": integrity,
         "tool_runtime_summary": tool_runtime_summary,
         "_release_gate": release_gate,
+        "service_state": service_state,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

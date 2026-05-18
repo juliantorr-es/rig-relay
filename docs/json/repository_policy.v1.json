@@ -49,6 +49,20 @@
       "dist/"
     ]
   },
+  "demo_fixture_policy": {
+    "demo_synthetic_artifacts_cannot_satisfy_rc_readiness": true,
+    "demo_artifacts_must_be_labeled_non_rc_fixture": true,
+    "release_gate_validators_reject_demo_artifacts_as_passing_evidence": true,
+    "synthetic_fixtures_allowed_only_for": [
+      "adversarial_malformed_cases",
+      "schema_contract_cases",
+      "minimized_deterministic_reproductions",
+      "deterministic_edge_cases"
+    ],
+    "demo_commands_scope": "dev_namespace_only",
+    "demo_commands_not_in_product_quick_start": true,
+    "demo_generated_data_blocked_from_rc_evidence": true
+  },
   "review_required": true,
   "review_note": "License and contributor terms should be reviewed by legal counsel before broad external contribution intake. This document is project policy, not legal advice."
 }

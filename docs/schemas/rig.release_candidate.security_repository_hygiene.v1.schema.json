@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.release_candidate.security_repository_hygiene.v1.schema.json",
+  "title": "Rig Relay RC Security + Repository Hygiene v1",
+  "description": "Structured release-candidate trust-surface evidence for repository security, CI/workflow safety, metadata consistency, and secret/path hygiene.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "branch",
+    "head_sha",
+    "overall_status",
+    "checks",
+    "files_checked",
+    "workflow_findings",
+    "security_policy_status",
+    "license_status",
+    "metadata_consistency_status",
+    "secret_scan_status",
+    "required_next_actions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.release_candidate.security_repository_hygiene.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["passed", "hold", "failed"]
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "status", "detail"],
+        "properties": {
+          "check_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "warn", "fail"]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "files_checked": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "workflow_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["workflow", "severity", "finding_id", "detail"],
+        "properties": {
+          "workflow": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "finding_id": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "security_policy_status": {
+      "type": "string",
+      "enum": ["passed", "hold", "failed"]
+    },
+    "license_status": {
+      "type": "string",
+      "enum": ["passed", "hold", "failed"]
+    },
+    "metadata_consistency_status": {
+      "type": "string",
+      "enum": ["passed", "hold", "failed"]
+    },
+    "secret_scan_status": {
+      "type": "string",
+      "enum": ["passed", "hold", "failed"]
+    },
+    "required_next_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -27,6 +27,7 @@ PROGRESS_TIMELINE = "ProgressTimeline"
 # System/diagnostic widgets (rendered in System mode)
 PROVIDER_STATUS = "ProviderStatus"
 IDENTITY_STATUS = "IdentityStatus"
+INTEGRATION_STATUS = "IntegrationStatus"
 TELEMETRY_CONSENT_STATUS = "TelemetryConsentStatus"
 LOCAL_AUTHORITY_STATUS = "LocalAuthorityStatus"
 MODEL_OBSERVATION_SUMMARY = "ModelObservationSummary"
@@ -46,6 +47,7 @@ ALL_WIDGETS = frozenset({
     PROGRESS_TIMELINE,
     PROVIDER_STATUS,
     IDENTITY_STATUS,
+    INTEGRATION_STATUS,
     TELEMETRY_CONSENT_STATUS,
     LOCAL_AUTHORITY_STATUS,
     MODEL_OBSERVATION_SUMMARY,
@@ -74,6 +76,7 @@ REVIEW_WIDGETS = frozenset({
 SYSTEM_WIDGETS = frozenset({
     PROVIDER_STATUS,
     IDENTITY_STATUS,
+    INTEGRATION_STATUS,
     TELEMETRY_CONSENT_STATUS,
     LOCAL_AUTHORITY_STATUS,
     MODEL_OBSERVATION_SUMMARY,
@@ -159,6 +162,7 @@ PROJECTION_FIELD_TO_WIDGET: dict[str, str] = {
     "progress_events": PROGRESS_TIMELINE,
     "providers": PROVIDER_STATUS,
     "identity": IDENTITY_STATUS,
+    "integrations": INTEGRATION_STATUS,
     "telemetry_consent": TELEMETRY_CONSENT_STATUS,
     "source_status": LOCAL_AUTHORITY_STATUS,
 }

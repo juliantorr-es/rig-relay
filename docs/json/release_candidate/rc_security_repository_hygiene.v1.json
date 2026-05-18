@@ -1,0 +1,98 @@
+{
+  "branch": "main",
+  "checks": [
+    {
+      "check_id": "security_policy_private_reporting",
+      "detail": "Security policy supports private vulnerability reporting and 0.1.0a1 scope",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "check_id": "workflow_least_privilege",
+      "detail": "Workflow findings: 4",
+      "status": "pass"
+    },
+    {
+      "check_id": "license_consistency",
+      "detail": "Public license metadata is AGPL-3.0-or-later across policy and package metadata",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "check_id": "metadata_consistency",
+      "detail": "README, pyproject, policies, changelog, and install script are aligned",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "check_id": "secret_and_path_hygiene",
+      "detail": "Secret/path scan findings: 0",
+      "status": "pass"
+    },
+    {
+      "check_id": "markdown_exception_policy",
+      "detail": "Allowed Markdown exceptions remain allowed and forbidden report paths are rejected",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "files_checked": [
+    "README.md",
+    "SECURITY.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "THIRD_PARTY_NOTICES.md",
+    "ATTRIBUTION.md",
+    "pyproject.toml",
+    ".gitignore",
+    "docs/json/repository_policy.v1.json",
+    "docs/json/license_policy.v1.json",
+    "docs/json/release_gate/rc_candidate_verdict.v1.json",
+    "docs/json/release_candidate/rc_golden_path_run.v1.json",
+    "scripts/install.sh",
+    ".github/workflows/build-and-upload.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/issue-labeler.yml",
+    ".github/workflows/pages.yml",
+    ".github/workflows/release.yml",
+    ".github/ISSUE_TEMPLATE/bug-report.yml",
+    ".github/ISSUE_TEMPLATE/config.yml"
+  ],
+  "generated_at": "2026-05-18T05:37:00Z",
+  "head_sha": "361b93a50f857335b65e8a6da119548cb14b1abf",
+  "license_status": "passed",
+  "metadata_consistency_status": "passed",
+  "overall_status": "passed",
+  "required_next_actions": [],
+  "schema_version": "rig.release_candidate.security_repository_hygiene.v1",
+  "secret_scan_status": "passed",
+  "security_policy_status": "passed",
+  "workflow_findings": [
+    {
+      "detail": "Top-level permissions are not explicitly declared",
+      "finding_id": "workflow.permissions_not_explicit",
+      "severity": "low",
+      "workflow": ".github/workflows/build-and-upload.yml"
+    },
+    {
+      "detail": "Job 'attach-to-release' has elevated permissions (contents: write)",
+      "finding_id": "workflow.permissions_guarded_write",
+      "severity": "low",
+      "workflow": ".github/workflows/build-and-upload.yml"
+    },
+    {
+      "detail": "Top-level permissions are not explicitly declared",
+      "finding_id": "workflow.permissions_not_explicit",
+      "severity": "low",
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "detail": "Top-level permissions are not explicitly declared",
+      "finding_id": "workflow.permissions_not_explicit",
+      "severity": "low",
+      "workflow": ".github/workflows/issue-labeler.yml"
+    }
+  ]
+}

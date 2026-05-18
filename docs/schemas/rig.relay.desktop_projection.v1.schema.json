@@ -18,8 +18,10 @@
     "storage",
     "providers",
     "identity",
+    "integrations",
     "warnings",
-    "read_only_actions"
+    "read_only_actions",
+    "service_state"
   ],
   "properties": {
     "schema_version": {
@@ -38,6 +40,11 @@
     "source_status": {
       "type": "object",
       "description": "Which data sources were found vs missing.",
+      "properties": {
+        "integrations": {
+          "type": "boolean"
+        }
+      },
       "patternProperties": {
         "^[a-z_]+$": {
           "type": "boolean"
@@ -444,6 +451,86 @@
       },
       "required": ["available", "any_signed_in", "providers"]
     },
+    "integrations": {
+      "type": "object",
+      "description": "Content-light integration provider status from manifests and identity. No raw tokens or private content.",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "connected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "configured": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provider_id", "display_name", "connection_state"],
+            "properties": {
+              "provider_id": {
+                "type": "string"
+              },
+              "display_name": {
+                "type": "string"
+              },
+              "auth_kind": {
+                "type": "string"
+              },
+              "connection_state": {
+                "type": "string",
+                "enum": ["not_configured", "disconnected", "auth_required", "connected", "degraded", "error"]
+              },
+              "profile_gate_required": {
+                "type": "boolean"
+              },
+              "account_id_hash": {
+                "type": "string"
+              },
+              "granted_scopes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["capability_id", "display_name", "kind"],
+                  "properties": {
+                    "capability_id": { "type": "string" },
+                    "display_name": { "type": "string" },
+                    "kind": {
+                      "type": "string",
+                      "enum": ["read", "write", "observe", "webhook_ingest"]
+                    },
+                    "gated": { "type": "boolean" },
+                    "profile_gate_required": { "type": "boolean" },
+                    "available": { "type": "boolean" },
+                    "requires_approval": { "type": "boolean" },
+                    "mcp_acp_exposable": { "type": "boolean" }
+                  }
+                }
+              },
+              "last_checked_at": { "type": "string" },
+              "degraded_reason": { "type": "string" },
+              "warnings": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "required": ["available"]
+    },
     "warnings": {
       "type": "array",
       "items": {
@@ -458,6 +545,20 @@
       },
       "description": "List of read-only action names the cockpit can invoke.",
       "uniqueItems": true
+    },
+    "service_state": {
+      "type": "object",
+      "description": "Local control-plane service state and profile summary. Content-light.",
+      "properties": {
+        "available": { "type": "boolean" },
+        "service_state": { "type": "string" },
+        "profile_exists": { "type": "boolean" },
+        "profile_state": { "type": "string" },
+        "local_auth_enabled": { "type": "boolean" },
+        "passkey_registered": { "type": "boolean" },
+        "telemetry_mode": { "type": "string" }
+      },
+      "required": ["available"]
     },
     "integrity": {
       "type": [

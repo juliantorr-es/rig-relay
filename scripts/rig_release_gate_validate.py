@@ -51,6 +51,19 @@ MARKDOWN_EVIDENCE_FORBIDDEN_PATTERNS: list[str] = [
     "handoff.md",
 ]
 
+DEMO_ARTIFACT_PATTERNS: list[str] = [
+    ".build/rig-relay/demo/",
+    "demo-synthetic",
+    "_demo_synthetic",
+    "source-demo",
+    "demo-seed",
+    "demo-doctor",
+    "demo-render-docs",
+    "demo_commands.py",
+    "demo_mode",
+    "non_rc_fixture",
+]
+
 STEP_TO_BLOCKER: dict[str, str] = {
     "gp_feral_subprocess_accountability": "blk_runtime_feral_subprocess",
     "gp_bash_rerouting_transparency": "blk_bash_rerouting_transparency",
@@ -227,6 +240,13 @@ def validate_schema_artifact(
     return errors
 
 
+def is_demo_artifact_path(p: str) -> bool:
+    for pat in DEMO_ARTIFACT_PATTERNS:
+        if pat in p:
+            return True
+    return False
+
+
 def is_markdown_path(p: str) -> bool:
     return p.endswith(".md") or p.endswith(".mdx") or p.endswith(".markdown")
 
@@ -269,6 +289,12 @@ def check_evidence_paths(
             errors.append(
                 f"Forbidden Markdown evidence path: {p} "
                 f"(not in allowed_markdown_exceptions; use JSON/JSONL/CSV artifacts)"
+            )
+        if is_demo_artifact_path(p):
+            errors.append(
+                f"DEMO EVIDENCE REJECTED: {p} references demo artifacts "
+                f"(demo-synthetic, demo_commands, .build/rig-relay/demo/). "
+                f"RC evidence must not include demo-generated data."
             )
     return errors
 
@@ -583,7 +609,9 @@ def run_validation(
                 golden_path.get("evidence_paths", []), repo_root, allowed_exceptions
             )
         )
-        errors.extend(check_golden_path_blocker_consistency(golden_path, blockers, repo_root))
+        errors.extend(
+            check_golden_path_blocker_consistency(golden_path, blockers, repo_root)
+        )
 
     phase_summaries = _build_phase_summaries(phases, errors)
     status = "passed" if len(errors) == 0 else "failed"
@@ -635,7 +663,8 @@ def _compute_verdict(
         if consistency_errors:
             return "FAIL"
         blocked_notice_errors = [
-            e for e in errors
+            e
+            for e in errors
             if "blocked step" in e.lower()
             or "not-verified" in e.lower()
             or "cannot promote" in e.lower()

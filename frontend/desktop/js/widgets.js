@@ -715,6 +715,87 @@ registerWidget('identity', (container, level) => {
   renderStandardCard(container, 'Identity', html, 'identity', statusCls);
 });
 
+registerWidget('integrationStatus', (container, level) => {
+  const proj = state.projection;
+  const integ = (proj && proj.integrations) || {};
+  const providers = integ.providers || [];
+
+  const connectionStateCls = function(state) {
+    if (state === 'connected') return 'ok';
+    if (state === 'auth_required') return 'warn';
+    if (state === 'degraded') return 'warn';
+    if (state === 'error') return 'error';
+    return '';
+  };
+
+  const connectedCount = providers.filter(function(p) {
+    return p.connection_state === 'connected';
+  }).length;
+
+  if (level === 'compact') {
+    renderCompactChip(container, 'Integrations', function() {
+      return {
+        text: connectedCount > 0 ? connectedCount + ' connected' : 'None',
+        cls: connectedCount > 0 ? 'ok' : ''
+      };
+    });
+    return;
+  }
+
+  if (level === 'expanded') {
+    var html = '<h3>Integration Status</h3>';
+    if (!providers.length) {
+      html += '<p class="widget-missing">No integrations configured.</p>';
+    } else {
+      html += '<table class="kv-table">';
+      providers.forEach(function(p) {
+        html += row(p.display_name || p.provider_id, p.connection_state || '—', connectionStateCls(p.connection_state));
+        html += row('Provider ID', p.provider_id || '—');
+        html += row('Capability count', String(p.capability_count || 0));
+        if (p.granted_scopes && p.granted_scopes.length) {
+          html += '<tr><td class="key">Granted scopes</td><td class="val">' + escapeHtml(p.granted_scopes.join(', ')) + '</td></tr>';
+        }
+        if (p.degraded_reason) {
+          html += row('Degraded reason', p.degraded_reason, 'warn');
+        }
+        if (p.capabilities && p.capabilities.length) {
+          html += '<tr><td class="key">Capabilities</td><td class="val">';
+          p.capabilities.forEach(function(c) {
+            var name = c.name || c.id || '—';
+            var gate = c.gating_status ? ' (' + escapeHtml(c.gating_status) + ')' : '';
+            html += '<div>' + escapeHtml(name) + gate + '</div>';
+          });
+          html += '</td></tr>';
+        }
+        html += '<tr><td colspan="2" style="padding:4px 0;border-bottom:1px solid var(--border)"></td></tr>';
+      });
+      html += '</table>';
+    }
+    renderExpandedWidget(container, 'Integration Status', html);
+    return;
+  }
+
+  if (!providers.length) {
+    renderStandardCard(container, 'Integrations',
+      '<span class="widget-missing">No integrations configured.</span>', 'integrationStatus');
+    return;
+  }
+
+  var html = '<table class="kv-table">';
+  providers.forEach(function(p) {
+    var cls = connectionStateCls(p.connection_state);
+    html += row('Provider', p.display_name || p.provider_id || '—');
+    html += row('Provider ID', p.provider_id || '—');
+    html += row('State', p.connection_state || '—', cls);
+    html += row('Capabilities', String(p.capability_count || 0));
+    html += '<tr><td colspan="2" style="padding:2px 0"></td></tr>';
+  });
+  html += '</table>';
+
+  renderStandardCard(container, 'Integrations', html, 'integrationStatus',
+    connectedCount > 0 ? 'ok' : '');
+});
+
 registerWidget('modelProviders', (container, level) => {
   if (level !== 'standard') return;
   var pd = state.projection && state.projection.providers;

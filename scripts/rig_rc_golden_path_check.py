@@ -39,6 +39,16 @@ FORBIDDEN_MARKDOWN_PATTERNS: list[str] = [
     "handoff.md",
 ]
 
+DEMO_ARTIFACT_PATTERNS: list[str] = [
+    ".build/rig-relay/demo/",
+    "demo-synthetic",
+    "_demo_synthetic",
+    "demo-seed",
+    "demo-doctor",
+    "demo-render-docs",
+    "demo_commands.py",
+]
+
 ALLOWED_MARKDOWN: set[str] = {
     "README.md",
     "AGENTS.md",
@@ -122,7 +132,18 @@ def _is_allowed_markdown(p: str) -> bool:
     p_stripped = p.lstrip("./")
     for exc in ALLOWED_MARKDOWN:
         exc_stripped = exc.lstrip("./")
-        if p_stripped == exc_stripped or p_stripped.endswith("/" + exc_stripped) or p_stripped.endswith(exc_stripped):
+        if (
+            p_stripped == exc_stripped
+            or p_stripped.endswith("/" + exc_stripped)
+            or p_stripped.endswith(exc_stripped)
+        ):
+            return True
+    return False
+
+
+def _is_demo_artifact_path(p: str) -> bool:
+    for pat in DEMO_ARTIFACT_PATTERNS:
+        if pat in p:
             return True
     return False
 
@@ -148,10 +169,18 @@ def _check_markdown_evidence_leakage(evidence_paths: list[str]) -> list[str]:
 
 def _check_step_gp_install_sync(repo_root: Path) -> dict[str, Any]:
     installability = _load_json(
-        repo_root / "docs" / "json" / "release_candidate" / "rc_installability_verdict.v1.json"
+        repo_root
+        / "docs"
+        / "json"
+        / "release_candidate"
+        / "rc_installability_verdict.v1.json"
     )
     install_exists = installability is not None
-    install_passed = install_exists and installability.get("overall_status") == "passed" if install_exists else False
+    install_passed = (
+        install_exists and installability.get("overall_status") == "passed"
+        if install_exists
+        else False
+    )
     return {
         "step_id": "gp_install_sync",
         "status": "not_verified",
@@ -178,7 +207,11 @@ def _check_step_gp_understand_product(repo_root: Path) -> dict[str, Any]:
         content = readme.read_text(encoding="utf-8")
         if "rig-relay" not in content.lower() and "rig relay" not in content.lower():
             missing_content.append("does not mention Rig Relay by name")
-        if "desktop" not in content.lower() and "frontend" not in content.lower() and "cockpit" not in content.lower():
+        if (
+            "desktop" not in content.lower()
+            and "frontend" not in content.lower()
+            and "cockpit" not in content.lower()
+        ):
             missing_content.append("does not describe server/frontend architecture")
     return {
         "step_id": "gp_understand_product",
@@ -199,7 +232,10 @@ def _check_step_gp_understand_product(repo_root: Path) -> dict[str, Any]:
 
 
 def _check_step_simple_evidence(
-    step: dict[str, Any], step_id: str, repo_root: Path, is_server_frontend: bool = False
+    step: dict[str, Any],
+    step_id: str,
+    repo_root: Path,
+    is_server_frontend: bool = False,
 ) -> dict[str, Any]:
     evidence_path = step.get("evidence_path", "")
     evidence_exists = _check_evidence_path(evidence_path, repo_root)
@@ -221,7 +257,28 @@ def _check_step_simple_evidence(
     }
 
 
-def _check_step_gp_no_markdown_evidence_leakage(golden_path: dict[str, Any]) -> dict[str, Any]:
+def _check_step_gp_no_demo_evidence(golden_path: dict[str, Any]) -> dict[str, Any]:
+    evidence_paths = golden_path.get("evidence_paths", [])
+    demo_violations = [ep for ep in evidence_paths if _is_demo_artifact_path(ep)]
+    return {
+        "step_id": "gp_no_demo_evidence",
+        "status": "not_verified",
+        "validation_method": "automated_script",
+        "can_automate": True,
+        "automated_check_passed": len(demo_violations) == 0,
+        "evidence_exists": True,
+        "server_frontend_path": False,
+        "detail": (
+            "No demo artifacts found in golden path evidence_paths"
+            if not demo_violations
+            else f"DEMO ARTIFACTS DETECTED: {demo_violations} — RC evidence must not reference demo data"
+        ),
+    }
+
+
+def _check_step_gp_no_markdown_evidence_leakage(
+    golden_path: dict[str, Any],
+) -> dict[str, Any]:
     evidence_paths = golden_path.get("evidence_paths", [])
     markdown_violations = _check_markdown_evidence_leakage(evidence_paths)
     return {
@@ -282,9 +339,84 @@ def _check_step_gp_release_gate_validator_baseline(repo_root: Path) -> dict[str,
     }
 
 
+def _check_step_gp_readme_no_demo(repo_root: Path) -> dict[str, Any]:
+    readme_path = repo_root / "README.md"
+    if not readme_path.is_file():
+        return {
+            "step_id": "gp_readme_no_demo",
+            "status": "not_verified",
+            "validation_method": "automated_script",
+            "can_automate": True,
+            "automated_check_passed": False,
+            "evidence_exists": False,
+            "server_frontend_path": False,
+            "detail": "README.md not found",
+        }
+    content = readme_path.read_text(encoding="utf-8")
+    demo_patterns = ["demo-seed", "demo-doctor", "demo-render-docs"]
+    violations = [p for p in demo_patterns if p in content]
+    return {
+        "step_id": "gp_readme_no_demo",
+        "status": "not_verified",
+        "validation_method": "automated_script",
+        "can_automate": True,
+        "automated_check_passed": len(violations) == 0,
+        "evidence_exists": True,
+        "server_frontend_path": False,
+        "detail": (
+            "README.md Quick Start is demo-free"
+            if not violations
+            else f"README.md contains demo references: {violations}"
+        ),
+    }
+
+
+def _check_step_gp_cli_help_no_demo(repo_root: Path) -> dict[str, Any]:
+    try:
+        result = subprocess.run(
+            ["uv", "run", "rig-relay", "--help"],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
+            timeout=30,
+        )
+        help_text = result.stdout
+        demo_patterns = ["demo-seed", "demo-doctor", "demo-render-docs"]
+        violations = [p for p in demo_patterns if p in help_text]
+        return {
+            "step_id": "gp_cli_help_no_demo",
+            "status": "not_verified",
+            "validation_method": "automated_script",
+            "can_automate": True,
+            "automated_check_passed": len(violations) == 0,
+            "evidence_exists": True,
+            "server_frontend_path": False,
+            "detail": (
+                "CLI --help does not present demo mode as first-run path"
+                if not violations
+                else f"CLI --help contains demo references: {violations}"
+            ),
+        }
+    except Exception as e:
+        return {
+            "step_id": "gp_cli_help_no_demo",
+            "status": "not_verified",
+            "validation_method": "automated_script",
+            "can_automate": True,
+            "automated_check_passed": False,
+            "evidence_exists": False,
+            "server_frontend_path": False,
+            "detail": f"CLI help check error: {e}",
+        }
+
+
 def _check_step_gp_see_blocked_deferred_state(repo_root: Path) -> dict[str, Any]:
-    blockers_exist = (repo_root / "docs" / "json" / "release_gate" / "rc_blockers.v1.jsonl").is_file()
-    deferred_exist = (repo_root / "docs" / "json" / "release_gate" / "rc_deferred_risks.v1.jsonl").is_file()
+    blockers_exist = (
+        repo_root / "docs" / "json" / "release_gate" / "rc_blockers.v1.jsonl"
+    ).is_file()
+    deferred_exist = (
+        repo_root / "docs" / "json" / "release_gate" / "rc_deferred_risks.v1.jsonl"
+    ).is_file()
     return {
         "step_id": "gp_see_blocked_deferred_state",
         "status": "not_verified",
@@ -305,21 +437,23 @@ def _check_step_gp_see_blocked_deferred_state(repo_root: Path) -> dict[str, Any]
 def _check_step_gp_frontend_primary_surface(
     repo_root: Path, validation_runs: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    projection_schema = repo_root / "docs" / "schemas" / "rig.relay.desktop_projection.v1.schema.json"
+    projection_schema = (
+        repo_root / "docs" / "schemas" / "rig.relay.desktop_projection.v1.schema.json"
+    )
     frontend_index = repo_root / "frontend" / "desktop" / "index.html"
     desktop_tests = repo_root / "tests" / "desktop" / "test_product_path.py"
     bridge_server = repo_root / "rig_relay" / "desktop" / "bridge_server.py"
     all_exist = all(
-        p.is_file() for p in [projection_schema, frontend_index, desktop_tests, bridge_server]
+        p.is_file()
+        for p in [projection_schema, frontend_index, desktop_tests, bridge_server]
     )
     browser_run = next(
         (
             run
             for run in validation_runs
             if run.get("result") == "passed"
-            and "tests/desktop/test_playwright_frontend_product_path.py" in run.get(
-                "command", ""
-            )
+            and "tests/desktop/test_playwright_frontend_product_path.py"
+            in run.get("command", "")
             and "phase_4_ui_docs_ci_packaging" in run.get("phase_ids", [])
         ),
         None,
@@ -356,9 +490,7 @@ def _check_step_gp_frontend_primary_surface(
 
 
 def _check_consistency(
-    golden_path: dict[str, Any],
-    blockers: list[dict[str, Any]],
-    repo_root: Path,
+    golden_path: dict[str, Any], blockers: list[dict[str, Any]], repo_root: Path
 ) -> list[str]:
     errors: list[str] = []
     blocker_map = {b["blocker_id"]: b for b in blockers if "_parse_error" not in b}
@@ -419,13 +551,24 @@ def _check_consistency(
 
 def _check_server_frontend_presence(repo_root: Path) -> dict[str, bool]:
     return {
-        "bridge_server_exists": (repo_root / "rig_relay" / "desktop" / "bridge_server.py").is_file(),
-        "frontend_index_exists": (repo_root / "frontend" / "desktop" / "index.html").is_file(),
-        "projection_schema_exists": (
-            repo_root / "docs" / "schemas" / "rig.relay.desktop_projection.v1.schema.json"
+        "bridge_server_exists": (
+            repo_root / "rig_relay" / "desktop" / "bridge_server.py"
         ).is_file(),
-        "product_path_tests_exist": (repo_root / "tests" / "desktop" / "test_product_path.py").is_file(),
-        "websocket_server_exists": (repo_root / "rig_relay" / "desktop" / "websocket_server.py").is_file(),
+        "frontend_index_exists": (
+            repo_root / "frontend" / "desktop" / "index.html"
+        ).is_file(),
+        "projection_schema_exists": (
+            repo_root
+            / "docs"
+            / "schemas"
+            / "rig.relay.desktop_projection.v1.schema.json"
+        ).is_file(),
+        "product_path_tests_exist": (
+            repo_root / "tests" / "desktop" / "test_product_path.py"
+        ).is_file(),
+        "websocket_server_exists": (
+            repo_root / "rig_relay" / "desktop" / "websocket_server.py"
+        ).is_file(),
     }
 
 
@@ -457,10 +600,18 @@ def _compute_overall_status(
 
 def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
     golden_path_path = (
-        repo_root / "docs" / "json" / "release_candidate" / "rc_reviewer_golden_path.v1.json"
+        repo_root
+        / "docs"
+        / "json"
+        / "release_candidate"
+        / "rc_reviewer_golden_path.v1.json"
     )
-    blockers_path = repo_root / "docs" / "json" / "release_gate" / "rc_blockers.v1.jsonl"
-    validation_runs_path = repo_root / "docs" / "json" / "release_gate" / "rc_validation_runs.v1.jsonl"
+    blockers_path = (
+        repo_root / "docs" / "json" / "release_gate" / "rc_blockers.v1.jsonl"
+    )
+    validation_runs_path = (
+        repo_root / "docs" / "json" / "release_gate" / "rc_validation_runs.v1.jsonl"
+    )
 
     commands_run: list[str] = [
         "load: docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
@@ -486,11 +637,24 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
 
     step_handlers: dict[str, Any] = {
         "gp_install_sync": lambda *_: _check_step_gp_install_sync(repo_root),
-        "gp_understand_product": lambda *_: _check_step_gp_understand_product(repo_root),
-        "gp_no_markdown_evidence_leakage": lambda g, **_: _check_step_gp_no_markdown_evidence_leakage(g),
-        "gp_release_gate_validator_baseline": lambda *_: _check_step_gp_release_gate_validator_baseline(repo_root),
-        "gp_see_blocked_deferred_state": lambda *_: _check_step_gp_see_blocked_deferred_state(repo_root),
-        "gp_frontend_primary_surface": lambda *_: _check_step_gp_frontend_primary_surface(repo_root, validation_runs),
+        "gp_understand_product": lambda *_: _check_step_gp_understand_product(
+            repo_root
+        ),
+        "gp_no_markdown_evidence_leakage": lambda g, **_: (
+            _check_step_gp_no_markdown_evidence_leakage(g)
+        ),
+        "gp_no_demo_evidence": lambda g, **_: _check_step_gp_no_demo_evidence(g),
+        "gp_release_gate_validator_baseline": lambda *_: (
+            _check_step_gp_release_gate_validator_baseline(repo_root)
+        ),
+        "gp_see_blocked_deferred_state": lambda *_: (
+            _check_step_gp_see_blocked_deferred_state(repo_root)
+        ),
+        "gp_frontend_primary_surface": lambda *_: (
+            _check_step_gp_frontend_primary_surface(repo_root, validation_runs)
+        ),
+        "gp_readme_no_demo": lambda *_: _check_step_gp_readme_no_demo(repo_root),
+        "gp_cli_help_no_demo": lambda *_: _check_step_gp_cli_help_no_demo(repo_root),
     }
 
     for step in steps:
@@ -500,16 +664,24 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
         if step_id in step_handlers:
             result = step_handlers[step_id](golden_path)
         else:
-            result = _check_step_simple_evidence(step, step_id, repo_root, is_server_frontend)
+            result = _check_step_simple_evidence(
+                step, step_id, repo_root, is_server_frontend
+            )
 
         blocker_id = STEP_TO_BLOCKER.get(step_id)
         if blocker_id:
             blocker = next(
-                (b for b in blockers if b.get("blocker_id") == blocker_id and "_parse_error" not in b),
+                (
+                    b
+                    for b in blockers
+                    if b.get("blocker_id") == blocker_id and "_parse_error" not in b
+                ),
                 None,
             )
             result["linked_blocker_id"] = blocker_id
-            result["linked_blocker_status"] = blocker.get("status") if blocker else "missing"
+            result["linked_blocker_status"] = (
+                blocker.get("status") if blocker else "missing"
+            )
             if blocker and blocker.get("status") == "open":
                 result["status"] = "blocked"
                 result["can_automate"] = False
@@ -520,16 +692,19 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
 
         step_results.append(result)
 
-    overall_status = _compute_overall_status(step_results, consistency_errors, golden_path)
+    overall_status = _compute_overall_status(
+        step_results, consistency_errors, golden_path
+    )
 
     automated_steps = [sr for sr in step_results if sr["can_automate"]]
     manual_steps = [
         sr
         for sr in step_results
-        if not sr["can_automate"]
-        and sr["validation_method"] in {"manual_review"}
+        if not sr["can_automate"] and sr["validation_method"] in {"manual_review"}
     ]
-    blocked_step_ids = [sr["step_id"] for sr in step_results if sr["status"] == "blocked"]
+    blocked_step_ids = [
+        sr["step_id"] for sr in step_results if sr["status"] == "blocked"
+    ]
 
     evidence_paths_canonical = [
         "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
@@ -546,7 +721,9 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
             f"Resolve {len(open_blocker_ids)} open blocker(s): {', '.join(open_blocker_ids)}"
         ]
     elif overall_status == "failed":
-        next_actions = [f"Fix {len(consistency_errors)} consistency error(s)"] + consistency_errors
+        next_actions = [
+            f"Fix {len(consistency_errors)} consistency error(s)"
+        ] + consistency_errors
     else:
         step_map = {step.get("step_id", ""): step for step in steps}
         manual_step_ids = [
@@ -569,7 +746,9 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
         "head_sha": _resolve_head_sha(repo_root),
         "overall_status": overall_status,
         "automated_steps_total": len(automated_steps),
-        "automated_steps_passed": sum(1 for s in automated_steps if s.get("automated_check_passed")),
+        "automated_steps_passed": sum(
+            1 for s in automated_steps if s.get("automated_check_passed")
+        ),
         "manual_steps_total": len(manual_steps),
         "manual_steps_not_verified": sum(
             1 for s in manual_steps if s["status"] == "not_verified"
@@ -578,7 +757,8 @@ def run_golden_path_check(repo_root: Path) -> dict[str, Any]:
         "missing_evidence": [
             sr["step_id"]
             for sr in step_results
-            if not sr.get("evidence_exists", True) and sr.get("evidence_exists") is not None
+            if not sr.get("evidence_exists", True)
+            and sr.get("evidence_exists") is not None
         ],
         "commands_run": commands_run,
         "evidence_paths": evidence_paths_canonical,

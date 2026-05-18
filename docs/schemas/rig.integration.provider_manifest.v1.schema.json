@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.integration.provider_manifest.v1.schema.json",
+  "title": "Integration Provider Manifest v1",
+  "description": "Schema-governed provider manifest for backend-owned integration capability spine. Describes an integration provider (GitHub, Google Drive, etc.) with its capabilities, scopes, permissions, connection states, and safety policies. Future MCP/ACP/IDE extension layers consume these manifests for safe integration exposure.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "provider_id",
+    "display_name",
+    "auth_kind",
+    "capabilities",
+    "required_scopes_or_permissions",
+    "sensitive_surfaces",
+    "telemetry_safety_class",
+    "redaction_policy",
+    "evidence_paths",
+    "profile_gate_required"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.integration.provider_manifest.v1"
+    },
+    "provider_id": {
+      "type": "string",
+      "description": "Unique provider identifier (e.g. github, google_drive).",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Human-readable provider name (e.g. GitHub, Google Drive)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the integration provider and its role."
+    },
+    "auth_kind": {
+      "type": "string",
+      "enum": [
+        "github_app",
+        "oauth",
+        "service_account_not_supported_for_user_flow",
+        "api_key",
+        "none"
+      ],
+      "description": "Authentication mechanism used by this provider. service_account_not_supported_for_user_flow indicates a future/enterprise path that is explicitly not supported in user-facing flows."
+    },
+    "identity_provider_kind": {
+      "type": "string",
+      "enum": ["github", "google"],
+      "description": "If this integration shares an identity provider (e.g. GitHub integration reuses GitHub identity OAuth), reference the IdentityProviderKind. Null if the integration has standalone auth."
+    },
+    "connection_states": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "not_configured",
+          "disconnected",
+          "auth_required",
+          "connected",
+          "degraded",
+          "error"
+        ]
+      },
+      "description": "Valid connection state values for this provider."
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "capability_id",
+          "display_name",
+          "kind",
+          "gated",
+          "profile_gate_required"
+        ],
+        "properties": {
+          "capability_id": {
+            "type": "string",
+            "description": "Unique capability identifier within the provider (e.g. read_repo_metadata).",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Human-readable capability name."
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["read", "write", "observe", "webhook_ingest"],
+            "description": "Capability kind: read (data retrieval), write (mutation), observe (event watching), webhook_ingest (webhook event reception)."
+          },
+          "gated": {
+            "type": "boolean",
+            "description": "Whether this capability is gated behind explicit user approval. Write capabilities must be gated by default."
+          },
+          "profile_gate_required": {
+            "type": "boolean",
+            "description": "Whether the profile must be unlocked before this capability is available."
+          },
+          "required_scopes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "OAuth scopes or GitHub App permissions required for this capability."
+          },
+          "sensitive_surfaces": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Data surfaces that are sensitive and must be redacted/hashed in telemetry."
+          },
+          "telemetry_safety_class": {
+            "type": "string",
+            "enum": ["content_light", "restricted", "forbidden"],
+            "description": "Telemetry safety classification for this capability's output."
+          },
+          "mcp_acp_exposable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this capability is safe to expose as an MCP/ACP tool. Mutation capabilities must not be exposed while locked/not_configured."
+          }
+        }
+      }
+    },
+    "required_scopes_or_permissions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Required OAuth scopes or GitHub App permissions for basic provider operation."
+    },
+    "sensitive_surfaces": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Provider-level sensitive data surfaces that must be redacted/hashed in telemetry (e.g. repository_name, file_id, account_id)."
+    },
+    "telemetry_safety_class": {
+      "type": "string",
+      "enum": ["content_light", "restricted", "forbidden"],
+      "description": "Default telemetry safety classification for this provider. content_light = safe for telemetry with hashing. restricted = limited fields only. forbidden = no telemetry."
+    },
+    "redaction_policy": {
+      "type": "string",
+      "enum": [
+        "hash_all_identifiers",
+        "hash_content_derived",
+        "drop_all_content",
+        "allow_safe_metadata_only"
+      ],
+      "description": "Redaction policy for telemetry and evidence. hash_all_identifiers = SHA256 all account/repo/file IDs. hash_content_derived = SHA256 all content-derived fields. drop_all_content = no content in telemetry. allow_safe_metadata_only = only non-sensitive metadata."
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Relative paths under .rig/ for integration evidence artifacts."
+    },
+    "profile_gate_required": {
+      "type": "boolean",
+      "description": "Whether the first-launch profile gate must be completed before this integration can be configured."
+    },
+    "release_gate_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this integration is a release gate blocker. Default false — integrations are optional capabilities."
+    },
+    "default_connection_state": {
+      "type": "string",
+      "enum": [
+        "not_configured",
+        "disconnected",
+        "auth_required",
+        "connected",
+        "degraded",
+        "error"
+      ],
+      "default": "not_configured",
+      "description": "Initial connection state when no provider configuration exists."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

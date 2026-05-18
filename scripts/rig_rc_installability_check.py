@@ -644,6 +644,50 @@ def check_python_version_constraint() -> dict[str, Any]:
         }
 
 
+def check_demo_commands_not_in_product_help() -> dict[str, Any]:
+    import time
+
+    t0 = time.monotonic()
+    forbidden = ["demo-seed", "demo-doctor", "demo-render-docs"]
+    try:
+        result = _run(["uv", "run", "rig-relay", "--help"])
+        if result.returncode != 0:
+            return {
+                "check_id": "demo_commands_not_in_product_help",
+                "status": "fail",
+                "detail": f"`uv run rig-relay --help` returned exit code {result.returncode}: {result.stderr.strip()[:200]}",
+                "duration_ms": int((time.monotonic() - t0) * 1000),
+            }
+        found = [cmd for cmd in forbidden if cmd in result.stdout]
+        if found:
+            return {
+                "check_id": "demo_commands_not_in_product_help",
+                "status": "fail",
+                "detail": f"Demo commands leaked into product --help: {', '.join(found)}",
+                "duration_ms": int((time.monotonic() - t0) * 1000),
+            }
+        return {
+            "check_id": "demo_commands_not_in_product_help",
+            "status": "pass",
+            "detail": "No demo commands found in product --help output",
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+        }
+    except subprocess.TimeoutExpired as e:
+        return {
+            "check_id": "demo_commands_not_in_product_help",
+            "status": "fail",
+            "detail": f"`uv run rig-relay --help` timed out after {e.timeout}s",
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+        }
+    except Exception as e:
+        return {
+            "check_id": "demo_commands_not_in_product_help",
+            "status": "fail",
+            "detail": f"`uv run rig-relay --help` error: {e}",
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+        }
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -663,6 +707,7 @@ CHECKS = [
     check_version_ascii,
     check_python_version_constraint,
     check_dogfood_readiness_distinction,
+    check_demo_commands_not_in_product_help,
 ]
 
 
@@ -722,6 +767,7 @@ _COMMAND_CHECK_IDS = {
     "cli_acp_help_succeeds",
     "doctor_command",
     "schema_validation",
+    "demo_commands_not_in_product_help",
 }
 
 

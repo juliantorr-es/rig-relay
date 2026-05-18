@@ -56,6 +56,9 @@ jobs:
       - name: Validate JSON schemas
         run: uv run python scripts/rig_relay_validate_schemas.py
 
+      - name: Run repository hygiene static check
+        run: uv run python scripts/rig_rc_security_repository_hygiene.py --output .build/rig-relay/rc-security-repo-hygiene-ci.json
+
       - name: Check schema files for Python contamination
         run: uv run pytest tests/coordination/test_schema_validation.py::test_no_schema_contains_python_syntax -n0
 

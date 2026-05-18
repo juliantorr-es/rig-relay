@@ -13,9 +13,8 @@ Rig Relay is a local server/control-plane with a desktop cockpit frontend for co
 git clone https://github.com/juliantorr-es/rig-relay
 cd rig-relay
 uv sync
-uv run rig-relay demo-seed      # create synthetic demo data
-uv run rig-relay demo-doctor    # verify demo readiness
 uv run rig-relay                # launch desktop cockpit
+# or headless: uv run rig-relay --server-only
 ```
 
 On first launch, Rig Relay will walk you through provider setup — pick a
@@ -26,17 +25,18 @@ starts in dry-run mode with full projection and WebSocket available.
 uv tool install git+https://github.com/juliantorr-es/rig-relay.git --force
 ```
 
-### Demo Walkthrough (3 minutes)
+### Release Readiness
 
-1. **Seed demo data**: `uv run rig-relay demo-seed` — creates 3 orchestrator missions, 8 ToolRuntime outcomes, 2 Ralph lifecycle lanes, review bundles, adoption proposals, reports, and bash analytics.
-2. **Verify**: `uv run rig-relay demo-doctor` — 17 checks: imports, projections, review_with_orchestrator, merge/push gated, no secrets.
-3. **Launch**: `uv run rig-relay` opens pywebview desktop cockpit.
-4. **Mission Board**: 2 active missions, lifecycle timeline with 8 steps, review entrypoint.
-5. **Ralph Lifecycle**: Background lanes ON, isolated lane execution allowed, live runtime mutation blocked, merge/push gated.
-6. **Review with Orchestrator**: Explain-only review showing what Ralph did, when, why, validation results, risk notes, adoption recommendation. No merge or push authorized.
-7. **Render docs site**: `uv run rig-relay demo-render-docs` produces `.build/rig-relay/docs-site/`.
+To verify RC readiness:
 
-See [docs/demo/mcp-night-demo.md](docs/demo/mcp-night-demo.md) for the full walkthrough.
+```bash
+uv run python scripts/rig_release_gate_validate.py
+uv run python scripts/rig_rc_golden_path_check.py
+uv run python scripts/rig_rc_installability_check.py
+```
+
+See [docs/json/release_gate/rc_readiness_gate.v1.json](docs/json/release_gate/rc_readiness_gate.v1.json) for phase status.
+See [docs/json/release_candidate/rc_reviewer_golden_path.v1.json](docs/json/release_candidate/rc_reviewer_golden_path.v1.json) for the golden path checklist.
 
 ## Current Path
 

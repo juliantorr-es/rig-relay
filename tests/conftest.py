@@ -99,6 +99,23 @@ def _mock_platform(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _ensure_unlocked_test_profile(tmp_path_factory: pytest.TempPathFactory) -> Generator[None, None, None]:
+    """Create unlocked profile so capability gate allows intents in all tests."""
+    from rig_relay.governance.service_state import (
+        ProfileStore,
+        set_profile_store_override,
+    )
+
+    profile_root = tmp_path_factory.mktemp("test_profile")
+    store = ProfileStore(root=profile_root)
+    store.create_first_launch_profile()
+    store.unlock()
+    set_profile_store_override(store)
+    yield
+    set_profile_store_override(None)
+
+
+@pytest.fixture(autouse=True)
 def telemetry_events(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
 

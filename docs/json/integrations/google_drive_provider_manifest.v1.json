@@ -1,0 +1,97 @@
+{
+  "schema_version": "rig.integration.provider_manifest.v1",
+  "provider_id": "google_drive",
+  "display_name": "Google Drive",
+  "description": "Google Drive integration for listing files, reading exported document text, and writing app-created evidence files. Drive access is scoped to app-created files by default. Broad Drive scope is explicitly blocked.",
+  "auth_kind": "oauth",
+  "identity_provider_kind": "google",
+  "connection_states": [
+    "not_configured",
+    "disconnected",
+    "auth_required",
+    "connected",
+    "degraded",
+    "error"
+  ],
+  "capabilities": [
+    {
+      "capability_id": "list_user_selected_files",
+      "display_name": "List User-Selected Files",
+      "description": "List files and folders that the user has selected or opened with the app. Uses drive.file scope for app-created and user-selected files only.",
+      "kind": "read",
+      "gated": false,
+      "profile_gate_required": false,
+      "required_scopes": ["drive.file"],
+      "sensitive_surfaces": ["file_id", "file_name", "folder_id"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": true
+    },
+    {
+      "capability_id": "read_file_metadata",
+      "display_name": "Read File Metadata",
+      "description": "Read Drive file metadata (name, MIME type, size, modified time, owners) for app-accessible files.",
+      "kind": "read",
+      "gated": false,
+      "profile_gate_required": false,
+      "required_scopes": ["drive.file"],
+      "sensitive_surfaces": ["file_id", "file_name", "owner_email"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": true
+    },
+    {
+      "capability_id": "read_exported_document_text",
+      "display_name": "Read Exported Document Text",
+      "description": "Export Google Docs as plain text for app-accessible files. Content is not stored in telemetry.",
+      "kind": "read",
+      "gated": false,
+      "profile_gate_required": false,
+      "required_scopes": ["drive.file"],
+      "sensitive_surfaces": ["document_text", "file_id"],
+      "telemetry_safety_class": "restricted",
+      "mcp_acp_exposable": true
+    },
+    {
+      "capability_id": "write_app_created_evidence_file",
+      "display_name": "Write App-Created Evidence File",
+      "description": "Create or update files in the app's own Drive folder. Gated behind explicit user approval. Never writes to user-created files.",
+      "kind": "write",
+      "gated": true,
+      "profile_gate_required": true,
+      "required_scopes": ["drive.file"],
+      "sensitive_surfaces": ["file_content", "file_name", "folder_id"],
+      "telemetry_safety_class": "restricted",
+      "mcp_acp_exposable": false
+    },
+    {
+      "capability_id": "watch_file_changes_if_scope_allows",
+      "display_name": "Watch File Changes",
+      "description": "Watch for changes to app-accessible files via Drive change notifications. Requires drive.file scope.",
+      "kind": "observe",
+      "gated": false,
+      "profile_gate_required": true,
+      "required_scopes": ["drive.file"],
+      "sensitive_surfaces": ["file_id", "change_type"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": false
+    }
+  ],
+  "required_scopes_or_permissions": ["drive.file"],
+  "sensitive_surfaces": [
+    "file_id",
+    "file_name",
+    "folder_id",
+    "document_text",
+    "file_content",
+    "owner_email",
+    "account_id"
+  ],
+  "telemetry_safety_class": "content_light",
+  "redaction_policy": "hash_all_identifiers",
+  "evidence_paths": [
+    ".rig/integrations/google_drive/evidence/"
+  ],
+  "profile_gate_required": true,
+  "release_gate_required": false,
+  "default_connection_state": "not_configured",
+  "generated_at": "2026-05-17T00:00:00Z"
+}

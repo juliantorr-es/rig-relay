@@ -309,6 +309,21 @@ class TestAuthSessionManager:
 
 
 class TestDesktopIntentAuthFlow:
+    @pytest.fixture(autouse=True)
+    def _setup_profile(self, tmp_path):
+        """Create an unlocked profile so capability gate allows auth intents."""
+        from rig_relay.governance.service_state import (
+            ProfileStore,
+            set_profile_store_override,
+        )
+
+        store = ProfileStore(root=tmp_path / "profile")
+        profile = store.create_first_launch_profile()
+        profile = store.unlock()
+        set_profile_store_override(store)
+        yield
+        set_profile_store_override(None)
+
     def test_sign_in_start_returns_auth_url_and_session_id(self):
         """sign_in_*_start must return auth_url and auth_session_id."""
         import os

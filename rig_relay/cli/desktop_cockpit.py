@@ -239,16 +239,11 @@ class CockpitAPI:
                     get_binding_registry,
                     get_profile_registry,
                 )
-                from rig_relay.ralph.reporting import (
-                    RalphReportStore,
-                    build_demo_ralph_reports,
-                )
+                from rig_relay.ralph.reporting import RalphReportStore
 
                 registry = get_profile_registry()
                 binding_registry = get_binding_registry()
                 store = RalphReportStore()
-                for r in build_demo_ralph_reports():
-                    store.save_report(r)
                 profiles = registry.list_all() if registry.list_all() else []
                 bindings = (
                     binding_registry.list_all() if binding_registry.list_all() else []
@@ -1210,11 +1205,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=f"Port for WebSocket projection stream (default: {DEFAULT_WS_PORT}).",
     )
 
-    # Demo subcommands
-    sub = parser.add_subparsers(dest="demo_command", help="Demo commands")
-    sub.add_parser("demo-seed", help="Seed demo data for fresh-clone demo")
-    sub.add_parser("demo-doctor", help="Check demo readiness")
-    sub.add_parser("demo-render-docs", help="Render local artifacts to static site")
+    # Dev/debug subcommands (not product surface — blocked from RC evidence)
+    sub = parser.add_subparsers(dest="command", help="Sub-commands")
+    dev_parser = sub.add_parser(
+        "dev", help="Development and debug commands (not product surface)"
+    )
+    dev_sub = dev_parser.add_subparsers(dest="dev_command", help="Dev commands")
+    dev_sub.add_parser("demo-seed", help="Seed demo data (dev only, non-RC)")
+    dev_sub.add_parser("demo-doctor", help="Check demo readiness (dev only, non-RC)")
+    dev_sub.add_parser(
+        "demo-render-docs",
+        help="Render local artifacts to static site (dev only, non-RC)",
+    )
 
     return parser.parse_args(argv)
 
@@ -1257,19 +1259,20 @@ def _load_keychain_keys() -> None:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
 
-    # Demo commands — exit early, no window needed
-    if args.demo_command == "demo-seed":
-        from rig_relay.cli.demo_commands import demo_seed
+    # Dev commands — exit early, no window needed (not product surface)
+    if args.command == "dev":
+        if args.dev_command == "demo-seed":
+            from rig_relay.cli.demo_commands import demo_seed
 
-        return demo_seed()
-    if args.demo_command == "demo-doctor":
-        from rig_relay.cli.demo_commands import demo_doctor
+            return demo_seed()
+        if args.dev_command == "demo-doctor":
+            from rig_relay.cli.demo_commands import demo_doctor
 
-        return demo_doctor()
-    if args.demo_command == "demo-render-docs":
-        from rig_relay.cli.demo_commands import demo_render_docs
+            return demo_doctor()
+        if args.dev_command == "demo-render-docs":
+            from rig_relay.cli.demo_commands import demo_render_docs
 
-        return demo_render_docs()
+            return demo_render_docs()
 
     init_harness_files_manager("user", "project")
 

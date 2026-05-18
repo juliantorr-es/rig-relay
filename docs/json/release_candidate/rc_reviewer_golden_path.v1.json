@@ -277,6 +277,48 @@
       "status": "passing",
       "validation_method": "automated_script",
       "phase_id": "phase_6_dogfood_operational_readiness"
+    },
+    {
+      "step_id": "gp_readme_no_demo",
+      "user_goal": "README Quick Start is demo-free",
+      "command_or_ui_action": "Read README.md; verify no references to demo-seed, demo-doctor, or demo-render-docs in the product path",
+      "expected_result": "README.md no longer references demo-seed/demo-doctor/demo-render-docs in the product path; demo mode is not presented as first-run story.",
+      "evidence_path": "README.md",
+      "blocking_failure_conditions": [
+        "README.md Quick Start still references demo-seed, demo-doctor, or demo-render-docs as product path",
+        "README.md presenting demo mode as first-run story"
+      ],
+      "status": "not_verified",
+      "validation_method": "automated_script",
+      "phase_id": "phase_6_dogfood_operational_readiness"
+    },
+    {
+      "step_id": "gp_cli_help_no_demo",
+      "user_goal": "CLI --help is demo-free",
+      "command_or_ui_action": "Run `uv run rig-relay --help`; verify no demo commands appear as primary product surface",
+      "expected_result": "rig-relay --help does not present demo-seed, demo-doctor, or demo-render-docs as product commands; demo commands are not accessible from primary CLI namespace.",
+      "evidence_path": "rig_relay/cli/desktop_cockpit.py",
+      "blocking_failure_conditions": [
+        "rig-relay --help shows demo-seed, demo-doctor, or demo-render-docs as product commands",
+        "Demo commands still accessible from primary CLI namespace"
+      ],
+      "status": "not_verified",
+      "validation_method": "automated_script",
+      "phase_id": "phase_6_dogfood_operational_readiness"
+    },
+    {
+      "step_id": "gp_no_demo_evidence",
+      "user_goal": "No demo artifacts in RC evidence",
+      "command_or_ui_action": "Inspect RC evidence paths; verify no demo-synthetic artifacts appear in RC evidence",
+      "expected_result": "No demo-synthetic artifacts appear in RC evidence paths or golden path evidence.",
+      "evidence_path": "docs/json/release_gate/rc_validation_runs.v1.jsonl",
+      "blocking_failure_conditions": [
+        "RC evidence paths reference demo artifacts (.build/rig-relay/demo/, demo-synthetic, demo_commands.py)",
+        "Golden path evidence includes demo-generated data as passing"
+      ],
+      "status": "not_verified",
+      "validation_method": "automated_script",
+      "phase_id": "phase_6_dogfood_operational_readiness"
     }
   ],
   "evidence_paths": [

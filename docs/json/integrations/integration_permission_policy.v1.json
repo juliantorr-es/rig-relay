@@ -1,0 +1,169 @@
+{
+  "schema_version": "rig.integration.permission_policy.v1",
+  "policy_id": "integration_permission_policy_v1",
+  "generated_at": "2026-05-17T00:00:00Z",
+  "description": "Canonical permission and scopes policy for all Rig Relay integration providers. Enforces least-privilege defaults, mutation gating, scope allowlisting, and telemetry safety across GitHub and Google Drive integrations.",
+  "global_rules": [
+    {
+      "rule_id": "least_privilege_by_default",
+      "description": "All integrations start with minimum necessary scopes/permissions. Broader scopes require explicit justification documented in the provider manifest.",
+      "enforcement": "hard_block",
+      "rationale": "Prevents scope creep. Each scope must map to a declared capability.",
+      "applies_to_providers": ["github", "google_drive"]
+    },
+    {
+      "rule_id": "no_raw_token_projection",
+      "description": "Integration state projections, telemetry, and evidence must never contain raw tokens (access, refresh, ID, or installation tokens). Token references use SHA256 hashes only.",
+      "enforcement": "hard_block",
+      "rationale": "Token leakage in projections or telemetry is a critical security risk.",
+      "applies_to_providers": ["github", "google_drive"]
+    },
+    {
+      "rule_id": "no_private_content_in_telemetry",
+      "description": "Integration telemetry must never contain raw private file contents, repository code, document text, or user-generated content. All content-derived fields use SHA256 hashes.",
+      "enforcement": "hard_block",
+      "rationale": "Telemetry is local-first but may be exported. Private content must never leave the local evidence boundary.",
+      "applies_to_providers": ["github", "google_drive"]
+    },
+    {
+      "rule_id": "mutation_requires_approval",
+      "description": "Integration mutation capabilities (write, create, modify) require explicit user approval through the desktop cockpit. No automated write actions without approval gate.",
+      "enforcement": "hard_block",
+      "rationale": "Mutation authority must be receipt-gated to prevent unauthorized changes.",
+      "applies_to_providers": ["github", "google_drive"]
+    },
+    {
+      "rule_id": "integration_mutation_requires_profile_unlock",
+      "description": "Mutation capabilities are not available until the profile is unlocked (first-launch profile gate completed).",
+      "enforcement": "hard_block",
+      "rationale": "Profile gate must be completed before any write authority is granted.",
+      "applies_to_providers": ["github", "google_drive"]
+    },
+    {
+      "rule_id": "content_light_evidence_default",
+      "description": "Integration evidence must be content-light. Raw file contents, document text, and code must not appear in evidence artifacts. Use SHA256 hashes for content-derived fields.",
+      "enforcement": "hard_block",
+      "rationale": "Evidence is append-only and may persist beyond session lifetime.",
+      "applies_to_providers": ["github", "google_drive"]
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "github_permissions_explicit_and_install_scoped",
+      "description": "GitHub App permissions must be explicit (listed in provider manifest) and scoped to the installation. No broad org-level permissions without explicit declaration.",
+      "enforcement": "hard_block",
+      "applies_to_providers": ["github"],
+      "affected_capabilities": [],
+      "rationale": "GitHub App permission model requires explicit per-repo or per-org scoping."
+    },
+    {
+      "rule_id": "no_broad_drive_scope_unless_justified",
+      "description": "Google Drive scope must not be broad (drive scope or drive.readonly). Use drive.file for app-created and user-selected files only. Broad scope requires explicit justification and is blocked in v1.",
+      "enforcement": "hard_block",
+      "applies_to_providers": ["google_drive"],
+      "affected_capabilities": ["list_user_selected_files", "read_file_metadata", "write_app_created_evidence_file"],
+      "required_condition": "drive.file scope only; drive and drive.readonly are blocked",
+      "rationale": "Broad Drive scope exposes all user files. drive.file limits access to app-created and user-selected files."
+    },
+    {
+      "rule_id": "github_mutation_capability_gated",
+      "description": "GitHub mutation capabilities (create_check_run_or_status, create_issue_comment, propose_patch_metadata) require profile unlock and explicit user approval before execution.",
+      "enforcement": "hard_block",
+      "applies_to_providers": ["github"],
+      "affected_capabilities": ["create_check_run_or_status", "create_issue_comment", "propose_patch_metadata"],
+      "rationale": "Write access to repositories must be governed."
+    },
+    {
+      "rule_id": "drive_write_gated",
+      "description": "Google Drive write capability (write_app_created_evidence_file) requires profile unlock and explicit user approval.",
+      "enforcement": "hard_block",
+      "applies_to_providers": ["google_drive"],
+      "affected_capabilities": ["write_app_created_evidence_file"],
+      "rationale": "Write access to Drive must be governed."
+    },
+    {
+      "rule_id": "mcp_acp_excludes_mutation_while_locked",
+      "description": "MCP/ACP tool exports must not expose mutation capabilities while the provider is not_configured or the profile is locked.",
+      "enforcement": "hard_block",
+      "applies_to_providers": ["github", "google_drive"],
+      "affected_capabilities": ["create_check_run_or_status", "create_issue_comment", "propose_patch_metadata", "write_app_created_evidence_file"],
+      "rationale": "Mutation tools must not be exposed through external protocols without the profile gate."
+    }
+  ],
+  "provider_specific_rules": {
+    "github": [
+      {
+        "rule_id": "identity_scopes_only_by_default",
+        "description": "GitHub OAuth for identity uses read:user and user:email only. Repo scopes are deferred and require explicit user consent for each integration capability.",
+        "enforcement": "hard_block",
+        "rationale": "Identity OAuth is separate from integration auth. Integration-specific scopes are requested with explicit consent."
+      }
+    ],
+    "google_drive": [
+      {
+        "rule_id": "drive_file_scope_only",
+        "description": "Google Drive integration uses drive.file scope exclusively. OIDC scopes (openid, email, profile) are for identity only.",
+        "enforcement": "hard_block",
+        "rationale": "drive.file provides the minimum necessary access for app-created files without exposing the user's entire Drive."
+      }
+    ]
+  },
+  "scope_allowlist": {
+    "github": [
+      {
+        "scope": "read:user",
+        "justification_required": false,
+        "maximum_grant": "identity",
+        "notes": "Identity-only scope. Required for basic user profile."
+      },
+      {
+        "scope": "user:email",
+        "justification_required": false,
+        "maximum_grant": "identity",
+        "notes": "Identity-only scope. Required for email address."
+      }
+    ],
+    "google_drive": [
+      {
+        "scope": "openid",
+        "justification_required": false,
+        "maximum_grant": "identity",
+        "notes": "OIDC identity scope."
+      },
+      {
+        "scope": "email",
+        "justification_required": false,
+        "maximum_grant": "identity",
+        "notes": "Email address for identity."
+      },
+      {
+        "scope": "profile",
+        "justification_required": false,
+        "maximum_grant": "identity",
+        "notes": "Basic profile information."
+      },
+      {
+        "scope": "drive.file",
+        "justification_required": false,
+        "maximum_grant": "integration",
+        "notes": "Per-file access to files created or opened by the app. Required for Drive integration."
+      }
+    ]
+  },
+  "mutation_gate_rules": [
+    {
+      "rule_id": "profile_unlock_required",
+      "description": "Mutation capabilities require the first-launch profile gate to be completed.",
+      "requires_profile_unlock": true,
+      "requires_explicit_approval": true,
+      "requires_authorization_receipt": false
+    },
+    {
+      "rule_id": "explicit_approval_per_action",
+      "description": "Each mutation action requires explicit user approval in the desktop cockpit. Batch approval is not supported.",
+      "requires_profile_unlock": true,
+      "requires_explicit_approval": true,
+      "requires_authorization_receipt": true
+    }
+  ]
+}

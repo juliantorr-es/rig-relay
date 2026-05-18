@@ -1,0 +1,137 @@
+{
+  "schema_version": "rig.integration.provider_manifest.v1",
+  "provider_id": "github",
+  "display_name": "GitHub",
+  "description": "GitHub integration providing repository observation, issue/PR tracking, check run/status reporting, and governed pull request assistance. All write capabilities are gated behind explicit user approval.",
+  "auth_kind": "oauth",
+  "identity_provider_kind": "github",
+  "connection_states": [
+    "not_configured",
+    "disconnected",
+    "auth_required",
+    "connected",
+    "degraded",
+    "error"
+  ],
+  "capabilities": [
+    {
+      "capability_id": "read_repo_metadata",
+      "display_name": "Read Repository Metadata",
+      "description": "Read repository name, description, visibility, default branch, and other metadata.",
+      "kind": "read",
+      "gated": false,
+      "profile_gate_required": false,
+      "required_scopes": [],
+      "sensitive_surfaces": ["repository_full_name", "repository_id"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": true
+    },
+    {
+      "capability_id": "read_issues",
+      "display_name": "Read Issues",
+      "description": "Read issue titles, bodies, labels, and state from authorized repositories.",
+      "kind": "read",
+      "gated": false,
+      "profile_gate_required": false,
+      "required_scopes": [],
+      "sensitive_surfaces": ["issue_body", "issue_title"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": true
+    },
+    {
+      "capability_id": "read_pull_requests",
+      "display_name": "Read Pull Requests",
+      "description": "Read PR metadata, diffs, comments, and review state from authorized repositories.",
+      "kind": "read",
+      "gated": false,
+      "profile_gate_required": false,
+      "required_scopes": [],
+      "sensitive_surfaces": ["pr_body", "pr_diff", "pr_title"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": true
+    },
+    {
+      "capability_id": "read_workflow_runs",
+      "display_name": "Read Workflow Runs",
+      "description": "Read GitHub Actions workflow run status, logs metadata, and conclusions.",
+      "kind": "read",
+      "gated": false,
+      "profile_gate_required": false,
+      "required_scopes": [],
+      "sensitive_surfaces": ["workflow_log_excerpt"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": true
+    },
+    {
+      "capability_id": "create_check_run_or_status",
+      "display_name": "Create Check Run or Status",
+      "description": "Create check runs or commit statuses on GitHub with validation results. Gated behind explicit user approval.",
+      "kind": "write",
+      "gated": true,
+      "profile_gate_required": true,
+      "required_scopes": [],
+      "sensitive_surfaces": ["check_annotation_text", "status_description"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": false
+    },
+    {
+      "capability_id": "create_issue_comment",
+      "display_name": "Create Issue Comment",
+      "description": "Post comments on issues or pull requests. Gated behind explicit user approval.",
+      "kind": "write",
+      "gated": true,
+      "profile_gate_required": true,
+      "required_scopes": [],
+      "sensitive_surfaces": ["comment_body"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": false
+    },
+    {
+      "capability_id": "propose_patch_metadata",
+      "display_name": "Propose Patch Metadata",
+      "description": "Propose branch, commit, and PR metadata for governed code changes. Gated behind explicit user approval.",
+      "kind": "write",
+      "gated": true,
+      "profile_gate_required": true,
+      "required_scopes": [],
+      "sensitive_surfaces": ["branch_name", "commit_message", "pr_title", "pr_body"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": false
+    },
+    {
+      "capability_id": "webhook_event_ingest",
+      "display_name": "Webhook Event Ingest",
+      "description": "Receive and process GitHub webhook events (push, PR, check run, issues, etc.) for local evidence.",
+      "kind": "webhook_ingest",
+      "gated": false,
+      "profile_gate_required": false,
+      "required_scopes": [],
+      "sensitive_surfaces": ["webhook_payload", "delivery_id"],
+      "telemetry_safety_class": "content_light",
+      "mcp_acp_exposable": false
+    }
+  ],
+  "required_scopes_or_permissions": [],
+  "sensitive_surfaces": [
+    "repository_full_name",
+    "repository_id",
+    "issue_body",
+    "pr_body",
+    "pr_diff",
+    "comment_body",
+    "webhook_payload",
+    "delivery_id",
+    "commit_sha",
+    "branch_name"
+  ],
+  "telemetry_safety_class": "content_light",
+  "redaction_policy": "hash_all_identifiers",
+  "evidence_paths": [
+    ".rig/integrations/github/evidence/",
+    ".rig/integrations/github/deliveries/"
+  ],
+  "profile_gate_required": true,
+  "release_gate_required": false,
+  "default_connection_state": "not_configured",
+  "generated_at": "2026-05-17T00:00:00Z"
+}

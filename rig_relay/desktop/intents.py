@@ -622,6 +622,29 @@ def execute_desktop_intent(
                 .get("description", "")
                 .split(".")[0],
             )
+
+            from rig_relay.governance.service_state import get_capability_gate
+
+            gate = get_capability_gate()
+            allowed, reason = gate.is_allowed(intent_name)
+            if not allowed:
+                result = _build_result(
+                    intent_name,
+                    intent_id,
+                    "refused",
+                    error_code="capability_gated",
+                    summary=f"Capability gated: {reason}. Profile must be unlocked.",
+                    extra_fields={"profile_required": True, "gating_reason": reason},
+                )
+                _emit_progress(
+                    EVENT_OPERATION_REFUSED,
+                    phase="capability_gate",
+                    status="refused",
+                    message=f"Capability gated: {intent_name}",
+                )
+                emit_result(result)
+                return result
+
             result = _execute_allowed_intent(
                 intent_name,
                 intent_id,

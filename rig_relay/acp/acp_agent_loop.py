@@ -33,6 +33,7 @@ from rig_relay.acp.exceptions import (
 from rig_relay.acp.session import AcpSessionLoop
 from rig_relay.acp.utils import ToolOption, build_permission_options
 from rig_relay.core.config import MissingAPIKeyError, SessionLoggingConfig, VibeConfig
+from rig_relay.core.logger import logger
 from rig_relay.core.session.session_loader import SessionLoader
 from rig_relay.core.telemetry.build_metadata import build_entrypoint_metadata
 from rig_relay.core.telemetry.send import TelemetryClient
@@ -40,6 +41,7 @@ from rig_relay.core.telemetry.types import EntrypointMetadata
 from rig_relay.core.tools.permissions import RequiredPermission
 from rig_relay.core.types import ApprovalCallback, ApprovalResponse
 from rig_relay.core.utils import CancellationReason, get_user_cancellation_message
+from rig_relay.governance.service_state import get_capability_gate
 
 
 class VibeAcpAgentLoop(
@@ -55,6 +57,14 @@ class VibeAcpAgentLoop(
         self.sessions: dict[str, AcpSessionLoop] = {}
         self.client_capabilities: ClientCapabilities | None = None
         self.client_info: Implementation | None = None
+
+        gate = get_capability_gate()
+        state = gate.state_summary()
+        if state.get("service_state") in {"setup_required", "locked"}:
+            logger.warning(
+                "acp: profile is %s, mutation capabilities gated",
+                state.get("profile_state"),
+            )
 
     def _build_entrypoint_metadata(self) -> EntrypointMetadata:
         return build_entrypoint_metadata(

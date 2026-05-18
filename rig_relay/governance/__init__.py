@@ -9,6 +9,7 @@ Exports:
   GovernanceEngine — pure governance gate evaluator
   GateDecision, GovernanceDecisionKind, GovernanceReasonSeverity — decision models
   DecisionReason, BlockedIntent, AllowedIntent — decision sub-models
+  ServiceState, ProfileState, LocalProfile, ProfileStore, CapabilityGate — local control-plane
 """
 
 from __future__ import annotations
@@ -39,15 +40,25 @@ from rig_relay.governance.mission_context_packet import (
     build_mission_context_packet_receipt,
 )
 from rig_relay.governance.mission_envelope import MissionDirtySummary, MissionEnvelope
+from rig_relay.governance.service_state import (
+    CapabilityGate,
+    LocalProfile,
+    ProfileState,
+    ProfileStore,
+    ServiceState,
+    get_capability_gate,
+)
 
 __all__ = [
     "AllowedIntent",
     "BlockedIntent",
+    "CapabilityGate",
     "DecisionReason",
     "GateDecision",
     "GovernanceDecisionKind",
     "GovernanceEngine",
     "GovernanceReasonSeverity",
+    "LocalProfile",
     "MissionContextBlocker",
     "MissionContextCompileBlocker",
     "MissionContextCompiler",
@@ -61,5 +72,9 @@ __all__ = [
     "MissionDirtySummary",
     "MissionEnvelope",
     "MissionEnvelopeLink",
+    "ProfileState",
+    "ProfileStore",
+    "ServiceState",
     "build_mission_context_packet_receipt",
+    "get_capability_gate",
 ]

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.profile.v1.schema.json",
+  "title": "Local Profile v1",
+  "description": "Local control-plane profile. Holds per-machine identity, auth state, and telemetry preferences.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "profile_id",
+    "created_at",
+    "profile_state"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.profile.v1"
+    },
+    "profile_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "local_auth_enabled": {
+      "type": "boolean"
+    },
+    "passkey_registered": {
+      "type": "boolean"
+    },
+    "platform_credential_registered": {
+      "type": "boolean"
+    },
+    "telemetry_mode": {
+      "type": "string"
+    },
+    "profile_state": {
+      "type": "string",
+      "enum": [
+        "setup_required",
+        "locked",
+        "unlocked",
+        "degraded"
+      ]
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

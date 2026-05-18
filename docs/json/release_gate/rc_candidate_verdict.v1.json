@@ -26,7 +26,8 @@
     "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json",
     "docs/schemas/rig.release_gate.readiness.v1.schema.json",
     "docs/schemas/rig.release_gate.validation_run.v1.schema.json",
-    "docs/schemas/rig.release_gate.rc_candidate_verdict.v1.schema.json"
+    "docs/schemas/rig.release_gate.rc_candidate_verdict.v1.schema.json",
+    "rig_relay/cli/desktop_cockpit.py"
   ],
   "gate_artifact": "docs/json/release_gate/rc_readiness_gate.v1.json",
   "gate_overall_status": "blocked",
@@ -49,7 +50,8 @@
   ],
   "required_next_actions": [
     "Complete dogfood golden path reviewer checklist — 2 not_verified manual steps remain before PROMOTE",
-    "Human reviewer must verify manual steps: gp_understand_product and gp_see_blocked_deferred_state"
+    "Human reviewer must verify manual steps: gp_understand_product and gp_see_blocked_deferred_state",
+    "Verify demo-mode removal: gp_readme_no_demo, gp_cli_help_no_demo, gp_no_demo_evidence steps must pass"
   ],
   "resolved_blocker_ids": [
     "blk_phase4_ci_repo_ref",

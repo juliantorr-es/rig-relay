@@ -1,6 +1,6 @@
 {
-  "automated_steps_passed": 15,
-  "automated_steps_total": 15,
+  "automated_steps_passed": 18,
+  "automated_steps_total": 18,
   "blocked_steps": [],
   "blockers_loaded": 9,
   "branch": "main",
@@ -16,7 +16,7 @@
     "docs/json/release_gate/rc_candidate_verdict.v1.json",
     "docs/json/release_gate/rc_readiness_gate.v1.json"
   ],
-  "generated_at": "2026-05-18T03:59:45Z",
+  "generated_at": "2026-05-17T18:00:00Z",
   "head_sha": "a0dc9c56003ddade9f3c09e023e40426979ea412",
   "manual_steps_not_verified": 2,
   "manual_steps_total": 2,
@@ -214,6 +214,36 @@
       "server_frontend_path": false,
       "status": "not_verified",
       "step_id": "gp_release_gate_validator_baseline",
+      "validation_method": "automated_script"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": true,
+      "detail": "README.md evidence path exists; demo references not yet verified",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_readme_no_demo",
+      "validation_method": "automated_script"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": true,
+      "detail": "CLI --help entry point exists; demo command presence not yet verified",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_cli_help_no_demo",
+      "validation_method": "automated_script"
+    },
+    {
+      "automated_check_passed": true,
+      "can_automate": true,
+      "detail": "RC validation runs evidence path exists; demo artifact presence not yet verified",
+      "evidence_exists": true,
+      "server_frontend_path": false,
+      "status": "not_verified",
+      "step_id": "gp_no_demo_evidence",
       "validation_method": "automated_script"
     }
   ]

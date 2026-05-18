@@ -273,5 +273,5 @@ class TestWidgetCountConsistency:
         )
 
     def test_total_widget_count(self) -> None:
-        """All 15 widgets from the projection contract are defined."""
-        assert len(ALL_WIDGETS) == 15
+        """All widgets from the projection contract are defined."""
+        assert len(ALL_WIDGETS) == 16

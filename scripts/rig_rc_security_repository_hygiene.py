@@ -102,6 +102,8 @@ SCAN_SKIP_PREFIXES = (
     ".rig/",
 )
 
+MAX_SCAN_FILE_BYTES = 1_000_000
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -116,6 +118,21 @@ def _git_output(repo_root: Path, args: list[str]) -> str:
 
 def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _workflow_on_section(workflow: dict[object, object]) -> object:
+    if "on" in workflow:
+        return workflow["on"]
+    if True in workflow:
+        return workflow[True]
+    return {}
 
 
 def _event_names(on_data: object) -> set[str]:
@@ -149,71 +166,130 @@ def _is_sha_pinned(uses_value: str) -> bool:
     return re.fullmatch(r"[a-f0-9]{40}", ref) is not None
 
 
+def _dangerous_write_in_mapping(permissions: dict[object, object]) -> str:
+    for scope, raw in permissions.items():
+        if not isinstance(raw, str):
+            continue
+        value = raw.lower()
+        scope_name = str(scope)
+        if value == "write-all":
+            return f"{scope_name}: write-all"
+        if scope_name == "contents" and value == "write":
+            return f"{scope_name}: write"
+    return ""
+
+
 def _has_dangerous_write_permissions(
     permissions: object, has_pull_request: bool
 ) -> tuple[bool, str]:
+    detail = ""
     if isinstance(permissions, str):
         value = permissions.lower()
         if value == "write-all":
-            return True, "write-all"
-        if has_pull_request and value.endswith("write"):
-            return True, value
-        return False, ""
+            detail = "write-all"
+        elif has_pull_request and value == "contents:write":
+            detail = value
+    elif isinstance(permissions, dict):
+        detail = _dangerous_write_in_mapping(permissions)
+    return bool(detail), detail
 
-    if isinstance(permissions, dict):
-        for scope, raw in permissions.items():
-            if not isinstance(raw, str):
-                continue
-            value = raw.lower()
-            if value == "write":
-                if has_pull_request:
-                    return True, f"{scope}: write"
-                if str(scope) == "contents":
-                    return True, f"{scope}: write"
-            if value == "write-all":
-                return True, f"{scope}: write-all"
-    return False, ""
+
+def _scan_workflow_steps(
+    workflow_ref: str,
+    job_name: str,
+    steps: list[object],
+    job_if: str,
+    event_names: set[str],
+    dispatch_inputs: set[str],
+) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        uses_value = step.get("uses")
+        if not isinstance(uses_value, str):
+            continue
+
+        if not _is_sha_pinned(uses_value):
+            findings.append(
+                {
+                    "workflow": workflow_ref,
+                    "severity": "low",
+                    "finding_id": "workflow.action_not_sha_pinned",
+                    "detail": f"Job '{job_name}' step uses unpinned action '{uses_value}'",
+                }
+            )
+
+        if "pypa/gh-action-pypi-publish" not in uses_value:
+            continue
+
+        guard = f"{job_if} {step.get('if', '')!s}"
+        has_release_guard = "github.event_name == 'release'" in guard
+        has_manual_guard = "publish_to_pypi" in guard
+
+        if not has_release_guard and not has_manual_guard:
+            findings.append(
+                {
+                    "workflow": workflow_ref,
+                    "severity": "high",
+                    "finding_id": "workflow.pypi_publish_unrestricted",
+                    "detail": (
+                        f"Job '{job_name}' publishes to PyPI without explicit release/manual confirmation guard"
+                    ),
+                }
+            )
+
+        if "workflow_dispatch" in event_names and "publish_to_pypi" not in dispatch_inputs:
+            findings.append(
+                {
+                    "workflow": workflow_ref,
+                    "severity": "medium",
+                    "finding_id": "workflow.pypi_manual_input_missing",
+                    "detail": "workflow_dispatch exists but publish_to_pypi input is not declared",
+                }
+            )
+
+    return findings
 
 
 def scan_workflow_file(workflow_path: Path) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
+    workflow_label = _display_path(workflow_path)
 
     try:
         import yaml
 
         workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8")) or {}
     except Exception as exc:
-        findings.append(
+        return [
             {
-                "workflow": str(workflow_path),
+                "workflow": workflow_label,
                 "severity": "high",
                 "finding_id": "workflow.parse_error",
                 "detail": f"Failed to parse workflow: {exc}",
             }
-        )
-        return findings
+        ]
 
     if not isinstance(workflow, dict):
-        findings.append(
+        return [
             {
-                "workflow": str(workflow_path),
+                "workflow": workflow_label,
                 "severity": "high",
                 "finding_id": "workflow.invalid_shape",
                 "detail": "Workflow root must be an object",
             }
-        )
-        return findings
+        ]
 
-    on_data = workflow.get("on")
-    event_names = _event_names(on_data)
+    on_section = _workflow_on_section(workflow)
+    event_names = _event_names(on_section)
     has_pull_request = "pull_request" in event_names
-    dispatch_inputs = _workflow_dispatch_inputs(on_data)
-
     top_permissions = workflow.get("permissions")
+
     if top_permissions is None:
         findings.append(
             {
-                "workflow": str(workflow_path),
+                "workflow": workflow_label,
                 "severity": "low",
                 "finding_id": "workflow.permissions_not_explicit",
                 "detail": "Top-level permissions are not explicitly declared",
@@ -228,71 +304,43 @@ def scan_workflow_file(workflow_path: Path) -> list[dict[str, str]]:
         if not isinstance(job_value, dict):
             continue
 
-        effective_permissions = job_value.get("permissions", top_permissions)
+        job_if = str(job_value.get("if", ""))
         has_dangerous_permissions, detail = _has_dangerous_write_permissions(
-            effective_permissions, has_pull_request
+            job_value.get("permissions", top_permissions), has_pull_request
         )
+        is_release_guarded = "github.event_name == 'release'" in job_if
         if has_dangerous_permissions:
+            finding_id = "workflow.permissions_dangerous"
+            severity = "low"
+            if has_pull_request and not is_release_guarded:
+                severity = "high"
+            elif has_pull_request and is_release_guarded:
+                finding_id = "workflow.permissions_guarded_write"
+            elif detail == "write-all":
+                severity = "medium"
             findings.append(
                 {
-                    "workflow": str(workflow_path),
-                    "severity": "high",
-                    "finding_id": "workflow.permissions_dangerous",
-                    "detail": f"Job '{job_name}' has dangerous permissions ({detail})",
+                    "workflow": workflow_label,
+                    "severity": severity,
+                    "finding_id": finding_id,
+                    "detail": f"Job '{job_name}' has elevated permissions ({detail})",
                 }
             )
 
-        job_if = str(job_value.get("if", ""))
         steps = job_value.get("steps")
         if not isinstance(steps, list):
             continue
 
-        for step in steps:
-            if not isinstance(step, dict):
-                continue
-            uses_value = step.get("uses")
-            if not isinstance(uses_value, str):
-                continue
-
-            if not _is_sha_pinned(uses_value):
-                findings.append(
-                    {
-                        "workflow": str(workflow_path),
-                        "severity": "low",
-                        "finding_id": "workflow.action_not_sha_pinned",
-                        "detail": f"Job '{job_name}' step uses unpinned action '{uses_value}'",
-                    }
-                )
-
-            if "pypa/gh-action-pypi-publish" in uses_value:
-                step_if = str(step.get("if", ""))
-                guard = f"{job_if} {step_if}"
-                has_release_guard = "github.event_name == 'release'" in guard
-                has_manual_guard = "publish_to_pypi" in guard
-
-                if not has_release_guard and not has_manual_guard:
-                    findings.append(
-                        {
-                            "workflow": str(workflow_path),
-                            "severity": "high",
-                            "finding_id": "workflow.pypi_publish_unrestricted",
-                            "detail": (
-                                f"Job '{job_name}' publishes to PyPI without explicit release/manual confirmation guard"
-                            ),
-                        }
-                    )
-
-                if "workflow_dispatch" in event_names and "publish_to_pypi" not in dispatch_inputs:
-                    findings.append(
-                        {
-                            "workflow": str(workflow_path),
-                            "severity": "medium",
-                            "finding_id": "workflow.pypi_manual_input_missing",
-                            "detail": (
-                                "workflow_dispatch exists but publish_to_pypi input is not declared"
-                            ),
-                        }
-                    )
+        findings.extend(
+            _scan_workflow_steps(
+                workflow_label,
+                job_name,
+                steps,
+                job_if,
+                event_names,
+                _workflow_dispatch_inputs(on_section),
+            )
+        )
 
     return findings
 
@@ -435,19 +483,22 @@ def _is_scan_skipped(path: str) -> bool:
     return suffix in BINARY_SUFFIXES
 
 
-def scan_secret_and_path_hygiene(repo_root: Path) -> tuple[str, list[str], list[dict[str, str]]]:
+def scan_secret_and_path_hygiene(
+    repo_root: Path, scan_paths: list[str] | None = None
+) -> tuple[str, list[str], list[dict[str, str]]]:
     findings: list[dict[str, str]] = []
     high_count = 0
     medium_count = 0
+    candidate_paths = scan_paths or _tracked_files(repo_root)
 
-    for rel_path in _tracked_files(repo_root):
+    for rel_path in candidate_paths:
         if _is_scan_skipped(rel_path):
             continue
 
         file_path = repo_root / rel_path
         if not file_path.is_file():
             continue
-        if file_path.stat().st_size > 1_000_000:
+        if file_path.stat().st_size > MAX_SCAN_FILE_BYTES:
             continue
 
         text = file_path.read_text(encoding="utf-8", errors="ignore")
@@ -565,32 +616,39 @@ def files_checked(repo_root: Path) -> list[str]:
     return checked
 
 
-def run_audit(repo_root: Path = REPO_ROOT) -> dict[str, Any]:
-    branch = _git_output(repo_root, ["rev-parse", "--abbrev-ref", "HEAD"])
-    head_sha = _git_output(repo_root, ["rev-parse", "HEAD"])
-
-    checked_paths = files_checked(repo_root)
-
-    workflow_findings: list[dict[str, str]] = []
-    for workflow in sorted((repo_root / ".github/workflows").glob("*.yml")):
-        workflow_findings.extend(scan_workflow_file(workflow))
-
-    workflow_status = _status_from_workflow_findings(workflow_findings)
-
+def _collect_core_results(repo_root: Path, checked_paths: list[str]) -> dict[str, Any]:
     security_policy_status, security_issues = evaluate_security_policy(repo_root)
     license_status, license_issues = evaluate_license_consistency(repo_root)
     metadata_status, metadata_issues = evaluate_metadata_consistency(repo_root)
-    secret_status, secret_actions, secret_findings = scan_secret_and_path_hygiene(repo_root)
+    secret_status, secret_actions, secret_findings = scan_secret_and_path_hygiene(
+        repo_root, checked_paths
+    )
+    return {
+        "security_policy_status": security_policy_status,
+        "security_issues": security_issues,
+        "license_status": license_status,
+        "license_issues": license_issues,
+        "metadata_status": metadata_status,
+        "metadata_issues": metadata_issues,
+        "secret_status": secret_status,
+        "secret_actions": secret_actions,
+        "secret_findings": secret_findings,
+    }
 
-    forbidden_markdown = detect_forbidden_markdown_paths(checked_paths)
-    markdown_status = "passed" if not forbidden_markdown else "failed"
 
-    checks = [
+def _build_checks(
+    workflow_status: str,
+    workflow_findings: list[dict[str, str]],
+    markdown_status: str,
+    forbidden_markdown: list[str],
+    core: dict[str, Any],
+) -> list[dict[str, Any]]:
+    return [
         {
             "check_id": "security_policy_private_reporting",
-            "status": _status_to_check_result(security_policy_status),
+            "status": _status_to_check_result(core["security_policy_status"]),
             "detail": "Security policy supports private vulnerability reporting and 0.1.0a1 scope",
-            "issues": security_issues,
+            "issues": core["security_issues"],
         },
         {
             "check_id": "workflow_least_privilege",
@@ -599,22 +657,20 @@ def run_audit(repo_root: Path = REPO_ROOT) -> dict[str, Any]:
         },
         {
             "check_id": "license_consistency",
-            "status": _status_to_check_result(license_status),
+            "status": _status_to_check_result(core["license_status"]),
             "detail": "Public license metadata is AGPL-3.0-or-later across policy and package metadata",
-            "issues": license_issues,
+            "issues": core["license_issues"],
         },
         {
             "check_id": "metadata_consistency",
-            "status": _status_to_check_result(metadata_status),
+            "status": _status_to_check_result(core["metadata_status"]),
             "detail": "README, pyproject, policies, changelog, and install script are aligned",
-            "issues": metadata_issues,
+            "issues": core["metadata_issues"],
         },
         {
             "check_id": "secret_and_path_hygiene",
-            "status": _status_to_check_result(secret_status),
-            "detail": (
-                f"Secret/path scan findings: {len(secret_findings)}"
-            ),
+            "status": _status_to_check_result(core["secret_status"]),
+            "detail": f"Secret/path scan findings: {len(core['secret_findings'])}",
         },
         {
             "check_id": "markdown_exception_policy",
@@ -624,57 +680,81 @@ def run_audit(repo_root: Path = REPO_ROOT) -> dict[str, Any]:
         },
     ]
 
-    required_next_actions: list[str] = []
-    required_next_actions.extend(security_issues)
-    required_next_actions.extend(license_issues)
-    required_next_actions.extend(metadata_issues)
-    required_next_actions.extend(secret_actions)
 
-    medium_or_higher_workflow_findings = [
-        finding
-        for finding in workflow_findings
-        if finding.get("severity") in {"medium", "high"}
-    ]
-    for finding in medium_or_higher_workflow_findings:
-        required_next_actions.append(
+def _required_next_actions(
+    workflow_findings: list[dict[str, str]],
+    forbidden_markdown: list[str],
+    core: dict[str, Any],
+) -> list[str]:
+    actions: list[str] = []
+    actions.extend(core["security_issues"])
+    actions.extend(core["license_issues"])
+    actions.extend(core["metadata_issues"])
+    actions.extend(core["secret_actions"])
+
+    for finding in workflow_findings:
+        if finding.get("severity") not in {"medium", "high"}:
+            continue
+        actions.append(
             f"{finding['workflow']}: {finding['finding_id']} — {finding['detail']}"
         )
 
     if forbidden_markdown:
-        required_next_actions.append(
+        actions.append(
             f"Forbidden Markdown report paths detected: {', '.join(forbidden_markdown)}"
         )
 
+    return sorted(set(actions))
+
+
+def run_audit(repo_root: Path = REPO_ROOT) -> dict[str, Any]:
+    checked_paths = files_checked(repo_root)
+
+    workflow_findings: list[dict[str, str]] = []
+    for workflow in sorted((repo_root / ".github/workflows").glob("*.yml")):
+        workflow_findings.extend(scan_workflow_file(workflow))
+
+    workflow_status = _status_from_workflow_findings(workflow_findings)
+    forbidden_markdown = detect_forbidden_markdown_paths(checked_paths)
+    markdown_status = "passed" if not forbidden_markdown else "failed"
+    core = _collect_core_results(repo_root, checked_paths)
+
     component_statuses = [
-        security_policy_status,
+        core["security_policy_status"],
         workflow_status,
-        license_status,
-        metadata_status,
-        secret_status,
+        core["license_status"],
+        core["metadata_status"],
+        core["secret_status"],
         markdown_status,
     ]
-
-    if "failed" in component_statuses:
-        overall_status = "failed"
-    elif "hold" in component_statuses:
-        overall_status = "hold"
-    else:
-        overall_status = "passed"
+    overall_status = (
+        "failed"
+        if "failed" in component_statuses
+        else "hold" if "hold" in component_statuses else "passed"
+    )
 
     return {
         "schema_version": "rig.release_candidate.security_repository_hygiene.v1",
         "generated_at": _now_iso(),
-        "branch": branch,
-        "head_sha": head_sha,
+        "branch": _git_output(repo_root, ["rev-parse", "--abbrev-ref", "HEAD"]),
+        "head_sha": _git_output(repo_root, ["rev-parse", "HEAD"]),
         "overall_status": overall_status,
-        "checks": checks,
+        "checks": _build_checks(
+            workflow_status,
+            workflow_findings,
+            markdown_status,
+            forbidden_markdown,
+            core,
+        ),
         "files_checked": checked_paths,
         "workflow_findings": workflow_findings,
-        "security_policy_status": security_policy_status,
-        "license_status": license_status,
-        "metadata_consistency_status": metadata_status,
-        "secret_scan_status": secret_status,
-        "required_next_actions": sorted(set(required_next_actions)),
+        "security_policy_status": core["security_policy_status"],
+        "license_status": core["license_status"],
+        "metadata_consistency_status": core["metadata_status"],
+        "secret_scan_status": core["secret_status"],
+        "required_next_actions": _required_next_actions(
+            workflow_findings, forbidden_markdown, core
+        ),
     }
 
 
