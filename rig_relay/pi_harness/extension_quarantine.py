@@ -22,7 +22,11 @@ def _redact_message(message: str) -> str:
         return ""
     tokens = []
     for token in message.split():
-        if "key" in token.lower() or "secret" in token.lower() or "token" in token.lower():
+        if (
+            "key" in token.lower()
+            or "secret" in token.lower()
+            or "token" in token.lower()
+        ):
             tokens.append("[redacted]")
         else:
             tokens.append(token)
@@ -75,7 +79,9 @@ class ExtensionHealthState:
 
 
 class ExtensionHealthStore:
-    def __init__(self, root: Path | None = None, policy: ExtensionHealthPolicy | None = None) -> None:
+    def __init__(
+        self, root: Path | None = None, policy: ExtensionHealthPolicy | None = None
+    ) -> None:
         self.root = root or (Path.cwd() / ".rig" / "pi-harness")
         self.policy = policy or ExtensionHealthPolicy()
         self.state_path = self.root / "extension-health.json"
@@ -89,7 +95,9 @@ class ExtensionHealthStore:
         state: dict[str, ExtensionHealthState] = {}
         for entry in raw.get("extensions", []):
             identity = ExtensionIdentity(**entry["extension"])
-            crashes = [ExtensionCrashRecord(**item) for item in entry.get("crashes", [])]
+            crashes = [
+                ExtensionCrashRecord(**item) for item in entry.get("crashes", [])
+            ]
             state[identity.extension_id] = ExtensionHealthState(
                 extension=identity,
                 crashes=crashes,
@@ -118,13 +126,19 @@ class ExtensionHealthStore:
                     "quarantine_until": state.quarantine_until,
                     "healthy": state.healthy,
                 }
-                for state in sorted(self._state.values(), key=lambda item: item.extension.extension_id)
+                for state in sorted(
+                    self._state.values(), key=lambda item: item.extension.extension_id
+                )
             ],
         }
-        self.state_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        self.state_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+        )
 
     def register_extension(self, extension: ExtensionIdentity) -> ExtensionHealthState:
-        state = self._state.setdefault(extension.extension_id, ExtensionHealthState(extension=extension))
+        state = self._state.setdefault(
+            extension.extension_id, ExtensionHealthState(extension=extension)
+        )
         state.extension = extension
         self._save()
         return state
@@ -135,9 +149,17 @@ class ExtensionHealthStore:
         self._save()
         return state
 
-    def record_crash(self, extension: ExtensionIdentity, lifecycle_phase: str, exc: BaseException, session_id: str | None = None) -> tuple[ExtensionHealthState, ExtensionCrashRecord, QuarantineDecision]:
+    def record_crash(
+        self,
+        extension: ExtensionIdentity,
+        lifecycle_phase: str,
+        exc: BaseException,
+        session_id: str | None = None,
+    ) -> tuple[ExtensionHealthState, ExtensionCrashRecord, QuarantineDecision]:
         state = self.register_extension(extension)
-        tb_hash = _sha256_text("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
+        tb_hash = _sha256_text(
+            "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        )
         record = ExtensionCrashRecord(
             extension_id=extension.extension_id,
             lifecycle_phase=lifecycle_phase,
@@ -154,15 +176,27 @@ class ExtensionHealthStore:
         self._save()
         return state, record, decision
 
-    def _apply_quarantine_policy(self, state: ExtensionHealthState) -> QuarantineDecision:
+    def _apply_quarantine_policy(
+        self, state: ExtensionHealthState
+    ) -> QuarantineDecision:
         now = _now()
         window_start = now - timedelta(minutes=self.policy.crash_window_minutes)
-        recent = [item for item in state.crashes if datetime.fromisoformat(item.timestamp) >= window_start]
+        recent = [
+            item
+            for item in state.crashes
+            if datetime.fromisoformat(item.timestamp) >= window_start
+        ]
         if len(recent) >= self.policy.crash_threshold:
             state.quarantined = True
-            state.quarantine_reason = f"{len(recent)} crashes in {self.policy.crash_window_minutes} minutes"
-            state.quarantine_until = (now + timedelta(minutes=self.policy.crash_window_minutes)).isoformat()
-            return QuarantineDecision(True, state.quarantine_reason, state.quarantine_until)
+            state.quarantine_reason = (
+                f"{len(recent)} crashes in {self.policy.crash_window_minutes} minutes"
+            )
+            state.quarantine_until = (
+                now + timedelta(minutes=self.policy.crash_window_minutes)
+            ).isoformat()
+            return QuarantineDecision(
+                True, state.quarantine_reason, state.quarantine_until
+            )
         if self.policy.safe_mode:
             state.quarantined = False
             state.quarantine_reason = None
@@ -178,7 +212,9 @@ class ExtensionHealthStore:
         return state
 
     def get_status(self) -> list[ExtensionHealthState]:
-        return sorted(self._state.values(), key=lambda item: item.extension.extension_id)
+        return sorted(
+            self._state.values(), key=lambda item: item.extension.extension_id
+        )
 
     def should_start(self, extension: ExtensionIdentity) -> bool:
         state = self._state.get(extension.extension_id)
@@ -208,9 +244,15 @@ def run_extension_with_containment(
     try:
         result = callback(*callback_args, **kwargs)
         store.record_success(extension)
-        return {"status": "ok", "extension_id": extension.extension_id, "result": result}
+        return {
+            "status": "ok",
+            "extension_id": extension.extension_id,
+            "result": result,
+        }
     except Exception as exc:
-        state, record, decision = store.record_crash(extension, lifecycle_phase, exc, session_id=session_id)
+        state, record, decision = store.record_crash(
+            extension, lifecycle_phase, exc, session_id=session_id
+        )
         return {
             "status": "crashed",
             "extension_id": extension.extension_id,

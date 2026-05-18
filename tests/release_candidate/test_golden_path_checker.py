@@ -41,11 +41,12 @@ def _repr_root(tmp: Path) -> Path:
     )
     subprocess.run(
         ["git", "config", "user.email", "test@test.com"],
-        cwd=tmp, capture_output=True, check=True,
+        cwd=tmp,
+        capture_output=True,
+        check=True,
     )
     subprocess.run(
-        ["git", "config", "user.name", "Test"],
-        cwd=tmp, capture_output=True, check=True,
+        ["git", "config", "user.name", "Test"], cwd=tmp, capture_output=True, check=True
     )
     (tmp / "dummy.txt").write_text("test")
     subprocess.run(
@@ -82,9 +83,16 @@ def _write_minimal_gate(tmp: Path, **overrides) -> Path:
         ],
         "policy": {
             "allowed_markdown_exceptions": [
-                "AGENTS.md", "README.md", "LICENSE", "CONTRIBUTING.md",
-                "SECURITY.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md",
-                "THIRD_PARTY_NOTICES.md", "ATTRIBUTION.md", "UPSTREAM.md",
+                "AGENTS.md",
+                "README.md",
+                "LICENSE",
+                "CONTRIBUTING.md",
+                "SECURITY.md",
+                "CODE_OF_CONDUCT.md",
+                "CHANGELOG.md",
+                "THIRD_PARTY_NOTICES.md",
+                "ATTRIBUTION.md",
+                "UPSTREAM.md",
             ]
         },
     }
@@ -115,10 +123,15 @@ def _write_golden_path(tmp: Path, steps: list[dict], overall: str = "blocked") -
         ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
     ).strip()
     if not steps:
-        steps = [_make_step("gp_placeholder_no_blocking", "passing",
-                            blocking_failure_conditions=[],
-                            evidence_path=str(tmp / "evidence/dummy.json"),
-                            validation_method="manual_review")]
+        steps = [
+            _make_step(
+                "gp_placeholder_no_blocking",
+                "passing",
+                blocking_failure_conditions=[],
+                evidence_path=str(tmp / "evidence/dummy.json"),
+                validation_method="manual_review",
+            )
+        ]
         (tmp / "evidence").mkdir(exist_ok=True)
         (tmp / "evidence" / "dummy.json").write_text("{}")
     gp = {
@@ -139,7 +152,13 @@ def _write_golden_path(tmp: Path, steps: list[dict], overall: str = "blocked") -
 
 
 def _write_installability(tmp: Path, overall: str = "passed") -> Path:
-    p = tmp / "docs" / "json" / "release_candidate" / "rc_installability_verdict.v1.json"
+    p = (
+        tmp
+        / "docs"
+        / "json"
+        / "release_candidate"
+        / "rc_installability_verdict.v1.json"
+    )
     p.write_text(
         json.dumps({
             "schema_version": "rig.release_candidate.installability_check.v1",
@@ -176,7 +195,10 @@ def _write_deferred_risks(tmp: Path) -> Path:
 def _run_golden_path_checker(tmp: Path) -> dict:
     proc = subprocess.run(
         [sys.executable, str(GOLDEN_PATH_CHECKER), "--repo-root", str(tmp)],
-        capture_output=True, text=True, cwd=str(tmp), timeout=30,
+        capture_output=True,
+        text=True,
+        cwd=str(tmp),
+        timeout=30,
     )
     return json.loads(proc.stdout)
 
@@ -184,16 +206,26 @@ def _run_golden_path_checker(tmp: Path) -> dict:
 def _run_validator_in_tmp(tmp: Path) -> dict:
     gate_p = str(tmp / "docs" / "json" / "release_gate" / "rc_readiness_gate.v1.json")
     blockers_p = str(tmp / "docs" / "json" / "release_gate" / "rc_blockers.v1.jsonl")
-    vruns_p = str(tmp / "docs" / "json" / "release_gate" / "rc_validation_runs.v1.jsonl")
+    vruns_p = str(
+        tmp / "docs" / "json" / "release_gate" / "rc_validation_runs.v1.jsonl"
+    )
     proc = subprocess.run(
         [
-            sys.executable, str(VALIDATOR_PATH),
-            "--repo-root", str(tmp),
-            "--readiness-gate", gate_p,
-            "--blockers", blockers_p,
-            "--validation-runs", vruns_p,
+            sys.executable,
+            str(VALIDATOR_PATH),
+            "--repo-root",
+            str(tmp),
+            "--readiness-gate",
+            gate_p,
+            "--blockers",
+            blockers_p,
+            "--validation-runs",
+            vruns_p,
         ],
-        capture_output=True, text=True, cwd=str(tmp), timeout=30,
+        capture_output=True,
+        text=True,
+        cwd=str(tmp),
+        timeout=30,
     )
     return json.loads(proc.stdout)
 
@@ -215,7 +247,12 @@ def _make_blocker(blocker_id: str, status: str = "open", **overrides) -> dict:
     return base
 
 
-def _make_step(step_id: str, status: str = "not_verified", validation_method: str = "manual_review", **overrides) -> dict:
+def _make_step(
+    step_id: str,
+    status: str = "not_verified",
+    validation_method: str = "manual_review",
+    **overrides,
+) -> dict:
     base = {
         "step_id": step_id,
         "user_goal": f"Goal for {step_id}",
@@ -268,16 +305,26 @@ class TestGoldenPathExecutorContract:
 class TestOpenBlockerMakesStepBlocked:
     def test_open_blocker_linked_step_is_blocked(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         _write_minimal_gate(tmp)
-        _write_blockers(tmp, [
-            _make_blocker("blk_runtime_feral_subprocess", "open", source_commit=head),
-        ])
+        _write_blockers(
+            tmp,
+            [_make_blocker("blk_runtime_feral_subprocess", "open", source_commit=head)],
+        )
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_feral_subprocess_accountability", "blocked"),
-            _make_step("gp_install_sync", "not_verified", validation_method="automated_script"),
-        ])
+        _write_golden_path(
+            tmp,
+            [
+                _make_step("gp_feral_subprocess_accountability", "blocked"),
+                _make_step(
+                    "gp_install_sync",
+                    "not_verified",
+                    validation_method="automated_script",
+                ),
+            ],
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
         result = _run_golden_path_checker(tmp)
@@ -289,9 +336,16 @@ class TestOpenBlockerMakesStepBlocked:
         _write_minimal_gate(tmp)
         _write_blockers(tmp, [])
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_install_sync", "not_verified", validation_method="automated_script"),
-        ])
+        _write_golden_path(
+            tmp,
+            [
+                _make_step(
+                    "gp_install_sync",
+                    "not_verified",
+                    validation_method="automated_script",
+                )
+            ],
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
         result = _run_golden_path_checker(tmp)
@@ -300,17 +354,26 @@ class TestOpenBlockerMakesStepBlocked:
 
 @pytest.mark.contract
 class TestResolvedBlockerBlockedStepConsistency:
-    def test_resolved_blocker_blocked_step_fails_consistency(self, tmp_path: Path) -> None:
+    def test_resolved_blocker_blocked_step_fails_consistency(
+        self, tmp_path: Path
+    ) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         _write_minimal_gate(tmp)
-        _write_blockers(tmp, [
-            _make_blocker("blk_runtime_feral_subprocess", "resolved", source_commit=head),
-        ])
+        _write_blockers(
+            tmp,
+            [
+                _make_blocker(
+                    "blk_runtime_feral_subprocess", "resolved", source_commit=head
+                )
+            ],
+        )
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_feral_subprocess_accountability", "blocked"),
-        ])
+        _write_golden_path(
+            tmp, [_make_step("gp_feral_subprocess_accountability", "blocked")]
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
 
@@ -325,21 +388,33 @@ class TestResolvedBlockerBlockedStepConsistency:
 class TestPassingStepOpenBlockerConsistency:
     def test_passing_step_open_blocker_fails_consistency(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         _write_minimal_gate(tmp)
-        _write_blockers(tmp, [
-            _make_blocker("blk_runtime_feral_subprocess", "open", source_commit=head),
-        ])
+        _write_blockers(
+            tmp,
+            [_make_blocker("blk_runtime_feral_subprocess", "open", source_commit=head)],
+        )
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_feral_subprocess_accountability", "passing", validation_method="receipt_inspection"),
-        ])
+        _write_golden_path(
+            tmp,
+            [
+                _make_step(
+                    "gp_feral_subprocess_accountability",
+                    "passing",
+                    validation_method="receipt_inspection",
+                )
+            ],
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
 
         vr = _run_validator_in_tmp(tmp)
         assert any(
-            "CONSISTENCY FAIL" in e and "gp_feral_subprocess_accountability" in e and "still 'open'" in e
+            "CONSISTENCY FAIL" in e
+            and "gp_feral_subprocess_accountability" in e
+            and "still 'open'" in e
             for e in vr.get("errors", [])
         )
 
@@ -351,9 +426,16 @@ class TestManualNotVerifiedPreventsPromote:
         _write_minimal_gate(tmp)
         _write_blockers(tmp, [])
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_launch_server", "not_verified", validation_method="manual_review"),
-        ])
+        _write_golden_path(
+            tmp,
+            [
+                _make_step(
+                    "gp_launch_server",
+                    "not_verified",
+                    validation_method="manual_review",
+                )
+            ],
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
 
@@ -371,8 +453,12 @@ class TestManualNotVerifiedPreventsPromote:
         _write_golden_path(
             tmp,
             [
-                _make_step("gp_launch_server", "passing", validation_method="manual_review",
-                          evidence_path=str(tmp / "e" / "manual_evidence.json")),
+                _make_step(
+                    "gp_launch_server",
+                    "passing",
+                    validation_method="manual_review",
+                    evidence_path=str(tmp / "e" / "manual_evidence.json"),
+                )
             ],
             overall="passing",
         )
@@ -390,15 +476,18 @@ class TestManualNotVerifiedPreventsPromote:
 class TestInstallabilityAloneInsufficient:
     def test_installability_passed_golden_path_blocked(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         _write_minimal_gate(tmp)
-        _write_blockers(tmp, [
-            _make_blocker("blk_runtime_feral_subprocess", "open", source_commit=head),
-        ])
+        _write_blockers(
+            tmp,
+            [_make_blocker("blk_runtime_feral_subprocess", "open", source_commit=head)],
+        )
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_feral_subprocess_accountability", "blocked"),
-        ])
+        _write_golden_path(
+            tmp, [_make_step("gp_feral_subprocess_accountability", "blocked")]
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
 
@@ -407,17 +496,32 @@ class TestInstallabilityAloneInsufficient:
         blocked = result["blocked_steps"]
         assert "gp_feral_subprocess_accountability" in blocked
 
-    def test_cli_only_evidence_insufficient_for_frontend_path(self, tmp_path: Path) -> None:
+    def test_cli_only_evidence_insufficient_for_frontend_path(
+        self, tmp_path: Path
+    ) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         _write_minimal_gate(tmp)
         _write_blockers(tmp, [])
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_install_sync", "passing", validation_method="automated_script",
-                      evidence_path=str(tmp / "evidence/install.json")),
-            _make_step("gp_launch_frontend", "not_verified", validation_method="manual_review"),
-        ])
+        _write_golden_path(
+            tmp,
+            [
+                _make_step(
+                    "gp_install_sync",
+                    "passing",
+                    validation_method="automated_script",
+                    evidence_path=str(tmp / "evidence/install.json"),
+                ),
+                _make_step(
+                    "gp_launch_frontend",
+                    "not_verified",
+                    validation_method="manual_review",
+                ),
+            ],
+        )
         (tmp / "evidence").mkdir(exist_ok=True)
         (tmp / "evidence" / "install.json").write_text("{}")
         _write_installability(tmp, "passed")
@@ -425,8 +529,7 @@ class TestInstallabilityAloneInsufficient:
 
         result = _run_golden_path_checker(tmp)
         server_frontend_steps = [
-            sr for sr in result["step_results"]
-            if sr.get("server_frontend_path")
+            sr for sr in result["step_results"] if sr.get("server_frontend_path")
         ]
         assert len(server_frontend_steps) > 0
         assert not any(s["status"] == "passing" for s in server_frontend_steps)
@@ -439,8 +542,16 @@ class TestMarkdownEvidenceRejected:
         _write_minimal_gate(tmp)
         _write_blockers(tmp, [])
         _write_validation_runs(tmp, [])
-        gp_path = tmp / "docs" / "json" / "release_candidate" / "rc_reviewer_golden_path.v1.json"
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        gp_path = (
+            tmp
+            / "docs"
+            / "json"
+            / "release_candidate"
+            / "rc_reviewer_golden_path.v1.json"
+        )
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         gp = {
             "schema_version": "rig.release_candidate.reviewer_golden_path.v1",
             "golden_path_id": "test",
@@ -458,9 +569,7 @@ class TestMarkdownEvidenceRejected:
         _write_deferred_risks(tmp)
 
         vr = _run_validator_in_tmp(tmp)
-        assert any(
-            "forbidden" in e.lower() for e in vr.get("errors", [])
-        )
+        assert any("forbidden" in e.lower() for e in vr.get("errors", []))
 
     def test_allowed_markdown_not_rejected(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
@@ -468,8 +577,16 @@ class TestMarkdownEvidenceRejected:
         _write_blockers(tmp, [])
         _write_validation_runs(tmp, [])
         (tmp / "README.md").write_text("# Test")
-        gp_path = tmp / "docs" / "json" / "release_candidate" / "rc_reviewer_golden_path.v1.json"
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        gp_path = (
+            tmp
+            / "docs"
+            / "json"
+            / "release_candidate"
+            / "rc_reviewer_golden_path.v1.json"
+        )
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         gp = {
             "schema_version": "rig.release_candidate.reviewer_golden_path.v1",
             "golden_path_id": "test",
@@ -487,9 +604,7 @@ class TestMarkdownEvidenceRejected:
         _write_deferred_risks(tmp)
 
         vr = _run_validator_in_tmp(tmp)
-        assert not any(
-            "forbidden" in e.lower() for e in vr.get("errors", [])
-        )
+        assert not any("forbidden" in e.lower() for e in vr.get("errors", []))
 
 
 # ── Real-artifact tests ────────────────────────────────────────────────
@@ -500,11 +615,17 @@ class TestRealArtifactGoldenPath:
     def test_golden_path_executor_on_real_repo(self) -> None:
         proc = subprocess.run(
             ["uv", "run", "python", str(GOLDEN_PATH_CHECKER)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         result = json.loads(proc.stdout)
         assert result["schema_version"] == "rig.release_candidate.golden_path_run.v1"
-        assert result["overall_status"] in {"blocked", "manual_required", "not_verified"}
+        assert result["overall_status"] in {
+            "blocked",
+            "manual_required",
+            "not_verified",
+        }
         assert result["open_blocker_count"] >= 0
         assert len(result["consistency_errors"]) == 0
         assert result["blocked_steps"] == []
@@ -525,16 +646,21 @@ class TestRealArtifactGoldenPath:
             / "rc_golden_path_run.v1.json"
         )
         import jsonschema
+
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         run = json.loads(run_path.read_text(encoding="utf-8"))
         validator_ = jsonschema.Draft202012Validator(schema)
         errors = list(validator_.iter_errors(run))
-        assert len(errors) == 0, f"Schema validation errors: {[e.message for e in errors]}"
+        assert len(errors) == 0, (
+            f"Schema validation errors: {[e.message for e in errors]}"
+        )
 
     def test_validator_verdict_is_blocked_on_real_repo(self) -> None:
         proc = subprocess.run(
             ["uv", "run", "python", str(VALIDATOR_PATH)],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         result = json.loads(proc.stdout)
         assert result["verdict"] in {"BLOCKED", "FAIL"}
@@ -544,7 +670,9 @@ class TestRealArtifactGoldenPath:
     def test_validator_exit_code_zero_on_hold(self) -> None:
         proc = subprocess.run(
             ["uv", "run", "python", str(VALIDATOR_PATH)],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         assert proc.returncode == 0
 
@@ -554,17 +682,26 @@ class TestRealArtifactGoldenPath:
 
 @pytest.mark.sabotage
 class TestSabotageConsistencyFailures:
-    def test_resolved_blocker_blocked_step_fails_validator(self, tmp_path: Path) -> None:
+    def test_resolved_blocker_blocked_step_fails_validator(
+        self, tmp_path: Path
+    ) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         _write_minimal_gate(tmp)
-        _write_blockers(tmp, [
-            _make_blocker("blk_runtime_feral_subprocess", "resolved", source_commit=head),
-        ])
+        _write_blockers(
+            tmp,
+            [
+                _make_blocker(
+                    "blk_runtime_feral_subprocess", "resolved", source_commit=head
+                )
+            ],
+        )
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_feral_subprocess_accountability", "blocked"),
-        ])
+        _write_golden_path(
+            tmp, [_make_step("gp_feral_subprocess_accountability", "blocked")]
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
 
@@ -574,16 +711,23 @@ class TestSabotageConsistencyFailures:
 
     def test_missing_evidence_automated_step_fails(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         _write_minimal_gate(tmp)
         _write_blockers(tmp, [])
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step(
-                "gp_install_sync", "passing", validation_method="automated_script",
-                evidence_path="nonexistent/path/evidence.json",
-            ),
-        ])
+        _write_golden_path(
+            tmp,
+            [
+                _make_step(
+                    "gp_install_sync",
+                    "passing",
+                    validation_method="automated_script",
+                    evidence_path="nonexistent/path/evidence.json",
+                )
+            ],
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
 
@@ -598,9 +742,9 @@ class TestSabotageConsistencyFailures:
         _write_minimal_gate(tmp)
         _write_blockers(tmp, [])
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_feral_subprocess_accountability", "blocked"),
-        ])
+        _write_golden_path(
+            tmp, [_make_step("gp_feral_subprocess_accountability", "blocked")]
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
 
@@ -618,19 +762,24 @@ class TestSabotageConsistencyFailures:
 class TestVerdictDistinction:
     def test_hold_with_open_blockers_is_hold(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
-        _write_minimal_gate(tmp, overall_status="blocked",
-                            phases=[{
-                                "phase_id": "phase_1",
-                                "title": "Phase 1",
-                                "status": "blocked",
-                                "owner_surface": "test",
-                                "blocker_ids": ["B-HOLD"],
-                                "source_commit": head,
-                            }])
-        _write_blockers(tmp, [
-            _make_blocker("B-HOLD", "open", source_commit=head),
-        ])
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
+        _write_minimal_gate(
+            tmp,
+            overall_status="blocked",
+            phases=[
+                {
+                    "phase_id": "phase_1",
+                    "title": "Phase 1",
+                    "status": "blocked",
+                    "owner_surface": "test",
+                    "blocker_ids": ["B-HOLD"],
+                    "source_commit": head,
+                }
+            ],
+        )
+        _write_blockers(tmp, [_make_blocker("B-HOLD", "open", source_commit=head)])
         _write_validation_runs(tmp, [])
         _write_golden_path(tmp, [])
         _write_installability(tmp, "passed")
@@ -641,15 +790,22 @@ class TestVerdictDistinction:
 
     def test_fail_on_contradictory_evidence(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
         _write_minimal_gate(tmp)
-        _write_blockers(tmp, [
-            _make_blocker("blk_runtime_feral_subprocess", "resolved", source_commit=head),
-        ])
+        _write_blockers(
+            tmp,
+            [
+                _make_blocker(
+                    "blk_runtime_feral_subprocess", "resolved", source_commit=head
+                )
+            ],
+        )
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_feral_subprocess_accountability", "blocked"),
-        ])
+        _write_golden_path(
+            tmp, [_make_step("gp_feral_subprocess_accountability", "blocked")]
+        )
         _write_installability(tmp, "passed")
         _write_deferred_risks(tmp)
 
@@ -658,22 +814,36 @@ class TestVerdictDistinction:
 
     def test_promote_only_when_all_blocking_verified(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tmp, text=True).strip()
-        _write_minimal_gate(tmp,
-                            phases=[{
-                                "phase_id": "phase_1",
-                                "title": "Phase 1",
-                                "status": "ready",
-                                "owner_surface": "test",
-                                "source_commit": head,
-                            }])
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
+        ).strip()
+        _write_minimal_gate(
+            tmp,
+            phases=[
+                {
+                    "phase_id": "phase_1",
+                    "title": "Phase 1",
+                    "status": "ready",
+                    "owner_surface": "test",
+                    "source_commit": head,
+                }
+            ],
+        )
         _write_blockers(tmp, [])
         _write_validation_runs(tmp, [])
-        _write_golden_path(tmp, [
-            _make_step("gp_install_sync", "passing", validation_method="automated_script",
-                      evidence_path=str(tmp / "evidence/install.json"),
-                      blocking_failure_conditions=["may fail"]),
-        ], overall="passing")
+        _write_golden_path(
+            tmp,
+            [
+                _make_step(
+                    "gp_install_sync",
+                    "passing",
+                    validation_method="automated_script",
+                    evidence_path=str(tmp / "evidence/install.json"),
+                    blocking_failure_conditions=["may fail"],
+                )
+            ],
+            overall="passing",
+        )
         (tmp / "evidence").mkdir(exist_ok=True)
         (tmp / "evidence" / "install.json").write_text("{}")
         _write_installability(tmp, "passed")
@@ -688,7 +858,9 @@ class TestServerFrontendProductPathRequired:
     def test_server_frontend_artifacts_exist(self) -> None:
         proc = subprocess.run(
             ["uv", "run", "python", str(GOLDEN_PATH_CHECKER)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         result = json.loads(proc.stdout)
         sfp = result.get("server_frontend_product_path", {})
@@ -701,14 +873,21 @@ class TestServerFrontendProductPathRequired:
     def test_golden_path_includes_server_frontend_steps(self) -> None:
         proc = subprocess.run(
             ["uv", "run", "python", str(GOLDEN_PATH_CHECKER)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         result = json.loads(proc.stdout)
         sf_steps = [
-            sr for sr in result["step_results"]
-            if sr.get("server_frontend_path")
+            sr for sr in result["step_results"] if sr.get("server_frontend_path")
         ]
         sf_step_ids = {sr["step_id"] for sr in sf_steps}
-        required_sf = {"gp_launch_server", "gp_launch_frontend", "gp_frontend_primary_surface", "gp_run_real_work_lane", "gp_shutdown_cleanly"}
+        required_sf = {
+            "gp_launch_server",
+            "gp_launch_frontend",
+            "gp_frontend_primary_surface",
+            "gp_run_real_work_lane",
+            "gp_shutdown_cleanly",
+        }
         missing_sf = required_sf - sf_step_ids
         assert not missing_sf, f"Server/frontend steps missing: {missing_sf}"

@@ -89,7 +89,8 @@ async def test_index_html_injects_runtime_config(tmp_path: Path) -> None:
     await bridge.start()
     try:
         response = bridge._handle_http(
-            type("Req", (), {"path": "/index.html"})(), frontend  # type: ignore[arg-type]
+            type("Req", (), {"path": "/index.html"})(),
+            frontend,  # type: ignore[arg-type]
         )
         assert response is not None
         body = response.body.decode("utf-8")
@@ -122,7 +123,8 @@ async def test_runtime_config_and_index_emit_frontend_breadcrumbs(
         bridge._trace_recorder = TraceRecorder(InMemoryTraceStore())
         bridge._handle_http(type("Req", (), {"path": "/index.html"})(), frontend)  # type: ignore[arg-type]
         bridge._handle_http(
-            type("Req", (), {"path": "/runtime-config.json"})(), frontend  # type: ignore[arg-type]
+            type("Req", (), {"path": "/runtime-config.json"})(),
+            frontend,  # type: ignore[arg-type]
         )
         names = [
             event.get("event_type") or event.get("name")
@@ -401,7 +403,10 @@ class TestGoldenPathTraceSummaryLogic:
                 if (
                     event.get("event_type") or event.get("name")
                 ) == "desktop.bridge.runtime_config_built":
-                    payload: dict[str, Any] = cast(dict[str, Any], event.get("payload") or event.get("attributes") or {})
+                    payload: dict[str, Any] = cast(
+                        dict[str, Any],
+                        event.get("payload") or event.get("attributes") or {},
+                    )
                     assert "frontend_url" in payload or "frontend_url" in str(event)
                     assert "websocket_url" in payload or "websocket_url" in str(event)
                     break

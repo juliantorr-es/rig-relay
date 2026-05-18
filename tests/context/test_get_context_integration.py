@@ -29,7 +29,9 @@ def _register_session_and_task(store: CoordinationStore) -> None:
         agent_profile="agent-1",
         status="active",
     )
-    store._write_json(store._session_path("session-abc"), session.model_dump(exclude_none=True))
+    store._write_json(
+        store._session_path("session-abc"), session.model_dump(exclude_none=True)
+    )
 
     result = store.claim_task(
         session_id="session-abc",
@@ -51,7 +53,9 @@ def _register_session_and_task(store: CoordinationStore) -> None:
 
 
 class TestGetContextDigestMode:
-    def test_digest_mode_returns_packet(self, tmp_path: Path, coordination_store: CoordinationStore) -> None:
+    def test_digest_mode_returns_packet(
+        self, tmp_path: Path, coordination_store: CoordinationStore
+    ) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "main.py").write_text("# main")
         _register_session_and_task(coordination_store)
@@ -69,7 +73,9 @@ class TestGetContextDigestMode:
         assert packet.repo is not None
         assert isinstance(packet.active_work, dict)
 
-    def test_digest_has_active_lanes(self, tmp_path: Path, coordination_store: CoordinationStore) -> None:
+    def test_digest_has_active_lanes(
+        self, tmp_path: Path, coordination_store: CoordinationStore
+    ) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "main.py").write_text("# main")
         _register_session_and_task(coordination_store)
@@ -87,7 +93,9 @@ class TestGetContextDigestMode:
         session_ids = {lane.get("agent_id", "") for lane in lanes}
         assert "session-abc" in session_ids
 
-    def test_digest_has_do_not_touch(self, tmp_path: Path, coordination_store: CoordinationStore) -> None:
+    def test_digest_has_do_not_touch(
+        self, tmp_path: Path, coordination_store: CoordinationStore
+    ) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "main.py").write_text("# main")
         _register_session_and_task(coordination_store)
@@ -101,12 +109,16 @@ class TestGetContextDigestMode:
         packet = execute(request, workspace_root=tmp_path)
 
         do_not_touch = packet.do_not_touch
-        assert len(do_not_touch) >= 1, f"Digest mode should include do_not_touch entries, got {do_not_touch}"
+        assert len(do_not_touch) >= 1, (
+            f"Digest mode should include do_not_touch entries, got {do_not_touch}"
+        )
 
         dnt_paths = {r.path for r in do_not_touch}
         assert "src/main.py" in dnt_paths or "src/utils.py" in dnt_paths
 
-    def test_digest_cache_hit(self, tmp_path: Path, coordination_store: CoordinationStore) -> None:
+    def test_digest_cache_hit(
+        self, tmp_path: Path, coordination_store: CoordinationStore
+    ) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "main.py").write_text("# main")
         _register_session_and_task(coordination_store)
@@ -143,7 +155,9 @@ class TestGetContextDigestMode:
         lanes = packet.active_work.get("lanes", [])
         assert lanes == []
 
-    def test_digest_with_include_receipts(self, tmp_path: Path, coordination_store: CoordinationStore) -> None:
+    def test_digest_with_include_receipts(
+        self, tmp_path: Path, coordination_store: CoordinationStore
+    ) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "main.py").write_text("# main")
         _register_session_and_task(coordination_store)

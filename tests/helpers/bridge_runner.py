@@ -108,7 +108,8 @@ class BridgeRunner:
 
     def get_event_names(self) -> list[str]:
         return [
-            str(e.get("event_type") or e.get("name", "")) for e in self._trace_store.events
+            str(e.get("event_type") or e.get("name", ""))
+            for e in self._trace_store.events
         ]
 
     def __enter__(self) -> BridgeRunner:

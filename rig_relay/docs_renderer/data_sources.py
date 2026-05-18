@@ -52,7 +52,9 @@ def load_jsonl_data(path_str: str, selector: str = "") -> list[dict]:
     if not file_path.is_file():
         raise FileNotFoundError(f"Data file not found: {path_str}")
     rows: list[dict] = []
-    for line_num, line in enumerate(file_path.read_text(encoding="utf-8").splitlines(), 1):
+    for line_num, line in enumerate(
+        file_path.read_text(encoding="utf-8").splitlines(), 1
+    ):
         line = line.strip()
         if not line:
             continue

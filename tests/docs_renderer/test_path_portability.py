@@ -15,10 +15,21 @@ def test_get_relative_root_returns_correct_depth():
 
 def test_make_relative_link_transforms_absolute_paths():
     base = "/rig-relay"
-    assert make_relative_link("/rig-relay/assets/site.css", ".", base) == "assets/site.css"
-    assert make_relative_link("/rig-relay/assets/site.css", "..", base) == "../assets/site.css"
-    assert make_relative_link("/rig-relay/pages/123.html", "..", base) == "../pages/123.html"
-    assert make_relative_link("https://example.com/doc", "..", base) == "https://example.com/doc"
+    assert (
+        make_relative_link("/rig-relay/assets/site.css", ".", base) == "assets/site.css"
+    )
+    assert (
+        make_relative_link("/rig-relay/assets/site.css", "..", base)
+        == "../assets/site.css"
+    )
+    assert (
+        make_relative_link("/rig-relay/pages/123.html", "..", base)
+        == "../pages/123.html"
+    )
+    assert (
+        make_relative_link("https://example.com/doc", "..", base)
+        == "https://example.com/doc"
+    )
     assert make_relative_link("#section", "..", base) == "#section"
 
 

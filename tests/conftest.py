@@ -99,7 +99,9 @@ def _mock_platform(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _ensure_unlocked_test_profile(tmp_path_factory: pytest.TempPathFactory) -> Generator[None, None, None]:
+def _ensure_unlocked_test_profile(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[None, None, None]:
     """Create unlocked profile so capability gate allows intents in all tests."""
     from rig_relay.governance.service_state import (
         ProfileStore,

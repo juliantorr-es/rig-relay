@@ -132,10 +132,10 @@ class TestBridgeFrontendEventHandling:
         assert 'path == "/frontend-event"' in content, (
             "Bridge must route /frontend-event"
         )
-        assert 'getattr(request, "method"' in content or 'request.method' in content, (
+        assert 'getattr(request, "method"' in content or "request.method" in content, (
             "Bridge must check HTTP method on /frontend-event"
         )
-        assert 'getattr(request, "body"' in content or 'request.body' in content, (
+        assert 'getattr(request, "body"' in content or "request.body" in content, (
             "Bridge must read request body for POST /frontend-event"
         )
 

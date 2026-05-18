@@ -205,12 +205,16 @@ def test_read_state_projection_does_not_append_events(tmp_path: Path) -> None:
     reset_path_salt_for_testing()
     store = _make_store(tmp_path)
 
-    store.register_session(CoordinationSession(session_id="test-session", status="running"))
+    store.register_session(
+        CoordinationSession(session_id="test-session", status="running")
+    )
 
     events_path = store.root / "events.jsonl"
     count_before = 0
     if events_path.is_file():
-        count_before = len([l for l in events_path.read_text("utf-8").splitlines() if l.strip()])
+        count_before = len([
+            l for l in events_path.read_text("utf-8").splitlines() if l.strip()
+        ])
 
     for _ in range(3):
         proj = store.read_state_projection()
@@ -219,7 +223,9 @@ def test_read_state_projection_does_not_append_events(tmp_path: Path) -> None:
 
     count_after = 0
     if events_path.is_file():
-        count_after = len([l for l in events_path.read_text("utf-8").splitlines() if l.strip()])
+        count_after = len([
+            l for l in events_path.read_text("utf-8").splitlines() if l.strip()
+        ])
 
     assert count_after == count_before, (
         f"read_state_projection must not append events. "
@@ -245,10 +251,7 @@ def test_concurrent_same_owner_claim_task_idempotent(tmp_path: Path) -> None:
     def claim() -> None:
         barrier.wait()
         result = store.claim_task(
-            session_id=session_id,
-            task_id=task_id,
-            claim_kind="write",
-            ttl_seconds=120,
+            session_id=session_id, task_id=task_id, claim_kind="write", ttl_seconds=120
         )
         with results_lock:
             results.append(result.allowed)

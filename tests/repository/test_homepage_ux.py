@@ -27,14 +27,16 @@ class TestHomepage:
 
     def test_homepage_links_to_archive(self) -> None:
         html = _INDEX.read_text()
-        assert 'collections/index.html' in html
+        assert "collections/index.html" in html
 
     def test_homepage_direct_document_links_under_limit(self) -> None:
         html = _INDEX.read_text()
         import re
 
         doc_links = re.findall(r'href="/rig-relay/pages/[^"]+\.html"', html)
-        assert len(doc_links) <= 12, f"Homepage has {len(doc_links)} direct document links, max is 12"
+        assert len(doc_links) <= 12, (
+            f"Homepage has {len(doc_links)} direct document links, max is 12"
+        )
 
     def test_homepage_does_not_list_all_collections(self) -> None:
         html = _INDEX.read_text()

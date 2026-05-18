@@ -69,7 +69,9 @@ def test_backend_websocket_auth_succeeds(bridge, page):
     _wait_for_event(bridge, "desktop.websocket.auth_ok", timeout=15)
     _wait_for_event(bridge, "frontend_auth_ok", timeout=15)
     event_names = bridge.get_event_names()
-    assert any("desktop.websocket.auth_ok" in n for n in event_names), "Backend auth_ok not emitted"
+    assert any("desktop.websocket.auth_ok" in n for n in event_names), (
+        "Backend auth_ok not emitted"
+    )
     assert any(
         "frontend_auth_ok" in n or "frontend.auth_ok" in n for n in event_names
     ), "Frontend auth_ok not emitted"
@@ -80,7 +82,9 @@ def test_projection_sent_received_rendered(bridge, page):
     _wait_for_event(bridge, "desktop.projection.sent", timeout=15)
     _wait_for_event(bridge, "frontend_projection_received", timeout=15)
     event_names = bridge.get_event_names()
-    assert any("desktop.projection.sent" in n for n in event_names), "Projection not sent"
+    assert any("desktop.projection.sent" in n for n in event_names), (
+        "Projection not sent"
+    )
     assert any(
         "frontend_projection_received" in n or "frontend.projection_received" in n
         for n in event_names
@@ -131,7 +135,9 @@ def test_no_token_value_in_trace_payloads(bridge, page):
             f"token_value_included is true in: {event.get('event_type') or event.get('name')}"
         )
         payload_str = json.dumps(event.get("payload") or {})
-        assert "browser-integration-token" not in payload_str, "Token value leaked in payload"
+        assert "browser-integration-token" not in payload_str, (
+            "Token value leaked in payload"
+        )
 
 
 def test_no_token_in_console(bridge, page):
@@ -140,7 +146,9 @@ def test_no_token_in_console(bridge, page):
     page.goto(bridge.frontend_url, wait_until="domcontentloaded", timeout=15000)
     _wait_for_event(bridge, "desktop.projection.sent", timeout=15)
     for line in console_lines:
-        assert "browser-integration-token" not in line, f"Token leaked in console: {line[:100]}"
+        assert "browser-integration-token" not in line, (
+            f"Token leaked in console: {line[:100]}"
+        )
 
 
 def test_no_uncaught_page_errors(bridge, page):
@@ -153,13 +161,17 @@ def test_no_uncaught_page_errors(bridge, page):
 
 def test_no_post_to_ws(bridge, page):
     post_ws_requests: list[str] = []
+
     def _on_request(request):
         if request.method == "POST" and "/ws" in request.url:
             post_ws_requests.append(f"{request.method} {request.url}")
+
     page.on("request", _on_request)
     page.goto(bridge.frontend_url, wait_until="domcontentloaded", timeout=15000)
     _wait_for_event(bridge, "desktop.projection.sent", timeout=15)
-    assert len(post_ws_requests) == 0, f"POST requests to /ws detected: {post_ws_requests}"
+    assert len(post_ws_requests) == 0, (
+        f"POST requests to /ws detected: {post_ws_requests}"
+    )
 
 
 def test_frontend_status_rendered(bridge, page):
@@ -177,7 +189,11 @@ def test_frontend_status_rendered(bridge, page):
             payload = event.get("payload") or {}
             detail_str = payload.get("detail") or "{}"
             try:
-                detail = json.loads(detail_str) if isinstance(detail_str, str) else detail_str
+                detail = (
+                    json.loads(detail_str)
+                    if isinstance(detail_str, str)
+                    else detail_str
+                )
             except json.JSONDecodeError:
                 detail = {}
             assert detail.get("connection_state") or detail.get("label"), (
@@ -195,7 +211,9 @@ def test_debug_panel_receives_state(bridge, page):
     assert debug_panel is not None, "Debug panel #debug-panel not found in DOM"
     debug_text = debug_panel.text_content() or ""
     assert len(debug_text) > 2, f"Debug panel empty: '{debug_text}'"
-    assert "browser-integration-token" not in debug_text, "Token value leaked in debug panel"
+    assert "browser-integration-token" not in debug_text, (
+        "Token value leaked in debug panel"
+    )
 
 
 def test_canonical_handshake_id_in_frontend_events(bridge, page):
@@ -213,7 +231,9 @@ def test_canonical_handshake_id_in_frontend_events(bridge, page):
             if frontend_hid:
                 break
 
-    assert frontend_hid is not None, "frontend_boot_started event has no correlation.handshake_id"
+    assert frontend_hid is not None, (
+        "frontend_boot_started event has no correlation.handshake_id"
+    )
     assert frontend_hid == bridge.handshake_id, (
         f"Frontend handshake_id {frontend_hid} != bridge handshake_id {bridge.handshake_id}"
     )
@@ -233,7 +253,9 @@ def test_websocket_auth_uses_canonical_handshake_id(bridge, page):
             if auth_hid:
                 break
 
-    assert auth_hid is not None, "WebSocket auth_received event has no correlation.handshake_id"
+    assert auth_hid is not None, (
+        "WebSocket auth_received event has no correlation.handshake_id"
+    )
     assert auth_hid.startswith("corr_"), (
         f"WebSocket auth should use canonical corr_* handshake_id, got {auth_hid}"
     )
@@ -243,6 +265,7 @@ def test_websocket_auth_uses_canonical_handshake_id(bridge, page):
 
 
 # ── Blind spot closure tests ──────────────────────────────────────────
+
 
 def test_fallback_handshake_when_backend_omits_id(bridge, page):
     """Part 1: Proves frontend generates hs_* when backend handshake_id is stripped from HTML + runtime-config."""
@@ -261,7 +284,9 @@ def test_fallback_handshake_when_backend_omits_id(bridge, page):
     real_config.pop("handshake_id", None)
 
     def _handle_runtime_config(route):
-        route.fulfill(status=200, content_type="application/json", body=json.dumps(real_config))
+        route.fulfill(
+            status=200, content_type="application/json", body=json.dumps(real_config)
+        )
 
     page.route("**/index.html", _handle_index)
     page.route("**/runtime-config", _handle_runtime_config)
@@ -285,9 +310,13 @@ def test_fallback_handshake_when_backend_omits_id(bridge, page):
 
     for event in events:
         redact = event.get("redaction") or {}
-        assert redact.get("token_value_included") in (False, None), "token_value_included in fallback path"
+        assert redact.get("token_value_included") in (False, None), (
+            "token_value_included in fallback path"
+        )
         payload_str = json.dumps(event.get("payload") or {})
-        assert "browser-integration-token" not in payload_str, "Token leaked in fallback path"
+        assert "browser-integration-token" not in payload_str, (
+            "Token leaked in fallback path"
+        )
 
 
 def test_pywebview_runtime_config_handshake_contract(bridge, page):
@@ -353,9 +382,13 @@ def test_pywebview_runtime_config_handshake_contract(bridge, page):
 
     for event in events:
         redact = event.get("redaction") or {}
-        assert redact.get("token_value_included") in (False, None), "token_value_included in pywebview path"
+        assert redact.get("token_value_included") in (False, None), (
+            "token_value_included in pywebview path"
+        )
         payload_str = json.dumps(event.get("payload") or {})
-        assert "browser-integration-token" not in payload_str, "Token leaked in pywebview path"
+        assert "browser-integration-token" not in payload_str, (
+            "Token leaked in pywebview path"
+        )
 
 
 def test_frontend_session_id_emitted_as_supplemental(bridge, page):
@@ -366,7 +399,9 @@ def test_frontend_session_id_emitted_as_supplemental(bridge, page):
 
     events = bridge.get_events()
     event_names = bridge.get_event_names()
-    assert any("frontend_boot_started" in n for n in event_names), "Boot started missing"
+    assert any("frontend_boot_started" in n for n in event_names), (
+        "Boot started missing"
+    )
 
     handshake_ids: set[str] = set()
     session_ids: set[str] = set()
@@ -388,9 +423,13 @@ def test_frontend_session_id_emitted_as_supplemental(bridge, page):
         if fsid2 and isinstance(fsid2, str):
             session_ids.add(fsid2)
 
-    assert len(handshake_ids) == 1, f"Expected exactly 1 canonical handshake_id, got {handshake_ids}"
+    assert len(handshake_ids) == 1, (
+        f"Expected exactly 1 canonical handshake_id, got {handshake_ids}"
+    )
     canonical = next(iter(handshake_ids))
-    assert canonical == bridge.handshake_id, f"Canonical {canonical} != bridge {bridge.handshake_id}"
+    assert canonical == bridge.handshake_id, (
+        f"Canonical {canonical} != bridge {bridge.handshake_id}"
+    )
 
     for sid in session_ids:
         assert sid.startswith("hs_"), f"session_id {sid} should start with hs_"
@@ -408,20 +447,62 @@ def test_reconnect_cycle_count_classification():
     def _make_events(cycle_count):
         tid = new_trace_id()
         events = [
-            build_golden_path_event(event_type="desktop.bridge.launch_requested", handshake_id="hs_test", trace_id=tid),
-            build_golden_path_event(event_type="desktop.bridge.frontend_resolved", handshake_id="hs_test", trace_id=tid),
-            build_golden_path_event(event_type="desktop.bridge.runtime_config_built", handshake_id="hs_test", trace_id=tid),
-            build_golden_path_event(event_type="desktop.bridge.server_bound", handshake_id="hs_test", trace_id=tid),
-            build_golden_path_event(event_type="desktop.bridge.health_probe_passed", handshake_id="hs_test", trace_id=tid),
-            build_golden_path_event(event_type="desktop.websocket.accepted", handshake_id="hs_test", trace_id=tid),
-            build_golden_path_event(event_type="desktop.websocket.auth_received", handshake_id="hs_test", trace_id=tid),
-            build_golden_path_event(event_type="desktop.websocket.auth_ok", handshake_id="hs_test", trace_id=tid),
-            build_golden_path_event(event_type="desktop.projection.sent", handshake_id="hs_test", trace_id=tid),
+            build_golden_path_event(
+                event_type="desktop.bridge.launch_requested",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
+            build_golden_path_event(
+                event_type="desktop.bridge.frontend_resolved",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
+            build_golden_path_event(
+                event_type="desktop.bridge.runtime_config_built",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
+            build_golden_path_event(
+                event_type="desktop.bridge.server_bound",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
+            build_golden_path_event(
+                event_type="desktop.bridge.health_probe_passed",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
+            build_golden_path_event(
+                event_type="desktop.websocket.accepted",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
+            build_golden_path_event(
+                event_type="desktop.websocket.auth_received",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
+            build_golden_path_event(
+                event_type="desktop.websocket.auth_ok",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
+            build_golden_path_event(
+                event_type="desktop.projection.sent",
+                handshake_id="hs_test",
+                trace_id=tid,
+            ),
         ]
         for _ in range(cycle_count):
             events.extend([
-                build_golden_path_event(event_type="frontend_websocket_connecting", handshake_id="hs_test", trace_id=tid),
-                build_golden_path_event(event_type="frontend_auth_ok", handshake_id="hs_test", trace_id=tid),
+                build_golden_path_event(
+                    event_type="frontend_websocket_connecting",
+                    handshake_id="hs_test",
+                    trace_id=tid,
+                ),
+                build_golden_path_event(
+                    event_type="frontend_auth_ok", handshake_id="hs_test", trace_id=tid
+                ),
             ])
         return events
 
@@ -432,8 +513,20 @@ def test_reconnect_cycle_count_classification():
             tpath = f.name
 
         result = subprocess.run(
-            ["uv", "run", "python", str(_SCRIPT), "--path", tpath, "--latest", "--fail-on-reconnect-loop"],
-            capture_output=True, text=True, timeout=15, cwd=str(_REPO),
+            [
+                "uv",
+                "run",
+                "python",
+                str(_SCRIPT),
+                "--path",
+                tpath,
+                "--latest",
+                "--fail-on-reconnect-loop",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(_REPO),
         )
         os.unlink(tpath)
 
@@ -441,7 +534,9 @@ def test_reconnect_cycle_count_classification():
             assert result.returncode != 0, (
                 f"{cycle_count} cycles should fail with --fail-on-reconnect-loop. stdout: {result.stdout[:300]}"
             )
-            assert "reconnect loop" in result.stdout.lower() or "reconnect_loop" in str(result), (
+            assert "reconnect loop" in result.stdout.lower() or "reconnect_loop" in str(
+                result
+            ), (
                 f"Expected reconnect loop in output for {cycle_count} cycles. Got: {result.stdout[:300]}"
             )
         else:
@@ -451,6 +546,7 @@ def test_reconnect_cycle_count_classification():
 
 
 # ── Polling helper ────────────────────────────────────────────────────
+
 
 def _wait_for_event(
     bridge: BridgeRunner,
@@ -465,7 +561,11 @@ def _wait_for_event(
             return
         normalized = event_name.replace(".", "_")
         for n in names:
-            if n == event_name or n == normalized or (normalized in n and len(normalized) > 5):
+            if (
+                n == event_name
+                or n == normalized
+                or (normalized in n and len(normalized) > 5)
+            ):
                 return
         time.sleep(poll_interval)
     names = bridge.get_event_names()

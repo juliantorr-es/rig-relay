@@ -45,9 +45,7 @@ def make_head_tags(
         if sm.favicon
         else ""
     )
-    favicon_link = (
-        f'<link rel="icon" href="{fav}" type="image/svg+xml">' if fav else ""
-    )
+    favicon_link = f'<link rel="icon" href="{fav}" type="image/svg+xml">' if fav else ""
     og_image_tags = ""
     if sm.og_image:
         og_image_tags = f'<meta property="og:image" content="{sm.og_image}">\n<meta name="twitter:image" content="{sm.og_image}">'

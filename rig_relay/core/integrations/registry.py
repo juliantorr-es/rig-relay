@@ -73,7 +73,9 @@ def build_integration_projection() -> list[dict]:
                     "kind": cap.get("kind", "read"),
                     "gated": cap.get("gated", False),
                     "profile_gate_required": cap.get("profile_gate_required", False),
-                    "available": is_signed_in and not cap.get("gated", False) and profile_gate_ok,
+                    "available": is_signed_in
+                    and not cap.get("gated", False)
+                    and profile_gate_ok,
                     "requires_approval": cap.get("gated", False),
                     "mcp_acp_exposable": cap.get("mcp_acp_exposable", False)
                     and not cap.get("gated", False)

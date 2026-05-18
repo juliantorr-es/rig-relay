@@ -55,8 +55,8 @@ function _createBootFSM(dispatch, evidence, config) {
     dispatch(bootPhaseTransition(phase, phase === BP.FAILED || phase === BP.DEGRADED ? 'boot_' + phase : null));
   }
 
-  function wsUrlGuard() {
-    const wsUrl = config?.wsUrl || config?.ws_url || '';
+  function wsUrlGuard(ctx) {
+    const wsUrl = ctx?.wsUrl || ctx?.ws_url || config?.wsUrl || config?.ws_url || '';
     return typeof wsUrl === 'string' && wsUrl.length > 0;
   }
 
@@ -240,7 +240,7 @@ function _registerEffects(effectRunner, getState, dispatch, loopSupervisor) {
   effectRunner.register(AT.PROJECTION_RECEIVED, (state) => {
     const visible = getVisibleWidgets(state, getCurrentMode(state));
     for (const widgetId of visible) {
-      dispatch(widgetStatusChange(widgetId, WidgetStatus.READY));
+      effectRunner.dispatch(widgetStatusChange(widgetId, WidgetStatus.READY));
     }
   });
 
@@ -248,14 +248,14 @@ function _registerEffects(effectRunner, getState, dispatch, loopSupervisor) {
   effectRunner.register(AT.MODE_CHANGE, (state) => {
     const visible = getVisibleWidgets(state, state.mode);
     for (const widgetId of visible) {
-      dispatch(widgetStatusChange(widgetId, WidgetStatus.WAITING_FOR_PROJECTION));
+      effectRunner.dispatch(widgetStatusChange(widgetId, WidgetStatus.WAITING_FOR_PROJECTION));
     }
   });
 
   // On TRANSPORT_STATUS_CHANGE: manage freshness loop
   effectRunner.register(AT.TRANSPORT_STATUS_CHANGE, (state) => {
     if (isTransportConnected(state)) {
-      startFreshnessLoop(getState, dispatch, loopSupervisor);
+      startFreshnessLoop(getState, effectRunner.dispatch, loopSupervisor);
     } else {
       loopSupervisor.cancelLoop(LoopType.PROJECTION_FRESHNESS);
     }

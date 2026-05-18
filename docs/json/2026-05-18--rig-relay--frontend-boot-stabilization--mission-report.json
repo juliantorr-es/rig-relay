@@ -1,0 +1,48 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-18T20:50:00Z",
+  "mission_title": "Resolving Rig Relay Frontend Boot and Eliminating Connection Lost Toast",
+  "branch": "main",
+  "head_before": "25a5a1228605313727c59ba5c264f8d6a5d48204",
+  "head_after": "25a5a1228605313727c59ba5c264f8d6a5d48204",
+  "dirty_state_before": "30 pre-existing modified files from prior agent lanes preserved exactly",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "frontend/desktop/js/boot/orchestrator.js",
+      "frontend/desktop/js/runtime/kernel.js"
+    ],
+    "this_mission_created": [],
+    "pre_existing_modified": "30 pre-existing modified files from prior agent lanes preserved exactly"
+  },
+  "files_changed": 2,
+  "files_created": 0,
+  "files_deleted": 0,
+  "tests_run": 10,
+  "tests_intentionally_skipped": "Python pytest suite skipped to preserve existing test environment state; focus was entirely on frontend browser verification",
+  "test_classifications": {
+    "browser_verification": "passed"
+  },
+  "evidence_artifacts": [
+    "cockpit_verification_final",
+    "cockpit_verification_flawless"
+  ],
+  "schema_validation_results": "169 schemas validated successfully",
+  "telemetry_and_redaction_implications": "No changes to telemetry schemas; frontend lifecycle events now correctly record frontend_ready and widget mount completion",
+  "dependency_changes": "None",
+  "completed_work": [
+    "Updated wsUrlGuard in kernel.js to inspect transition context ctx in addition to global config object",
+    "Updated _registerEffects in kernel.js to use effectRunner.dispatch to prevent TypeError when dispatch parameter is uninitialized",
+    "Passed wsUrl into createRuntime and bootFSM transition 'boot:transport_connecting' in orchestrator.js",
+    "Added boot:rendering and boot:ready transitions to onProjection handlers in orchestrator.js to resolve async WebSocket connection race condition",
+    "Verified flawless cockpit boot, elimination of false Connection Lost toast, and active READY widget states via browser subagent"
+  ],
+  "intentionally_deferred_work": [
+    "Refactoring of legacy bare-message intent paths to v1 protocol client envelopes"
+  ],
+  "discovered_out_of_scope_risks": [
+    "Potential re-entrant dispatch loops in external widget effect handlers if not guarded by _isDispatching"
+  ],
+  "remaining_seams": [
+    "Consolidation of duplicate projection waiting/rendering transition triggers between protocolClient and wsClient"
+  ]
+}

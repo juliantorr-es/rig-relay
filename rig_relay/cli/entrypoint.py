@@ -21,7 +21,9 @@ def main(argv: Sequence[str] | None = None) -> None:
                 cockpit_main(args_list[1:])
                 return
             case "stop":
-                print("Service stop requested. Use SIGTERM or close the cockpit window.")
+                print(
+                    "Service stop requested. Use SIGTERM or close the cockpit window."
+                )
                 return
             case "status":
                 import json as _json

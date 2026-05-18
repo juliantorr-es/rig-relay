@@ -92,9 +92,7 @@ class TestTelemetryClient:
                 decided_at=datetime.now(UTC).isoformat(),
             )
 
-        monkeypatch.setattr(
-            TelemetryClient, "_evaluate_consent_gate", _fake_evaluate
-        )
+        monkeypatch.setattr(TelemetryClient, "_evaluate_consent_gate", _fake_evaluate)
 
     def test_send_telemetry_event_swallows_config_getter_value_error(self) -> None:
         def _raise_config_error() -> Any:

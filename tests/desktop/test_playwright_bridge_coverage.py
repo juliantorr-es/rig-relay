@@ -60,7 +60,9 @@ def _write_evidence_artifact(result: dict) -> None:
         "failed": sum(1 for r in [result] if r["status"] != "passed"),
         "total": len(existing),
     }
-    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=False))
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=False)
+    )
     with events_path.open("a") as f:
         f.write(json.dumps(result, ensure_ascii=False) + "\n")
 
@@ -92,9 +94,11 @@ def test_browser_boots_and_renders_widgets(bridge: BridgeRunner, page) -> None:
     page.on("console", lambda msg: console_all.append(f"{msg.type}: {msg.text}"))
     page.on(
         "console",
-        lambda msg: console_errors.append(f"{msg.type}: {msg.text}")
-        if msg.type == "error"
-        else None,
+        lambda msg: (
+            console_errors.append(f"{msg.type}: {msg.text}")
+            if msg.type == "error"
+            else None
+        ),
     )
     page.on("pageerror", lambda exc: page_errors.append(str(exc)))
 
@@ -124,16 +128,18 @@ def test_browser_boots_and_renders_widgets(bridge: BridgeRunner, page) -> None:
         assert page.evaluate("() => document.title") == "Rig Relay"
 
         csp_errors = [
-            e for e in console_all if "Content-Security-Policy" in e or "csp" in e.lower()
+            e
+            for e in console_all
+            if "Content-Security-Policy" in e or "csp" in e.lower()
         ]
         assert csp_errors == [], f"CSP blocked resources: {csp_errors}"
 
-        module_failures = [
-            e for e in console_all if "Failed to load module" in e
-        ]
+        module_failures = [e for e in console_all if "Failed to load module" in e]
         assert module_failures == [], f"Module import failures: {module_failures}"
 
-        runtime_config = page.evaluate("() => window.__RIG_RELAY_RUNTIME_CONFIG__ || {}")
+        runtime_config = page.evaluate(
+            "() => window.__RIG_RELAY_RUNTIME_CONFIG__ || {}"
+        )
         assert runtime_config.get("token_present") is True, "token_present missing"
 
         body_text = page.evaluate("() => document.body.textContent || ''")
@@ -199,7 +205,9 @@ def test_browser_boots_and_renders_widgets(bridge: BridgeRunner, page) -> None:
 
     except Exception:
         result["status"] = "failed"
-        result["screenshot_path_on_failure"] = str(_capture_browser_failure(page, "boot_widgets"))
+        result["screenshot_path_on_failure"] = str(
+            _capture_browser_failure(page, "boot_widgets")
+        )
         raise
     finally:
         result["console_errors"] = len(console_errors)
@@ -265,14 +273,18 @@ def test_frontend_ws_projection_flow(bridge: BridgeRunner, page) -> None:
 
         # Projection messages in console
         proj_msgs = [
-            m for m in console_all
-            if "projection" in m.lower() and ("received" in m.lower() or "rendered" in m.lower())
+            m
+            for m in console_all
+            if "projection" in m.lower()
+            and ("received" in m.lower() or "rendered" in m.lower())
         ]
         result["projection_received"] = len(proj_msgs) > 0
 
     except Exception:
         result["status"] = "failed"
-        result["screenshot_path_on_failure"] = str(_capture_browser_failure(page, "ws_projection"))
+        result["screenshot_path_on_failure"] = str(
+            _capture_browser_failure(page, "ws_projection")
+        )
         raise
     finally:
         _write_evidence_artifact(result)
@@ -282,7 +294,11 @@ def test_frontend_ws_projection_flow(bridge: BridgeRunner, page) -> None:
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_widget_disclosure_expand_collapse(bridge: BridgeRunner, page) -> None:
-    page.goto(f"{bridge.frontend_url}?boot_debug=1", wait_until="domcontentloaded", timeout=15000)
+    page.goto(
+        f"{bridge.frontend_url}?boot_debug=1",
+        wait_until="domcontentloaded",
+        timeout=15000,
+    )
 
     page.wait_for_function(
         """() => {
@@ -303,9 +319,9 @@ def test_widget_disclosure_expand_collapse(bridge: BridgeRunner, page) -> None:
     )
 
     body_text = page.locator("#widget-operatorHeader .widget-body").text_content() or ""
-    assert any(
-        kw in body_text for kw in ("Mode", "Version", "Telemetry", "Session")
-    ), f"Expanded widget body missing expected content: {body_text[:100]}"
+    assert any(kw in body_text for kw in ("Mode", "Version", "Telemetry", "Session")), (
+        f"Expanded widget body missing expected content: {body_text[:100]}"
+    )
 
 
 @pytest.mark.adversarial
@@ -350,7 +366,11 @@ def test_missing_token_shows_auth_failed(page) -> None:
 @pytest.mark.real_artifact
 @pytest.mark.timeout(60)
 def test_no_token_in_dom(bridge: BridgeRunner, page) -> None:
-    page.goto(f"{bridge.frontend_url}?boot_debug=1", wait_until="domcontentloaded", timeout=15000)
+    page.goto(
+        f"{bridge.frontend_url}?boot_debug=1",
+        wait_until="domcontentloaded",
+        timeout=15000,
+    )
 
     page.wait_for_function(
         "() => window.__RIG_RELAY_RUNTIME_CONFIG__ && window.__RIG_RELAY_RUNTIME_CONFIG__.token_present !== undefined",
@@ -372,7 +392,10 @@ def test_remote_origin_rejected() -> None:
     import os
 
     if os.getenv("RIG_RELAY_ALLOW_NON_LOOPBACK_LOCAL_BRIDGE", "").lower() in {
-        "1", "true", "yes", "on",
+        "1",
+        "true",
+        "yes",
+        "on",
     }:
         pytest.skip("RIG_RELAY_ALLOW_NON_LOOPBACK_LOCAL_BRIDGE is set")
 

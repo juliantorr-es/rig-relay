@@ -59,6 +59,7 @@ async function boot() {
   // existing module graph; does not replace transport/projection/widget code.
   const runtime = createRuntime({
     handshakeId: canonicalHandshakeId,
+    wsUrl: config.ws_url,
     onStateChange(_newState, _oldState, action) {
       renderStalenessIndicator(!!_newState.projection?.stale);
       if (isDebug) {
@@ -95,6 +96,8 @@ async function boot() {
           },
         })
         runtime.bootFSM.transition('boot:projection_waiting', {})
+        runtime.bootFSM.transition('boot:rendering', {})
+        runtime.bootFSM.transition('boot:ready', {})
         protocolClient.sendProjectionRenderedAck(parsed.projectionSequence || 0)
       }
     },
@@ -228,7 +231,7 @@ async function boot() {
     recordFrontendEvent('frontend_websocket_connecting');
     // ── Boot FSM: transport connecting ───────────────────────────────
     // Precondition: bootFSM is in runtime_config_loaded
-    runtime.bootFSM.transition('boot:transport_connecting', {});
+    runtime.bootFSM.transition('boot:transport_connecting', { wsUrl: config.ws_url });
     const wsClient = new ProjectionWebSocketClient({
       wsUrl,
       token,
@@ -242,6 +245,8 @@ async function boot() {
         renderStalenessIndicator(false);
         // ── Boot FSM: projection received ──────────────────────────
         runtime.bootFSM.transition('boot:projection_waiting', {});
+        runtime.bootFSM.transition('boot:rendering', {});
+        runtime.bootFSM.transition('boot:ready', {});
         // Route projection through kernel dispatch
         runtime.dispatch({
           type: 'PROJECTION_RECEIVED',

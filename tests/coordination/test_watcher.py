@@ -114,9 +114,7 @@ async def test_watcher_does_not_corrupt_ledger(tmp_path: Path) -> None:
         _collect_until(watcher, max_events=1, timeout=5.0)
     )
 
-    store.register_session(
-        CoordinationSession(session_id="s1", status="running")
-    )
+    store.register_session(CoordinationSession(session_id="s1", status="running"))
 
     collected = await collection_task
     assert len(collected) >= 1

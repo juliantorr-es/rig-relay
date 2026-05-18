@@ -32,11 +32,7 @@ def find_free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def build_live_env(
-    home_root: Path,
-    *,
-    telemetry_enabled: bool,
-) -> dict[str, str]:
+def build_live_env(home_root: Path, *, telemetry_enabled: bool) -> dict[str, str]:
     env = os.environ.copy()
     env["HOME"] = str(home_root)
     env["RIG_RELAY_HOME"] = str(home_root / ".rig" / "relay")
@@ -51,7 +47,9 @@ def build_live_env(
 @dataclass(slots=True)
 class RCLiveServer:
     repo_root: Path = REPO_ROOT
-    home_root: Path = field(default_factory=lambda: Path.cwd() / ".build" / "rc-live-home")
+    home_root: Path = field(
+        default_factory=lambda: Path.cwd() / ".build" / "rc-live-home"
+    )
     evidence_root: Path = field(
         default_factory=lambda: Path.cwd() / ".build" / "rc-live-evidence"
     )
@@ -136,7 +134,9 @@ class RCLiveServer:
         self._process = subprocess.Popen(
             cmd,
             cwd=self.repo_root,
-            env=build_live_env(self.home_root, telemetry_enabled=self.telemetry_enabled),
+            env=build_live_env(
+                self.home_root, telemetry_enabled=self.telemetry_enabled
+            ),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -269,11 +269,11 @@ class RCLiveServer:
         deadline = time.monotonic() + timeout_s
 
         async with websockets.connect(self.ws_url) as ws:
-            await ws.send(
-                json.dumps({"type": "auth", "token": self._websocket_token})
-            )
+            await ws.send(json.dumps({"type": "auth", "token": self._websocket_token}))
             auth_reply = json.loads(
-                await asyncio.wait_for(ws.recv(), timeout=max(0.5, deadline - time.monotonic()))
+                await asyncio.wait_for(
+                    ws.recv(), timeout=max(0.5, deadline - time.monotonic())
+                )
             )
             received.append(auth_reply)
             if auth_reply.get("type") != "auth_ok":

@@ -68,5 +68,7 @@ def test_scan_deterministic(tmp_path: Path, monkeypatch) -> None:
         claim_file(tmp_path / name, "agent", "session", "task")
         release_file(tmp_path / name, "agent", "session", "released_modified", "done")
     result = scan_file_claims([tmp_path / "b.py", tmp_path / "a.py"])
-    assert [item["path"] for item in result] == [str(tmp_path / "a.py"), str(tmp_path / "b.py")]
-
+    assert [item["path"] for item in result] == [
+        str(tmp_path / "a.py"),
+        str(tmp_path / "b.py"),
+    ]

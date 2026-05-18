@@ -38,8 +38,22 @@ def file_sha256(path: Path) -> str:
 
 def detect_comment_style(path: Path) -> str | None:
     suffix = path.suffix.lower()
-    if suffix in {".py", ".sh", ".bash", ".yaml", ".yml", ".toml", ".ts", ".js", ".css"}:
-        return "#" if suffix in {".py", ".sh", ".bash", ".yaml", ".yml", ".toml"} else "block"
+    if suffix in {
+        ".py",
+        ".sh",
+        ".bash",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ts",
+        ".js",
+        ".css",
+    }:
+        return (
+            "#"
+            if suffix in {".py", ".sh", ".bash", ".yaml", ".yml", ".toml"}
+            else "block"
+        )
     if suffix in {".html", ".md"}:
         return "html"
     return None
@@ -49,7 +63,10 @@ def is_generated_or_unsafe_for_inline_marker(path: Path) -> bool:
     name = path.name.lower()
     if path.suffix.lower() in {".json", ".svg", ".png", ".jpg", ".jpeg", ".gif"}:
         return True
-    return any(token in name for token in {"render", "manifest", "index", "schema", ".generated."})
+    return any(
+        token in name
+        for token in {"render", "manifest", "index", "schema", ".generated."}
+    )
 
 
 def _marker_line(marker: FileMarker, path: Path) -> str:
@@ -65,10 +82,16 @@ def _marker_line(marker: FileMarker, path: Path) -> str:
 
 
 def _parse_marker_line(line: str) -> dict[str, Any] | None:
-    prefixes = ("# rig-file-coordination: ", "<!-- rig-file-coordination: ", "/* rig-file-coordination: ")
+    prefixes = (
+        "# rig-file-coordination: ",
+        "<!-- rig-file-coordination: ",
+        "/* rig-file-coordination: ",
+    )
     for prefix in prefixes:
         if line.startswith(prefix):
-            payload = line[len(prefix):].strip().removesuffix(" -->").removesuffix(" */")
+            payload = (
+                line[len(prefix) :].strip().removesuffix(" -->").removesuffix(" */")
+            )
             return json.loads(payload)
     return None
 
@@ -85,7 +108,15 @@ def read_inline_marker(path: Path) -> FileMarker | None:
 
 
 def validate_marker(marker: dict[str, Any]) -> None:
-    required = {"protocol", "state", "agent_id", "session_id", "claimed_at", "allowed_followup", "summary"}
+    required = {
+        "protocol",
+        "state",
+        "agent_id",
+        "session_id",
+        "claimed_at",
+        "allowed_followup",
+        "summary",
+    }
     missing = sorted(required - marker.keys())
     if missing:
         raise ValueError(f"missing fields: {', '.join(missing)}")
@@ -112,7 +143,19 @@ def _write_text(path: Path, text: str) -> None:
 
 
 def _build_marker(
-    *, state: str, path: Path, agent_id: str, session_id: str, task_id: str | None, summary: str, allowed_followup: str, head_sha_at_claim: str | None = None, file_sha256_at_claim: str | None = None, file_sha256_at_release: str | None = None, released_at: str | None = None, mission_id: str | None = None
+    *,
+    state: str,
+    path: Path,
+    agent_id: str,
+    session_id: str,
+    task_id: str | None,
+    summary: str,
+    allowed_followup: str,
+    head_sha_at_claim: str | None = None,
+    file_sha256_at_claim: str | None = None,
+    file_sha256_at_release: str | None = None,
+    released_at: str | None = None,
+    mission_id: str | None = None,
 ) -> FileMarker:
     return FileMarker(
         protocol=PROTOCOL,
@@ -131,7 +174,16 @@ def _build_marker(
     )
 
 
-def claim_file(path: Path, agent_id: str, session_id: str, task_id: str | None, allowed_followup: str = "additive_only", *, override_stale: bool = False, summary: str = "claim") -> FileMarker:
+def claim_file(
+    path: Path,
+    agent_id: str,
+    session_id: str,
+    task_id: str | None,
+    allowed_followup: str = "additive_only",
+    *,
+    override_stale: bool = False,
+    summary: str = "claim",
+) -> FileMarker:
     current = read_inline_marker(path)
     if current and current.state == "active" and current.session_id != session_id:
         claimed = datetime.fromisoformat(current.claimed_at)
@@ -168,7 +220,14 @@ def _load_head_sha() -> str | None:
     return None
 
 
-def release_file(path: Path, agent_id: str, session_id: str, state: str, summary: str, allowed_followup: str = "additive_only") -> FileMarker:
+def release_file(
+    path: Path,
+    agent_id: str,
+    session_id: str,
+    state: str,
+    summary: str,
+    allowed_followup: str = "additive_only",
+) -> FileMarker:
     current = read_inline_marker(path)
     released_at = _now()
     marker = _build_marker(
@@ -206,7 +265,9 @@ def scan_file_claims(paths: list[Path]) -> list[dict[str, Any]]:
     return results
 
 
-def scan_session_owned_markers(paths: list[Path], session_id: str) -> list[dict[str, Any]]:
+def scan_session_owned_markers(
+    paths: list[Path], session_id: str
+) -> list[dict[str, Any]]:
     return [
         item
         for item in scan_file_claims(paths)

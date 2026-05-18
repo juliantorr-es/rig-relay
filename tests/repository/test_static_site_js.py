@@ -43,9 +43,9 @@ class TestSiteJS:
 
     def test_accessible_buttons_have_labels(self) -> None:
         content = _SITE_JS.read_text()
-        assert 'Search documentation' in content
-        assert 'Expand all collapsible sections' in content
-        assert 'Collapse all sections' in content
+        assert "Search documentation" in content
+        assert "Expand all collapsible sections" in content
+        assert "Collapse all sections" in content
 
 
 class TestSiteHTML:

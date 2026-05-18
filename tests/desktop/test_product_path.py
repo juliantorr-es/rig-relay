@@ -15,10 +15,7 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "des
 
 def _make_config(auth_token: str = "test-token") -> DesktopBridgeConfig:
     return DesktopBridgeConfig(
-        host="127.0.0.1",
-        port=0,
-        frontend_dir=FRONTEND_DIR,
-        auth_token=auth_token,
+        host="127.0.0.1", port=0, frontend_dir=FRONTEND_DIR, auth_token=auth_token
     )
 
 
@@ -85,7 +82,9 @@ class TestProjectionRoundTrip:
         assert "read_only_actions" in projection
 
     @pytest.mark.asyncio
-    async def test_malformed_projection_handled_gracefully(self, tmp_path: Path) -> None:
+    async def test_malformed_projection_handled_gracefully(
+        self, tmp_path: Path
+    ) -> None:
         from rig_relay.desktop.projection import build_projection
 
         build_root = tmp_path / "build_no_exist"
@@ -95,7 +94,9 @@ class TestProjectionRoundTrip:
         assert "warnings" in projection  # missing sources produce warnings
 
     @pytest.mark.asyncio
-    async def test_projection_to_dict_is_json_serializable(self, tmp_path: Path) -> None:
+    async def test_projection_to_dict_is_json_serializable(
+        self, tmp_path: Path
+    ) -> None:
         from rig_relay.desktop.projection import build_projection
 
         build_root = tmp_path / "build"
@@ -119,43 +120,46 @@ class TestIntentRoundTrip:
     """Proves intents round-trip through backend dispatcher with structured results."""
 
     def test_read_only_intent_succeeds(self) -> None:
-        result = execute_desktop_intent(
-            {"intent_name": "refresh_projection", "client_message_id": "test-1"},
-        )
+        result = execute_desktop_intent({
+            "intent_name": "refresh_projection",
+            "client_message_id": "test-1",
+        })
         assert result["intent_name"] == "refresh_projection"
         assert result["status"] in ("completed", "dry_run_completed", "partial")
         assert "schema_version" in result
 
     def test_unknown_intent_returns_structured_refusal(self) -> None:
-        result = execute_desktop_intent(
-            {"intent_name": "nonexistent_intent_xyz", "client_message_id": "test-2"},
-        )
+        result = execute_desktop_intent({
+            "intent_name": "nonexistent_intent_xyz",
+            "client_message_id": "test-2",
+        })
         assert result["intent_name"] == "nonexistent_intent_xyz"
         assert result["status"] == "refused"
         assert result.get("error_code") or result.get("summary")
 
     def test_protected_intent_refused(self) -> None:
-        result = execute_desktop_intent(
-            {"intent_name": "bash", "client_message_id": "test-3",
-             "params": {"command": "echo hi"}},
-        )
+        result = execute_desktop_intent({
+            "intent_name": "bash",
+            "client_message_id": "test-3",
+            "params": {"command": "echo hi"},
+        })
         assert result["intent_name"] == "bash"
         assert result["status"] == "refused"
 
-    @pytest.mark.parametrize("intent_name", [
-        "refresh_projection",
-        "run_storage_audit",
-        "run_validation_suite",
-    ])
+    @pytest.mark.parametrize(
+        "intent_name",
+        ["refresh_projection", "run_storage_audit", "run_validation_suite"],
+    )
     def test_safe_intents_in_allowlist(self, intent_name: str) -> None:
         assert intent_name in ALLOWED_INTENTS, (
             f"{intent_name} missing from ALLOWED_INTENTS"
         )
 
     def test_result_is_json_serializable(self) -> None:
-        result = execute_desktop_intent(
-            {"intent_name": "refresh_projection", "client_message_id": "test-4"},
-        )
+        result = execute_desktop_intent({
+            "intent_name": "refresh_projection",
+            "client_message_id": "test-4",
+        })
         serialized = json.dumps(result)
         roundtripped = json.loads(serialized)
         assert roundtripped["status"] in ("completed", "dry_run_completed", "partial")
@@ -172,10 +176,7 @@ class TestWebSocketProductPath:
         try:
             ws_url = bridge.runtime_config.ws_url
             async with websockets.connect(ws_url) as ws:
-                await ws.send(json.dumps({
-                    "type": "auth",
-                    "token": "test-token",
-                }))
+                await ws.send(json.dumps({"type": "auth", "token": "test-token"}))
                 auth_resp = json.loads(await asyncio.wait_for(ws.recv(), timeout=5))
                 assert auth_resp["type"] == "auth_ok"
 
@@ -194,10 +195,7 @@ class TestWebSocketProductPath:
         try:
             ws_url = bridge.runtime_config.ws_url
             async with websockets.connect(ws_url) as ws:
-                await ws.send(json.dumps({
-                    "type": "auth",
-                    "token": "wrong-token",
-                }))
+                await ws.send(json.dumps({"type": "auth", "token": "wrong-token"}))
                 auth_resp = json.loads(await asyncio.wait_for(ws.recv(), timeout=5))
                 assert auth_resp["type"] == "auth_error"
         finally:
@@ -240,7 +238,9 @@ class TestFrontendDOMSafety:
     def test_textcontent_used_for_chat(self) -> None:
         chat_path = FRONTEND_DIR / "js" / "chat.js"
         chat = chat_path.read_text()
-        assert "textContent" in chat, "chat.js must use textContent for message rendering"
+        assert "textContent" in chat, (
+            "chat.js must use textContent for message rendering"
+        )
 
     def test_no_unprotected_innnerHTML_in_js(self) -> None:
         for js_file in FRONTEND_DIR.glob("js/**/*.js"):
@@ -256,9 +256,7 @@ class TestFrontendDOMSafety:
                         continue
                     if "_innerHTML =" in stripped or ".innerHTML = html" in stripped:
                         continue
-                    raise AssertionError(
-                        f"{rel}:{i} unsafe innerHTML: {stripped}"
-                    )
+                    raise AssertionError(f"{rel}:{i} unsafe innerHTML: {stripped}")
 
 
 class TestFrontendAccessibility:
@@ -320,7 +318,9 @@ class TestCLIDemotion:
 
         result = subprocess.run(
             ["uv", "run", "rig-relay", "--help"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         assert result.returncode == 0
         assert "Desktop" in result.stdout or "desktop" in result.stdout.lower()
@@ -349,9 +349,10 @@ class TestNoMarkdownEvidence:
 
         before = list(tmp_path.glob("**/*.md"))
 
-        execute_desktop_intent(
-            {"intent_name": "refresh_projection", "client_message_id": "md-test"},
-        )
+        execute_desktop_intent({
+            "intent_name": "refresh_projection",
+            "client_message_id": "md-test",
+        })
 
         after = list(tmp_path.glob("**/*.md"))
         assert len(after) == len(before), (

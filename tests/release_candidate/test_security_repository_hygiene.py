@@ -103,14 +103,10 @@ def test_secret_scanner_catches_fake_api_key(tmp_path: Path) -> None:
         ["git", "init", "-b", "main"], cwd=tmp_path, check=True, capture_output=True
     )
     (tmp_path / "danger.py").write_text(
-        'token = "ghp_abcdefghijklmnopqrstuvwxyz1234567890AB"\n',
-        encoding="utf-8",
+        'token = "ghp_abcdefghijklmnopqrstuvwxyz1234567890AB"\n', encoding="utf-8"
     )
     subprocess.run(
-        ["git", "add", "danger.py"],
-        cwd=tmp_path,
-        check=True,
-        capture_output=True,
+        ["git", "add", "danger.py"], cwd=tmp_path, check=True, capture_output=True
     )
 
     status, _actions, findings = scan_secret_and_path_hygiene(tmp_path)
@@ -121,14 +117,12 @@ def test_secret_scanner_catches_fake_api_key(tmp_path: Path) -> None:
 
 @pytest.mark.contract
 def test_markdown_exception_policy_allows_exceptions_and_blocks_reports() -> None:
-    forbidden = detect_forbidden_markdown_paths(
-        [
-            "README.md",
-            "SECURITY.md",
-            "docs/audits/new-audit.md",
-            "docs/reports/final-report.md",
-        ]
-    )
+    forbidden = detect_forbidden_markdown_paths([
+        "README.md",
+        "SECURITY.md",
+        "docs/audits/new-audit.md",
+        "docs/reports/final-report.md",
+    ])
     assert "README.md" not in forbidden
     assert "SECURITY.md" not in forbidden
     assert "docs/audits/new-audit.md" in forbidden

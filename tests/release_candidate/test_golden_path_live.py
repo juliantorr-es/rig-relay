@@ -34,10 +34,7 @@ from tests.helpers.rc_live_harness import RCLiveServer
 def _init_repo(repo_root: Path) -> None:
     repo_root.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        ["git", "init", "-b", "main"],
-        cwd=repo_root,
-        capture_output=True,
-        check=True,
+        ["git", "init", "-b", "main"], cwd=repo_root, capture_output=True, check=True
     )
     subprocess.run(
         ["git", "config", "user.email", "rc@test.invalid"],
@@ -53,16 +50,10 @@ def _init_repo(repo_root: Path) -> None:
     )
     (repo_root / "README.md").write_text("Context digest test repo\n", encoding="utf-8")
     subprocess.run(
-        ["git", "add", "README.md"],
-        cwd=repo_root,
-        capture_output=True,
-        check=True,
+        ["git", "add", "README.md"], cwd=repo_root, capture_output=True, check=True
     )
     subprocess.run(
-        ["git", "commit", "-m", "init"],
-        cwd=repo_root,
-        capture_output=True,
-        check=True,
+        ["git", "commit", "-m", "init"], cwd=repo_root, capture_output=True, check=True
     )
 
 
@@ -137,9 +128,7 @@ def test_live_server_startup_smoke_captures_healthz_and_logs(tmp_path: Path) -> 
         assert summary["runtime_config"]["frontend_url"] == server.frontend_url
         assert summary["startup_duration_ms"] >= 0
 
-    shutdown_summary = json.loads(
-        server.shutdown_summary.read_text(encoding="utf-8")
-    )
+    shutdown_summary = json.loads(server.shutdown_summary.read_text(encoding="utf-8"))
     assert shutdown_summary["clean_exit"] is True
     assert shutdown_summary["port_processes_remaining"] == []
 
@@ -148,20 +137,20 @@ def test_live_server_startup_smoke_captures_healthz_and_logs(tmp_path: Path) -> 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
 async def test_live_read_only_intent_round_trip(tmp_path: Path) -> None:
-        with RCLiveServer(
-            home_root=tmp_path / "home",
-            evidence_root=tmp_path / "evidence",
-            telemetry_enabled=True,
-        ) as server:
-            messages = await server.websocket_exchange(
-                _desktop_intent_request("worktree_list"),
-                expect_type="desktop_intent_result",
-            )
+    with RCLiveServer(
+        home_root=tmp_path / "home",
+        evidence_root=tmp_path / "evidence",
+        telemetry_enabled=True,
+    ) as server:
+        messages = await server.websocket_exchange(
+            _desktop_intent_request("worktree_list"),
+            expect_type="desktop_intent_result",
+        )
 
-        result = messages[-1]["data"]
-        assert result["intent_name"] == "worktree_list"
-        assert result["status"] in {"completed", "dry_run_completed", "partial"}
-        assert result["summary"]
+    result = messages[-1]["data"]
+    assert result["intent_name"] == "worktree_list"
+    assert result["status"] in {"completed", "dry_run_completed", "partial"}
+    assert result["summary"]
 
 
 @pytest.mark.asyncio
@@ -169,21 +158,21 @@ async def test_live_read_only_intent_round_trip(tmp_path: Path) -> None:
 @pytest.mark.integration
 @pytest.mark.timeout(120)
 async def test_unsupported_intent_is_structured_refusal(tmp_path: Path) -> None:
-        with RCLiveServer(
-            home_root=tmp_path / "home",
-            evidence_root=tmp_path / "evidence",
-            telemetry_enabled=True,
-        ) as server:
-            messages = await server.websocket_exchange(
-                _desktop_intent_request("<script>alert(1)</script>"),
-                expect_type="desktop_intent_result",
-            )
+    with RCLiveServer(
+        home_root=tmp_path / "home",
+        evidence_root=tmp_path / "evidence",
+        telemetry_enabled=True,
+    ) as server:
+        messages = await server.websocket_exchange(
+            _desktop_intent_request("<script>alert(1)</script>"),
+            expect_type="desktop_intent_result",
+        )
 
-        result = messages[-1]["data"]
-        assert result["intent_name"] == "<script>alert(1)</script>"
-        assert result["status"] == "refused"
-        assert result["error_code"] == "unsupported_intent"
-        assert result["summary"]
+    result = messages[-1]["data"]
+    assert result["intent_name"] == "<script>alert(1)</script>"
+    assert result["status"] == "refused"
+    assert result["error_code"] == "unsupported_intent"
+    assert result["summary"]
 
 
 @pytest.mark.asyncio
@@ -202,8 +191,7 @@ async def test_telemetry_disabled_mode_is_visible_and_non_destructive(
         telemetry_enabled=False,
     ) as server:
         projection_messages = await server.websocket_exchange(
-            {"type": "get_projection"},
-            expect_type="projection",
+            {"type": "get_projection"}, expect_type="projection"
         )
         projection = projection_messages[-1]["data"]
 
@@ -222,7 +210,9 @@ async def test_telemetry_disabled_mode_is_visible_and_non_destructive(
 @pytest.mark.integration
 @pytest.mark.real_artifact
 @pytest.mark.timeout(120)
-def test_debug_packet_quarantine_is_inspectable(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_debug_packet_quarantine_is_inspectable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("RIG_TELEMETRY_ENABLED", "1")
     session_id = "rc-debug-quarantine-visibility"
 
@@ -351,14 +341,12 @@ def test_live_run_creates_no_markdown_evidence(tmp_path: Path) -> None:
         markdown_paths = [
             path
             for path in server.home_root.rglob("*")
-            if path.is_file()
-            and path.suffix.lower() in {".md", ".mdx", ".markdown"}
+            if path.is_file() and path.suffix.lower() in {".md", ".mdx", ".markdown"}
         ]
         markdown_paths.extend(
             path
             for path in server.evidence_root.rglob("*")
-            if path.is_file()
-            and path.suffix.lower() in {".md", ".mdx", ".markdown"}
+            if path.is_file() and path.suffix.lower() in {".md", ".mdx", ".markdown"}
         )
 
         assert markdown_paths == []

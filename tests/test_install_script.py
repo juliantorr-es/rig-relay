@@ -134,7 +134,9 @@ def test_install_reports_missing_path_for_uv_tool_bin(tmp_path: Path) -> None:
         )
         == 1
     )
-    assert "uv was installed but not found in PATH for this session" not in result.stdout
+    assert (
+        "uv was installed but not found in PATH for this session" not in result.stdout
+    )
 
 
 def test_install_succeeds_when_uv_bin_dir_is_already_on_path(tmp_path: Path) -> None:
@@ -196,4 +198,6 @@ def test_update_succeeds_when_rig_relay_is_already_on_path(tmp_path: Path) -> No
 
     assert result.returncode == 0
     assert "Updating rig-relay from GitHub repository using uv..." in result.stdout
-    assert "Installing rig-relay from GitHub repository using uv..." not in result.stdout
+    assert (
+        "Installing rig-relay from GitHub repository using uv..." not in result.stdout
+    )

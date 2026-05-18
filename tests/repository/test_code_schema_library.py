@@ -62,7 +62,13 @@ class TestCodeSchemaFilesParse:
         for path in _schema_files():
             data = _load_json(path)
             if _is_registry(path):
-                for field in {"schema_version", "title", "summary", "generated_at", "entries"}:
+                for field in {
+                    "schema_version",
+                    "title",
+                    "summary",
+                    "generated_at",
+                    "entries",
+                }:
                     assert field in data, f"{path.name}: missing {field}"
                 continue
             if _is_plan_schema(data):
@@ -126,27 +132,29 @@ class TestCodeSchemaAuthority:
             authority = data["authority"]
             if authority.get("trusted"):
                 assert authority.get("source_path"), f"{path.name}: missing source_path"
-                assert authority.get(
-                    "review_status"
-                ), f"{path.name}: missing review_status"
+                assert authority.get("review_status"), (
+                    f"{path.name}: missing review_status"
+                )
                 source_path = _REPO_ROOT / authority["source_path"]
                 assert source_path.is_file(), f"{path.name}: missing source_path file"
                 expected = f"sha256:{sha256(source_path.read_bytes()).hexdigest()}"
-                assert (
-                    authority.get("source_hash") == expected
-                ), f"{path.name}: source_hash mismatch"
+                assert authority.get("source_hash") == expected, (
+                    f"{path.name}: source_hash mismatch"
+                )
                 assert authority.get("source_hash") != "sha256:placeholder"
 
     def test_active_schemas_have_tests_or_validation(self) -> None:
         for path in _active_schema_files():
             data = _load_json(path)
             assert data.get("schema_version") == "rig.code_schema.v1"
-            assert data.get("required_tests") or data.get(
-                "validation_commands"
-            ), f"{path.name}: missing tests or validation commands"
+            assert data.get("required_tests") or data.get("validation_commands"), (
+                f"{path.name}: missing tests or validation commands"
+            )
             assert data.get("required_invariants"), f"{path.name}: missing invariants"
             assert data.get("context_pack"), f"{path.name}: missing context_pack"
-            assert data.get("validation_commands"), f"{path.name}: missing validation commands"
+            assert data.get("validation_commands"), (
+                f"{path.name}: missing validation commands"
+            )
 
     def test_no_schema_sources_generated_docs_html(self) -> None:
         for path in _active_schema_files():
@@ -162,7 +170,9 @@ class TestCodeSchemaAuthority:
         assert len(ids) == len(set(ids))
 
     def test_plan_schema_is_not_active(self) -> None:
-        plan = _load_json(_CODE_SCHEMA_DIR / "context_assembler_integration_plan.v1.json")
+        plan = _load_json(
+            _CODE_SCHEMA_DIR / "context_assembler_integration_plan.v1.json"
+        )
         assert plan["schema_version"] == "rig.code_schema.plan.v1"
         assert plan.get("status") == "active"
         assert "authority" not in plan
@@ -174,17 +184,25 @@ class TestCodeSchemaRenderer:
     def test_renderer_includes_code_schema_docs(self) -> None:
         site = _load_json(_SITE_MANIFEST)
         code_schema_collection = next(
-            c for c in site.get("collections", []) if c["collection_id"] == "code-schemas"
+            c
+            for c in site.get("collections", [])
+            if c["collection_id"] == "code-schemas"
         )
         assert len(code_schema_collection.get("documents", [])) >= 5
-        assert all(doc["document_id"] for doc in code_schema_collection.get("documents", []))
+        assert all(
+            doc["document_id"] for doc in code_schema_collection.get("documents", [])
+        )
 
     def test_renderer_outputs_code_schema_pages(self) -> None:
         assert _DOCS_OUT.joinpath("pages", "frontend-trace-endpoint.html").is_file()
         assert _DOCS_OUT.joinpath("pages", "desktop-golden-path-trace.html").is_file()
-        assert _DOCS_OUT.joinpath("pages", "json-documentation-migration.html").is_file()
+        assert _DOCS_OUT.joinpath(
+            "pages", "json-documentation-migration.html"
+        ).is_file()
         assert _DOCS_OUT.joinpath("pages", "tool-batch-execution.html").is_file()
-        assert _DOCS_OUT.joinpath("pages", "frontend-transport-state-reducer.html").is_file()
+        assert _DOCS_OUT.joinpath(
+            "pages", "frontend-transport-state-reducer.html"
+        ).is_file()
 
     def test_renderer_script_is_present(self) -> None:
         assert _RENDERER.is_file()
