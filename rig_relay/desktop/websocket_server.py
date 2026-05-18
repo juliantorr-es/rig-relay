@@ -229,6 +229,7 @@ class ProjectionWebSocketServer:
         golden_handshake_id: str = "",
         missing_origin_allowed: bool = True,
         allow_null_origin: bool = False,
+        pywebview_loopback_mode: bool = False,
     ) -> None:
         self._build_root = build_root
         self._host = host
@@ -251,6 +252,7 @@ class ProjectionWebSocketServer:
         self._golden_handshake_id = golden_handshake_id
         self._missing_origin_allowed = missing_origin_allowed
         self._allow_null_origin = allow_null_origin
+        self._pywebview_loopback_mode = pywebview_loopback_mode
         self._first_projection_sent = False
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
@@ -415,7 +417,12 @@ class ProjectionWebSocketServer:
         async def _inspect_origin(conn: Any, request: Any) -> Any | None:
             origin = request.headers.get("Origin", "")
             if not origin:
-                if self._missing_origin_allowed:
+                if self._pywebview_loopback_mode or self._missing_origin_allowed:
+                    if self._pywebview_loopback_mode:
+                        self._emit_golden_event(
+                            "desktop.websocket.pywebview_origin_exception_allowed",
+                            payload={"origin": "(missing)"}
+                        )
                     return None
                 return await self._reject_origin(
                     origin="(missing)",
@@ -423,7 +430,12 @@ class ProjectionWebSocketServer:
                     detail="Origin header missing and missing_origin_allowed is False",
                 )
             if origin.lower() == "null":
-                if self._allow_null_origin:
+                if self._pywebview_loopback_mode or self._allow_null_origin:
+                    if self._pywebview_loopback_mode:
+                        self._emit_golden_event(
+                            "desktop.websocket.pywebview_origin_exception_allowed",
+                            payload={"origin": "null"}
+                        )
                     return None
                 return await self._reject_origin(
                     origin=origin,

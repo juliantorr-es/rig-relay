@@ -5,11 +5,12 @@ import { recordFrontendEvent, setFrontendHandshakeId } from '../telemetry/fronte
 import { fetchRuntimeConfig } from './runtimeConfig.js';
 import { createDebugPanel, updateDebugPanel } from './debugPanel.js';
 import { createTransportStateAuthority } from '../transportState.js';
-import { ProjectionWebSocketClient, setWsClient } from '../transport.js';
+import { ProjectionWebSocketClient, setWsClient, onProjectionReceived } from '../transport.js';
 import { renderStatusFromState } from '../status.js';
 import { handleProjection, handleChatState, handleIntentResult,
          handleProgressEvent, handleProgressEvents } from '../projection.js';
 import { wireUI } from '../main.js';
+import { state } from '../state.js';
 
 const LIFECYCLE = {
   BOOT_STARTED: 'frontend_boot_started',
@@ -50,12 +51,14 @@ async function boot() {
 
   // Create transport authority
   const authority = createTransportStateAuthority({
-    onTransition: (state) => {
-      renderStatusFromState(state);
-      if (isDebug) updateDebugPanel(debugPanel, state);
+    onTransition: (stateSnapshot) => {
+      state.wsConnected = stateSnapshot.wsConnected;
+      state.transport = stateSnapshot.transport;
+      renderStatusFromState(stateSnapshot);
+      if (isDebug) updateDebugPanel(debugPanel, stateSnapshot);
       recordFrontendEvent('frontend_transport_state', { 
-        status: state.transport.status, 
-        phase: state.transport.phase 
+        status: stateSnapshot.transport.status, 
+        phase: stateSnapshot.transport.phase 
       });
     }
   });
@@ -72,6 +75,7 @@ async function boot() {
       transportMachine: authority,
       onProjection(data) {
         handleProjection(data);
+        onProjectionReceived();
         recordFrontendEvent('frontend_projection_received');
         recordFrontendEvent('frontend_projection_rendered');
       },
@@ -115,7 +119,7 @@ async function boot() {
         console.warn('[orchestrator] auth failed:', msg);
       },
     });
-    setWsClient(wsClient);
+    setWsClient(wsClient, authority);
   }
 
   recordFrontendEvent(LIFECYCLE.WIDGETS_MOUNT_STARTED, {});

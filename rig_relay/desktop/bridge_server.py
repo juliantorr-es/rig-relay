@@ -147,7 +147,7 @@ def _bytes_response(body: bytes, content_type: str, status_code: int = 200) -> R
 class DesktopBridgeConfig:
     """Configuration for the single bridge server."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         host: str = "127.0.0.1",
@@ -160,6 +160,7 @@ class DesktopBridgeConfig:
         build_root: Path | None = None,
         chat_state_provider: Any | None = None,
         chat_message_handler: Any | None = None,
+        pywebview_loopback_mode: bool = False,
     ) -> None:
         self.host = host
         self.port = port
@@ -172,6 +173,7 @@ class DesktopBridgeConfig:
         self.build_root = build_root
         self.chat_state_provider = chat_state_provider
         self.chat_message_handler = chat_message_handler
+        self.pywebview_loopback_mode = pywebview_loopback_mode
 
 
 class DesktopBridgeRuntimeConfig:
@@ -549,6 +551,7 @@ class DesktopBridgeServer:
             golden_trace_id=self._golden_trace_id,
             golden_handshake_id=self._golden_handshake_id,
             missing_origin_allowed=False,
+            pywebview_loopback_mode=self._config.pywebview_loopback_mode,
         )
         report.add_ok(
             "bridge:05", "create WS server", message="ProjectionWebSocketServer ready"
@@ -980,6 +983,7 @@ class DesktopBridgeServer:
             "/runtime-config.json",
             "/runtime-config",
             "/ws",
+            "/websocket.js",
         }:
             return None
         if (

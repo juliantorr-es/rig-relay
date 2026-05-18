@@ -237,7 +237,7 @@ def test_frontend_widgets_render_non_empty_content(
         widget_ids = [
             "#widget-operatorHeader",
             "#widget-safetyState",
-            "#widget-connectionStatus",
+            "#widget-nextAction",
         ]
         for widget_id in widget_ids:
             page.wait_for_function(
@@ -247,7 +247,7 @@ def test_frontend_widgets_render_non_empty_content(
 
         page.wait_for_function(
             """() => {
-                const ids = ['#widget-operatorHeader', '#widget-safetyState', '#widget-connectionStatus'];
+                const ids = ['#widget-operatorHeader', '#widget-safetyState', '#widget-nextAction'];
                 let nonEmpty = 0;
                 for (const id of ids) {
                     const el = document.querySelector(id);

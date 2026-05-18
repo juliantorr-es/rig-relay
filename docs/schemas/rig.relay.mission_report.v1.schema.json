@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.mission_report.v1.schema.json",
+  "title": "Mission Report v1",
+  "description": "Canonical mission report matching the required persisted final report shape defined in AGENTS.md.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "mission_title",
+    "branch",
+    "head_before",
+    "head_after",
+    "dirty_state_before",
+    "dirty_state_after",
+    "files_changed",
+    "files_created",
+    "files_deleted",
+    "tests_run",
+    "tests_intentionally_skipped",
+    "test_classifications",
+    "evidence_artifacts",
+    "schema_validation_results",
+    "telemetry_and_redaction_implications",
+    "dependency_changes",
+    "completed_work",
+    "intentionally_deferred_work",
+    "discovered_out_of_scope_risks",
+    "remaining_seams"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.mission_report.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mission_title": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "head_before": {
+      "type": "string"
+    },
+    "head_after": {
+      "type": "string"
+    },
+    "dirty_state_before": {
+      "type": "string"
+    },
+    "dirty_state_after": {
+      "type": "object",
+      "properties": {
+        "this_mission_modified": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "this_mission_created": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "pre_existing_modified": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "files_changed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "files_created": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "files_deleted": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tests_run": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tests_intentionally_skipped": {
+      "type": "string"
+    },
+    "test_classifications": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "evidence_artifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "schema_validation_results": {
+      "type": "string"
+    },
+    "telemetry_and_redaction_implications": {
+      "type": "string"
+    },
+    "dependency_changes": {
+      "type": "string"
+    },
+    "completed_work": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "intentionally_deferred_work": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "discovered_out_of_scope_risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

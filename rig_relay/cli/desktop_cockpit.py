@@ -998,6 +998,7 @@ def _open_window(
             else None
         ),
         build_root=BUILD_ROOT,
+        pywebview_loopback_mode=True,
     )
 
     bridge = DesktopBridgeServer(
@@ -1152,18 +1153,20 @@ def _open_window(
         min_size=(800, 600),
     )
 
+    webview_debug = os.getenv("RIG_RELAY_WEBVIEW_DEBUG", "0") in ("1", "true", "yes")
+
     bridge_probe.add_ok(
         "bridge:12",
         "pywebview start called",
         details={
             "gui": "cocoa",
             "mode": "packaged" if packaged else "source",
-            "debug": False,
+            "debug": webview_debug,
         },
         message="webview.start(gui=cocoa) — blocking until window closes",
     )
     # Do NOT use http_server=True — the bridge server handles all HTTP
-    webview.start(gui="cocoa")
+    webview.start(gui="cocoa", debug=webview_debug)
     bridge_probe.add_ok(
         "bridge:12",
         "pywebview window closed",

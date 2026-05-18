@@ -100,6 +100,12 @@ export function onProjectionReceived() {
   _firstProjectionReceived = true;
   if (_wsAuthenticated && _transportAuthority) {
     _signalReady();
+  } else if (_wsClient && _wsClient.connected && _wsClient.authenticated) {
+    _wsClient.send({ type: 'get_chat_state' });
+    for (const msg of _outboundQueue) {
+      _wsClient.send(_normalizeDesktopIntentRequest(msg));
+    }
+    _outboundQueue = [];
   }
 }
 
@@ -208,8 +214,11 @@ export function initTransport(wsUrl, token, onMessage, transportAuthority, hands
   });
 }
 
-export function setWsClient(client) {
+export function setWsClient(client, transportAuthority) {
   _wsClient = client;
+  if (transportAuthority) {
+    _transportAuthority = transportAuthority;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -217,10 +226,11 @@ export function setWsClient(client) {
 // Ownership: frontend/desktop/js/transport.js
 // ════════════════════════════════════════════════════════════════
 export function sendMessage(msg) {
-  if (_wsClient && _wsClient.connected && _wsClient.authenticated && _firstProjectionReceived) {
+  const isProjReceived = _firstProjectionReceived || (_wsClient && _wsClient._firstProjectionReceived);
+  if (_wsClient && _wsClient.connected && _wsClient.authenticated && isProjReceived) {
     return _wsClient.send(_normalizeDesktopIntentRequest(msg));
   }
-  if (_wsClient && _wsClient.connected && _wsClient.authenticated && !_firstProjectionReceived) {
+  if (_wsClient && _wsClient.connected && _wsClient.authenticated && !isProjReceived) {
     _outboundQueue.push(msg);
     return 'queued';
   }

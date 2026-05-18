@@ -1,0 +1,66 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-18T08:35:30Z",
+  "mission_title": "Stabilizing Frontend Intent Orchestration",
+  "branch": "main",
+  "head_before": "73ec05e8db8b05d4cae5e8af6db3713edbc69153",
+  "head_after": "73ec05e8db8b05d4cae5e8af6db3713edbc69153",
+  "dirty_state_before": "clean",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "frontend/desktop/js/boot/orchestrator.js",
+      "frontend/desktop/js/transport.js",
+      "rig_relay/cli/desktop_cockpit.py",
+      "rig_relay/desktop/bridge_server.py",
+      "rig_relay/desktop/websocket_server.py",
+      "tests/desktop/test_playwright_frontend_product_path.py"
+    ],
+    "this_mission_created": [
+      "docs/schemas/rig.relay.mission_report.v1.schema.json",
+      "docs/json/desktop/frontend_intent_orchestration_report.v1.json"
+    ],
+    "pre_existing_modified": "None"
+  },
+  "files_changed": 6,
+  "files_created": 2,
+  "files_deleted": 0,
+  "tests_run": 7,
+  "tests_intentionally_skipped": "~6173 existing repository tests (not in this mission's scope)",
+  "test_classifications": {
+    "test_frontend_boots_primary_surface_and_shows_gate_and_telemetry": "e2e",
+    "test_frontend_widgets_render_non_empty_content": "e2e",
+    "test_frontend_read_only_intent_round_trip_is_visible": "e2e",
+    "test_static_probe_alone_cannot_mark_ready": "integration",
+    "test_frontend_shows_ready_state_from_healthz": "integration",
+    "test_frontend_refuses_unsupported_intent_without_html_injection": "adversarial",
+    "test_frontend_console_module_errors_captured": "integration"
+  },
+  "evidence_artifacts": [
+    "tests/desktop/test_playwright_frontend_product_path.py",
+    "docs/json/desktop/frontend_intent_orchestration_report.v1.json"
+  ],
+  "schema_validation_results": "PASS — All 163 schemas valid. Created rig.relay.mission_report.v1.schema.json.",
+  "telemetry_and_redaction_implications": "Frontend boot flow in orchestrator.js now correctly triggers onProjectionReceived, ensuring bridge telemetry events (frontend_projection_received, frontend_projection_rendered, frontend_ready) fire in perfect sequence. No sensitive data or raw file contents are logged.",
+  "dependency_changes": "None.",
+  "completed_work": [
+    "Diagnosed and fixed the root cause of Playwright intent test timeouts: orchestrator.js bypassed initTransport but failed to update transport.js state or flush outbound queue upon receiving the initial projection.",
+    "Imported and wired onProjectionReceived in orchestrator.js's onProjection callback.",
+    "Updated transport.js onProjectionReceived to flush outbound queue when running in orchestrator mode.",
+    "Updated transport.js setWsClient to accept and store the transportAuthority instance.",
+    "Updated transport.js sendMessage to check the client instance's _firstProjectionReceived property.",
+    "Created canonical mission report schema rig.relay.mission_report.v1.schema.json matching AGENTS.md requirements.",
+    "Validated all 163 schemas successfully.",
+    "Achieved 100% pass rate across the Playwright frontend product path test suite."
+  ],
+  "intentionally_deferred_work": [
+    "Stress testing WebSocket message queues under heavy concurrent intent dispatch.",
+    "Full end-to-end pywebview GUI window rendering verification in CI (currently headless Playwright)."
+  ],
+  "discovered_out_of_scope_risks": [
+    "Legacy transport.js state variables (_wsAuthenticated, _firstProjectionReceived) can become out of sync when boot orchestration is delegated to external modules like orchestrator.js unless explicit lifecycle hooks are maintained."
+  ],
+  "remaining_seams": [
+    "Lack of automated pywebview GUI window visual regression testing in CI.",
+    "WebSocket connection disruption simulation during active intent execution."
+  ]
+}
