@@ -383,3 +383,95 @@ def test_static_probe_alone_cannot_mark_ready(
 
     assert console_errors == [], f"Console errors: {console_errors}"
     assert page_errors == [], f"Page errors: {page_errors}"
+
+@pytest.mark.e2e
+@pytest.mark.integration
+@pytest.mark.real_artifact
+@pytest.mark.timeout(120)
+def test_frontend_layout_operator_mode_shell(
+    browser_server: RCLiveServer, browser_artifacts: Path, page
+) -> None:
+    page.set_viewport_size({"width": 1280, "height": 800})
+    try:
+        page.goto(browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000)
+        
+        # Wait for Ready status
+        page.wait_for_function(
+            "() => { const el = document.querySelector('#status-connection'); return el && el.textContent.includes('Ready'); }",
+            timeout=30000,
+        )
+        
+        # Wait for widgets to populate
+        page.wait_for_function(
+            "() => document.querySelectorAll('.widget-card').length >= 3",
+            timeout=30000,
+        )
+
+        viewport_size = page.viewport_size
+        assert viewport_size is not None
+        vp_height = viewport_size["height"]
+
+        # mode-bar height check
+        mode_bar_box = page.locator("#mode-bar").bounding_box()
+        assert mode_bar_box is not None
+        assert 20 <= mode_bar_box["height"] <= 60, f"Mode bar height abnormal: {mode_bar_box['height']}"
+
+        # main-grid height check
+        main_grid_box = page.locator("#main-grid").bounding_box()
+        assert main_grid_box is not None
+        assert main_grid_box["height"] >= vp_height * 0.6, "main-grid is crushed"
+
+        # chat-column height check
+        chat_col_box = page.locator("#chat-column").bounding_box()
+        assert chat_col_box is not None
+        assert chat_col_box["height"] >= vp_height * 0.6, "chat-column is crushed"
+
+        # panel-column dimensions
+        panel_col_box = page.locator("#panel-column").bounding_box()
+        assert panel_col_box is not None
+        assert panel_col_box["width"] >= 300, "panel-column is too narrow"
+        assert panel_col_box["height"] >= vp_height * 0.6, "panel-column is crushed"
+
+        # Footer position check
+        footer_box = page.locator("#footer-bar").bounding_box()
+        assert footer_box is not None
+        assert footer_box["y"] >= main_grid_box["y"] + main_grid_box["height"], "Footer overlaps main-grid"
+
+        # Widget card checks
+        widgets = page.locator(".widget-card").all()
+        assert len(widgets) >= 3
+
+        first_widget = widgets[0]
+        w_box = first_widget.bounding_box()
+        assert w_box is not None
+        assert w_box["height"] > 0, "Widget card has zero height"
+        assert first_widget.text_content()
+
+        for w in widgets:
+            box = w.bounding_box()
+            if box:
+                assert box["y"] <= vp_height + 500, "Widget is completely lost"
+
+    except Exception:
+        _capture_browser_failure(page, browser_artifacts, "frontend_layout_operator_mode")
+        raise
+
+def test_structural_css_layout_rules() -> None:
+    layout_css_path = Path(__file__).parent.parent.parent / "frontend" / "desktop" / "css" / "layout.css"
+    css = layout_css_path.read_text()
+    
+    # Assert grid template areas
+    assert 'grid-template-areas:' in css
+    assert '"header"' in css
+    assert '"mode"' in css
+    assert '"main"' in css
+    assert '"footer"' in css
+    
+    # Assert grid area assignments
+    assert '#main-grid { grid-area: main;' in css or 'grid-area: main;' in css.split('#main-grid {')[1]
+    assert '#mode-bar { grid-area: mode;' in css or 'grid-area: mode;' in css.split('#mode-bar {')[1]
+    
+    # Assert nested overflow prevention
+    main_grid_block = css.split('#main-grid {')[1].split('}')[0]
+    assert 'min-height: 0;' in main_grid_block
+    assert 'min-width: 0;' in main_grid_block

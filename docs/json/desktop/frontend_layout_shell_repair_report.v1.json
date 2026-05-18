@@ -1,0 +1,52 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-18T08:44:00Z",
+  "mission_title": "Frontend Layout Shell Repair v1",
+  "branch": "main",
+  "head_before": "c00d1947525b02d300ac8675b3193441c0782408",
+  "head_after": "c00d1947525b02d300ac8675b3193441c0782408",
+  "dirty_state_before": "clean",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "frontend/desktop/css/layout.css",
+      "frontend/desktop/css/chat.css",
+      "tests/desktop/test_playwright_frontend_product_path.py"
+    ],
+    "this_mission_created": [
+      "docs/json/desktop/frontend_layout_shell_repair_report.v1.json"
+    ],
+    "pre_existing_modified": "None"
+  },
+  "files_changed": 3,
+  "files_created": 1,
+  "files_deleted": 0,
+  "tests_run": 2,
+  "tests_intentionally_skipped": "~6173 existing repository tests (not in this mission's scope)",
+  "test_classifications": {
+    "test_frontend_layout_operator_mode_shell": "e2e",
+    "test_structural_css_layout_rules": "contract"
+  },
+  "evidence_artifacts": [
+    "docs/json/desktop/frontend_layout_shell_repair_report.v1.json"
+  ],
+  "schema_validation_results": "PASS — All 163 schemas valid.",
+  "telemetry_and_redaction_implications": "None. Only CSS styling and Playwright test assertions were updated.",
+  "dependency_changes": "None.",
+  "completed_work": [
+    "Fixed CSS Grid auto-placement in body layout. Replaced 3-row layout with an explicit 4-row layout (header, mode, main, footer) using grid-template-areas.",
+    "Added min-height: 0 and min-width: 0 to #main-grid, #chat-column, #panel-column, #chat-surface, and #chat-transcript to prevent nested Grid/Flexbox overflow.",
+    "Updated #main-grid[data-mode] variations (operator, review, system, technical) to use minmax(0, 1fr) for grid-template-rows, preventing overflow crushing.",
+    "Added test_frontend_layout_operator_mode_shell (Playwright DOM sizing test at 1280x800) asserting height and visibility of all layout columns and widgets.",
+    "Added test_structural_css_layout_rules (Python AST/Text test) asserting required CSS rules are present in layout.css."
+  ],
+  "intentionally_deferred_work": [
+    "Refining responsive layout variations for width <= 720px.",
+    "Refining dark mode color variables."
+  ],
+  "discovered_out_of_scope_risks": [
+    "None"
+  ],
+  "remaining_seams": [
+    "Lack of automated pywebview GUI window visual regression testing in CI."
+  ]
+}

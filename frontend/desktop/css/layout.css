@@ -19,13 +19,29 @@ body {
   color: var(--text-primary);
   background: var(--bg-base);
   display: grid;
-  grid-template-rows: var(--header-height) 1fr var(--footer-height);
-  grid-template-columns: 1fr;
+  grid-template-rows:
+    var(--header-height)
+    var(--mode-bar-height)
+    minmax(0, 1fr)
+    var(--footer-height);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "header"
+    "mode"
+    "main"
+    "footer";
   -webkit-font-smoothing: antialiased;
 }
 
+#top-header { grid-area: header; }
+#mode-bar { grid-area: mode; }
+#footer-bar { grid-area: footer; }
+
 /* ── Main content area: mode-driven grid ── */
 #main-grid {
+  grid-area: main;
+  min-height: 0;
+  min-width: 0;
   display: grid;
   overflow: hidden;
   transition: grid-template-columns var(--transition-layout),
@@ -34,15 +50,15 @@ body {
 
 /* Mode: operator — chat dominant left, widgets right */
 #main-grid[data-mode="operator"] {
-  grid-template-columns: 1fr 340px;
-  grid-template-rows: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
 }
 
 /* Mode: review — equal grid of 2 columns */
 #main-grid[data-mode="review"] {
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--space-2);
   padding: var(--space-2);
 }
@@ -50,7 +66,7 @@ body {
 /* Mode: system — 2-column grid */
 #main-grid[data-mode="system"] {
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--space-2);
   padding: var(--space-2);
 }
@@ -58,13 +74,15 @@ body {
 /* Mode: technical — dense 3-column grid */
 #main-grid[data-mode="technical"] {
   grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--space-1);
   padding: var(--space-1);
 }
 
 /* ── Column areas ── */
 #chat-column {
+  min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -72,6 +90,8 @@ body {
 }
 
 #panel-column {
+  min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
