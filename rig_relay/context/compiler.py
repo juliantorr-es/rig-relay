@@ -17,6 +17,7 @@ from typing import Any
 from rig_relay.context.assembly_plan import ContextAssemblyPlan, ContextCandidate
 from rig_relay.context.models import (
     ContextEnvelopeReceipt,
+    ContextMode,
     ContextPacket,
     ContextReceipt,
     ContextRequest,
@@ -165,7 +166,7 @@ class ContextCompiler:
         return envelope
 
 
-def execute(  # noqa: PLR0914
+def execute(  # noqa: PLR0914, PLR0915
     request: ContextRequest, workspace_root: Path | None = None
 ) -> ContextPacket:
     """Execute a get_context request and return a ContextPacket.
@@ -212,6 +213,15 @@ def execute(  # noqa: PLR0914
     )
     # Build repo info (always)
     repo = build_repo_info(root)
+
+    # ── Digest mode: short-circuit to coordination digestion ────
+    if request.mode == ContextMode.DIGEST:
+        receipts: list[ReceiptEntry] = []
+        if request.scope.include_receipts:
+            receipts = _scan_receipts(root, warnings=_context_warnings)
+        return _build_digest_packet(
+            request, root, repo, request_sha256, _context_warnings, receipts
+        )
 
     # Build subsystem map (always for map mode)
     subsystems = build_subsystem_map(root)
@@ -574,6 +584,292 @@ def _build_summary(
             )
 
     return "\n".join(lines)
+
+
+def _build_digest_packet(
+    request: ContextRequest,
+    root: Path,
+    repo: Any,
+    request_sha256: str,
+    warnings: list[dict[str, Any]],
+    receipts: list[ReceiptEntry],
+) -> ContextPacket:
+    """Build a ContextPacket from coordination store digestion.
+
+    Uses ContextDigester for digestion and ContextCache for cache-hit
+    short-circuit. Falls back to coordination store projection on any failure.
+    """
+    store_root = root / ".build" / "rig-relay" / "coordination"
+    cache_dir = root / ".build" / "rig-relay" / "cache"
+
+    try:
+        from rig_relay.context.digester import ContextDigester
+
+        digester = ContextDigester()
+        digestion_result = digester.digest(
+            store_root=str(store_root), repo_root=str(root)
+        )
+
+        try:
+            from rig_relay.context.cache import ContextCache
+
+            cache = ContextCache(cache_dir=cache_dir, ttl_seconds=300)
+            cache_key = cache.cache_key(
+                repo_root=root,
+                source_event_range=digestion_result.source_event_range,
+                source_commit=digestion_result.source_commit,
+            )
+            if cache.is_fresh(cache_key, digestion_result.source_commit):
+                cached = cache.get(cache_key)
+                if cached is not None:
+                    return _build_packet_from_digestion(
+                        request,
+                        repo,
+                        request_sha256,
+                        digestion_result,
+                        warnings,
+                        receipts,
+                    )
+            # Store fresh digestion result in cache
+            cache.set(cache_key, digestion_result)
+        except Exception as cache_exc:
+            _emit_context_trace(
+                "context.cache.store_failed",
+                payload={"error": exception_class_name(cache_exc)},
+            )
+
+        return _build_packet_from_digestion(
+            request, repo, request_sha256, digestion_result, warnings, receipts
+        )
+    except Exception as e:
+        warnings.append(
+            build_warning(
+                ContextWarningCode.SYMBOL_DIGEST_FAILED,
+                detail=f"{exception_class_name(e)}: falling back to store projection",
+                source="compiler._build_digest_packet.digester",
+            )
+        )
+
+    return _build_digest_packet_from_store(
+        request, root, repo, request_sha256, warnings, receipts, store_root
+    )
+
+
+def _build_digest_packet_from_store(
+    request: ContextRequest,
+    root: Path,
+    repo: Any,
+    request_sha256: str,
+    warnings: list[dict[str, Any]],
+    receipts: list[ReceiptEntry],
+    store_root: Path,
+) -> ContextPacket:
+    """Fallback: read coordination store projection directly."""
+    try:
+        from rig_relay.coordination import CoordinationStore
+
+        store = CoordinationStore(store_root)
+        projection = store.read_state_projection()
+    except Exception as e:
+        warnings.append(
+            build_warning(
+                ContextWarningCode.REPO_SCAN_FAILED,
+                detail=f"{exception_class_name(e)}: store projection unavailable",
+                source="compiler._build_digest_packet_from_store",
+            )
+        )
+        return ContextPacket(
+            mode=ContextMode.DIGEST,
+            repo=repo,
+            request_sha256=request_sha256,
+            warnings=warnings,
+            receipts=receipts,
+        )
+
+    return _build_packet_from_projection(
+        request, repo, request_sha256, projection, warnings, receipts
+    )
+
+
+def _build_packet_from_digestion(
+    request: ContextRequest,
+    repo: Any,
+    request_sha256: str,
+    digestion_result: Any,
+    warnings: list[dict[str, Any]],
+    receipts: list[ReceiptEntry],
+) -> ContextPacket:
+    """Build a ContextPacket from a ContextDigestionResult."""
+    from rig_relay.context.digester import ContextDigestionResult
+
+    if isinstance(digestion_result, ContextDigestionResult):
+        active_lanes_raw = digestion_result.active_lanes
+        do_not_touch_paths = list(digestion_result.do_not_touch_paths)
+        recent_conflicts = digestion_result.recent_conflicts
+    elif isinstance(digestion_result, dict):
+        active_lanes_raw = digestion_result.get("active_lanes", [])
+        do_not_touch_paths = digestion_result.get("do_not_touch_paths", [])
+        recent_conflicts = digestion_result.get("recent_conflicts", [])
+    else:
+        active_lanes_raw = getattr(digestion_result, "active_lanes", []) or []
+        do_not_touch_paths = getattr(digestion_result, "do_not_touch_paths", []) or []
+        recent_conflicts = getattr(digestion_result, "recent_conflicts", []) or []
+
+    lanes: list[dict[str, Any]] = []
+    for lane in active_lanes_raw:
+        if isinstance(lane, dict):
+            lanes.append({
+                "agent_id": lane.get("session_id", ""),
+                "mission_id": lane.get("task_id", ""),
+                "worktree_path": "",
+                "claimed_paths": lane.get("reserved_paths", []),
+                "dirty_paths": [],
+                "status": lane.get("status", "active"),
+            })
+
+    do_not_touch = [
+        PathRecommendation(path=p, reason="Digestion do-not-touch")
+        for p in do_not_touch_paths
+    ]
+
+    collision_warnings: list[dict[str, Any]] = []
+    for conflict in recent_conflicts:
+        if isinstance(conflict, dict):
+            conflict_paths = conflict.get("paths", [])
+            collision_warnings.append({
+                "path": conflict_paths[0] if conflict_paths else "",
+                "claimed_by": conflict.get("other_session_id", ""),
+                "reason": conflict.get("kind", ""),
+            })
+
+    active_work: dict[str, Any] = {
+        "lanes": lanes,
+        "collision_warnings": collision_warnings,
+    }
+
+    summary_lines = [
+        "Digest mode context from coordination digestion",
+        f"Active lanes: {len(lanes)}",
+        f"Do-not-touch paths: {len(do_not_touch)}",
+        f"Collision warnings: {len(collision_warnings)}",
+    ]
+    summary = "\n".join(summary_lines)
+
+    return ContextPacket(
+        mode=ContextMode.DIGEST,
+        repo=repo,
+        request_sha256=request_sha256,
+        subsystems=[],
+        active_work=active_work,
+        recommended_context=[
+            PathRecommendation(path=lane.get("agent_id", ""), reason="Active lane")
+            for lane in lanes[:10]
+        ],
+        do_not_touch=do_not_touch,
+        receipts=receipts,
+        summary_text=summary,
+        warnings=warnings,
+    )
+
+
+def _build_packet_from_projection(
+    request: ContextRequest,
+    repo: Any,
+    request_sha256: str,
+    projection: Any,
+    warnings: list[dict[str, Any]],
+    receipts: list[ReceiptEntry],
+) -> ContextPacket:
+    """Build a ContextPacket from a coordination store state projection."""
+    from rig_relay.coordination.models import CoordinationStateProjection
+
+    lanes: list[dict[str, Any]] = []
+    do_not_touch: list[PathRecommendation] = []
+    collision_warnings: list[dict[str, Any]] = []
+
+    if isinstance(projection, CoordinationStateProjection):
+        claims = projection.active_task_claims
+        reservations = projection.active_path_reservations
+        conflicts = projection.conflicts
+    elif hasattr(projection, "active_task_claims"):
+        claims = projection.active_task_claims
+        reservations = projection.active_path_reservations
+        conflicts = getattr(projection, "conflicts", [])
+    else:
+        claims = {}
+        reservations = {}
+        conflicts = []
+
+    for task_id, claim in claims.items():
+        sid = getattr(claim, "session_id", "")
+        lanes.append({
+            "agent_id": sid,
+            "mission_id": task_id,
+            "worktree_path": "",
+            "claimed_paths": getattr(claim, "scope_allowed_paths", []) or [],
+            "dirty_paths": [],
+            "status": getattr(claim, "status", "unknown"),
+        })
+    for _lease_key, reservation in reservations.items():
+        sid = getattr(reservation, "session_id", "")
+        task_id = getattr(reservation, "task_id", "")
+        reservation_paths: list[str] = getattr(reservation, "paths", []) or []
+        if getattr(reservation, "mode", "read") == "write":
+            for p in reservation_paths:
+                if p not in {r.path for r in do_not_touch}:
+                    do_not_touch.append(
+                        PathRecommendation(path=p, reason=f"Write lease by {sid}")
+                    )
+        existing = [l for l in lanes if l.get("agent_id") == sid]
+        if existing:
+            existing_paths = set(existing[0].get("claimed_paths", []))
+            existing_paths.update(reservation_paths)
+            existing[0]["claimed_paths"] = list(existing_paths)
+        else:
+            lanes.append({
+                "agent_id": sid,
+                "mission_id": task_id,
+                "worktree_path": "",
+                "claimed_paths": reservation_paths,
+                "dirty_paths": [],
+                "status": "active",
+            })
+
+    for conflict in conflicts:
+        collision_warnings.append({
+            "path": getattr(conflict, "paths", [None])[0] or "",
+            "claimed_by": getattr(conflict, "other_session_id", ""),
+            "reason": getattr(conflict, "kind", ""),
+        })
+
+    active_work: dict[str, Any] = {
+        "lanes": lanes,
+        "collision_warnings": collision_warnings,
+    }
+
+    summary_lines = [
+        "Digest mode context from coordination store projection",
+        f"Active lanes: {len(lanes)}",
+        f"Write-lease do-not-touch paths: {len(do_not_touch)}",
+        f"Collision warnings: {len(collision_warnings)}",
+    ]
+    summary = "\n".join(summary_lines)
+
+    return ContextPacket(
+        mode=ContextMode.DIGEST,
+        repo=repo,
+        request_sha256=request_sha256,
+        subsystems=[],
+        active_work=active_work,
+        recommended_context=[
+            PathRecommendation(path=lane.get("agent_id", ""), reason="Active lane")
+            for lane in lanes[:10]
+        ],
+        do_not_touch=do_not_touch,
+        receipts=receipts,
+        summary_text=summary,
+        warnings=warnings,
+    )
 
 
 def _estimate_tokens(packet: ContextPacket) -> int:

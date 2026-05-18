@@ -33,6 +33,13 @@ DEFAULT_BLOCKERS = REPO_ROOT / "docs" / "json" / "release_gate" / "rc_blockers.v
 DEFAULT_VALIDATION_RUNS = (
     REPO_ROOT / "docs" / "json" / "release_gate" / "rc_validation_runs.v1.jsonl"
 )
+DEFAULT_GOLDEN_PATH = (
+    REPO_ROOT
+    / "docs"
+    / "json"
+    / "release_candidate"
+    / "rc_reviewer_golden_path.v1.json"
+)
 
 MARKDOWN_EVIDENCE_FORBIDDEN_PATTERNS: list[str] = [
     "docs/audits/",
@@ -43,6 +50,68 @@ MARKDOWN_EVIDENCE_FORBIDDEN_PATTERNS: list[str] = [
     "final-report.md",
     "handoff.md",
 ]
+
+
+def check_golden_path(
+    golden_path: dict[str, Any] | None, schemas_dir: Path
+) -> list[str]:
+    """Validate golden path artifact and check blocking step status.
+
+    Returns errors if:
+    - Golden path fails schema validation
+    - Any step with blocking_failure_conditions has status != 'passing'
+    - overall_status is 'blocked' or 'not_verified'
+    """
+    errors: list[str] = []
+    if golden_path is None:
+        errors.append(
+            "Golden path artifact is missing: "
+            "docs/json/release_candidate/rc_reviewer_golden_path.v1.json"
+        )
+        return errors
+
+    schema_errors = validate_schema_artifact(
+        golden_path, "rig.release_candidate.reviewer_golden_path.v1", schemas_dir
+    )
+    errors.extend(schema_errors)
+    if schema_errors:
+        return errors
+
+    overall = golden_path.get("overall_status", "not_verified")
+    if overall == "blocked":
+        errors.append("Golden path overall_status is 'blocked' — cannot PROMOTE")
+    elif overall == "not_verified":
+        errors.append(
+            "Golden path overall_status is 'not_verified' — "
+            "a human reviewer must exercise and verify the golden path before PROMOTE"
+        )
+
+    steps = golden_path.get("steps", [])
+    blocked_steps: list[str] = []
+    not_verified_blocking: list[str] = []
+    for step in steps:
+        step_id = step.get("step_id", "unknown")
+        status = step.get("status", "not_verified")
+        blocking_conditions = step.get("blocking_failure_conditions", [])
+        if not blocking_conditions:
+            continue
+        if status == "blocked":
+            blocked_steps.append(step_id)
+        elif status in {"not_verified", "failing"}:
+            not_verified_blocking.append(step_id)
+
+    if blocked_steps:
+        errors.append(
+            f"Golden path has {len(blocked_steps)} blocked step(s) "
+            f"with blocking failure conditions: {', '.join(blocked_steps)}"
+        )
+    if not_verified_blocking:
+        errors.append(
+            f"Golden path has {len(not_verified_blocking)} not-verified step(s) "
+            f"with blocking failure conditions: {', '.join(not_verified_blocking)}"
+        )
+
+    return errors
 
 
 def load_artifact(path: Path) -> dict[str, Any]:
@@ -407,6 +476,34 @@ def run_validation(
     errors.extend(
         check_stale_evidence(phases, validation_runs, repo_root, current_head)
     )
+
+    golden_path: dict[str, Any] | None = None
+    golden_path_path = (
+        repo_root
+        / "docs"
+        / "json"
+        / "release_candidate"
+        / "rc_reviewer_golden_path.v1.json"
+    )
+    if golden_path_path.is_file():
+        try:
+            golden_path = load_artifact(golden_path_path)
+            artifact_counts["golden_path_loaded"] = 1
+        except Exception as e:
+            errors.append(f"Failed to load golden path artifact: {e}")
+    else:
+        errors.append(
+            "Golden path artifact is missing: "
+            "docs/json/release_candidate/rc_reviewer_golden_path.v1.json"
+        )
+
+    if golden_path is not None:
+        errors.extend(check_golden_path(golden_path, schemas_dir))
+        errors.extend(
+            check_evidence_paths(
+                golden_path.get("evidence_paths", []), repo_root, allowed_exceptions
+            )
+        )
 
     phase_summaries = _build_phase_summaries(phases, errors)
     status = "passed" if len(errors) == 0 else "failed"

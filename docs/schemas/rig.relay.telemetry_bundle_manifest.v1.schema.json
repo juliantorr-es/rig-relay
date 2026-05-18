@@ -86,6 +86,24 @@
       "type": "array",
       "items": { "type": "string" },
       "description": "Non-fatal warnings about the bundle."
+    },
+    "debug_packet_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total number of debug packets written for the session."
+    },
+    "quarantined_debug_packet_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of debug packets quarantined (excluded from bundle)."
+    },
+    "quarantine_file_path": {
+      "type": ["string", "null"],
+      "description": "Path to the quarantine file if debug packets were quarantined."
+    },
+    "quarantine_note": {
+      "type": "string",
+      "description": "Content-light note about quarantine status."
     }
   },
   "additionalProperties": false

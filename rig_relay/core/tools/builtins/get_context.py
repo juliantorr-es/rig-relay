@@ -56,7 +56,8 @@ class GetContextArgs(BaseModel):
     mode: str = Field(
         default="map",
         description="Context mode: map (fast topology), packet (heavy mission-ready), "
-        "handoff (agent transfer), collision (path conflict check), symbols (symbol table).",
+        "handoff (agent transfer), collision (path conflict check), symbols (symbol table), "
+        "digest (coordination store digestion with cache).",
     )
     mission_id: str | None = Field(
         default=None, description="Optional mission identifier for scoping context."
@@ -89,7 +90,7 @@ class GetContextArgs(BaseModel):
     @field_validator("mode")
     @classmethod
     def _validate_mode(cls, v: str) -> str:
-        valid = {"map", "packet", "handoff", "collision", "symbols"}
+        valid = {"map", "packet", "handoff", "collision", "symbols", "digest"}
         if v not in valid:
             raise ValueError(
                 f"Invalid mode '{v}'. Must be one of: {', '.join(sorted(valid))}"

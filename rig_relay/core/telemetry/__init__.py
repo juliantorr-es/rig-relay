@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from rig_relay.core.config.telemetry_modes import (
+    compute_degradation_mode,
+    get_telemetry_degradation_state,
+)
 from rig_relay.core.telemetry.doctor import (
     print_validation_result,
     run_evidence_validation,
@@ -26,6 +30,8 @@ __all__ = [
     "EvidenceValidationResult",
     "build_manifest_bytes",
     "build_session_manifest",
+    "compute_degradation_mode",
+    "get_telemetry_degradation_state",
     "load_manifest",
     "load_receipts",
     "manifest_to_dict",

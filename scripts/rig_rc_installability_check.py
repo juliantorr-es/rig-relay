@@ -486,6 +486,86 @@ def check_no_markdown_evidence() -> dict[str, Any]:
     }
 
 
+def check_dogfood_readiness_distinction() -> dict[str, Any]:
+    import time
+
+    t0 = time.monotonic()
+    golden_path_path = (
+        REPO_ROOT
+        / "docs"
+        / "json"
+        / "release_candidate"
+        / "rc_reviewer_golden_path.v1.json"
+    )
+    if not golden_path_path.is_file():
+        return {
+            "check_id": "dogfood_readiness_distinction",
+            "status": "fail",
+            "detail": (
+                "Dogfood golden path artifact missing: "
+                "docs/json/release_candidate/rc_reviewer_golden_path.v1.json. "
+                "Installability smoke test alone is insufficient for RC readiness."
+            ),
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+        }
+
+    try:
+        golden_path = json.loads(golden_path_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {
+            "check_id": "dogfood_readiness_distinction",
+            "status": "fail",
+            "detail": f"Golden path artifact is malformed JSON: {e}",
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+        }
+
+    overall = golden_path.get("overall_status", "not_verified")
+    blocked_steps = [
+        s["step_id"]
+        for s in golden_path.get("steps", [])
+        if s.get("status") == "blocked" and s.get("blocking_failure_conditions")
+    ]
+    not_verified_steps = [
+        s["step_id"]
+        for s in golden_path.get("steps", [])
+        if s.get("status") == "not_verified" and s.get("blocking_failure_conditions")
+    ]
+
+    if overall == "passing":
+        return {
+            "check_id": "dogfood_readiness_distinction",
+            "status": "pass",
+            "detail": (
+                "Dogfood golden path is passing. "
+                "Installability smoke test is supplemented by dogfood operational readiness."
+            ),
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+        }
+
+    if blocked_steps:
+        return {
+            "check_id": "dogfood_readiness_distinction",
+            "status": "warn",
+            "detail": (
+                f"Installability smoke may pass but dogfood readiness is BLOCKED. "
+                f"{len(blocked_steps)} blocked step(s): {', '.join(blocked_steps)}. "
+                f"Do not treat installability-only checks as RC readiness."
+            ),
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+        }
+
+    return {
+        "check_id": "dogfood_readiness_distinction",
+        "status": "warn",
+        "detail": (
+            f"Installability smoke may pass but dogfood golden path is '{overall}'. "
+            f"{len(not_verified_steps)} steps not yet verified by a human reviewer. "
+            f"Do not treat installability-only checks as RC readiness."
+        ),
+        "duration_ms": int((time.monotonic() - t0) * 1000),
+    }
+
+
 def check_version_ascii() -> dict[str, Any]:
     import time
 
@@ -582,6 +662,7 @@ CHECKS = [
     check_no_markdown_evidence,
     check_version_ascii,
     check_python_version_constraint,
+    check_dogfood_readiness_distinction,
 ]
 
 

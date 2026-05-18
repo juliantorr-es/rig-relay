@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rig-relay.dev/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json",
+  "title": "Rig Relay RC Reviewer Golden Path v1",
+  "description": "Structured golden-path checklist for dogfood operational readiness review. A reviewer follows each step and records pass/fail/blocked. No PROMOTE verdict is possible while any step with blocking_failure_conditions remains in a non-passing state.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "golden_path_id",
+    "generated_at",
+    "head_sha",
+    "branch",
+    "title",
+    "description",
+    "overall_status",
+    "steps",
+    "evidence_paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.release_candidate.reviewer_golden_path.v1"]
+    },
+    "golden_path_id": {
+      "type": "string",
+      "description": "Stable identifier for this golden path version."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this golden path was generated."
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 40,
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for this golden path."
+    },
+    "description": {
+      "type": "string",
+      "description": "What this golden path covers and what dogfood readiness means."
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["passing", "blocked", "not_verified"],
+      "description": "Aggregate status. 'passing' means all blocking steps pass. 'blocked' means at least one blocking step is blocked. 'not_verified' means no reviewer has run the path yet."
+    },
+    "reviewer": {
+      "type": "object",
+      "description": "Optional reviewer identity when a human runs the path.",
+      "properties": {
+        "name": { "type": "string" },
+        "run_at": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "step_id",
+          "user_goal",
+          "command_or_ui_action",
+          "expected_result",
+          "status"
+        ],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "description": "Stable identifier for this step (e.g. 'gp_install', 'gp_launch_server')."
+          },
+          "user_goal": {
+            "type": "string",
+            "description": "What the reviewer is trying to accomplish in this step."
+          },
+          "command_or_ui_action": {
+            "type": "string",
+            "description": "Exact command or UI action the reviewer performs."
+          },
+          "expected_result": {
+            "type": "string",
+            "description": "What the reviewer should observe if the step passes."
+          },
+          "evidence_path": {
+            "type": "string",
+            "description": "Path to structured evidence artifact that proves this step was exercised (receipt, screenshot path, log path)."
+          },
+          "blocking_failure_conditions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Specific failure modes that would block PROMOTE. If empty, this step is informational only."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["passing", "failing", "blocked", "not_verified", "skipped"],
+            "description": "Reviewer-verified status for this step."
+          },
+          "validation_method": {
+            "type": "string",
+            "enum": ["manual_review", "automated_script", "receipt_inspection", "log_assertion", "screenshot_comparison"],
+            "description": "How this step is validated."
+          },
+          "reviewer_notes": {
+            "type": "string"
+          },
+          "phase_id": {
+            "type": "string",
+            "description": "Release-gate phase this step belongs to."
+          }
+        }
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to all evidence artifacts referenced by steps."
+    }
+  }
+}

@@ -70,6 +70,26 @@ def log_local_event(
     if not normalized_name.startswith("rig.relay."):
         normalized_name = f"rig.relay.{normalized_name}"
 
+    # 2a. Route debug packets to quarantine — before building the formal envelope
+    from rig_relay.core.telemetry.quarantine import is_debug_packet, write_debug_packet
+
+    if is_debug_packet(normalized_name):
+        from rig_relay import __version__ as _version
+
+        packet = {
+            "schema_version": "rig.relay.debug_quarantine.v1",
+            "event_id": str(uuid.uuid4()),
+            "session_id": session_id,
+            "parent_session_id": parent_session_id,
+            "created_at": datetime.now(UTC).isoformat(),
+            "event_name": normalized_name,
+            "payload": payload,
+            "producer": {"name": "rig-relay", "version": _version},
+            "receipt_candidate": receipt_candidate,
+        }
+        write_debug_packet(packet, SESSIONS_ROOT.path, session_id)
+        return
+
     # 3. Build the formal envelope
     event = {
         "schema_version": "rig.relay.observability.v1",

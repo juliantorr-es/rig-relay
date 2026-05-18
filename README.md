@@ -68,12 +68,12 @@ uv run rig-relay --server-only   # WebSocket + URL, headless
 
 Rig Relay exposes four protocol surfaces for different integration patterns:
 
-| Surface | Role | Description |
-|---|---|---|
-| **ACP Agent** | Editor ↔ Agent | Rig presents as a governed coding agent to Zed, JetBrains, VS Code. Sessions, progress events, edit proposals, permission gating. |
-| **MCP Client** | Rig ↔ External Tools | Rig consumes external MCP servers for additional tools and context. |
-| **MCP Server** | Host ↔ Rig | Rig exposes governed tools, resources, and prompts to Antigravity, Claude Desktop, Cursor, and other MCP hosts. Tiered: read-only → analysis → validation → patch proposal → mutation. |
-| **WebSocket** | Cockpit ↔ Backend | Local projection stream for the desktop cockpit. Token-gated, localhost-only, content-light. |
+| Surface        | Role                 | Description                                                                                                                                                                            |
+| -------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ACP Agent**  | Editor ↔ Agent       | Rig presents as a governed coding agent to Zed, JetBrains, VS Code. Sessions, progress events, edit proposals, permission gating.                                                      |
+| **MCP Client** | Rig ↔ External Tools | Rig consumes external MCP servers for additional tools and context.                                                                                                                    |
+| **MCP Server** | Host ↔ Rig           | Rig exposes governed tools, resources, and prompts to Antigravity, Claude Desktop, Cursor, and other MCP hosts. Tiered: read-only → analysis → validation → patch proposal → mutation. |
+| **WebSocket**  | Cockpit ↔ Backend    | Local projection stream for the desktop cockpit. Token-gated, localhost-only, content-light.                                                                                           |
 
 See [docs/protocol-surfaces.md](docs/protocol-surfaces.md) for details.
 
@@ -96,26 +96,26 @@ paths.
 
 Rig Relay ships with built-in agent profiles. Select with `--agent`:
 
-| Profile | Type | Tools | Use |
-|---|---|---|---|
-| `default` | Agent | Standard | Normal development with approval gates |
-| `orchestrator` | Agent | Git, task dispatch, consult | Fleet orchestration, roadmap planning |
-| `plan` | Agent | Read-only | Exploration and planning |
-| `explorer` | Subagent | grep, read_file | Codebase exploration |
-| `builder` | Subagent | write_file, search_replace, task | Patch application in scratch worktrees |
-| `cleaner` | Subagent | validate, validation_suite | Post-build validation and cleanup |
-| `bug-exterminator` | Subagent | cleaner tools + task | Hard merge conflict resolution |
+| Profile            | Type     | Tools                            | Use                                    |
+| ------------------ | -------- | -------------------------------- | -------------------------------------- |
+| `default`          | Agent    | Standard                         | Normal development with approval gates |
+| `orchestrator`     | Agent    | Git, task dispatch, consult      | Fleet orchestration, roadmap planning  |
+| `plan`             | Agent    | Read-only                        | Exploration and planning               |
+| `explorer`         | Subagent | grep, read_file                  | Codebase exploration                   |
+| `builder`          | Subagent | write_file, search_replace, task | Patch application in scratch worktrees |
+| `cleaner`          | Subagent | validate, validation_suite       | Post-build validation and cleanup      |
+| `bug-exterminator` | Subagent | cleaner tools + task             | Hard merge conflict resolution         |
 
 ## Safety Story
 
 Rig Relay communicates **bounded autonomy**, not vague automation:
 
-| Scope | Default | Meaning |
-|---|---|---|
-| Isolated lane execution | Allowed (demo) | Ralph creates worktrees, scoped execution. No mutation of live workspace. |
-| Live runtime mutation | Always blocked | No agent can mutate the live runtime workspace. |
-| Merge | Requires adoption approval | Adoption must pass human approval + SHA match. |
-| Push to preproduction | Requires preproduction approval | Human approval + validation suite must pass. |
+| Scope                   | Default                         | Meaning                                                                   |
+| ----------------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| Isolated lane execution | Allowed (demo)                  | Ralph creates worktrees, scoped execution. No mutation of live workspace. |
+| Live runtime mutation   | Always blocked                  | No agent can mutate the live runtime workspace.                           |
+| Merge                   | Requires adoption approval      | Adoption must pass human approval + SHA match.                            |
+| Push to preproduction   | Requires preproduction approval | Human approval + validation suite must pass.                              |
 
 These gates align with OWASP agent security best practices: least-privilege
 tools, per-tool permission scoping, separate tool sets by trust level, and
@@ -141,6 +141,7 @@ and `merge_enabled` and displays them as human labels ("Allowed" / "Blocked" /
 ## Configuration
 
 Rig Relay looks for configuration at:
+
 1. `./.rig/relay/config.toml` (project-specific)
 2. `~/.rig/relay/config.toml` (user-global)
 
@@ -161,3 +162,40 @@ uv run ruff format .           # format
 
 AGPL-3.0-or-later. Derivative of [mistralai/mistral-vibe](https://github.com/mistralai/mistral-vibe).
 See [LICENSE](LICENSE) and [UPSTREAM.md](UPSTREAM.md).
+
+## Release Candidate Status
+
+Rig Relay is in alpha (v0.1.0a1). The release-candidate gate is **HOLD** —
+installability smoke tests pass but dogfood operational readiness is not yet proven.
+
+### Dogfood Golden Path
+
+A structured reviewer checklist gates the PROMOTE decision:
+[`docs/json/release_candidate/rc_reviewer_golden_path.v1.json`](docs/json/release_candidate/rc_reviewer_golden_path.v1.json)
+
+To exercise the golden path:
+
+1. Install: `git clone` + `uv sync`
+2. Understand the product: read this README and the release gate phases
+3. Launch server: `uv run rig-relay-acp`
+4. Launch cockpit: `uv run rig-relay`
+5. Run a real work lane and inspect structured evidence
+6. Run the release gate validator: `uv run python scripts/rig_release_gate_validate.py`
+
+### Structured Evidence
+
+All evidence is JSON/JSONL/CSV — no Markdown-as-evidence.
+Key evidence paths:
+
+- `docs/json/release_gate/rc_blockers.v1.jsonl` — open RC blockers
+- `docs/json/release_gate/rc_deferred_risks.v1.jsonl` — deferred risks with justifications
+- `docs/json/release_gate/rc_candidate_verdict.v1.json` — current verdict
+- `.rig/reports/reports.jsonl` — append-only structured reports
+- `~/.rig/relay/sessions/<id>/observability.jsonl` — session telemetry
+
+### Telemetry & Privacy
+
+Telemetry is local-first and opt-in only. No raw file contents, secrets, or
+private code are emitted. All content-derived data uses SHA256 hashes.
+Telemetry-disabled mode must visibly degrade behavior (currently an open RC blocker).
+See [`docs/governance/usage-data-doctrine.md`](docs/governance/usage-data-doctrine.md).

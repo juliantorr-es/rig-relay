@@ -41,6 +41,7 @@ from rig_relay.coordination.store import (
     FileCoordinationStore,
     check_ledger_integrity,
 )
+from rig_relay.coordination.watcher import CoordinationWatcher, CoordinationWatchEvent
 
 __all__ = [
     "CoordinationArtifactRef",
@@ -54,6 +55,8 @@ __all__ = [
     "CoordinationStateProjection",
     "CoordinationStore",
     "CoordinationTaskClaim",
+    "CoordinationWatchEvent",
+    "CoordinationWatcher",
     "FileCoordinationStore",
     "build_artifact_published_payload",
     "build_checkpoint_committed_payload",

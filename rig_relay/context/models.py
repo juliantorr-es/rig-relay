@@ -16,6 +16,7 @@ class ContextMode(StrEnum):
     HANDOFF = "handoff"
     COLLISION = "collision"
     SYMBOLS = "symbols"
+    DIGEST = "digest"
 
 
 class CompressionMode(StrEnum):

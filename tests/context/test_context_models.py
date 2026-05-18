@@ -30,9 +30,10 @@ class TestContextMode:
         assert ContextMode.HANDOFF == "handoff"
         assert ContextMode.COLLISION == "collision"
         assert ContextMode.SYMBOLS == "symbols"
+        assert ContextMode.DIGEST == "digest"
 
-    def test_five_modes(self) -> None:
-        assert len(ContextMode) == 5
+    def test_six_modes(self) -> None:
+        assert len(ContextMode) == 6
 
 
 class TestCompressionMode:

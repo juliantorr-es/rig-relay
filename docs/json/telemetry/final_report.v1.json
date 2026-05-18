@@ -1,0 +1,147 @@
+{
+  "schema_version": "rig.release_candidate.installability_check.v1",
+  "generated_at": "2026-05-18T00:42:00Z",
+  "mission": "Telemetry Dogfood Integrity v1 — degradation + quarantine",
+  "branch": "main",
+  "head_before": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
+  "head_after": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
+  "dirty_state_before": "clean",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "docs/schemas/rig.relay.telemetry_settings.v1.schema.json (degradation_mode + degraded_capabilities)",
+      "docs/schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json (quarantine fields)",
+      "rig_relay/core/config/telemetry_modes.py (compute_degradation_mode + get_telemetry_degradation_state)",
+      "rig_relay/core/telemetry/__init__.py (export new functions)",
+      "rig_relay/core/telemetry/local.py (debug packet routing)",
+      "docs/json/release_gate/rc_blockers.v1.jsonl (2 new blockers)",
+      "docs/json/release_gate/rc_deferred_risks.v1.jsonl (risk reclassified)",
+      "docs/json/release_gate/rc_readiness_gate.v1.json (phase updated)",
+      "docs/json/testing/known_test_seams.v1.jsonl (seam updated)"
+    ],
+    "this_mission_created": [
+      "rig_relay/core/telemetry/quarantine.py",
+      "tests/telemetry/test_degradation.py (6 tests)",
+      "tests/telemetry/test_quarantine.py (10 tests)",
+      "tests/telemetry/test_redaction_adversarial.py (8 tests)"
+    ],
+    "pre_existing_modified": "Other dirty files exist from parallel lanes — not touched"
+  },
+  "files_changed": 9,
+  "files_created": 4,
+  "files_deleted": 0,
+  "files_intentionally_skipped": [
+    "tests/telemetry/test_observability.py — existing, has config-default test but no behavioral degradation test (pre-existing gap noted)",
+    "tests/core/test_telemetry_content_light.py — existing, OPEN SEAM line 86 noted in audit",
+    "rig_relay/evidence/redaction.py — existing pipeline, well-tested, not modified"
+  ],
+  "telemetry_disabled_behavior_before": "No explicit degradation_mode field. Telemetry settings used combinatorial booleans (mode + local_operational_enabled + share_level) but had no inspectable signal that telemetry was degraded. No test proved 3+ visible behavior differences when telemetry disabled.",
+  "telemetry_disabled_behavior_after": "degradation_mode (full|degraded|disabled) added to telemetry settings schema. compute_degradation_mode() computes tiered degradation from booleans. get_telemetry_degradation_state() returns inspectable dict. 6 contract/real-artifact tests verify all 3 modes.",
+  "degraded_capabilities_proven": [
+    "telemetry settings now expresses degraded_capabilities list",
+    "degradation_mode='full': local + remote both enabled, zero degraded capabilities",
+    "degradation_mode='degraded': local enabled, remote disabled → capabilities: remote_upload, shared_benchmarks, cross_user_reports, maintainer_debugging",
+    "degradation_mode='disabled': local disabled → capabilities: governed_mode, delegate_fleet, coordination_leases, queue_planning, replay_debug + all remote"
+  ],
+  "debug_quarantine_behavior": {
+    "before": "Debug packets written to same observability.jsonl as production events. Zero quarantine. Bundle manifest had no quarantine reporting.",
+    "after": "Debug packets routed to debug_quarantine.jsonl via is_debug_packet() check in log_local_event. Atomic write (temp + rename). Production observability.jsonl isolated. Bundle manifest extended with debug_packet_count, quarantined_debug_packet_count, quarantine_file_path, quarantine_note. is_debug_packet() detects prefixes: 'debug.' and 'rig.relay.debug.'."
+  },
+  "redaction_tests": {
+    "new_adversarial": 8,
+    "existing_adversarial": 7,
+    "total_adversarial": 15,
+    "coverage": "API keys (sk-*, ghp-*, xoxb-*), private paths (Unix/macOS/Windows), env var names with secrets, raw prompt text, unicode secrets (Greek/emoji/CJK), nested secrets at depth 4, analytical value preservation, warning production"
+  },
+  "deferred_risks_reclassified": [
+    {
+      "risk_id": "risk_debug_packet_quarantine",
+      "before": "deferred (post-RC)",
+      "after": "reclassified_as_blocker → blk_debug_packet_quarantine (open, high)",
+      "reason": "User directive: debug quarantine is required for RC dogfooding"
+    }
+  ],
+  "rc_blockers_added": [
+    {
+      "blocker_id": "blk_telemetry_disabled_degradation",
+      "severity": "high",
+      "status": "open",
+      "phase": "phase_2_telemetry_privacy"
+    },
+    {
+      "blocker_id": "blk_debug_packet_quarantine",
+      "severity": "high",
+      "status": "open",
+      "phase": "phase_2_telemetry_privacy"
+    }
+  ],
+  "rc_blockers_total": "9 (2 new + 5 pre-existing resolved + 2 pre-existing open)",
+  "tests_run": 24,
+  "tests_passed": 24,
+  "tests_failed": 0,
+  "tests_intentionally_skipped": "~91 existing telemetry tests",
+  "test_classifications": {
+    "test_degradation.py (6)": "contract, real-artifact",
+    "test_quarantine.py (10)": "real-artifact, contract, adversarial",
+    "test_redaction_adversarial.py (8)": "adversarial"
+  },
+  "evidence_artifact_paths": [
+    "docs/schemas/rig.relay.telemetry_settings.v1.schema.json",
+    "docs/schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json",
+    "rig_relay/core/telemetry/quarantine.py",
+    "tests/telemetry/test_degradation.py",
+    "tests/telemetry/test_quarantine.py",
+    "tests/telemetry/test_redaction_adversarial.py",
+    "docs/json/release_gate/rc_blockers.v1.jsonl",
+    "docs/json/release_gate/rc_deferred_risks.v1.jsonl",
+    "docs/json/release_gate/rc_readiness_gate.v1.json"
+  ],
+  "schema_validation_results": {
+    "telemetry_settings_schema": "PASS — valid Draft 7, 16 properties",
+    "telemetry_bundle_manifest_schema": "PASS — 4 new quarantine fields added",
+    "rc_blockers_jsonl": "PASS — 9 lines valid JSON",
+    "rc_deferred_risks_jsonl": "PASS — 6 lines valid JSON",
+    "rc_readiness_gate_json": "PASS — validates",
+    "no_python_contamination": "PASS — schemas start with {, no Python syntax"
+  },
+  "release_gate_status_before": "phase_2_telemetry_privacy: ready (degradation + quarantine deferred post-RC)",
+  "release_gate_status_after": "phase_2_telemetry_privacy: blocked (2 open/high blockers — degradation + quarantine)",
+  "dependency_changes": "None.",
+  "markdown_files_created": [],
+  "markdown_files_modified": [],
+  "completed_work": [
+    "Added degradation_mode (full|degraded|disabled) to telemetry settings schema",
+    "Added degraded_capabilities, degradation_reason, degraded_at to schema",
+    "Implemented compute_degradation_mode() in telemetry_modes.py",
+    "Implemented get_telemetry_degradation_state() for inspectable state",
+    "Added exports to rig_relay/core/telemetry/__init__.py",
+    "Created quarantine.py: debug packet storage, listing, summary, detection",
+    "Integrated quarantine routing into log_local_event (debug packets → debug_quarantine.jsonl)",
+    "Extended bundle manifest schema with quarantine reporting fields",
+    "Created 6 degradation visibility tests (all pass)",
+    "Created 10 debug quarantine tests (all pass)  ",
+    "Created 8 redaction adversarial tests (all pass)",
+    "Reclassified risk_debug_packet_quarantine from deferred to blocker (user directive)",
+    "Added blk_telemetry_disabled_degradation blocker (open, high)",
+    "Added blk_debug_packet_quarantine blocker (open, high)",
+    "Updated rc_readiness_gate.json: phase_2 now blocked with 2 blockers"
+  ],
+  "intentionally_deferred_work": [
+    "Integration of degradation_mode into desktop projection frontend display",
+    "Full end-to-end degradation test with real AgentLoop (requires infrastructure)",
+    "ToolRuntimeResult.degraded_capabilities wiring into telemetry events",
+    "Fixing $id URL in schema (https://rig-relay.vibe.dev/ → https://rig-relay.dev/)",
+    "Resolving the 2 new blockers (requires product decision on degradation behavior)"
+  ],
+  "discovered_out_of_scope_risks": [
+    "OPEN SEAM: redact_for_remote is never actually called in send_telemetry_event (tests/core/test_telemetry_content_light.py:86). The redaction pipeline exists but the wiring is incomplete.",
+    "Local observability.jsonl uses line-count-based sequences which are not concurrency-safe for parallel writers",
+    "Consent expiration checking silently swallows datetime parsing errors (send.py:347)",
+    "Telemetry budget schema uses different vocabulary than settings schema (upload_mode vs share_level)"
+  ],
+  "remaining_seams": [
+    "Wire degradation_mode into desktop projection frontend display",
+    "End-to-end AgentLoop degradation test (real session, not unit)",
+    "Local redaction pass (currently only remote path is redacted)",
+    "Resolve 2 open telemetry blockers"
+  ]
+}

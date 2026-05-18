@@ -154,3 +154,84 @@ def can_upload_remote_beta_data(settings: dict[str, Any]) -> bool:
         return False
     share_level = settings.get("share_level", "off")
     return share_level in ALLOWED_SHARE_LEVELS_FOR_UPLOAD
+
+
+def compute_degradation_mode(settings: dict[str, Any]) -> dict[str, Any]:
+    """Compute degradation fields from telemetry settings booleans.
+
+    Returns a dict with degradation_mode, degraded_capabilities,
+    degradation_reason, and degraded_at suitable for merging into
+    the telemetry settings output.
+    """
+    from datetime import UTC, datetime
+
+    local = bool(settings.get("local_operational_enabled", True))
+    remote = bool(settings.get("remote_beta_sharing_enabled", False))
+    share_level = settings.get("share_level", "off")
+    mode = settings.get("mode", "basic_local")
+    degraded: list[str] = []
+
+    if local and remote:
+        degradation_mode = "full"
+    elif local and not remote:
+        degradation_mode = "degraded"
+    else:
+        degradation_mode = "disabled"
+
+    if not local:
+        degraded.extend(DISABLED_FEATURES_LOCAL_OFF)
+        degraded.extend(DISABLED_FEATURES_REMOTE_OFF)
+    elif not remote:
+        degraded.extend(DISABLED_FEATURES_REMOTE_OFF)
+
+    if share_level in {"off", "debug_local_only"}:
+        if "remote_upload" not in degraded:
+            degraded.append("remote_upload")
+
+    if mode == "basic_local":
+        for f in DISABLED_FEATURES_LOCAL_OFF:
+            if f not in degraded and f != "local_derived_datasets":
+                degraded.append(f)
+        for f in DISABLED_FEATURES_REMOTE_OFF:
+            if f not in degraded:
+                degraded.append(f)
+
+    match degradation_mode:
+        case "full":
+            reason = "All telemetry features enabled"
+        case "degraded":
+            reason = "Remote beta sharing disabled — remote features unavailable"
+        case "disabled":
+            reason = "Local operational telemetry disabled by configuration"
+
+    return {
+        "degradation_mode": degradation_mode,
+        "degraded_capabilities": sorted(set(degraded)),
+        "degradation_reason": reason,
+        "degraded_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def get_telemetry_degradation_state(settings: dict[str, Any]) -> dict[str, Any]:
+    """Return an inspectable telemetry degradation state dict.
+
+    Combines the computed degradation mode with key settings values
+    so consumers can determine what is degraded and why without
+    needing to re-derive the computation.
+    """
+    degradation = compute_degradation_mode(settings)
+
+    return {
+        "degradation_mode": degradation["degradation_mode"],
+        "degraded_capabilities": degradation["degraded_capabilities"],
+        "degradation_reason": degradation["degradation_reason"],
+        "effective_at": degradation["degraded_at"],
+        "local_observability_enabled": bool(
+            settings.get("local_operational_enabled", True)
+        ),
+        "remote_export_enabled": bool(
+            settings.get("remote_beta_sharing_enabled", False)
+        ),
+        "share_level": settings.get("share_level", "off"),
+        "mode": settings.get("mode", "basic_local"),
+    }

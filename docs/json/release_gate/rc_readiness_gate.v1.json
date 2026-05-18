@@ -2,9 +2,9 @@
   "$schema": "https://rig-relay.github.io/schemas/rig.release_gate.readiness.v1.schema.json",
   "branch": "main",
   "gate_id": "rc_readiness_v0",
-  "generated_at": "2026-05-18T00:25:02Z",
-  "head_sha": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
-  "overall_status": "ready",
+  "generated_at": "2026-05-18T00:57:42Z",
+  "head_sha": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
+  "overall_status": "blocked",
   "phases": [
     {
       "allowed_deferrals": [],
@@ -12,9 +12,7 @@
       "dependency_implications": "Coordination store is file-backed; no watchable-backend dependencies in v1.",
       "owner_surface": "coordination",
       "phase_id": "phase_1_governance_coordination",
-      "remaining_seams": [
-        "Watchable backend coordination not yet implemented"
-      ],
+      "remaining_seams": [],
       "required_evidence": [
         "docs/schemas/rig.fleet.coordination_event.v1.schema.json",
         "docs/schemas/rig.fleet.path_lease.v1.schema.json",
@@ -27,26 +25,29 @@
         "docs/schemas/rig.relay.cross_session_coordination.v1.schema.json",
         "docs/schemas/rig.relay.coordination_conflict.v1.schema.json"
       ],
-      "source_commit": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+      "source_commit": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
       "status": "ready",
       "telemetry_or_redaction_implications": "Coordination events feed cross-session coordination and coordination conflict derived datasets. Telemetry must not leak path leases or session IDs in plaintext.",
       "test_artifact_paths": [
         "tests/coordination/"
       ],
       "title": "Governance & Coordination",
-      "updated_at": "2026-05-18T00:25:02Z",
+      "updated_at": "2026-05-18T00:57:42Z",
       "validation_run_ids": [
-        "vr_coordination_concurrency_20260517"
+        "vr_coordination_concurrency_20260517",
+        "VR-CONTEXT-DIGESTION-001"
       ]
     },
     {
       "allowed_deferrals": [],
-      "blocker_ids": [],
+      "blocker_ids": ["blk_telemetry_disabled_degradation", "blk_debug_packet_quarantine"],
       "dependency_implications": "OpenTelemetry SDK is core dependency; no extra telemetry backends.",
       "owner_surface": "telemetry",
       "phase_id": "phase_2_telemetry_privacy",
       "remaining_seams": [
-        "Remote telemetry export is opt-in, not yet end-to-end tested"
+        "Remote telemetry export is opt-in, not yet end-to-end tested",
+        "Telemetry-disabled mode does not visibly degrade behavior",
+        "Debug packet quarantine boundary not implemented"
       ],
       "required_evidence": [
         "docs/schemas/rig.relay.telemetry_consent.v1.schema.json",
@@ -61,14 +62,14 @@
         "docs/schemas/rig.relay.telemetry_budget.v1.schema.json",
         "docs/schemas/rig.relay.telemetry_bundle_manifest.v1.schema.json"
       ],
-      "source_commit": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
-      "status": "ready",
+      "source_commit": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
+      "status": "blocked",
       "telemetry_or_redaction_implications": "Telemetry bundles must not contain raw file content, secrets, or private code. SHA256 hashing required for all content-derived data. Export and remote telemetry are opt-in only.",
       "test_artifact_paths": [
         "tests/telemetry/"
       ],
       "title": "Telemetry & Privacy",
-      "updated_at": "2026-05-18T00:25:02Z",
+      "updated_at": "2026-05-18T00:57:42Z",
       "validation_run_ids": [
         "vr_telemetry_consent_redaction_20260517"
       ]
@@ -78,7 +79,7 @@
         "bash_rerouting_coverage",
         "tool_determinism_edge_cases"
       ],
-      "blocker_ids": [],
+      "blocker_ids": ["blk_runtime_feral_subprocess", "blk_bash_rerouting_transparency"],
       "dependency_implications": "DuckDB used as disposable read-side analysis only — not as release-gate source of truth.",
       "owner_surface": "runtime",
       "phase_id": "phase_3_runtime_tools_context_api",
@@ -101,17 +102,18 @@
         "docs/schemas/rig.mission_context_packet.v1.schema.json",
         "docs/schemas/rig.relay.bash_receipt.v1.schema.json"
       ],
-      "source_commit": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
-      "status": "ready",
+      "source_commit": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
+      "status": "blocked",
       "telemetry_or_redaction_implications": "Tool invocation receipts must not log raw tool inputs. Bash receipts must redact env vars and secrets. Runtime stream events must not expose sensitive paths.",
       "test_artifact_paths": [
         "tests/runtime/",
         "tests/core/tools/"
       ],
       "title": "Runtime, Tools & Context API",
-      "updated_at": "2026-05-18T00:25:02Z",
+      "updated_at": "2026-05-18T00:57:42Z",
       "validation_run_ids": [
-        "vr_tracing_real_source_20260517"
+        "vr_tracing_real_source_20260517",
+        "VR-CONTEXT-DIGESTION-001"
       ]
     },
     {
@@ -146,7 +148,7 @@
         "docs/schemas/rig.relay.desktop_projection.v1.schema.json",
         "docs/schemas/rig.relay.desktop_intent_result.v1.schema.json"
       ],
-      "source_commit": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+      "source_commit": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
       "status": "ready",
       "telemetry_or_redaction_implications": "Desktop projections must not embed file content or session data. Static site rendering is local only.",
       "test_artifact_paths": [
@@ -154,7 +156,7 @@
         "tests/desktop/"
       ],
       "title": "UI, Docs, CI & Packaging",
-      "updated_at": "2026-05-18T00:25:02Z",
+      "updated_at": "2026-05-18T00:57:42Z",
       "validation_run_ids": [
         "vr_release_gate_cli_20260517",
         "vr_guard_escape_hatches_20260517"
@@ -188,12 +190,39 @@
       "schema_artifact_paths": [
         "docs/schemas/rig.relay.authorization_policy.v1.schema.json"
       ],
-      "source_commit": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+      "source_commit": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
       "status": "ready",
       "telemetry_or_redaction_implications": "Public docs must not expose internal paths or proprietary model configurations.",
       "test_artifact_paths": [],
       "title": "Public Docs & Licensing",
-      "updated_at": "2026-05-18T00:25:02Z",
+      "updated_at": "2026-05-18T00:57:42Z",
+      "validation_run_ids": []
+    },
+    {
+      "allowed_deferrals": [],
+      "blocker_ids": [],
+      "dependency_implications": "Golden path checklist gates PROMOTE on all blocking steps passing. Phase 6 does not own unique blockers; it inherits blockers from phases 1-5 via golden path step status.",
+      "owner_surface": "reviewer",
+      "phase_id": "phase_6_dogfood_operational_readiness",
+      "remaining_seams": [
+        "Golden path has not been exercised by a human reviewer",
+        "Automated installability smoke test does not equal dogfood readiness"
+      ],
+      "required_evidence": [
+        "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
+        "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json"
+      ],
+      "schema_artifact_paths": [
+        "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json"
+      ],
+      "source_commit": "f97373e2c9399c2a0934566dc79f2fe04124ed79",
+      "status": "blocked",
+      "telemetry_or_redaction_implications": "Golden path evidence must not embed reviewer identity or session secrets. Structured evidence paths must be JSON/JSONL/CSV only.",
+      "test_artifact_paths": [
+        "tests/release_candidate/test_golden_path_validation.py"
+      ],
+      "title": "Dogfood Operational Readiness",
+      "updated_at": "2026-05-17T18:30:00Z",
       "validation_run_ids": []
     }
   ],

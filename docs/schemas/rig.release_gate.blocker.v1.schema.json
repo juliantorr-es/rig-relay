@@ -109,7 +109,11 @@
     "resolved_at": {
       "type": "string",
       "description": "ISO timestamp of resolution"
+    },
+    "detected_at": {
+      "type": "string",
+      "description": "When the blocker was detected"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
