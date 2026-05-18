@@ -765,8 +765,67 @@ class CoordinationStore:
         self._append_event("coord.lease.marked_stale", stale_payload)
 
 
+# ── integrity check ──────────────────────────────────────────
+
+
+def check_ledger_integrity(ledger_path: Path) -> list[dict[str, Any]]:
+    """Read a coordination JSONL ledger and detect corruption.
+
+    Returns list of corruption findings: {line_number, type, detail}
+    Types: malformed_json, duplicate_sequence, duplicate_event_id, missing_field
+    """
+    findings: list[dict[str, Any]] = []
+    seen_sequences: set[int] = set()
+    seen_event_ids: set[str] = set()
+
+    with open(ledger_path) as f:
+        for line_no, line in enumerate(f, 1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                findings.append({
+                    "line_number": line_no,
+                    "type": "malformed_json",
+                    "detail": "Cannot parse as JSON",
+                })
+                continue
+
+            for field in ("event_id", "event_name", "sequence", "created_at"):
+                if not entry.get(field):
+                    findings.append({
+                        "line_number": line_no,
+                        "type": "missing_field",
+                        "detail": f"Missing required field: {field}",
+                    })
+
+            seq = entry.get("sequence")
+            if isinstance(seq, int):
+                if seq in seen_sequences:
+                    findings.append({
+                        "line_number": line_no,
+                        "type": "duplicate_sequence",
+                        "detail": f"Sequence {seq} already seen",
+                    })
+                seen_sequences.add(seq)
+
+            eid = entry.get("event_id")
+            if eid and isinstance(eid, str):
+                if eid in seen_event_ids:
+                    findings.append({
+                        "line_number": line_no,
+                        "type": "duplicate_event_id",
+                        "detail": f"Event ID {eid} already seen",
+                    })
+                seen_event_ids.add(eid)
+
+    return findings
+
+
 # ── alias ────────────────────────────────────────────────────
 
 FileCoordinationStore = CoordinationStore
 
-__all__ = ["CoordinationStore", "FileCoordinationStore"]
+__all__ = ["CoordinationStore", "FileCoordinationStore", "check_ledger_integrity"]

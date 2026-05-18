@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.report_event.v1.schema.json",
   "title": "Rig Report Event",
   "description": "Write event envelope for the rig.report event ledger. Each event represents a lifecycle transition: report created, duplicate detected, triaged, accepted, promoted, etc. The event ledger is the source of truth; projections are derived read models.",
@@ -47,15 +47,24 @@
       "description": "SHA256 of this event envelope (self-hash)."
     },
     "previous_event_sha256": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "SHA256 of the previous event in the ledger chain. Null for the first event in the ledger."
     },
     "actor": {
       "type": "object",
       "properties": {
-        "agent_id": { "type": "string" },
-        "session_id": { "type": "string" },
-        "mission_id": { "type": "string" }
+        "agent_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "mission_id": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
@@ -65,8 +74,13 @@
     }
   },
   "required": [
-    "schema_version", "event_id", "event_kind", "occurred_at",
-    "report_id", "report_sha256", "event_sha256"
+    "schema_version",
+    "event_id",
+    "event_kind",
+    "occurred_at",
+    "report_id",
+    "report_sha256",
+    "event_sha256"
   ],
   "additionalProperties": false
 }

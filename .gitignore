@@ -216,3 +216,6 @@ node_modules/
 frontend/desktop/dist/
 frontend/desktop/.vite/
 frontend/desktop/.cache/
+
+# PI Lens cache (generated)
+.pi-lens/

@@ -29,6 +29,8 @@ class ProjectionWebSocketClient {
     this._intentionalClose = false;
     this._subscriptionActive = false;
     this._firstProjectionReceived = false;
+    this._connectTimeout = null;
+    this._connectTimeoutMs = options.connectTimeout || 15000;
 
     if (this.token) {
       this.connect();
@@ -49,6 +51,7 @@ class ProjectionWebSocketClient {
         ws_url: this.wsUrl,
       });
       this.ws = new WebSocket(this.wsUrl);
+      this._startConnectTimeout();
     } catch (e) {
       this._handleError('WebSocket construction failed: ' + e.message);
       this._scheduleReconnect();
@@ -56,6 +59,7 @@ class ProjectionWebSocketClient {
     }
 
     this.ws.onopen = () => {
+      this._clearConnectTimeout();
       this.connected = true;
       this.authenticated = false;
       console.log("[bridge:frontend] WebSocket opened");
@@ -222,6 +226,7 @@ class ProjectionWebSocketClient {
     };
 
     this.ws.onclose = () => {
+      this._clearConnectTimeout();
       this.connected = false;
       this.authenticated = false;
       this.transportMachine && this.transportMachine.transition('websocket_closed', {
@@ -281,6 +286,27 @@ class ProjectionWebSocketClient {
     }
     this.connected = false;
     this.onStatusChange('closed');
+  }
+
+  _startConnectTimeout() {
+    this._clearConnectTimeout();
+    this._connectTimeout = setTimeout(() => {
+      if (!this.connected && !this._intentionalClose) {
+        this._handleError('WebSocket connection timed out after ' + this._connectTimeoutMs + 'ms');
+        if (this.ws) {
+          this.ws.close();
+          this.ws = null;
+        }
+        this._scheduleReconnect();
+      }
+    }, this._connectTimeoutMs);
+  }
+
+  _clearConnectTimeout() {
+    if (this._connectTimeout) {
+      clearTimeout(this._connectTimeout);
+      this._connectTimeout = null;
+    }
   }
 
   _scheduleReconnect() {

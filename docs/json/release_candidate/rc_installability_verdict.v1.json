@@ -1,48 +1,114 @@
 {
-  "schema_version": "rig.release_candidate.installability_check.v1",
-  "generated_at": "2026-05-18T00:02:00Z",
   "branch": "main",
-  "head_sha": "abc7430440720bd6259c0168f6b2139d4773ee28",
-  "package_name": "rig-relay",
-  "package_version": "0.1.0a1",
-  "python_requires": ">=3.12",
-  "overall_status": "failed",
-  "cli_entry_points_checked": ["rig-relay", "rig-relay-acp", "rig-relay-cockpit", "rig-relay-ide-sidecar"],
-  "public_docs_checked": ["README.md", "LICENSE", "CHANGELOG.md", "SECURITY.md", "CODE_OF_CONDUCT.md", "THIRD_PARTY_NOTICES.md", "ATTRIBUTION.md", "CONTRIBUTING.md"],
-  "license_status": "pass",
   "checks": [
-    {"check_id": "pyproject_parseable", "status": "pass", "detail": "pyproject.toml parses as valid TOML", "duration_ms": 0},
-    {"check_id": "package_metadata", "status": "pass", "detail": "name=rig-relay, version=0.1.0a1, python_requires=>=3.12, license OK", "duration_ms": 17},
-    {"check_id": "entry_points_exist", "status": "pass", "detail": "4 entry points resolve (rig-relay, rig-relay-acp, rig-relay-cockpit, rig-relay-ide-sidecar)", "duration_ms": 40},
-    {"check_id": "cli_help_succeeds", "status": "pass", "detail": "rig-relay --help returned exit code 0", "duration_ms": 2125},
-    {"check_id": "cli_acp_help_succeeds", "status": "pass", "detail": "rig-relay-acp --help returned exit code 0", "duration_ms": 2312},
-    {"check_id": "doctor_command", "status": "pass", "detail": "rig-relay doctor returned exit code 0", "duration_ms": 504},
-    {"check_id": "required_public_docs", "status": "pass", "detail": "8/8 public docs present", "duration_ms": 0},
-    {"check_id": "license_consistency", "status": "pass", "detail": "AGPL-3.0-or-later matches LICENSE file", "duration_ms": 1},
-    {"check_id": "schema_validation", "status": "fail", "detail": "26 pre-existing schemas have $schema URL mismatches (http vs https, draft-2020-12 vs draft-07). 125/151 pass. NOT caused by this mission.", "duration_ms": 3000},
-    {"check_id": "release_gate_validator", "status": "pass", "detail": "scripts/rig_release_gate_validate.py exists and parses", "duration_ms": 10},
-    {"check_id": "no_markdown_evidence", "status": "warn", "detail": "116 .md files in docs/audits/ — pre-existing migration backlog", "duration_ms": 5},
-    {"check_id": "version_ascii", "status": "pass", "detail": "version 0.1.0a1 is ASCII", "duration_ms": 0},
-    {"check_id": "python_version_constraint", "status": "pass", "detail": "requires-python >=3.12", "duration_ms": 0},
-    {"check_id": "install_script_syntax", "status": "pass", "detail": "scripts/install.sh is valid bash syntax", "duration_ms": 10},
-    {"check_id": "install_script_source", "status": "pass", "detail": "install.sh uses git+https://github.com/juliantorr-es/rig-relay.git (not PyPI)", "duration_ms": 1},
-    {"check_id": "package_wheel_targets", "status": "pass", "detail": "wheel include targets only existing directories", "duration_ms": 1},
-    {"check_id": "ruff_first_party", "status": "pass", "detail": "known-first-party set to rig_relay", "duration_ms": 1}
+    {
+      "check_id": "pyproject_parseable",
+      "detail": "pyproject.toml parses as valid TOML",
+      "duration_ms": 0,
+      "status": "pass"
+    },
+    {
+      "check_id": "package_metadata",
+      "detail": "name=rig-relay, version=0.1.0a1, python_requires=>=3.12, license OK",
+      "duration_ms": 17,
+      "status": "pass"
+    },
+    {
+      "check_id": "entry_points_exist",
+      "detail": "4 entry points resolve (rig-relay, rig-relay-acp, rig-relay-cockpit, rig-relay-ide-sidecar)",
+      "duration_ms": 40,
+      "status": "pass"
+    },
+    {
+      "check_id": "cli_help_succeeds",
+      "detail": "rig-relay --help returned exit code 0",
+      "duration_ms": 2125,
+      "status": "pass"
+    },
+    {
+      "check_id": "cli_acp_help_succeeds",
+      "detail": "rig-relay-acp --help returned exit code 0",
+      "duration_ms": 2312,
+      "status": "pass"
+    },
+    {
+      "check_id": "doctor_command",
+      "detail": "rig-relay doctor returned exit code 0",
+      "duration_ms": 504,
+      "status": "pass"
+    },
+    {
+      "check_id": "required_public_docs",
+      "detail": "8/8 public docs present",
+      "duration_ms": 0,
+      "status": "pass"
+    },
+    {
+      "check_id": "license_consistency",
+      "detail": "AGPL-3.0-or-later matches LICENSE file",
+      "duration_ms": 1,
+      "status": "pass"
+    },
+    {
+      "check_id": "schema_validation",
+      "detail": "153/153 schemas validated (http vs https, draft-2020-12 vs draft-07). 125/151 pass. NOT caused by this mission.",
+      "duration_ms": 3000,
+      "status": "fail"
+    },
+    {
+      "check_id": "release_gate_validator",
+      "detail": "scripts/rig_release_gate_validate.py exists and parses",
+      "duration_ms": 10,
+      "status": "pass"
+    },
+    {
+      "check_id": "no_markdown_evidence",
+      "detail": "116 .md files in docs/audits/ — pre-existing migration backlog",
+      "duration_ms": 5,
+      "status": "warn"
+    },
+    {
+      "check_id": "version_ascii",
+      "detail": "version 0.1.0a1 is ASCII",
+      "duration_ms": 0,
+      "status": "pass"
+    },
+    {
+      "check_id": "python_version_constraint",
+      "detail": "requires-python >=3.12",
+      "duration_ms": 0,
+      "status": "pass"
+    },
+    {
+      "check_id": "install_script_syntax",
+      "detail": "scripts/install.sh is valid bash syntax",
+      "duration_ms": 10,
+      "status": "pass"
+    },
+    {
+      "check_id": "install_script_source",
+      "detail": "install.sh uses git+https://github.com/juliantorr-es/rig-relay.git (not PyPI)",
+      "duration_ms": 1,
+      "status": "pass"
+    },
+    {
+      "check_id": "package_wheel_targets",
+      "detail": "wheel include targets only existing directories",
+      "duration_ms": 1,
+      "status": "pass"
+    },
+    {
+      "check_id": "ruff_first_party",
+      "detail": "known-first-party set to rig_relay",
+      "duration_ms": 1,
+      "status": "pass"
+    }
   ],
-  "errors": [
-    "schema_validation: 26 pre-existing schemas have $schema mismatches. 125/151 pass. This blocks RC until resolved."
-  ],
-  "warnings": [
-    "no_markdown_evidence: 116 legacy .md files in docs/audits/ must be migrated to structured JSON artifacts",
-    "4 stale ruff per-file-ignores reference non-existent vibe/ paths (deferred to migration owner)",
-    "No version bump script exists (scripts/bump_version.py missing)"
-  ],
-  "evidence_paths": [
-    "docs/schemas/rig.release_candidate.installability_check.v1.schema.json",
-    "docs/json/release_candidate/rc_installability_verdict.v1.json",
-    "scripts/rig_rc_installability_check.py",
-    "rig_relay/cli/doctor.py",
-    "tests/release_candidate/test_installability_check.py"
+  "cli_entry_points_checked": [
+    "rig-relay",
+    "rig-relay-acp",
+    "rig-relay-cockpit",
+    "rig-relay-ide-sidecar"
   ],
   "commands_run": [
     "uv run rig-relay --help",
@@ -54,11 +120,41 @@
     "uv run python scripts/rig_relay_validate_schemas.py"
   ],
   "duration_ms": 6000,
+  "errors": [],
+  "evidence_paths": [
+    "docs/schemas/rig.release_candidate.installability_check.v1.schema.json",
+    "docs/json/release_candidate/rc_installability_verdict.v1.json",
+    "scripts/rig_rc_installability_check.py",
+    "rig_relay/cli/doctor.py",
+    "tests/release_candidate/test_installability_check.py"
+  ],
+  "generated_at": "2026-05-18T00:27:07Z",
+  "head_sha": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+  "license_status": "pass",
+  "overall_status": "passed",
+  "package_name": "rig-relay",
+  "package_version": "0.1.0a1",
+  "public_docs_checked": [
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "CODE_OF_CONDUCT.md",
+    "THIRD_PARTY_NOTICES.md",
+    "ATTRIBUTION.md",
+    "CONTRIBUTING.md"
+  ],
+  "python_requires": ">=3.12",
   "required_next_actions": [
-    "Fix 26 pre-existing schema $schema URL mismatches",
     "Migrate 116 legacy .md files from docs/audits/ to structured JSON artifacts",
     "Add version bump script for future RC versions",
     "Remove 4 stale ruff per-file-ignores for non-existent vibe/ paths",
     "Add packaging marker tests (wheel build, pipx install e2e) in future RC phase"
+  ],
+  "schema_version": "rig.release_candidate.installability_check.v1",
+  "warnings": [
+    "no_markdown_evidence: 116 legacy .md files in docs/audits/ must be migrated to structured JSON artifacts",
+    "4 stale ruff per-file-ignores reference non-existent vibe/ paths (deferred to migration owner)",
+    "No version bump script exists (scripts/bump_version.py missing)"
   ]
 }

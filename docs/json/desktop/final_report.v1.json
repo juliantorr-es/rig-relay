@@ -1,0 +1,126 @@
+{
+  "schema_version": "rig.release_candidate.installability_check.v1",
+  "generated_at": "2026-05-18T00:37:00Z",
+  "mission": "Server/Frontend Product Path v1",
+  "branch": "main",
+  "head_before": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+  "head_after": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+  "dirty_state_before": "clean",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "frontend/desktop/js/boot/orchestrator.js (sendMessage fix)",
+      "frontend/desktop/js/transport.js (setWsClient export)",
+      "frontend/desktop/websocket.js (connect timeout)",
+      "frontend/desktop/js/widgets.js (keyboard a11y, focus trap)",
+      "frontend/desktop/index.html (skip-link, aria-describedby)",
+      "frontend/desktop/css/layout.css (skip-link CSS)"
+    ],
+    "this_mission_created": [
+      "tests/desktop/test_product_path.py (33 tests)",
+      "docs/json/desktop/frontend_product_path_validation.v1.json"
+    ],
+    "pre_existing_modified": "50 files changed by other agents (release-gate lane, schema fixes, coordination store, etc.)"
+  },
+  "files_changed": 6,
+  "files_created": 2,
+  "files_deleted": 0,
+  "files_intentionally_skipped": [
+    "docs/json/release_gate/* — owned by RC gate coordinator lane",
+    "frontend/desktop/js/tool_runtime_widget.js — innerHTML with projection-derived numbers, safe",
+    "tests/desktop/test_golden_path.py — existing, not modified",
+    "tests/desktop/test_intents.py — existing, not modified"
+  ],
+  "server_frontend_smoke_result": "PASS — DesktopBridgeServer starts/stops headless, serves frontend assets, healthz reports ok",
+  "projection_roundtrip_result": "PASS — build_projection returns schema-versioned dict with required fields, gracefully handles missing sources, JSON serializable",
+  "intent_roundtrip_result": "PASS — refresh_projection intent executes and returns completed status, unknown intents return structured refusal (unsupported_intent), protected mutation intents (bash) return refused status",
+  "cli_demotion_implications": "PASS — rig-relay delegates to desktop cockpit; doctor command is admin-only debug path; CLI help emphasizes Desktop",
+  "frontend_states_hardened": [
+    "connecting → CONNECTING (existing, now with 15s timeout)",
+    "connected → AUTHENTICATED (existing)",
+    "disconnected → DISCONNECTED (existing, now with timeout cleanup)",
+    "reconnecting → exponential backoff (existing)",
+    "error → transport state transition (partial — onerror still console-only)",
+    "authenticating → AUTHENTICATING (existing)"
+  ],
+  "accessibility_checks": [
+    "PASS: skip-to-content link added in index.html",
+    "PASS: compact widget cards now keyboard-accessible (tabindex, role=button, Enter/Space keydown)",
+    "PASS: aria-describedby on chat input links to char count",
+    "PASS: expanded overlay focus trap improved (restores focus on close)",
+    "PASS: ARIA roles (banner, status, tablist, log, dialog), aria-live=polite, aria-labels present",
+    "PASS: CSP meta tag present",
+    "PASS: textContent used for chat, escapeHtml for user content"
+  ],
+  "tests_run": 33,
+  "tests_passed": 33,
+  "tests_failed": 0,
+  "tests_intentionally_skipped": "~500 existing desktop tests (not this mission's to validate)",
+  "test_classifications": {
+    "TestServerStartupProductPath (3)": "integration",
+    "TestProjectionRoundTrip (3)": "real-artifact",
+    "TestIntentRoundTrip (6)": "real-artifact",
+    "TestWebSocketProductPath (3)": "real-artifact",
+    "TestFrontendDOMSafety (5)": "substrate",
+    "TestFrontendAccessibility (6)": "contract",
+    "TestCLIDemotion (4)": "contract",
+    "TestNoMarkdownEvidence (2)": "substrate"
+  },
+  "critical_fixes": [
+    {
+      "bug": "Orphaned sendMessage — orchestrator.js created WebSocket client but never stored reference. All chat + intent outbound messages silently returned false.",
+      "fix": "Added setWsClient() export to transport.js. Orchestrator now captures client reference and calls setWsClient.",
+      "impact": "Chat messages and intent dispatches now reach the backend. This was a critical product path failure."
+    },
+    {
+      "bug": "WebSocket connect() had no timeout — indefinite wait if server accepts TCP but never upgrades.",
+      "fix": "Added _startConnectTimeout/_clearConnectTimeout with 15s default. Timeout triggers reconnect cycle.",
+      "impact": "Frontend no longer hangs indefinitely on stalled connections."
+    }
+  ],
+  "accessibility_fixes": [
+    "skip-link: off-screen by default, visible on focus, targets #main-grid",
+    "compact widget cards: tabindex=0, role=button, keydown handler for Enter/Space",
+    "chat input: aria-describedby=char-count added",
+    "expanded overlay: focus restored to previous element on close"
+  ],
+  "evidence_artifact_paths": [
+    "docs/json/desktop/frontend_product_path_validation.v1.json",
+    "tests/desktop/test_product_path.py"
+  ],
+  "schema_validation_results": "No new schemas created this mission. No schema validation needed.",
+  "markdown_files_created": [],
+  "markdown_files_modified": [],
+  "telemetry_and_redaction_implications": "Frontend DOM safety tests verify no raw innerHTML for untrusted backend data. All projection rendering uses escapeHtml + textContent or template-based safe HTML insertion.",
+  "dependency_changes": "None.",
+  "completed_work": [
+    "Fixed orphaned sendMessage bug (critical product path failure)",
+    "Added WebSocket connection timeout (15s) with cleanup",
+    "Created 33 product path tests covering server startup, projection, intent, WebSocket, DOM safety, accessibility, CLI demotion, Markdown evidence prevention",
+    "Added skip-to-content accessibility link",
+    "Made compact widget cards keyboard-accessible (tabindex, role, keydown)",
+    "Linked chat input to char count via aria-describedby",
+    "Improved expanded overlay focus management",
+    "Created frontend product path validation evidence artifact"
+  ],
+  "intentionally_deferred_work": [
+    "WebSocket onerror → transport state transition (currently console-only)",
+    "Full innerHTML audit and replacement in tool_runtime_widget.js (projection-derived numbers, low risk)",
+    "pywebview GUI window integration test",
+    "Lightweight JS rendering tests without Playwright (jsdom/happy-dom)",
+    "Dark mode / theme variant accessibility tests",
+    "Full cockpit end-to-end startup test (uv run rig-relay --server-only)",
+    "Duplicate frontend_event telemetry fix (orchestrator + websocket both emit)"
+  ],
+  "discovered_out_of_scope_risks": [
+    "sendMessage was silently broken — any agent that tested chat or intents in a real browser would have seen failures. The 33 tests added here would catch this regression.",
+    "50 dirty files from other agent lanes — close coordination window with release-gate lane needed",
+    "tool_runtime_widget.js:47 uses `container.innerHTML = html` with projection-derived values (not user input, low risk but still not best practice)"
+  ],
+  "remaining_seams": [
+    "No pywebview/GUI window integration test in CI",
+    "No cross-session coordination test in desktop projection",
+    "No desktop telemetry bundle end-to-end test",
+    "WebSocket stress/fuzz test not implemented",
+    "No frontend renderer test for all 15 canonical widgets' DOM output"
+  ]
+}

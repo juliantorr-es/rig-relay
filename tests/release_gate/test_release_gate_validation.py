@@ -375,3 +375,317 @@ class TestSchemaGovernedArtifacts:
         result = _run(tmp_path)
         assert result["status"] == "failed"
         assert any("schema validation" in e.lower() for e in result["errors"])
+
+
+def _run_with_exit_code(repo_root: Path) -> tuple[int, dict]:
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS_DIR / "rig_release_gate_validate.py"),
+            "--repo-root",
+            str(repo_root),
+            "--readiness-gate",
+            _gate_path(repo_root),
+            "--blockers",
+            _blockers_path(repo_root),
+            "--validation-runs",
+            _vruns_path(repo_root),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    return proc.returncode, json.loads(proc.stdout)
+
+
+class TestReleaseGateExitCode:
+    def test_validator_exits_nonzero_on_malformed_blocker_jsonl(self, tmp_path: Path):
+        _copy_schemas(tmp_path)
+        _write_gate(tmp_path, _minimal_gate())
+        _write_jsonl(tmp_path, "rc_validation_runs.v1.jsonl", [])
+        bp = tmp_path / "docs" / "json" / "release_gate" / "rc_blockers.v1.jsonl"
+        bp.write_text("this is not valid json\n")
+        exit_code, result = _run_with_exit_code(tmp_path)
+        assert exit_code == 1
+        assert result["status"] == "failed"
+        assert result["verdict"] == "FAIL"
+        assert any("malformed" in e.lower() for e in result["errors"])
+
+    def test_validator_exits_nonzero_on_missing_evidence(self, tmp_path: Path):
+        _copy_schemas(tmp_path)
+        gate = _minimal_gate()
+        gate["phases"][0]["required_evidence"] = ["nonexistent/path/evidence.json"]
+        _write_gate(tmp_path, gate)
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(tmp_path, "rc_validation_runs.v1.jsonl", [])
+        exit_code, result = _run_with_exit_code(tmp_path)
+        assert exit_code == 1
+        assert result["status"] == "failed"
+        assert result["verdict"] == "FAIL"
+        assert any("missing" in e.lower() for e in result["errors"])
+
+    def test_validator_exits_nonzero_on_forbidden_markdown_evidence(
+        self, tmp_path: Path
+    ):
+        _copy_schemas(tmp_path)
+        (tmp_path / "docs" / "audits").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "docs" / "audits" / "some-audit.md").write_text("# Audit")
+        gate = _minimal_gate()
+        gate["phases"][0]["required_evidence"] = ["docs/audits/some-audit.md"]
+        _write_gate(tmp_path, gate)
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(tmp_path, "rc_validation_runs.v1.jsonl", [])
+        exit_code, result = _run_with_exit_code(tmp_path)
+        assert exit_code == 1
+        assert result["status"] == "failed"
+        assert result["verdict"] == "FAIL"
+        assert any(
+            "forbidden" in e.lower() or "markdown" in e.lower()
+            for e in result["errors"]
+        )
+
+    def test_validator_exits_zero_on_valid_gate_no_errors(self, tmp_path: Path):
+        _copy_schemas(tmp_path)
+        _write_gate(tmp_path, _minimal_gate())
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(tmp_path, "rc_validation_runs.v1.jsonl", [])
+        exit_code, result = _run_with_exit_code(tmp_path)
+        assert exit_code == 0
+        assert result["status"] == "passed"
+        assert result["verdict"] == "PASS"
+
+    def test_validator_exits_zero_on_hold_with_blockers_truthful(self, tmp_path: Path):
+        _copy_schemas(tmp_path)
+        gate = _minimal_gate()
+        gate["overall_status"] = "blocked"
+        gate["phases"] = [
+            {
+                "phase_id": "phase_1",
+                "title": "Phase 1",
+                "status": "blocked",
+                "owner_surface": "test",
+                "blocker_ids": ["B-HOLD"],
+                "validation_run_ids": ["VR-HOLD"],
+            }
+        ]
+        _write_gate(tmp_path, gate)
+        _write_jsonl(
+            tmp_path,
+            "rc_blockers.v1.jsonl",
+            [
+                {
+                    "blocker_id": "B-HOLD",
+                    "phase_id": "phase_1",
+                    "severity": "blocker",
+                    "title": "Real blocker holding the gate",
+                    "description": "This is a real blocker",
+                    "status": "open",
+                    "discovered_by": "test",
+                    "source_commit": "abc123",
+                    "created_at": "2026-05-17T00:00:00Z",
+                    "updated_at": "2026-05-17T00:00:00Z",
+                }
+            ],
+        )
+        _write_jsonl(
+            tmp_path,
+            "rc_validation_runs.v1.jsonl",
+            [
+                {
+                    "validation_run_id": "VR-HOLD",
+                    "phase_ids": ["phase_1"],
+                    "command": "uv run pytest",
+                    "result": "passed",
+                    "source_commit": "abc123",
+                    "created_at": "2026-05-17T00:00:00Z",
+                }
+            ],
+        )
+        exit_code, result = _run_with_exit_code(tmp_path)
+        assert exit_code == 0
+        assert result["status"] == "passed"
+        assert result["verdict"] == "BLOCKED"
+
+
+class TestStaleEvidenceDetection:
+    def test_stale_validation_run_detected(self, tmp_path: Path):
+        subprocess.run(
+            ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+        (tmp_path / "dummy.txt").write_text("test")
+        subprocess.run(
+            ["git", "add", "dummy.txt"], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+
+        _copy_schemas(tmp_path)
+        gate = _minimal_gate()
+        gate["phases"][0]["validation_run_ids"] = ["VR-STALE"]
+        _write_gate(tmp_path, gate)
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(
+            tmp_path,
+            "rc_validation_runs.v1.jsonl",
+            [
+                {
+                    "validation_run_id": "VR-STALE",
+                    "phase_ids": ["phase_1"],
+                    "command": "uv run pytest",
+                    "result": "passed",
+                    "tests_run": 10,
+                    "test_classifications": {"unit": 10},
+                    "source_commit": "abc1230000000000000000000000000000000000",
+                    "created_at": "2026-05-17T00:00:00Z",
+                }
+            ],
+        )
+
+        result = _run(tmp_path)
+        assert result["status"] == "failed"
+        assert any("stale" in e.lower() for e in result["errors"])
+
+    def test_stale_phase_status_detected(self, tmp_path: Path):
+        subprocess.run(
+            ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+        (tmp_path / "dummy.txt").write_text("test")
+        subprocess.run(
+            ["git", "add", "dummy.txt"], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+
+        _copy_schemas(tmp_path)
+        gate = _minimal_gate()
+        gate["phases"][0]["status"] = "passing"
+        gate["phases"][0]["source_commit"] = "abc1230000000000000000000000000000000000"
+        _write_gate(tmp_path, gate)
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(tmp_path, "rc_validation_runs.v1.jsonl", [])
+
+        result = _run(tmp_path)
+        assert result["status"] == "failed"
+        assert any("stale" in e.lower() for e in result["errors"])
+        assert any("source_commit" in e.lower() for e in result["errors"])
+
+    def test_current_evidence_not_flagged(self, tmp_path: Path):
+        subprocess.run(
+            ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+        (tmp_path / "dummy.txt").write_text("test")
+        subprocess.run(
+            ["git", "add", "dummy.txt"], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+        )
+
+        head_sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=tmp_path, text=True
+        ).strip()
+
+        _copy_schemas(tmp_path)
+        gate = _minimal_gate()
+        gate["phases"][0]["status"] = "passing"
+        gate["phases"][0]["source_commit"] = head_sha
+        gate["phases"][0]["validation_run_ids"] = ["VR-CURRENT"]
+        _write_gate(tmp_path, gate)
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(
+            tmp_path,
+            "rc_validation_runs.v1.jsonl",
+            [
+                {
+                    "validation_run_id": "VR-CURRENT",
+                    "phase_ids": ["phase_1"],
+                    "command": "uv run pytest",
+                    "result": "passed",
+                    "tests_run": 10,
+                    "test_classifications": {"unit": 10},
+                    "source_commit": head_sha,
+                    "created_at": "2026-05-17T00:00:00Z",
+                }
+            ],
+        )
+
+        result = _run(tmp_path, expect_pass=True)
+        assert result["status"] == "passed", f"Unexpected errors: {result['errors']}"
+        stale_errors = [e for e in result["errors"] if "stale" in e.lower()]
+        assert len(stale_errors) == 0
+
+    def test_no_head_available_graceful_degradation(self, tmp_path: Path):
+        _copy_schemas(tmp_path)
+        gate = _minimal_gate()
+        gate["phases"][0]["status"] = "passing"
+        gate["phases"][0]["source_commit"] = "abc1230000000000000000000000000000000000"
+        gate["phases"][0]["validation_run_ids"] = ["VR-NOREPO"]
+        _write_gate(tmp_path, gate)
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(
+            tmp_path,
+            "rc_validation_runs.v1.jsonl",
+            [
+                {
+                    "validation_run_id": "VR-NOREPO",
+                    "phase_ids": ["phase_1"],
+                    "command": "uv run pytest",
+                    "result": "passed",
+                    "tests_run": 10,
+                    "test_classifications": {"unit": 10},
+                    "source_commit": "abc1230000000000000000000000000000000000",
+                    "created_at": "2026-05-17T00:00:00Z",
+                }
+            ],
+        )
+
+        result = _run(tmp_path, expect_pass=True)
+        assert result["status"] == "passed", f"Unexpected errors: {result['errors']}"
+        stale_errors = [e for e in result["errors"] if "stale" in e.lower()]
+        assert len(stale_errors) == 0

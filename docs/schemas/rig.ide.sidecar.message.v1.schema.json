@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.ide.sidecar.message.v1.schema.json",
   "title": "Rig IDE Sidecar IPC Message",
   "description": "Messages exchanged between the IDE extension host and the Rig Python sidecar over stdin/stdout JSON-RPC. One JSON object per line (JSONL).",

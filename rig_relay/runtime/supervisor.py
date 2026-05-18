@@ -846,6 +846,7 @@ class RuntimeSupervisor:
 
         # ── Release lease ───────────────────────────────────────────
         await _release_lease(self._lease_store, lease_id)
+        lease.status = ExecutionLeaseStatus.RELEASED
 
 
 def _make_failure(

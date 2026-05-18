@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.ide.capability_manifest.v1.schema.json",
   "title": "Rig IDE Capability Manifest",
   "description": "Canonical, single-source-of-truth capability registry for IDE bridges. Used to generate both the Python sidecar permission table and the TypeScript capability broker. All registries MUST be validated against this manifest — drift between TypeScript and Python implementations is a validation failure.",

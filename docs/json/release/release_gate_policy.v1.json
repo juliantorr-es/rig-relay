@@ -2,13 +2,16 @@
   "$schema": "https://rig-relay.github.io/schemas/rig.release_gate_policy.v1.schema.json",
   "schema_version": "rig.release_gate_policy.v1",
   "required_checks": [
-    "static.docs.json_schema_validation",
-    "static.security.vulnerability_scan",
     "runtime.trace_contract.clean_or_triaged",
     "runtime.visibility_matrix.release_paths",
     "runtime.websocket.security_invariants",
     "runtime.github_app.audit_readiness",
     "runtime.ci.workflow_coverage"
+  ],
+  "deferred_checks": [
+    "static.docs.json_schema_validation",
+    "static.docs.static_render_integrity",
+    "static.security.vulnerability_scan"
   ],
   "overrides": [],
   "artifact_allowlist": [

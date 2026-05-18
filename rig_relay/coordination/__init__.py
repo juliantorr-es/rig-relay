@@ -36,7 +36,11 @@ from rig_relay.coordination.models import (
     reset_path_salt_for_testing,
     salted_path_hash,
 )
-from rig_relay.coordination.store import CoordinationStore, FileCoordinationStore
+from rig_relay.coordination.store import (
+    CoordinationStore,
+    FileCoordinationStore,
+    check_ledger_integrity,
+)
 
 __all__ = [
     "CoordinationArtifactRef",
@@ -68,6 +72,7 @@ __all__ = [
     "build_session_registered_payload",
     "build_task_claim_payload",
     "build_task_released_payload",
+    "check_ledger_integrity",
     "reset_path_salt_for_testing",
     "salted_path_hash",
 ]

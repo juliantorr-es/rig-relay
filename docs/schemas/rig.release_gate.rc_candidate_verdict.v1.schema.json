@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.github.io/schemas/rig.release_gate.rc_candidate_verdict.v1.schema.json",
   "title": "RC Candidate Verdict v1",
   "description": "Subagent C's verdict on release-candidate eligibility, produced by running the release gate validator against readiness gate, blockers, validation runs, deferred risks, and evidence paths.",
@@ -29,7 +29,10 @@
     },
     "verdict": {
       "type": "string",
-      "enum": ["go", "hold"],
+      "enum": [
+        "go",
+        "hold"
+      ],
       "description": "go = candidate is eligible for RC promotion; hold = not eligible."
     },
     "generated_at": {
@@ -51,7 +54,10 @@
     },
     "validator_result": {
       "type": "string",
-      "enum": ["passed", "failed"],
+      "enum": [
+        "passed",
+        "failed"
+      ],
       "description": "Whether the validator produced a clean pass."
     },
     "validator_error_count": {
@@ -61,42 +67,58 @@
     },
     "blocking_phase_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Phase IDs that are blocking release (status blocked, unknown, or failed validation)."
     },
     "ready_phase_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Phase IDs that are passing or ready."
     },
     "open_blocker_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Blocker IDs that are still open."
     },
     "resolved_blocker_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Blocker IDs that have been resolved."
     },
     "deferred_risk_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Deferred risk IDs tracked for this release candidate."
     },
     "validation_run_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Validation run IDs referenced by the gate."
     },
     "evidence_paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Evidence paths collected across all phases."
     },
     "required_next_actions": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Human-readable next actions required to advance gate status from hold to go."
     },
     "error_categories": {

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.report.v1.schema.json",
   "title": "Rig Report",
   "description": "Structured report envelope for rig.report tool. Agents use this to file mission reports, out-of-scope findings, bug reports, architecture seams, data races, and other structured discoveries. Reports are append-only to a local ledger; promotion to canonical findings is a separate triage step.",
@@ -21,9 +21,15 @@
     "created_by": {
       "type": "object",
       "properties": {
-        "agent_id": { "type": "string" },
-        "session_id": { "type": "string" },
-        "lane_id": { "type": "string" }
+        "agent_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "lane_id": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
@@ -47,50 +53,93 @@
       ],
       "description": "Kind of report. Determines which detail fields are relevant."
     },
-    "title": { "type": "string" },
-    "summary": { "type": "string" },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
     "severity": {
       "type": "string",
-      "enum": ["low", "medium", "high", "critical"]
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
     },
     "confidence": {
       "type": "string",
-      "enum": ["low", "medium", "high", "confirmed"]
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "confirmed"
+      ]
     },
     "scope_relation": {
       "type": "string",
-      "enum": ["in_scope", "out_of_scope_for_current_mission", "adjacent", "regression", "pre_existing"],
+      "enum": [
+        "in_scope",
+        "out_of_scope_for_current_mission",
+        "adjacent",
+        "regression",
+        "pre_existing"
+      ],
       "description": "How this report relates to the current mission scope."
     },
     "status": {
       "type": "string",
       "enum": [
-        "open", "acknowledged", "triaged", "accepted", "deferred",
-        "blocked", "in_progress", "resolved", "wont_fix",
-        "superseded", "duplicate", "invalid"
+        "open",
+        "acknowledged",
+        "triaged",
+        "accepted",
+        "deferred",
+        "blocked",
+        "in_progress",
+        "resolved",
+        "wont_fix",
+        "superseded",
+        "duplicate",
+        "invalid"
       ],
       "default": "open"
     },
     "affected_paths": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "evidence": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "kind": { "type": "string" },
-          "path": { "type": "string" },
-          "summary": { "type": "string" }
+          "kind": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
         },
-        "required": ["kind", "path", "summary"],
+        "required": [
+          "kind",
+          "path",
+          "summary"
+        ],
         "additionalProperties": false
       }
     },
     "blockers": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "recommended_next_action": {
       "type": "string"
@@ -102,11 +151,17 @@
     "links": {
       "type": "object",
       "properties": {
-        "parent_report_id": { "type": "string" },
-        "parent_mission_id": { "type": "string" },
+        "parent_report_id": {
+          "type": "string"
+        },
+        "parent_mission_id": {
+          "type": "string"
+        },
         "related_report_ids": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false
@@ -117,9 +172,16 @@
     }
   },
   "required": [
-    "schema_version", "report_id", "created_at",
-    "kind", "title", "summary", "severity", "confidence",
-    "scope_relation", "status"
+    "schema_version",
+    "report_id",
+    "created_at",
+    "kind",
+    "title",
+    "summary",
+    "severity",
+    "confidence",
+    "scope_relation",
+    "status"
   ],
   "additionalProperties": false
 }

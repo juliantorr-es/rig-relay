@@ -235,6 +235,8 @@ markers = [
   "destructive: mutates worktrees/branches/files beyond temp dirs",
   "migration: test being relocated during test layout canonicalization",
   "quarantine: quarantined test, runs only in dedicated quarantine job",
+  "sabotage: corruption/sabotage injection tests for runtime hardening",
+  "real_artifact: tests using real file artifacts (no mocking)",
 ]
 filterwarnings = [
   # (e2e) streaming mock server is started in a thread; and the cli is spawn in a fork

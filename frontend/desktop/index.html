@@ -20,6 +20,8 @@
 </head>
 <body>
 
+  <a href="#main-grid" class="skip-link">Skip to main content</a>
+
   <header id="top-header" role="banner">
     <span class="header-title" aria-label="Rig Relay — Desktop Console">Rig Relay</span>
     <span id="status-connection" class="header-chip" role="status" aria-live="polite" aria-label="Connection status"><span class="header-dot" aria-hidden="true"></span>Idle</span>
@@ -43,7 +45,7 @@
           <div class="chat-message system" role="status">Rig Relay ready. Type a message to begin.</div>
         </div>
         <div id="chat-composer" role="form" aria-label="Message composer">
-          <textarea id="chat-input" placeholder="Type a message..." maxlength="4000" rows="1" aria-label="Chat message input" autocapitalize="off" spellcheck="false"></textarea>
+          <textarea id="chat-input" placeholder="Type a message..." maxlength="4000" rows="1" aria-label="Chat message input" aria-describedby="char-count" autocapitalize="off" spellcheck="false"></textarea>
           <button id="send-btn" disabled aria-label="Send message">Send</button>
         </div>
         <div id="composer-footer">

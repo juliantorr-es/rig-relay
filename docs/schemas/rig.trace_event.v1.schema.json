@@ -1,10 +1,16 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.trace_event.v1.schema.json",
   "title": "Rig Trace Event",
   "description": "A correlated trace event for the Rig Relay desktop golden path. Every release-critical stage emits one of these to form a single desktop_launch_trace.",
   "type": "object",
-  "required": ["schema_version", "event_type", "timestamp", "trace_id", "span_id"],
+  "required": [
+    "schema_version",
+    "event_type",
+    "timestamp",
+    "trace_id",
+    "span_id"
+  ],
   "properties": {
     "schema_version": {
       "type": "string",
@@ -33,11 +39,24 @@
     },
     "event_kind": {
       "type": "string",
-      "enum": ["span.start", "span.end", "span.event", "span.error"]
+      "enum": [
+        "span.start",
+        "span.end",
+        "span.event",
+        "span.error"
+      ]
     },
     "status": {
       "type": "string",
-      "enum": ["ok", "error", "refused", "degraded", "cancelled", "timed_out", "skipped"]
+      "enum": [
+        "ok",
+        "error",
+        "refused",
+        "degraded",
+        "cancelled",
+        "timed_out",
+        "skipped"
+      ]
     },
     "started_at": {
       "type": "string",
@@ -54,25 +73,52 @@
       "type": "object",
       "description": "Cross-subsystem correlation fields",
       "properties": {
-        "handshake_id": {"type": "string"},
-        "session_id": {"type": "string"},
-        "connection_id": {"type": "string"},
-        "projection_id": {"type": "string"},
-        "intent_id": {"type": "string"},
-        "job_id": {"type": "string"},
-        "agent_id": {"type": "string"},
-        "worktree_id": {"type": "string"},
-        "receipt_id": {"type": "string"},
-        "commit_sha": {"type": "string"},
-        "frontend_url": {"type": "string"},
-        "websocket_url": {"type": "string"}
+        "handshake_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "connection_id": {
+          "type": "string"
+        },
+        "projection_id": {
+          "type": "string"
+        },
+        "intent_id": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "worktree_id": {
+          "type": "string"
+        },
+        "receipt_id": {
+          "type": "string"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "frontend_url": {
+          "type": "string"
+        },
+        "websocket_url": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
     "authority": {
       "type": "object",
       "description": "Provenance of this event",
-      "required": ["authority_kind", "trusted"],
+      "required": [
+        "authority_kind",
+        "trusted"
+      ],
       "properties": {
         "authority_kind": {
           "type": "string",
@@ -94,10 +140,18 @@
             "unknown"
           ]
         },
-        "trusted": {"type": "boolean"},
-        "source_path": {"type": "string"},
-        "source_hash": {"type": "string"},
-        "notes": {"type": "string"}
+        "trusted": {
+          "type": "boolean"
+        },
+        "source_path": {
+          "type": "string"
+        },
+        "source_hash": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
@@ -108,21 +162,39 @@
     "redaction": {
       "type": "object",
       "description": "Self-describing redaction metadata",
-      "required": ["contains_secret", "token_present", "token_value_included"],
+      "required": [
+        "contains_secret",
+        "token_present",
+        "token_value_included"
+      ],
       "properties": {
-        "contains_secret": {"type": "boolean"},
+        "contains_secret": {
+          "type": "boolean"
+        },
         "secret_fields_redacted": {
           "type": "array",
-          "items": {"type": "string"}
+          "items": {
+            "type": "string"
+          }
         },
-        "token_present": {"type": "boolean"},
-        "token_value_included": {"type": "boolean"}
+        "token_present": {
+          "type": "boolean"
+        },
+        "token_value_included": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false
     },
-    "error_type": {"type": "string"},
-    "error_message": {"type": "string"},
-    "receipt_sha256": {"type": "string"}
+    "error_type": {
+      "type": "string"
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "receipt_sha256": {
+      "type": "string"
+    }
   },
   "additionalProperties": false
 }

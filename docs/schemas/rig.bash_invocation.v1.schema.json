@@ -1,11 +1,14 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.bash_invocation.v1.schema.json",
   "title": "Rig Bash Invocation Event",
   "description": "Event envelope for a bash invocation recorded by the Bash tool. Content-light: hashes and byte counts replace raw stdout/stderr. The event ledger is the append-only source of truth for bash analytics.",
   "type": "object",
   "properties": {
-    "schema_version": { "type": "string", "const": "rig.bash_invocation.v1" },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.bash_invocation.v1"
+    },
     "event_name": {
       "type": "string",
       "enum": [
@@ -19,36 +22,105 @@
         "rig.bash.pattern.detected"
       ]
     },
-    "bash_invocation_id": { "type": "string" },
-    "session_id": { "type": "string" },
-    "turn_id": { "type": "string" },
-    "tool_call_id": { "type": "string" },
-    "agent_id": { "type": "string" },
-    "mission_id": { "type": "string" },
-    "created_at": { "type": "string", "format": "date-time" },
-    "cwd": { "type": "string" },
-    "command_text": { "type": "string" },
-    "command_sha256": { "type": "string" },
-    "argv": { "type": "array", "items": { "type": "string" } },
-    "shell_used": { "type": "boolean" },
-    "timeout_seconds": { "type": "integer" },
-    "duration_ms": { "type": "integer" },
-    "exit_code": { "type": "integer" },
-    "status": { "type": "string" },
-    "stdout_bytes": { "type": "integer" },
-    "stderr_bytes": { "type": "integer" },
-    "stdout_sha256": { "type": "string" },
-    "stderr_sha256": { "type": "string" },
-    "mutation_detected": { "type": "boolean" },
-    "affected_paths": { "type": "array", "items": { "type": "string" } },
-    "refusal_reason": { "type": "string" },
-    "pattern_tags": { "type": "array", "items": { "type": "string" } },
-    "risk_tags": { "type": "array", "items": { "type": "string" } },
-    "receipt_id": { "type": "string" }
+    "bash_invocation_id": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "turn_id": {
+      "type": "string"
+    },
+    "tool_call_id": {
+      "type": "string"
+    },
+    "agent_id": {
+      "type": "string"
+    },
+    "mission_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cwd": {
+      "type": "string"
+    },
+    "command_text": {
+      "type": "string"
+    },
+    "command_sha256": {
+      "type": "string"
+    },
+    "argv": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "shell_used": {
+      "type": "boolean"
+    },
+    "timeout_seconds": {
+      "type": "integer"
+    },
+    "duration_ms": {
+      "type": "integer"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "status": {
+      "type": "string"
+    },
+    "stdout_bytes": {
+      "type": "integer"
+    },
+    "stderr_bytes": {
+      "type": "integer"
+    },
+    "stdout_sha256": {
+      "type": "string"
+    },
+    "stderr_sha256": {
+      "type": "string"
+    },
+    "mutation_detected": {
+      "type": "boolean"
+    },
+    "affected_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "refusal_reason": {
+      "type": "string"
+    },
+    "pattern_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "risk_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "receipt_id": {
+      "type": "string"
+    }
   },
   "required": [
-    "schema_version", "event_name", "bash_invocation_id",
-    "command_text", "command_sha256", "status"
+    "schema_version",
+    "event_name",
+    "bash_invocation_id",
+    "command_text",
+    "command_sha256",
+    "status"
   ],
   "additionalProperties": false
 }

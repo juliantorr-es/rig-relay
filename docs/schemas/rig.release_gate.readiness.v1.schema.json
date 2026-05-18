@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.github.io/schemas/rig.release_gate.readiness.v1.schema.json",
   "title": "Release Gate Readiness v1",
   "description": "Machine-readable release-candidate readiness gate. Defines phases, their status, and the evidence spine that the validator checks. The canonical source of truth for whether Rig Relay is eligible for RC promotion.",
@@ -49,21 +49,33 @@
     },
     "overall_status": {
       "type": "string",
-      "enum": ["blocked", "ready", "passing", "deferred", "unknown"],
+      "enum": [
+        "blocked",
+        "ready",
+        "passing",
+        "deferred",
+        "unknown"
+      ],
       "description": "Derived overall gate verdict. Computed from phase statuses — never user-supplied."
     },
     "phases": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/phase" }
+      "items": {
+        "$ref": "#/$defs/phase"
+      }
     },
     "policy": {
       "type": "object",
-      "required": ["allowed_markdown_exceptions"],
+      "required": [
+        "allowed_markdown_exceptions"
+      ],
       "properties": {
         "allowed_markdown_exceptions": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Markdown paths explicitly allowed as non-evidence references (e.g., AGENTS.md, README.md, LICENSE)."
         },
         "blocker_reference_enforcement": {
@@ -123,7 +135,13 @@
         },
         "status": {
           "type": "string",
-          "enum": ["blocked", "ready", "passing", "deferred", "unknown"],
+          "enum": [
+            "blocked",
+            "ready",
+            "passing",
+            "deferred",
+            "unknown"
+          ],
           "description": "Current phase readiness status."
         },
         "owner_surface": {
@@ -133,27 +151,37 @@
         },
         "required_evidence": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Paths to required evidence artifacts for this phase."
         },
         "blocker_ids": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Blocker IDs associated with this phase."
         },
         "validation_run_ids": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Validation run IDs associated with this phase."
         },
         "schema_artifact_paths": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Schema artifact paths governed by this phase."
         },
         "test_artifact_paths": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Test artifact paths governed by this phase."
         },
         "telemetry_or_redaction_implications": {
@@ -166,12 +194,16 @@
         },
         "allowed_deferrals": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Deferral reasons allowed for this phase."
         },
         "remaining_seams": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Remaining seams identified in this phase."
         },
         "source_commit": {

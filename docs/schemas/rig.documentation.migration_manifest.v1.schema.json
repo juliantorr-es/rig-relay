@@ -1,10 +1,13 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.documentation.migration_manifest.v1.schema.json",
   "title": "Rig Documentation Migration Manifest",
   "description": "Tracks migration of old Markdown docs to canonical JSON.",
   "type": "object",
-  "required": ["schema_version", "migrations"],
+  "required": [
+    "schema_version",
+    "migrations"
+  ],
   "properties": {
     "schema_version": {
       "type": "string",
@@ -21,19 +24,41 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["old_path", "status"],
+        "required": [
+          "old_path",
+          "status"
+        ],
         "properties": {
-          "old_path": {"type": "string"},
-          "new_path": {"type": "string"},
+          "old_path": {
+            "type": "string"
+          },
+          "new_path": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
-            "enum": ["pending", "migrated", "deleted", "retained_exception"]
+            "enum": [
+              "pending",
+              "migrated",
+              "deleted",
+              "retained_exception"
+            ]
           },
-          "reason": {"type": "string"},
-          "content_sha256_old": {"type": "string"},
-          "content_sha256_new": {"type": "string"},
-          "references_updated": {"type": "boolean"},
-          "review_notes": {"type": "string"}
+          "reason": {
+            "type": "string"
+          },
+          "content_sha256_old": {
+            "type": "string"
+          },
+          "content_sha256_new": {
+            "type": "string"
+          },
+          "references_updated": {
+            "type": "boolean"
+          },
+          "review_notes": {
+            "type": "string"
+          }
         }
       }
     }

@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.repository_policy.v1.schema.json",
+  "title": "Rig Relay Repository Policy",
+  "description": "Project repository policy including governance files, tracked source, gitignore policy, and contributor terms.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "repository",
+    "license",
+    "license_intent",
+    "commercial_licensing",
+    "contributor_terms",
+    "attribution",
+    "governance_files",
+    "tracked_source",
+    "gitignore_policy",
+    "review_required"
+  ],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "repository": { "type": "string" },
+    "license": { "type": "string" },
+    "license_intent": { "type": "string" },
+    "commercial_licensing": { "type": "string" },
+    "contributor_terms": {
+      "type": "object",
+      "required": [
+        "cla_file",
+        "contributor_keeps_copyright",
+        "maintainer_relicense_right",
+        "dual_licensing_allowed",
+        "contribution_signoff_required"
+      ],
+      "properties": {
+        "cla_file": { "type": "string" },
+        "contributor_keeps_copyright": { "type": "boolean" },
+        "maintainer_relicense_right": { "type": "boolean" },
+        "dual_licensing_allowed": { "type": "boolean" },
+        "contribution_signoff_required": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "attribution": {
+      "type": "object",
+      "required": ["upstream_lineage", "relationship", "notes"],
+      "properties": {
+        "upstream_lineage": { "type": "string" },
+        "relationship": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "governance_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tracked_source": {
+      "type": "object",
+      "properties": {
+        "frontend": { "type": "string" },
+        "docs_schemas": { "type": "string" },
+        "tests": { "type": "string" }
+      }
+    },
+    "gitignore_policy": {
+      "type": "object",
+      "properties": {
+        "source_tracked": { "type": "array", "items": { "type": "string" } },
+        "build_artifacts_ignored": { "type": "array", "items": { "type": "string" } },
+        "runtime_ignored": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "review_required": { "type": "boolean" },
+    "review_note": { "type": "string" }
+  },
+  "additionalProperties": false
+}

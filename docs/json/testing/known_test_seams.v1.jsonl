@@ -1,12 +1,132 @@
-{"schema_version":"rig.relay.test_classification.v1","file_path":"tests/rc_seams/test_rc_seam_tests.py","test_function":"TestEnvBlocklistScrubbing (10 tests)","classification":"resolved","reason":"RESOLVED: 10 tests in TestEnvBlocklistScrubbing prove (a) all 28 ENV_BLOCKLIST vars are scrubbed by scrub_environment, (b) sanitize_env_for_subprocess does not leak blocked vars, (c) CI defaults (CI=true, NONINTERACTIVE=1, LC_ALL, GIT_PAGER, PAGER) are set, (d) TERM defaults to 'dumb' when not pre-existing, (e) extra vars are merged, (f) missing keys are no-op, (g) non-blocklisted vars are preserved.","test_kind":"adversarial","protected_seam":"bash_env_blocklist_scrubbing","stress_surface":"tool-invocation","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"N/A","test_function":"N/A","classification":"deferred","reason":"DEFERRED: Requires adversarial telemetry-disabled degradation test (empty JSON observability, zero-row DuckDB projection). Non-critical for P0 tool-invocation hardening batch.","test_kind":"adversarial","protected_seam":"telemetry_disabled_degradation_visibility","stress_surface":"telemetry-redaction","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"tests/rc_seams/test_rc_seam_tests.py","test_function":"TestBinaryFileRejection (12 tests)","classification":"resolved","reason":"RESOLVED: 12 tests in TestBinaryFileRejection prove (a) is_likely_binary() detects PNG magic bytes, ELF header, null bytes, high non-ASCII ratio; (b) returns False for plain text, empty content, text with tabs/newlines, Python source; (c) is_binary_extension() rejects known binaries (.png, .exe, .so etc.) and permits text extensions (.py, .txt etc.); (d) ReadFile tool raises ToolError('appears to be binary') for binary extensions (.pdf) and binary content (PNG header in .txt file).","test_kind":"adversarial","protected_seam":"bash_binary_file_rejection","stress_surface":"tool-invocation","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"tests/rc_seams/test_rc_seam_tests.py","test_function":"TestSymlinkTraversalRejection (6 tests)","classification":"resolved","reason":"RESOLVED: 6 tests in TestSymlinkTraversalRejection prove (a) resolve_safe_path resolves inside workspace correctly, (b) rejects absolute paths outside workspace, (c) rejects symlink targets outside workspace, (d) rejects symlinks to /etc/passwd, (e) accepts relative paths inside workspace, (f) rejects .. traversal outside workspace.","test_kind":"adversarial","protected_seam":"bash_symlink_traversal_rejection","stress_surface":"tool-invocation","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"N/A","test_function":"N/A","classification":"deferred","reason":"DEFERRED: Requires adversarial coordination ledger corruption test (malformed JSON, truncated lines, missing fields). Complex coordination subsystem — deferred to later batch.","test_kind":"sabotage","protected_seam":"coordination_ledger_corruption_detection","stress_surface":"coordination","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"N/A","test_function":"N/A","classification":"deferred","reason":"DEFERRED: Requires runtime feral subprocess accountability test (process death mid-execution, partial output, duplicate completion events). Runtime supervisor domain, needs process-level orchestration.","test_kind":"sabotage","protected_seam":"runtime_feral_subprocess_accountability","stress_surface":"runtime-supervisor","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"N/A","test_function":"N/A","classification":"deferred","reason":"DEFERRED: Requires E2E release-gate failure test (exit code 1, structured blocker output). Release-gate surface — deferred to integration batch.","test_kind":"E2E","protected_seam":"release_gate_failure_exit_code","stress_surface":"release-gate","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"tests/rc_seams/test_rc_seam_tests.py","test_function":"TestDangerousPatternDetection (11 tests)","classification":"resolved","reason":"RESOLVED: 11 tests in TestDangerousPatternDetection prove (a) $() command substitution detected, (b) backtick execution detected, (c) env var injection (PATH=/evil:$PATH) detected, (d) LD_PRELOAD injection detected, (e) python3 -c inline code execution detected, (f) perl -e inline code execution detected, (g) backslash-escaped paths detected, (h) single backtick in safe echo is not flagged, (i) plain ls -la is safe, (j) safe pipe chains (cat|grep|wc) pass, (k) dangerous pipes (env|sh) trigger warnings.","test_kind":"adversarial","protected_seam":"bash_dangerous_pattern_detection","stress_surface":"tool-invocation","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"tests/rc_seams/test_rc_seam_tests.py","test_function":"TestSensitivePathBlocking (6 tests)","classification":"resolved","reason":"RESOLVED: 6 tests in TestSensitivePathBlocking prove (a) cat with sensitive path in command triggers NEVER permission, (b) second sensitive pattern also blocked, (c) tail on sensitive path also blocked, (d) non-sensitive path not blocked, (e) command without sensitive path passes.","test_kind":"adversarial","protected_seam":"bash_sensitive_path_blocking","stress_surface":"tool-invocation","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"N/A","test_function":"N/A","classification":"deferred","reason":"DEFERRED: Requires runtime duplicate completion detection test (subprocess emitting duplicate completion events, supervisor deduplication). Runtime supervisor domain.","test_kind":"sabotage","protected_seam":"runtime_duplicate_completion_detection","stress_surface":"runtime-supervisor","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"N/A","test_function":"N/A","classification":"deferred","reason":"DEFERRED: Requires stale release evidence detection test (evidence artifacts older than HEAD, mismatched branch names). Substrate/release-gate surface.","test_kind":"substrate","protected_seam":"release_gate_stale_evidence_detection","stress_surface":"release-gate","classification_timestamp":"2026-05-17T00:00:00Z"}
-{"schema_version":"rig.relay.test_classification.v1","file_path":"N/A","test_function":"N/A","classification":"deferred","reason":"DEFERRED: Requires bash rerouting transparency integration test (agent issues 'cat file.py', bash rerouting transparently invokes read_file with identical output). Integration surface, needs agent loop context.","test_kind":"integration","protected_seam":"bash_rerouting_transparency","stress_surface":"tool-invocation","classification_timestamp":"2026-05-17T00:00:00Z"}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/rc_seams/test_rc_seam_tests.py",
+    "test_function": "TestEnvBlocklistScrubbing (10 tests)",
+    "classification": "resolved",
+    "reason": "RESOLVED: 10 tests in TestEnvBlocklistScrubbing prove (a) all 28 ENV_BLOCKLIST vars are scrubbed by scrub_environment, (b) sanitize_env_for_subprocess does not leak blocked vars, (c) CI defaults (CI=true, NONINTERACTIVE=1, LC_ALL, GIT_PAGER, PAGER) are set, (d) TERM defaults to 'dumb' when not pre-existing, (e) extra vars are merged, (f) missing keys are no-op, (g) non-blocklisted vars are preserved.",
+    "test_kind": "adversarial",
+    "protected_seam": "bash_env_blocklist_scrubbing",
+    "stress_surface": "tool-invocation",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "N/A",
+    "test_function": "N/A",
+    "classification": "deferred",
+    "reason": "DEFERRED: Requires adversarial telemetry-disabled degradation test (empty JSON observability, zero-row DuckDB projection). Non-critical for P0 tool-invocation hardening batch.",
+    "test_kind": "adversarial",
+    "protected_seam": "telemetry_disabled_degradation_visibility",
+    "stress_surface": "telemetry-redaction",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/rc_seams/test_rc_seam_tests.py",
+    "test_function": "TestBinaryFileRejection (12 tests)",
+    "classification": "resolved",
+    "reason": "RESOLVED: 12 tests in TestBinaryFileRejection prove (a) is_likely_binary() detects PNG magic bytes, ELF header, null bytes, high non-ASCII ratio; (b) returns False for plain text, empty content, text with tabs/newlines, Python source; (c) is_binary_extension() rejects known binaries (.png, .exe, .so etc.) and permits text extensions (.py, .txt etc.); (d) ReadFile tool raises ToolError('appears to be binary') for binary extensions (.pdf) and binary content (PNG header in .txt file).",
+    "test_kind": "adversarial",
+    "protected_seam": "bash_binary_file_rejection",
+    "stress_surface": "tool-invocation",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/rc_seams/test_rc_seam_tests.py",
+    "test_function": "TestSymlinkTraversalRejection (6 tests)",
+    "classification": "resolved",
+    "reason": "RESOLVED: 6 tests in TestSymlinkTraversalRejection prove (a) resolve_safe_path resolves inside workspace correctly, (b) rejects absolute paths outside workspace, (c) rejects symlink targets outside workspace, (d) rejects symlinks to /etc/passwd, (e) accepts relative paths inside workspace, (f) rejects .. traversal outside workspace.",
+    "test_kind": "adversarial",
+    "protected_seam": "bash_symlink_traversal_rejection",
+    "stress_surface": "tool-invocation",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/coordination/test_ledger_corruption_detection.py",
+    "test_function": "TestMalformedJsonDetection (2) + TestDuplicateDetection (3) + TestMissingRequiredFields (5) + TestCorruptionDetectionIntegration (2)",
+    "classification": "resolved",
+    "reason": "RESOLVED: 12 tests across 4 classes prove (a) unparseable/truncated JSONL lines detected as malformed_json, (b) duplicate sequence numbers and duplicate event_ids detected, (c) missing required fields (event_id, sequence, event_name, created_at) detected, (d) check_ledger_integrity() added to rig_relay/coordination/store.py as production detection function, (e) valid ledger passes integrity check. All real-artifact sabotage tests with real temp JSONL files.",
+    "test_kind": "sabotage",
+    "protected_seam": "coordination_ledger_corruption_detection",
+    "stress_surface": "coordination",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "N/A",
+    "test_function": "N/A",
+    "classification": "deferred",
+    "reason": "DEFERRED: Requires runtime feral subprocess accountability test (process death mid-execution, partial output, duplicate completion events). Runtime supervisor domain, needs process-level orchestration.",
+    "test_kind": "sabotage",
+    "protected_seam": "runtime_feral_subprocess_accountability",
+    "stress_surface": "runtime-supervisor",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/release_gate/test_release_gate_validation.py",
+    "test_function": "TestReleaseGateExitCode (5 tests)",
+    "classification": "resolved",
+    "reason": "RESOLVED: 5 tests in TestReleaseGateExitCode prove (a) malformed blocker JSONL → exit code 1 + verdict FAIL, (b) missing evidence path → exit code 1 + verdict FAIL, (c) forbidden Markdown evidence → exit code 1 + verdict FAIL, (d) valid gate without blockers → exit code 0 + verdict PASS, (e) valid HOLD with truthful blockers → exit code 0 + verdict BLOCKED. Validator enhanced with explicit verdict field (PASS/BLOCKED/FAIL) to distinguish structural failure from legitimate blocked gate state.",
+    "test_kind": "E2E",
+    "protected_seam": "release_gate_failure_exit_code",
+    "stress_surface": "release-gate",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/rc_seams/test_rc_seam_tests.py",
+    "test_function": "TestDangerousPatternDetection (11 tests)",
+    "classification": "resolved",
+    "reason": "RESOLVED: 11 tests in TestDangerousPatternDetection prove (a) $() command substitution detected, (b) backtick execution detected, (c) env var injection (PATH=/evil:$PATH) detected, (d) LD_PRELOAD injection detected, (e) python3 -c inline code execution detected, (f) perl -e inline code execution detected, (g) backslash-escaped paths detected, (h) single backtick in safe echo is not flagged, (i) plain ls -la is safe, (j) safe pipe chains (cat|grep|wc) pass, (k) dangerous pipes (env|sh) trigger warnings.",
+    "test_kind": "adversarial",
+    "protected_seam": "bash_dangerous_pattern_detection",
+    "stress_surface": "tool-invocation",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/rc_seams/test_rc_seam_tests.py",
+    "test_function": "TestSensitivePathBlocking (6 tests)",
+    "classification": "resolved",
+    "reason": "RESOLVED: 6 tests in TestSensitivePathBlocking prove (a) cat with sensitive path in command triggers NEVER permission, (b) second sensitive pattern also blocked, (c) tail on sensitive path also blocked, (d) non-sensitive path not blocked, (e) command without sensitive path passes.",
+    "test_kind": "adversarial",
+    "protected_seam": "bash_sensitive_path_blocking",
+    "stress_surface": "tool-invocation",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/runtime/test_duplicate_completion.py",
+    "test_function": "TestNoDoubleFinalization + TestNoDoubleSpanClosure + TestLeaseStatePreventsReExecution",
+    "classification": "resolved",
+    "reason": "RESOLVED: Duplicate completion detection proven. Supervisor yields exactly one terminal event per invocation (completion, failure, timeout, command-not-found). Async generator is exhausted after terminal event — second anext() raises StopAsyncIteration. Lease state check at entry blocks PENDING, RELEASED, EXPIRED, CANCELLED, FAILED leases. Minimal production fix added: in-memory lease status set to RELEASED after execution to close the persistent-store-only release gap. Trace span end_span called exactly once per invocation on all code paths (success, failure, timeout, command-not-found). 18 sabotage tests across 3 classes.",
+    "test_kind": "sabotage",
+    "protected_seam": "runtime_duplicate_completion_detection",
+    "stress_surface": "runtime-supervisor",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "tests/release_gate/test_release_gate_validation.py",
+    "test_function": "TestStaleEvidenceDetection (4 tests)",
+    "classification": "resolved",
+    "reason": "RESOLVED: 4 tests in TestStaleEvidenceDetection prove (a) validation run with stale source_commit (≠ HEAD) detected as error, (b) phase marked 'passing' with stale source_commit detected as error, (c) current evidence (matching HEAD) not flagged, (d) non-git environment gracefully degrades (no false positives). check_stale_evidence() added to validator; stale evidence detection wired into run_validation(). Stale evidence is an ERROR (not warning) because claiming RC readiness on stale evidence is dangerous.",
+    "test_kind": "substrate",
+    "protected_seam": "release_gate_stale_evidence_detection",
+    "stress_surface": "release-gate",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}
+{
+    "schema_version": "rig.relay.test_classification.v1",
+    "file_path": "N/A",
+    "test_function": "N/A",
+    "classification": "deferred",
+    "reason": "DEFERRED: Requires bash rerouting transparency integration test (agent issues 'cat file.py', bash rerouting transparently invokes read_file with identical output). Integration surface, needs agent loop context.",
+    "test_kind": "integration",
+    "protected_seam": "bash_rerouting_transparency",
+    "stress_surface": "tool-invocation",
+    "classification_timestamp": "2026-05-17T00:00:00Z",
+}

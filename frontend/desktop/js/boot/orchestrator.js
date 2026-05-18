@@ -5,7 +5,7 @@ import { recordFrontendEvent, setFrontendHandshakeId } from '../telemetry/fronte
 import { fetchRuntimeConfig } from './runtimeConfig.js';
 import { createDebugPanel, updateDebugPanel } from './debugPanel.js';
 import { createTransportStateAuthority } from '../transportState.js';
-import { ProjectionWebSocketClient } from '../transport.js';
+import { ProjectionWebSocketClient, setWsClient } from '../transport.js';
 import { renderStatusFromState } from '../status.js';
 import { handleProjection, handleChatState, handleIntentResult,
          handleProgressEvent, handleProgressEvents } from '../projection.js';
@@ -45,7 +45,7 @@ async function boot() {
 
   if (wsUrl) {
     recordFrontendEvent('frontend_websocket_connecting');
-    new ProjectionWebSocketClient({
+    const wsClient = new ProjectionWebSocketClient({
       wsUrl,
       token,
       handshakeId: canonicalHandshakeId,
@@ -95,6 +95,7 @@ async function boot() {
         console.warn('[orchestrator] auth failed:', msg);
       },
     });
+    setWsClient(wsClient);
   }
 
   wireUI();

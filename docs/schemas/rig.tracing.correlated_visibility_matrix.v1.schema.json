@@ -1,10 +1,17 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.tracing.correlated_visibility_matrix.v1.schema.json",
   "title": "Rig Tracing Correlated Visibility Matrix",
   "description": "Critical path coverage matrix for Rig Relay tracing. Maps every critical path to required trace events, correlation fields, artifacts, and visibility status.",
   "type": "object",
-  "required": ["schema_version", "matrix_id", "title", "generated_at", "source_commit", "critical_paths"],
+  "required": [
+    "schema_version",
+    "matrix_id",
+    "title",
+    "generated_at",
+    "source_commit",
+    "critical_paths"
+  ],
   "properties": {
     "schema_version": {
       "type": "string",
@@ -17,7 +24,21 @@
       "type": "string"
     },
     "summary": {
-      "type": "string"
+      "type": "object",
+      "properties": {
+        "complete": {
+          "type": "integer"
+        },
+        "partial": {
+          "type": "integer"
+        },
+        "missing": {
+          "type": "integer"
+        },
+        "release_blockers": {
+          "type": "integer"
+        }
+      }
     },
     "generated_at": {
       "type": "string",
@@ -61,57 +82,82 @@
           },
           "required_failure_events": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Events that must fire on failure, refusal, or degradation."
           },
           "required_refusal_events": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Events that must fire when operation is refused (auth, permission)."
           },
           "required_correlation_fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Correlation fields that must be present in trace events for this path."
           },
           "required_artifacts": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Artifact types or files that must be produced as evidence."
           },
           "current_events_found": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Event names currently found in codebase for this path."
           },
           "missing_events": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Event names that should exist but are not instrumented."
           },
           "missing_fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Correlation fields missing from this path's events."
           },
           "current_tests": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Test files currently covering this path."
           },
           "missing_tests": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Test coverage gaps."
           },
           "sensitivity_requirements": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Redaction and content-safety requirements specific to this path."
           },
           "visibility_status": {
             "type": "string",
-            "enum": ["complete", "partial", "missing", "unknown"],
+            "enum": [
+              "complete",
+              "partial",
+              "missing",
+              "unknown"
+            ],
             "description": "Current visibility assessment."
           },
           "release_blocker": {
@@ -123,15 +169,6 @@
             "description": "Recommended action to close visibility gaps."
           }
         }
-      }
-    },
-    "summary": {
-      "type": "object",
-      "properties": {
-        "complete": {"type": "integer"},
-        "partial": {"type": "integer"},
-        "missing": {"type": "integer"},
-        "release_blockers": {"type": "integer"}
       }
     }
   }

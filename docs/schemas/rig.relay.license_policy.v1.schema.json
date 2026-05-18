@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.license_policy.v1.schema.json",
+  "title": "Rig Relay License Policy",
+  "description": "Project license policy including AGPL terms, commercial licensing, contributions, attribution, and upstream lineage.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "public_license",
+    "spdx_identifier",
+    "license_intent",
+    "network_interaction_policy",
+    "commercial_licensing",
+    "contributions",
+    "attribution",
+    "upstream_lineage",
+    "legal_review_required"
+  ],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "public_license": { "type": "string" },
+    "spdx_identifier": { "type": "string" },
+    "license_intent": { "type": "string" },
+    "network_interaction_policy": {
+      "type": "object",
+      "required": [
+        "agpl_section_13_expected_to_apply_to_modified_network_interactive_versions",
+        "source_offer_required_for_modified_versions_interacting_with_remote_users",
+        "notes"
+      ],
+      "properties": {
+        "agpl_section_13_expected_to_apply_to_modified_network_interactive_versions": { "type": "boolean" },
+        "source_offer_required_for_modified_versions_interacting_with_remote_users": { "type": "boolean" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "commercial_licensing": {
+      "type": "object",
+      "required": ["available_by_separate_agreement", "examples"],
+      "properties": {
+        "available_by_separate_agreement": { "type": "boolean" },
+        "examples": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "contributions": {
+      "type": "object",
+      "required": [
+        "contributor_keeps_copyright",
+        "cla_required",
+        "maintainer_relicense_right_required",
+        "dual_licensing_right_required",
+        "cla_file"
+      ],
+      "properties": {
+        "contributor_keeps_copyright": { "type": "boolean" },
+        "cla_required": { "type": "boolean" },
+        "maintainer_relicense_right_required": { "type": "boolean" },
+        "dual_licensing_right_required": { "type": "boolean" },
+        "cla_file": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "attribution": {
+      "type": "object",
+      "required": [
+        "preserve_git_history",
+        "preserve_notice_files",
+        "machine_readable_attribution_manifest"
+      ],
+      "properties": {
+        "preserve_git_history": { "type": "boolean" },
+        "preserve_notice_files": { "type": "boolean" },
+        "machine_readable_attribution_manifest": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "upstream_lineage": {
+      "type": "object",
+      "required": ["project", "original_license", "relationship", "notes"],
+      "properties": {
+        "project": { "type": "string" },
+        "original_license": { "type": "string" },
+        "relationship": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "legal_review_required": { "type": "boolean" },
+    "review_note": { "type": "string" }
+  },
+  "additionalProperties": false
+}

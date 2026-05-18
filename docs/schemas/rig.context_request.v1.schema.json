@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.context_request.v1.schema.json",
   "title": "Rig Context Request",
   "description": "Request schema for the rig.get_context built-in tool. Agents request context by mode and scope; Rig compiles the correct view. The tool is read-only and receipt-backed.",
@@ -19,7 +19,13 @@
     },
     "mode": {
       "type": "string",
-      "enum": ["map", "packet", "handoff", "collision", "symbols"],
+      "enum": [
+        "map",
+        "packet",
+        "handoff",
+        "collision",
+        "symbols"
+      ],
       "description": "Context mode: map=fast topology, packet=heavy mission-ready, handoff=agent transfer, collision=path conflict check, symbols=symbol alias table."
     },
     "scope": {
@@ -27,12 +33,16 @@
       "properties": {
         "paths": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Optional path prefixes to scope the context."
         },
         "symbols": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Optional symbol names to include definitions for."
         },
         "include_tests": {
@@ -65,13 +75,22 @@
         },
         "compression": {
           "type": "string",
-          "enum": ["none", "light", "symbol_substitution", "aggressive"],
+          "enum": [
+            "none",
+            "light",
+            "symbol_substitution",
+            "aggressive"
+          ],
           "default": "none",
           "description": "Compression mode for optimizing packet size."
         },
         "detail": {
           "type": "string",
-          "enum": ["summary", "standard", "deep"],
+          "enum": [
+            "summary",
+            "standard",
+            "deep"
+          ],
           "default": "standard"
         }
       },
@@ -100,7 +119,11 @@
       "properties": {
         "format": {
           "type": "string",
-          "enum": ["json", "markdown", "context_packet"],
+          "enum": [
+            "json",
+            "markdown",
+            "context_packet"
+          ],
           "default": "json"
         },
         "include_resource_links": {
@@ -111,6 +134,8 @@
       "additionalProperties": false
     }
   },
-  "required": ["mode"],
+  "required": [
+    "mode"
+  ],
   "additionalProperties": false
 }

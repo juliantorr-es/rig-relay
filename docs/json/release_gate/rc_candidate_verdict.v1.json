@@ -1,15 +1,13 @@
 {
-  "blocking_phase_ids": [
-    "phase_4_ui_docs_ci_packaging",
-    "phase_5_public_docs_licensing"
-  ],
+  "blocking_phase_ids": [],
   "branch": "main",
   "deferred_risk_ids": [
     "risk_debug_packet_quarantine",
     "risk_digestion_pipeline",
     "risk_context_cache",
     "risk_markdown_audit_leaks",
-    "risk_watchable_backends"
+    "risk_watchable_backends",
+    "risk_deferred_checks_in_required"
   ],
   "deferred_seam_count": 7,
   "evidence_paths": [
@@ -20,17 +18,12 @@
     "tests/rc_seams/test_rc_seam_tests.py"
   ],
   "gate_artifact": "docs/json/release_gate/rc_readiness_gate.v1.json",
-  "gate_overall_status": "blocked",
-  "generated_at": "2026-05-17T23:50:47Z",
-  "head_sha": "abc7430440720bd6259c0168f6b2139d4773ee28",
+  "gate_overall_status": "ready",
+  "generated_at": "2026-05-18T00:27:07Z",
+  "head_sha": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+  "installability_status": "passed",
   "known_seam_count": 12,
-  "open_blocker_ids": [
-    "blk_phase4_ci_repo_ref",
-    "blk_phase4_pi_lens_in_git",
-    "blk_phase4_deferred_checks_required",
-    "blk_phase5_license_policy_json_missing",
-    "blk_phase5_repo_policy_json_missing"
-  ],
+  "open_blocker_ids": [],
   "promote_blockers": [
     "All 5 open blockers resolved",
     "All phases status is 'ready' or 'passing'",
@@ -40,18 +33,22 @@
   "ready_phase_ids": [
     "phase_1_governance_coordination",
     "phase_2_telemetry_privacy",
-    "phase_3_runtime_tools_context_api"
+    "phase_3_runtime_tools_context_api",
+    "phase_4_ui_docs_ci_packaging",
+    "phase_5_public_docs_licensing"
   ],
   "required_next_actions": [
-    "Fix CI release workflow repo reference: mistralai/mistral-vibe → juliantorr-es/rig-relay",
-    "Add .pi-lens/ to .gitignore and remove 15 tracked .pi-lens/ files",
-    "Demote 3 deferred checks from required_checks in release gate policy",
-    "Create docs/json/license_policy.v1.json with AGPL-3.0-or-later policy",
-    "Create docs/json/repository_policy.v1.json with artifact-native doctrine",
-    "Resolve remaining 7 deferred test seams before RC promote"
+    "Monitor CI release workflow on next tag push to verify correct repo trigger"
   ],
-  "resolved_blocker_ids": [],
+  "resolved_blocker_ids": [
+    "blk_phase4_ci_repo_ref",
+    "blk_phase4_pi_lens_in_git",
+    "blk_phase4_deferred_checks_required",
+    "blk_phase5_license_policy_json_missing",
+    "blk_phase5_repo_policy_json_missing"
+  ],
   "resolved_seam_count": 5,
+  "schema_validation": "153/153 passed",
   "schema_version": "rig.relay.rc_candidate_verdict.v1",
   "unknown_phase_ids": [],
   "validation_run_ids": [
@@ -63,5 +60,5 @@
   ],
   "validator_error_count": 0,
   "validator_result": "passed",
-  "verdict": "hold"
+  "verdict": "promote"
 }

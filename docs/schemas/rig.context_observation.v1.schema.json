@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.context_observation.v1.schema.json",
   "title": "Rig Context Observation",
   "description": "Content-light record correlating a tool call with the context packet that was active at the time. Observations are telemetry, not policy — they never block tool execution. Emitted by the context correlation layer after each tool call completes.",
@@ -31,12 +31,22 @@
     },
     "target_paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Normalized relative paths extracted from the tool call arguments."
     },
     "mutation_class": {
       "type": "string",
-      "enum": ["read_only", "writes_workspace", "writes_evidence_only", "writes_temp_only", "mutates_git_state", "external_side_effect", "unknown"],
+      "enum": [
+        "read_only",
+        "writes_workspace",
+        "writes_evidence_only",
+        "writes_temp_only",
+        "mutates_git_state",
+        "external_side_effect",
+        "unknown"
+      ],
       "description": "Mutation class of the tool."
     },
     "context_available": {
@@ -65,7 +75,13 @@
     },
     "tool_status": {
       "type": "string",
-      "enum": ["pending", "succeeded", "failed", "refused", "skipped"],
+      "enum": [
+        "pending",
+        "succeeded",
+        "failed",
+        "refused",
+        "skipped"
+      ],
       "description": "Outcome status of the tool call."
     },
     "blocked_by_policy": {
@@ -84,10 +100,18 @@
     }
   },
   "required": [
-    "kind", "tool_name", "context_available",
-    "matched_recommended_context", "overlapped_active_work",
-    "touched_dirty_path", "touched_soft_warning", "touched_hard_denied_path",
-    "tool_status", "blocked_by_policy", "observation_only", "created_at"
+    "kind",
+    "tool_name",
+    "context_available",
+    "matched_recommended_context",
+    "overlapped_active_work",
+    "touched_dirty_path",
+    "touched_soft_warning",
+    "touched_hard_denied_path",
+    "tool_status",
+    "blocked_by_policy",
+    "observation_only",
+    "created_at"
   ],
   "additionalProperties": false
 }

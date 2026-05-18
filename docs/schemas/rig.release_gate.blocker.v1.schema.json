@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.github.io/schemas/rig.release_gate.blocker.v1.schema.json",
   "title": "Release Gate Blocker v1",
   "description": "A single release-candidate blocker entry. Stored as JSONL entries in the blocker ledger. Each blocker references a phase and must be resolved, deferred, or superseded before the phase can pass.",
@@ -29,7 +29,12 @@
     },
     "severity": {
       "type": "string",
-      "enum": ["blocker", "high", "medium", "low"],
+      "enum": [
+        "blocker",
+        "high",
+        "medium",
+        "low"
+      ],
       "description": "Blocker severity."
     },
     "title": {
@@ -44,12 +49,16 @@
     },
     "affected_paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Paths affected by this blocker."
     },
     "evidence_paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Paths to evidence supporting this blocker."
     },
     "required_resolution": {
@@ -58,12 +67,19 @@
     },
     "validation_commands": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Commands that validate resolution."
     },
     "status": {
       "type": "string",
-      "enum": ["open", "resolved", "deferred", "superseded"],
+      "enum": [
+        "open",
+        "resolved",
+        "deferred",
+        "superseded"
+      ],
       "description": "Current blocker status."
     },
     "discovered_by": {
@@ -85,6 +101,14 @@
       "type": "string",
       "format": "date-time",
       "description": "ISO 8601 timestamp when blocker was last updated."
+    },
+    "resolution": {
+      "type": "string",
+      "description": "How the blocker was resolved"
+    },
+    "resolved_at": {
+      "type": "string",
+      "description": "ISO timestamp of resolution"
     }
   },
   "additionalProperties": false

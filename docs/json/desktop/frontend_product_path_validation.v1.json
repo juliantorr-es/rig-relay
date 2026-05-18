@@ -1,0 +1,36 @@
+{
+  "schema_version": "rig.release_candidate.installability_check.v1",
+  "generated_at": "2026-05-18T00:32:31Z",
+  "branch": "main",
+  "head_sha": "494608cd4809842e5bed4d97919d6224a4ecd9f9",
+  "overall_status": "passed",
+  "checks": [
+    {"check_id": "server_startup_headless", "status": "pass", "detail": "DesktopBridgeServer starts/stops cleanly on ephemeral port"},
+    {"check_id": "frontend_assets_served", "status": "pass", "detail": "index.html, js/, css/ all present"},
+    {"check_id": "projection_roundtrip", "status": "pass", "detail": "build_projection returns schema-versioned dict with required fields"},
+    {"check_id": "websocket_auth", "status": "pass", "detail": "WS auth handshake succeeds with valid token, rejects wrong token"},
+    {"check_id": "websocket_projection_stream", "status": "pass", "detail": "get_projection returns valid projection after auth"},
+    {"check_id": "intent_read_only_roundtrip", "status": "pass", "detail": "refresh_projection intent executes and returns structured result"},
+    {"check_id": "intent_unknown_refusal", "status": "pass", "detail": "Unknown intent returns structured refusal with reason"},
+    {"check_id": "intent_protected_refusal", "status": "pass", "detail": "Protected mutation intents (bash) return refused status"},
+    {"check_id": "frontend_dom_safety", "status": "pass", "detail": "No unsafe innerHTML patterns for untrusted backend data"},
+    {"check_id": "frontend_accessibility", "status": "pass", "detail": "ARIA roles, live regions, labels, CSP present"},
+    {"check_id": "cli_demotion", "status": "pass", "detail": "rig-relay delegates to desktop cockpit; doctor is admin-only"},
+    {"check_id": "no_markdown_evidence", "status": "pass", "detail": "No .md files created by projection or intent execution"},
+    {"check_id": "sendmessage_fix", "status": "pass", "detail": "Orchestrator stores WebSocket client reference — outbound messaging wired"},
+    {"check_id": "ws_connect_timeout", "status": "pass", "detail": "WebSocket client has 15s connection timeout with cleanup"}
+  ],
+  "errors": [],
+  "warnings": [],
+  "evidence_paths": [
+    "tests/desktop/test_product_path.py",
+    "frontend/desktop/js/boot/orchestrator.js",
+    "frontend/desktop/js/transport.js",
+    "frontend/desktop/websocket.js"
+  ],
+  "commands_run": [
+    "uv run pytest tests/desktop/test_product_path.py -v --timeout=30"
+  ],
+  "duration_ms": 0,
+  "required_next_actions": []
+}

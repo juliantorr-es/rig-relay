@@ -40,6 +40,8 @@ export function cycleDisclosure(id) {
   }
 }
 
+let _previousFocus = null;
+
 export function showExpanded(id) {
   const overlay = el('expanded-overlay');
   const content = el('expanded-content');
@@ -48,6 +50,7 @@ export function showExpanded(id) {
   const fn = renderers[id];
   if (!fn) return;
 
+  _previousFocus = document.activeElement;
   overlay.classList.add('active');
   const card = el('widget-' + id);
   if (card) card.setAttribute('aria-expanded', 'true');
@@ -69,6 +72,10 @@ export function hideExpanded() {
       const chatInput = el('chat-input');
       if (chatInput) chatInput.focus();
     }
+  }
+  if (_previousFocus && typeof _previousFocus.focus === 'function') {
+    _previousFocus.focus();
+    _previousFocus = null;
   }
 }
 
@@ -446,7 +453,15 @@ function renderCompactChip(container, label, valueFn) {
   chip.appendChild(document.createTextNode(v.text));
   container.appendChild(header);
   container.appendChild(chip);
+  container.setAttribute('tabindex', '0');
+  container.setAttribute('role', 'button');
   container.onclick = function() { cycleDisclosure(container.id.replace('widget-', '')); };
+  container.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      cycleDisclosure(container.id.replace('widget-', ''));
+    }
+  });
 }
 
 function renderStandardCard(container, title, bodyHTML, widgetId, statusCls) {

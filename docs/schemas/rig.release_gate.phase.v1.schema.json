@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.github.io/schemas/rig.release_gate.phase.v1.schema.json",
   "title": "Release Gate Phase v1",
   "description": "A single phase within the release-candidate readiness gate. Each phase groups blockers, validation runs, schemas, tests, and evidence for one governance surface.",
@@ -23,7 +23,13 @@
     },
     "status": {
       "type": "string",
-      "enum": ["blocked", "ready", "passing", "deferred", "unknown"],
+      "enum": [
+        "blocked",
+        "ready",
+        "passing",
+        "deferred",
+        "unknown"
+      ],
       "description": "Current phase readiness status."
     },
     "owner_surface": {
@@ -33,27 +39,37 @@
     },
     "required_evidence": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Paths to required evidence artifacts for this phase."
     },
     "blocker_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Blocker IDs associated with this phase."
     },
     "validation_run_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Validation run IDs associated with this phase."
     },
     "schema_artifact_paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Schema artifact paths governed by this phase."
     },
     "test_artifact_paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Test artifact paths governed by this phase."
     },
     "telemetry_or_redaction_implications": {
@@ -66,12 +82,16 @@
     },
     "allowed_deferrals": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Deferral reasons allowed for this phase."
     },
     "remaining_seams": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Remaining seams identified in this phase."
     },
     "source_commit": {

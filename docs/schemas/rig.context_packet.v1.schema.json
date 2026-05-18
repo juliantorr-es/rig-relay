@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.context_packet.v1.schema.json",
   "title": "Rig Context Packet",
   "description": "Output schema for the rig.get_context tool. Structured context packet containing repo map, active work map, symbol table, receipts, and collision warnings. The canonical view before any substitution or compression.",
@@ -15,7 +15,13 @@
     },
     "mode": {
       "type": "string",
-      "enum": ["map", "packet", "handoff", "collision", "symbols"],
+      "enum": [
+        "map",
+        "packet",
+        "handoff",
+        "collision",
+        "symbols"
+      ],
       "description": "The mode that was requested."
     },
     "request_sha256": {
@@ -30,20 +36,36 @@
     "repo": {
       "type": "object",
       "properties": {
-        "root": {"type": "string"},
-        "head": {"type": "string"},
-        "branch": {"type": "string"},
+        "root": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
         "dirty_summary": {
           "type": "object",
           "properties": {
-            "modified": {"type": "integer"},
-            "untracked": {"type": "integer"},
-            "staged": {"type": "integer"}
+            "modified": {
+              "type": "integer"
+            },
+            "untracked": {
+              "type": "integer"
+            },
+            "staged": {
+              "type": "integer"
+            }
           },
           "additionalProperties": false
         }
       },
-      "required": ["root", "head", "branch"],
+      "required": [
+        "root",
+        "head",
+        "branch"
+      ],
       "additionalProperties": false
     },
     "repo_map": {
@@ -51,12 +73,29 @@
       "items": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "paths": {"type": "array", "items": {"type": "string"}},
-          "description": {"type": "string"},
-          "risk_areas": {"type": "array", "items": {"type": "string"}}
+          "name": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "risk_areas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
-        "required": ["name", "paths"],
+        "required": [
+          "name",
+          "paths"
+        ],
         "additionalProperties": false
       }
     },
@@ -65,13 +104,45 @@
       "items": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "paths": {"type": "array", "items": {"type": "string"}},
-          "entry_points": {"type": "array", "items": {"type": "string"}},
-          "config_files": {"type": "array", "items": {"type": "string"}},
-          "schemas": {"type": "array", "items": {"type": "string"}},
-          "docs": {"type": "array", "items": {"type": "string"}},
-          "tests": {"type": "array", "items": {"type": "string"}}
+          "name": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entry_points": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "config_files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schemas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "docs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
         "additionalProperties": false
       }
@@ -84,12 +155,30 @@
           "items": {
             "type": "object",
             "properties": {
-              "agent_id": {"type": "string"},
-              "mission_id": {"type": "string"},
-              "worktree_path": {"type": "string"},
-              "claimed_paths": {"type": "array", "items": {"type": "string"}},
-              "dirty_paths": {"type": "array", "items": {"type": "string"}},
-              "status": {"type": "string"}
+              "agent_id": {
+                "type": "string"
+              },
+              "mission_id": {
+                "type": "string"
+              },
+              "worktree_path": {
+                "type": "string"
+              },
+              "claimed_paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dirty_paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
@@ -99,9 +188,15 @@
           "items": {
             "type": "object",
             "properties": {
-              "path": {"type": "string"},
-              "claimed_by": {"type": "string"},
-              "reason": {"type": "string"}
+              "path": {
+                "type": "string"
+              },
+              "claimed_by": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
@@ -115,16 +210,27 @@
         "aliases": {
           "type": "object",
           "description": "Symbol substitution table: short alias → full name/path. Used for optional compact output.",
-          "additionalProperties": {"type": "string"}
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "symbols": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "name": {"type": "string"},
-              "kind": {"type": "string"},
-              "paths": {"type": "array", "items": {"type": "string"}}
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
             },
             "additionalProperties": false
           }
@@ -138,9 +244,15 @@
       "items": {
         "type": "object",
         "properties": {
-          "kind": {"type": "string"},
-          "path": {"type": "string"},
-          "sha256": {"type": "string"}
+          "kind": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
@@ -150,8 +262,12 @@
       "items": {
         "type": "object",
         "properties": {
-          "path": {"type": "string"},
-          "reason": {"type": "string"}
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
@@ -161,8 +277,12 @@
       "items": {
         "type": "object",
         "properties": {
-          "path": {"type": "string"},
-          "reason": {"type": "string"}
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
@@ -185,8 +305,13 @@
     }
   },
   "required": [
-    "schema_version", "context_id", "mode", "request_sha256",
-    "generated_at", "repo", "summary_text"
+    "schema_version",
+    "context_id",
+    "mode",
+    "request_sha256",
+    "generated_at",
+    "repo",
+    "summary_text"
   ],
   "additionalProperties": false
 }

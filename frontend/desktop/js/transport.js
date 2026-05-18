@@ -124,6 +124,10 @@ export function initTransport(wsUrl, token, onMessage, transportAuthority, hands
   });
 }
 
+export function setWsClient(client) {
+  _wsClient = client;
+}
+
 export function sendMessage(msg) {
   if (_wsClient && _wsClient.connected && _wsClient.authenticated) {
     return _wsClient.send(msg);

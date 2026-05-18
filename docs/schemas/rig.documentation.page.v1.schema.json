@@ -1,10 +1,15 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.dev/schemas/rig.documentation.page.v1.schema.json",
   "title": "Rig Documentation Page",
   "description": "A single canonical documentation page as structured JSON blocks.",
   "type": "object",
-  "required": ["schema_version", "document_id", "title", "sections"],
+  "required": [
+    "schema_version",
+    "document_id",
+    "title",
+    "sections"
+  ],
   "properties": {
     "schema_version": {
       "type": "string",
@@ -16,7 +21,18 @@
     },
     "document_type": {
       "type": "string",
-      "enum": ["architecture", "audit", "governance", "policy", "proof", "report", "guide", "reference", "contract", "other"]
+      "enum": [
+        "architecture",
+        "audit",
+        "governance",
+        "policy",
+        "proof",
+        "report",
+        "guide",
+        "reference",
+        "contract",
+        "other"
+      ]
     },
     "title": {
       "type": "string"
@@ -26,7 +42,12 @@
     },
     "status": {
       "type": "string",
-      "enum": ["draft", "active", "deprecated", "archived"]
+      "enum": [
+        "draft",
+        "active",
+        "deprecated",
+        "archived"
+      ]
     },
     "created_at": {
       "type": "string",
@@ -41,17 +62,27 @@
     },
     "owners": {
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
     },
     "tags": {
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
     },
     "audience": {
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["contributor", "agent", "user", "maintainer", "public"]
+        "enum": [
+          "contributor",
+          "agent",
+          "user",
+          "maintainer",
+          "public"
+        ]
       }
     },
     "canonical_path": {
@@ -61,8 +92,12 @@
     "render": {
       "type": "object",
       "properties": {
-        "toc": {"type": "boolean"},
-        "search_index": {"type": "boolean"}
+        "toc": {
+          "type": "boolean"
+        },
+        "search_index": {
+          "type": "boolean"
+        }
       }
     },
     "sections": {
@@ -70,67 +105,169 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["block_id", "type"],
+        "required": [
+          "block_id",
+          "type"
+        ],
         "properties": {
-          "block_id": {"type": "string"},
+          "block_id": {
+            "type": "string"
+          },
           "type": {
             "type": "string",
             "enum": [
-              "heading", "paragraph", "callout", "table",
-              "code", "json", "schema_ref", "mermaid",
-              "list", "decision", "risk", "test_evidence",
-              "link", "file_reference", "diagram_ref"
+              "heading",
+              "paragraph",
+              "callout",
+              "table",
+              "code",
+              "json",
+              "schema_ref",
+              "mermaid",
+              "list",
+              "decision",
+              "risk",
+              "test_evidence",
+              "link",
+              "file_reference",
+              "diagram_ref"
             ]
           },
-          "title": {"type": "string"},
-          "content": {"type": "string"},
-          "level": {"type": "integer", "minimum": 1, "maximum": 6},
-          "language": {"type": "string"},
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "language": {
+            "type": "string"
+          },
           "severity": {
             "type": "string",
-            "enum": ["info", "warning", "error", "critical"]
+            "enum": [
+              "info",
+              "warning",
+              "error",
+              "critical"
+            ]
           },
           "rows": {
             "type": "array",
             "items": {
               "type": "array",
-              "items": {"type": "string"}
+              "items": {
+                "type": "string"
+              }
             }
           },
           "columns": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           },
           "items": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           },
-          "ordered": {"type": "boolean"},
-          "href": {"type": "string"},
-          "path": {"type": "string"},
-          "diagram_id": {"type": "string"},
-          "caption": {"type": "string"},
-          "fallback_text": {"type": "string"},
-          "schema_ref": {"type": "string"},
-          "decision_id": {"type": "string"},
-          "outcome": {"type": "string"},
+          "ordered": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "diagram_id": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          },
+          "fallback_text": {
+            "type": "string"
+          },
+          "schema_ref": {
+            "type": "string"
+          },
+          "decision_id": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
           "disclosure": {
             "type": "object",
             "description": "Progressive disclosure for this block.",
             "properties": {
-              "level": {"type": "string", "enum": ["summary", "standard", "detailed", "exhaustive"]},
-              "initially_visible": {"type": "boolean"},
-              "collapsible": {"type": "boolean"},
-              "collapsed_by_default": {"type": "boolean"},
-              "audience": {"type": "array", "items": {"type": "string"}},
-              "priority": {"type": "integer"},
+              "level": {
+                "type": "string",
+                "enum": [
+                  "summary",
+                  "standard",
+                  "detailed",
+                  "exhaustive"
+                ]
+              },
+              "initially_visible": {
+                "type": "boolean"
+              },
+              "collapsible": {
+                "type": "boolean"
+              },
+              "collapsed_by_default": {
+                "type": "boolean"
+              },
+              "audience": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "priority": {
+                "type": "integer"
+              },
               "render_hint": {
                 "type": "object",
                 "properties": {
-                  "variant": {"type": "string", "enum": ["plain", "card", "callout", "compact_table", "full_table", "code_panel", "evidence_panel", "risk_panel", "decision_panel"]},
-                  "emphasis": {"type": "string", "enum": ["normal", "muted", "important", "warning", "critical"]},
-                  "icon": {"type": "string"},
-                  "group": {"type": "string"}
+                  "variant": {
+                    "type": "string",
+                    "enum": [
+                      "plain",
+                      "card",
+                      "callout",
+                      "compact_table",
+                      "full_table",
+                      "code_panel",
+                      "evidence_panel",
+                      "risk_panel",
+                      "decision_panel"
+                    ]
+                  },
+                  "emphasis": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "muted",
+                      "important",
+                      "warning",
+                      "critical"
+                    ]
+                  },
+                  "icon": {
+                    "type": "string"
+                  },
+                  "group": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -143,8 +280,12 @@
       "items": {
         "type": "object",
         "properties": {
-          "document_id": {"type": "string"},
-          "title": {"type": "string"}
+          "document_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
         }
       }
     },
@@ -153,20 +294,32 @@
       "items": {
         "type": "object",
         "properties": {
-          "document_id": {"type": "string"},
-          "title": {"type": "string"},
-          "relationship": {"type": "string"}
+          "document_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "relationship": {
+            "type": "string"
+          }
         }
       }
     },
     "provenance": {
       "type": "object",
       "properties": {
-        "author": {"type": "string"},
-        "session_id": {"type": "string"},
+        "author": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
         "source_files": {
           "type": "array",
-          "items": {"type": "string"}
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -174,13 +327,50 @@
       "type": "object",
       "description": "Progressive disclosure policy for this document.",
       "properties": {
-        "default_level": {"type": "string", "enum": ["summary", "standard", "detailed", "exhaustive"]},
-        "available_levels": {"type": "array", "items": {"type": "string", "enum": ["summary", "standard", "detailed", "exhaustive"]}},
-        "render_strategy": {"type": "string", "enum": ["linear", "cards", "accordion", "tabs", "timeline", "reference"]},
-        "show_table_of_contents": {"type": "boolean"},
-        "collapse_level": {"type": "integer"},
-        "progressive_summary": {"type": "string"},
-        "detail_policy": {"type": "string"}
+        "default_level": {
+          "type": "string",
+          "enum": [
+            "summary",
+            "standard",
+            "detailed",
+            "exhaustive"
+          ]
+        },
+        "available_levels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "standard",
+              "detailed",
+              "exhaustive"
+            ]
+          }
+        },
+        "render_strategy": {
+          "type": "string",
+          "enum": [
+            "linear",
+            "cards",
+            "accordion",
+            "tabs",
+            "timeline",
+            "reference"
+          ]
+        },
+        "show_table_of_contents": {
+          "type": "boolean"
+        },
+        "collapse_level": {
+          "type": "integer"
+        },
+        "progressive_summary": {
+          "type": "string"
+        },
+        "detail_policy": {
+          "type": "string"
+        }
       }
     }
   }

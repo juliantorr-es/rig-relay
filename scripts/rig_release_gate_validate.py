@@ -253,6 +253,42 @@ def check_jsonl_parse_errors(
     return errors
 
 
+def check_stale_evidence(
+    phases: list[dict[str, Any]],
+    validation_runs: list[dict[str, Any]],
+    repo_root: Path,
+    current_head: str,
+) -> list[str]:
+    """Detect validation runs and phase statuses referencing commits older than current HEAD."""
+    errors: list[str] = []
+    if not current_head:
+        return errors
+
+    for run in validation_runs:
+        if "_parse_error" in run:
+            continue
+        run_commit = run.get("source_commit", "")
+        if run_commit and run_commit != current_head:
+            errors.append(
+                f"Validation run {run.get('validation_run_id')} is stale: "
+                f"source_commit={run_commit[:8]} != HEAD={current_head[:8]}"
+            )
+
+    for phase in phases:
+        phase_commit = phase.get("source_commit", "")
+        if (
+            phase.get("status") in {"passing", "ready"}
+            and phase_commit
+            and phase_commit != current_head
+        ):
+            errors.append(
+                f"Phase {phase.get('phase_id')} is stale: "
+                f"source_commit={phase_commit[:8]} != HEAD={current_head[:8]}"
+            )
+
+    return errors
+
+
 def resolve_head_sha(repo_root: Path) -> str:
     try:
         return subprocess.check_output(
@@ -272,10 +308,7 @@ def resolve_branch(repo_root: Path) -> str:
 
 
 def _validate_entries(
-    entries: list[dict[str, Any]],
-    schema_id: str,
-    schemas_dir: Path,
-    label: str,
+    entries: list[dict[str, Any]], schema_id: str, schemas_dir: Path, label: str
 ) -> list[str]:
     errors: list[str] = []
     for i, entry in enumerate(entries):
@@ -293,17 +326,15 @@ def _build_phase_summaries(
     for phase in phases:
         phase_id = phase.get("phase_id", "unknown")
         phase_errors = [e for e in errors if phase_id in e]
-        summaries.append(
-            {
-                "phase_id": phase_id,
-                "title": phase.get("title", ""),
-                "status": phase.get("status", "unknown"),
-                "error_count": len(phase_errors),
-                "blocker_count": len(phase.get("blocker_ids", [])),
-                "evidence_count": len(phase.get("required_evidence", [])),
-                "validation_run_count": len(phase.get("validation_run_ids", [])),
-            }
-        )
+        summaries.append({
+            "phase_id": phase_id,
+            "title": phase.get("title", ""),
+            "status": phase.get("status", "unknown"),
+            "error_count": len(phase_errors),
+            "blocker_count": len(phase.get("blocker_ids", [])),
+            "evidence_count": len(phase.get("required_evidence", [])),
+            "validation_run_count": len(phase.get("validation_run_ids", [])),
+        })
     return summaries
 
 
@@ -325,7 +356,9 @@ def run_validation(
     try:
         gate = load_artifact(readiness_gate_path)
     except Exception as e:
-        return _error_result(str(repo_root), [f"Failed to load readiness gate: {e}"], artifact_counts)
+        return _error_result(
+            str(repo_root), [f"Failed to load readiness gate: {e}"], artifact_counts
+        )
 
     errors.extend(
         validate_schema_artifact(gate, "rig.release_gate.readiness.v1", schemas_dir)
@@ -338,11 +371,16 @@ def run_validation(
     artifact_counts["validation_runs_loaded"] = len(validation_runs)
 
     errors.extend(
-        _validate_entries(blockers, "rig.release_gate.blocker.v1", schemas_dir, "Blocker")
+        _validate_entries(
+            blockers, "rig.release_gate.blocker.v1", schemas_dir, "Blocker"
+        )
     )
     errors.extend(
         _validate_entries(
-            validation_runs, "rig.release_gate.validation_run.v1", schemas_dir, "Validation run"
+            validation_runs,
+            "rig.release_gate.validation_run.v1",
+            schemas_dir,
+            "Validation run",
         )
     )
     artifact_counts["schemas_validated"] = len(blockers) + len(validation_runs)
@@ -365,11 +403,18 @@ def run_validation(
     errors.extend(check_validation_runs(phases, validation_runs, policy))
     errors.extend(check_schema_governed_artifacts(phases, validation_runs))
 
+    current_head = resolve_head_sha(repo_root)
+    errors.extend(
+        check_stale_evidence(phases, validation_runs, repo_root, current_head)
+    )
+
     phase_summaries = _build_phase_summaries(phases, errors)
     status = "passed" if len(errors) == 0 else "failed"
+    verdict = _compute_verdict(errors, phases, blockers)
 
     return {
         "status": status,
+        "verdict": verdict,
         "errors": errors,
         "warnings": [],
         "artifact_counts": artifact_counts,
@@ -382,12 +427,11 @@ def run_validation(
 
 
 def _error_result(
-    repo_root: str,
-    errors: list[str],
-    artifact_counts: dict[str, int],
+    repo_root: str, errors: list[str], artifact_counts: dict[str, int]
 ) -> dict[str, Any]:
     return {
         "status": "failed",
+        "verdict": "FAIL",
         "errors": errors,
         "warnings": [],
         "artifact_counts": artifact_counts,
@@ -401,6 +445,22 @@ def _error_result(
 
 def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _compute_verdict(
+    errors: list[str], phases: list[dict[str, Any]], blockers: list[dict[str, Any]]
+) -> str:
+    if errors:
+        return "FAIL"
+    blocker_ids_map = {b["blocker_id"]: b for b in blockers if "_parse_error" not in b}
+    for phase in phases:
+        if phase.get("status") == "blocked":
+            return "BLOCKED"
+        for bid in phase.get("blocker_ids", []):
+            blocker = blocker_ids_map.get(bid)
+            if blocker and blocker.get("status") == "open":
+                return "BLOCKED"
+    return "PASS"
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -463,7 +523,7 @@ def main(argv: list[str] | None = None) -> int:
         repo_root=repo_root,
     )
     print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
-    return 0 if result["status"] == "passed" else 1
+    return 0 if result["verdict"] != "FAIL" else 1
 
 
 if __name__ == "__main__":
